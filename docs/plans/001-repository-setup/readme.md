@@ -1,9 +1,6 @@
 # 001 — Repository setup
 
-**Status:** 🔨 in progress · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** repo, ci, workspace, app
-
-> Awaiting the user's review and CI on the pull request: all five plans are implemented and their conclusions written;
-> the plan becomes ✔️ done once the user has looked at the result and the workflows have run green on GitHub.
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** repo, ci, workspace, app
 
 ## Goal
 
@@ -41,7 +38,7 @@ rest follows [`../../workflow.md`](../../workflow.md): 001/04 and 001/05 finish 
 
 ## Conclusions
 
-Implemented 2026-11-15; the user's review and the first CI run are pending.
+Implemented and reviewed by the user 2026-11-15; merged into `main` as one squash commit.
 
 - **Acceptance, checked on this machine:**
   - `npm install` installs the hooks; `npm run lint`, `npm test`, `npm run test:cov` and `npm run test:e2e` pass;
@@ -51,8 +48,8 @@ Implemented 2026-11-15; the user's review and the first CI run are pending.
   - A push under 90 % coverage is rejected: the probe of 001/04 (37 % without the `fresher-testing` tests).
   - [`../../quality.md`](../../quality.md) and [`../../testing.md`](../../testing.md) describe what was built; their
     status notes are removed.
-  - **Not checked: CI on the pull request.** The branch is not pushed; `actionlint` passes locally, but the workflows
-    have never run on GitHub.
+  - CI is green on the pull request (#1): `lint`, `test`, `e2e`, `build` and CodeQL (JavaScript/TypeScript and Rust,
+    no alert). The first run caught a missing `coverage/` folder on a clean checkout, fixed before the merge.
 - **Measured:**
   - Tests: 29 Rust (unit, integration, property, core e2e), 2 UI unit, 6 Playwright (WebKit and Chromium), 7 for the
     repository scripts.

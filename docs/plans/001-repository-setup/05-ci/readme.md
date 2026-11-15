@@ -25,9 +25,8 @@ Implemented 2026-11-15.
 - Checked locally: `actionlint` (with shellcheck) passes over the workflows, Prettier and typos accept them, every
   command the jobs run passes on this machine, including `npm audit --omit=dev --audit-level=high` (0 vulnerabilities)
   and `npm run build` (an unsigned `Mac Fresher.app` of 5.12 MiB in 57 s from a warm cache).
-- **Not verified yet: the workflows have never run on GitHub.** The branch is not pushed; the plan's checks (four jobs
-  green on the pull request, a deliberate Clippy warning turning `lint` red, CodeQL with no alert) wait for the user's
-  push.
+- **On GitHub:** the four jobs and CodeQL ran green on the pull request (#1), CodeQL with no alert. The deliberate
+  Clippy probe was not run on GitHub; the same `npm run lint` rejects it locally.
 - Deviations from the steps:
   - **One composite action, `.github/actions/setup`**, holds the setup every job repeats (Node from `.nvmrc`, the Rust
     toolchain from `rust-toolchain.toml` through `rustup toolchain install --no-self-update`, the caches, `npm ci`).

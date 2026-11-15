@@ -9,6 +9,8 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
 - **One squash-merge per global plan**: when the global plan is done (its conclusions written, the user has looked at
   the result), the branch is squash-merged into `main` as ONE Conventional Commit naming the plan.
 - Before the squash-merge, the pre-push checks pass on the branch's last commit (`npm run pre-push`).
+- **No pull requests for local development** (the user's decision of 2026-11-15): the squash-merge is done locally
+  with `git merge --squash`; a pull request is opened only when the user asks for one.
 - **Small changes outside any plan** (an idea, the README, a rule, a doc fix) are committed **straight to `main`**, one
   commit through the hooks, no branch.
 - The merged branch is kept for two weeks, then deleted.
