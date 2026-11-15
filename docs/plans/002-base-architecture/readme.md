@@ -119,6 +119,25 @@ Everything a new module needs, so that a module is written to a pattern rather t
   fails when they are stale.
 - The core has no async runtime: threads and channels. Tauri's runtime stays in the shell.
 
+### Sessions
+
+- The engine is an explicit state machine: idle → scanning → idle, idle → cleaning → idle. **One operation at a time**:
+  a scan cannot start during a cleanup, nor a cleanup during a scan; a command that does not fit the state is refused
+  with a reason.
+- Every operation can be cancelled and ends in a defined state; a cancelled scan keeps its result marked partial.
+- **Closing the window quits the app** — there is no background work ([`goal.md`](../../goal.md), section 8). During a
+  cleanup the app asks first, finishes the item in hand, stops and writes down what was done.
+- One instance: starting the app again brings the open window forward.
+
+### IPC safety
+
+- **The UI names things by id, never by path.** A command that leads to a removal takes ids of findings the core itself
+  produced in this session; the core looks the paths up. Even a compromised webview cannot ask for an arbitrary path to
+  be removed.
+- Every command validates its input in the core; the shell passes it through and decides nothing.
+- The Tauri capabilities list exactly the commands the UI uses: no file system, shell, network or dialog plugin exposed
+  to the webview beyond what a step asks for by name. The content security policy stays without a remote origin.
+
 ### Settings and the app's own data
 
 **Recommended: plain files, no SQLite.**
@@ -138,6 +157,10 @@ Everything a new module needs, so that a module is written to a pattern rather t
   choose their storage in their own plans.
 - Everything goes through traits of `fresher-store` (`SettingsStore`, …), so moving to SQLite later changes one crate.
 - **Nothing to install**: either way the app is one self-contained bundle.
+- **File versions.** Every file the app writes carries a format version, and one policy covers them all: what holds the
+  user's decisions or history (settings, the cleanup journal, history points) is **migrated** forward, step by step,
+  with the old file kept until the new one is written; what can be rebuilt (the scan cache) is **discarded** on a
+  version change. A file from a newer version of the app is never overwritten: the app says so and works without it.
 
 The app's own footprint is part of the architecture: one data folder, a size budget, no log files by default, and the
 webview runs with a non-persistent data store so it leaves no cache of its own. Settings show "Mac Fresher's own data:
@@ -161,10 +184,10 @@ N MB" with a button to clear it.
 | #   | Plan                  | What                                                                              |
 | --- | --------------------- | --------------------------------------------------------------------------------- |
 | 01  | Core contracts        | domain types, ports, events, text keys, the module trait                          |
-| 02  | Engine                | registry, event bus, scan session over a port; the `demo` module                  |
-| 03  | Settings and app data | `fresher-store`: data folder, `settings.json`, typed schema, footprint budget     |
+| 02  | Engine                | registry, event bus, the session state machine, scan over a port; the `demo` module |
+| 03  | Settings and app data | `fresher-store`: data folder, `settings.json`, typed schema, file versions, footprint budget |
 | 04  | Dictionary            | `locales/`, the key checks, the dictionary command, `t()` in the UI               |
-| 05  | IPC and shell         | commands, the event channel, generated TypeScript types, the UI's store           |
+| 05  | IPC and shell         | commands by id with validation, capabilities, the event channel, generated TypeScript types, the UI's store |
 | 06  | Module kit            | the rule format and matcher, the category contract, the test harness, the template |
 | 07  | Boundaries and docs   | the dependency guard; `architecture/`, `goal.md` §5, `CLAUDE.md` map updated      |
 
@@ -195,7 +218,10 @@ None yet.
 9. **The webview keeps no persistent data.**
 10. **Rules are TOML data owned by each module**, with a required "must not match" part; the catalogue in
     `docs/categories/` is checked against the code by a test.
-11. **Target version 0.1.0.**
+11. **One operation at a time**, and closing the window quits the app.
+12. **Commands take ids, never paths.**
+13. **Migrate what holds decisions, discard what can be rebuilt**; never overwrite a file from a newer version.
+14. **Target version 0.1.0.**
 
 ## Conclusions
 

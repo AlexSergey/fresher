@@ -28,7 +28,9 @@ done. Every feature that cleans goes through it.
 
 ### The flow
 
-1. The user selects findings. The engine builds a **plan**: for each item its identity, kind, size, danger level and
+1. The user selects findings. The UI sends only their ids — never a path (plan
+   [002](../002-base-architecture/readme.md), "IPC safety"); an id the core did not produce in this session is refused.
+   The engine builds a **plan**: for each item its identity, kind, size, danger level and
    removal, frozen as they were shown.
 2. The UI shows the summary — the exact list, the total, the highest danger level, Trash or permanent — and the user
    confirms.

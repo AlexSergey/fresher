@@ -65,6 +65,20 @@ app/ui/src/
 - Motion is off in tests (`data-motion="off"` zeroes every duration), so screenshots are deterministic.
 - The demo module gives the screens stable made-up data.
 
+### Accessibility
+
+A requirement of every component, checked when it is built, not at the end:
+
+- **Keyboard**: everything can be reached and operated without a pointer; focus is always visible (the accent ring);
+  a dialog traps focus and returns it where it came from.
+- **VoiceOver**: real elements and roles first, labels from the dictionary, live regions for scan progress and results
+  — announced at a calm rate, not on every update.
+- **The confirmation dialog** reads out the count, the total size and the highest danger level before its buttons; the
+  safe choice has the initial focus, and the removing button is never the default for Enter.
+- Meaning never rests on colour alone; contrast meets WCAG AA; text follows the system's size setting within reason;
+  `prefers-reduced-motion` and increased contrast are honoured.
+- The gallery tests each component by keyboard, and each has its accessible name asserted in its unit tests.
+
 ### Animation
 
 - **Motion tokens**: durations 120 / 200 / 320 / 480 ms and three easings (standard, enter, exit).
@@ -143,7 +157,8 @@ None yet.
 7. **Our own store and no router.**
 8. **macOS 13 stays the minimum**, so the baseline is Safari 16.
 9. **A generic module page** by default, custom views optional.
-10. **Target version 0.2.0.**
+10. **Accessibility is part of "done" for every component**; the removing button is never the default action.
+11. **Target version 0.2.0.**
 
 ## Conclusions
 
