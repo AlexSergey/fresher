@@ -117,3 +117,5 @@ Have an idea for a category Mac Fresher should recognize? Open an issue — the 
 
 Mac Fresher is free and open source, dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your
 option. Notices: [NOTICE](NOTICE).
+
+Created by [Serhii Aleksandrov](https://github.com/AlexSergey) and the Mac Fresher contributors.
