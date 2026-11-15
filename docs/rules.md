@@ -51,7 +51,8 @@ Example: "Deletes only caches and logs. Your settings stay, in case you install 
 Coverage is at least 90 % of lines in the Rust crates and in the UI. Every rule has negative tests (paths it must not
 claim) before positive ones. Details: [`testing.md`](./testing.md).
 
-## 9. Third-party code only under permissive licences
+## 9. Third-party code in the app only under permissive licences
 
 MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0, Unlicense, CC0-1.0. Anything else is asked about
-before it is added. Details: [`restrictions/dependencies.md`](./restrictions/dependencies.md).
+before it is added. Development tools that never ship in the app may be under any open-source licence. Details:
+[`restrictions/dependencies.md`](./restrictions/dependencies.md).

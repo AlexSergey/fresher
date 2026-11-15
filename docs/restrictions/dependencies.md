@@ -3,14 +3,28 @@
 The rules every dependency follows. The list of the dependencies themselves, with their versions and licences, is
 [`../dependencies.md`](../dependencies.md); a change that adds, removes or updates one updates it in the same change.
 
-## Permissive licences only
+## Permissive licences in the app
 
-- **Rule:** third-party code only under MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0,
-  Unlicense, CC0-1.0. Anything else (MPL-2.0, LGPL, …) is asked about before it is added; GPL, AGPL, SSPL,
-  non-commercial and unlicensed code are not taken.
+- **Rule:** third-party code that ships in the app — the Rust crates and the production npm dependencies of `app/ui` —
+  only under MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0, Unlicense, CC0-1.0. Anything else
+  (MPL-2.0, LGPL, …) is asked about before it is added; GPL, AGPL, SSPL, non-commercial and unlicensed code are not
+  taken. The whole Rust tree keeps this list, its build and test crates included.
 - **Why:** the app may be distributed; copyleft or unclear licences would bind it.
-- **Enforced by:** `cargo deny check` (`deny.toml` `[licenses]`) for Rust; a licence check of npm production
-  dependencies in CI (plan 001).
+- **Enforced by:** `cargo deny check` (`deny.toml` `[licenses]`) for the whole Rust tree; a licence check of npm
+  production dependencies in CI (plan 001; not built yet,
+  [`../known-issues/repo-no-npm-licence-check.md`](../known-issues/repo-no-npm-licence-check.md)).
+
+## Any open-source licence for development tools
+
+- **Rule:** an npm package or a machine tool that only builds, lints or tests the code may be under any open-source
+  licence, copyleft included (LGPL, MPL-2.0, GPL), as long as it never ships in the app and no copy of it is kept in
+  the repository. Non-commercial, source-available (SSPL, BUSL) and unlicensed tools are not taken. Every one is listed
+  with its licence in [`../dependencies.md`](../dependencies.md). The user's decision of 2026-11-15.
+- **Why:** a copyleft licence binds whoever distributes the licensed code. A tool run on a developer's machine or in CI
+  is used, not distributed, and its output (a lint report, a test result) is not a work derived from it, so it does not
+  bind the app.
+- **Enforced by:** review; the npm licence check above covers only production dependencies, so a development package
+  is checked by hand when it is added.
 
 ## MPL-2.0 for five crates of Tauri
 

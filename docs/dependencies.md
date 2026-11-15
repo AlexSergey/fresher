@@ -112,7 +112,8 @@ Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-t
 ### Licences outside the allowlist, in development packages
 
 The installed npm tree (385 packages) is mostly MIT, Apache-2.0, ISC and BSD. These are not on the allowlist; none of
-them is shipped, so none binds the app:
+them ships in the app, so they are allowed as development tools
+([`restrictions/dependencies.md`](./restrictions/dependencies.md), "Any open-source licence for development tools"):
 
 | Package                                        | Licence       | Pulled in by                     |
 | ---------------------------------------------- | ------------- | -------------------------------- |

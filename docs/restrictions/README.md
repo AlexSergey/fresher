@@ -5,7 +5,8 @@ writing a plan.
 
 - [deletion-safety.md](deletion-safety.md) — what may be deleted, when, how, and what never is.
 - [privacy.md](privacy.md) — no network, no telemetry, local data only.
-- [dependencies.md](dependencies.md) — permissive licences only, exact versions, locked builds.
+- [dependencies.md](dependencies.md) — permissive licences in the app, any open-source licence for dev tools, exact versions, locked
+  builds.
 - [repository.md](repository.md) — English only, commit messages, generated and protected files.
 
 ## Format
