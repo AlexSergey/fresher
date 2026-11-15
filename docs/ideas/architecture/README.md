@@ -21,13 +21,13 @@ These are ideas, not decisions: each becomes a decision only in the design of th
 | [Rules over one tree](./rules-over-one-tree.md)                   | agent | rules match the scanner's tree and never walk the disk; unrecognized space as an exact remainder                   |
 | [Safety in the types](./safety-in-types.md)                       | agent | evidence on findings, a plan only from a confirmation, the cleaner deletes a verified item, not a path             |
 | [Snapshot summaries](./snapshot-summaries.md)                     | agent | a counterproposal to decision 9: totals and a summary tree per scan, the full tree of the latest scan only         |
-| [Change detection and hashing](./change-detection-and-hashing.md) | agent | rescans and duplicates compared: metadata fingerprints, no content hashes for rescans, md5 nowhere; measured facts |
+| [Change detection and hashing](./change-detection-and-hashing.md) | agent | a full walk, sizes in two tiers, fingerprints for diffs, md5 nowhere; measured, scored by two reviewer models      |
 
 ## Proposed decisions
 
 1. **A macOS-only walker on `getattrlistbulk(2)`** in `fresher-scanner`: one syscall per batch returns name, device,
    inode, link count, allocated sizes and the APFS clone id — no `lstat` per entry ([scanning](./scanning.md)).
-   Measured: asking for the clone id and private size in the walk makes it ~3 × slower — see
+   Measured: asking for the clone id and private size makes the walk 2–3 × slower (cold 24.9 s → 44.4 s+) — see
    [change detection and hashing](./change-detection-and-hashing.md), "Sizes in two tiers".
 2. **Work-stealing scheduling** (`crossbeam-deque`), about 3 × the cores, capped at 64 workers; `rayon` is acceptable for
    a first version ([scanning](./scanning.md)).
@@ -53,7 +53,8 @@ These are ideas, not decisions: each becomes a decision only in the design of th
 14. **A hash cache in SQLite** keyed by `(device, inode, size, mtime, range)` ([duplicates](./duplicates.md)); the
     agent proposes adding `ctime` ([change detection and hashing](./change-detection-and-hashing.md)).
 15. **BLAKE3 for content, `twox-hash` for xxh3** — not `xxhash-rust` (BSL-1.0, outside our licence list)
-    ([crates](./crates.md)).
+    ([crates](./crates.md)); the agent proposes measuring BLAKE3 against the hardware SHA-256 of Apple Silicon first
+    ([change detection and hashing](./change-detection-and-hashing.md)).
 16. **Similar images optional**: perceptual hashes with a BK-tree over Hamming distance ([duplicates](./duplicates.md)).
 17. **The cleaner trashes through `NSFileManager trashItemAtURL`** (via `objc2`), records the resulting path in our own
     undo log, and never drives Finder by Apple Events ([macOS](./macos.md)).

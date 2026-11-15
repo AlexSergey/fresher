@@ -4,107 +4,177 @@
 
 The question from the team: "to be fast we need a clever graph with hashes (md5) — but md5 is expensive". Hashes serve
 two problems here: **fast rescans** (what changed since the last scan) and **duplicates** (which files have the same
-content). The short answer: the graph is the scanner's tree with **fingerprints of metadata, not of content**; contents
-are read only for duplicate candidates, and md5 is used nowhere.
+content). The short answer: the graph is the scanner's tree, walked in full every scan; **fingerprints of metadata,
+not of content**, come later for watch-mode diffs; contents are read only for duplicate candidates, and md5 is used
+nowhere.
 
-The options were scored by the agent and checked against an independent review by a second model; the facts below
-marked "measured" were tested on an Apple M1 Pro with APFS on 2026-11-15.
+Facts marked "measured" were tested on an Apple M1 Pro with APFS on 2026-11-15. The options were then scored blind by
+**two independent reviewer models**, each given the same brief with the constraints and the measured facts (see
+"How the options were scored"); the verdicts follow their scores and their own verdicts.
 
 ## Measured
 
-| Fact                                                                                         | Result                                                                                                                                                                                                           |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hash speed on a cached 1 GiB file, one core                                                  | md5 0.53 GiB/s · SHA-256 (hardware) 1.48 GiB/s · BLAKE2b 0.60 GiB/s · plain read 6.5 GiB/s — md5 is 12 × slower than the read                                                                                    |
-| `getattrlistbulk` with `FSOPT_ATTR_CMN_EXTENDED`                                             | returns `ATTR_CMNEXT_CLONEID`, `ATTR_CMNEXT_PRIVATESIZE` and `ATTR_CMNEXT_CLONE_REFCNT` in the same batch read                                                                                                   |
-| A fresh clone (`cp -c`)                                                                      | the same clone id as the original, reference count 2, private size 0 for both                                                                                                                                    |
-| The clone after 64 KiB of it is rewritten                                                    | **a new clone id**, reference count 1 for both, private size 64 KiB each — the other ~4 MiB of blocks are still shared                                                                                           |
-| `ATTR_CMNEXT_RECURSIVE_GENCOUNT` on ordinary folders                                         | 0: maintained only for folders with directory statistics turned on, which is a privileged write — not usable by a read-only scan                                                                                 |
-| Parallel `getattrlistbulk` walk of a home folder (1.73 million entries), metadata cache warm | **12.5 s** with names, types, sizes and link counts · **32–41 s** when private size is also asked for · thread count (10 or 30) does not matter                                                                  |
-| The same walk: logical vs allocated size                                                     | 1014 GiB logical, 103.6 GiB allocated — Docker's disk image alone is 460 GiB logical and 5.6 GiB allocated ([`../container-disk-image.md`](../container-disk-image.md)); logical size is useless as "space used" |
+| Fact                                                                                      | Result                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hash speed on a cached 1 GiB file, one core                                               | md5 0.53 GiB/s · SHA-256 (hardware) 1.48 GiB/s · BLAKE2b 0.60 GiB/s · plain read 6.5 GiB/s — md5 is 12 × slower than the read                                                                                                                                                    |
+| `getattrlistbulk` with `FSOPT_ATTR_CMN_EXTENDED`                                          | returns `ATTR_CMNEXT_CLONEID`, `ATTR_CMNEXT_PRIVATESIZE` and `ATTR_CMNEXT_CLONE_REFCNT` in the same batch read                                                                                                                                                                   |
+| A fresh clone (`cp -c`)                                                                   | the same clone id as the original, reference count 2, private size 0 for both                                                                                                                                                                                                    |
+| The clone after 64 KiB of it is rewritten                                                 | **a new clone id**, reference count 1 for both, private size 64 KiB each — the other ~4 MiB of blocks are still shared                                                                                                                                                           |
+| `ATTR_CMNEXT_RECURSIVE_GENCOUNT` on ordinary folders                                      | 0: maintained only for folders with directory statistics turned on, which is a privileged write — not usable by a read-only scan                                                                                                                                                 |
+| Parallel `getattrlistbulk` walk of a home folder (1.74 million entries), cheap attributes | **12.5 s** warm · **24.9 s** cold, right after a restart (~70 000 entries/s, 11 MB of memory) · thread count (10 or 30) does not matter                                                                                                                                          |
+| The same walk with private size asked for                                                 | **32–41 s** warm · **44.4 s** right after the cold cheap walk (partly warm, so a true cold run is slower)                                                                                                                                                                        |
+| The same walk: logical, allocated and private size                                        | 1014 GiB logical, 103.9 GiB allocated, 98.6 GiB private — ~5.3 GiB sits in blocks shared between files; Docker's disk image alone is 460 GiB logical and 5.6 GiB allocated ([`../container-disk-image.md`](../container-disk-image.md)); logical size is useless as "space used" |
 
-Not measured yet: BLAKE3 (no tool installed; its multi-threaded SIMD speed is expected well above the read speed —
-check in the plan), and the walk with a cold metadata cache, right after a restart (see "To measure").
+Not measured yet: BLAKE3 and xxh3 (see "To measure").
 
-## Fast rescans
+## Target
 
-| Option                                                                  | Verdict                                                                                    |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| R1. Full walk every time                                                | **first choice**, until a cold-cache measurement says it is too slow                       |
-| R2. Merkle tree of content hashes                                       | rejected: reads every byte of the disk on every scan                                       |
-| R3. Merkle tree of metadata fingerprints                                | **taken**: nearly free during the walk; makes diffs proportional to what changed           |
-| R4. Skip a folder whose modification time is unchanged                  | rejected: a file growing in place does not change its folder's time — sizes would be stale |
-| R5. Replay the file-system event history (FSEvents) since the last scan | **only if R1 is too slow cold**, behind a strict fallback (below)                          |
-| R6. R5 + R3 + a verification sample of "unchanged" folders              | the shape R5 must take if it is ever built                                                 |
-| R7. The Spotlight index                                                 | rejected: incomplete (excluded folders, package contents, can be off)                      |
-| R8. A live watcher or a security-framework client                       | rejected: a background process ([`../../goal.md`](../../goal.md), section 8)               |
-| R9. APFS recursive generation counts of folders                         | rejected: measured as 0 unless a privileged write turns them on                            |
+Proposed, not decided yet: a **cold full scan of a home folder finishes within 30 seconds**, and the **first findings
+appear within 2–3 seconds**. The walk visits the folders rules care about first, findings stream as it reaches them,
+and totals are marked partial until it ends. The measured home folder (1.74 million entries) meets it with the cheap
+walk (24.9 s); a home folder of 3–5 million entries would take ~43–72 s cold, so there the streaming carries the
+experience, not the total time.
 
-- **R3 in detail.** Each node of the arena tree ([scanning](./scanning.md)) gets a 64-bit fingerprint: xxh3 of
-  `(device, inode, logical size, allocated size, mtime, ctime)` for a file; for a folder, xxh3 of its children's
-  `(name, fingerprint)` in name order. Equal fingerprints at a folder mean an equal subtree, so the diff of two scans
-  ([snapshots and watch mode](./snapshots-and-watch-mode.md)) skips it. Only the fingerprints of the summary tree are
-  stored between scans ([snapshot summaries](./snapshot-summaries.md)), so no full path list is kept for this.
-- **R1 is measured cold, not warm.** The app is opened rarely — after days, often after a restart — so the honest
-  case is a cold metadata cache. A warm rescan seconds later says little.
-- **R5's fallback, if it is built:** keep the last event id and the volume's event-store UUID; walk in full when the
-  UUID changed, the ids wrapped, the history was dropped or the root changed; re-check a random sample of folders the
-  history calls unchanged, and walk in full on any mismatch. Whether the history survives a week on a busy Mac is
-  **unverified**.
+## How the options were scored
 
-## Duplicates
+Each reviewer scored each option from 1 (bad) to 5 (great) on five criteria, weighted by what matters to this
+product: **correctness** × 3 (stale or wrong sizes, false duplicates, unsafe deletion), **cold** speed × 2 (the app is
+opened rarely, so a cold cache is the normal case), **warm** speed × 1, **simplicity** × 1 (deterministic fixture-tree
+tests included), **fit** × 1 (no daemon, no network, privacy). The maximum is 40. Cells read
+`correctness·cold·warm·simplicity·fit = total`. The total ranks options within a group; "take", "later" or "reject"
+is the reviewers' own call (D3 scores high, but both say "only if measured"). A 1 on correctness or fit means a hard
+rule is broken, so the option is rejected whatever its total (R8 and R9 for reviewer A). The reviewers' verdicts agree
+with the column everywhere except D4 (A: take, B: later).
 
-| Option                                                                        | Verdict                                                          |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| D1. md5 of every file                                                         | rejected: reads everything, slowest hash                         |
-| D2. Staged: size → hard links and clone ids out → prefix → suffix → full hash | **taken** ([duplicates](./duplicates.md))                        |
-| D3. Sampled chunks as an extra candidate stage                                | optional, only if measured to help; never enough to act on       |
-| D4. Duplicate folders through a lazily built content-addressed graph          | **taken** for developer folders (identical `node_modules`)       |
-| D5. Content-defined chunking for near-duplicates                              | rejected: we want exact matches                                  |
-| Grouping candidates by file extension                                         | rejected: a duplicate under another extension still wastes space |
+### Fast rescans
+
+| Option                                                 | Reviewer A         | Reviewer B         | Verdict                                                                                                |
+| ------------------------------------------------------ | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------ |
+| R1. Full metadata walk every scan                      | 5·3·4·5·5 = **35** | 5·4·4·5·5 = **37** | **take**: the cold walk measured 24.9 s                                                                |
+| R2. Merkle tree of content hashes                      | 5·1·1·2·2 = **22** | 5·1·1·4·1 = **23** | reject: reads every byte on every scan                                                                 |
+| R3. Merkle tree of metadata fingerprints               | 4·3·4·3·4 = **29** | 5·4·4·4·4 = **35** | **later, with watch mode**: speeds up diffs, not the walk                                              |
+| R4. Skip a folder whose modification time is unchanged | 1·4·4·4·5 = **24** | 1·4·5·4·2 = **22** | reject: a file growing in place does not change its folder's time                                      |
+| R5. Replay the file-system event history (FSEvents)    | 3·4·5·2·3 = **27** | 3·4·5·2·2 = **26** | reject: not needed for the target; history can be dropped over weeks; needs the last full tree on disk |
+| R6. R5 + R3 + a verification sample                    | 4·4·5·1·3 = **29** | 4·4·5·1·2 = **28** | reject: R5's risks, and the hardest to test                                                            |
+| R7. The Spotlight index                                | 2·4·4·3·3 = **24** | 2·5·5·3·4 = **28** | reject: incomplete (excluded folders, package contents, can be off)                                    |
+| R8. A live watcher or a security-framework client      | 5·5·5·2·1 = **33** | 5·1·5·1·1 = **24** | reject: a background process ([`../../goal.md`](../../goal.md), section 8)                             |
+| R9. APFS recursive generation counts of folders        | 5·5·5·4·1 = **35** | 2·3·5·2·2 = **21** | reject: measured as 0 unless a privileged write turns them on                                          |
+
+- **R1 is the whole rescan story for now.** The cold walk meets the target, so nothing is skipped and nothing about
+  the previous scan has to be trusted.
+- **R3 in detail, for watch mode.** Each node of the arena tree ([scanning](./scanning.md)) gets a 64-bit
+  fingerprint: xxh3 of `(device, inode, logical size, allocated size, mtime, ctime)` for a file; for a folder, xxh3 of
+  its children's `(name, fingerprint)` in name order. Equal fingerprints at a folder mean an equal subtree, so the diff
+  of two scans ([snapshots and watch mode](./snapshots-and-watch-mode.md)) skips it. Only the fingerprints of the
+  summary tree are stored between scans ([snapshot summaries](./snapshot-summaries.md)).
+- **If R5 is ever reconsidered** (home folders far past the target): keep the last event id and the volume's
+  event-store UUID; walk in full when the UUID changed, the ids wrapped, the history was dropped or the root changed;
+  re-check a random sample of folders the history calls unchanged. One reviewer adds that skipping folders means
+  keeping the previous full tree on disk — against [snapshot summaries](./snapshot-summaries.md).
+
+### When to read the APFS size attributes
+
+| Option                                                           | Reviewer A         | Reviewer B         | Verdict                                              |
+| ---------------------------------------------------------------- | ------------------ | ------------------ | ---------------------------------------------------- |
+| T1. Clone id and private size for every entry in the walk        | 5·2·3·5·5 = **32** | 5·2·2·5·5 = **31** | reject: 2–3 × slower walk, misses the target         |
+| T2. Two tiers: cheap walk, extended attributes only where needed | 5·4·4·3·5 = **35** | 5·4·4·4·5 = **36** | **take** ([sizes in two tiers](#sizes-in-two-tiers)) |
+
+### Clones and "freed if deleted"
+
+| Option                                                     | Reviewer A         | Reviewer B         | Verdict                                                               |
+| ---------------------------------------------------------- | ------------------ | ------------------ | --------------------------------------------------------------------- |
+| C1. "Freed" = allocated size, clones as normal files       | 2·5·5·5·5 = **31** | 2·5·5·5·5 = **31** | reject: promises space a clone never gives back                       |
+| C2. Each clone id counted once, "freed" = the group's size | 2·4·4·3·5 = **26** | 2·4·4·3·5 = **26** | reject: a partly rewritten clone has a new id and still shares blocks |
+| C3. "Freed" = private size; shared files marked            | 5·4·4·4·5 = **36** | 4·4·4·4·5 = **33** | **take**, with the whole-group case below                             |
+
+The measurements change decision 6 of the [architecture ideas](./README.md) ("APFS clone groups counted once per
+`(device, clone id)`"):
+
+- An **untouched** clone shares its clone id; a **partly rewritten** clone gets a new clone id while still sharing most
+  of its blocks. Clone ids cannot tell how much is shared; only the private size can.
+- So **"freed if deleted" is the private size**: a lower bound, shown as "at least". A file whose private size is
+  below its allocated size is marked "shares space with another file".
+- **The whole-group case** (raised by a reviewer): when every holder of an untouched clone id is in the selection —
+  the selection holds as many of them as the reference count says — the group's allocated size is freed, not the sum
+  of its private sizes (0). Partly rewritten clones cannot be resolved this way and stay at the lower bound.
+- Freed space shows up only after the Trash is emptied
+  ([the Trash holds the freed space](../trash-holds-freed-space.md)) and only for blocks no APFS local snapshot still
+  holds.
+
+### Duplicates
+
+| Option                                                                   | Reviewer A         | Reviewer B         | Verdict                                                         |
+| ------------------------------------------------------------------------ | ------------------ | ------------------ | --------------------------------------------------------------- |
+| D1. md5 of every file                                                    | 5·1·1·5·2 = **25** | 3·1·1·5·1 = **18** | reject: reads everything with the slowest hash                  |
+| D2. Staged: size → links and clone ids out → prefix → suffix → full hash | 5·4·4·3·5 = **35** | 5·4·5·4·4 = **36** | **take** ([duplicates](./duplicates.md))                        |
+| D3. Sampled chunks as an extra candidate stage                           | 5·4·4·2·5 = **34** | 5·4·4·3·5 = **35** | later, only if measured to cull more than prefix and suffix     |
+| D4. Duplicate folders through a lazily built content-addressed graph     | 5·4·4·3·5 = **35** | 5·4·4·3·5 = **35** | **take after D2**: identical developer folders (`node_modules`) |
+| D5. Content-defined chunking for near-duplicates                         | 4·1·1·1·2 = **18** | 3·1·2·1·2 = **16** | reject: we want exact matches                                   |
+| D6. Group candidates by file extension                                   | 1·4·4·5·5 = **25** | 2·4·4·5·5 = **28** | reject: a copy under another extension still wastes space       |
 
 - **D4 in detail.** First a cheap structural signature per folder: total size, file count and the sorted list of
   `(relative name, size)`. Only folders whose signatures collide get content hashes (from the D2 pipeline and its
   cache), and a folder's content hash is the hash of its children's `(name, content hash)`. Most folders never get
   past the signature.
-- **Hashes:** xxh3 for the prefix and suffix stages, BLAKE3 for the full hash; md5 nowhere.
+- **Hashes:** xxh3 for the prefix and suffix stages; for the full hash, BLAKE3 or the hardware SHA-256 of Apple
+  Silicon, whichever measures faster in the plan (a reviewer expects SHA-256 at 1.48 GiB/s per core to keep up with
+  the disk on a few cores); md5 nowhere.
 - **The hash cache key gains `ctime`**: `(device, inode, size, mtime, ctime, range)` — a rewrite that restores the
   modification time still changes the inode change time.
+- **Hashing reads bypass the page cache** (`F_NOCACHE`), so gigabytes of file contents do not push the file-system
+  metadata out of memory in the middle of a scan.
 
-## Clones and "freed if deleted"
+### Acting on duplicates
 
-The measurements change decision 6 of the [architecture ideas](./README.md) ("APFS clone groups counted once per
-`(device, clone id)`"):
-
-- An **untouched** clone shares its clone id; counting the group once is right.
-- A **partly rewritten** clone gets a new clone id while still sharing most of its blocks. Clone ids then cannot tell
-  how much is shared; only the private size can.
-- So: **"freed if deleted" is the private size**, always. Totals count each clone id once, and a file whose private
-  size is below its allocated size is marked "shares space with another file" instead of pretending its whole size
-  would come back.
-- Two files with one clone id are not duplicates to remove: deleting one frees nothing (D2 already drops them).
+| Option                                                 | Reviewer A         | Reviewer B         | Verdict                                                                             |
+| ------------------------------------------------------ | ------------------ | ------------------ | ----------------------------------------------------------------------------------- |
+| A1. Move chosen copies to the Trash                    | 5·5·5·5·5 = **40** | 5·5·5·5·5 = **40** | **take**: the full hash is re-checked right before                                  |
+| A2. Replace a copy with an APFS clone of the kept file | 4·5·5·3·5 = **35** | 3·5·5·2·5 = **31** | later: keeping permissions, extended attributes and hard links exact is error-prone |
 
 ## Sizes in two tiers
 
 The measured walk changes decision 1 of the [architecture ideas](./README.md) (clone id and private size "in the same
-syscall"): asking for the APFS extended attributes makes the whole walk about **3 × slower**. So:
+syscall"): asking for the APFS extended attributes makes the walk about **2–3 × slower** (24.9 s → 44.4 s or more
+cold). So (T2):
 
 - **The walk reads the cheap attributes only**: name, type, device, inode, link count, logical and allocated size,
   times. Totals and the tree use the allocated size.
-- **Private size and clone id are read later, only where they matter**: for the subtrees a rule claims (the finding's
-  "freed if deleted" — one bulk read of those folders with extended attributes), for duplicate candidates of the same
-  size, and in the re-check right before deletion, which reads the item again anyway
-  ([safety in the types](./safety-in-types.md)).
+- **Private size and clone id are read later, only where they matter**: for the subtrees a rule claims (one bulk read
+  of those folders with extended attributes), for duplicate candidates of the same size, and in the re-check right
+  before deletion, which reads the item again anyway ([safety in the types](./safety-in-types.md)) — through an open
+  file descriptor (`O_NOFOLLOW`, then `fstat`), so the item checked is the item deleted.
 - Until the private size of a finding is read, the finding shows its allocated size marked "may share space with
   other files" — honest, and replaced within seconds.
 
+## What the reviewers changed
+
+Taken:
+
+- R3 moved from "taken" to **later, with watch mode** — both reviewers: it speeds up diffs, not the cold walk.
+- The **whole-group case** for clones, the **"at least"** wording, and the note on Trash and local snapshots.
+- The walk visits **rule anchors first**, so first findings come in 1–2 s while the rest of the walk goes on.
+- **`F_NOCACHE`** for hashing reads; **BLAKE3 vs hardware SHA-256** decided by measurement.
+- The re-check before deletion goes **through a file descriptor** (`O_NOFOLLOW` + `fstat`).
+- The 30-second target is honest only up to ~2 million entries; larger home folders rely on streaming.
+
+Rejected:
+
+- "Skip deep system and app folders to save time": totals must be an exact remainder, with no "Other"
+  ([`../../rules.md`](../../rules.md)), and caches are where most findings are.
+- "A single-threaded cold walk caps at 70 000 entries/s": the measured walk ran 30 threads in parallel; the cap is the
+  file system, not the thread count.
+
 ## To measure
 
-A throwaway spike (kept out of the repository) walks a home folder in parallel with `getattrlistbulk` and only
-counts — entries, folders, sizes, errors by kind, elapsed time. Warm results are above; still needed: **one run right
-after a restart** (cold), which decides between R1 alone and R1 + R5. If a cold walk without extended attributes stays
-under the target, event-history replay is not needed at all.
+The spike (kept out of the repository) walks a home folder in parallel with `getattrlistbulk` and only counts. Still
+open, all for the plan:
+
+- The extended-attribute walk **right after a restart** (the 44.4 s above was partly warm).
+- Walker threads at user-initiated QoS on performance cores — a reviewer suspects the flat thread curve comes from
+  efficiency cores or lock contention.
+- BLAKE3 and xxh3 speed against the hardware SHA-256.
 
 Open questions:
 
-- The target for a cold full scan of a home folder: 30 seconds?
+- The hash cache: kept in the database between scans, or in memory only (a reviewer's privacy argument)?
 - The summary tree's fingerprints: enough for watch mode, or does R3 need the full tree of the latest scan?
