@@ -1,0 +1,94 @@
+# Rust
+target
+**/*.rs.bk
+*.pdb
+
+# Tauri
+app/tauri/gen/schemas
+app/tauri/target
+
+# Node / Vite
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
+.eslintcache
+
+# Tests and coverage
+coverage
+lcov.info
+*.profraw
+*.profdata
+playwright-report
+test-results
+blob-report
+playwright/.cache
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Local app state created by manual runs (the snapshot database lives in ~/Library, never here)
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Build artefacts of the app bundle
+*.dmg
+*.app
+
+# Signing keys and certificates
+*.p12
+*.p8
+*.cer
+*.mobileprovision
+*.provisionprofile
+
+# dotenv (keep examples)
+.env
+.env.*
+!.env.example
+
+# temp
+.temp
+.tmp
+
+# IDE - JetBrains (shared project settings are committed, per-user files are not)
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+.idea/**/httpRequests
+.idea/**/queries
+.idea/**/caches
+.idea/**/aws.xml
+.idea/copilot*
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Claude Code (personal settings)
+.claude/settings.local.json
+.superpowers/

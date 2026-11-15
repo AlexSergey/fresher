@@ -1,0 +1,13 @@
+# Autodetect text files and force unix line endings
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.icns binary
+*.ico binary
+*.sqlite binary
+
+# Generated files: collapsed in diffs
+Cargo.lock linguist-generated=true -diff
+package-lock.json linguist-generated=true -diff
