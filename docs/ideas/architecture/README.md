@@ -10,17 +10,18 @@ checked by the plan that takes them up.
 
 These are ideas, not decisions: each becomes a decision only in the design of the plan that implements it.
 
-| Topic                                                     | From  | What                                                                                                       |
-| --------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
-| [Scanning](./scanning.md)                                 | user  | the walker, sizes, hard links, APFS clones, errors, memory layout                                          |
-| [Snapshots and watch mode](./snapshots-and-watch-mode.md) | user  | the SQLite snapshot shape, diffing two scans, fast rescans                                                 |
-| [Duplicates](./duplicates.md)                             | user  | the staged hashing pipeline, hash cache, clones, similar images                                            |
-| [macOS specifics](./macos.md)                             | user  | dataless files, purgeable space, snapshots, Full Disk Access, the Trash, leftovers                         |
-| [Rules as data](./rules-as-data.md)                       | user  | declarative rules, project artifacts, cache markers, protected paths                                       |
-| [Crates](./crates.md)                                     | user  | candidate dependencies and their licences                                                                  |
-| [Rules over one tree](./rules-over-one-tree.md)           | agent | rules match the scanner's tree and never walk the disk; unrecognized space as an exact remainder           |
-| [Safety in the types](./safety-in-types.md)               | agent | evidence on findings, a plan only from a confirmation, the cleaner deletes a verified item, not a path     |
-| [Snapshot summaries](./snapshot-summaries.md)             | agent | a counterproposal to decision 9: totals and a summary tree per scan, the full tree of the latest scan only |
+| Topic                                                             | From  | What                                                                                                               |
+| ----------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
+| [Scanning](./scanning.md)                                         | user  | the walker, sizes, hard links, APFS clones, errors, memory layout                                                  |
+| [Snapshots and watch mode](./snapshots-and-watch-mode.md)         | user  | the SQLite snapshot shape, diffing two scans, fast rescans                                                         |
+| [Duplicates](./duplicates.md)                                     | user  | the staged hashing pipeline, hash cache, clones, similar images                                                    |
+| [macOS specifics](./macos.md)                                     | user  | dataless files, purgeable space, snapshots, Full Disk Access, the Trash, leftovers                                 |
+| [Rules as data](./rules-as-data.md)                               | user  | declarative rules, project artifacts, cache markers, protected paths                                               |
+| [Crates](./crates.md)                                             | user  | candidate dependencies and their licences                                                                          |
+| [Rules over one tree](./rules-over-one-tree.md)                   | agent | rules match the scanner's tree and never walk the disk; unrecognized space as an exact remainder                   |
+| [Safety in the types](./safety-in-types.md)                       | agent | evidence on findings, a plan only from a confirmation, the cleaner deletes a verified item, not a path             |
+| [Snapshot summaries](./snapshot-summaries.md)                     | agent | a counterproposal to decision 9: totals and a summary tree per scan, the full tree of the latest scan only         |
+| [Change detection and hashing](./change-detection-and-hashing.md) | agent | rescans and duplicates compared: metadata fingerprints, no content hashes for rescans, md5 nowhere; measured facts |
 
 ## Proposed decisions
 
@@ -33,7 +34,8 @@ These are ideas, not decisions: each becomes a decision only in the design of th
 4. **Three sizes per file**: logical, allocated, and private (exclusive) size; "freed if deleted" comes from the
    private size ([scanning](./scanning.md)).
 5. **Hard links counted once**: track `(device, inode)` only when a file's link count is above 1 ([scanning](./scanning.md)).
-6. **APFS clone groups counted once** per `(device, clone id)` in totals ([scanning](./scanning.md)).
+6. **APFS clone groups counted once** per `(device, clone id)` in totals ([scanning](./scanning.md)); a partly
+   rewritten clone gets a new clone id — see [change detection and hashing](./change-detection-and-hashing.md).
 7. **Stay on one device by default** and reject nested or overlapping roots (firmlinks) ([scanning](./scanning.md)).
 8. **An arena tree in memory**: 32-bit indices, one shared name buffer, about 64 bytes per node ([scanning](./scanning.md)).
 9. **Snapshots in SQLite** as an `items` table keyed by parent and name, bulk-inserted ([snapshots](./snapshots-and-watch-mode.md));
@@ -46,7 +48,8 @@ These are ideas, not decisions: each becomes a decision only in the design of th
     ([macOS](./macos.md)).
 13. **Duplicates in stages**: size → drop hard links and identical clone ids → 4 KiB prefix → 4 KiB suffix → full
     BLAKE3 ([duplicates](./duplicates.md)).
-14. **A hash cache in SQLite** keyed by `(device, inode, size, mtime, range)` ([duplicates](./duplicates.md)).
+14. **A hash cache in SQLite** keyed by `(device, inode, size, mtime, range)` ([duplicates](./duplicates.md)); the
+    agent proposes adding `ctime` ([change detection and hashing](./change-detection-and-hashing.md)).
 15. **BLAKE3 for content, `twox-hash` for xxh3** — not `xxhash-rust` (BSL-1.0, outside our licence list)
     ([crates](./crates.md)).
 16. **Similar images optional**: perceptual hashes with a BK-tree over Hamming distance ([duplicates](./duplicates.md)).
