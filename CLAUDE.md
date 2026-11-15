@@ -43,6 +43,16 @@ do not exist yet.
 - When the user's words (answers, decisions) are recorded in the repository, they are translated into English.
 - Chat language is the user's.
 
+## Clean Room
+
+- Never copy implementations from other projects: no code, no ported algorithms line by line, whatever their licence.
+- Study other projects for their ideas only, then design our own solution and bring it to the ideal: simpler, safer
+  and better tested than what inspired it.
+- Never name other products or projects in the repository (code, docs, plans, commit messages); write down the idea,
+  not its source. Our own dependencies and the tools the app cleans may be named.
+- Research notes with names stay in chat or in `NO_COMMIT/`. Details:
+  [`docs/restrictions/repository.md`](./docs/restrictions/repository.md), "Clean room".
+
 ## Important
 
 - Write production-ready code

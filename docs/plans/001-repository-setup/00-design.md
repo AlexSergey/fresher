@@ -141,7 +141,7 @@ knip, machete, deny, typos, `npm audit --omit=dev --audit-level=high`), job `tes
 - 2026-11-15 — The plan is approved ("commit this and move on to implementing plan 001"). The open questions were not
   answered; the agent takes the defaults below (agent's calls 10–13) until the user overrules them.
 - 2026-11-15 — Open question 3: the project is fully free and open source under **MIT OR Apache-2.0** (the user chose
-  the dual licence of photocraft and of most Rust crates); `LICENSE-MIT`, `LICENSE-APACHE` and `NOTICE` at the root.
+  the dual licence of most Rust crates); `LICENSE-MIT`, `LICENSE-APACHE` and `NOTICE` at the root.
 - 2026-11-15 — `.idea/` is personal and never committed.
 - 2026-11-15 — UI stack: Tauri 2 with a React + TypeScript UI over the Rust core (the user chose it over pure-Rust UI
   toolkits).

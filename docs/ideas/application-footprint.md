@@ -1,0 +1,20 @@
+# Application Footprint
+
+**Since:** 2026-11-15
+
+## Problem
+
+Finder shows an app as 500 MB while its data elsewhere takes 20 GB. The real cost of an app is invisible.
+
+## Direction
+
+- For every installed app: the bundle size plus everything it owns outside `/Applications` (support files, caches,
+  containers, group containers, logs), as one number with a breakdown.
+- Sorted by total footprint, with the last time the app was used — "you have not opened this in 8 months and it takes
+  14 GB" is the most useful sentence the app can say.
+- Feeds watch mode: an app whose footprint grows between scans is named.
+- Actions link to [`smart-uninstaller.md`](./smart-uninstaller.md) and to the cleanable categories of that app.
+
+Open questions:
+
+- Last-used date: Spotlight metadata vs LaunchServices — which is reliable without extra permissions?

@@ -1,6 +1,6 @@
-# Uninstalled app leftovers
+# Uninstalled app leftovers (Orphaned Files Finder)
 
-**Since:** 2026-11-15
+**Since:** 2026-11-15 · Also listed by the user as "Orphaned Files Finder" (2026-11-15).
 
 ## Problem
 

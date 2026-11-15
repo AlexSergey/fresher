@@ -7,6 +7,15 @@
 - **Why:** the user's decision (2026-11-15).
 - **Enforced by:** review; `typos` catches some non-English words.
 
+## Clean room
+
+- **Rule:** no other product or project is named in the repository — no names, links or star counts of competing or
+  reference apps, in code, docs, plans or commit messages. Their implementations are never copied — no code, no
+  algorithm ported line by line, whatever the licence; we study their ideas only and design our own, better solution.
+  Our own dependencies (crates, packages) and the tools we clean (Xcode, Docker, …) are named where needed.
+- **Why:** the user's decision (2026-11-15): the project stands on its own ideas; several of those projects are GPL.
+- **Enforced by:** review.
+
 ## Licence
 
 - **Rule:** the project is free and open source under MIT OR Apache-2.0, at the user's option (`LICENSE-MIT`,
