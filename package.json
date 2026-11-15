@@ -36,7 +36,7 @@
     "tauri": "tauri",
     "test": "npm run test:rust && npm run test:ui && npm run test:scripts",
     "test:cov": "npm run test:cov:rust && npm run test:cov:ui",
-    "test:cov:rust": "cargo llvm-cov nextest --workspace --locked --fail-under-lines 90 --ignore-filename-regex 'app/tauri/src/main.rs' --lcov --output-path coverage/rust/lcov.info",
+    "test:cov:rust": "node -e \"fs.mkdirSync('coverage/rust', { recursive: true })\" && cargo llvm-cov nextest --workspace --locked --fail-under-lines 90 --ignore-filename-regex 'app/tauri/src/main.rs' --lcov --output-path coverage/rust/lcov.info",
     "test:cov:ui": "npm run test:cov --workspace app/ui",
     "test:e2e": "npm run test:e2e:core && npm run test:e2e:ui",
     "test:e2e:core": "cargo nextest run -p fresher-e2e --locked",
