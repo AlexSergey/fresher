@@ -27,4 +27,8 @@ One file per attempt, `<topic>.md`:
 <What to do instead, or what to check before trying again.>
 ```
 
-No entries yet.
+## Entries
+
+| Attempt                                                                    | Date       | Result                                      |
+| -------------------------------------------------------------------------- | ---------- | ------------------------------------------- |
+| [A Rust build cache shared by the worktrees](./shared-rust-build-cache.md) | 2026-11-15 | sccache gave no hits across `target/` paths |

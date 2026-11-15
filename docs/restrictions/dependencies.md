@@ -1,5 +1,8 @@
 # Dependencies
 
+The rules every dependency follows. The list of the dependencies themselves, with their versions and licences, is
+[`../dependencies.md`](../dependencies.md); a change that adds, removes or updates one updates it in the same change.
+
 ## Permissive licences only
 
 - **Rule:** third-party code only under MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0,

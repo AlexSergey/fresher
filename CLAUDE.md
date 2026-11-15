@@ -15,6 +15,8 @@ Before planning or implementing anything, read:
 - [`docs/goal.md`](./docs/goal.md) — what the product is and what it must achieve.
 - [`docs/restrictions/`](./docs/restrictions/README.md) — hard constraints (deletion safety, privacy, dependencies,
   repository), each with its reason and where it is enforced.
+- [`docs/dependencies.md`](./docs/dependencies.md) — every dependency and tool with its version and licence. A change
+  that adds, removes or updates a dependency updates it in the same change.
 - [`docs/architecture/`](./docs/architecture/README.md) — crates, layers and data flow.
 - [`docs/categories/`](./docs/categories/README.md) — the catalogue of cleanup categories and their danger levels. A
   change that adds or changes a category updates it in the same change.

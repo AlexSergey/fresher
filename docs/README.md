@@ -8,6 +8,7 @@ All documentation of the repository lives here.
 | [`workflow.md`](./workflow.md)              | how work is done: branches, merges, subagents, cleanup               |
 | [`rules.md`](./rules.md)                    | the rules every plan and change is checked against                   |
 | [`quality.md`](./quality.md)                | code quality tooling: git hooks, linters, formatters, checks         |
+| [`dependencies.md`](./dependencies.md)      | every dependency and tool, with its version and licence              |
 | [`testing.md`](./testing.md)                | test bars and kinds of tests                                         |
 | [`architecture/`](./architecture/README.md) | crates, layers, data flow, the snapshot database                     |
 | [`categories/`](./categories/README.md)     | the cleanup categories and their danger levels                       |
