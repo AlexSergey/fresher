@@ -10,8 +10,12 @@ every previous version stayed on disk, taking gigabytes, without any tool pointi
 
 ## What the product is
 
-Mac Fresher is a desktop application for macOS that finds where disk space goes, explains it in plain English, and
+Fresher is a desktop application for macOS that finds where disk space goes, explains it in plain English, and
 cleans only what the user explicitly confirms.
+
+The name is **Fresher** (the user's decision of 2026-11-15; it was "Mac Fresher" before). "Mac" stays out of the name, as
+Apple's trademark guidelines ask; "Fresher — disk cleaner for Mac" is how it is described. The app id is
+`io.github.alexsergey.fresher` until the project owns a domain; it is settled before the first release (plan 013).
 
 - **macOS only.** Other operating systems are out of scope.
 - **Fast.** The core is Rust: a parallel file system scan, no blocking of the UI, results streamed as they are found.

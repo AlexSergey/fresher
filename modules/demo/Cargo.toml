@@ -1,6 +1,6 @@
 [package]
 name = "fresher-module-demo"
-description = "The demo module of Mac Fresher: made-up findings that prove the module contract; reads nothing from the disk."
+description = "The demo module of Fresher: made-up findings that prove the module contract; reads nothing from the disk."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

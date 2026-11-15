@@ -1,4 +1,4 @@
-//! The shared core of Mac Fresher: domain types, the module contract, ports, events, commands, errors and text keys.
+//! The shared core of Fresher: domain types, the module contract, ports, events, commands, errors and text keys.
 //!
 //! The core does no IO. The ports to the outside world (the clock, the Trash, external commands) are traits here, so
 //! every other crate can be tested with the fakes of `fresher-testing`.

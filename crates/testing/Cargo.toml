@@ -1,6 +1,6 @@
 [package]
 name = "fresher-testing"
-description = "Test helpers of Mac Fresher: fixture trees, fakes of the ports, the reference walk, the module harness."
+description = "Test helpers of Fresher: fixture trees, fakes of the ports, the reference walk, the module harness."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

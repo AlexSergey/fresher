@@ -1,4 +1,4 @@
-//! Test helpers of Mac Fresher: fixture trees, fake clock, fake Trash, fake external commands, the reference walk,
+//! Test helpers of Fresher: fixture trees, fake clock, fake Trash, fake external commands, the reference walk,
 //! and the module harness and contract checks.
 //!
 //! A test never touches the real home folder: it builds a [`FixtureTree`] in a temporary folder and gives the code

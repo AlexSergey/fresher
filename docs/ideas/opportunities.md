@@ -1,8 +1,8 @@
 # Opportunities
 
-**Since:** 2026-11-15 · The user's product-strategy assessment: where Mac Fresher can win.
+**Since:** 2026-11-15 · The user's product-strategy assessment: where Fresher can win.
 
-| Direction              | Market                       | Mac Fresher's opportunity | Idea                                                           |
+| Direction              | Market                       | Fresher's opportunity | Idea                                                           |
 | ---------------------- | ---------------------------- | ------------------------- | -------------------------------------------------------------- |
 | Cache cleaning         | well covered                 | go deeper                 | [`system-junk-cleaner.md`](./system-junk-cleaner.md)           |
 | Large files            | well covered                 | faster                    | [`large-files-finder.md`](./large-files-finder.md)             |

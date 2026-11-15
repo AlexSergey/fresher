@@ -51,6 +51,9 @@ constrain plans [003](../003-base-ui/readme.md) and [006](../006-permissions/rea
    Without it a build runs only after the user overrides a security warning. This costs money and belongs to the user's
    decision; everything else in this plan can be prepared before it.
 2. **Whose name signs the app**: an individual's or an organisation's — it is shown to users by macOS.
+3. **The name and the app id before the first release**: a trademark search for "Fresher" (USPTO, EUIPO) and a domain
+   the project owns (for example `getfresher.app`, free on 2026-11-15); the app id moves from
+   `io.github.alexsergey.fresher` to that domain before any user has data under it.
 
 ## Plans (after approval)
 

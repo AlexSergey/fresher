@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" width="160" height="160" alt="Mac Fresher logo: a dark leaf with a white spark">
+  <img src="assets/logo.png" width="160" height="160" alt="Fresher logo: a dark leaf with a white spark">
 </p>
 
-<h1 align="center">Mac Fresher</h1>
+<h1 align="center">Fresher</h1>
 
 <p align="center">
   <b>Every byte explained. Nothing deleted without you.</b><br>
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AlexSergey/mac-fresher/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/AlexSergey/mac-fresher?style=flat-square&logo=github&color=7fe0c2"></a>
+  <a href="https://github.com/AlexSergey/fresher/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/AlexSergey/fresher?style=flat-square&logo=github&color=7fe0c2"></a>
   <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-1c1d21?style=flat-square&logo=apple">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-b7410e?style=flat-square&logo=rust">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24c8db?style=flat-square&logo=tauri&logoColor=white">
@@ -36,7 +36,7 @@ Your Mac is full, and "System Data" or "Other" tells you nothing. An IDE updated
 settings from every old version. Docker grew into a black hole. A dozen forgotten `node_modules` sit in projects you
 have not opened in a year.
 
-**Mac Fresher shows where your space really went — in plain English — and lets you clean it safely.**
+**Fresher shows where your space really went — in plain English — and lets you clean it safely.**
 
 ## What it does
 
@@ -59,7 +59,7 @@ have not opened in a year.
 - 🖤 **Calm, premium interface** — a graphite, low-noise design that answers one question per screen.
 
 > [!NOTE]
-> Mac Fresher is in early development: the repository, quality gates and architecture are in place, and the scanner is
+> Fresher is in early development: the repository, quality gates and architecture are in place, and the scanner is
 > next. ⭐ **Star the repo** to follow along — it really helps.
 
 ## Safety first
@@ -69,7 +69,7 @@ The app deletes files from your disk, so safety is designed in, not bolted on:
 - **Nothing is deleted without your explicit confirmation** of the exact items, their size and their danger level.
 - **Trash first.** Permanent deletion is a separate, deliberate choice.
 - **Scanning is read-only** — enforced by the linter: only one module of the codebase is allowed to delete anything.
-- **Unknown is not junk.** If Mac Fresher cannot tell what something is, it shows it — it never offers it for removal.
+- **Unknown is not junk.** If Fresher cannot tell what something is, it shows it — it never offers it for removal.
 - System folders and other users' files are never touched; Docker data is removed only through Docker itself.
 
 ## Privacy
@@ -86,8 +86,8 @@ Fresher runs only while you have it open, scans only when you ask, and removes o
 Requirements: macOS 13+, [Rust](https://rustup.rs) (the pinned toolchain installs itself), Node.js 24.
 
 ```bash
-git clone https://github.com/AlexSergey/mac-fresher.git
-cd mac-fresher
+git clone https://github.com/AlexSergey/fresher.git
+cd fresher
 npm install        # also installs the git hooks
 npm run dev        # run the app
 npm run build      # build the .app bundle
@@ -114,11 +114,11 @@ Ideas, bug reports and pull requests are welcome. Start with [`docs/goal.md`](do
 [`docs/rules.md`](docs/rules.md); commits follow [Conventional Commits](https://www.conventionalcommits.org/), and the
 git hooks check everything before it lands.
 
-Have an idea for a category Mac Fresher should recognize? Open an issue — the more real-world cases, the better.
+Have an idea for a category Fresher should recognize? Open an issue — the more real-world cases, the better.
 
 ## License
 
-Mac Fresher is free and open source, dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your
+Fresher is free and open source, dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your
 option. Notices: [NOTICE](NOTICE).
 
-Created by [Serhii Aleksandrov](https://github.com/AlexSergey) and the Mac Fresher contributors.
+Created by [Serhii Aleksandrov](https://github.com/AlexSergey) and the Fresher contributors.

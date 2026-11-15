@@ -21,4 +21,4 @@ Dragging an app to the Trash leaves its settings, caches, containers, helpers an
 
 Open questions:
 
-- Drag-and-drop an app onto Mac Fresher to start (a common pattern in uninstallers)?
+- Drag-and-drop an app onto Fresher to start (a common pattern in uninstallers)?

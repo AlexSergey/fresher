@@ -1,6 +1,6 @@
 [package]
 name = "fresher-cleaner"
-description = "The only code of Mac Fresher that deletes: executes a confirmed clean plan, Trash first."
+description = "The only code of Fresher that deletes: executes a confirmed clean plan, Trash first."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

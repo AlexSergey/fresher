@@ -45,7 +45,7 @@ Plan [002](../002-base-architecture/readme.md) gives the mechanism (a typed sche
 | Modules       | each module on or off, then that module's own settings (for example the age of a stale project)       |
 | Ignored       | everything the user ignored — sections and items — each with "Restore"                                |
 | Permissions   | what the app may and may not see, with what each permission unlocks (plan [006](../006-permissions/readme.md)) |
-| Own data      | the size of Mac Fresher's own data; clear the scan cache; reset all settings; show the folder in Finder |
+| Own data      | the size of Fresher's own data; clear the scan cache; reset all settings; show the folder in Finder |
 | About         | version, licence, the licences of dependencies                                                        |
 
 ### Ignore list

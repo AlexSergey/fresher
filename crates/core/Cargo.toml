@@ -1,6 +1,6 @@
 [package]
 name = "fresher-core"
-description = "The shared core of Mac Fresher: domain types, the module contract, ports, events, commands and text keys."
+description = "The shared core of Fresher: domain types, the module contract, ports, events, commands and text keys."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

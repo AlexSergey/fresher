@@ -35,7 +35,7 @@ not be able to touch real files.
 | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | Sandbox marker        | In debug builds and in tests the cleaner really removes only under a folder that holds a sandbox marker file; anywhere else it refuses. The check is on the physical path. |
 | Dry run by default    | A development run against the real disk is read-only: the cleaner reports what it would do. Real scanning needs an explicit flag; real cleaning in a debug build does not exist. |
-| A separate identity   | Development builds use their own app id and data folder, so they never touch the settings and cache of an installed Mac Fresher. |
+| A separate identity   | Development builds use their own app id and data folder, so they never touch the settings and cache of an installed Fresher. |
 | Test environment      | The test runner sets `HOME` to a temporary folder; a test that forgets to inject a root finds an empty home, not the real one. |
 | Lints                 | Besides the deletion lint: looking up the home folder and starting processes are allowed in one place each; everything else gets its roots and its command runner injected. |
 | A visible state       | A development window always shows a banner: "Sandbox" or "Real disk · read-only".                      |

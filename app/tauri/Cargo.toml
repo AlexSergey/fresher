@@ -1,6 +1,6 @@
 [package]
 name = "fresher-app"
-description = "The Tauri 2 shell of Mac Fresher: thin commands over the core crates."
+description = "The Tauri 2 shell of Fresher: thin commands over the core crates."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

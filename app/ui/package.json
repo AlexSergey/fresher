@@ -1,11 +1,11 @@
 {
-  "name": "@mac-fresher/ui",
+  "name": "@fresher/ui",
   "version": "0.1.0",
   "private": true,
-  "description": "The user interface of Mac Fresher",
+  "description": "The user interface of Fresher",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AlexSergey/mac-fresher.git",
+    "url": "https://github.com/AlexSergey/fresher.git",
     "directory": "app/ui"
   },
   "license": "MIT OR Apache-2.0",

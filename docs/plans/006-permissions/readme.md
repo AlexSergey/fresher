@@ -56,7 +56,7 @@ The exact behaviour of each prompt on macOS 13 to the current version is checked
 
 - **No wall of prompts at first launch.** A scan starts with what is already allowed.
 - When a scan could not see something, the result says what and why: "312 folders could not be read. Full Disk Access
-  lets Mac Fresher see them." — with a button that opens the right pane of System Settings and a short "how".
+  lets Fresher see them." — with a button that opens the right pane of System Settings and a short "how".
 - A section or action that lacks its capability is visible but disabled, with one sentence on what is missing. Nothing
   is silently absent.
 - Sizes affected by an unreadable folder are partial (`42 GB+`).

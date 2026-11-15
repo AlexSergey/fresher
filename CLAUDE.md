@@ -1,6 +1,6 @@
 # Project Guidelines
 
-Mac Fresher: a fast macOS disk cleaner with a Rust core and a Tauri 2 shell (React + TypeScript UI). It explains where
+Fresher: a fast macOS disk cleaner with a Rust core and a Tauri 2 shell (React + TypeScript UI). It explains where
 the disk space went, in plain English, with a danger level on every category, and deletes only what the user
 explicitly confirms. Read [`docs/goal.md`](./docs/goal.md) for the goal.
 

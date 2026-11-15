@@ -1,6 +1,6 @@
 [package]
 name = "fresher-scanner"
-description = "The fast parallel file system scan of Mac Fresher; read-only."
+description = "The fast parallel file system scan of Fresher; read-only."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

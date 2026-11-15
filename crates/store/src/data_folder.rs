@@ -91,7 +91,7 @@ mod tests {
 
         #[test]
         fn refuses_a_relative_data_folder() {
-            assert_eq!(DataFolder::open("dev.macfresher.app"), Err(DataFolderError::Relative));
+            assert_eq!(DataFolder::open("io.github.alexsergey.fresher"), Err(DataFolderError::Relative));
         }
 
         #[test]
@@ -147,7 +147,7 @@ mod tests {
         #[test]
         fn creates_the_folder_private_to_the_user() {
             let root = TempDir::new().unwrap();
-            let path = root.path().join("Application Support").join("dev.macfresher.app");
+            let path = root.path().join("Application Support").join("io.github.alexsergey.fresher");
 
             let folder = DataFolder::open(&path).unwrap();
 

@@ -1,8 +1,8 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Mac Fresher",
+  "productName": "Fresher",
   "version": "0.1.0",
-  "identifier": "dev.macfresher.app",
+  "identifier": "io.github.alexsergey.fresher",
   "build": {
     "beforeDevCommand": { "script": "npm run dev", "cwd": "../ui" },
     "beforeBuildCommand": { "script": "npm run build", "cwd": "../ui" },
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Mac Fresher",
+        "title": "Fresher",
         "width": 1100,
         "height": 720,
         "minWidth": 900,

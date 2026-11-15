@@ -1,6 +1,6 @@
 [package]
 name = "fresher-store"
-description = "The app's own data folder of Mac Fresher: settings and other versioned files."
+description = "The app's own data folder of Fresher: settings and other versioned files."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -30,7 +30,7 @@ test.describe('positive cases', () => {
     await mockCore(page, { answers });
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Mac Fresher' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Fresher' })).toBeVisible();
     await expect(page.getByText('Version 0.0.1')).toBeVisible();
   });
 

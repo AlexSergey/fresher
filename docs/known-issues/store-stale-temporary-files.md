@@ -5,7 +5,7 @@
 ## Symptom
 
 If the app is killed (or the Mac loses power) between creating the temporary file of an atomic write and renaming it,
-the temporary file stays in the data folder (`~/Library/Application Support/dev.macfresher.app/`). Nothing reads it;
+the temporary file stays in the data folder (`~/Library/Application Support/io.github.alexsergey.fresher/`). Nothing reads it;
 it only takes a little space. Each further crash at the same moment can leave one more.
 
 ## Cause

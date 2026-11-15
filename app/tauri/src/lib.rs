@@ -1,4 +1,4 @@
-//! The Tauri 2 shell of Mac Fresher: the composition root and thin commands over the engine.
+//! The Tauri 2 shell of Fresher: the composition root and thin commands over the engine.
 
 mod adapters;
 mod commands;

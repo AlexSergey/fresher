@@ -80,7 +80,7 @@ The stand-ins until a later plan are listed in [`../hacks/`](../hacks/README.md)
 
 No database: the app keeps its own state in small plain files, with nothing to install.
 
-- **The data folder** is `~/Library/Application Support/dev.macfresher.app/` — never inside a scanned root. The app
+- **The data folder** is `~/Library/Application Support/io.github.alexsergey.fresher/` — never inside a scanned root. The app
   passes it to `fresher-store` (`DataFolder::open`); the store never looks it up itself.
 - **`settings.json`**: `{ "format": "settings", "version": 1, "values": { "<key>": <value>, … } }`. Values are checked
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is

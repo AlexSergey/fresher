@@ -15,7 +15,7 @@ describe('t and tText', () => {
 
   describe('positive cases', () => {
     it('reads the chrome texts of the UI', () => {
-      expect(t('ui.app.title')).toBe('Mac Fresher');
+      expect(t('ui.app.title')).toBe('Fresher');
       expect(t('ui.app.version', { version: { kind: 'text', value: '1.2.3' } })).toBe('Version 1.2.3');
     });
 

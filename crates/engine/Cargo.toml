@@ -1,6 +1,6 @@
 [package]
 name = "fresher-engine"
-description = "The engine of Mac Fresher: the module registry, the event bus, the scan session and the settings in memory."
+description = "The engine of Fresher: the module registry, the event bus, the scan session and the settings in memory."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
