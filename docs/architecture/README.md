@@ -56,6 +56,10 @@ outside it, and on a crate that is not in it (`npm run check:crate-deps`, in the
 Rules of the layout:
 
 - The core crates know nothing about Tauri; the shell knows nothing about rules' internals.
+- **The core, the engine and the modules know nothing about the operating system** (the user's decision of
+  2026-11-15: macOS first, Windows not ruled out). Every OS call is an adapter behind a port, and only `fresher-macos`
+  and the adapters built on it are macOS-specific; a module names a known folder (plan
+  [009](../plans/009-system-knowledge/readme.md), `KnownFolders`), never a macOS path such as `~/Library/Caches`.
 - Only `fresher-cleaner` may call a deleting file system function (enforced by Clippy's `disallowed-methods`).
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
 - The UI gets everything it shows (names, descriptions, sizes, danger levels, the text of a refusal) from the core, as

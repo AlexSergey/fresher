@@ -32,6 +32,7 @@ are, what is running. Modules may not depend on each other, so these facts are s
 | `Projects`         | projects by marker file, their kind, artifact folders, last activity       | `node_modules`, build folders, stale projects  |
 | `RunningProcesses` | which apps and services are running, and whose a folder is                 | "in use" checks of modules and of the cleaner  |
 | `Volumes`          | volumes, their kind, free and purgeable space                              | overview, external drives, the scan's total check |
+| `KnownFolders`     | where the system keeps app caches, settings, logs, support data, the Trash | every module that names a place                |
 | `Clock`            | the current time                                                           | everything with an age                         |
 | `CommandRunner`    | runs an external tool with a fixed argument list                           | Docker, package managers                       |
 
@@ -73,7 +74,9 @@ Depends on plans 002 and 004. `Clock` and `CommandRunner` are needed earlier and
 
 ## Decisions
 
-None yet.
+1. **macOS first, Windows not ruled out** (the user, 2026-11-15): modules name known folders through `KnownFolders`,
+   never macOS paths; the macOS adapter answers `~/Library/Caches` and the like, a later Windows adapter would answer
+   its own folders.
 
 ## Agent's calls (to check)
 
@@ -82,6 +85,9 @@ None yet.
 3. **Identity by bundle id and team id only.**
 4. **Project detection rides on the shared walk.**
 5. **Target version 0.5.0.**
+6. **`KnownFolders` replaces `Pattern::UnderHome`**: an interest names a known folder and a relative path under it
+   (`AppCaches` + `JetBrains/*`); the walk resolves it through the port. Built before the first real module, so no
+   module is written with a macOS path.
 
 ## Conclusions
 

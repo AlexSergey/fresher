@@ -17,7 +17,9 @@ The name is **Fresher** (the user's decision of 2026-11-15; it was "Mac Fresher"
 Apple's trademark guidelines ask; "Fresher — disk cleaner for Mac" is how it is described. The app id is
 `io.github.alexsergey.fresher` until the project owns a domain; it is settled before the first release (plan 013).
 
-- **macOS only.** Other operating systems are out of scope.
+- **macOS first.** Windows is not in the first version; the architecture does not rule it out (the user's decision of
+  2026-11-15): everything that depends on the operating system lives in adapters, so another system would be new
+  adapters and its own rule data, not a new core.
 - **Fast.** The core is Rust: a parallel file system scan, no blocking of the UI, results streamed as they are found.
 - **A Tauri 2 shell** with a React + TypeScript UI over the Rust core.
 
