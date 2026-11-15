@@ -33,11 +33,28 @@ The app deletes files from a real person's disk. These rules hold in every versi
 
 ## Never follow symlinks out, never touch protected paths
 
-- **Rule:** the scanner does not follow symlinks; nothing under `/System`, `/usr` (except `/usr/local`), `/bin`, `/sbin`,
+- **Rule:** the scanner and the cleaner follow no links — neither symlinks nor Finder aliases — so a link can never
+  point them somewhere unexpected; nothing under `/System`, `/usr` (except `/usr/local`), `/bin`, `/sbin`,
   `/private/var/db`, SIP-protected locations, or another user's home is ever offered for deletion. Docker objects are
   removed only through the Docker CLI, never by deleting its files.
 - **Why:** deleting there breaks macOS or another user's data; Docker's files are its own database.
 - **Enforced by:** the scanner's and the cleaner's guards and their tests (planned).
+
+## The user's own folders are hard-blocked
+
+- **Rule:** the home folder and its standard folders — Desktop, Documents, Downloads, Movies, Music, Pictures, Public,
+  Library — can never be removed as a whole, whatever a rule or a selection says. Items inside them can be, one by one.
+- **Why:** a broken rule or a wrong selection must not be able to wipe a person's files; the guard sits below every
+  rule.
+- **Enforced by:** the cleaner's guard and its tests (planned).
+
+## Items in use are skipped, never forced
+
+- **Rule:** a file open by a running process, or a folder owned by a running app or service (a database, a container
+  runtime), is skipped and reported with the reason; the cleaner never forces a removal and never quits an app on its
+  own.
+- **Why:** removing files under a running program corrupts its data or crashes it.
+- **Enforced by:** the cleaner's in-use check and its tests (planned).
 
 ## Unknown is not junk
 

@@ -67,6 +67,24 @@ techniques are in [`architecture/`](./architecture/README.md).
 - Synced and iCloud paths refused; files used by another app shown but never pre-selected.
 - A history that can put trashed items back where they were.
 
+### Cleaners for other systems
+
+The same problem on other operating systems gives ideas that carry over to macOS:
+
+- The user's own folders are **hard-blocked** as a whole: Documents, Desktop, Pictures, Videos, Music, Downloads (the
+  folder itself) and the home folder can never be wiped, whatever a rule says.
+- Links are never followed — neither symlinks nor the system's own link kind — so a link cannot point the cleaner
+  somewhere unexpected.
+- Files in use are skipped, never forced.
+- "Safe, but unticked": a safe category whose rebuild costs time (GPU shader caches) is offered but not pre-selected.
+- A **demo mode** with made-up data: nothing on the machine is read or touched; safe for recordings and for tests.
+- One command that runs the demo and saves a screenshot of every screen — the README and the site stay current.
+- A read-only scan written to a text report, for bug reports the user chooses to send.
+- Optional background checks, off by default: a low-space alert that only reads free space, and a weekly cache check
+  that waits for idle time, pauses on battery and stops after a few minutes; at most one reminder a day; a reminder
+  always opens a fresh scan, nothing is deleted automatically.
+- Large game libraries uninstalled through their launcher, never by deleting their files.
+
 ## Ideas worth taking, ranked
 
 1. **How it comes back** — rebuilds, re-downloads, costs a login, gone for good — with the total that would need the
@@ -100,6 +118,13 @@ techniques are in [`architecture/`](./architecture/README.md).
 23. **Watch the Trash for apps** — opt-in only; no background service without the user's consent.
 24. **No fake urgency**, written into the principles.
 25. **Empty a cache folder, keep the folder.**
+26. **Hard-blocked user folders** — the home folder and its standard folders can never be removed as a whole, a guard
+    below every rule.
+27. **Demo mode and automatic screenshots** — made-up data for recordings, tests and an always-current README.
+28. **"Safe, but unticked"** — safe categories whose rebuild costs time are offered, not pre-selected (the Metal shader
+    cache on macOS).
+29. **A read-only scan report** the user can attach to a bug report.
+30. **Optional low-space alert** — off by default, reads only free space, at most one reminder a day, never deletes.
 
 No popular open-source manager of login and launch items exists — a gap
 ([`startup-and-login-items-manager.md`](./startup-and-login-items-manager.md)).
@@ -125,3 +150,5 @@ No popular open-source manager of login and launch items exists — a gap
 - "How it comes back" as a second axis next to the danger level, or part of the category's description?
 - A public, versioned rules library others can contribute to?
 - "Shrink instead of delete" (APFS compression) — in scope?
+- Optional background checks (low-space alert, weekly cache check, reminders only): do they fit the goal, which rules
+  out automatic or scheduled deletion but not reminders? They need the app or a menu-bar helper to keep running.
