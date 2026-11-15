@@ -41,3 +41,6 @@ Rows are in priority order: the order they are implemented in.
 | #   | Global plan                                          | Status         | Version | Modules                  |
 | --- | ---------------------------------------------------- | -------------- | ------- | ------------------------ |
 | 001 | [Repository setup](./001-repository-setup/readme.md) | 🔨 in progress | 0.0.1   | repo, ci, workspace, app |
+| 002 | [Base architecture](./002-base-architecture/readme.md) | 📝 draft       | 0.1.0   | core, engine, store, modules, app |
+| 003 | [Base UI](./003-base-ui/readme.md)                     | 📝 draft       | 0.2.0   | app/ui, app/tauri        |
+| 004 | [Fast scan and search](./004-fast-scan/readme.md)      | 📝 draft       | 0.3.0   | macos, scanner, store, engine |
