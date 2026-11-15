@@ -5,6 +5,7 @@ All documentation of the repository lives here.
 | Path                                        | What                                                                 |
 | ------------------------------------------- | -------------------------------------------------------------------- |
 | [`goal.md`](./goal.md)                      | what the product is and what it must achieve                         |
+| [`workflow.md`](./workflow.md)              | how work is done: branches, merges, subagents, cleanup               |
 | [`rules.md`](./rules.md)                    | the rules every plan and change is checked against                   |
 | [`quality.md`](./quality.md)                | code quality tooling: git hooks, linters, formatters, checks         |
 | [`testing.md`](./testing.md)                | test bars and kinds of tests                                         |

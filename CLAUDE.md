@@ -8,6 +8,8 @@ explicitly confirms. Read [`docs/goal.md`](./docs/goal.md) for the goal.
 
 Before planning or implementing anything, read:
 
+- [`docs/workflow.md`](./docs/workflow.md) — how work is done: branches, merges, subagents, cleanup.
+
 - **[`docs/rules.md`](./docs/rules.md) — the project rules. Every plan and change is checked against them before it is
   built.** A plan or change that breaks them is not built.
 - [`docs/goal.md`](./docs/goal.md) — what the product is and what it must achieve.
@@ -180,11 +182,15 @@ Kinds of tests, bars and where they live: [`docs/testing.md`](./docs/testing.md)
 - Commit messages describe only the actual changes
 - The `commit-msg` hook rejects messages with AI attribution trailers
 
-## Branches
+## Workflow
 
-- Every plan (`docs/plans/NNN-<name>/NN-<name>/`) starts in a new branch from `main` (`feat/NNN-NN-<name>`)
-- When the plan is done (its conclusions written, the user has looked at the result), the branch is squash-merged into
-  `main` as ONE commit (`type(scope): subject` naming the plan)
+**Read [`docs/workflow.md`](./docs/workflow.md) and follow it.** In short:
+
+- One branch per global plan (`feat/NNN-<name>`), one squash-merge into `main` when the global plan is done; small
+  changes outside any plan go straight to `main`
+- Push only when the user asks
+- Work in parallel with subagents whenever the work allows it
+- `cargo clean` when the work is finished
 
 ---
 

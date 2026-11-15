@@ -13,7 +13,9 @@ Already in place before this plan (created with the docs): `.gitignore`, `.edito
 
 ## Plans
 
-Each plan runs in its own branch (`feat/001-NN-<name>`), in this order:
+In this order. 001/01–001/03 were merged one by one under the earlier rule (a branch per plan); from 2026-11-15 the
+rest follows [`../../workflow.md`](../../workflow.md): 001/04 and 001/05 finish in one branch `feat/001-repository-setup`
+(it takes the commit of `feat/001-04-testing-architecture`) and are squash-merged into `main` once.
 
 | #   | Plan                                                              | Status      | What                                                                             |
 | --- | ----------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------- |

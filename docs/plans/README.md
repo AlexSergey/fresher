@@ -19,7 +19,8 @@ Every plan of the repository lives here. Before writing a plan, read [goal.md](.
   ❌ failed (tried, did not work; linked to `../postmortem/`).
 - A step is small enough for one session and one commit: the files, the interfaces it produces for later steps, the
   checks that prove it is done.
-- Every plan runs in its own branch `feat/NNN-NN-<name>` and is squash-merged into `main` when done.
+- Every global plan runs in one branch `feat/NNN-<name>` and is squash-merged into `main` once, when it is done
+  ([`../workflow.md`](../workflow.md)).
 
 ## Design
 
