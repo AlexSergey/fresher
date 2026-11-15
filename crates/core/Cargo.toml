@@ -1,0 +1,10 @@
+[package]
+name = "fresher-core"
+description = "Domain types of Mac Fresher: categories, danger levels, findings, sizes and clean plans."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

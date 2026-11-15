@@ -1,0 +1,7 @@
+exclude = ["**/node_modules/**", "**/target/**"]
+
+[formatting]
+align_entries = false
+column_width = 120
+indent_string = "  "
+reorder_keys = false

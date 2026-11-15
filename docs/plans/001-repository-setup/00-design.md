@@ -56,15 +56,15 @@ are described in [`../../architecture/README.md`](../../architecture/README.md).
 
 ### The quality layers
 
-| Layer (prod-forge)          | TypeScript (taken from prod-forge)                                         | Rust (added)                                                          |
-| --------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| 1. Formatting               | EditorConfig, Prettier (same `.prettierrc`)                                | rustfmt, taplo                                                        |
-| 2. Static analysis          | the prod-forge `eslint.config.ts`, adapted for React and Vitest; `tsc`; knip | Clippy `all` + `pedantic` + restriction picks; compiler lints; cargo-deny; cargo-machete |
-| 3. Pre-commit               | husky + lint-staged                                                        | the same lint-staged config, Rust entries                             |
-| 4. Commit messages          | commitlint + the AI-attribution guard                                      | —                                                                     |
-| 5. Pre-push + CI            | knip, tests with coverage; CI: lint, tests, e2e, audit, CodeQL             | machete, deny, nextest + llvm-cov; CI on macOS runners                |
-| 6. Dependency locking       | exact versions, `save-exact`, `npm ci`                                     | `Cargo.lock`, `--locked`, pinned toolchain                            |
-| + Repository guards (bg)    | gitleaks, typos, staged-files guard                                        | the same                                                              |
+| Layer (prod-forge)       | TypeScript (taken from prod-forge)                                           | Rust (added)                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 1. Formatting            | EditorConfig, Prettier (same `.prettierrc`)                                  | rustfmt, taplo                                                                           |
+| 2. Static analysis       | the prod-forge `eslint.config.ts`, adapted for React and Vitest; `tsc`; knip | Clippy `all` + `pedantic` + restriction picks; compiler lints; cargo-deny; cargo-machete |
+| 3. Pre-commit            | husky + lint-staged                                                          | the same lint-staged config, Rust entries                                                |
+| 4. Commit messages       | commitlint + the AI-attribution guard                                        | —                                                                                        |
+| 5. Pre-push + CI         | knip, tests with coverage; CI: lint, tests, e2e, audit, CodeQL               | machete, deny, nextest + llvm-cov; CI on macOS runners                                   |
+| 6. Dependency locking    | exact versions, `save-exact`, `npm ci`                                       | `Cargo.lock`, `--locked`, pinned toolchain                                               |
+| + Repository guards (bg) | gitleaks, typos, staged-files guard                                          | the same                                                                                 |
 
 ESLint changes from prod-forge's config: drop `eslint-plugin-jest` for `@vitest/eslint-plugin`; add
 `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-jsx-a11y`, `eslint-plugin-testing-library` (unit

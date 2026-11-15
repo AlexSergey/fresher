@@ -13,7 +13,7 @@
   `[bans]` (`multiple-versions = "warn"`, `wildcards = "deny"`, `allow-wildcard-paths = true`, HTTP clients denied),
   `[sources]` (unknown registries and git denied).
 - Root scripts: `lint:rust` (`cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D
-  warnings`), `check:deny`, `check:machete`.
+warnings`), `check:deny`, `check:machete`.
 
 ## Checks
 

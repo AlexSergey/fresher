@@ -7,7 +7,7 @@ Depends on plan 04 for `test:cov`; until then the hook runs the lint part only, 
 ## Files
 
 - Root script `pre-push`: `npm run lint && npm run knip && npm run check:machete && npm run check:deny && npm run
-  test:cov`.
+test:cov`.
 - `.husky/pre-push` — `npm run pre-push`.
 
 ## Checks

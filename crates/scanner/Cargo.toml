@@ -1,0 +1,10 @@
+[package]
+name = "fresher-scanner"
+description = "The fast parallel file system scan of Mac Fresher; read-only."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

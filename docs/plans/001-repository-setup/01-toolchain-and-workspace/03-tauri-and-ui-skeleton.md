@@ -1,6 +1,6 @@
 # 001/01/03 — Tauri shell and UI skeleton
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** app
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** app
 
 ## Files
 

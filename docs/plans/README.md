@@ -37,6 +37,6 @@ measured, decided, learned) and the user has looked at its result.
 
 Rows are in priority order: the order they are implemented in.
 
-| #   | Global plan                                          | Status   | Version | Modules                  |
-| --- | ---------------------------------------------------- | -------- | ------- | ------------------------ |
-| 001 | [Repository setup](./001-repository-setup/readme.md) | ✅ approved | 0.0.1   | repo, ci, workspace, app |
+| #   | Global plan                                          | Status         | Version | Modules                  |
+| --- | ---------------------------------------------------- | -------------- | ------- | ------------------------ |
+| 001 | [Repository setup](./001-repository-setup/readme.md) | 🔨 in progress | 0.0.1   | repo, ci, workspace, app |

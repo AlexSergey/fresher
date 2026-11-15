@@ -11,12 +11,12 @@ There is no "Other", "Miscellaneous" or "System data" category. Space no rule re
 The danger level says what the user risks by removing a category. It is shown next to the category, on the
 confirmation screen, and the confirmation names the highest level among the selected items.
 
-| Level       | Meaning                                                                                       | Examples                                                       |
-| ----------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Safe**    | Rebuilt automatically when needed; removing it costs nothing but a little time.               | app caches, logs, Xcode derived data                           |
-| **Low**     | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                    | package manager caches, `node_modules`, Docker build cache     |
-| **Medium**  | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, old iOS simulators, unused Docker images |
-| **High**    | May hold the only copy of your data; removing it can lose work.                              | Docker volumes, stopped containers, iOS device backups         |
+| Level      | Meaning                                                                                          | Examples                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | app caches, logs, Xcode derived data                                       |
+| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, `node_modules`, Docker build cache                 |
+| **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, old iOS simulators, unused Docker images |
+| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups                     |
 
 The levels are final for a category in its default form; a rule may raise (never lower) a level for a specific finding,
 for example a `node_modules` of a project touched yesterday.

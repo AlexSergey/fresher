@@ -1,0 +1,10 @@
+[package]
+name = "fresher-store"
+description = "The SQLite snapshot store of Mac Fresher: scan history and growth between scans."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

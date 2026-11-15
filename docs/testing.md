@@ -18,16 +18,16 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md).
 
 ## Kinds of tests
 
-| Kind            | What it proves                                                                  | Rust core                                         | UI                                       |
-| --------------- | ------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------- |
-| Unit            | one function or module                                                          | `#[cfg(test)] mod tests`, cargo-nextest           | Vitest + Testing Library                 |
-| Property-based  | a rule holds for ANY valid input (sizes add up, versions order, no double count) | proptest                                          | fast-check (where logic exists)          |
-| Integration     | one crate through its public API, on fixture trees                              | the crate's `tests/`                              | —                                        |
-| Golden reports  | a fixture home gives exactly the expected categories, sizes and danger levels   | `crates/e2e` against `fixtures/golden/`           | —                                        |
-| Core e2e        | scan → classify → snapshot → diff → confirm → clean, end to end                 | `crates/e2e` on generated fixture homes           | —                                        |
-| UI e2e          | the user flows of the interface, on a mocked core                               | —                                                 | Playwright on the Vite build, mocked IPC |
-| Visual          | the Dark Premium screens did not change unnoticed                               | —                                                 | Playwright screenshots, with tolerance   |
-| Performance     | the scan stays within its time and memory budget                                | criterion benches on a large generated tree       | —                                        |
+| Kind           | What it proves                                                                   | Rust core                                   | UI                                       |
+| -------------- | -------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------- |
+| Unit           | one function or module                                                           | `#[cfg(test)] mod tests`, cargo-nextest     | Vitest + Testing Library                 |
+| Property-based | a rule holds for ANY valid input (sizes add up, versions order, no double count) | proptest                                    | fast-check (where logic exists)          |
+| Integration    | one crate through its public API, on fixture trees                               | the crate's `tests/`                        | —                                        |
+| Golden reports | a fixture home gives exactly the expected categories, sizes and danger levels    | `crates/e2e` against `fixtures/golden/`     | —                                        |
+| Core e2e       | scan → classify → snapshot → diff → confirm → clean, end to end                  | `crates/e2e` on generated fixture homes     | —                                        |
+| UI e2e         | the user flows of the interface, on a mocked core                                | —                                           | Playwright on the Vite build, mocked IPC |
+| Visual         | the Dark Premium screens did not change unnoticed                                | —                                           | Playwright screenshots, with tolerance   |
+| Performance    | the scan stays within its time and memory budget                                 | criterion benches on a large generated tree | —                                        |
 
 The full app (WebView + Rust) cannot be driven by WebDriver on macOS (`tauri-driver` supports Linux and Windows only),
 so the UI e2e run against the web build with the Tauri IPC mocked, and the core e2e cover the Rust side end to end.
@@ -44,11 +44,11 @@ so the UI e2e run against the web build with the Tauri IPC mocked, and the core 
 
 ## Commands
 
-| Command                  | Runs                                                        |
-| ------------------------ | ----------------------------------------------------------- |
-| `npm test`               | Rust tests (`cargo nextest run --workspace`) and UI unit tests |
-| `npm run test:rust`      | `cargo nextest run --workspace --locked`                    |
-| `npm run test:ui`        | `vitest run` in `app/ui`                                    |
-| `npm run test:cov`       | both with coverage and the 90 % floors                      |
-| `npm run test:e2e`       | `crates/e2e` and the Playwright suite                       |
-| `cargo nextest run -p <crate>` | one crate                                             |
+| Command                        | Runs                                                           |
+| ------------------------------ | -------------------------------------------------------------- |
+| `npm test`                     | Rust tests (`cargo nextest run --workspace`) and UI unit tests |
+| `npm run test:rust`            | `cargo nextest run --workspace --locked`                       |
+| `npm run test:ui`              | `vitest run` in `app/ui`                                       |
+| `npm run test:cov`             | both with coverage and the 90 % floors                         |
+| `npm run test:e2e`             | `crates/e2e` and the Playwright suite                          |
+| `cargo nextest run -p <crate>` | one crate                                                      |

@@ -5,7 +5,7 @@
 ## Files
 
 - Root script `test:cov:rust` — `cargo llvm-cov nextest --workspace --locked --fail-under-lines 90
-  --ignore-filename-regex '(app/tauri/src/main.rs|crates/testing/)'`, lcov report to `coverage/rust/lcov.info`.
+--ignore-filename-regex '(app/tauri/src/main.rs|crates/testing/)'`, lcov report to `coverage/rust/lcov.info`.
 - `app/ui/vitest.config.ts` — thresholds 90 % for lines, branches, functions, statements; excludes `main.tsx`,
   `*.d.ts`, test files, `src/ipc/mock.ts`.
 - Root script `test:cov` (both); the pre-push hook gets it (step 03/03).

@@ -10,24 +10,24 @@ equivalent of every TypeScript tool.
 
 ## Layer 1. Formatting and consistency
 
-| Tool                          | Checks                                  | Command                     |
-| ----------------------------- | --------------------------------------- | --------------------------- |
-| EditorConfig (`.editorconfig`) | indentation, line endings, final newline | the editor                  |
-| rustfmt (`rustfmt.toml`)      | Rust formatting                         | `cargo fmt --all`           |
-| Prettier (`.prettierrc`)      | TS, TSX, JSON, YAML, CSS, Markdown      | `npm run format:prettier`   |
-| taplo (`.taplo.toml`)         | TOML formatting                         | `taplo fmt`                 |
+| Tool                           | Checks                                   | Command                   |
+| ------------------------------ | ---------------------------------------- | ------------------------- |
+| EditorConfig (`.editorconfig`) | indentation, line endings, final newline | the editor                |
+| rustfmt (`rustfmt.toml`)       | Rust formatting                          | `cargo fmt --all`         |
+| Prettier (`.prettierrc`)       | TS, TSX, JSON, YAML, CSS, Markdown       | `npm run format:prettier` |
+| taplo (`.taplo.toml`)          | TOML formatting                          | `taplo fmt`               |
 
 ## Layer 2. Static analysis
 
 ### Rust
 
-| Tool                                         | What it is                                                       | Command                                                       |
-| -------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
-| `rust-toolchain.toml`                        | pins the compiler for everyone, with `rustfmt`, `clippy`, llvm   | installed by `rustup` on first use                            |
-| compiler lints (`[workspace.lints.rust]`)    | stricter compiler warnings; `unsafe_code = "forbid"` in the core | part of every build                                           |
-| Clippy (`clippy.toml` + `[workspace.lints]`) | `all` + `pedantic` + picked restriction lints                    | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| cargo-deny (`deny.toml`)                     | licences, security advisories, duplicate and banned crates, sources | `cargo deny check`                                         |
-| cargo-machete                                | dependencies a crate declares and never uses                     | `cargo machete`                                               |
+| Tool                                         | What it is                                                          | Command                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `rust-toolchain.toml`                        | pins the compiler for everyone, with `rustfmt`, `clippy`, llvm      | installed by `rustup` on first use                               |
+| compiler lints (`[workspace.lints.rust]`)    | stricter compiler warnings; `unsafe_code = "forbid"` in the core    | part of every build                                              |
+| Clippy (`clippy.toml` + `[workspace.lints]`) | `all` + `pedantic` + picked restriction lints                       | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
+| cargo-deny (`deny.toml`)                     | licences, security advisories, duplicate and banned crates, sources | `cargo deny check`                                               |
+| cargo-machete                                | dependencies a crate declares and never uses                        | `cargo machete`                                                  |
 
 What the Rust lints enforce:
 
@@ -62,24 +62,24 @@ What the Rust lints enforce:
 
 ### Whole repository
 
-| Tool     | What it stops                                         | Command               |
-| -------- | ----------------------------------------------------- | --------------------- |
-| gitleaks | keys, tokens and passwords in staged changes          | `npm run check:secrets` |
-| typos (`_typos.toml`) | misspellings in code and docs (Rust, TS, Markdown) | `npm run check:typos` |
-| staged-files guard | any file over 1 MiB, any `*.sqlite` or `.env`  | `npm run check:staged` |
+| Tool                  | What it stops                                      | Command                 |
+| --------------------- | -------------------------------------------------- | ----------------------- |
+| gitleaks              | keys, tokens and passwords in staged changes       | `npm run check:secrets` |
+| typos (`_typos.toml`) | misspellings in code and docs (Rust, TS, Markdown) | `npm run check:typos`   |
+| staged-files guard    | any file over 1 MiB, any `*.sqlite` or `.env`      | `npm run check:staged`  |
 
 ## Layer 3. Pre-commit (Husky + lint-staged)
 
 `.husky/pre-commit` runs the repository guards (`npm run check:repo`), then lint-staged (`.lintstagedrc.cjs`), which
 runs only on the staged files:
 
-| Staged files                        | Runs                                                                                 |
-| ----------------------------------- | ------------------------------------------------------------------------------------ |
-| `*.rs`                              | `rustfmt` on the files, then Clippy once over the workspace (`-D warnings`)          |
-| `*.{ts,tsx}`                        | `prettier --write`, `eslint --fix` on the files, then `tsc --noEmit` once            |
-| `*.{json,md,yml,yaml,css}`          | `prettier --write` (and `eslint --fix` for JSON)                                     |
-| `*.toml`                            | `taplo fmt`                                                                          |
-| `Cargo.toml`, `Cargo.lock`, `deny.toml` | `cargo deny check` and `cargo machete`                                           |
+| Staged files                            | Runs                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `*.rs`                                  | `rustfmt` on the files, then Clippy once over the workspace (`-D warnings`) |
+| `*.{ts,tsx}`                            | `prettier --write`, `eslint --fix` on the files, then `tsc --noEmit` once   |
+| `*.{json,md,yml,yaml,css}`              | `prettier --write` (and `eslint --fix` for JSON)                            |
+| `*.toml`                                | `taplo fmt`                                                                 |
+| `Cargo.toml`, `Cargo.lock`, `deny.toml` | `cargo deny check` and `cargo machete`                                      |
 
 Clippy and `tsc` are whole-project checks by nature: lint-staged runs them once when a matching file is staged, not once
 per file.

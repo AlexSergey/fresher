@@ -42,8 +42,8 @@ Decisions (the user, 2026-11-15):
   call an app uninstalled.
 - **A one-click "keep settings, remove caches only" choice**, for a user who may reinstall the app. Such a choice gets
   a very clear, short, plain-English description, for example:
-  - *Remove everything* — "Deletes all files this app left behind. If you install it again, it starts fresh."
-  - *Keep settings* — "Deletes only caches and logs. Your settings stay, in case you install the app again."
+  - _Remove everything_ — "Deletes all files this app left behind. If you install it again, it starts fresh."
+  - _Keep settings_ — "Deletes only caches and logs. Your settings stay, in case you install the app again."
 
 Open questions:
 

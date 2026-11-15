@@ -1,0 +1,11 @@
+package-lock.json
+Cargo.lock
+target
+dist
+coverage
+node_modules
+app/tauri/gen
+fixtures/golden
+playwright-report
+test-results
+.idea

@@ -1,6 +1,6 @@
 # 001/01/02 — Rust toolchain and workspace
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace
 
 ## Files
 
@@ -9,7 +9,7 @@
 - `rustfmt.toml` — `edition = "2024"`, `max_width = 120`, `newline_style = "Unix"`, `use_field_init_shorthand`,
   `use_try_shorthand`.
 - `Cargo.toml` (workspace) — `resolver = "3"`; members `crates/*`, `app/tauri`; `[workspace.package]` (`edition =
-  "2024"`, `rust-version = "1.99"`, `publish = false`, `license` per open question 3); `[workspace.dependencies]` for
+"2024"`, `rust-version = "1.99"`, `publish = false`, `license` per open question 3); `[workspace.dependencies]` for
   shared crates (`thiserror`, `tracing`, `tempfile`, `proptest`); the lints are added in plan 02;
   `[profile.release]` `lto = "thin"`, `codegen-units = 1`, `strip = "symbols"`, `panic = "abort"`;
   `[profile.dev.package."*"] opt-level = 2` (fast scans in debug builds).

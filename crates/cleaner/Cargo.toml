@@ -1,0 +1,10 @@
+[package]
+name = "fresher-cleaner"
+description = "The only code of Mac Fresher that deletes: executes a confirmed clean plan, Trash first."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

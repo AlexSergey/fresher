@@ -6,7 +6,8 @@
 
 - `scripts/check-staged.ts` — fails on a staged file over 1 MiB, a `*.sqlite`/`*.db`, a `.env` (except
   `.env.example`) or a signing key; run with Node's native TypeScript support; `scripts/check-staged.test.ts` (`node
-  --test`).
+  --test`). One recorded exception to the size limit: `app/tauri/icons/icon.icns` (1.03 MB — the 1024 px Retina size
+  macOS needs), listed by path in the script and in `docs/hacks/`.
 - Root scripts: `check:staged`, `check:secrets` (`gitleaks git --pre-commit --staged --redact --no-banner`),
   `check:typos` (`typos`), `check:repo` (all three), `test:scripts`.
 

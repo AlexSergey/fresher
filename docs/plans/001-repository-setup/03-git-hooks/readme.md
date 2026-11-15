@@ -6,8 +6,8 @@ Branch: `feat/001-03-git-hooks`. Layers 3–5 of the quality system ([`../00-des
 
 ## Steps
 
-| #   | Step                                                 | Status   |
-| --- | ---------------------------------------------------- | -------- |
+| #   | Step                                                 | Status      |
+| --- | ---------------------------------------------------- | ----------- |
 | 01  | [Husky and commitlint](./01-husky-and-commitlint.md) | ✅ approved |
 | 02  | [lint-staged](./02-lint-staged.md)                   | ✅ approved |
 | 03  | [Pre-push](./03-pre-push.md)                         | ✅ approved |

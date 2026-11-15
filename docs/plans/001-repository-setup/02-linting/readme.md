@@ -6,11 +6,11 @@ Branch: `feat/001-02-linting`. Layers 1–2 of the quality system ([`../00-desig
 
 ## Steps
 
-| #   | Step                                             | Status   |
-| --- | ------------------------------------------------ | -------- |
-| 01  | [Rust lints](./01-rust-lints.md)                 | ✅ approved |
-| 02  | [TypeScript lints](./02-typescript-lints.md)     | ✅ approved |
-| 03  | [Repository guards](./03-repository-guards.md)   | ✅ approved |
+| #   | Step                                           | Status      |
+| --- | ---------------------------------------------- | ----------- |
+| 01  | [Rust lints](./01-rust-lints.md)               | ✅ approved |
+| 02  | [TypeScript lints](./02-typescript-lints.md)   | ✅ approved |
+| 03  | [Repository guards](./03-repository-guards.md) | ✅ approved |
 
 ## Conclusions
 

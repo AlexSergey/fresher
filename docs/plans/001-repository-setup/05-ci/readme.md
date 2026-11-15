@@ -6,9 +6,9 @@ Branch: `feat/001-05-ci`. Depends on open question 1 of [`../00-design.md`](../0
 
 ## Steps
 
-| #   | Step                                         | Status   |
-| --- | -------------------------------------------- | -------- |
-| 01  | [CI workflow](./01-ci-workflow.md)           | ✅ approved |
+| #   | Step                                           | Status      |
+| --- | ---------------------------------------------- | ----------- |
+| 01  | [CI workflow](./01-ci-workflow.md)             | ✅ approved |
 | 02  | [CodeQL and audits](./02-codeql-and-audits.md) | ✅ approved |
 
 ## Conclusions

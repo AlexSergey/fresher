@@ -13,16 +13,16 @@ app/ui (React)  ──typed IPC──▶  app/tauri (commands)  ──▶  Rust 
                                    └──▶ cleaner (only from a confirmed plan)
 ```
 
-| Crate              | Folder           | Responsibility                                                                         | May depend on              |
-| ------------------ | ---------------- | -------------------------------------------------------------------------------------- | -------------------------- |
-| `fresher-core`     | `crates/core`    | domain types: `Category`, `DangerLevel`, `Finding`, `ByteSize`, `CleanPlan`; no IO     | —                          |
-| `fresher-scanner`  | `crates/scanner` | fast parallel file system walk; logical and allocated sizes; hard links counted once   | core                       |
-| `fresher-rules`    | `crates/rules`   | the rule catalogue: recognizes leftovers and turns scan results into findings          | core, scanner              |
-| `fresher-store`    | `crates/store`   | the SQLite database: snapshots of every scan, growth between scans (watch mode)        | core                       |
-| `fresher-cleaner`  | `crates/cleaner` | the only code that deletes: executes a confirmed `CleanPlan`, Trash first              | core                       |
-| `fresher-testing`  | `crates/testing` | test helpers: fixture tree builder, fake clock, fake Trash, fake Docker CLI (dev only) | core                       |
-| `fresher-e2e`      | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                   | all core crates, testing   |
-| `fresher-app`      | `app/tauri`      | the Tauri 2 shell: thin commands, events streamed to the UI                            | all core crates            |
+| Crate             | Folder           | Responsibility                                                                         | May depend on            |
+| ----------------- | ---------------- | -------------------------------------------------------------------------------------- | ------------------------ |
+| `fresher-core`    | `crates/core`    | domain types: `Category`, `DangerLevel`, `Finding`, `ByteSize`, `CleanPlan`; no IO     | —                        |
+| `fresher-scanner` | `crates/scanner` | fast parallel file system walk; logical and allocated sizes; hard links counted once   | core                     |
+| `fresher-rules`   | `crates/rules`   | the rule catalogue: recognizes leftovers and turns scan results into findings          | core, scanner            |
+| `fresher-store`   | `crates/store`   | the SQLite database: snapshots of every scan, growth between scans (watch mode)        | core                     |
+| `fresher-cleaner` | `crates/cleaner` | the only code that deletes: executes a confirmed `CleanPlan`, Trash first              | core                     |
+| `fresher-testing` | `crates/testing` | test helpers: fixture tree builder, fake clock, fake Trash, fake Docker CLI (dev only) | core                     |
+| `fresher-e2e`     | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                   | all core crates, testing |
+| `fresher-app`     | `app/tauri`      | the Tauri 2 shell: thin commands, events streamed to the UI                            | all core crates          |
 
 Rules of the layout:
 

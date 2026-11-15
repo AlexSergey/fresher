@@ -1,0 +1,6 @@
+[files]
+extend-exclude = ["*-lock.json", "Cargo.lock", "fixtures/", ".idea/", "app/tauri/gen/"]
+
+[default]
+# A short commit hash in backticks is not a word: `12541f6`.
+extend-ignore-re = ["`[0-9a-f]{7,40}`"]
