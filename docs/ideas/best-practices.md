@@ -115,7 +115,7 @@ The same problem on other operating systems gives ideas that carry over to macOS
 20. **Shrink instead of delete** — APFS compression of rarely-read folders, clones for duplicates.
 21. **Dev artifacts by age and by installed toolchains** — [`stale-project-cleanup.md`](./stale-project-cleanup.md).
 22. **Warn on `node_modules` that installed apps need.**
-23. **Watch the Trash for apps** — opt-in only; no background service without the user's consent.
+23. ~~**Watch the Trash for apps**~~ — rejected: it needs a background service ([`../goal.md`](../goal.md), section 8).
 24. **No fake urgency**, written into the principles.
 25. **Empty a cache folder, keep the folder.**
 26. **Hard-blocked user folders** — the home folder and its standard folders can never be removed as a whole, a guard
@@ -124,7 +124,8 @@ The same problem on other operating systems gives ideas that carry over to macOS
 28. **"Safe, but unticked"** — safe categories whose rebuild costs time are offered, not pre-selected (the Metal shader
     cache on macOS).
 29. **A read-only scan report** the user can attach to a bug report.
-30. **Optional low-space alert** — off by default, reads only free space, at most one reminder a day, never deletes.
+30. ~~**Optional low-space alert**~~ — rejected: no background work of any kind (the user, 2026-11-15;
+    [`../goal.md`](../goal.md), section 8).
 
 No popular open-source manager of login and launch items exists — a gap
 ([`startup-and-login-items-manager.md`](./startup-and-login-items-manager.md)).
@@ -150,5 +151,5 @@ No popular open-source manager of login and launch items exists — a gap
 - "How it comes back" as a second axis next to the danger level, or part of the category's description?
 - A public, versioned rules library others can contribute to?
 - "Shrink instead of delete" (APFS compression) — in scope?
-- Optional background checks (low-space alert, weekly cache check, reminders only): do they fit the goal, which rules
-  out automatic or scheduled deletion but not reminders? They need the app or a menu-bar helper to keep running.
+- ~~Optional background checks~~ — decided 2026-11-15: no. Everything must be transparent; the app does only what the
+  user asks, while it is open ([`../goal.md`](../goal.md), section 8).

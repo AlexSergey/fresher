@@ -78,6 +78,9 @@ The app deletes files from your disk, so safety is designed in, not bolted on:
 This is enforced in the build: no HTTP client is allowed in the dependency tree, the app has no network permission, and
 the UI cannot load anything from the internet. It is open source, so you can verify every word of this.
 
+**Nothing happens behind your back.** No background checks, no menu-bar helper, no login item, no reminders. Mac
+Fresher runs only while you have it open, scans only when you ask, and removes only what you confirm.
+
 ## Build from source
 
 Requirements: macOS 13+, [Rust](https://rustup.rs) (the pinned toolchain installs itself), Node.js 24.

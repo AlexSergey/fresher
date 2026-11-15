@@ -84,9 +84,22 @@ The app sees the whole disk, so it must be trustworthy by construction, not by p
 - **Supply chain**: exact dependency versions, locked builds, licence and security advisory checks on every change
   ([`quality.md`](./quality.md)).
 
+### 8. Transparent: it does only what the user asks
+
+The app does nothing behind the user's back (the user, 2026-11-15: "everything must be transparent — only what the user
+considers necessary").
+
+- **No background work.** The app runs only while the user has it open: no background checks, no menu-bar helper, no
+  launch agent, no login item, no scheduled scans, no reminders or notifications that the app decides on.
+- **Every action starts with the user**: a scan when the user starts it, a cleanup when the user confirms it. Quitting
+  the app stops everything.
+- **Everything it does is visible**: what is being scanned, what was found and why, what will be removed and how, and
+  afterwards what was removed — nothing hidden in a log only.
+
 ## Non-goals
 
 - Other operating systems.
 - Antivirus, "speed boosters", RAM cleaning, startup item managers.
 - Automatic or scheduled deletion without the user.
+- Background checks, alerts, reminders, a menu-bar or login helper — the app works only while the user has it open.
 - Any network access or telemetry: everything stays on the Mac.
