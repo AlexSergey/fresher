@@ -1,6 +1,6 @@
 # 001/03/01 — Husky and commitlint
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** repo
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** repo
 
 ## Files
 

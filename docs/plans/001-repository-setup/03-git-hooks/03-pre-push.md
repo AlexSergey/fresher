@@ -1,6 +1,6 @@
 # 001/03/03 — Pre-push
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** repo
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** repo
 
 Depends on plan 04 for `test:cov`; until then the hook runs the lint part only, and 04/04 adds the coverage line.
 

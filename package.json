@@ -23,12 +23,18 @@
     "knip": "knip",
     "lint": "npm run lint:rust && npm run lint:ts && npm run lint:code",
     "lint:code": "eslint . --cache --cache-location node_modules/.cache/eslint/",
+    "lint:commit": "commitlint --config .commitlintrc.cjs --edit",
     "lint:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings",
     "lint:ts": "tsc --noEmit -p . && tsc --noEmit -p app/ui",
+    "pre-commit": "lint-staged --config .lintstagedrc.cjs",
+    "pre-push": "npm run lint && npm run knip && npm run check:machete && npm run check:deny && npm run test:scripts",
+    "prepare": "husky",
     "tauri": "tauri",
     "test:scripts": "node --test scripts/*.test.ts"
   },
   "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
     "@eslint-react/eslint-plugin": "5.30.2",
     "@eslint/js": "10.0.1",
     "@eslint/json": "2.1.1",
@@ -51,7 +57,9 @@
     "eslint-plugin-testing-library": "7.16.2",
     "eslint-plugin-unicorn": "79.0.0",
     "globals": "17.14.0",
+    "husky": "9.1.7",
     "knip": "6.45.1",
+    "lint-staged": "17.6.0",
     "prettier": "3.10.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2"

@@ -3,7 +3,7 @@
   "workspaces": {
     ".": {
       "entry": ["scripts/*.ts"],
-      "ignoreBinaries": ["gitleaks", "taplo", "typos"]
+      "ignoreBinaries": ["gitleaks", "rustfmt", "taplo", "typos"]
     },
     "app/ui": {}
   }

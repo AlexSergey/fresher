@@ -78,7 +78,8 @@ runs only on the staged files:
 | --------------------------------------- | --------------------------------------------------------------------------- |
 | `*.rs`                                  | `rustfmt` on the files, then Clippy once over the workspace (`-D warnings`) |
 | `*.{ts,tsx}`                            | `prettier --write`, `eslint --fix` on the files, then `tsc --noEmit` once   |
-| `*.{json,md,yml,yaml,css}`              | `prettier --write` (and `eslint --fix` for JSON)                            |
+| `*.{js,cjs,mjs}`, `*.json`              | `prettier --write`, `eslint --fix`                                          |
+| `*.{md,yml,yaml,css,html}`              | `prettier --write`                                                          |
 | `*.toml`                                | `taplo fmt`                                                                 |
 | `Cargo.toml`, `Cargo.lock`, `deny.toml` | `cargo deny check` and `cargo machete`                                      |
 
@@ -100,8 +101,8 @@ Conventional Commits: `type(scope): subject`.
 1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
-4. `npm run test:cov` — Rust tests with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with
-   coverage (Vitest, ≥ 90 %)
+4. `npm run test:scripts` — the repository scripts' tests; plan 001/04 replaces it with `npm run test:cov`: Rust tests
+   with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with coverage (Vitest, ≥ 90 %)
 
 The e2e suites (`npm run test:e2e`) are run by hand and in CI, not in the hook: the UI e2e needs a browser.
 

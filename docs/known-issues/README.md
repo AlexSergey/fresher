@@ -26,7 +26,6 @@ One file per issue, named `<part>-<name>.md` (`core-`, `scanner-`, `rules-`, `st
 
 When an issue is fixed, its file stays with the status `fixed` and a link to the change.
 
-| Issue | Part | Status | What |
-| ----- | ---- | ------ | ---- |
-
-No known issues yet.
+| Issue                                                                                | Part | Status | What                                                                                        |
+| ------------------------------------------------------------------------------------ | ---- | ------ | ------------------------------------------------------------------------------------------- |
+| [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md) | repo | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only) |
