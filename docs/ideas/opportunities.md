@@ -13,10 +13,10 @@
 | Disk analyzer          | well covered                 | universal                 | [`storage-explainer.md`](./storage-explainer.md)               |
 | Storage attribution    | limited                      | **big**                   | [`live-storage-attribution.md`](./live-storage-attribution.md) |
 | Storage leak detection | no full equivalent found     | **big**                   | [`storage-leak-detector.md`](./storage-leak-detector.md)       |
-| App resource profile   | features scattered           | **big**                   | [`app-resource-profile.md`](./app-resource-profile.md)         |
+| App resource profile   | features scattered           | **big** — not now         | [`app-resource-profile.md`](./app-resource-profile.md)         |
 | Storage history        | partly covered               | **big**                   | [`storage-history.md`](./storage-history.md)                   |
 | Cleanup simulator      | no full implementation found | **big**                   | [`cleanup-simulator.md`](./cleanup-simulator.md)               |
-| Process timeline       | not found                    | **big**                   | [`process-storage-timeline.md`](./process-storage-timeline.md) |
+| Process timeline       | not found                    | **big** — later           | [`process-storage-timeline.md`](./process-storage-timeline.md) |
 | Cleanup guardian       | partly covered               | **big**                   | [`cleanup-guardian.md`](./cleanup-guardian.md)                 |
 | Cleanup journal        | partly covered               | better recovery           | [`cleanup-journal.md`](./cleanup-journal.md)                   |
 
