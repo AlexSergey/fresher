@@ -140,6 +140,9 @@ knip, machete, deny, typos, `npm audit --omit=dev --audit-level=high`), job `tes
 
 - 2026-11-15 — The plan is approved ("commit this and move on to implementing plan 001"). The open questions were not
   answered; the agent takes the defaults below (agent's calls 10–13) until the user overrules them.
+- 2026-11-15 — Open question 3: the project is fully free and open source under **MIT OR Apache-2.0** (the user chose
+  the dual licence of photocraft and of most Rust crates); `LICENSE-MIT`, `LICENSE-APACHE` and `NOTICE` at the root.
+- 2026-11-15 — `.idea/` is personal and never committed.
 - 2026-11-15 — UI stack: Tauri 2 with a React + TypeScript UI over the Rust core (the user chose it over pure-Rust UI
   toolkits).
 - 2026-11-15 — Everything in the repository is in English; the user's words are translated when recorded.
@@ -162,5 +165,5 @@ knip, machete, deny, typos, `npm audit --omit=dev --audit-level=high`), job `tes
 9. **Node 24 LTS** (installed locally: 24.15.0) and **Rust 1.99.1** (installed locally) as the pinned versions.
 10. **Open question 1 → CI is built** (plan 05), on macOS runners.
 11. **Open question 2 → the release process is not part of this plan**: no release-it, no signing; a plan of its own.
-12. **Open question 3 → private, `UNLICENSED`** until the user decides; no `LICENSE` or `CONTRIBUTING.md` yet.
+12. **Open question 3 → private, `UNLICENSED`** until the user decides — overruled 2026-11-15: open source, see Decisions.
 13. **Open question 4 → minimum macOS 13.0** (Ventura): `minimumSystemVersion` in `tauri.conf.json`.

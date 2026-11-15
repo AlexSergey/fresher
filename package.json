@@ -3,7 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "description": "A fast macOS disk cleaner: a Rust core with a Tauri 2 shell and a React UI",
-  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlexSergey/mac-fresher.git"
+  },
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "workspaces": [
     "app/ui"

@@ -3,7 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "description": "The user interface of Mac Fresher",
-  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlexSergey/mac-fresher.git",
+    "directory": "app/ui"
+  },
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",

@@ -64,6 +64,26 @@ not guessed.
 - Visual direction **Dark Premium**: graphite background, soft surfaces, thin borders, careful typography, expressive
   charts, minimal visual noise.
 
+### 7. Complete privacy and security
+
+The app sees the whole disk, so it must be trustworthy by construction, not by promise (the user, 2026-11-15:
+"complete privacy; nothing is used to send data out").
+
+- **Nothing leaves the Mac.** No network requests of any kind: no telemetry, analytics, crash reports, update checks,
+  remote configuration, fonts or images from the internet. The app works the same with the network off.
+- **Enforced, not just promised**: no HTTP client in the dependency tree (cargo-deny bans them), no network permission
+  in the Tauri capabilities, a Content Security Policy with no remote origin in the UI
+  ([`restrictions/privacy.md`](./restrictions/privacy.md)).
+- **Local data stays local and minimal**: scan snapshots and settings live only in the app's own folder in
+  `~/Library/Application Support/`; file contents are never read beyond what a rule needs to identify a folder, and
+  never stored or logged.
+- **Least privilege**: Full Disk Access is asked for only when needed, with a plain-English reason; the app works with
+  reduced coverage without it and says what it could not see.
+- **Open and verifiable**: the project is free and open source (MIT OR Apache-2.0), so anyone can check every claim
+  above in the code.
+- **Supply chain**: exact dependency versions, locked builds, licence and security advisory checks on every change
+  ([`quality.md`](./quality.md)).
+
 ## Non-goals
 
 - Other operating systems.

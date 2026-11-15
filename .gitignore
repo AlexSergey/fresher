@@ -64,25 +64,8 @@ npm-debug.log*
 .temp
 .tmp
 
-# IDE - JetBrains (shared project settings are committed, per-user files are not)
-.idea/**/workspace.xml
-.idea/**/tasks.xml
-.idea/**/usage.statistics.xml
-.idea/**/dictionaries
-.idea/**/shelf
-.idea/**/contentModel.xml
-.idea/**/dataSources/
-.idea/**/dataSources.ids
-.idea/**/dataSources.local.xml
-.idea/**/sqlDataSources.xml
-.idea/**/dynamic.xml
-.idea/**/uiDesigner.xml
-.idea/**/dbnavigator.xml
-.idea/**/httpRequests
-.idea/**/queries
-.idea/**/caches
-.idea/**/aws.xml
-.idea/copilot*
+# IDE - JetBrains: personal, never committed
+.idea/
 
 # IDE - VSCode
 .vscode/*
