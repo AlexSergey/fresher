@@ -88,6 +88,24 @@ happens if removed, how it comes back), and the removal.
 Shared knowledge two modules need (installed apps, detected projects, the clock) is a port in the core with one
 implementation — not a call from one module into another.
 
+### The module kit
+
+Everything a new module needs, so that a module is written to a pattern rather than invented:
+
+- **Rules as data.** A module keeps its rules in TOML next to its code; `fresher-rules` reads and matches them. A rule
+  states: the category it produces, where to look, how the item is recognized (a marker file, a sibling, a name or
+  version pattern, a minimum age), **what must not match**, the danger level, how the item comes back, and the removal.
+  `CACHEDIR.TAG` is honoured.
+- **The category contract.** A category is complete only with its name, what it is, which app makes it, what happens if
+  it is removed, how it comes back and its danger level (rule 3 of [`rules.md`](../../rules.md)). A test fails for a
+  category with a missing text, and for a category id without its file in
+  [`docs/categories/`](../../categories/README.md) — code and catalogue cannot drift apart.
+- **The test harness.** `fresher-testing` runs one module against a fixture home and returns its findings; the module's
+  tests are fixture → expected findings, negative cases first (look-alike folders, the current version, a link out of
+  the root), and one golden report per module.
+- **A template and a checklist**: the crate skeleton (`rules.toml`, `locales/en.json`, settings, tests) and the list a
+  module must tick before it ships, kept in [`docs/architecture/`](../../architecture/README.md).
+
 ### Events and commands
 
 - **Commands** go down (UI → shell → engine): `start_scan`, `cancel_scan`, `get_overview`, `get_findings`,
@@ -147,7 +165,8 @@ N MB" with a button to clear it.
 | 03  | Settings and app data | `fresher-store`: data folder, `settings.json`, typed schema, footprint budget     |
 | 04  | Dictionary            | `locales/`, the key checks, the dictionary command, `t()` in the UI               |
 | 05  | IPC and shell         | commands, the event channel, generated TypeScript types, the UI's store           |
-| 06  | Boundaries and docs   | the dependency guard; `architecture/`, `goal.md` §5, `CLAUDE.md` map updated      |
+| 06  | Module kit            | the rule format and matcher, the category contract, the test harness, the template |
+| 07  | Boundaries and docs   | the dependency guard; `architecture/`, `goal.md` §5, `CLAUDE.md` map updated      |
 
 ## Ideas this touches
 
@@ -174,7 +193,9 @@ None yet.
 7. **TypeScript types generated from Rust** (`ts-rs`; the exact crate and version are checked in the step).
 8. **No async runtime in the core.**
 9. **The webview keeps no persistent data.**
-10. **Target version 0.1.0.**
+10. **Rules are TOML data owned by each module**, with a required "must not match" part; the catalogue in
+    `docs/categories/` is checked against the code by a test.
+11. **Target version 0.1.0.**
 
 ## Conclusions
 

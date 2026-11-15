@@ -36,7 +36,8 @@ measured, decided, learned) and the user has looked at its result.
 
 ## Priority list
 
-Rows are in priority order: the order they are implemented in.
+Rows are in priority order: the order they are implemented in. The 📝 drafts are listed by number; their order is set
+when they are approved.
 
 | #   | Global plan                                          | Status         | Version | Modules                  |
 | --- | ---------------------------------------------------- | -------------- | ------- | ------------------------ |
@@ -46,3 +47,8 @@ Rows are in priority order: the order they are implemented in.
 | 004 | [Fast scan and search](./004-fast-scan/readme.md)      | 📝 draft       | 0.3.0   | macos, scanner, store, engine |
 | 005 | [Settings](./005-settings/readme.md) | 📝 draft | 0.4.0 | core, store, engine, app/ui |
 | 006 | [Permissions and privileges](./006-permissions/readme.md) | 📝 draft | 0.4.0 | core, macos, engine, cleaner, app |
+| 007 | [Safe development](./007-safe-development/readme.md) | 📝 draft | 0.1.0 | testing, cleaner, engine, app, repo |
+| 008 | [Safe removal and the cleanup journal](./008-safe-removal/readme.md) | 📝 draft | 0.5.0 | core, cleaner, macos, store, engine |
+| 009 | [System knowledge](./009-system-knowledge/readme.md) | 📝 draft | 0.5.0 | core, macos, system, engine, testing |
+| 010 | [History and watch mode](./010-history/readme.md) | 📝 draft | 0.6.0 | core, store, engine, app/ui |
+| 011 | [Errors, logs and diagnostics](./011-diagnostics/readme.md) | 📝 draft | 0.5.0 | core, engine, app, app/ui |

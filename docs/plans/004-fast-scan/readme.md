@@ -82,7 +82,11 @@ At launch the last result is shown immediately, labelled with its date; the user
   counts (so no ids and no parent pointers are stored), names, variable-length integers, a checksum, a format version.
   Totals of subtrees are recomputed on load, not stored.
 - Written atomically after a scan; no journal, no temporary files left behind.
-- **Two generations only**: the current one and the previous one (for "what changed since the last scan").
+- **Two generations to start with**: the current one and the previous one (for "what changed since the last scan").
+  How many are kept is a policy of the store, not part of the format: plan [010](../010-history/readme.md) thins older
+  ones instead of dropping them.
+- Each folder records the category that claimed it, so an old file stays attributable after the rules change; each
+  scan also emits its totals by category, module and app for the history.
 - **A budget**: about 50 MB for the whole data folder by default; the oldest data goes first. The size is shown in
   Settings with a button to clear it.
 - It is a cache: a missing or broken file costs one full scan, never a wrong result.
