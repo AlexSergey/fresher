@@ -14,8 +14,11 @@ equivalent of every TypeScript tool.
 | ------------------------------ | ---------------------------------------- | ------------------------- |
 | EditorConfig (`.editorconfig`) | indentation, line endings, final newline | the editor                |
 | rustfmt (`rustfmt.toml`)       | Rust formatting                          | `cargo fmt --all`         |
-| Prettier (`.prettierrc`)       | TS, TSX, JSON, YAML, CSS, Markdown       | `npm run format:prettier` |
+| Prettier (`.prettierrc`)       | TS, TSX, JSON, YAML, CSS, Markdown outside `docs/` | `npm run format:prettier` |
 | taplo (`.taplo.toml`)          | TOML formatting                          | `taplo fmt`               |
+
+**`docs/` is excluded from Prettier** (`.prettierignore`; the user, 2026-11-15): the documents keep their style by hand
+— 120 columns, aligned tables — and neither the hooks nor `npm run format` touch them.
 
 ## Layer 2. Static analysis
 

@@ -9,3 +9,4 @@ fixtures/golden
 playwright-report
 test-results
 .idea
+docs

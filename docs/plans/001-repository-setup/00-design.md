@@ -157,8 +157,8 @@ knip, machete, deny, typos, `npm audit --omit=dev --audit-level=high`), job `tes
    than ~2 minutes.
 4. **E2E not in the pre-push hook** (they run in CI and by hand), as in bg; unit tests with coverage are.
 5. **Coverage floor 90 %** for both Rust and UI (bg's bar, higher than prod-forge's 80 %).
-6. **Prettier does format `docs/`** (unlike bg, where it broke Markdown); if it breaks tables, `docs/` goes to
-   `.prettierignore`.
+6. **Prettier does format `docs/`** (unlike bg, where it broke Markdown) — overruled 2026-11-15: the user excluded
+   `docs/` from Prettier (`.prettierignore`).
 7. **Four danger levels** — Safe, Low, Medium, High — as defined in [`../../categories/README.md`](../../categories/README.md).
 8. **`disallowed-methods` for deletion** outside the cleaner crate, so the "scanning is read-only" restriction is
    enforced by the linter, not only by review.
