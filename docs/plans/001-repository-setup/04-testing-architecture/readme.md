@@ -2,7 +2,8 @@
 
 **Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace, app, repo
 
-Branch: `feat/001-04-testing-architecture`. The target state: [`../../../testing.md`](../../../testing.md).
+Branch: `feat/001-04-testing-architecture`, taken into `feat/001-repository-setup`. The target state:
+[`../../../testing.md`](../../../testing.md).
 
 ## Steps
 
@@ -40,3 +41,12 @@ Implemented 2026-11-15.
     `docs/`).
   - `rustfmt.toml` got `use_small_heuristics = "Max"`: short struct literals stay on one line within 120 columns.
   - `cargo-llvm-cov` 0.9.1 was already installed.
+- **Re-verified 2026-11-15 on a working linker.** The plan was written while Xcode was broken on this machine and
+  Rust test binaries could not be linked without an `SDKROOT` workaround in the shell. With Xcode 27.2 repaired,
+  every command was run again with no workaround: `npm run lint`, `npm test` (29 Rust, 2 UI, 7 script tests),
+  `npm run test:cov`, `npm run test:e2e` (2 core e2e, 6 Playwright), `npm run knip`, `npm run check:machete` and
+  `npm run check:deny` all pass. Nothing in the code or the screenshots had to change; the only fix was
+  `package-lock.json`, whose licence fields still said `UNLICENSED`.
+- Coverage on that run: Rust lines 94.9 % (294 lines, 15 missed; regions 90.9 %, functions 85.9 %), UI 100 % on every
+  metric (9 statements, 2 branches, 4 functions, 8 lines). The least covered files are `app/tauri/src/lib.rs`
+  (60 % of lines: the Tauri `run` entry needs a window) and `crates/testing/src/fixture_tree.rs` (90.5 %).

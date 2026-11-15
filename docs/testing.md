@@ -7,8 +7,8 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 ## Bars
 
 - **Coverage ≥ 90 %**: lines in the Rust crates (`cargo llvm-cov`, `app/tauri/src/main.rs` excluded); lines, branches,
-  functions and statements in the UI (Vitest, `src/main.tsx` and the test helpers excluded). The pre-push hook fails
-  under it.
+  functions and statements in the UI (Vitest, `src/main.tsx` and the test helpers excluded). The pre-push hook and CI
+  fail under it.
 - **Every rule is tested both ways**: paths it must NOT claim come first (look-alike folders, a current version, a
   symlink out of the root), then the paths it must claim.
 - **Deterministic**: no wall clock (the `Clock` port, `FakeClock` in tests), no network, no real home folder. Every test
