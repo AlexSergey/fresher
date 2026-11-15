@@ -75,3 +75,6 @@ npm-debug.log*
 # Claude Code (personal settings)
 .claude/settings.local.json
 .superpowers/
+
+# Local experiments: never committed
+NO_COMMIT/

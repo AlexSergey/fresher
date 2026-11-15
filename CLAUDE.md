@@ -24,14 +24,15 @@ Before planning or implementing anything, read:
 
 ## Repository map
 
-| Folder       | What                                                            | Stack                     |
-| ------------ | --------------------------------------------------------------- | ------------------------- |
-| `crates/`    | the Rust core: domain, rules, scanner, snapshot store, cleaner  | Rust (Cargo workspace)    |
-| `app/tauri/` | the Tauri 2 shell: thin commands that call the core             | Rust                      |
-| `app/ui/`    | the user interface                                              | TypeScript, React, Vite   |
-| `fixtures/`  | small fake file trees and golden reports used by tests          | —                         |
-| `scripts/`   | repository guards run by the git hooks                          | TypeScript (Node) / shell |
-| `docs/`      | ALL documentation: goal, rules, architecture, categories, plans | Markdown                  |
+| Folder       | What                                                                | Stack                     |
+| ------------ | ------------------------------------------------------------------- | ------------------------- |
+| `crates/`    | the Rust core: domain, rules, scanner, snapshot store, cleaner      | Rust (Cargo workspace)    |
+| `app/tauri/` | the Tauri 2 shell: thin commands that call the core                 | Rust                      |
+| `app/ui/`    | the user interface                                                  | TypeScript, React, Vite   |
+| `fixtures/`  | small fake file trees and golden reports used by tests              | —                         |
+| `scripts/`   | repository guards run by the git hooks                              | TypeScript (Node) / shell |
+| `docs/`      | ALL documentation: goal, rules, architecture, categories, plans     | Markdown                  |
+| `NO_COMMIT/` | local experiments and scratch work; ignored by git, never committed | anything                  |
 
 The layout is created by plan [001](./docs/plans/001-repository-setup/readme.md); until it is implemented some folders
 do not exist yet.
