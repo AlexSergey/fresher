@@ -191,7 +191,7 @@ Kinds of tests, bars and where they live: [`docs/testing.md`](./docs/testing.md)
   changes outside any plan go straight to `main`
 - Push only when the user asks
 - Work in parallel with subagents whenever the work allows it
-- `cargo clean` when the work is finished
+- `cargo clean` only when a global plan is done
 
 ---
 

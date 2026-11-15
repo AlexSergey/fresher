@@ -29,8 +29,8 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
 
 ## End of work
 
-- **`cargo clean` when the work is finished** (a plan done, or the end of a session): `target/` grows by gigabytes and
-  is rebuilt on the next build.
+- **`cargo clean` only when a global plan is done** (the user's decision of 2026-11-15): `target/` grows by gigabytes,
+  but cleaning it after every step or session makes every next check a cold build of the whole workspace.
 - Before ending a session, the memory is prepared for the next one: the state of the work and the next steps.
 
 ## Decisions and docs
