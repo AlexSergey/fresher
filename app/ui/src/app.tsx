@@ -3,7 +3,7 @@ import { type JSX, useEffect, useState } from 'react';
 import { getAppVersion } from './ipc';
 
 export const App = (): JSX.Element => {
-  const [version, setVersion] = useState<string | null>(null);
+  const [version, setVersion] = useState<null | string>(null);
 
   useEffect(() => {
     getAppVersion()

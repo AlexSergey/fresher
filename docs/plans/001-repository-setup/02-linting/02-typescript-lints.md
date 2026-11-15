@@ -1,6 +1,6 @@
 # 001/02/02 — TypeScript lints
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** app, repo
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** app, repo
 
 ## Files
 

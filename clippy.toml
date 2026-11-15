@@ -1,0 +1,12 @@
+allow-expect-in-tests = true
+allow-print-in-tests = true
+allow-unwrap-in-tests = true
+avoid-breaking-exported-api = false
+
+# Scanning is read-only: only fresher-cleaner deletes, at its single deletion point, under
+# `#[expect(clippy::disallowed_methods, reason = "...")]` (docs/restrictions/deletion-safety.md).
+disallowed-methods = [
+  { path = "std::fs::remove_file", reason = "only fresher-cleaner deletes (docs/restrictions/deletion-safety.md)" },
+  { path = "std::fs::remove_dir", reason = "only fresher-cleaner deletes (docs/restrictions/deletion-safety.md)" },
+  { path = "std::fs::remove_dir_all", reason = "only fresher-cleaner deletes (docs/restrictions/deletion-safety.md)" },
+]

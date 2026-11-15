@@ -18,7 +18,7 @@ Each plan runs in its own branch (`feat/001-NN-<name>`), in this order:
 | #   | Plan                                                              | Status      | What                                                                             |
 | --- | ----------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------- |
 | 01  | [Toolchain and workspace](./01-toolchain-and-workspace/readme.md) | ✔️ done     | root npm tooling, pinned Rust toolchain, Cargo workspace, Tauri + React skeleton |
-| 02  | [Linting](./02-linting/readme.md)                                 | ✅ approved | Rust lints, the prod-forge ESLint config for React, repository guards            |
+| 02  | [Linting](./02-linting/readme.md)                                 | ✔️ done     | Rust lints, the prod-forge ESLint config for React, repository guards            |
 | 03  | [Git hooks](./03-git-hooks/readme.md)                             | ✅ approved | husky, commitlint, lint-staged, pre-push                                         |
 | 04  | [Testing architecture](./04-testing-architecture/readme.md)       | ✅ approved | test helpers, fixtures, core e2e, UI unit and e2e, coverage floors               |
 | 05  | [CI](./05-ci/readme.md)                                           | ✅ approved | GitHub Actions on macOS, CodeQL, audits                                          |

@@ -9,6 +9,16 @@
 - **Enforced by:** `cargo deny check` (`deny.toml` `[licenses]`) for Rust; a licence check of npm production
   dependencies in CI (plan 001).
 
+## MPL-2.0 for five crates of Tauri
+
+- **Rule:** MPL-2.0 is allowed only for `cssparser`, `cssparser-macros`, `dtoa-short`, `option-ext` and `selectors`,
+  which Tauri 2 needs (accepted by the user, 2026-11-15). Their source files are never modified; every build lists them
+  in its licence notices. Any other MPL-2.0 crate is asked about first.
+- **Why:** MPL-2.0 is a file-level copyleft: unmodified, these crates bind only their own files, not our code; the
+  obligation is to name them and where their source is. There is no Tauri without them.
+- **Enforced by:** `deny.toml` `[licenses] exceptions` by crate name; the notices are due before the first release
+  ([`../deferred/licence-notices.md`](../deferred/licence-notices.md)).
+
 ## Exact versions, locked builds
 
 - **Rule:** exact versions in `package.json` (`save-exact=true`), `package-lock.json` and `Cargo.lock` committed;

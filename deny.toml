@@ -1,0 +1,57 @@
+# cargo-deny: licences, security advisories, banned and duplicate crates, crate sources.
+# Run from the repository root: `cargo deny check` (docs/quality.md, "Layer 2").
+
+# The app ships for macOS only: crates pulled in for other platforms are not part of any build.
+[graph]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+
+[advisories]
+ignore = []
+
+# docs/restrictions/dependencies.md. A licence not listed here is asked about before it is added.
+[licenses]
+allow = ["Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "CC0-1.0", "ISC", "MIT", "Unicode-3.0", "Unlicense", "Zlib"]
+confidence-threshold = 0.93
+# The allowlist is the policy, not a list of what is used today.
+unused-allowed-license = "allow"
+
+# MPL-2.0 (file-level copyleft), taken only for these crates that Tauri 2 needs; accepted by the user, 2026-11-15
+# (docs/restrictions/dependencies.md). Any other MPL crate is asked about first.
+exceptions = [
+  { crate = "cssparser", allow = [
+    "MPL-2.0",
+  ] },
+  { crate = "cssparser-macros", allow = [
+    "MPL-2.0",
+  ] },
+  { crate = "dtoa-short", allow = [
+    "MPL-2.0",
+  ] },
+  { crate = "option-ext", allow = [
+    "MPL-2.0",
+  ] },
+  { crate = "selectors", allow = [
+    "MPL-2.0",
+  ] },
+]
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# The workspace's crates depend on each other by path without a version; they are never published.
+allow-wildcard-paths = true
+# docs/restrictions/privacy.md: the app makes no network requests, so no HTTP client joins the build.
+deny = [
+  { crate = "reqwest", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "hyper", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "ureq", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "isahc", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "curl", reason = "no network access (docs/restrictions/privacy.md)" },
+]
+
+[sources]
+unknown-git = "deny"
+unknown-registry = "deny"

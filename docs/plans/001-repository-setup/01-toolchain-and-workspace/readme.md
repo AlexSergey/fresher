@@ -27,6 +27,6 @@ Implemented 2026-11-15.
     Each dependency of [`../../../architecture/README.md`](../../../architecture/README.md) is added with the first code
     that uses it (plan 04).
   - The app icon is generated from the user's logo `assets/logo.png` by `tauri icon assets/logo.png -o
-    app/tauri/icons`; only the macOS sizes are kept.
+app/tauri/icons`; only the macOS sizes are kept.
   - `devCsp` is `null`: Vite's dev server needs inline scripts and a WebSocket; the production CSP stays strict.
 - Prettier formats `docs/` without breaking anything (it aligns tables, writes `_` for emphasis): agent's call 6 holds.

@@ -15,6 +15,48 @@ tempfile = "=3.27.0"
 thiserror = "=2.0.21"
 tracing = "=0.1.44"
 
+# Every crate opts in with `[lints] workspace = true` (docs/quality.md, "Layer 2").
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+unsafe_code = "forbid"
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Pedantic lints that are noise for this codebase.
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+# Restriction lints picked one by one (CLAUDE.md, "Rust Rules").
+allow_attributes_without_reason = "warn"
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+exit = "warn"
+expect_used = "warn"
+float_cmp_const = "warn"
+fn_to_numeric_cast_any = "warn"
+large_include_file = "warn"
+lossy_float_literal = "warn"
+mem_forget = "warn"
+multiple_unsafe_ops_per_block = "warn"
+panic = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+rc_mutex = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+semicolon_outside_block = "warn"
+string_slice = "warn"
+todo = "warn"
+undocumented_unsafe_blocks = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+
 [profile.release]
 codegen-units = 1
 lto = "thin"

@@ -46,7 +46,8 @@ What the Rust lints enforce:
 `eslint.config.ts` is the `prod-forge/backend` config (itself `@rockpack/codestyle`), adapted for React and Vitest:
 
 - `typescript-eslint` `strictTypeChecked` + `stylisticTypeChecked`
-- `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-jsx-a11y` — React correctness and accessibility
+- `@eslint-react/eslint-plugin` (`recommended-type-checked`, the rules of hooks included) and `eslint-plugin-jsx-a11y-x`
+  — React correctness and accessibility (ESLint 10 compatible; see [`hacks/`](./hacks/README.md))
 - `eslint-plugin-import-lite` — no default exports (config files excepted)
 - `eslint-plugin-perfectionist` — sorted imports and object keys
 - `eslint-plugin-sonarjs` — bug and code smell rules, cognitive complexity ≤ 20
