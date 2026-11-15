@@ -44,3 +44,5 @@ Rows are in priority order: the order they are implemented in.
 | 002 | [Base architecture](./002-base-architecture/readme.md) | 📝 draft       | 0.1.0   | core, engine, store, modules, app |
 | 003 | [Base UI](./003-base-ui/readme.md)                     | 📝 draft       | 0.2.0   | app/ui, app/tauri        |
 | 004 | [Fast scan and search](./004-fast-scan/readme.md)      | 📝 draft       | 0.3.0   | macos, scanner, store, engine |
+| 005 | [Settings](./005-settings/readme.md) | 📝 draft | 0.4.0 | core, store, engine, app/ui |
+| 006 | [Permissions and privileges](./006-permissions/readme.md) | 📝 draft | 0.4.0 | core, macos, engine, cleaner, app |
