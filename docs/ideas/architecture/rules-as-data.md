@@ -31,3 +31,19 @@
 - **Fail closed**: if the protection list cannot be read, nothing is cleaned.
 - Write a threat model for the cleaner: symlinks and aliases, parents of protected leaves, live owners, time between
   check and removal.
+
+## Built-in rules only
+
+_Proposed by the agent, 2026-11-15; not decided yet._
+
+- **Rule files are compiled in** (`include_str!` at build time) and tested on fixtures with the rest of the code. The
+  app never loads rules from the user's disk.
+- **Rejected: rules added by the user** (a TOML file in `~/Library/Application Support/`). Such a rule could declare
+  anything junk, `~/Documents` included; it has no negative tests (rule 8 of [`../../rules.md`](../../rules.md)) and
+  none of our guarantees. A missing rule is a pull request with its fixture instead — the data format makes that
+  pull request small.
+- **Data where data is enough, code where judgement is needed.** Paths, markers, conditions and danger levels are data;
+  a few typed comparators are Rust, referenced by name from the data: "a version older than the installed one" (the
+  JetBrains case), "a toolchain no project pins" ([`../unused-toolchain-versions.md`](../unused-toolchain-versions.md)),
+  "a model no other model shares blobs with" ([`../local-ai-models.md`](../local-ai-models.md)). A rule that needs a
+  comparator that does not exist yet waits for its code; the data format never grows into a scripting language.

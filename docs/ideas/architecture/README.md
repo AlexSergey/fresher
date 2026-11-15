@@ -10,14 +10,17 @@ checked by the plan that takes them up.
 
 These are ideas, not decisions: each becomes a decision only in the design of the plan that implements it.
 
-| Topic                                                     | What                                                                               |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [Scanning](./scanning.md)                                 | the walker, sizes, hard links, APFS clones, errors, memory layout                  |
-| [Snapshots and watch mode](./snapshots-and-watch-mode.md) | the SQLite snapshot shape, diffing two scans, fast rescans                         |
-| [Duplicates](./duplicates.md)                             | the staged hashing pipeline, hash cache, clones, similar images                    |
-| [macOS specifics](./macos.md)                             | dataless files, purgeable space, snapshots, Full Disk Access, the Trash, leftovers |
-| [Rules as data](./rules-as-data.md)                       | declarative rules, project artifacts, cache markers, protected paths               |
-| [Crates](./crates.md)                                     | candidate dependencies and their licences                                          |
+| Topic                                                     | From  | What                                                                                                       |
+| --------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
+| [Scanning](./scanning.md)                                 | user  | the walker, sizes, hard links, APFS clones, errors, memory layout                                          |
+| [Snapshots and watch mode](./snapshots-and-watch-mode.md) | user  | the SQLite snapshot shape, diffing two scans, fast rescans                                                 |
+| [Duplicates](./duplicates.md)                             | user  | the staged hashing pipeline, hash cache, clones, similar images                                            |
+| [macOS specifics](./macos.md)                             | user  | dataless files, purgeable space, snapshots, Full Disk Access, the Trash, leftovers                         |
+| [Rules as data](./rules-as-data.md)                       | user  | declarative rules, project artifacts, cache markers, protected paths                                       |
+| [Crates](./crates.md)                                     | user  | candidate dependencies and their licences                                                                  |
+| [Rules over one tree](./rules-over-one-tree.md)           | agent | rules match the scanner's tree and never walk the disk; unrecognized space as an exact remainder           |
+| [Safety in the types](./safety-in-types.md)               | agent | evidence on findings, a plan only from a confirmation, the cleaner deletes a verified item, not a path     |
+| [Snapshot summaries](./snapshot-summaries.md)             | agent | a counterproposal to decision 9: totals and a summary tree per scan, the full tree of the latest scan only |
 
 ## Proposed decisions
 
@@ -33,7 +36,8 @@ These are ideas, not decisions: each becomes a decision only in the design of th
 6. **APFS clone groups counted once** per `(device, clone id)` in totals ([scanning](./scanning.md)).
 7. **Stay on one device by default** and reject nested or overlapping roots (firmlinks) ([scanning](./scanning.md)).
 8. **An arena tree in memory**: 32-bit indices, one shared name buffer, about 64 bytes per node ([scanning](./scanning.md)).
-9. **Snapshots in SQLite** as an `items` table keyed by parent and name, bulk-inserted ([snapshots](./snapshots-and-watch-mode.md)).
+9. **Snapshots in SQLite** as an `items` table keyed by parent and name, bulk-inserted ([snapshots](./snapshots-and-watch-mode.md));
+   see the agent's counterproposal in [snapshot summaries](./snapshot-summaries.md).
 10. **Watch mode diffs two snapshots by path**: added, removed, changed, with the size change rolled up to folders
     ([snapshots](./snapshots-and-watch-mode.md)).
 11. **Scan errors collected by kind** and shown honestly: "N folders unreadable — grant Full Disk Access"
