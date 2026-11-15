@@ -27,6 +27,8 @@ These are ideas, not decisions: each becomes a decision only in the design of th
 
 1. **A macOS-only walker on `getattrlistbulk(2)`** in `fresher-scanner`: one syscall per batch returns name, device,
    inode, link count, allocated sizes and the APFS clone id — no `lstat` per entry ([scanning](./scanning.md)).
+   Measured: asking for the clone id and private size in the walk makes it ~3 × slower — see
+   [change detection and hashing](./change-detection-and-hashing.md), "Sizes in two tiers".
 2. **Work-stealing scheduling** (`crossbeam-deque`), about 3 × the cores, capped at 64 workers; `rayon` is acceptable for
    a first version ([scanning](./scanning.md)).
 3. **Turn off materialisation of dataless files at startup** (`setiopolicy_np`), so walking iCloud Drive or other

@@ -12,16 +12,18 @@ marked "measured" were tested on an Apple M1 Pro with APFS on 2026-11-15.
 
 ## Measured
 
-| Fact                                                 | Result                                                                                                                           |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Hash speed on a cached 1 GiB file, one core          | md5 0.53 GiB/s · SHA-256 (hardware) 1.48 GiB/s · BLAKE2b 0.60 GiB/s · plain read 6.5 GiB/s — md5 is 12 × slower than the read    |
-| `getattrlistbulk` with `FSOPT_ATTR_CMN_EXTENDED`     | returns `ATTR_CMNEXT_CLONEID`, `ATTR_CMNEXT_PRIVATESIZE` and `ATTR_CMNEXT_CLONE_REFCNT` in the same batch read                   |
-| A fresh clone (`cp -c`)                              | the same clone id as the original, reference count 2, private size 0 for both                                                    |
-| The clone after 64 KiB of it is rewritten            | **a new clone id**, reference count 1 for both, private size 64 KiB each — the other ~4 MiB of blocks are still shared           |
-| `ATTR_CMNEXT_RECURSIVE_GENCOUNT` on ordinary folders | 0: maintained only for folders with directory statistics turned on, which is a privileged write — not usable by a read-only scan |
+| Fact                                                                                         | Result                                                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hash speed on a cached 1 GiB file, one core                                                  | md5 0.53 GiB/s · SHA-256 (hardware) 1.48 GiB/s · BLAKE2b 0.60 GiB/s · plain read 6.5 GiB/s — md5 is 12 × slower than the read                                                                                    |
+| `getattrlistbulk` with `FSOPT_ATTR_CMN_EXTENDED`                                             | returns `ATTR_CMNEXT_CLONEID`, `ATTR_CMNEXT_PRIVATESIZE` and `ATTR_CMNEXT_CLONE_REFCNT` in the same batch read                                                                                                   |
+| A fresh clone (`cp -c`)                                                                      | the same clone id as the original, reference count 2, private size 0 for both                                                                                                                                    |
+| The clone after 64 KiB of it is rewritten                                                    | **a new clone id**, reference count 1 for both, private size 64 KiB each — the other ~4 MiB of blocks are still shared                                                                                           |
+| `ATTR_CMNEXT_RECURSIVE_GENCOUNT` on ordinary folders                                         | 0: maintained only for folders with directory statistics turned on, which is a privileged write — not usable by a read-only scan                                                                                 |
+| Parallel `getattrlistbulk` walk of a home folder (1.73 million entries), metadata cache warm | **12.5 s** with names, types, sizes and link counts · **32–41 s** when private size is also asked for · thread count (10 or 30) does not matter                                                                  |
+| The same walk: logical vs allocated size                                                     | 1014 GiB logical, 103.6 GiB allocated — Docker's disk image alone is 460 GiB logical and 5.6 GiB allocated ([`../container-disk-image.md`](../container-disk-image.md)); logical size is useless as "space used" |
 
 Not measured yet: BLAKE3 (no tool installed; its multi-threaded SIMD speed is expected well above the read speed —
-check in the plan), and the scan of a real home folder cold and warm (see "To measure").
+check in the plan), and the walk with a cold metadata cache, right after a restart (see "To measure").
 
 ## Fast rescans
 
@@ -81,11 +83,26 @@ The measurements change decision 6 of the [architecture ideas](./README.md) ("AP
   would come back.
 - Two files with one clone id are not duplicates to remove: deleting one frees nothing (D2 already drops them).
 
+## Sizes in two tiers
+
+The measured walk changes decision 1 of the [architecture ideas](./README.md) (clone id and private size "in the same
+syscall"): asking for the APFS extended attributes makes the whole walk about **3 × slower**. So:
+
+- **The walk reads the cheap attributes only**: name, type, device, inode, link count, logical and allocated size,
+  times. Totals and the tree use the allocated size.
+- **Private size and clone id are read later, only where they matter**: for the subtrees a rule claims (the finding's
+  "freed if deleted" — one bulk read of those folders with extended attributes), for duplicate candidates of the same
+  size, and in the re-check right before deletion, which reads the item again anyway
+  ([safety in the types](./safety-in-types.md)).
+- Until the private size of a finding is read, the finding shows its allocated size marked "may share space with
+  other files" — honest, and replaced within seconds.
+
 ## To measure
 
-A throwaway spike (kept out of the repository): a parallel `getattrlistbulk` walk of a home folder that only counts —
-entries, folders, sizes, errors by kind, elapsed time — once after a restart (cold) and twice right after (warm). It
-decides between R1 alone and R1 + R5.
+A throwaway spike (kept out of the repository) walks a home folder in parallel with `getattrlistbulk` and only
+counts — entries, folders, sizes, errors by kind, elapsed time. Warm results are above; still needed: **one run right
+after a restart** (cold), which decides between R1 alone and R1 + R5. If a cold walk without extended attributes stays
+under the target, event-history replay is not needed at all.
 
 Open questions:
 
