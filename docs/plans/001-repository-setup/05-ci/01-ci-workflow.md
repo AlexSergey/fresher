@@ -1,6 +1,6 @@
 # 001/05/01 — CI workflow
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** ci
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** ci
 
 ## Files
 

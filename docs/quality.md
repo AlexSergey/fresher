@@ -2,8 +2,7 @@
 
 What checks the code, when, and why. Configs live next to the code they check; this page explains them.
 
-> **Status:** the target state, set up by plan [001](./plans/001-repository-setup/readme.md) (✅ approved). Until that
-> plan is implemented, only `.editorconfig`, `.gitattributes` and `.gitignore` exist.
+Set up by plan [001](./plans/001-repository-setup/readme.md).
 
 The system is the six-layer defence of `prod-forge/backend` (its `guide/code-quality.md`), extended with the Rust
 equivalent of every TypeScript tool.
@@ -104,13 +103,28 @@ Conventional Commits: `type(scope): subject`.
 1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
-4. `npm run test:scripts` — the repository scripts' tests; plan 001/04 replaces it with `npm run test:cov`: Rust tests
-   with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with coverage (Vitest, ≥ 90 %)
+4. `npm run test:scripts` — the repository scripts' tests
+5. `npm run test:cov` — Rust tests with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with
+   coverage (Vitest, ≥ 90 % on every metric)
 
 The e2e suites (`npm run test:e2e`) are run by hand and in CI, not in the hook: the UI e2e needs a browser.
 
-CI (GitHub Actions, macOS runners) runs the same on every pull request and on `main`, plus the e2e suites, a build of
-the app bundle, `npm audit --omit=dev --audit-level=high`, and CodeQL for TypeScript and Rust.
+CI (GitHub Actions) runs the same on every pull request and on `main`; commits starting with `chore(release)` are
+skipped. The workflows live in `.github/workflows/`; every action is pinned to a full commit SHA with its version in a
+comment.
+
+| Workflow     | Job     | Runs                                                                                           |
+| ------------ | ------- | ---------------------------------------------------------------------------------------------- |
+| `ci.yml`     | `lint`  | actionlint, `npm run lint`, knip, cargo-machete, cargo-deny, typos, `npm audit`                |
+|              | `test`  | `npm run test:scripts`, `npm run test:cov`; the coverage and JUnit reports kept as an artifact |
+|              | `e2e`   | `npm run test:e2e` with the Playwright browsers; the report kept on failure                    |
+|              | `build` | `npm run build`: the unsigned app bundle                                                       |
+| `codeql.yml` | analyze | CodeQL for TypeScript and Rust; on pull requests, on `main` and weekly                         |
+
+The `ci.yml` jobs run one after another on `macos-latest`. Each starts with `.github/actions/setup`: Node from `.nvmrc`,
+the Rust toolchain from `rust-toolchain.toml`, the npm and cargo caches, `npm ci`. The cargo tools are installed at the
+versions used locally; nextest runs with its `ci` profile (`.config/nextest.toml`). `npm audit` runs with `--omit=dev
+--audit-level=high`. CodeQL compiles nothing, so it runs on Linux.
 
 ## Layer 6. Dependency locking
 
@@ -125,5 +139,5 @@ the app bundle, `npm audit --omit=dev --audit-level=high`, and CodeQL for TypeSc
 1. Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`; any `cargo` command then installs the pinned
    toolchain.
 2. Cargo tools: `cargo install --locked cargo-deny cargo-machete cargo-nextest cargo-llvm-cov`
-3. Repository tools: `brew install gitleaks typos-cli taplo`
+3. Repository tools: `brew install gitleaks typos-cli taplo actionlint`
 4. Node (version in `.nvmrc`), then `npm install` at the root — it installs the git hooks (`prepare`).

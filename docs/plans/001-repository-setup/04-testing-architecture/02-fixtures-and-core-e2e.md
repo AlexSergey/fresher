@@ -1,6 +1,6 @@
 # 001/04/02 — Fixtures and core e2e
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace, fixtures
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace, fixtures
 
 ## Files
 

@@ -1,0 +1,12 @@
+# cargo-nextest profiles (docs/testing.md).
+
+[profile.default]
+slow-timeout = { period = "10s" }
+
+# CI: run every test, never retry, write a JUnit report for the workflow.
+[profile.ci]
+fail-fast = false
+retries = 0
+
+[profile.ci.junit]
+path = "junit.xml"

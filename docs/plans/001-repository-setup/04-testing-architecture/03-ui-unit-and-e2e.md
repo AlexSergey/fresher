@@ -1,6 +1,6 @@
 # 001/04/03 — UI unit and e2e tests
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** app
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** app
 
 ## Files
 

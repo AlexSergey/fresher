@@ -11,3 +11,8 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+fresher-core = { path = "../core" }
+serde.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+toml.workspace = true

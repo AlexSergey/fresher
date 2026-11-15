@@ -1,0 +1,25 @@
+# A small home folder: an app cache, a look-alike folder and a symlink pointing out of the root.
+
+[[file]]
+path = "Library/Caches/com.example.editor/Cache.db"
+size = 52428800
+modified = 1735689600
+
+[[file]]
+path = "Library/Caches/com.example.editor/blobs/0001.bin"
+size = 10485760
+modified = 1735689600
+
+# Not a cache: a project folder whose name only looks like one.
+[[file]]
+path = "Projects/Caches/notes.md"
+size = 2048
+modified = 1762000000
+
+[[dir]]
+path = "Library/Logs"
+
+# A symlink out of the root: listed, never followed.
+[[symlink]]
+path = "Library/Caches/system"
+target = "/Library/Caches"
