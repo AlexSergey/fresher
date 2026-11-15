@@ -1,6 +1,7 @@
 # Process-to-Storage Timeline
 
-**Since:** 2026-11-15
+**Since:** 2026-11-15 · **Status: later, not in the first iterations** (the user, 2026-11-15: "without background work
+this cannot be done; maybe think about a tiny daemon, but definitely not in the first iterations").
 
 ## Problem
 
@@ -23,6 +24,9 @@
   recording ([`../goal.md`](../goal.md), section 8).
 - Between recordings, the timeline falls back to scan snapshots: coarser, but honest about it.
 
-Open questions:
+## Why it waits
 
-- Does this survive the no-background rule in a useful form (the user must start recording before the problem)?
+Recording only while the app is open cannot answer "what happened before the disk ran out": the user would have to
+start recording before the problem. A useful timeline needs a tiny daemon that records in the background — which
+[`../goal.md`](../goal.md), section 8 rules out today. Taking this up means the user changes that goal first, for an
+opt-in, visible, minimal daemon.

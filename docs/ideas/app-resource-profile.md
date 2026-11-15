@@ -1,6 +1,6 @@
 # App Resource Profile ("App Resource DNA")
 
-**Since:** 2026-11-15 · Possibly part of the base architecture: one model of "an app and everything it owns".
+**Since:** 2026-11-15 · **Status: not now** (the user, 2026-11-15: "definitely not needed for now").
 
 ## Problem
 

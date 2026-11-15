@@ -16,11 +16,10 @@
 | App resource profile   | features scattered           | **big**                   | [`app-resource-profile.md`](./app-resource-profile.md)         |
 | Storage history        | partly covered               | **big**                   | [`storage-history.md`](./storage-history.md)                   |
 | Cleanup simulator      | no full implementation found | **big**                   | [`cleanup-simulator.md`](./cleanup-simulator.md)               |
-| Storage budget         | not found                    | **big**                   | [`storage-budget.md`](./storage-budget.md)                     |
 | Process timeline       | not found                    | **big**                   | [`process-storage-timeline.md`](./process-storage-timeline.md) |
 | Cleanup guardian       | partly covered               | **big**                   | [`cleanup-guardian.md`](./cleanup-guardian.md)                 |
 | Cleanup journal        | partly covered               | better recovery           | [`cleanup-journal.md`](./cleanup-journal.md)                   |
 
 The common thread of the big opportunities: **time**. Snapshots over time (watch mode) turn a cleaner into a tool that
-explains how the disk changes — history, leaks, recurrence, budgets — which is the base architecture's job to make cheap
+explains how the disk changes — history, leaks, recurrence — which is the base architecture's job to make cheap
 and fast.
