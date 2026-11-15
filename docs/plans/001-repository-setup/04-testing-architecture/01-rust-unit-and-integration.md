@@ -1,6 +1,6 @@
 # 001/04/01 — Rust unit and integration tests
 
-**Status:** ✅ approved · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace
+**Status:** ✔️ done · **Version:** 0.0.1 · **Date:** 2026-11-15 · **Modules:** workspace
 
 ## Files
 

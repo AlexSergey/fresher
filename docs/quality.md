@@ -104,8 +104,9 @@ Conventional Commits: `type(scope): subject`.
 1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
-4. `npm run test:scripts` — the repository scripts' tests; plan 001/04 replaces it with `npm run test:cov`: Rust tests
-   with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with coverage (Vitest, ≥ 90 %)
+4. `npm run test:scripts` — the repository scripts' tests
+5. `npm run test:cov` — Rust tests with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with
+   coverage (Vitest, ≥ 90 % on every metric)
 
 The e2e suites (`npm run test:e2e`) are run by hand and in CI, not in the hook: the UI e2e needs a browser.
 

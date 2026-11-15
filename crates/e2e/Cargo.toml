@@ -11,3 +11,7 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+fresher-testing = { path = "../testing" }
+serde_json.workspace = true

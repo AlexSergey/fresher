@@ -31,10 +31,19 @@
     "lint:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings",
     "lint:ts": "tsc --noEmit -p . && tsc --noEmit -p app/ui",
     "pre-commit": "lint-staged --config .lintstagedrc.cjs",
-    "pre-push": "npm run lint && npm run knip && npm run check:machete && npm run check:deny && npm run test:scripts",
+    "pre-push": "npm run lint && npm run knip && npm run check:machete && npm run check:deny && npm run test:scripts && npm run test:cov",
     "prepare": "husky",
     "tauri": "tauri",
-    "test:scripts": "node --test scripts/*.test.ts"
+    "test": "npm run test:rust && npm run test:ui && npm run test:scripts",
+    "test:cov": "npm run test:cov:rust && npm run test:cov:ui",
+    "test:cov:rust": "cargo llvm-cov nextest --workspace --locked --fail-under-lines 90 --ignore-filename-regex 'app/tauri/src/main.rs' --lcov --output-path coverage/rust/lcov.info",
+    "test:cov:ui": "npm run test:cov --workspace app/ui",
+    "test:e2e": "npm run test:e2e:core && npm run test:e2e:ui",
+    "test:e2e:core": "cargo nextest run -p fresher-e2e --locked",
+    "test:e2e:ui": "npm run test:e2e --workspace app/ui",
+    "test:rust": "cargo nextest run --workspace --locked",
+    "test:scripts": "node --test scripts/*.test.ts",
+    "test:ui": "npm run test --workspace app/ui"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

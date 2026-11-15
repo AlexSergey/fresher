@@ -1,0 +1,60 @@
+{
+  "entries": [
+    {
+      "path": "Library",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Library/Caches",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Library/Caches/com.example.editor",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Library/Caches/com.example.editor/Cache.db",
+      "kind": "file",
+      "logical_size": 52428800
+    },
+    {
+      "path": "Library/Caches/com.example.editor/blobs",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Library/Caches/com.example.editor/blobs/0001.bin",
+      "kind": "file",
+      "logical_size": 10485760
+    },
+    {
+      "path": "Library/Caches/system",
+      "kind": "symlink",
+      "logical_size": 0
+    },
+    {
+      "path": "Library/Logs",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Projects",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Projects/Caches",
+      "kind": "dir",
+      "logical_size": 0
+    },
+    {
+      "path": "Projects/Caches/notes.md",
+      "kind": "file",
+      "logical_size": 2048
+    }
+  ],
+  "total_logical_size": 62916608
+}
