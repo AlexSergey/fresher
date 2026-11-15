@@ -1,0 +1,9 @@
+{
+  "ui.app.connecting": "Connecting to the core…",
+  "ui.app.title": "Mac Fresher",
+  "ui.app.version": "Version {version}",
+  "ui.core.unreachable": "The app could not reach its core. Restart the app.",
+  "ui.scan.ready": "Press Scan to see what takes the space.",
+  "ui.scan.running": "Scanning…",
+  "ui.scan.start": "Scan"
+}

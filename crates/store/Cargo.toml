@@ -1,6 +1,6 @@
 [package]
 name = "fresher-store"
-description = "The SQLite snapshot store of Mac Fresher: scan history and growth between scans."
+description = "The app's own data folder of Mac Fresher: settings and other versioned files."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,3 +11,9 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+fresher-core = { path = "../core" }
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

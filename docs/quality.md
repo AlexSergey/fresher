@@ -70,6 +70,7 @@ What the Rust lints enforce:
 | gitleaks              | keys, tokens and passwords in staged changes       | `npm run check:secrets` |
 | typos (`_typos.toml`) | misspellings in code and docs (Rust, TS, Markdown) | `npm run check:typos`   |
 | staged-files guard    | any file over 1 MiB, any `*.sqlite` or `.env`      | `npm run check:staged`  |
+| crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module | `npm run check:crate-deps` |
 
 ## Layer 3. Pre-commit (Husky + lint-staged)
 
@@ -94,13 +95,14 @@ per file.
 Conventional Commits: `type(scope): subject`.
 
 - Types: `ci`, `chore`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`.
-- Scopes (optional): `core`, `rules`, `scanner`, `store`, `cleaner`, `app`, `ui`, `e2e`, `deps`, `docs`, `repo`, `ci`.
+- Scopes (optional): `core`, `engine`, `modules`, `rules`, `scanner`, `store`, `cleaner`, `macos`, `testing`, `app`,
+  `ui`, `e2e`, `deps`, `docs`, `repo`, `ci`.
 
 ## Layer 5. Pre-push and CI
 
 `.husky/pre-push` runs `npm run pre-push`:
 
-1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint
+1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint; then `npm run check:crate-deps`
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
 4. `npm run test:scripts` — the repository scripts' tests
@@ -115,7 +117,7 @@ comment.
 
 | Workflow     | Job     | Runs                                                                                           |
 | ------------ | ------- | ---------------------------------------------------------------------------------------------- |
-| `ci.yml`     | `lint`  | actionlint, `npm run lint`, knip, cargo-machete, cargo-deny, typos, `npm audit`                |
+| `ci.yml`     | `lint`  | actionlint, `npm run lint`, the crate dependency guard, knip, cargo-machete, cargo-deny, typos, `npm audit`                |
 |              | `test`  | `npm run test:scripts`, `npm run test:cov`; the coverage and JUnit reports kept as an artifact |
 |              | `e2e`   | `npm run test:e2e` with the Playwright browsers; the report kept on failure                    |
 |              | `build` | `npm run build`: the unsigned app bundle                                                       |

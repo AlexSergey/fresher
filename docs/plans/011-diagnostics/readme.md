@@ -83,7 +83,8 @@ None yet.
 
 1. **No log file by default**; a per-session switch for one.
 2. **Unreadable folders and missing tools are results, not errors.**
-3. **A bug stops the operation**; a release build still aborts on a panic, and the next launch reports it.
+3. **A bug stops the operation**: a panicking module fails alone and any other panic ends the scan `Partial` (plan
+   002, decisions); the next launch reports it.
 4. **The report is saved by the user and never sent.**
 5. **The error model is built right after plan 002.**
 6. **Target version 0.5.0.**

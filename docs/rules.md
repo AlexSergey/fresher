@@ -34,7 +34,7 @@ fixture trees, not on the real home folder.
 
 ## 6. Private by default
 
-No network access, no telemetry, no crash upload. The scan results and the snapshot database stay on the Mac. Details:
+No network access, no telemetry, no crash upload. The scan results, the scan cache and the settings stay on the Mac. Details:
 [`restrictions/privacy.md`](./restrictions/privacy.md).
 
 ## 7. Simple interface

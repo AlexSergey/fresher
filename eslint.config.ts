@@ -253,7 +253,7 @@ const e2eOverrides: Linter.Config = {
 
 export default [
   gitignore({ strict: false }),
-  { ignores: ['app/tauri/gen/**', 'fixtures/**'] },
+  { ignores: ['app/tauri/gen/**', 'fixtures/**', '**/*.generated.ts'] },
   ...recommendedTypescriptConfigs,
   prettierRecommended,
   perfectionistConfig,

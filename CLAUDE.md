@@ -28,7 +28,8 @@ Before planning or implementing anything, read:
 
 | Folder       | What                                                                | Stack                     |
 | ------------ | ------------------------------------------------------------------- | ------------------------- |
-| `crates/`    | the Rust core: domain, rules, scanner, snapshot store, cleaner      | Rust (Cargo workspace)    |
+| `crates/`    | the Rust core: domain, engine, rules, scanner, store, cleaner       | Rust (Cargo workspace)    |
+| `modules/`   | the feature modules: one crate each (`fresher-module-<id>`)         | Rust (Cargo workspace)    |
 | `app/tauri/` | the Tauri 2 shell: thin commands that call the core                 | Rust                      |
 | `app/ui/`    | the user interface                                                  | TypeScript, React, Vite   |
 | `fixtures/`  | small fake file trees and golden reports used by tests              | —                         |

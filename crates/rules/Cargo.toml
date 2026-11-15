@@ -1,6 +1,6 @@
 [package]
 name = "fresher-rules"
-description = "The rule catalogue of Mac Fresher: recognizes leftovers and turns scan results into findings."
+description = "The shared matcher for declarative rule data; holds no rules itself."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,3 +11,12 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+fresher-core = { path = "../core" }
+libc.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+fresher-testing = { path = "../testing" }
+proptest.workspace = true

@@ -1,22 +1,41 @@
-//! The Tauri 2 shell of Mac Fresher: thin commands over the core crates.
+//! The Tauri 2 shell of Mac Fresher: the composition root and thin commands over the engine.
 
-/// Returns the version of the app; the example of a typed IPC command.
-#[tauri::command]
-fn app_version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
-}
-
-/// Builds and runs the app until its last window is closed.
-pub fn run() -> Result<(), tauri::Error> {
-    tauri::Builder::default().invoke_handler(tauri::generate_handler![app_version]).run(tauri::generate_context!())
-}
-
+mod adapters;
+mod commands;
+mod compose;
+mod events;
+mod process;
+mod shell;
 #[cfg(test)]
-mod tests {
-    mod positive {
-        #[test]
-        fn app_version_is_the_crate_version() {
-            assert_eq!(super::super::app_version(), env!("CARGO_PKG_VERSION"));
-        }
-    }
+mod testing;
+
+use tauri::Manager;
+
+/// Builds and runs the app until its window is closed; a second launch brings that window forward instead.
+pub fn run() -> Result<(), tauri::Error> {
+    let app = tauri::Builder::default()
+        // First, so a second launch exits before it sets anything up.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| shell::on_second_launch(app)))
+        .setup(|app| {
+            let engine = compose::engine(app.path().app_data_dir()?)?;
+            app.manage(engine);
+            app.manage(events::EventForwarder::default());
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::app_version,
+            commands::subscribe,
+            commands::start_scan,
+            commands::cancel_scan,
+            commands::get_overview,
+            commands::get_modules,
+            commands::get_findings,
+            commands::get_settings,
+            commands::update_setting,
+            commands::get_dictionary,
+            commands::get_access_status,
+        ])
+        .build(tauri::generate_context!())?;
+    app.run(|app, event| shell::on_run_event(app, &event));
+    Ok(())
 }

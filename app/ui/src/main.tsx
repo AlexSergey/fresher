@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app';
+import { createCoreStore } from './state/store';
 
 const root = document.querySelector('#root');
 
@@ -13,6 +14,6 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <App store={createCoreStore()} />
   </StrictMode>,
 );

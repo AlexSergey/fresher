@@ -1,6 +1,6 @@
 [package]
 name = "fresher-core"
-description = "Domain types of Mac Fresher: categories, danger levels, findings, sizes and clean plans."
+description = "The shared core of Mac Fresher: domain types, the module contract, ports, events, commands and text keys."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,7 +11,10 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
+ts-rs.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

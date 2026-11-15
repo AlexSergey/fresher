@@ -38,7 +38,9 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `/private/var/db`, SIP-protected locations, or another user's home is ever offered for deletion. Docker objects are
   removed only through the Docker CLI, never by deleting its files.
 - **Why:** deleting there breaks macOS or another user's data; Docker's files are its own database.
-- **Enforced by:** the scanner's and the cleaner's guards and their tests (planned).
+- **Enforced by:** the scanner's and the cleaner's guards and their tests (planned). A folder setting (the scan roots)
+  that names a protected folder, a folder inside it or above it (`/`, `/private`, `/Users`), or that is not `~`,
+  `~/…` or a plain absolute path, is refused by the core's settings check (`crates/core/src/settings/folders.rs`).
 
 ## The user's own folders are hard-blocked
 

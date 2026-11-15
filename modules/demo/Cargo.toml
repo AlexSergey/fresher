@@ -1,0 +1,19 @@
+[package]
+name = "fresher-module-demo"
+description = "The demo module of Mac Fresher: made-up findings that prove the module contract; reads nothing from the disk."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+fresher-core = { path = "../../crates/core" }
+thiserror.workspace = true
+
+[dev-dependencies]
+fresher-testing = { path = "../../crates/testing" }
+serde_json.workspace = true

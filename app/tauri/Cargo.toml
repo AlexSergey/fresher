@@ -14,4 +14,18 @@ workspace = true
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
+fresher-core = { path = "../../crates/core" }
+fresher-engine = { path = "../../crates/engine" }
+# Registered in debug builds only (`src/compose.rs`); Cargo cannot make a dependency depend on `debug_assertions`.
+fresher-module-demo = { path = "../../modules/demo" }
+fresher-store = { path = "../../crates/store" }
 tauri = { version = "=2.12.5", features = [] }
+tauri-plugin-single-instance = "=2.5.5"
+thiserror.workspace = true
+
+[dev-dependencies]
+fresher-testing = { path = "../../crates/testing" }
+serde_json.workspace = true
+tauri = { version = "=2.12.5", features = ["test"] }
+tempfile.workspace = true
+ts-rs.workspace = true

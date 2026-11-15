@@ -1,7 +1,19 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window's permissions: the core's defaults only; no network, no shell, no file system plugin.",
+  "description": "The main window's permissions: the app's own commands only; no core or plugin permission, no network, no shell, no file system.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "allow-app-version",
+    "allow-subscribe",
+    "allow-start-scan",
+    "allow-cancel-scan",
+    "allow-get-overview",
+    "allow-get-modules",
+    "allow-get-findings",
+    "allow-get-settings",
+    "allow-update-setting",
+    "allow-get-dictionary",
+    "allow-get-access-status"
+  ]
 }

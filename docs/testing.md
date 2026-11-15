@@ -24,15 +24,18 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 | Property-based | a rule holds for ANY valid input (sizes add up, versions order, no double count) | proptest (`mod property`)                   | fast-check (where logic exists)            |
 | Integration    | one crate through its public API, on fixture trees                               | the crate's `tests/`                        | —                                          |
 | Golden reports | a fixture home gives exactly the expected report                                 | `crates/e2e` against `fixtures/golden/`     | —                                          |
-| Core e2e       | scan → classify → snapshot → diff → confirm → clean, end to end                  | `crates/e2e` on fixture homes               | —                                          |
+| Core e2e       | command → engine → modules → events → settings file, end to end                  | `crates/e2e` on fixture homes               | —                                          |
 | UI e2e         | the user flows of the interface, on a mocked core                                | —                                           | Playwright on the Vite build, mocked IPC   |
 | Visual         | the Dark Premium screens did not change unnoticed                                | —                                           | Playwright screenshots, ≤ 50 pixels differ |
 | Performance    | the scan stays within its time and memory budget                                 | criterion benches on a large generated tree | —                                          |
 
 The full app (WebView + Rust) cannot be driven by WebDriver on macOS (`tauri-driver` supports Linux and Windows only),
 so the UI e2e run against the web build with the Tauri IPC mocked, and the core e2e cover the Rust side end to end.
-Until the scanner exists, the core e2e prove the harness: a fixture home is built and read back against its golden
-report.
+Until the scanner exists (plan 004), the core e2e prove the harness (`smoke.rs`: a fixture home is built and read back
+against `fixtures/golden/smoke.json`) and the whole Rust path on the `demo` module (`demo.rs`: the engine, the `demo`
+module and a real settings file, the events and the overview against `fixtures/golden/demo.json`; the settings survive
+a restart; a settings file from a newer version is never overwritten). Later plans extend it to scan → classify →
+cache → diff → confirm → clean.
 
 ## Where things live
 
@@ -41,12 +44,33 @@ report.
   as test code.
 - `crates/testing` — shared test helpers: `FixtureTree` (a fake home folder from TOML), `TreeReport` (a deterministic
   listing for golden files), `FakeClock`, `FakeTrash`, `FakeCommandRunner`. The ports they fake (`Clock`, `Trash`,
-  `CommandRunner`) live in `fresher-core`.
+  `CommandRunner`) live in `fresher-core`. For modules ([`architecture/modules.md`](./architecture/modules.md)):
+  - `NaiveWalk` — the reference `DiskWalk` over a fixture root, with `std::fs`: links listed, never followed, nothing
+    on another device; the scanner is tested against it (the same fixture gives the same matches).
+  - `run_module(&module, &tree, &Ports::at(seconds))` — one module run as the engine would, on the fixture tree as the
+    home folder: walk, matches, `finish` → `ModuleRun { findings, outcome }`; `ModuleRun::golden()` is its stable JSON
+    report, paths relative to the fixture root.
+  - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category has its five texts and
+    every setting (`<module>.enabled` included) its label and description, every key is in the module's namespace;
+    `Catalogue::Required(docs/categories)` also wants each category's catalogue file with the same danger level
+    (`Catalogue::DevOnly` for the `demo` module). `assert_texts_used(&module, &runs)` — every text is a descriptor key
+    or used by a finding of the runs, and every finding's text exists with the args its placeholders name. Their
+    `check_…` forms return the list of `ContractProblem`s instead of failing.
+- `crates/rules` — the shared matcher of rule data (`RuleSet::parse`, `interests`, `evaluate`, `stale`), tested on
+  `FixtureTree`s and `FakeClock`, with property tests of the glob and of the version order.
 - `crates/e2e` — the core's end-to-end and golden tests (a crate with tests only).
+- `app/tauri/tests/bindings.rs` — the IPC types: every type the commands and events carry is rendered by `ts-rs` and
+  compared byte for byte with `app/ui/src/ipc/bindings.generated.ts`; no listed type refers to an unlisted one, no
+  number becomes a `bigint`, no field is in snake_case. `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test
+  bindings` rewrites the file; the diff is reviewed like a golden file.
 - `fixtures/homes/<name>.toml` — fixture home folders; `fixtures/golden/<name>.json` — the expected reports.
 - UI unit tests: `*.test.ts(x)` next to the component; the core is mocked with `mockCore` from `src/ipc/mock.ts`, by
-  the command keys of `src/ipc/index.ts` (the only place the Rust command names are spelled).
-- UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts`; screenshots in
+  the command keys of `src/ipc/index.ts` (the only place the Rust command names are spelled); `refuse(refusal)` answers
+  with a `Refusal` (the error and the text the core built for it), `pushEvents(...)` streams events through the
+  subscribed channel. `src/test/demo-scan.ts` is a demo scan as the core streams it, with its texts, shared by the unit
+  and the e2e tests.
+- UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, and the events a
+  scan streams through the channel); screenshots in
   `app/ui/e2e/screenshots/`, per browser. WebKit is the reference engine (the app runs in WebKit on macOS); Chromium
   runs too.
 
@@ -88,4 +112,5 @@ target = "/Library/Caches"
 | `npm run test:e2e:ui`          | Playwright (needs `npx playwright install webkit chromium` once)                      |
 | `cargo nextest run -p <crate>` | one crate                                                                             |
 | Golden files                   | `UPDATE_GOLDEN=1 npm run test:e2e:core`; review the diff before committing            |
+| IPC bindings                   | `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test bindings`; review the diff |
 | Screenshots                    | `npm run test:e2e:update --workspace app/ui`; look at the new image before committing |

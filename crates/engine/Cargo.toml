@@ -1,0 +1,20 @@
+[package]
+name = "fresher-engine"
+description = "The engine of Mac Fresher: the module registry, the event bus, the scan session and the settings in memory."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+fresher-core = { path = "../core" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+fresher-testing = { path = "../testing" }
+serde_json.workspace = true

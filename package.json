@@ -1,6 +1,6 @@
 {
   "name": "mac-fresher",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "A fast macOS disk cleaner: a Rust core with a Tauri 2 shell and a React UI",
   "repository": {
@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "build": "tauri build",
+    "check:crate-deps": "node scripts/check-crate-deps.ts",
     "check:deny": "cargo deny check",
     "check:machete": "cargo machete",
     "check:repo": "npm run check:staged && npm run check:secrets && npm run check:typos",
@@ -31,7 +32,7 @@
     "lint:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings",
     "lint:ts": "tsc --noEmit -p . && tsc --noEmit -p app/ui",
     "pre-commit": "lint-staged --config .lintstagedrc.cjs",
-    "pre-push": "npm run lint && npm run knip && npm run check:machete && npm run check:deny && npm run test:scripts && npm run test:cov",
+    "pre-push": "npm run lint && npm run check:crate-deps && npm run knip && npm run check:machete && npm run check:deny && npm run test:scripts && npm run test:cov",
     "prepare": "husky",
     "tauri": "tauri",
     "test": "npm run test:rust && npm run test:ui && npm run test:scripts",

@@ -10,10 +10,11 @@
 
 ## Local data only
 
-- **Rule:** scan results and snapshots are stored only in the app's own folder in `~/Library/Application Support/`.
-  Logs never contain file contents.
+- **Rule:** scan results, the scan cache, history and settings are stored only in the app's own folder in
+  `~/Library/Application Support/`. Logs never contain file contents. The webview keeps no data of its own.
 - **Why:** paths alone already reveal a lot about a person.
-- **Enforced by:** the store crate (planned); review.
+- **Enforced by:** `fresher-store`, the only crate that touches the app's data folder (the app hands it the folder);
+  the window runs `incognito`, so the webview writes no cookies, caches or storage to the disk (plan 002); review.
 
 ## Least permissions
 

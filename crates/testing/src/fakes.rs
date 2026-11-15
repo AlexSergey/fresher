@@ -1,31 +1,36 @@
-use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, SystemTime};
 
-use fresher_core::{Clock, CommandError, CommandOutput, CommandRunner, Trash, TrashError};
+use fresher_core::{Clock, CommandOutput, CommandRunError, CommandRunner, Trash, TrashError};
+
+/// Locks `mutex`; a test that panicked while holding it leaves the data as it was.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// A clock that stands still until a test moves it.
 #[derive(Debug)]
 pub struct FakeClock {
-    now: Cell<SystemTime>,
+    now: Mutex<SystemTime>,
 }
 
 impl FakeClock {
     /// A clock at `seconds` after the Unix epoch.
     pub fn at(seconds: u64) -> Self {
-        Self { now: Cell::new(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)) }
+        Self { now: Mutex::new(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)) }
     }
 
     pub fn advance(&self, by: Duration) {
-        self.now.set(self.now.get() + by);
+        *lock(&self.now) += by;
     }
 }
 
 impl Clock for FakeClock {
     fn now(&self) -> SystemTime {
-        self.now.get()
+        *lock(&self.now)
     }
 }
 
@@ -33,14 +38,14 @@ impl Clock for FakeClock {
 #[derive(Debug)]
 pub struct FakeTrash {
     dir: PathBuf,
-    moved: RefCell<Vec<PathBuf>>,
+    moved: Mutex<Vec<PathBuf>>,
     refused: HashSet<PathBuf>,
 }
 
 impl FakeTrash {
     /// A Trash whose folder is `dir`; it is created on the first move.
     pub fn new(dir: impl Into<PathBuf>) -> Self {
-        Self { dir: dir.into(), moved: RefCell::new(Vec::new()), refused: HashSet::new() }
+        Self { dir: dir.into(), moved: Mutex::new(Vec::new()), refused: HashSet::new() }
     }
 
     /// Makes the Trash refuse `path`, as macOS does for a file in use or without permission.
@@ -52,7 +57,7 @@ impl FakeTrash {
 
     /// The original paths moved to the Trash, in order.
     pub fn moved(&self) -> Vec<PathBuf> {
-        self.moved.borrow().clone()
+        lock(&self.moved).clone()
     }
 }
 
@@ -70,9 +75,9 @@ impl Trash for FakeTrash {
         let refused =
             |error: std::io::Error| TrashError::Refused { path: path.to_path_buf(), reason: error.to_string() };
         fs::create_dir_all(&self.dir).map_err(refused)?;
-        let index = self.moved.borrow().len();
-        fs::rename(path, self.dir.join(format!("{index}-{}", name.to_string_lossy()))).map_err(refused)?;
-        self.moved.borrow_mut().push(path.to_path_buf());
+        let mut moved = lock(&self.moved);
+        fs::rename(path, self.dir.join(format!("{}-{}", moved.len(), name.to_string_lossy()))).map_err(refused)?;
+        moved.push(path.to_path_buf());
         Ok(())
     }
 }
@@ -80,8 +85,8 @@ impl Trash for FakeTrash {
 /// Answers external commands from a table, and records every call.
 #[derive(Debug, Default)]
 pub struct FakeCommandRunner {
-    answers: HashMap<String, Result<CommandOutput, CommandError>>,
-    calls: RefCell<Vec<String>>,
+    answers: HashMap<String, Result<CommandOutput, CommandRunError>>,
+    calls: Mutex<Vec<String>>,
 }
 
 impl FakeCommandRunner {
@@ -95,32 +100,32 @@ impl FakeCommandRunner {
 
     /// Answers `command` with an error.
     #[must_use]
-    pub fn failing(mut self, command: &str, error: CommandError) -> Self {
+    pub fn failing(mut self, command: &str, error: CommandRunError) -> Self {
         self.answers.insert(command.into(), Err(error));
         self
     }
 
     /// The commands run so far, in order.
     pub fn calls(&self) -> Vec<String> {
-        self.calls.borrow().clone()
+        lock(&self.calls).clone()
     }
 }
 
 impl CommandRunner for FakeCommandRunner {
-    fn run(&self, program: &str, args: &[&str]) -> Result<CommandOutput, CommandError> {
+    fn run(&self, program: &str, args: &[&str]) -> Result<CommandOutput, CommandRunError> {
         let command = std::iter::once(program).chain(args.iter().copied()).collect::<Vec<_>>().join(" ");
-        self.calls.borrow_mut().push(command.clone());
+        lock(&self.calls).push(command.clone());
         self.answers
             .get(&command)
             .cloned()
-            .unwrap_or_else(|| Err(CommandError::NotInstalled { program: program.into() }))
+            .unwrap_or_else(|| Err(CommandRunError::NotInstalled { program: program.into() }))
     }
 }
 
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{CommandError, CommandRunner, Trash, TrashError};
+        use fresher_core::{CommandRunError, CommandRunner, Trash, TrashError};
 
         use crate::{FakeCommandRunner, FakeTrash, FixtureTree};
 
@@ -158,12 +163,12 @@ mod tests {
 
             let error = runner.run("docker", &["images"]).unwrap_err();
 
-            assert_eq!(error, CommandError::NotInstalled { program: "docker".into() });
+            assert_eq!(error, CommandRunError::NotInstalled { program: "docker".into() });
         }
 
         #[test]
         fn a_failing_command_returns_its_error() {
-            let error = CommandError::Failed { program: "docker".into(), reason: "daemon down".into() };
+            let error = CommandRunError::Failed { program: "docker".into(), reason: "daemon down".into() };
             let runner = FakeCommandRunner::default().failing("docker ps", error.clone());
 
             assert_eq!(runner.run("docker", &["ps"]), Err(error));

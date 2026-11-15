@@ -1,0 +1,401 @@
+{
+  "events": [
+    {
+      "modules": [
+        "demo"
+      ],
+      "scan": 1,
+      "type": "scan-started"
+    },
+    {
+      "findings": [
+        {
+          "category": "demo.caches",
+          "danger": "safe",
+          "id": 1,
+          "key": {
+            "identity": "com.example.editor",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "empty-folder",
+            "value": "/demo/Library/Caches/com.example.editor"
+          },
+          "sizes": {
+            "allocated": 734003200,
+            "completeness": "complete",
+            "logical": 734003200
+          },
+          "subject": {
+            "kind": "path",
+            "value": "/demo/Library/Caches/com.example.editor"
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "com.example.editor"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.downloads",
+          "danger": "low",
+          "id": 2,
+          "key": {
+            "identity": "example-installer.dmg",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "move-to-trash",
+            "value": "/demo/Downloads/example-installer.dmg"
+          },
+          "sizes": {
+            "allocated": 268435456,
+            "completeness": "complete",
+            "logical": 268435456
+          },
+          "subject": {
+            "kind": "path",
+            "value": "/demo/Downloads/example-installer.dmg"
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "example-installer.dmg"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.images",
+          "danger": "medium",
+          "id": 3,
+          "key": {
+            "identity": "example-image",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "tool-command",
+            "value": {
+              "args": [
+                "remove",
+                "example-image"
+              ],
+              "tool": "demo-tool"
+            }
+          },
+          "sizes": {
+            "allocated": 1288490188,
+            "completeness": "complete",
+            "logical": 1288490188
+          },
+          "subject": {
+            "kind": "external",
+            "value": {
+              "id": "example-image",
+              "tool": "demo-tool"
+            }
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "example-image"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.volumes",
+          "danger": "high",
+          "id": 4,
+          "key": {
+            "identity": "example-volume",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "tool-command",
+            "value": {
+              "args": [
+                "remove",
+                "example-volume"
+              ],
+              "tool": "demo-tool"
+            }
+          },
+          "sizes": {
+            "allocated": 536870912,
+            "completeness": "complete",
+            "logical": 536870912
+          },
+          "subject": {
+            "kind": "external",
+            "value": {
+              "id": "example-volume",
+              "tool": "demo-tool"
+            }
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "example-volume"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.caches",
+          "danger": "safe",
+          "id": 5,
+          "key": {
+            "identity": "com.example.browser",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "empty-folder",
+            "value": "/demo/Library/Caches/com.example.browser"
+          },
+          "sizes": {
+            "allocated": 2147483648,
+            "completeness": "partial",
+            "logical": 2147483648
+          },
+          "subject": {
+            "kind": "path",
+            "value": "/demo/Library/Caches/com.example.browser"
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "com.example.browser"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.downloads",
+          "danger": "low",
+          "id": 6,
+          "key": {
+            "identity": "example-archive.zip",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "move-to-trash",
+            "value": "/demo/Downloads/example-archive.zip"
+          },
+          "sizes": {
+            "allocated": 52428800,
+            "completeness": "complete",
+            "logical": 52428800
+          },
+          "subject": {
+            "kind": "path",
+            "value": "/demo/Downloads/example-archive.zip"
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "example-archive.zip"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.images",
+          "danger": "medium",
+          "id": 7,
+          "key": {
+            "identity": "example-builder",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "tool-command",
+            "value": {
+              "args": [
+                "remove",
+                "example-builder"
+              ],
+              "tool": "demo-tool"
+            }
+          },
+          "sizes": {
+            "allocated": 805306368,
+            "completeness": "complete",
+            "logical": 805306368
+          },
+          "subject": {
+            "kind": "external",
+            "value": {
+              "id": "example-builder",
+              "tool": "demo-tool"
+            }
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "example-builder"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        },
+        {
+          "category": "demo.caches",
+          "danger": "medium",
+          "id": 8,
+          "key": {
+            "identity": "com.example.music",
+            "module": "demo"
+          },
+          "module": "demo",
+          "reason": {
+            "args": {},
+            "key": "demo.finding.reason"
+          },
+          "removal": {
+            "kind": "move-to-trash",
+            "value": "/demo/Library/Caches/com.example.music"
+          },
+          "sizes": {
+            "allocated": 3221225472,
+            "completeness": "complete",
+            "logical": 3221225472
+          },
+          "subject": {
+            "kind": "path",
+            "value": "/demo/Library/Caches/com.example.music"
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "com.example.music"
+              }
+            },
+            "key": "demo.finding.title"
+          }
+        }
+      ],
+      "scan": 1,
+      "type": "findings-added"
+    },
+    {
+      "module": "demo",
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1,
+      "type": "module-finished"
+    },
+    {
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1,
+      "type": "scan-finished"
+    }
+  ],
+  "overview": {
+    "lastScan": {
+      "finished": 1763200000,
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1
+    },
+    "status": {
+      "state": "idle"
+    },
+    "totals": [
+      {
+        "category": "demo.caches",
+        "count": 3,
+        "highestDanger": "medium",
+        "sizes": {
+          "allocated": 6102712320,
+          "completeness": "partial",
+          "logical": 6102712320
+        }
+      },
+      {
+        "category": "demo.downloads",
+        "count": 2,
+        "highestDanger": "low",
+        "sizes": {
+          "allocated": 320864256,
+          "completeness": "complete",
+          "logical": 320864256
+        }
+      },
+      {
+        "category": "demo.images",
+        "count": 2,
+        "highestDanger": "medium",
+        "sizes": {
+          "allocated": 2093796556,
+          "completeness": "complete",
+          "logical": 2093796556
+        }
+      },
+      {
+        "category": "demo.volumes",
+        "count": 1,
+        "highestDanger": "high",
+        "sizes": {
+          "allocated": 536870912,
+          "completeness": "complete",
+          "logical": 536870912
+        }
+      }
+    ]
+  }
+}

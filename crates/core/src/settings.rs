@@ -1,0 +1,366 @@
+//! Settings: their keys, kinds and values, and the check of a value against its descriptor. Pure: the file is the
+//! `SettingsStore` port's.
+
+mod core_schema;
+mod folders;
+pub(crate) mod schema;
+
+use std::borrow::Borrow;
+use std::fmt;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
+
+use crate::TextKey;
+
+/// The key of a setting: `core.<name>` or `<module>.<name>`, dot-separated kebab-case segments (`core.scan.roots`).
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, TS)]
+pub struct SettingKey(String);
+
+impl SettingKey {
+    pub fn new(key: impl Into<String>) -> Result<Self, SettingError> {
+        let key = key.into();
+        match TextKey::new(key.as_str()) {
+            Ok(_) => Ok(Self(key)),
+            Err(_) => Err(SettingError::InvalidKey { key }),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// The first segment: `core` or a module id.
+    pub fn namespace(&self) -> &str {
+        self.0.split('.').next().unwrap_or_default()
+    }
+
+    /// The key of the setting's label: `<key>.label`.
+    pub fn label_key(&self) -> TextKey {
+        TextKey::from_valid(format!("{}.label", self.0))
+    }
+
+    /// The key of the setting's description: `<key>.description`.
+    pub fn description_key(&self) -> TextKey {
+        TextKey::from_valid(format!("{}.description", self.0))
+    }
+}
+
+impl Borrow<str> for SettingKey {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for SettingKey {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.0)
+    }
+}
+
+/// What kind of value a setting holds, and its limits.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum SettingKind {
+    Switch,
+    Number {
+        #[ts(type = "number")]
+        min: i64,
+        #[ts(type = "number")]
+        max: i64,
+        unit: Option<Unit>,
+    },
+    Choice {
+        options: Vec<&'static str>,
+    },
+    Folders,
+}
+
+/// The unit a number is shown in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum Unit {
+    Bytes,
+    Days,
+}
+
+/// The value of a setting. Folders are kept as written: `~` stands for the home folder, which the app fills in.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", content = "value", rename_all = "kebab-case")]
+pub enum SettingValue {
+    Switch(bool),
+    Number(#[ts(type = "number")] i64),
+    Choice(String),
+    Folders(Vec<PathBuf>),
+}
+
+impl SettingValue {
+    /// The value as it is stored in the settings file: a plain JSON value, without a tag.
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            Self::Switch(on) => (*on).into(),
+            Self::Number(number) => (*number).into(),
+            Self::Choice(choice) => choice.as_str().into(),
+            Self::Folders(folders) => folders.iter().map(|folder| folder.to_string_lossy().into_owned()).collect(),
+        }
+    }
+}
+
+/// A setting a module (or the core) offers; its label and description are found by convention.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+pub struct SettingDescriptor {
+    key: SettingKey,
+    kind: SettingKind,
+    default: SettingValue,
+}
+
+/// Why a setting descriptor was refused.
+#[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
+pub enum SettingError {
+    #[error("`{key}` is not a setting key: two or more dot-separated kebab-case segments")]
+    InvalidKey { key: String },
+    #[error("the default of `{key}` does not fit its kind")]
+    BadDefault { key: SettingKey },
+}
+
+/// What is wrong with a value; the setting keeps its default. Reported to the user, never a crash.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum SettingProblem {
+    UnknownKey {
+        key: String,
+    },
+    WrongType {
+        key: SettingKey,
+    },
+    OutOfRange {
+        key: SettingKey,
+        #[ts(type = "number")]
+        min: i64,
+        #[ts(type = "number")]
+        max: i64,
+    },
+    UnknownChoice {
+        key: SettingKey,
+    },
+    /// A folder that is not `~`, `~/…` or a plain absolute path, or that is a protected system folder.
+    RefusedFolder {
+        key: SettingKey,
+        folder: PathBuf,
+    },
+}
+
+impl SettingDescriptor {
+    /// A setting whose default fits its kind (a number in its range, a choice from its list).
+    pub fn new(key: SettingKey, kind: SettingKind, default: SettingValue) -> Result<Self, SettingError> {
+        let descriptor = Self { key, kind, default };
+        match descriptor.check(&descriptor.default) {
+            Ok(()) => Ok(descriptor),
+            Err(_) => Err(SettingError::BadDefault { key: descriptor.key }),
+        }
+    }
+
+    pub const fn key(&self) -> &SettingKey {
+        &self.key
+    }
+
+    pub const fn kind(&self) -> &SettingKind {
+        &self.kind
+    }
+
+    pub const fn default(&self) -> &SettingValue {
+        &self.default
+    }
+
+    /// Checks `value` against the setting's kind and limits.
+    pub fn check(&self, value: &SettingValue) -> Result<(), SettingProblem> {
+        match (&self.kind, value) {
+            (SettingKind::Switch, SettingValue::Switch(_)) => Ok(()),
+            (SettingKind::Folders, SettingValue::Folders(folders)) => {
+                match folders.iter().find(|folder| !folders::is_allowed(folder)) {
+                    None => Ok(()),
+                    Some(folder) => {
+                        Err(SettingProblem::RefusedFolder { key: self.key.clone(), folder: folder.clone() })
+                    }
+                }
+            }
+            (&SettingKind::Number { min, max, .. }, &SettingValue::Number(number)) => {
+                if (min..=max).contains(&number) {
+                    Ok(())
+                } else {
+                    Err(SettingProblem::OutOfRange { key: self.key.clone(), min, max })
+                }
+            }
+            (SettingKind::Choice { options }, SettingValue::Choice(choice)) => {
+                if options.contains(&choice.as_str()) {
+                    Ok(())
+                } else {
+                    Err(SettingProblem::UnknownChoice { key: self.key.clone() })
+                }
+            }
+            _ => Err(SettingProblem::WrongType { key: self.key.clone() }),
+        }
+    }
+
+    /// Reads a stored JSON value as this setting's value, and checks it.
+    pub fn read(&self, stored: &serde_json::Value) -> Result<SettingValue, SettingProblem> {
+        let value = match (&self.kind, stored) {
+            (SettingKind::Switch, serde_json::Value::Bool(on)) => Some(SettingValue::Switch(*on)),
+            (SettingKind::Number { .. }, serde_json::Value::Number(number)) => {
+                number.as_i64().map(SettingValue::Number)
+            }
+            (SettingKind::Choice { .. }, serde_json::Value::String(choice)) => {
+                Some(SettingValue::Choice(choice.clone()))
+            }
+            (SettingKind::Folders, serde_json::Value::Array(items)) => items
+                .iter()
+                .map(|item| item.as_str().map(PathBuf::from))
+                .collect::<Option<Vec<_>>>()
+                .map(SettingValue::Folders),
+            _ => None,
+        };
+        let value = value.ok_or_else(|| SettingProblem::WrongType { key: self.key.clone() })?;
+        self.check(&value)?;
+        Ok(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    mod negative {
+        use serde_json::json;
+
+        use crate::{SettingDescriptor, SettingError, SettingKey, SettingKind, SettingProblem, SettingValue};
+
+        fn days() -> SettingDescriptor {
+            let kind = SettingKind::Number { min: 1, max: 365, unit: Some(crate::Unit::Days) };
+            SettingDescriptor::new(SettingKey::new("demo.min-age").unwrap(), kind, SettingValue::Number(30)).unwrap()
+        }
+
+        #[test]
+        fn rejects_an_invalid_setting_key() {
+            for key in ["", "demo", "demo.", "Demo.age", "demo..age"] {
+                assert_eq!(SettingKey::new(key), Err(SettingError::InvalidKey { key: key.into() }), "{key:?}");
+            }
+        }
+
+        #[test]
+        fn rejects_a_default_that_does_not_fit() {
+            let key = SettingKey::new("demo.mode").unwrap();
+            let choice = SettingKind::Choice { options: vec!["fast", "full"] };
+
+            let error = SettingDescriptor::new(key.clone(), choice, SettingValue::Choice("slow".into()));
+
+            assert_eq!(error, Err(SettingError::BadDefault { key }));
+        }
+
+        #[test]
+        fn rejects_a_number_outside_its_range() {
+            let key = SettingKey::new("demo.min-age").unwrap();
+            let problem = SettingProblem::OutOfRange { key, min: 1, max: 365 };
+
+            assert_eq!(days().check(&SettingValue::Number(0)), Err(problem.clone()));
+            assert_eq!(days().read(&json!(366)), Err(problem));
+        }
+
+        #[test]
+        fn rejects_a_choice_not_in_the_list() {
+            let key = SettingKey::new("demo.mode").unwrap();
+            let kind = SettingKind::Choice { options: vec!["fast", "full"] };
+            let mode = SettingDescriptor::new(key.clone(), kind, SettingValue::Choice("fast".into())).unwrap();
+
+            assert_eq!(mode.read(&json!("slow")), Err(SettingProblem::UnknownChoice { key }));
+        }
+
+        #[test]
+        fn rejects_a_stored_value_of_the_wrong_type() {
+            let key = SettingKey::new("demo.min-age").unwrap();
+
+            for stored in [json!("30"), json!(1.5), json!(true), json!(null), json!([30])] {
+                assert_eq!(days().read(&stored), Err(SettingProblem::WrongType { key: key.clone() }), "{stored}");
+            }
+            assert_eq!(days().check(&SettingValue::Switch(true)), Err(SettingProblem::WrongType { key }));
+        }
+
+        #[test]
+        fn rejects_a_relative_or_protected_folder() {
+            let key = SettingKey::new("demo.roots").unwrap();
+            let roots =
+                SettingDescriptor::new(key.clone(), SettingKind::Folders, SettingValue::Folders(vec![])).unwrap();
+            let refused = |folder: &str| SettingProblem::RefusedFolder { key: key.clone(), folder: folder.into() };
+
+            assert_eq!(roots.read(&json!(["~", "/System"])), Err(refused("/System")));
+            assert_eq!(roots.read(&json!(["~/../.."])), Err(refused("~/../..")));
+            assert_eq!(roots.check(&SettingValue::Folders(vec!["Projects".into()])), Err(refused("Projects")));
+            assert_eq!(roots.check(&SettingValue::Folders(vec!["/".into()])), Err(refused("/")));
+        }
+
+        #[test]
+        fn rejects_folders_that_are_not_strings() {
+            let key = SettingKey::new("demo.roots").unwrap();
+            let roots =
+                SettingDescriptor::new(key.clone(), SettingKind::Folders, SettingValue::Folders(vec![])).unwrap();
+
+            assert_eq!(roots.read(&json!(["~", 1])), Err(SettingProblem::WrongType { key }));
+        }
+    }
+
+    mod positive {
+        use serde_json::json;
+
+        use crate::{SettingDescriptor, SettingKey, SettingKind, SettingValue};
+
+        #[test]
+        fn derives_the_label_and_description_keys() {
+            let key = SettingKey::new("demo.min-age").unwrap();
+
+            assert_eq!(key.label_key().as_str(), "demo.min-age.label");
+            assert_eq!(key.description_key().as_str(), "demo.min-age.description");
+            assert_eq!(key.namespace(), "demo");
+            assert_eq!(key.to_string(), "demo.min-age");
+        }
+
+        #[test]
+        fn reads_every_kind_from_plain_json() {
+            let read = |kind: SettingKind, default: SettingValue, stored: serde_json::Value| {
+                SettingDescriptor::new(SettingKey::new("demo.value").unwrap(), kind, default).unwrap().read(&stored)
+            };
+
+            assert_eq!(
+                read(SettingKind::Switch, SettingValue::Switch(true), json!(false)),
+                Ok(SettingValue::Switch(false))
+            );
+            assert_eq!(
+                read(SettingKind::Number { min: 0, max: 9, unit: None }, SettingValue::Number(1), json!(9)),
+                Ok(SettingValue::Number(9))
+            );
+            assert_eq!(
+                read(SettingKind::Choice { options: vec!["a", "b"] }, SettingValue::Choice("a".into()), json!("b")),
+                Ok(SettingValue::Choice("b".into()))
+            );
+            assert_eq!(
+                read(SettingKind::Folders, SettingValue::Folders(vec![]), json!(["~", "/Volumes/Data"])),
+                Ok(SettingValue::Folders(vec!["~".into(), "/Volumes/Data".into()]))
+            );
+        }
+
+        #[test]
+        fn stores_values_as_plain_json() {
+            assert_eq!(SettingValue::Switch(true).to_json(), json!(true));
+            assert_eq!(SettingValue::Number(-3).to_json(), json!(-3));
+            assert_eq!(SettingValue::Choice("fast".into()).to_json(), json!("fast"));
+            assert_eq!(SettingValue::Folders(vec!["~".into()]).to_json(), json!(["~"]));
+        }
+
+        #[test]
+        fn serializes_a_value_with_a_kind_tag() {
+            let value = SettingValue::Number(5);
+
+            assert_eq!(serde_json::to_value(&value).unwrap(), json!({ "kind": "number", "value": 5 }));
+            assert_eq!(serde_json::from_value::<SettingValue>(json!({ "kind": "number", "value": 5 })).unwrap(), value);
+        }
+    }
+}

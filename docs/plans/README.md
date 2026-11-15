@@ -36,13 +36,13 @@ measured, decided, learned) and the user has looked at its result.
 
 ## Priority list
 
-Rows are in priority order: the order they are implemented in. The 📝 drafts are listed by number; their order is set
-when they are approved.
+Rows are in priority order: the order they are implemented in — 001, then 002. The 📝 drafts below them are listed by
+number; their order is set when they are approved.
 
 | #   | Global plan                                          | Status         | Version | Modules                  |
 | --- | ---------------------------------------------------- | -------------- | ------- | ------------------------ |
 | 001 | [Repository setup](./001-repository-setup/readme.md) | ✔️ done | 0.0.1   | repo, ci, workspace, app |
-| 002 | [Base architecture](./002-base-architecture/readme.md) | 📝 draft       | 0.1.0   | core, engine, store, modules, app |
+| 002 | [Base architecture](./002-base-architecture/readme.md) | ✔️ done       | 0.1.0   | core, engine, store, modules, rules, testing, app |
 | 003 | [Base UI](./003-base-ui/readme.md)                     | 📝 draft       | 0.2.0   | app/ui, app/tauri        |
 | 004 | [Fast scan and search](./004-fast-scan/readme.md)      | 📝 draft       | 0.3.0   | macos, scanner, store, engine |
 | 005 | [Settings](./005-settings/readme.md) | 📝 draft | 0.4.0 | core, store, engine, app/ui |

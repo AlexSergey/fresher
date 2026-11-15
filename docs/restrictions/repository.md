@@ -33,7 +33,8 @@
 
 ## Generated and protected files
 
-- **Rule:** `Cargo.lock`, `package-lock.json`, `app/tauri/gen/` and `*.generated.ts` are never edited by hand. No file
+- **Rule:** `Cargo.lock`, `package-lock.json`, `app/tauri/gen/` and `*.generated.ts` (such as
+  `app/ui/src/ipc/bindings.generated.ts`, the IPC types generated from the core's Rust types) are never edited by hand. No file
   over 1 MiB, no database, no `.env`, no signing key and no personal IDE folder (`.idea/`) is committed.
 - **Why:** generated files are rewritten by their tools; large or secret files do not belong in git.
 - **Enforced by:** `.gitignore`; the staged-files guard and gitleaks in the pre-commit hook (plan 001).

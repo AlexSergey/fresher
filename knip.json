@@ -5,6 +5,8 @@
       "entry": ["scripts/*.ts"],
       "ignoreBinaries": ["gitleaks", "rustfmt", "taplo", "typos"]
     },
-    "app/ui": {}
+    "app/ui": {
+      "ignore": ["src/**/*.generated.ts"]
+    }
   }
 }

@@ -54,3 +54,49 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **Where:** `scripts/check-staged.test.ts`, `eslint.config.ts` (`scriptTestOverrides`).
 - **Why:** the scripts run on Node's own TypeScript support with no build; `node --test` needs no dependency.
 - **If cleaned up:** applying the Vitest rules to them reports every `node:test` import and `describe` call.
+
+## No disk walk until plan 004
+
+- **What:** the app wires `NoWalk`, a `DiskWalk` that finds nothing; a scan in the app runs only the modules with no
+  interests (the `demo` module in debug builds).
+- **Where:** `app/tauri/src/adapters.rs` (`NoWalk`), `app/tauri/src/compose.rs`.
+- **Why:** the fast walk is plan [004](../plans/004-fast-scan/readme.md); plan 002 proves the path UI → engine → module
+  → events without it.
+- **If cleaned up:** removing it before plan 004 leaves the engine without a walk; plan 004 replaces it with
+  `fresher-scanner`'s walk.
+
+## Access answers Unknown until plan 006
+
+- **What:** `UnknownAccess` answers `Unknown` for Full Disk Access, whatever macOS says.
+- **Where:** `app/tauri/src/adapters.rs` (`UnknownAccess`), `app/tauri/src/compose.rs`.
+- **Why:** asking macOS needs the FFI module of `fresher-macos` (plans 004/02 and 006); the UI must not claim access
+  it cannot check.
+- **If cleaned up:** answering `Granted` or `Denied` without a probe shows the user a permission state that is not
+  true.
+
+## CACHEDIR.TAG read by the rules
+
+- **What:** `fresher-rules` reads the first 43 bytes of a `CACHEDIR.TAG` itself, because a `Match` does not carry
+  whether the tag is valid; the matcher is pure for every other rule.
+- **Where:** `crates/rules/src/cachedir.rs`.
+- **Why:** the core was frozen when the matcher was built (plan 002/06/02); a `Match` says only that the folder holds
+  the marker. Plan 004's walk should report the tag's validity (a field of `Match`), and the read moves to the scanner.
+- **If cleaned up:** dropping the read makes any file named `CACHEDIR.TAG` mark a folder as a cache, which a rule must
+  not trust.
+
+## Command arguments by value
+
+- **What:** `#![expect(clippy::needless_pass_by_value)]` on the shell's commands.
+- **Where:** `app/tauri/src/commands.rs`.
+- **Why:** `#[tauri::command]` hands a command its `State` and its inputs by value; a reference cannot be taken.
+- **If cleaned up:** removing the `expect` fails Clippy on every command.
+
+## The demo module linked in release builds
+
+- **What:** `fresher-module-demo` is a normal dependency of the app, but it is registered only under
+  `cfg(debug_assertions)`.
+- **Where:** `app/tauri/Cargo.toml`, `app/tauri/src/compose.rs`.
+- **Why:** Cargo does not support `cfg(debug_assertions)` in a target-specific dependency table; plan 007's dev-tools
+  feature takes the module over.
+- **If cleaned up:** removing the `cfg` registers made-up findings in the shipped app; removing the dependency breaks
+  debug builds.

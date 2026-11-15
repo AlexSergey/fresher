@@ -100,7 +100,7 @@ More commands — tests, coverage, linting — are in [`docs/quality.md`](docs/q
 
 | Part      | Stack                                                                    |
 | --------- | ------------------------------------------------------------------------ |
-| Core      | Rust: scanner, rules, SQLite snapshots, cleaner                          |
+| Core      | Rust: engine, modules, scanner, rules, plain versioned files, cleaner    |
 | Shell     | Tauri 2                                                                  |
 | Interface | React + TypeScript                                                       |
 | Quality   | Clippy pedantic, cargo-deny, ESLint strict, 90 % coverage, git hooks, CI |

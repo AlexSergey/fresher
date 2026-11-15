@@ -54,9 +54,10 @@ Beyond plain caches, the rules recognize leftovers that generic tools miss, for 
 
 ### 5. Watch mode: who keeps growing
 
-The app keeps its own state in a local SQLite database. Every scan saves a snapshot; the next scan compares against it
-and shows which apps and categories grew, by how much, and since when — so an app that keeps accumulating junk is named,
-not guessed.
+The app keeps its own state in small versioned files in its own folder, with nothing to install (plan
+[002](./plans/002-base-architecture/readme.md)). It keeps the last two scans (plan 004) and a history point per scan
+(plan 010); a scan is compared against them and the app shows which apps and categories grew, by how much, and since
+when — so an app that keeps accumulating junk is named, not guessed.
 
 ### 6. A simple, premium interface
 
@@ -74,7 +75,7 @@ The app sees the whole disk, so it must be trustworthy by construction, not by p
 - **Enforced, not just promised**: no HTTP client in the dependency tree (cargo-deny bans them), no network permission
   in the Tauri capabilities, a Content Security Policy with no remote origin in the UI
   ([`restrictions/privacy.md`](./restrictions/privacy.md)).
-- **Local data stays local and minimal**: scan snapshots and settings live only in the app's own folder in
+- **Local data stays local and minimal**: the scan cache, history and settings live only in the app's own folder in
   `~/Library/Application Support/`; file contents are never read beyond what a rule needs to identify a folder, and
   never stored or logged.
 - **Least privilege**: Full Disk Access is asked for only when needed, with a plain-English reason; the app works with

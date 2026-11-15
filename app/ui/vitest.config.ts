@@ -12,6 +12,8 @@ export default defineConfig({
       reportsDirectory: '../../coverage/ui',
       thresholds: { branches: 90, functions: 90, lines: 90, statements: 90 },
     },
+    // Dates in tests are formatted in UTC, whatever the machine's time zone.
+    env: { TZ: 'UTC' },
     environment: 'happy-dom',
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,

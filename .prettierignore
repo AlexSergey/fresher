@@ -5,6 +5,7 @@ dist
 coverage
 node_modules
 app/tauri/gen
+*.generated.ts
 fixtures/golden
 playwright-report
 test-results

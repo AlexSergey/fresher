@@ -4,28 +4,7 @@
 
 // Helpers of an integration test are test code too; `cfg(test)` lets Clippy's in-test allowances apply to them.
 #[cfg(test)]
-mod support {
-    use std::path::PathBuf;
-
-    use fresher_testing::TreeReport;
-
-    pub(crate) fn fixtures() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures")
-    }
-
-    pub(crate) fn check_golden(name: &str, report: &TreeReport) {
-        let golden = fixtures().join("golden").join(format!("{name}.json"));
-        let actual = serde_json::to_string_pretty(report).unwrap() + "\n";
-
-        if std::env::var_os("UPDATE_GOLDEN").is_some() {
-            std::fs::write(&golden, actual).unwrap();
-            return;
-        }
-
-        let expected = std::fs::read_to_string(&golden).unwrap();
-        assert_eq!(actual, expected, "{name}: the report differs from {}", golden.display());
-    }
-}
+mod support;
 
 mod negative {
     use fresher_testing::{FixtureTree, TreeEntry, TreeReport};

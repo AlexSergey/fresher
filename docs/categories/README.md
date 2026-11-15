@@ -1,8 +1,10 @@
 # Categories
 
 The catalogue of everything the app can name on a disk. Every category the app shows has a file here, and every file
-here matches a rule in `crates/rules`. A category that is not documented here is not shipped (rule 3 of
-[`../rules.md`](../rules.md)).
+here matches a category of a module. A category that is not documented here is not shipped (rule 3 of
+[`../rules.md`](../rules.md)): each module's contract test (`assert_module_contract` of `fresher-testing` with
+`Catalogue::Required`) fails for a category without its file or with another danger level in it. The dev-only `demo`
+module has no files here. How a module is written: [`../architecture/modules.md`](../architecture/modules.md).
 
 There is no "Other", "Miscellaneous" or "System data" category. Space no rule recognizes is shown as its real folders.
 
@@ -23,7 +25,8 @@ for example a `node_modules` of a project touched yesterday.
 
 ## Format
 
-One file per category, `<area>-<name>.md` (`dev-`, `docker-`, `jetbrains-`, `system-`, `app-`):
+One file per category: category `<module>.<name>` is documented in `<module>-<name>.md` (`docker.images` in
+`docker-images.md`). The contract test reads the danger level from the `**Danger level:**` line.
 
 ```markdown
 # <Category name, as shown in the app>

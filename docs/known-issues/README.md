@@ -26,6 +26,8 @@ One file per issue, named `<part>-<name>.md` (`core-`, `scanner-`, `rules-`, `st
 
 When an issue is fixed, its file stays with the status `fixed` and a link to the change.
 
-| Issue                                                                                | Part | Status | What                                                                                        |
-| ------------------------------------------------------------------------------------ | ---- | ------ | ------------------------------------------------------------------------------------------- |
-| [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md) | repo | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only) |
+| Issue                                                                                | Part  | Status | What                                                                                        |
+| ------------------------------------------------------------------------------------ | ----- | ------ | ------------------------------------------------------------------------------------------- |
+| [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md) | repo  | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only) |
+| [Stale temporary files in the data folder](./store-stale-temporary-files.md)         | store | open   | a crash during an atomic write leaves a `.<target>.<random>.tmp` file that nothing removes  |
+| [The UI keeps every finding of a scan in memory](./ui-findings-kept-in-memory.md)    | ui   | open   | the store holds every streamed finding; a batch copies each group it touches (paging: plan 003) |

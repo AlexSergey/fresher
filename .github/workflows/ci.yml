@@ -37,6 +37,7 @@ jobs:
         run: bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
       - run: ./actionlint -color
       - run: npm run lint
+      - run: npm run check:crate-deps
       - run: npm run knip
       - run: npm run check:machete
       - run: npm run check:deny
