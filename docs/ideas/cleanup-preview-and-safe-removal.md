@@ -19,7 +19,8 @@ the idea is how the screen and the flow look:
   symlink); a changed item is skipped and reported.
 - Trash first; a separate, explicit "delete permanently" choice; protected system paths cannot be selected at all.
 - A result screen: what was freed, what was skipped and why, and "Open Trash" to undo.
-- A local history of cleanups (in the SQLite store) so the user can see what was removed and when.
+- A local history of cleanups (in the SQLite store) so the user can see what was removed and when. *Decided later:
+  plain files, not SQLite — [plan 002, decision 1](../plans/002-base-architecture/00-design.md).*
 
 Open questions:
 

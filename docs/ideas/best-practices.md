@@ -35,7 +35,8 @@ techniques are in [`architecture/`](./architecture/README.md).
 - Sunburst and treemap views that build live during the scan, with an adjustable number of levels.
 - An age heatmap: the treemap coloured by last-modified date.
 - A "collector" tray: items are gathered while browsing, reviewed together, then moved to the Trash.
-- Saved scans that reopen instantly, and scans stored in SQLite for later comparison.
+- Saved scans that reopen instantly, and scans stored in SQLite for later comparison. *We keep plain files, not
+  SQLite — [plan 002, decision 1](../plans/002-base-architecture/00-design.md).*
 - A read-only mode, and a setting that switches off permanent delete entirely.
 - Ignore files in gitignore syntax.
 - Sizes marked complete, partial (`42 GB+`) or unknown — an unmeasured size is never shown as 0.

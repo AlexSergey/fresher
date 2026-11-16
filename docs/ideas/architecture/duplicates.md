@@ -25,7 +25,8 @@ device type (an SSD takes more parallel reads than a spinning disk).
 - Cache hashes between runs, keyed by `(device, inode, chunk position, chunk length)`; an entry is valid only while
   size and modification time match.
 - Cache only files above a minimum size; small files are cheaper to rehash than to look up.
-- Our cache lives in the same SQLite store as the snapshots.
+- Our cache lives in the same SQLite store as the snapshots. *Decided later: plain files, not SQLite —
+  [plan 002, decision 1](../../plans/002-base-architecture/00-design.md).*
 
 ## Acting on duplicates
 

@@ -9,7 +9,9 @@
   `(parent_id, name)`.
 - Bulk inserts in one transaction; fast write settings while a snapshot is written, then back to safe ones.
 - Other tools store scans as a JSON export or a compressed binary stream (blocks of CBOR under zstd with an index
-  block); SQLite fits us better because the store also holds settings, history and the hash cache.
+  block); SQLite fits us better because the store also holds settings, history and the hash cache. *Decided later:
+  plain files, not SQLite — [plan 002, decision 1](../../plans/002-base-architecture/00-design.md); the scan cache is
+  plan 004's compact binary file.*
 - Store per-category totals with each snapshot, so the history screen never needs to load whole trees.
 
 ## Diffing two scans (watch mode)

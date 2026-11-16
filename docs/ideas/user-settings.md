@@ -10,7 +10,8 @@ never wants to see. Hardcoded defaults either miss things or nag about things th
 ## Direction
 
 - A settings screen for the user's preferences, stored in the app's local SQLite database next to the snapshots (one
-  place for all of the app's state; nothing leaves the Mac).
+  place for all of the app's state; nothing leaves the Mac). *Decided later: settings are a versioned JSON file, not
+  SQLite — [plan 002, decision 1](../plans/002-base-architecture/00-design.md).*
 - First candidates:
   - the age threshold of a stale project ([`stale-project-cleanup.md`](./stale-project-cleanup.md));
   - the folders scanned for projects;
