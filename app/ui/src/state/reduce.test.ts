@@ -36,8 +36,20 @@ const SETTINGS: SettingsView = {
     { key: 'demo.enabled', kind: 'wrong-type' },
   ],
   settings: [
-    { default: { kind: 'switch', value: true }, key: 'demo.enabled', kind: { kind: 'switch' } },
-    { default: { kind: 'number', value: 8 }, key: 'demo.count', kind: { kind: 'number', max: 50, min: 1, unit: null } },
+    {
+      default: { kind: 'switch', value: true },
+      effect: 'next-scan',
+      group: 'module',
+      key: 'demo.enabled',
+      kind: { kind: 'switch' },
+    },
+    {
+      default: { kind: 'number', value: 8 },
+      effect: 'next-scan',
+      group: 'module',
+      key: 'demo.count',
+      kind: { kind: 'number', max: 50, min: 1, unit: null },
+    },
   ],
   values: { 'demo.count': { kind: 'number', value: 8 }, 'demo.enabled': { kind: 'switch', value: true } },
 };
@@ -103,6 +115,7 @@ describe('reduce', () => {
             kind: { kind: 'full' },
             outcome: { kind: 'partial' },
             scan: 1,
+            settingsChanged: false,
           },
         }),
       ]);
@@ -145,12 +158,8 @@ describe('reduce', () => {
       expect(state.scan).toBe(5);
     });
 
-    it('leaves the state as it is for a setting changed before the settings arrived, a coverage and a request of a fresh overview', () => {
-      const state = run([
-        changed('demo.count', { kind: 'number', value: 3 }),
-        { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
-        requested,
-      ]);
+    it('leaves the state as it is for a coverage and a request of a fresh overview', () => {
+      const state = run([{ coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' }, requested]);
 
       expect(state).toBe(INITIAL_STATE);
     });
@@ -280,6 +289,13 @@ describe('reduce', () => {
       expect(state.settings?.values['demo.count']).toEqual({ kind: 'number', value: 3 });
       expect(state.settings?.values['demo.enabled']).toEqual({ kind: 'switch', value: true });
       expect(state.settings?.problems).toEqual([{ key: 'demo.enabled', kind: 'wrong-type' }]);
+    });
+
+    it('a setting-changed event asks for the overview again, even before the settings arrived', () => {
+      const state = run([changed('core.ignore.categories', { kind: 'ids', value: ['demo.caches'] })]);
+
+      expect(state.stale).toBe(true);
+      expect(state.settings).toBeNull();
     });
 
     it('an access-changed event replaces the access status', () => {

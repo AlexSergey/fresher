@@ -11,6 +11,8 @@ export const problemText = (problem: SettingProblem): string => {
       return t('ui.settings-row.problem.out-of-range', { max: count(problem.max), min: count(problem.min) });
     case 'refused-folder':
       return t('ui.settings-row.problem.refused-folder', { folder: { kind: 'path', value: problem.folder } });
+    case 'refused-id':
+      return t('ui.settings-row.problem.refused-id', { id: { kind: 'text', value: problem.id } });
     case 'unknown-choice':
       return t('ui.settings-row.problem.unknown-choice');
     case 'unknown-key':

@@ -13,7 +13,9 @@
   }
 
   .row[data-kind='number'],
-  .row[data-kind='folders'] {
+  .row[data-kind='folders'],
+  .row[data-kind='ids'],
+  .row[data-kind='paths'] {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -45,12 +47,16 @@
   }
 
   .row[data-kind='number'] .control,
-  .row[data-kind='folders'] .control {
+  .row[data-kind='folders'] .control,
+  .row[data-kind='ids'] .control,
+  .row[data-kind='paths'] .control {
     display: block;
     max-width: 320px;
   }
 
-  .row[data-kind='folders'] .control {
+  .row[data-kind='folders'] .control,
+  .row[data-kind='ids'] .control,
+  .row[data-kind='paths'] .control {
     max-width: none;
   }
 
@@ -63,11 +69,24 @@
     list-style: none;
   }
 
-  /* A grid, so the path fills the row's width and is cut only when it does not fit. */
+  .folderList {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  /* A grid, so the path fills the row's width and is cut only when it does not fit; Remove stays at its end. */
   .folder {
     display: grid;
     min-width: 0;
+    align-items: center;
     padding: var(--space-1) var(--space-3);
+    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .reset {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .empty {

@@ -188,6 +188,24 @@ describe('ModuleScreen', () => {
   });
 
   describe('positive cases', () => {
+    it('Ignore on a category asks the core to ignore it', async () => {
+      const ignored: unknown[] = [];
+      core({
+        ignore: (args) => {
+          ignored.push((args as { readonly target: unknown }).target);
+
+          return null;
+        },
+      });
+      await renderPage();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Ignore Example caches' }));
+
+      await vi.waitFor(() => {
+        expect(ignored).toEqual([{ category: 'demo.caches', kind: 'category' }]);
+      });
+    });
+
     it('sections follow size order', async () => {
       core({ getOverview: () => DOWNLOADS_LARGEST });
 

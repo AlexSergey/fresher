@@ -5,8 +5,10 @@ import type { CategoryDescriptor, CategoryId, CategoryTotal, ModuleId } from '..
 import { DangerBadge } from '../../design/data/danger-badge/danger-badge';
 import { SizeText } from '../../design/data/size-text/size-text';
 import { TreeRow } from '../../design/data/tree-row/tree-row';
+import { Button } from '../../design/primitives/button/button';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
 import { t, tText } from '../../i18n';
+import { failureOf, ignore } from '../../ipc';
 import { FindingList } from '../../product/finding-list/finding-list';
 import { levelName } from '../../product/finding-row/texts';
 import { honestSize } from '../../product/sizes';
@@ -80,8 +82,8 @@ const About = ({ category }: { readonly category: CategoryId }): JSX.Element => 
   </details>
 );
 
-// One category of a module's page: its row (name, level, size, count, its box), what it is, and its findings when
-// expanded.
+// One category of a module's page: its row (name, level, size, count, its box), what it is, Ignore (it leaves the results
+// until it is restored in the settings), and its findings when expanded.
 export const CategorySection = ({
   category,
   expanded,
@@ -123,6 +125,19 @@ export const CategorySection = ({
         />
       </div>
       <About category={category.id} />
+      <div className={styles.ignore}>
+        <Button
+          onClick={() => {
+            ignore({ category: category.id, kind: 'category' }).catch((error: unknown) => {
+              store.dispatch({ failure: failureOf(error), type: 'command-failed' });
+            });
+          }}
+          size="small"
+          variant="ghost"
+        >
+          {t('ui.screen.module.ignore', named)}
+        </Button>
+      </div>
       {expanded ? (
         <div
           className={styles.findings}

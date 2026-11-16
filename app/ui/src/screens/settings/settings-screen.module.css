@@ -1,8 +1,8 @@
-/* The settings screen: its groups on the content column, each a raised panel of rows, and the version at the end. */
+/* The settings screen: its groups on the content column, each a raised panel of rows. */
 @layer components {
   .content {
     display: grid;
-    padding: 0 var(--content-inset, var(--size-gutter));
+    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-8);
     gap: var(--space-8);
   }
 
@@ -28,10 +28,28 @@
     border-top: 1px solid var(--border-subtle);
   }
 
-  .footer {
-    padding: var(--space-8) var(--content-inset, var(--size-gutter)) var(--space-6);
-    color: var(--text-tertiary);
+  .groupText {
+    margin: 0;
+    color: var(--text-secondary);
     font-size: var(--type-footnote-size);
     line-height: var(--type-footnote-line);
+  }
+
+  /* One line of a group that is not a setting: its text, and its button at the end. */
+  .line {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) 0;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-body-size);
+    gap: var(--space-4);
+    line-height: var(--type-body-line);
+  }
+
+  .lineText {
+    min-width: 0;
   }
 }

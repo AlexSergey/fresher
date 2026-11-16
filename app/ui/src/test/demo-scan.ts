@@ -83,12 +83,21 @@ export const GRANTED: AccessStatus = allFiles('granted');
 export const DEMO_SETTINGS: SettingsView = {
   file: 'loaded',
   problems: [],
-  settings: [{ default: { kind: 'switch', value: true }, key: 'demo.enabled', kind: { kind: 'switch' } }],
+  settings: [
+    {
+      default: { kind: 'switch', value: true },
+      effect: 'next-scan',
+      group: 'module',
+      key: 'demo.enabled',
+      kind: { kind: 'switch' },
+    },
+  ],
   values: { 'demo.enabled': { kind: 'switch', value: true } },
 };
 
 export const IDLE: Overview = {
   found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+  ignored: { categories: 0, paths: 0 },
   lastScan: null,
   status: { state: 'idle' },
   totals: [],
@@ -111,12 +120,14 @@ const partial = (bytes: number): Overview['found'] => ({
 // What `get_overview` answers once the demo scan finished: its totals, as the engine sums them.
 export const DEMO_OVERVIEW: Overview = {
   found: complete(2_570_000_000),
+  ignored: { categories: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'completed' },
     scan: 1,
+    settingsChanged: false,
   },
   status: { state: 'idle' },
   totals: [
@@ -166,6 +177,7 @@ const FIRST_TOTALS: Overview['totals'] = [
 // What `get_overview` answers while the live scan is held after its first batch.
 export const DEMO_SCANNING: Overview = {
   found: complete(2_250_000_000),
+  ignored: { categories: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: FIRST_TOTALS,
@@ -179,12 +191,14 @@ export const DEMO_STOP: readonly Event[] = [
 
 export const DEMO_STOPPED: Overview = {
   found: complete(2_250_000_000),
+  ignored: { categories: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'partial' },
     scan: 1,
+    settingsChanged: false,
   },
   status: { state: 'idle' },
   totals: FIRST_TOTALS,
@@ -198,12 +212,14 @@ export const DEMO_PARTIAL_SCAN: readonly Event[] = [
 
 export const DEMO_PARTIAL: Overview = {
   found: partial(2_570_000_000),
+  ignored: { categories: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'partial' },
     scan: 1,
+    settingsChanged: false,
   },
   status: { state: 'idle' },
   totals: [
@@ -224,12 +240,14 @@ export const DEMO_FAILED_SCAN: readonly Event[] = [
 
 export const DEMO_FAILED: Overview = {
   found: complete(2_250_000_000),
+  ignored: { categories: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'failed', reason: FAILURE },
     scan: 1,
+    settingsChanged: false,
   },
   status: { state: 'idle' },
   totals: FIRST_TOTALS,
@@ -242,15 +260,25 @@ export const SETTINGS_OF_EVERY_KIND: SettingsView = {
   settings: [
     {
       default: { kind: 'number', value: 90 },
+      effect: 'next-scan',
+      group: 'scan',
       key: 'core.scan.stale-after',
       kind: { kind: 'number', max: 365, min: 1, unit: 'days' },
     },
     {
-      default: { kind: 'choice', value: 'trash' },
-      key: 'core.removal.method',
-      kind: { kind: 'choice', options: ['trash', 'permanent'] },
+      default: { kind: 'choice', value: 'system' },
+      effect: 'now',
+      group: 'general',
+      key: 'core.motion',
+      kind: { kind: 'choice', options: ['system', 'reduced'] },
     },
-    { default: { kind: 'folders', value: [] }, key: 'core.scan.roots', kind: { kind: 'folders' } },
+    {
+      default: { kind: 'folders', value: [] },
+      effect: 'next-scan',
+      group: 'scan',
+      key: 'core.scan.roots',
+      kind: { kind: 'folders' },
+    },
     ...DEMO_SETTINGS.settings,
   ],
   values: {
@@ -271,10 +299,10 @@ export const SCRIPTS_DICTIONARY: Dictionary = {
   'core.error.settings-read-only':
     'Your settings cannot be changed now: they were saved by a newer version of the app, or the settings file could ' +
     'not be read. Restart or update the app, then try again.',
-  'core.removal.method.description': 'Where removed items go. A permanent delete is still confirmed every time.',
-  'core.removal.method.label': 'Remove to',
-  'core.removal.method.options.permanent': 'Delete permanently',
-  'core.removal.method.options.trash': 'Trash',
+  'core.motion.description': 'How much the app animates.',
+  'core.motion.label': 'Motion',
+  'core.motion.options.reduced': 'Reduced',
+  'core.motion.options.system': 'Follow your Mac',
   'core.scan.roots.description': 'The scan looks only inside these folders.',
   'core.scan.roots.label': 'Folders to scan',
   'core.scan.stale-after.description': 'A project untouched for this long counts as stale.',

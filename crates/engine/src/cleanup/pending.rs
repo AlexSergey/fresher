@@ -71,7 +71,7 @@ pub(crate) fn prepare(shared: &Shared, selection: &CleanupSelection) -> Result<C
         let results = lock(&shared.results)?;
         let last = results.last().ok_or(CommandError::NoScan)?;
         let categories: Vec<_> = shared.registry.categories().map(CategoryDescriptor::id).collect();
-        let selected: Vec<_> = plan::expand(selection, results.findings(), &categories)?.into_iter().cloned().collect();
+        let selected: Vec<_> = plan::expand(selection, &results.visible(), &categories)?.into_iter().cloned().collect();
         (last.scan, results.roots().to_vec(), selected)
     };
     let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?;

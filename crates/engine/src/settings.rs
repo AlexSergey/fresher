@@ -4,12 +4,11 @@
 use std::path::PathBuf;
 
 use fresher_core::{
-    CommandError, Event, ModuleId, ModuleSettings, ResolvedSettings, SettingKey, SettingProblem, SettingUpdate,
-    SettingValue, SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings,
+    CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_PATHS, IgnoredEntry, ModuleId, ModuleSettings,
+    ResolvedSettings, SCAN_ROOTS, SettingDescriptor, SettingEffect, SettingKey, SettingUpdate, SettingValue,
+    SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings, Subject,
 };
 
-/// The core's setting of the folders a scan walks.
-const SCAN_ROOTS: &str = "core.scan.roots";
 /// The switch the schema adds for every module: `<module>.enabled`.
 const ENABLED: &str = "enabled";
 
@@ -56,20 +55,107 @@ impl Settings {
         let descriptor = self.schema.get(&key).ok_or(CommandError::UnknownSetting { key })?;
         let key = descriptor.key().clone();
         descriptor.check(&value).map_err(|_| CommandError::InvalidSettingValue { key: key.clone() })?;
+        let mut stored = self.stored.clone();
+        stored.values.insert(key.as_str().into(), value.to_json());
+        self.save(stored, store)?;
+        self.take(&key, &value);
+        Ok(Event::SettingChanged { key, value })
+    }
+
+    /// Puts every setting but the ignore lists back to its default and drops every other stored key, saved once;
+    /// answers one `SettingChanged` per value that changed. Nothing is saved when nothing would change; refused on a
+    /// read-only file even then, so the screen never says the settings were reset when they could not be.
+    pub(crate) fn reset(&mut self, store: &dyn SettingsStore) -> Result<Vec<Event>, CommandError> {
         if self.file.is_read_only() {
             return Err(CommandError::SettingsReadOnly);
         }
+        let kept = |key: &str| key == IGNORE_CATEGORIES || key == IGNORE_PATHS;
+        let changed: Vec<(SettingKey, SettingValue)> = self
+            .schema
+            .descriptors()
+            .iter()
+            .filter(|setting| !kept(setting.key().as_str()))
+            .filter(|setting| self.resolved.get(setting.key().as_str()) != Some(setting.default()))
+            .map(|setting| (setting.key().clone(), setting.default().clone()))
+            .collect();
         let mut stored = self.stored.clone();
-        stored.values.insert(key.as_str().into(), value.to_json());
+        stored.values.retain(|key, _| kept(key));
+        if changed.is_empty() && stored == self.stored {
+            return Ok(Vec::new());
+        }
+        self.save(stored, store)?;
+        self.resolved.problems.retain(|problem| kept(problem.key()));
+        Ok(changed
+            .into_iter()
+            .map(|(key, value)| {
+                self.take(&key, &value);
+                Event::SettingChanged { key, value }
+            })
+            .collect())
+    }
+
+    /// The ignore lists in use.
+    pub(crate) fn ignored(&self) -> Ignored {
+        let categories = match self.resolved.get(IGNORE_CATEGORIES) {
+            Some(SettingValue::Ids(ids)) => ids.clone(),
+            _ => Vec::new(),
+        };
+        let paths = match self.resolved.get(IGNORE_PATHS) {
+            Some(SettingValue::Paths(paths)) => paths.clone(),
+            _ => Vec::new(),
+        };
+        Ignored { categories, paths }
+    }
+
+    /// Adds `entry` to its ignore list (`true`) or takes it out (`false`), through `update`; `None` when the list
+    /// already is that way.
+    pub(crate) fn set_ignored(
+        &mut self,
+        entry: &IgnoredEntry,
+        ignored: bool,
+        store: &dyn SettingsStore,
+    ) -> Result<Option<Event>, CommandError> {
+        let Ignored { mut categories, mut paths } = self.ignored();
+        let (key, value) = match entry {
+            IgnoredEntry::Category { category } => {
+                if !change_list(&mut categories, category, ignored) {
+                    return Ok(None);
+                }
+                (IGNORE_CATEGORIES, SettingValue::Ids(categories))
+            }
+            IgnoredEntry::Path { path } => {
+                if !change_list(&mut paths, path, ignored) {
+                    return Ok(None);
+                }
+                (IGNORE_PATHS, SettingValue::Paths(paths))
+            }
+        };
+        self.update(SettingUpdate { key: key.into(), value }, store).map(Some)
+    }
+
+    /// When a change of `key` shows in the results; `None` for a key the schema does not have.
+    pub(crate) fn effect(&self, key: &str) -> Option<SettingEffect> {
+        self.schema.get(key).map(SettingDescriptor::effect)
+    }
+
+    /// Saves `stored` through `store` and keeps it; refused while the file is read-only.
+    fn save(&mut self, stored: StoredSettings, store: &dyn SettingsStore) -> Result<(), CommandError> {
+        if self.file.is_read_only() {
+            return Err(CommandError::SettingsReadOnly);
+        }
         store.save(&stored).map_err(|error| {
-            tracing::warn!(%error, key = key.as_str(), "a setting could not be saved");
+            tracing::warn!(%error, "the settings could not be saved");
             CommandError::Storage
         })?;
         self.stored = stored;
         self.file = SettingsFile::Loaded;
-        self.resolved.problems.retain(|problem| problem_key(problem) != key.as_str());
+        Ok(())
+    }
+
+    /// Takes a saved value into use; its stored value's problem is gone.
+    fn take(&mut self, key: &SettingKey, value: &SettingValue) {
+        self.resolved.problems.retain(|problem| problem.key() != key.as_str());
         self.resolved.values.insert(key.clone(), value.clone());
-        Ok(Event::SettingChanged { key, value })
     }
 
     /// The folders a scan walks, as written (`~` is filled in by the walk's adapter).
@@ -101,14 +187,41 @@ pub(crate) fn changes_what_is_scanned(key: &SettingKey) -> bool {
     key == SCAN_ROOTS || key.strip_suffix(ENABLED).is_some_and(|module| module.ends_with('.'))
 }
 
-fn problem_key(problem: &SettingProblem) -> &str {
-    match problem {
-        SettingProblem::UnknownKey { key } => key,
-        SettingProblem::WrongType { key }
-        | SettingProblem::OutOfRange { key, .. }
-        | SettingProblem::UnknownChoice { key }
-        | SettingProblem::RefusedFolder { key, .. } => key.as_str(),
+/// Whether `key` is one of the ignore lists: a change of one kills the pending cleanup plan.
+pub(crate) fn is_ignore_list(key: &SettingKey) -> bool {
+    key.as_str() == IGNORE_CATEGORIES || key.as_str() == IGNORE_PATHS
+}
+
+/// The ignore lists: categories by id, items by path.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Ignored {
+    pub(crate) categories: Vec<String>,
+    pub(crate) paths: Vec<PathBuf>,
+}
+
+impl Ignored {
+    /// Whether `finding` is left out: its category is ignored, or its path is at or below an ignored path.
+    pub(crate) fn hides(&self, finding: &Finding) -> bool {
+        let new = finding.finding();
+        self.categories.iter().any(|category| category == new.category().as_str())
+            || match new.subject() {
+                Subject::Path(path) => self.paths.iter().any(|ignored| path.starts_with(ignored)),
+                Subject::External { .. } => false,
+            }
     }
+}
+
+/// Adds `item` to `list` (`add`) or removes it; `false` when the list already was that way.
+fn change_list<T: PartialEq + Clone>(list: &mut Vec<T>, item: &T, add: bool) -> bool {
+    let present = list.contains(item);
+    if add && !present {
+        list.push(item.clone());
+    } else if !add && present {
+        list.retain(|kept| kept != item);
+    } else {
+        return false;
+    }
+    true
 }
 
 #[cfg(test)]
@@ -353,7 +466,7 @@ mod tests {
             let view = engine.settings().unwrap();
 
             let keys: Vec<_> = view.settings.iter().map(|setting| setting.key().as_str()).collect();
-            assert_eq!(keys.first(), Some(&"core.scan.roots"));
+            assert_eq!(keys.first(), Some(&"core.motion"));
             assert_eq!(keys.last(), Some(&"alpha.enabled"));
             assert_eq!(view.values.len(), keys.len());
             assert_eq!(engine.settings().map(|view| view.file), Ok(SettingsFile::Loaded));

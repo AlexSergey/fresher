@@ -1,0 +1,657 @@
+{
+  "events": [
+    {
+      "modules": [
+        "demo",
+        "probe"
+      ],
+      "scan": 1,
+      "type": "scan-started"
+    },
+    {
+      "bytes": 0,
+      "entries": 4,
+      "scan": 1,
+      "type": "scan-progress"
+    },
+    {
+      "bytes": 66133836,
+      "entries": 23,
+      "scan": 1,
+      "type": "scan-progress"
+    },
+    {
+      "module": "demo",
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1,
+      "type": "module-finished"
+    },
+    {
+      "module": "probe",
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1,
+      "type": "module-finished"
+    },
+    {
+      "coverage": {
+        "notEntered": [],
+        "unreadable": []
+      },
+      "scan": 1,
+      "type": "scan-coverage"
+    },
+    {
+      "kind": {
+        "kind": "full"
+      },
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1,
+      "type": "scan-finished"
+    }
+  ],
+  "findings": [
+    {
+      "category": "demo.images",
+      "danger": "medium",
+      "key": {
+        "identity": "example-builder",
+        "module": "demo"
+      },
+      "module": "demo",
+      "reason": {
+        "args": {},
+        "key": "demo.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "tool-command",
+        "value": {
+          "args": [
+            "remove",
+            "example-builder"
+          ],
+          "tool": "demo-tool"
+        }
+      },
+      "sizes": {
+        "allocated": 805306368,
+        "completeness": "complete",
+        "logical": 805306368,
+        "reclaimable": 805306368
+      },
+      "subject": {
+        "kind": "external",
+        "value": {
+          "id": "example-builder",
+          "tool": "demo-tool"
+        }
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "example-builder"
+          }
+        },
+        "key": "demo.finding.title"
+      }
+    },
+    {
+      "category": "demo.images",
+      "danger": "medium",
+      "key": {
+        "identity": "example-image",
+        "module": "demo"
+      },
+      "module": "demo",
+      "reason": {
+        "args": {},
+        "key": "demo.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "tool-command",
+        "value": {
+          "args": [
+            "remove",
+            "example-image"
+          ],
+          "tool": "demo-tool"
+        }
+      },
+      "sizes": {
+        "allocated": 1288490188,
+        "completeness": "complete",
+        "logical": 1288490188,
+        "reclaimable": 1288490188
+      },
+      "subject": {
+        "kind": "external",
+        "value": {
+          "id": "example-image",
+          "tool": "demo-tool"
+        }
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "example-image"
+          }
+        },
+        "key": "demo.finding.title"
+      }
+    },
+    {
+      "category": "demo.volumes",
+      "danger": "high",
+      "key": {
+        "identity": "example-volume",
+        "module": "demo"
+      },
+      "module": "demo",
+      "reason": {
+        "args": {},
+        "key": "demo.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "tool-command",
+        "value": {
+          "args": [
+            "remove",
+            "example-volume"
+          ],
+          "tool": "demo-tool"
+        }
+      },
+      "sizes": {
+        "allocated": 536870912,
+        "completeness": "complete",
+        "logical": 536870912,
+        "reclaimable": 536870912
+      },
+      "subject": {
+        "kind": "external",
+        "value": {
+          "id": "example-volume",
+          "tool": "demo-tool"
+        }
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "example-volume"
+          }
+        },
+        "key": "demo.finding.title"
+      }
+    },
+    {
+      "category": "demo.downloads",
+      "danger": "low",
+      "key": {
+        "identity": "example-archive.zip",
+        "module": "demo"
+      },
+      "module": "demo",
+      "reason": {
+        "args": {},
+        "key": "demo.finding.reason"
+      },
+      "removability": "needs-administrator",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "/demo/Downloads/example-archive.zip"
+      },
+      "sizes": {
+        "allocated": 52428800,
+        "completeness": "complete",
+        "logical": 52428800,
+        "reclaimable": 52428800
+      },
+      "subject": {
+        "kind": "path",
+        "value": "/demo/Downloads/example-archive.zip"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "example-archive.zip"
+          }
+        },
+        "key": "demo.finding.title"
+      }
+    },
+    {
+      "category": "demo.downloads",
+      "danger": "low",
+      "key": {
+        "identity": "example-installer.dmg",
+        "module": "demo"
+      },
+      "module": "demo",
+      "reason": {
+        "args": {},
+        "key": "demo.finding.reason"
+      },
+      "removability": "needs-administrator",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "/demo/Downloads/example-installer.dmg"
+      },
+      "sizes": {
+        "allocated": 268435456,
+        "completeness": "complete",
+        "logical": 268435456,
+        "reclaimable": 268435456
+      },
+      "subject": {
+        "kind": "path",
+        "value": "/demo/Downloads/example-installer.dmg"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "example-installer.dmg"
+          }
+        },
+        "key": "demo.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Downloads/tool.dmg",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Downloads/tool.dmg"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 3145728,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Downloads/tool.dmg"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Library/Caches",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Library/Caches"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Library/Caches"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Library/Caches/com.example.editor",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Library/Caches/com.example.editor"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 62914560,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Library/Caches/com.example.editor"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Library/Caches/system",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Library/Caches/system"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Library/Caches/system"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Projects/Library/Caches",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Projects/Library/Caches"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Projects/Library/Caches"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Projects/app/build",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Projects/app/build"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 70000,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Projects/app/build"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    },
+    {
+      "category": "probe.found",
+      "danger": "low",
+      "key": {
+        "identity": "~/Projects/app/node_modules",
+        "module": "probe"
+      },
+      "module": "probe",
+      "reason": {
+        "args": {},
+        "key": "probe.finding.reason"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/Projects/app/node_modules"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1200,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/Projects/app/node_modules"
+      },
+      "title": {
+        "args": {},
+        "key": "probe.finding.title"
+      }
+    }
+  ],
+  "overview": {
+    "found": {
+      "allocated": 2951531724,
+      "completeness": "complete",
+      "logical": 3017663212,
+      "reclaimable": 2951531724
+    },
+    "ignored": {
+      "categories": 1,
+      "paths": 0
+    },
+    "lastScan": {
+      "coverage": {
+        "notEntered": [],
+        "unreadable": []
+      },
+      "finished": 1763200000,
+      "kind": {
+        "kind": "full"
+      },
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1,
+      "settingsChanged": false
+    },
+    "status": {
+      "state": "idle"
+    },
+    "totals": [
+      {
+        "category": "demo.downloads",
+        "count": 2,
+        "highestDanger": "low",
+        "sizes": {
+          "allocated": 320864256,
+          "completeness": "complete",
+          "logical": 320864256,
+          "reclaimable": 320864256
+        }
+      },
+      {
+        "category": "demo.images",
+        "count": 2,
+        "highestDanger": "medium",
+        "sizes": {
+          "allocated": 2093796556,
+          "completeness": "complete",
+          "logical": 2093796556,
+          "reclaimable": 2093796556
+        }
+      },
+      {
+        "category": "demo.volumes",
+        "count": 1,
+        "highestDanger": "high",
+        "sizes": {
+          "allocated": 536870912,
+          "completeness": "complete",
+          "logical": 536870912,
+          "reclaimable": 536870912
+        }
+      },
+      {
+        "category": "probe.found",
+        "count": 7,
+        "highestDanger": "low",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 66131488,
+          "reclaimable": 0
+        }
+      }
+    ]
+  },
+  "state": {
+    "children": [
+      {
+        "files": 0,
+        "folders": 0,
+        "kind": "folder",
+        "name": "Documents",
+        "notScanned": {
+          "kind": "avoided"
+        },
+        "owner": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "partial",
+          "logical": 0,
+          "reclaimable": 0
+        }
+      },
+      {
+        "files": 1,
+        "folders": 0,
+        "kind": "folder",
+        "name": "Downloads",
+        "notScanned": null,
+        "owner": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 3145728,
+          "reclaimable": 0
+        }
+      },
+      {
+        "files": 3,
+        "folders": 3,
+        "kind": "folder",
+        "name": "Library",
+        "notScanned": null,
+        "owner": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 62914575,
+          "reclaimable": 0
+        }
+      },
+      {
+        "files": 5,
+        "folders": 7,
+        "kind": "folder",
+        "name": "Projects",
+        "notScanned": null,
+        "owner": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 73548,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "notScanned": [
+      {
+        "hiddenFolders": 0,
+        "name": "Documents",
+        "reason": {
+          "kind": "avoided"
+        }
+      }
+    ],
+    "root": {
+      "files": 9,
+      "folders": 14,
+      "kind": "folder",
+      "name": "~",
+      "notScanned": null,
+      "owner": null,
+      "sizes": {
+        "allocated": 0,
+        "completeness": "partial",
+        "logical": 66133851,
+        "reclaimable": 0
+      }
+    }
+  }
+}

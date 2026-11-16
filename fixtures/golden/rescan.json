@@ -601,6 +601,10 @@
         "logical": 9121205532,
         "reclaimable": 9054244044
       },
+      "ignored": {
+        "categories": 0,
+        "paths": 0
+      },
       "lastScan": {
         "coverage": {
           "notEntered": [],
@@ -614,7 +618,8 @@
         "outcome": {
           "kind": "completed"
         },
-        "scan": 2
+        "scan": 2,
+        "settingsChanged": false
       },
       "status": {
         "state": "idle"
@@ -1033,6 +1038,10 @@
         "logical": 66961488,
         "reclaimable": 0
       },
+      "ignored": {
+        "categories": 0,
+        "paths": 0
+      },
       "lastScan": {
         "coverage": {
           "notEntered": [],
@@ -1046,7 +1055,8 @@
         "outcome": {
           "kind": "completed"
         },
-        "scan": 1
+        "scan": 1,
+        "settingsChanged": false
       },
       "status": {
         "state": "idle"

@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+pub use core_schema::{IGNORE_CATEGORIES, IGNORE_PATHS, SCAN_ROOTS};
 pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
 
 use crate::TextKey;
@@ -77,6 +78,10 @@ pub enum SettingKind {
         options: Vec<&'static str>,
     },
     Folders,
+    /// Category ids: two or more dot-separated kebab-case segments each.
+    Ids,
+    /// Absolute paths of plain names, anywhere.
+    Paths,
 }
 
 /// The unit a number is shown in.
@@ -95,18 +100,45 @@ pub enum SettingValue {
     Number(#[ts(type = "number")] i64),
     Choice(String),
     Folders(Vec<PathBuf>),
+    Ids(Vec<String>),
+    Paths(Vec<PathBuf>),
 }
 
 impl SettingValue {
     /// The value as it is stored in the settings file: a plain JSON value, without a tag.
     pub fn to_json(&self) -> serde_json::Value {
+        let paths = |paths: &[PathBuf]| paths.iter().map(|path| path.to_string_lossy().into_owned()).collect();
         match self {
             Self::Switch(on) => (*on).into(),
             Self::Number(number) => (*number).into(),
             Self::Choice(choice) => choice.as_str().into(),
-            Self::Folders(folders) => folders.iter().map(|folder| folder.to_string_lossy().into_owned()).collect(),
+            Self::Folders(folders) => paths(folders),
+            Self::Ids(ids) => ids.iter().map(String::as_str).collect(),
+            Self::Paths(list) => paths(list),
         }
     }
+}
+
+/// Where the settings screen shows a setting. Only the core's settings are in the core's groups; a module's are in
+/// `Module`, under the module's name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum SettingGroup {
+    General,
+    Scan,
+    Ignored,
+    Permissions,
+    Module,
+}
+
+/// When a change of a setting shows in the results.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum SettingEffect {
+    /// At once.
+    Now,
+    /// At the next scan: until then the last scan is marked as out of date.
+    NextScan,
 }
 
 /// A setting a module (or the core) offers; its label and description are found by convention.
@@ -115,6 +147,8 @@ pub struct SettingDescriptor {
     key: SettingKey,
     kind: SettingKind,
     default: SettingValue,
+    group: SettingGroup,
+    effect: SettingEffect,
 }
 
 /// Why a setting descriptor was refused.
@@ -151,16 +185,47 @@ pub enum SettingProblem {
         key: SettingKey,
         folder: PathBuf,
     },
+    /// An id that is not two or more dot-separated kebab-case segments.
+    RefusedId {
+        key: SettingKey,
+        id: String,
+    },
+}
+
+impl SettingProblem {
+    /// The key of the setting the problem is about, as stored.
+    pub fn key(&self) -> &str {
+        match self {
+            Self::UnknownKey { key } => key,
+            Self::WrongType { key }
+            | Self::OutOfRange { key, .. }
+            | Self::UnknownChoice { key }
+            | Self::RefusedFolder { key, .. }
+            | Self::RefusedId { key, .. } => key.as_str(),
+        }
+    }
 }
 
 impl SettingDescriptor {
-    /// A setting whose default fits its kind (a number in its range, a choice from its list).
+    /// A module's setting whose default fits its kind (a number in its range, a choice from its list). It is shown
+    /// under its module and applies at the next scan.
     pub fn new(key: SettingKey, kind: SettingKind, default: SettingValue) -> Result<Self, SettingError> {
-        let descriptor = Self { key, kind, default };
+        let descriptor = Self::unchecked(key, kind, default, SettingGroup::Module, SettingEffect::NextScan);
         match descriptor.check(&descriptor.default) {
             Ok(()) => Ok(descriptor),
             Err(_) => Err(SettingError::BadDefault { key: descriptor.key }),
         }
+    }
+
+    /// A setting of the core's own making; its default is checked by the core's tests.
+    pub(crate) const fn unchecked(
+        key: SettingKey,
+        kind: SettingKind,
+        default: SettingValue,
+        group: SettingGroup,
+        effect: SettingEffect,
+    ) -> Self {
+        Self { key, kind, default, group, effect }
     }
 
     pub const fn key(&self) -> &SettingKey {
@@ -175,16 +240,29 @@ impl SettingDescriptor {
         &self.default
     }
 
+    pub const fn group(&self) -> SettingGroup {
+        self.group
+    }
+
+    pub const fn effect(&self) -> SettingEffect {
+        self.effect
+    }
+
     /// Checks `value` against the setting's kind and limits.
     pub fn check(&self, value: &SettingValue) -> Result<(), SettingProblem> {
+        let refused_path =
+            |allowed: fn(&std::path::Path) -> bool, paths: &[PathBuf]| match paths.iter().find(|path| !allowed(path)) {
+                None => Ok(()),
+                Some(folder) => Err(SettingProblem::RefusedFolder { key: self.key.clone(), folder: folder.clone() }),
+            };
         match (&self.kind, value) {
             (SettingKind::Switch, SettingValue::Switch(_)) => Ok(()),
-            (SettingKind::Folders, SettingValue::Folders(folders)) => {
-                match folders.iter().find(|folder| !folders::is_allowed(folder)) {
+            (SettingKind::Folders, SettingValue::Folders(folders)) => refused_path(folders::is_allowed, folders),
+            (SettingKind::Paths, SettingValue::Paths(paths)) => refused_path(folders::is_plain_absolute, paths),
+            (SettingKind::Ids, SettingValue::Ids(ids)) => {
+                match ids.iter().find(|id| TextKey::new(id.as_str()).is_err()) {
                     None => Ok(()),
-                    Some(folder) => {
-                        Err(SettingProblem::RefusedFolder { key: self.key.clone(), folder: folder.clone() })
-                    }
+                    Some(id) => Err(SettingProblem::RefusedId { key: self.key.clone(), id: id.clone() }),
                 }
             }
             (&SettingKind::Number { min, max, .. }, &SettingValue::Number(number)) => {
@@ -215,17 +293,20 @@ impl SettingDescriptor {
             (SettingKind::Choice { .. }, serde_json::Value::String(choice)) => {
                 Some(SettingValue::Choice(choice.clone()))
             }
-            (SettingKind::Folders, serde_json::Value::Array(items)) => items
-                .iter()
-                .map(|item| item.as_str().map(PathBuf::from))
-                .collect::<Option<Vec<_>>>()
-                .map(SettingValue::Folders),
+            (SettingKind::Folders, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Folders),
+            (SettingKind::Paths, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Paths),
+            (SettingKind::Ids, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Ids),
             _ => None,
         };
         let value = value.ok_or_else(|| SettingProblem::WrongType { key: self.key.clone() })?;
         self.check(&value)?;
         Ok(value)
     }
+}
+
+/// Every item of a stored list as a string, then as a `T`; `None` when one is not a string.
+fn strings<T: From<String>>(items: &[serde_json::Value]) -> Option<Vec<T>> {
+    items.iter().map(|item| item.as_str().map(|text| T::from(text.to_owned()))).collect()
 }
 
 #[cfg(test)]
@@ -298,6 +379,52 @@ mod tests {
             assert_eq!(roots.check(&SettingValue::Folders(vec!["/".into()])), Err(refused("/")));
         }
 
+        fn list(key: &str, kind: SettingKind, default: SettingValue) -> SettingDescriptor {
+            SettingDescriptor::new(SettingKey::new(key).unwrap(), kind, default).unwrap()
+        }
+
+        #[test]
+        fn rejects_an_id_that_is_not_a_category_id() {
+            let key = SettingKey::new("demo.ids").unwrap();
+            let ids = list("demo.ids", SettingKind::Ids, SettingValue::Ids(vec![]));
+
+            for id in ["", "demo", "Demo.caches", "demo..caches", "demo.caches."] {
+                let problem = SettingProblem::RefusedId { key: key.clone(), id: id.into() };
+                assert_eq!(ids.read(&json!(["demo.caches", id])), Err(problem.clone()), "{id:?}");
+                assert_eq!(problem.key(), "demo.ids");
+            }
+        }
+
+        #[test]
+        fn rejects_a_relative_or_dotted_ignored_path() {
+            let key = SettingKey::new("demo.paths").unwrap();
+            let paths = list("demo.paths", SettingKind::Paths, SettingValue::Paths(vec![]));
+
+            for path in ["~/keep", "keep", "/a/../b", "/", ""] {
+                let problem = SettingProblem::RefusedFolder { key: key.clone(), folder: path.into() };
+                assert_eq!(paths.read(&json!([path])), Err(problem), "{path:?}");
+            }
+        }
+
+        #[test]
+        fn rejects_a_stored_list_that_is_not_strings() {
+            let ids = list("demo.ids", SettingKind::Ids, SettingValue::Ids(vec![]));
+            let paths = list("demo.paths", SettingKind::Paths, SettingValue::Paths(vec![]));
+
+            assert_eq!(
+                ids.read(&json!([1])),
+                Err(SettingProblem::WrongType { key: SettingKey::new("demo.ids").unwrap() })
+            );
+            assert_eq!(
+                paths.read(&json!("/a")),
+                Err(SettingProblem::WrongType { key: SettingKey::new("demo.paths").unwrap() })
+            );
+            assert_eq!(
+                ids.check(&SettingValue::Paths(vec![])),
+                Err(SettingProblem::WrongType { key: SettingKey::new("demo.ids").unwrap() })
+            );
+        }
+
         #[test]
         fn rejects_folders_that_are_not_strings() {
             let key = SettingKey::new("demo.roots").unwrap();
@@ -345,6 +472,30 @@ mod tests {
                 read(SettingKind::Folders, SettingValue::Folders(vec![]), json!(["~", "/Volumes/Data"])),
                 Ok(SettingValue::Folders(vec!["~".into(), "/Volumes/Data".into()]))
             );
+        }
+
+        #[test]
+        fn reads_ids_and_paths_from_plain_json_and_stores_them_back() {
+            let ids = SettingDescriptor::new(
+                SettingKey::new("demo.ids").unwrap(),
+                SettingKind::Ids,
+                SettingValue::Ids(vec![]),
+            )
+            .unwrap();
+            let paths = SettingDescriptor::new(
+                SettingKey::new("demo.paths").unwrap(),
+                SettingKind::Paths,
+                SettingValue::Paths(vec![]),
+            )
+            .unwrap();
+
+            let read_ids = ids.read(&json!(["alpha.caches", "beta.deps"])).unwrap();
+            let read_paths = paths.read(&json!(["/System/Library", "/Users/ann/keep"])).unwrap();
+
+            assert_eq!(read_ids, SettingValue::Ids(vec!["alpha.caches".into(), "beta.deps".into()]));
+            assert_eq!(read_paths, SettingValue::Paths(vec!["/System/Library".into(), "/Users/ann/keep".into()]));
+            assert_eq!(read_ids.to_json(), json!(["alpha.caches", "beta.deps"]));
+            assert_eq!(read_paths.to_json(), json!(["/System/Library", "/Users/ann/keep"]));
         }
 
         #[test]

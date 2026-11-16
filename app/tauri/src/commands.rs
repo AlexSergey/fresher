@@ -5,8 +5,8 @@
 
 use fresher_core::{
     AccessStatus, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView, CleanupSelection, CleanupsPage,
-    CleanupsQuery, Confirmation, Dictionary, Event, FindingsPage, FindingsQuery, Locale, ModuleInfo, Overview, PlanId,
-    PutBackReport, PutBackRequest, Refusal, ScanId, SettingUpdate, SettingsView,
+    CleanupsQuery, Confirmation, Dictionary, Event, FindingsPage, FindingsQuery, IgnoreTarget, IgnoredEntry, Locale,
+    ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest, Refusal, ScanId, SettingUpdate, SettingsView,
 };
 use fresher_engine::{Engine, ScanMode};
 use tauri::ipc::Channel;
@@ -64,6 +64,21 @@ pub(crate) fn get_settings(engine: State<'_, Engine>) -> Result<SettingsView, Re
 #[tauri::command(async)]
 pub(crate) fn update_setting(engine: State<'_, Engine>, update: SettingUpdate) -> Result<(), Refusal> {
     engine.update_setting(update).map_err(Refusal::from)
+}
+
+#[tauri::command(async)]
+pub(crate) fn reset_settings(engine: State<'_, Engine>) -> Result<(), Refusal> {
+    engine.reset_settings().map_err(Refusal::from)
+}
+
+#[tauri::command(async)]
+pub(crate) fn ignore(engine: State<'_, Engine>, target: IgnoreTarget) -> Result<(), Refusal> {
+    engine.ignore(&target).map_err(Refusal::from)
+}
+
+#[tauri::command(async)]
+pub(crate) fn restore_ignored(engine: State<'_, Engine>, entry: IgnoredEntry) -> Result<(), Refusal> {
+    engine.restore_ignored(&entry).map_err(Refusal::from)
 }
 
 /// The merged texts of the core and every module; only `en` ships.
@@ -199,6 +214,16 @@ mod tests {
                 error,
                 Err(Refusal::from(CommandError::InvalidSettingValue { key: SettingKey::new("demo.count").unwrap() }))
             );
+        }
+
+        #[test]
+        fn ignoring_what_is_not_there_is_refused() {
+            let shell = Shell::new();
+            let target = fresher_core::IgnoreTarget::Category { category: "gone.caches".into() };
+
+            let error = crate::commands::ignore(shell.engine(), target);
+
+            assert_eq!(error, Err(Refusal::from(CommandError::UnknownCategory { id: "gone.caches".into() })));
         }
 
         #[test]
@@ -406,6 +431,30 @@ mod tests {
             let view = get_settings(shell.engine()).unwrap();
             assert_eq!(view.file, SettingsFile::Loaded);
             assert!(view.values.values().any(|value| *value == SettingValue::Number(3)));
+        }
+
+        #[test]
+        fn settings_are_reset_and_a_category_ignored_and_restored() {
+            let shell = Shell::new();
+            update_setting(shell.engine(), SettingUpdate { key: "demo.count".into(), value: SettingValue::Number(3) })
+                .unwrap();
+            let category = || "demo.caches".to_owned();
+
+            crate::commands::reset_settings(shell.engine()).unwrap();
+            crate::commands::ignore(shell.engine(), fresher_core::IgnoreTarget::Category { category: category() })
+                .unwrap();
+            let ignored = get_overview(shell.engine()).unwrap().ignored;
+            crate::commands::restore_ignored(
+                shell.engine(),
+                fresher_core::IgnoredEntry::Category { category: category() },
+            )
+            .unwrap();
+
+            assert!(
+                !get_settings(shell.engine()).unwrap().values.values().any(|value| *value == SettingValue::Number(3))
+            );
+            assert_eq!(ignored, fresher_core::IgnoredCount { categories: 1, paths: 0 });
+            assert_eq!(get_overview(shell.engine()).unwrap().ignored, fresher_core::IgnoredCount::default());
         }
 
         #[test]

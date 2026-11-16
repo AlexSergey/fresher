@@ -25,6 +25,7 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, rules, store, testing                                                    |
 | `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-demo, store, testing                        |
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
+| `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
 | `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |
 | `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, scanner, store, testing                                   |
 | `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, core, engine, macos, module-demo, module-trial, rules, scanner, store, testing |

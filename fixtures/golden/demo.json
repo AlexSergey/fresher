@@ -378,6 +378,10 @@
       "logical": 9054244044,
       "reclaimable": 9054244044
     },
+    "ignored": {
+      "categories": 0,
+      "paths": 0
+    },
     "lastScan": {
       "coverage": {
         "notEntered": [],
@@ -390,7 +394,8 @@
       "outcome": {
         "kind": "completed"
       },
-      "scan": 1
+      "scan": 1,
+      "settingsChanged": false
     },
     "status": {
       "state": "idle"

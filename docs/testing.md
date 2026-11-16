@@ -110,7 +110,12 @@ cleanups of a hundred items through the real journal.
 - `crates/store/src/journal/tests.rs` — the cleanup journal on a temporary data folder: a torn last record cut at every
   byte never corrupts the records before it, `begin` is synced before it returns, the file is `0600`, a newer or
   unreadable file is read-only, an older one is migrated line by line, rotation by rename.
-- `crates/e2e` — the core's end-to-end and golden tests (a crate with tests only).
+- `crates/e2e` — the core's end-to-end and golden tests (a crate with tests only). `tests/ignore.rs` scans a fixture
+  home with the real settings file: ignored categories and items leave every answer, Restore brings them back
+  without a rescan (`fixtures/golden/ignore.json`).
+- `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
+  `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
+  level or the removal.
 - `app/tauri/tests/bindings.rs` — the IPC types: every type the commands and events carry is rendered by `ts-rs` and
   compared byte for byte with `app/ui/src/ipc/bindings.generated.ts`; no listed type refers to an unlisted one, no
   number becomes a `bigint`, no field is in snake_case. `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test

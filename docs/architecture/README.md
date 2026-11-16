@@ -112,7 +112,16 @@ No database: the app keeps its own state in small plain files, with nothing to i
   passes it to `fresher-store` (`DataFolder::open`); the store never looks it up itself.
 - **`settings.json`**: `{ "format": "settings", "version": 1, "values": { "<key>": <value>, … } }`. Values are checked
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
-  reported, never a crash.
+  reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,
+  `ignored`, `permissions`, or `module` for every module's) and its **effect** (`now`, or `next-scan`: a change marks
+  the last scan, and the UI offers "Rescan to apply"; the app never rescans on its own). The kinds are `switch`,
+  `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder), `ids` and `paths`
+  (the ignore lists). `reset_settings` puts every setting but the ignore lists back to its default in one save.
+- **The ignore list** (`core.ignore.categories`, `core.ignore.paths`): the engine keeps a scan's ignored findings in
+  memory but leaves them out of every answer and plan, so a restore shows them again without a rescan; the cleaner
+  gets the ignored paths as protection. `ignore` and `restore_ignored` change the lists through the same check and
+  save as `update_setting`. The app's own commands beside the engine: `pick_folder` (the system's folder picker,
+  `tauri-plugin-dialog`, called from Rust only) and `get_own_data` (the footprint below).
 - **Atomic writes**: a temporary file in the same folder, `fsync`, then a rename.
 - **The version policy**: every file the app writes carries `format` and `version`. What holds the user's decisions or
   history (settings, the cleanup journal, history points) is migrated forward one version at a time; what can be

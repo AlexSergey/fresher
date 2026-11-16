@@ -236,7 +236,7 @@ mod tests {
             let schema = registry.schema().unwrap();
             let keys: Vec<_> = schema.descriptors().iter().map(|setting| setting.key().as_str()).collect();
             assert_eq!(keys[keys.len() - 2..], ["alpha.enabled", "beta.enabled"]);
-            assert_eq!(keys[0], "core.scan.roots");
+            assert_eq!(keys[0], "core.motion");
             let beta_images = CategoryId::new(ModuleId::new("beta").unwrap(), "beta.images").unwrap();
             assert_eq!(registry.modules(&AccessStatus::default())[1].categories[0].descriptor.id(), beta_images);
         }
@@ -248,7 +248,7 @@ mod tests {
             let schema = registry.schema().unwrap();
 
             assert!(schema.descriptors().iter().all(|setting| setting.key().namespace() == "core"));
-            assert_eq!(schema.descriptors().len(), 5);
+            assert_eq!(schema.descriptors().len(), 8);
             assert_eq!(registry.dictionary().len(), core_dictionary().unwrap().len());
             assert_eq!(format!("{registry:?}"), "Registry { modules: [], .. }");
         }

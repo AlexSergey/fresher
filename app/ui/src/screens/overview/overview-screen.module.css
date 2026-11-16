@@ -11,6 +11,17 @@
     gap: var(--space-6);
   }
 
+  .ignored {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-2);
+    line-height: var(--type-footnote-line);
+  }
+
   .intro {
     max-width: 60ch;
     margin: 0 auto;

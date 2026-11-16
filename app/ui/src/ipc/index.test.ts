@@ -16,10 +16,15 @@ import {
   getFindings,
   getModules,
   getOverview,
+  getOwnData,
   getSettings,
+  ignore,
+  pickFolder,
   prepareCleanup,
   putBack,
   quitAfterCleanup,
+  resetSettings,
+  restoreIgnored,
   revealInTrash,
   startScan,
   subscribe,
@@ -105,7 +110,12 @@ describe('the IPC module', () => {
         getFindings: answer({ findings: [], offset: 0, total: 0 }),
         getModules: answer([]),
         getOverview: answer(IDLE),
+        getOwnData: answer({ budget: 50, total: 1 }),
         getSettings: answer({ file: 'loaded', problems: [], settings: [], values: {} }),
+        ignore: answer(null),
+        pickFolder: answer('~/Projects'),
+        resetSettings: answer(null),
+        restoreIgnored: answer(null),
         startScan: answer(1),
         updateSetting: answer(null),
       });
@@ -117,6 +127,11 @@ describe('the IPC module', () => {
       await getFindings(query);
       await expect(getSettings()).resolves.toMatchObject({ file: 'loaded' });
       await updateSetting(update);
+      await resetSettings();
+      await ignore({ category: 'demo.caches', kind: 'category' });
+      await restoreIgnored({ kind: 'path', path: '/a' });
+      await expect(pickFolder()).resolves.toBe('~/Projects');
+      await expect(getOwnData()).resolves.toEqual({ budget: 50, total: 1 });
       await getDictionary('en');
       await expect(getAccessStatus()).resolves.toEqual({
         capabilities: [{ access: 'unknown', capability: { kind: 'all-files' }, note: null }],
@@ -124,6 +139,8 @@ describe('the IPC module', () => {
 
       expect(seen).toContainEqual({ query });
       expect(seen).toContainEqual({ update });
+      expect(seen).toContainEqual({ target: { category: 'demo.caches', kind: 'category' } });
+      expect(seen).toContainEqual({ entry: { kind: 'path', path: '/a' } });
       expect(seen).toContainEqual({ locale: 'en' });
     });
 

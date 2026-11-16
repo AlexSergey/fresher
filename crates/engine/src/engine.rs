@@ -9,8 +9,8 @@ use fresher_core::{
     Access, AccessProbe, AccessStatus, CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal,
     CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary,
     DiskState, DiskWalk, EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, ModuleInfo, Operation,
-    Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingUpdate, SettingsStore, SettingsView, SystemUi,
-    SystemUiError, Volumes, WalkMode,
+    Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate, SettingsStore,
+    SettingsView, SystemUi, SystemUiError, Volumes, WalkMode,
 };
 
 use crate::access::AccessView;
@@ -114,12 +114,14 @@ impl Engine {
     fn build(registry: Registry, ports: Ports, cleanup: Option<CleanupPorts>) -> Result<Self, SchemaError> {
         let settings = Settings::load(registry.schema()?, &*ports.settings);
         let access = AccessView::new(Arc::clone(&ports.access), Arc::clone(&ports.commands), registry.tool_checks());
+        let mut results = Results::new();
+        results.set_ignored(settings.ignored());
         let shared = Shared {
             registry,
             ports,
             bus: EventBus::new(),
             machine: Mutex::new(Machine::new()),
-            results: Mutex::new(Results::new()),
+            results: Mutex::new(results),
             settings: Mutex::new(settings),
             access,
             cleanup,
@@ -208,7 +210,8 @@ impl Engine {
         let status = lock(&self.shared.machine)?.status();
         let results = lock(&self.shared.results)?;
         let (totals, found) = results.totals(self.shared.registry.categories());
-        Ok(Overview { status, last_scan: results.last(), totals, found })
+        let ignored = results.ignored_count();
+        Ok(Overview { status, last_scan: results.last(), totals, found, ignored })
     }
 
     /// A page of the current findings, by module and category. An unknown module is refused; a category nobody
@@ -246,17 +249,37 @@ impl Engine {
     }
 
     /// Checks the value, saves it through the port, then publishes `SettingChanged`. A running scan keeps the
-    /// settings it started with. A change of what is scanned (the roots, a module's switch) kills the pending
-    /// cleanup plan.
+    /// settings it started with.
     pub fn update_setting(&self, update: SettingUpdate) -> Result<(), CommandError> {
         let mut settings = lock(&self.shared.settings)?;
         let changed = settings.update(update, &*self.shared.ports.settings)?;
-        if let Event::SettingChanged { key, .. } = &changed
-            && settings_rules::changes_what_is_scanned(key)
+        self.take_changes(&settings, &[changed])
+    }
+
+    /// Takes in saved changes of `settings` (held locked, so the events go out in the order of the saves), then
+    /// publishes them: the ignore lists hide what they name at once; a change that applies at the next scan marks the
+    /// last scan ("Rescan to apply"); a change of what is scanned or ignored kills the pending cleanup plan.
+    pub(crate) fn take_changes(&self, settings: &Settings, changes: &[Event]) -> Result<(), CommandError> {
+        let keys: Vec<&SettingKey> = changes
+            .iter()
+            .filter_map(|event| match event {
+                Event::SettingChanged { key, .. } => Some(key),
+                _ => None,
+            })
+            .collect();
         {
+            let mut results = lock(&self.shared.results)?;
+            results.set_ignored(settings.ignored());
+            if keys.iter().any(|key| settings.effect(key.as_str()) == Some(SettingEffect::NextScan)) {
+                results.mark_settings_changed();
+            }
+        }
+        if keys.iter().any(|key| settings_rules::changes_what_is_scanned(key) || settings_rules::is_ignore_list(key)) {
             lock(&self.shared.pending)?.kill();
         }
-        self.shared.bus.publish(&changed);
+        for change in changes {
+            self.shared.bus.publish(change);
+        }
         Ok(())
     }
 

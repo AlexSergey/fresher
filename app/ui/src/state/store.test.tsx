@@ -23,7 +23,7 @@ describe('the core store', () => {
       const listener = vi.fn();
       store.subscribe(listener);
 
-      store.dispatch({ key: 'demo.count', type: 'setting-changed', value: { kind: 'number', value: 1 } });
+      store.dispatch({ type: 'clear' });
 
       expect(listener).not.toHaveBeenCalled();
     });

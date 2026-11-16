@@ -24,9 +24,10 @@ mod support {
             .collect()
     }
 
-    /// The commands in `tauri::generate_handler!` of `src/lib.rs`.
+    /// The commands in `tauri::generate_handler!` of `src/lib.rs`, without their module path.
     pub(crate) fn handler_commands() -> Vec<String> {
-        names(between(&read("src/lib.rs"), "generate_handler![", "]"), "commands::")
+        let listed = names(between(&read("src/lib.rs"), "generate_handler![", "]"), "");
+        listed.iter().map(|name| name.rsplit("::").next().unwrap_or(name).to_owned()).collect()
     }
 
     /// The commands of the app manifest in `build.rs`.

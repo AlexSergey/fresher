@@ -402,7 +402,15 @@ export const SCRIPTS = {
   // The core refuses every scan as busy.
   refused: { answers: ANSWERS, refusals: { startScan: BUSY } },
   // Settings of every kind.
-  settings: { answers: { ...ANSWERS, getSettings: SETTINGS_OF_EVERY_KIND } },
+  settings: {
+    answers: {
+      ...ANSWERS,
+      getOwnData: { budget: 50_000_000, total: 2_000_000 },
+      getSettings: SETTINGS_OF_EVERY_KIND,
+      pickFolder: '~/Music',
+      resetSettings: null,
+    },
+  },
   // The demo scan held before its first event: the core runs it, the app does not know yet.
   unannounced: { answers: ANSWERS, hold: 0, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
 } as const satisfies Readonly<Record<string, CoreScript>>;

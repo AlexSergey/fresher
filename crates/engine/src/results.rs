@@ -8,16 +8,19 @@ use std::sync::Arc;
 
 use fresher_core::{
     ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness, DiskState, Finding,
-    FindingId, FindingOrder, FindingsPage, LastScan, ModuleId, Sizes, Subject,
+    FindingId, FindingOrder, FindingsPage, IgnoredCount, LastScan, ModuleId, Sizes, Subject,
 };
 
 use crate::claims::Claims;
+use crate::settings::Ignored;
 
 /// The findings of one scan, in id order. Ids keep increasing across scans, so an id from an earlier scan is unknown.
 /// Also the disk state of the last committed scan, kept until another scan commits one, and the categories the scan's
-/// access limited, and the roots the scan walked.
+/// access limited, and the roots the scan walked. The findings the user ignores are kept but left out of every
+/// answer, so a restore shows them again at once.
 pub(crate) struct Results {
     findings: Vec<Finding>,
+    ignored: Ignored,
     roots: Vec<PathBuf>,
     limited: BTreeSet<CategoryId>,
     next_id: Option<u32>,
@@ -32,6 +35,7 @@ impl fmt::Debug for Results {
         formatter
             .debug_struct("Results")
             .field("findings", &self.findings.len())
+            .field("ignored", &self.ignored)
             .field("roots", &self.roots)
             .field("limited", &self.limited)
             .field("next_id", &self.next_id)
@@ -56,6 +60,7 @@ impl Results {
     pub(crate) const fn new() -> Self {
         Self {
             findings: Vec::new(),
+            ignored: Ignored { categories: Vec::new(), paths: Vec::new() },
             roots: Vec::new(),
             limited: BTreeSet::new(),
             next_id: Some(1),
@@ -90,9 +95,29 @@ impl Results {
         self.next_id = next_id;
     }
 
-    /// The findings of the current scan, in id order.
+    /// The findings of the current scan, in id order, the ignored ones too.
     pub(crate) fn findings(&self) -> &[Finding] {
         &self.findings
+    }
+
+    /// The findings the user sees, in id order: those the ignore lists do not hide.
+    pub(crate) fn visible(&self) -> Vec<Finding> {
+        self.shown().cloned().collect()
+    }
+
+    /// From now on, `ignored` hides findings from every answer.
+    pub(crate) fn set_ignored(&mut self, ignored: Ignored) {
+        self.ignored = ignored;
+    }
+
+    /// How many entries the ignore lists hold.
+    pub(crate) fn ignored_count(&self) -> IgnoredCount {
+        let count = |len: usize| u32::try_from(len).unwrap_or(u32::MAX);
+        IgnoredCount { categories: count(self.ignored.categories.len()), paths: count(self.ignored.paths.len()) }
+    }
+
+    fn shown(&self) -> impl Iterator<Item = &Finding> + Clone {
+        self.findings.iter().filter(|finding| !self.ignored.hides(finding))
     }
 
     /// The roots the current scan walked, as the settings had them.
@@ -134,6 +159,13 @@ impl Results {
         }
     }
 
+    /// A setting that applies at the next scan changed since the last scan.
+    pub(crate) fn mark_settings_changed(&mut self) {
+        if let Some(last) = &mut self.last {
+            last.settings_changed = true;
+        }
+    }
+
     /// From now on, category totals add each finding's counted size.
     pub(crate) fn keep_claims(&mut self, claims: Claims) {
         self.claims = Some(claims);
@@ -154,11 +186,12 @@ impl Results {
 
     pub(crate) fn finding(&self, id: FindingId) -> Result<Finding, CommandError> {
         let index = self.findings.binary_search_by_key(&id, Finding::id);
-        index.map(|index| self.findings[index].clone()).map_err(|_| CommandError::UnknownFinding { id })
+        let found = index.ok().map(|index| &self.findings[index]).filter(|finding| !self.ignored.hides(finding));
+        found.cloned().ok_or(CommandError::UnknownFinding { id })
     }
 
     pub(crate) fn page(&self, filter: Filter<'_>) -> FindingsPage {
-        let matching = self.findings.iter().filter(|finding| {
+        let matching = self.shown().filter(|finding| {
             filter.module.is_none_or(|module| finding.module() == module)
                 && filter.category.is_none_or(|category| finding.finding().category().as_str() == category)
         });
@@ -185,7 +218,7 @@ impl Results {
     ) -> (Vec<CategoryTotal>, Sizes) {
         let mut totals: BTreeMap<CategoryId, CategoryTotal> = BTreeMap::new();
         let mut found = Sizes::ZERO;
-        for finding in &self.findings {
+        for finding in self.shown() {
             let new = finding.finding();
             let total = totals.entry(new.category()).or_insert(CategoryTotal {
                 category: new.category(),

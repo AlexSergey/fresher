@@ -1,6 +1,6 @@
 # Stale temporary files in the data folder
 
-**Status:** open · **Updated:** 2026-11-15
+**Status:** open · **Updated:** 2026-11-16
 
 ## Symptom
 
@@ -22,8 +22,12 @@ write removes its temporary file, but a crash gives it no chance to.
   documented exception for the app's own data folder, and plan 002 decided that the store deletes nothing (agent's
   call 8, "clearing the app's own data is decided in plan 005").
 
+- Plan 005 left clearing to later ([deferred](../deferred/own-data-clearing.md)): the store and the app still delete
+  nothing of their own.
+
 ## Options left
 
-- Plan 005 (the app's own data) decides how the app clears its own files; the stale temporary files can be removed
-  there: regular files only, never a link, matching exactly `.<known target>.<random>.tmp`, inside the data folder.
+- Plan 005 left clearing the app's own files to later ([deferred](../deferred/own-data-clearing.md)); when it is
+  done, the stale temporary files can be removed there: regular files only, never a link, matching exactly
+  `.<known target>.<random>.tmp`, inside the data folder.
 - An exception to the deletion lint for the data folder, with its reason in the restriction, if the user agrees.

@@ -13,6 +13,7 @@ const last = (outcome: ScanOutcome): LastScan => ({
   kind: { kind: 'full' },
   outcome,
   scan: 1,
+  settingsChanged: false,
 });
 
 describe('phaseOf', () => {

@@ -45,7 +45,7 @@ number; their order is set when they are approved.
 | 002 | [Base architecture](./002-base-architecture/readme.md)               | ✔️ done        | 0.1.0   | core, engine, store, modules, rules, testing, app |
 | 003 | [Base UI](./003-base-ui/readme.md)                                   | ✔️ done        | 0.2.0   | app/ui, app/tauri, core, engine                   |
 | 004 | [Fast scan and search](./004-fast-scan/readme.md)                    | ✔️ done        | 0.3.0   | core, macos, scanner, store, engine, testing, app |
-| 005 | [Settings](./005-settings/readme.md)                                 | 📝 draft       | 0.4.0   | core, store, engine, app/ui                       |
+| 005 | [Settings](./005-settings/readme.md)                                 | ✔️ done        | 0.5.5   | core, engine, app, app/ui                         |
 | 006 | [Permissions and privileges](./006-permissions/readme.md)            | 🔨 in progress | 0.4.0   | core, macos, engine, testing, app, app/ui         |
 | 007 | [Safe development](./007-safe-development/readme.md)                 | 📝 draft       | 0.1.0   | testing, cleaner, engine, app, repo               |
 | 008 | [Safe removal and the cleanup journal](./008-safe-removal/readme.md) | ✔️ done        | 0.5.0   | core, cleaner, macos, store, engine               |

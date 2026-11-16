@@ -150,8 +150,12 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
         status,
       };
     }
-    case 'setting-changed':
-      return state.settings === null ? state : { ...state, settings: changeSetting(state.settings, event) };
+    case 'setting-changed': {
+      // A change may hide or show findings (the ignore lists) or mark the last scan: the overview is asked for again.
+      const settings = state.settings === null ? null : changeSetting(state.settings, event);
+
+      return markStale({ ...state, settings });
+    }
   }
 };
 

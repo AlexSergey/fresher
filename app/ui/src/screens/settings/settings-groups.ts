@@ -1,26 +1,35 @@
-import type { ModuleId, ModuleInfo, SettingDescriptor } from '../../ipc/bindings.generated';
+import type { ModuleId, ModuleInfo, SettingDescriptor, SettingGroup } from '../../ipc/bindings.generated';
 
-export type SettingsGroup = {
-  readonly descriptors: readonly SettingDescriptor[];
-  // `null` for the core's own settings.
-  readonly module: ModuleId | null;
-};
+// A group of rows: one of the core's groups, or one module's settings under its name.
+export type SettingsGroup =
+  | { readonly descriptors: readonly SettingDescriptor[]; readonly group: CoreRowsGroup; readonly kind: 'core' }
+  | { readonly descriptors: readonly SettingDescriptor[]; readonly kind: 'module'; readonly module: ModuleId };
 
-// The core's settings first (every setting no module lists), then each module's in its own order, in the order the
-// core registered the modules. A group with no setting is left out.
+// The core's groups shown as rows; the ignored lists have a screen part of their own.
+type CoreRowsGroup = Exclude<SettingGroup, 'ignored' | 'module'>;
+
+// The groups of rows in the screen's order, around the module groups: General and Scan before them, Permissions
+// after them (the Ignored group, shown between, is not made of rows). A group with no setting is left out.
 export const settingsGroups = (
   descriptors: readonly SettingDescriptor[],
   modules: readonly ModuleInfo[],
-): readonly SettingsGroup[] => {
+): { readonly after: readonly SettingsGroup[]; readonly before: readonly SettingsGroup[] } => {
   const byKey = new Map(descriptors.map((descriptor) => [descriptor.key, descriptor] as const));
-  const ofModules = new Set(modules.flatMap((module) => module.settings));
-  const groups: SettingsGroup[] = [
-    { descriptors: descriptors.filter((descriptor) => !ofModules.has(descriptor.key)), module: null },
-    ...modules.map((module) => ({
-      descriptors: module.settings.flatMap((key) => byKey.get(key) ?? []),
-      module: module.id,
-    })),
-  ];
+  const core = (group: CoreRowsGroup): SettingsGroup => ({
+    descriptors: descriptors.filter((descriptor) => descriptor.group === group),
+    group,
+    kind: 'core',
+  });
+  const filled = (groups: readonly SettingsGroup[]): readonly SettingsGroup[] =>
+    groups.filter((group) => group.descriptors.length > 0);
+  const ofModules = modules.map((module): SettingsGroup => ({
+    descriptors: module.settings.flatMap((key) => byKey.get(key) ?? []),
+    kind: 'module',
+    module: module.id,
+  }));
 
-  return groups.filter((group) => group.descriptors.length > 0);
+  return {
+    after: filled([core('permissions')]),
+    before: filled([core('general'), core('scan'), ...ofModules]),
+  };
 };

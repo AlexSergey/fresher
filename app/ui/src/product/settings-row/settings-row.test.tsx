@@ -8,26 +8,36 @@ import { SettingsRow } from './settings-row';
 
 const SWITCH: SettingDescriptor = {
   default: { kind: 'switch', value: true },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.enabled',
   kind: { kind: 'switch' },
 };
 const NUMBER: SettingDescriptor = {
   default: { kind: 'number', value: 30 },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.min-age',
   kind: { kind: 'number', max: 365, min: 1, unit: 'days' },
 };
 const FEW_CHOICES: SettingDescriptor = {
   default: { kind: 'choice', value: 'trash' },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.method',
   kind: { kind: 'choice', options: ['trash', 'permanent'] },
 };
 const MANY_CHOICES: SettingDescriptor = {
   default: { kind: 'choice', value: 'week' },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.every',
   kind: { kind: 'choice', options: ['day', 'week', 'month', 'year'] },
 };
 const FOLDERS: SettingDescriptor = {
   default: { kind: 'folders', value: [] },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.roots',
   kind: { kind: 'folders' },
 };

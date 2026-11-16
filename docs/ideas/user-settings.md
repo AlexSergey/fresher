@@ -2,6 +2,10 @@
 
 **Since:** 2026-11-15
 
+**Taken by plan [005](../plans/005-settings/readme.md)** (2026-11-16): one settings screen in groups, every setting with a
+Reset, "Rescan to apply", the scan folders editable; settings never change a danger level or the confirmation. Export
+and import are the settings file itself for now ([deferred](../deferred/settings-export-import.md)).
+
 ## Problem
 
 Every Mac and every person is different: what counts as "old", which folders hold projects, which sections a person

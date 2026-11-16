@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use super::core_schema::core_settings;
-use super::{SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingValue};
+use super::{SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingValue};
 use crate::{ModuleDescriptor, ModuleId, StoredSettings};
 
 /// The last segment of the switch the schema adds for every module: `<module>.enabled`.
@@ -36,11 +36,13 @@ impl SettingsSchema {
     pub fn new<'a>(modules: impl IntoIterator<Item = &'a ModuleDescriptor>) -> Result<Self, SchemaError> {
         let mut settings = core_settings();
         for module in modules {
-            settings.push(SettingDescriptor {
-                key: SettingKey(format!("{}.{ENABLED}", module.id())),
-                kind: SettingKind::Switch,
-                default: SettingValue::Switch(true),
-            });
+            settings.push(SettingDescriptor::unchecked(
+                SettingKey(format!("{}.{ENABLED}", module.id())),
+                SettingKind::Switch,
+                SettingValue::Switch(true),
+                SettingGroup::Module,
+                SettingEffect::NextScan,
+            ));
             settings.extend(module.settings().iter().cloned());
         }
         let mut seen = BTreeSet::new();
@@ -271,11 +273,14 @@ mod tests {
             assert_eq!(
                 keys,
                 [
+                    "core.motion",
                     "core.scan.roots",
                     "core.access.desktop",
                     "core.access.documents",
                     "core.access.downloads",
                     "core.access.other-apps-data",
+                    "core.ignore.categories",
+                    "core.ignore.paths",
                     "demo.enabled",
                     "demo.min-age",
                     "demo.mode"

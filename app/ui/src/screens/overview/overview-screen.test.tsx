@@ -33,6 +33,7 @@ const PARTIAL: Overview = {
     kind: { kind: 'full' },
     outcome: { kind: 'partial' },
     scan: 1,
+    settingsChanged: false,
   },
 };
 
@@ -44,12 +45,14 @@ const FAILED: Overview = {
     kind: { kind: 'full' },
     outcome: { kind: 'failed', reason: { args: {}, key: 'demo.error.failed' } },
     scan: 1,
+    settingsChanged: false,
   },
 };
 
 // The overview during scan 1, with only the downloads counted so far.
 const SCANNING: Overview = {
   found: { allocated: 750_000_000, completeness: 'complete', logical: 750_000_000, reclaimable: 750_000_000 },
+  ignored: { categories: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: DEMO_OVERVIEW.totals.filter(({ category }) => category === 'demo.downloads'),
@@ -101,6 +104,14 @@ afterEach(async () => {
 
 describe('OverviewScreen', () => {
   describe('negative cases', () => {
+    it('says nothing of ignored things or a rescan when there are none', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+      await renderOverview();
+
+      expect(screen.queryByText(/you ignored/u)).toBeNull();
+      expect(screen.queryByText('Rescan to apply')).toBeNull();
+    });
+
     it('before a scan there are no cards and no zero sizes', async () => {
       core();
 
@@ -180,6 +191,18 @@ describe('OverviewScreen', () => {
   });
 
   describe('positive cases', () => {
+    it('counts what is ignored and opens the settings to show it', async () => {
+      const lastScan = DEMO_OVERVIEW.lastScan === null ? null : { ...DEMO_OVERVIEW.lastScan, settingsChanged: true };
+      core({ getOverview: () => ({ ...DEMO_OVERVIEW, ignored: { categories: 1, paths: 1 }, lastScan }) });
+      const { navigation } = await renderOverview();
+
+      expect(await screen.findByText('2 things you ignored are left out of these results.')).toBeInTheDocument();
+      expect(screen.getByText('Rescan to apply')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Show in Settings' }));
+
+      expect(navigation.getScreen()).toEqual({ kind: 'settings' });
+    });
+
     it('Scan starts a scan and the hero shows scanning', async () => {
       const startScan = vi.fn(() => 1);
       core({ startScan });

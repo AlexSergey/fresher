@@ -2,6 +2,11 @@
 
 **Since:** 2026-11-15
 
+**Taken by plan [005](../plans/005-settings/readme.md)** (2026-11-16): a category is ignored by its id and an item by its
+path; ignored things leave every answer and are never removed; the settings list them with Restore; no expiry, and an
+ignore holds while the path is the same. The Ignore button on a single item is
+[deferred](../deferred/ignore-an-item-button.md).
+
 ## Problem
 
 Some suggestions are right in general and wrong for a particular person. Example: the Docker section offers to remove

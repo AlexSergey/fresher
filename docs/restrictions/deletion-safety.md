@@ -100,3 +100,18 @@ The app deletes files from a real person's disk. These rules hold in every versi
 - **Rule:** a rule claims a path only when it can tell what it is. Unrecognized space is shown, never offered as junk.
 - **Why:** rule 1 of [`../rules.md`](../rules.md): a false positive is worse than a missed gigabyte.
 - **Enforced by:** every rule's negative tests.
+
+## Settings never weaken deletion safety
+
+- **Rule:** no setting turns off the confirmation, lowers a danger level or chooses how items are removed; a setting may
+  only hide or filter. What the user ignores is never removed: an ignored category or path is left out of every answer
+  and every plan, and the cleaner refuses an ignored path, what is inside it and what holds it. When the settings file
+  cannot be read, nothing is cleaned (the ignore list cannot be known); scanning goes on with the defaults.
+- **Why:** rule 2 of [`../rules.md`](../rules.md): the confirmation and Trash first are not preferences; and an
+  "Ignore" that a cleanup could still reach would be a broken promise.
+- **Enforced by:** the core's settings catalogue and its test that no core key names the confirmation, a danger level
+  or the removal (`crates/core/src/settings/core_schema.rs`); a module's settings are always in the module's own group
+  (`SettingDescriptor::new`). The engine leaves ignored findings out of pages, totals and plans
+  (`crates/engine/src/results.rs`, `cleanup/pending.rs`) and gives the cleaner `Protection::with_ignored`
+  (`cleanup/context.rs`; a list it refuses blocks the cleanup). Tests: `crates/engine/src/ignore.rs`,
+  `crates/e2e/tests/ignore.rs`; cleaning blocked on an unloaded file: `crates/engine/src/cleanup/blocked.rs`.

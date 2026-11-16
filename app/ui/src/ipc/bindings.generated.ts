@@ -16,16 +16,21 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" };
 
 /**
  * The answer of `get_overview`.
  */
 export type Overview = { status: EngineStatus, lastScan: LastScan | null, totals: Array<CategoryTotal>, 
 /**
- * Every finding of the current scan summed, a path counted once; the weakest completeness wins.
+ * Every finding of the current scan summed, a path counted once; the weakest completeness wins. Ignored findings
+ * are left out of it and of the totals.
  */
-found: Sizes, };
+found: Sizes, 
+/**
+ * How many entries the ignore lists hold.
+ */
+ignored: IgnoredCount, };
 
 /**
  * What the engine is doing.
@@ -44,7 +49,31 @@ export type LastScan = { scan: ScanId, finished: Timestamp, outcome: ScanOutcome
 /**
  * The cleanup that changed the disk since this scan, if one did: the scan's tree is out of date.
  */
-changedSince?: CleanupId, };
+changedSince?: CleanupId, 
+/**
+ * A setting that applies at the next scan changed since this scan: "Rescan to apply".
+ */
+settingsChanged: boolean, };
+
+/**
+ * The sizes of the ignore lists, for the overview's quiet note.
+ */
+export type IgnoredCount = { categories: number, paths: number, };
+
+/**
+ * What the user asks to ignore: a category, or one finding by its path.
+ */
+export type IgnoreTarget = { "kind": "category", category: string, } | { "kind": "finding", finding: FindingId, };
+
+/**
+ * An entry of the ignore lists, as the settings hold it.
+ */
+export type IgnoredEntry = { "kind": "category", category: string, } | { "kind": "path", path: string, };
+
+/**
+ * The answer of `get_own_data`: what the app's own data folder takes on disk, against its budget.
+ */
+export type OwnData = { total: ByteSize, budget: ByteSize, };
 
 /**
  * How much of the scan roots one scan saw.
@@ -241,7 +270,7 @@ export type SettingsFile = "loaded" | "newer-version" | "broken" | "unreadable";
 /**
  * A setting a module (or the core) offers; its label and description are found by convention.
  */
-export type SettingDescriptor = { key: SettingKey, kind: SettingKind, default: SettingValue, };
+export type SettingDescriptor = { key: SettingKey, kind: SettingKind, default: SettingValue, group: SettingGroup, effect: SettingEffect, };
 
 /**
  * The key of a setting: `core.<name>` or `<module>.<name>`, dot-separated kebab-case segments (`core.scan.roots`).
@@ -251,7 +280,18 @@ export type SettingKey = string;
 /**
  * What kind of value a setting holds, and its limits.
  */
-export type SettingKind = { "kind": "switch" } | { "kind": "number", min: number, max: number, unit: Unit | null, } | { "kind": "choice", options: Array<string>, } | { "kind": "folders" };
+export type SettingKind = { "kind": "switch" } | { "kind": "number", min: number, max: number, unit: Unit | null, } | { "kind": "choice", options: Array<string>, } | { "kind": "folders" } | { "kind": "ids" } | { "kind": "paths" };
+
+/**
+ * Where the settings screen shows a setting. Only the core's settings are in the core's groups; a module's are in
+ * `Module`, under the module's name.
+ */
+export type SettingGroup = "general" | "scan" | "ignored" | "permissions" | "module";
+
+/**
+ * When a change of a setting shows in the results.
+ */
+export type SettingEffect = "now" | "next-scan";
 
 /**
  * The unit a number is shown in.
@@ -261,12 +301,12 @@ export type Unit = "bytes" | "days";
 /**
  * The value of a setting. Folders are kept as written: `~` stands for the home folder, which the app fills in.
  */
-export type SettingValue = { "kind": "switch", "value": boolean } | { "kind": "number", "value": number } | { "kind": "choice", "value": string } | { "kind": "folders", "value": Array<string> };
+export type SettingValue = { "kind": "switch", "value": boolean } | { "kind": "number", "value": number } | { "kind": "choice", "value": string } | { "kind": "folders", "value": Array<string> } | { "kind": "ids", "value": Array<string> } | { "kind": "paths", "value": Array<string> };
 
 /**
  * What is wrong with a value; the setting keeps its default. Reported to the user, never a crash.
  */
-export type SettingProblem = { "kind": "unknown-key", key: string, } | { "kind": "wrong-type", key: SettingKey, } | { "kind": "out-of-range", key: SettingKey, min: number, max: number, } | { "kind": "unknown-choice", key: SettingKey, } | { "kind": "refused-folder", key: SettingKey, folder: string, };
+export type SettingProblem = { "kind": "unknown-key", key: string, } | { "kind": "wrong-type", key: SettingKey, } | { "kind": "out-of-range", key: SettingKey, min: number, max: number, } | { "kind": "unknown-choice", key: SettingKey, } | { "kind": "refused-folder", key: SettingKey, folder: string, } | { "kind": "refused-id", key: SettingKey, id: string, };
 
 /**
  * The input of `update_setting`.

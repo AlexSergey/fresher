@@ -90,6 +90,7 @@ const totalsOf = (findings: readonly Finding[], categories: readonly string[]): 
 // What `get_overview` answers while a scan has streamed `findings` so far: their totals and their sum, still scanning.
 export const scanningOverviewOf = (findings: readonly Finding[]): Overview => ({
   found: findings.reduce((sum, finding) => add(sum, finding.sizes), complete(0)),
+  ignored: { categories: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: [...totalsOf(findings, [...new Set(findings.map(({ category }) => category))])],
@@ -133,12 +134,14 @@ export const largeScan = ({
     findings,
     overview: {
       found: findings.reduce((sum, finding) => add(sum, finding.sizes), complete(0)),
+      ignored: { categories: 0, paths: 0 },
       lastScan: {
         coverage: FULL_COVERAGE,
         finished: 1_735_689_600,
         kind: { kind: 'full' },
         outcome: { kind: 'completed' },
         scan: 1,
+        settingsChanged: false,
       },
       status: { state: 'idle' },
       totals: [...totalsOf(findings, ids)],

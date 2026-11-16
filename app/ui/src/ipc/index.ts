@@ -14,8 +14,11 @@ import type {
   Event,
   FindingsPage,
   FindingsQuery,
+  IgnoredEntry,
+  IgnoreTarget,
   ModuleInfo,
   Overview,
+  OwnData,
   PlanId,
   PutBackReport,
   PutBackRequest,
@@ -43,10 +46,15 @@ export const COMMANDS = {
   getFindings: 'get_findings',
   getModules: 'get_modules',
   getOverview: 'get_overview',
+  getOwnData: 'get_own_data',
   getSettings: 'get_settings',
+  ignore: 'ignore',
+  pickFolder: 'pick_folder',
   prepareCleanup: 'prepare_cleanup',
   putBack: 'put_back',
   quitAfterCleanup: 'quit_after_cleanup',
+  resetSettings: 'reset_settings',
+  restoreIgnored: 'restore_ignored',
   revealInTrash: 'reveal_in_trash',
   startScan: 'start_scan',
   subscribe: 'subscribe',
@@ -119,6 +127,20 @@ export const getFindings = (query: FindingsQuery): Promise<FindingsPage> => call
 export const getSettings = (): Promise<SettingsView> => call('getSettings');
 
 export const updateSetting = (update: SettingUpdate): Promise<void> => call('updateSetting', { update });
+
+// Every setting but the ignore lists goes back to its default.
+export const resetSettings = (): Promise<void> => call('resetSettings');
+
+// A category, or one finding by its path, leaves the results until it is restored.
+export const ignore = (target: IgnoreTarget): Promise<void> => call('ignore', { target });
+
+export const restoreIgnored = (entry: IgnoredEntry): Promise<void> => call('restoreIgnored', { entry });
+
+// The system's folder picker; `null` when it was cancelled. A folder in the home folder comes as `~/…`.
+export const pickFolder = (): Promise<null | string> => call('pickFolder');
+
+// What Fresher's own data takes on disk, against its budget.
+export const getOwnData = (): Promise<OwnData> => call('getOwnData');
 
 export const getDictionary = (locale: string): Promise<Dictionary> => call('getDictionary', { locale });
 

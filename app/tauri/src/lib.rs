@@ -7,6 +7,7 @@ mod commands;
 mod compose;
 mod events;
 mod process;
+mod settings_commands;
 mod shell;
 #[cfg(test)]
 mod testing;
@@ -18,10 +19,13 @@ pub fn run() -> Result<(), tauri::Error> {
     let app = tauri::Builder::default()
         // First, so a second launch exits before it sets anything up.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| shell::on_second_launch(app)))
+        // The folder picker, called from Rust only: the web view is granted none of its commands.
+        .plugin(tauri_plugin_dialog::init())
         .menu(shell::menu)
         .on_menu_event(|app, event| shell::on_menu_event(app, &event))
         .setup(|app| {
-            let engine = compose::engine(app.path().app_data_dir()?, &app.path().home_dir()?)?;
+            let data = app.path().app_data_dir()?;
+            let engine = compose::engine(&data, &app.path().home_dir()?)?;
             // The last result shows at once: the cached state is restored without reading the disk; the UI learns
             // of it through the usual events and the overview.
             if let Err(error) = engine.restore() {
@@ -29,6 +33,7 @@ pub fn run() -> Result<(), tauri::Error> {
             }
             app.manage(engine);
             app.manage(events::EventForwarder::default());
+            app.manage(fresher_store::DataFolder::open(data)?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -41,6 +46,11 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::get_findings,
             commands::get_settings,
             commands::update_setting,
+            commands::reset_settings,
+            commands::ignore,
+            commands::restore_ignored,
+            settings_commands::pick_folder,
+            settings_commands::get_own_data,
             commands::get_dictionary,
             commands::get_access_status,
             commands::prepare_cleanup,

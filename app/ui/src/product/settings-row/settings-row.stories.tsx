@@ -23,21 +23,29 @@ const DICTIONARY = {
 
 const SWITCH: SettingDescriptor = {
   default: { kind: 'switch', value: true },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.enabled',
   kind: { kind: 'switch' },
 };
 const NUMBER: SettingDescriptor = {
   default: { kind: 'number', value: 90 },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.min-age',
   kind: { kind: 'number', max: 365, min: 1, unit: 'days' },
 };
 const CHOICE: SettingDescriptor = {
   default: { kind: 'choice', value: 'trash' },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.method',
   kind: { kind: 'choice', options: ['trash', 'permanent'] },
 };
 const FOLDERS: SettingDescriptor = {
   default: { kind: 'folders', value: [] },
+  effect: 'next-scan',
+  group: 'module',
   key: 'demo.roots',
   kind: { kind: 'folders' },
 };

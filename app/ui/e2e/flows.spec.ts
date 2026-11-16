@@ -181,6 +181,33 @@ test.describe('positive cases', () => {
     await expect(enabled).not.toBeChecked();
   });
 
+  test('adding a scan folder with the picker, then resetting the list', async ({ page }) => {
+    await mockCore(page, SCRIPTS.settings);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const folders = page.getByRole('group', { name: 'Folders to scan' });
+
+    await folders.getByRole('button', { name: 'Add folder…' }).click();
+    await expect(folders.getByRole('list', { name: 'Folders to scan' })).toContainText('~/Music');
+    await folders.getByRole('button', { name: 'Reset' }).click();
+
+    await expect(folders.getByText('No folders')).toBeVisible();
+  });
+
+  test('Reset all settings asks first and shows the size of Fresher’s own data', async ({ page }) => {
+    await mockCore(page, SCRIPTS.settings);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Settings' }).click();
+
+    await expect(page.getByText(/take 2 MB of the 50 MB/u)).toBeVisible();
+    await page.getByRole('button', { name: 'Reset all settings…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Reset all settings?' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Keep my settings' }).click();
+
+    await expect(dialog).toBeHidden();
+  });
+
   test('the whole path without a pointer', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');

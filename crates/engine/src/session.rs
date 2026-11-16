@@ -319,6 +319,7 @@ impl Output<'_> {
             kind: self.kind,
             coverage,
             changed_since: None,
+            settings_changed: false,
         };
         lock_anyway(&self.shared.results).finish(last, self.next_id);
         self.shared.bus.publish(&Event::ScanCoverage { scan: self.scan, coverage: self.coverage.clone() });
@@ -1007,7 +1008,15 @@ mod tests {
             assert_eq!(overview.status, EngineStatus::Idle);
             let finished = Timestamp::from_secs(START);
             let (outcome, kind, coverage) = (ScanOutcome::Completed, ScanKind::Full, Coverage::default());
-            let last = LastScan { scan: ScanId::new(1), finished, outcome, kind, coverage, changed_since: None };
+            let last = LastScan {
+                scan: ScanId::new(1),
+                finished,
+                outcome,
+                kind,
+                coverage,
+                changed_since: None,
+                settings_changed: false,
+            };
             assert_eq!(overview.last_scan, Some(last));
             let totals: Vec<_> = overview
                 .totals

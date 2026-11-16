@@ -16,6 +16,7 @@ mod coverage;
 mod disk;
 mod engine;
 mod error;
+mod ignore;
 mod registry;
 mod results;
 mod session;

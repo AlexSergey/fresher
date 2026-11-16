@@ -56,12 +56,14 @@ export const DEMO_FINISHED: Overview = DEMO_OVERVIEW;
 export const DEMO_PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
   found: partial(DEMO_OVERVIEW.found),
+  ignored: { categories: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'partial' },
     scan: 1,
+    settingsChanged: false,
   },
   totals: DEMO_OVERVIEW.totals.map((total, index) => (index === 0 ? { ...total, sizes: partial(total.sizes) } : total)),
 };
@@ -76,6 +78,7 @@ const complete = (bytes: number): Sizes => ({
 // The demo scan's overview half way: its first batch counted.
 export const DEMO_RUNNING: Overview = {
   found: complete(2_250_000_000),
+  ignored: { categories: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: [

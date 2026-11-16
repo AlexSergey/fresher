@@ -159,7 +159,7 @@ impl Shell {
         }
         let ports = Ports {
             walk,
-            settings: Arc::new(FileSettingsStore::new(data)),
+            settings: Arc::new(FileSettingsStore::new(data.clone())),
             clock,
             commands,
             access: Arc::new(UnknownAccess),
@@ -168,6 +168,7 @@ impl Shell {
         let app = mock_app();
         app.manage(Engine::with_cleanup(registry().unwrap(), ports, cleanup).unwrap());
         app.manage(EventForwarder::default());
+        app.manage(data);
         Self { app, folder }
     }
 
@@ -177,6 +178,10 @@ impl Shell {
 
     pub(crate) fn forwarder(&self) -> tauri::State<'_, EventForwarder> {
         self.app.state::<EventForwarder>()
+    }
+
+    pub(crate) fn data_folder(&self) -> tauri::State<'_, DataFolder> {
+        self.app.state::<DataFolder>()
     }
 
     /// The folder the fake Trash moves items into.

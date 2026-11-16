@@ -3,11 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SettingsView, SettingValue } from '../../ipc/bindings.generated';
 
 import { tText } from '../../i18n';
-import { failureOf, updateSetting } from '../../ipc';
+import { failureOf, pickFolder, updateSetting } from '../../ipc';
 import { requestSettings } from '../../state/connect';
 import { useCore, useCoreStore } from '../../state/store';
 
 export type Settings = {
+  // Asks the system's folder picker for a folder and sends the list of `key` with it added; a cancelled pick or a
+  // folder already listed sends nothing.
+  readonly addFolder: (key: string) => void;
   // Sends a new value; the row shows it once the core's `setting-changed` event arrives.
   readonly change: (key: string, value: SettingValue) => void;
   // The core's text of the last refused change, per setting.
@@ -42,5 +45,24 @@ export const useSettings = (): Settings => {
     [store],
   );
 
-  return { change, refusals, view };
+  const addFolder = useCallback(
+    (key: string): void => {
+      const current = view?.values[key];
+      const folders = current?.kind === 'folders' ? current.value : [];
+
+      pickFolder().then(
+        (folder) => {
+          if (folder !== null && !folders.includes(folder)) {
+            change(key, { kind: 'folders', value: [...folders, folder] });
+          }
+        },
+        (error: unknown) => {
+          store.dispatch({ failure: failureOf(error), type: 'command-failed' });
+        },
+      );
+    },
+    [change, store, view],
+  );
+
+  return { addFolder, change, refusals, view };
 };

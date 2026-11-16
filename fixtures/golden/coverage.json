@@ -35,6 +35,7 @@
     "outcome": {
       "kind": "partial"
     },
-    "scan": 1
+    "scan": 1,
+    "settingsChanged": false
   }
 }

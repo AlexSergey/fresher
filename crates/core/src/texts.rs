@@ -68,11 +68,15 @@ mod tests {
         let removability =
             Removability::ALL.into_iter().flat_map(|state| std::iter::once(state.name_key()).chain(state.how_key()));
         let schema = SettingsSchema::new([]).unwrap();
-        let settings = schema
-            .descriptors()
-            .iter()
-            .filter(|setting| setting.key().namespace() == "core")
-            .flat_map(|setting| [setting.key().label_key(), setting.key().description_key()]);
+        let settings =
+            schema.descriptors().iter().filter(|setting| setting.key().namespace() == "core").flat_map(|setting| {
+                let options = match setting.kind() {
+                    crate::SettingKind::Choice { options } => options.clone(),
+                    _ => Vec::new(),
+                };
+                let options = options.into_iter().map(|option| key(format!("{}.options.{option}", setting.key())));
+                [setting.key().label_key(), setting.key().description_key()].into_iter().chain(options)
+            });
 
         let tools = tool_notes().into_iter().map(|note| note.key().clone());
         let skips = SkipCode::ALL.into_iter().flat_map(|code| std::iter::once(code.text_key()).chain(code.how_key()));

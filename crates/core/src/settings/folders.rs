@@ -41,6 +41,11 @@ pub(crate) fn is_allowed(folder: &Path) -> bool {
     text.strip_prefix('/').and_then(plain_names).is_some_and(|names| !is_protected(&names))
 }
 
+/// `true` when `path` is an absolute path of plain names, wherever it is (`/` itself has no name and is refused).
+pub(crate) fn is_plain_absolute(path: &Path) -> bool {
+    path.to_str().and_then(|text| text.strip_prefix('/')).and_then(plain_names).is_some()
+}
+
 /// The names of `path`, split at `/`; `None` when one of them is empty, `.`, `..` or holds a NUL.
 fn plain_names(path: &str) -> Option<Vec<&str>> {
     let names: Vec<&str> = path.split('/').collect();
@@ -66,7 +71,14 @@ mod tests {
     mod negative {
         use std::path::Path;
 
-        use crate::settings::folders::is_allowed;
+        use crate::settings::folders::{is_allowed, is_plain_absolute};
+
+        #[test]
+        fn a_plain_absolute_path_has_no_tilde_dots_or_empty_names() {
+            for path in ["", "/", "~", "~/a", "a/b", "/a/../b", "/a/./b", "/a//b", "/a/"] {
+                assert!(!is_plain_absolute(Path::new(path)), "{path:?}");
+            }
+        }
 
         #[test]
         fn refuses_a_folder_that_is_not_home_based_or_absolute() {
@@ -115,7 +127,14 @@ mod tests {
     mod positive {
         use std::path::Path;
 
-        use crate::settings::folders::is_allowed;
+        use crate::settings::folders::{is_allowed, is_plain_absolute};
+
+        #[test]
+        fn a_plain_absolute_path_may_be_anywhere() {
+            for path in ["/System", "/Users/ann/Library/Caches/keep", "/usr/bin/x"] {
+                assert!(is_plain_absolute(Path::new(path)), "{path:?}");
+            }
+        }
 
         #[test]
         fn allows_the_home_folder_and_folders_under_it() {

@@ -21,6 +21,7 @@ import { ReviewScreen } from './review/review-screen';
 import { screenKey, ScreenStack } from './screen-stack';
 import { SettingsScreen } from './settings/settings-screen';
 import { useModules } from './use-modules';
+import { useMotionSetting } from './use-motion-setting';
 
 const moduleName = (module: ModuleInfo): string => tText({ args: {}, key: `${module.id}.enabled.label` });
 
@@ -69,6 +70,7 @@ const useRefusalToasts = (): void => {
 // The app's frame: the sidebar beside the current screen. The screens render once the core's dictionary is read, so
 // every text of theirs is the core's from the first frame; an unreachable core shows its error state instead.
 export const AppFrame = (): JSX.Element => {
+  useMotionSetting();
   const navigation = useNavigation();
   const modules = useModules();
   const screen = useScreen(modules?.map((module) => module.id) ?? null);

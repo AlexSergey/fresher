@@ -57,8 +57,9 @@ pub use cleanup::{
     TrashedItem, VolumeSpace,
 };
 pub use command::{
-    CategoryInfo, CategoryTotal, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, LastScan, Locale, ModuleInfo,
-    Operation, Overview, SettingUpdate, SettingsFile, SettingsView,
+    CategoryInfo, CategoryTotal, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, IgnoreTarget, IgnoredCount,
+    IgnoredEntry, LastScan, Locale, ModuleInfo, Operation, Overview, OwnData, SettingUpdate, SettingsFile,
+    SettingsView,
 };
 pub use coverage::{Coverage, NotEntered, UnreadableCount};
 pub use danger::DangerLevel;
@@ -83,8 +84,9 @@ pub use removability::{EntryFacts, Removability};
 pub use removal::{Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
-    ModuleSettings, ResolvedSettings, SchemaError, SettingDescriptor, SettingError, SettingKey, SettingKind,
-    SettingProblem, SettingValue, SettingsSchema, Unit,
+    IGNORE_CATEGORIES, IGNORE_PATHS, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SchemaError, SettingDescriptor,
+    SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema,
+    Unit,
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};

@@ -73,11 +73,14 @@ pub enum CommandError {
     /// An item that is no longer in the Trash.
     #[error("the item is not in the Trash")]
     NotInTrash,
+    /// A finding without a path of its own (a tool's object): it cannot be ignored yet.
+    #[error("the finding cannot be ignored")]
+    CannotIgnore,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 23] = [
+    pub const CODES: [&str; 24] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -101,6 +104,7 @@ impl CommandError {
         "unknown-cleanup",
         "unknown-cleanup-item",
         "not-in-trash",
+        "cannot-ignore",
     ];
 
     /// The `code` the error is serialized with.
@@ -129,6 +133,7 @@ impl CommandError {
             Self::UnknownCleanup { .. } => "unknown-cleanup",
             Self::UnknownCleanupItem => "unknown-cleanup-item",
             Self::NotInTrash => "not-in-trash",
+            Self::CannotIgnore => "cannot-ignore",
         }
     }
 
@@ -157,7 +162,8 @@ impl CommandError {
             | Self::PlanMismatch
             | Self::CleaningBlocked { .. }
             | Self::UnknownCleanupItem
-            | Self::NotInTrash => text,
+            | Self::NotInTrash
+            | Self::CannotIgnore => text,
         }
     }
 }
@@ -207,7 +213,8 @@ pub(crate) mod tests {
             | CommandError::CleaningBlocked { .. }
             | CommandError::UnknownCleanup { .. }
             | CommandError::UnknownCleanupItem
-            | CommandError::NotInTrash => error,
+            | CommandError::NotInTrash
+            | CommandError::CannotIgnore => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -233,6 +240,7 @@ pub(crate) mod tests {
             sample(CommandError::UnknownCleanup { id: CleanupId::new(4) }),
             sample(CommandError::UnknownCleanupItem),
             sample(CommandError::NotInTrash),
+            sample(CommandError::CannotIgnore),
         ]
     }
 
@@ -330,6 +338,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
                     vec![],
                     vec![],
                 ]

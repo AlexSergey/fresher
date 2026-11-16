@@ -16,6 +16,7 @@ export {
   // The danger levels escalate in shape: Safe, Low, Medium, High.
   OctagonAlert,
   Package,
+  Plus,
   RotateCw,
   Search,
   Settings,

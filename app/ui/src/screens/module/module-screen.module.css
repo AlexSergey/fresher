@@ -25,6 +25,10 @@
     scroll-margin-top: var(--size-toolbar);
   }
 
+  .ignore {
+    padding: 0 var(--space-1);
+  }
+
   .about {
     padding: 0 var(--space-3);
     color: var(--text-secondary);

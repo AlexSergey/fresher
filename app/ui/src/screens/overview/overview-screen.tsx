@@ -13,6 +13,7 @@ import { useNavigation } from '../../state/navigation';
 import { checkedOf } from '../../state/selection';
 import { useCore, useCoreStore } from '../../state/store';
 import { useAccess } from '../permission/use-access';
+import { RescanNotice } from '../settings/rescan-notice';
 import { useModules } from '../use-modules';
 import { useScanActions } from '../use-scan-actions';
 import { moduleProgress } from './module-progress';
@@ -41,6 +42,7 @@ export const OverviewScreen = (): JSX.Element => {
   const phase = phaseOf(status, lastScan, outcome);
   const scanning = phase === 'scanning';
   const totals = overview?.totals ?? [];
+  const ignoredCount = (overview?.ignored.categories ?? 0) + (overview?.ignored.paths ?? 0);
 
   const open = (category: CategoryId): void => {
     const module = modules?.find(({ categories }) => categories.some(({ descriptor }) => descriptor.id === category));
@@ -77,6 +79,7 @@ export const OverviewScreen = (): JSX.Element => {
             {t('ui.screen.overview.partial.text')}
           </Notice>
         ) : null}
+        <RescanNotice />
         {access === 'denied' ? <PermissionCard access="denied" /> : null}
         {phase !== 'idle' && phase !== 'failed' && overview !== null && totals.length > 0 ? (
           <CategoryGrid
@@ -89,6 +92,20 @@ export const OverviewScreen = (): JSX.Element => {
             selected={(category) => checkedOf(selection, category)}
             totals={totals}
           />
+        ) : null}
+        {ignoredCount > 0 ? (
+          <p className={styles.ignored}>
+            <span>{t('ui.screen.overview.ignored', { count: { kind: 'count', value: ignoredCount } })}</span>
+            <Button
+              onClick={() => {
+                navigation.navigate({ kind: 'settings' });
+              }}
+              size="small"
+              variant="ghost"
+            >
+              {t('ui.screen.overview.ignored.show')}
+            </Button>
+          </p>
         ) : null}
       </div>
     </>

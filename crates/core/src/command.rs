@@ -1,15 +1,16 @@
 //! What the commands take and return: the IPC surface between the UI and the engine.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::settings::schema::ENABLED;
 use crate::{
-    AccessStatus, Availability, CategoryDescriptor, CategoryId, CleanupId, CommandError, Coverage, DangerLevel,
-    Finding, ModuleDescriptor, ModuleId, ResolvedSettings, ScanId, ScanKind, ScanOutcome, SettingDescriptor,
-    SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
+    AccessStatus, Availability, ByteSize, CategoryDescriptor, CategoryId, CleanupId, CommandError, Coverage,
+    DangerLevel, Finding, FindingId, ModuleDescriptor, ModuleId, ResolvedSettings, ScanId, ScanKind, ScanOutcome,
+    SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
 };
 
 /// A long operation of the engine; only one runs at a time.
@@ -46,8 +47,41 @@ pub struct Overview {
     pub status: EngineStatus,
     pub last_scan: Option<LastScan>,
     pub totals: Vec<CategoryTotal>,
-    /// Every finding of the current scan summed, a path counted once; the weakest completeness wins.
+    /// Every finding of the current scan summed, a path counted once; the weakest completeness wins. Ignored findings
+    /// are left out of it and of the totals.
     pub found: Sizes,
+    /// How many entries the ignore lists hold.
+    pub ignored: IgnoredCount,
+}
+
+/// The sizes of the ignore lists, for the overview's quiet note.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, TS)]
+pub struct IgnoredCount {
+    pub categories: u32,
+    pub paths: u32,
+}
+
+/// The answer of `get_own_data`: what the app's own data folder takes on disk, against its budget.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+pub struct OwnData {
+    pub total: ByteSize,
+    pub budget: ByteSize,
+}
+
+/// What the user asks to ignore: a category, or one finding by its path.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum IgnoreTarget {
+    Category { category: String },
+    Finding { finding: FindingId },
+}
+
+/// An entry of the ignore lists, as the settings hold it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum IgnoredEntry {
+    Category { category: String },
+    Path { path: PathBuf },
 }
 
 /// The scan whose findings the engine holds.
@@ -62,6 +96,9 @@ pub struct LastScan {
     #[serde(rename = "changedSince", skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub changed_since: Option<CleanupId>,
+    /// A setting that applies at the next scan changed since this scan: "Rescan to apply".
+    #[serde(rename = "settingsChanged")]
+    pub settings_changed: bool,
 }
 
 /// The findings of one category in the last scan.
@@ -295,6 +332,7 @@ mod tests {
                 kind: ScanKind::Restored { taken: Timestamp::from_secs(100) },
                 coverage: Coverage::default(),
                 changed_since: None,
+                settings_changed: false,
             };
             let changed = LastScan { changed_since: Some(crate::CleanupId::new(5)), ..last.clone() };
             assert_eq!(serde_json::to_value(changed).unwrap()["changedSince"], 5);
@@ -307,6 +345,7 @@ mod tests {
                     "outcome": { "kind": "completed" },
                     "kind": { "kind": "restored", "taken": 100 },
                     "coverage": { "notEntered": [], "unreadable": [] },
+                    "settingsChanged": false,
                 })
             );
         }
@@ -339,8 +378,13 @@ mod tests {
 
         #[test]
         fn multi_word_fields_serialize_in_camel_case() {
-            let overview =
-                Overview { status: EngineStatus::Idle, last_scan: None, totals: Vec::new(), found: Sizes::ZERO };
+            let overview = Overview {
+                status: EngineStatus::Idle,
+                last_scan: None,
+                totals: Vec::new(),
+                found: Sizes::ZERO,
+                ignored: crate::IgnoredCount::default(),
+            };
             let demo = ModuleId::new("demo").unwrap();
             let total = CategoryTotal {
                 category: CategoryId::new(demo, "demo.caches").unwrap(),
@@ -352,6 +396,14 @@ mod tests {
                 AccessStatus { capabilities: vec![CapabilityState::new(Capability::AllFiles, Access::Unknown)] };
 
             assert_eq!(serde_json::to_value(overview).unwrap()["lastScan"], json!(null));
+            assert_eq!(
+                serde_json::from_value::<crate::IgnoreTarget>(json!({ "kind": "finding", "finding": 3 })).unwrap(),
+                crate::IgnoreTarget::Finding { finding: crate::FindingId::new(3) }
+            );
+            assert_eq!(
+                serde_json::to_value(crate::IgnoredEntry::Path { path: "/a".into() }).unwrap(),
+                json!({ "kind": "path", "path": "/a" })
+            );
             assert_eq!(serde_json::to_value(total).unwrap()["highestDanger"], "low");
             assert_eq!(
                 serde_json::to_value(access).unwrap()["capabilities"][0]["capability"],
@@ -396,9 +448,9 @@ mod tests {
 
             let schema = SettingsSchema::new([&descriptor]).unwrap();
             let view = SettingsView::new(&schema, &schema.resolve(&StoredSettings::default()), SettingsFile::Loaded);
-            // The scan roots, the four access opt-ins, and the module's two.
-            assert_eq!(view.settings.len(), 7);
-            assert_eq!(view.values.len(), 7);
+            // Motion, the scan roots, the four access opt-ins, the two ignore lists, and the module's two.
+            assert_eq!(view.settings.len(), 10);
+            assert_eq!(view.values.len(), 10);
             assert_eq!(view.problems, []);
         }
 
