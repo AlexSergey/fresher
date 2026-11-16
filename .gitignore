@@ -80,3 +80,6 @@ npm-debug.log*
 
 # Local experiments: never committed
 NO_COMMIT/
+
+# Local worktrees of agents (one per plan or step), never committed
+.claude/worktrees/
