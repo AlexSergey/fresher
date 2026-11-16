@@ -19,7 +19,7 @@ These are ideas, not decisions: each becomes a decision only in the design of th
 | [Rules as data](./rules-as-data.md)                               | user  | declarative rules, project artifacts, cache markers, protected paths                                                 |
 | [Crates](./crates.md)                                             | user  | candidate dependencies and their licences                                                                            |
 | [Safety in the types](./safety-in-types.md)                       | agent | additions to plans 002 and 008: evidence on findings, a consumed `Verified`, a token for permanent removal           |
-| [Change detection and hashing](./change-detection-and-hashing.md) | agent | measured input to plan 004: walk timings, sizes in two tiers, rescans, clones; options scored by two reviewer models |
+| [Change detection and hashing](./change-detection-and-hashing.md) | agent | measured input to plan 004: the full walk in two tiers chosen by a decision model over the event-history draft       |
 
 ## Proposed decisions
 
