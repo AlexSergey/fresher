@@ -4,13 +4,15 @@
 
 The question from the team: "to be fast we need a clever graph with hashes (md5) — but md5 is expensive". Hashes serve
 two problems here: **fast rescans** (what changed since the last scan) and **duplicates** (which files have the same
-content). The short answer: the graph is the scanner's tree, walked in full every scan; **fingerprints of metadata,
-not of content**, come later for watch-mode diffs; contents are read only for duplicate candidates, and md5 is used
-nowhere.
+content). The short answer: the graph is the scanner's tree with **fingerprints of metadata, not of content** — no
+rescan reads file contents; contents are read only for duplicate candidates, and md5 is used nowhere.
 
 Facts marked "measured" were tested on an Apple M1 Pro with APFS on 2026-11-15. The options were then scored blind by
 **two independent reviewer models**, each given the same brief with the constraints and the measured facts (see
 "How the options were scored"); the verdicts follow their scores and their own verdicts.
+
+This is **measured input for plan [004](../../plans/004-fast-scan/readme.md)** (fast scan), whose first step,
+"Measure first", asks for exactly these numbers. What they change there is in "What this means for plan 004".
 
 ## Measured
 
@@ -27,13 +29,27 @@ Facts marked "measured" were tested on an Apple M1 Pro with APFS on 2026-11-15. 
 
 Not measured yet: BLAKE3 and xxh3 (see "To measure").
 
+## What this means for plan 004
+
+| Plan 004 (draft) says                                                         | Measured                                                                                               | Proposed                                                                                                                                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| §1: one syscall returns logical, allocated and private sizes and the clone id | asking for private size and clone id makes the walk 2–3 × slower (24.9 s → 44.4 s+ cold)               | read them in a second tier, only where they matter ([sizes in two tiers](#sizes-in-two-tiers))                                                                           |
+| Target: first scan, warm, 2 million entries ≤ 5 s                             | 12.5 s warm and 24.9 s cold for 1.74 million entries on an M1 Pro; 10 or 30 threads make no difference | a cold target as well — the app is opened rarely, often after a restart ([target](#target))                                                                              |
+| Call 1: rescans from the system's change history (FSEvents)                   | a full cold walk already meets a 30-second target                                                      | needed only for the rescan targets (≤ 0.5 s unchanged, ≤ 2 s after a day); if kept, add the sampled re-check of R6 to the plan's total check ([R5 below](#fast-rescans)) |
+| §2: 3 million files make about 400 thousand nodes                             | 1.42 million files in 270 thousand folders                                                             | consistent with the estimate                                                                                                                                             |
+| §1: interesting places first                                                  | —                                                                                                      | the reviewers proposed the same; nothing to add                                                                                                                          |
+| Plan 002: `Sizes { logical, allocated, completeness }`                        | ~5.3 GiB of 104 GiB sits in blocks shared between files                                                | "freed if deleted" needs the private size, or a mark that it is a lower bound (C3)                                                                                       |
+
+**The reviewers scored R5 against a 30-second cold target and did not see plan 004's rescan targets.** Their "reject"
+means "not needed for that target", not "unsafe"; both rated its correctness 3 of 5.
+
 ## Target
 
-Proposed, not decided yet: a **cold full scan of a home folder finishes within 30 seconds**, and the **first findings
-appear within 2–3 seconds**. The walk visits the folders rules care about first, findings stream as it reaches them,
-and totals are marked partial until it ends. The measured home folder (1.74 million entries) meets it with the cheap
-walk (24.9 s); a home folder of 3–5 million entries would take ~43–72 s cold, so there the streaming carries the
-experience, not the total time.
+Proposed, not decided yet, next to plan 004's warm targets: a **cold full scan of a home folder finishes within 30
+seconds**, and the **first findings appear within 2–3 seconds**. The walk visits the folders rules care about first,
+findings stream as it reaches them, and totals are marked partial until it ends. The measured home folder (1.74 million
+entries) meets it with the cheap walk (24.9 s); a home folder of 3–5 million entries would take ~43–72 s cold, so there
+the streaming carries the experience, not the total time.
 
 ## How the options were scored
 
@@ -48,29 +64,30 @@ with the column everywhere except D4 (A: take, B: later).
 
 ### Fast rescans
 
-| Option                                                 | Reviewer A         | Reviewer B         | Verdict                                                                                                |
-| ------------------------------------------------------ | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------ |
-| R1. Full metadata walk every scan                      | 5·3·4·5·5 = **35** | 5·4·4·5·5 = **37** | **take**: the cold walk measured 24.9 s                                                                |
-| R2. Merkle tree of content hashes                      | 5·1·1·2·2 = **22** | 5·1·1·4·1 = **23** | reject: reads every byte on every scan                                                                 |
-| R3. Merkle tree of metadata fingerprints               | 4·3·4·3·4 = **29** | 5·4·4·4·4 = **35** | **later, with watch mode**: speeds up diffs, not the walk                                              |
-| R4. Skip a folder whose modification time is unchanged | 1·4·4·4·5 = **24** | 1·4·5·4·2 = **22** | reject: a file growing in place does not change its folder's time                                      |
-| R5. Replay the file-system event history (FSEvents)    | 3·4·5·2·3 = **27** | 3·4·5·2·2 = **26** | reject: not needed for the target; history can be dropped over weeks; needs the last full tree on disk |
-| R6. R5 + R3 + a verification sample                    | 4·4·5·1·3 = **29** | 4·4·5·1·2 = **28** | reject: R5's risks, and the hardest to test                                                            |
-| R7. The Spotlight index                                | 2·4·4·3·3 = **24** | 2·5·5·3·4 = **28** | reject: incomplete (excluded folders, package contents, can be off)                                    |
-| R8. A live watcher or a security-framework client      | 5·5·5·2·1 = **33** | 5·1·5·1·1 = **24** | reject: a background process ([`../../goal.md`](../../goal.md), section 8)                             |
-| R9. APFS recursive generation counts of folders        | 5·5·5·4·1 = **35** | 2·3·5·2·2 = **21** | reject: measured as 0 unless a privileged write turns them on                                          |
+| Option                                                 | Reviewer A         | Reviewer B         | Verdict                                                                           |
+| ------------------------------------------------------ | ------------------ | ------------------ | --------------------------------------------------------------------------------- |
+| R1. Full metadata walk every scan                      | 5·3·4·5·5 = **35** | 5·4·4·5·5 = **37** | **take**: the cold walk measured 24.9 s                                           |
+| R2. Merkle tree of content hashes                      | 5·1·1·2·2 = **22** | 5·1·1·4·1 = **23** | reject: reads every byte on every scan                                            |
+| R3. Merkle tree of metadata fingerprints               | 4·3·4·3·4 = **29** | 5·4·4·4·4 = **35** | **later, with watch mode** (plan 010): speeds up diffs, not the walk              |
+| R4. Skip a folder whose modification time is unchanged | 1·4·4·4·5 = **24** | 1·4·5·4·2 = **22** | reject: a file growing in place does not change its folder's time                 |
+| R5. Replay the file-system event history (FSEvents)    | 3·4·5·2·3 = **27** | 3·4·5·2·2 = **26** | reject for a 30-second cold target; plan 004's rescan targets need it — see below |
+| R6. R5 + R3 + a verification sample                    | 4·4·5·1·3 = **29** | 4·4·5·1·2 = **28** | reject: R5's risks, and the hardest to test                                       |
+| R7. The Spotlight index                                | 2·4·4·3·3 = **24** | 2·5·5·3·4 = **28** | reject: incomplete (excluded folders, package contents, can be off)               |
+| R8. A live watcher or a security-framework client      | 5·5·5·2·1 = **33** | 5·1·5·1·1 = **24** | reject: a background process ([`../../goal.md`](../../goal.md), section 8)        |
+| R9. APFS recursive generation counts of folders        | 5·5·5·4·1 = **35** | 2·3·5·2·2 = **21** | reject: measured as 0 unless a privileged write turns them on                     |
 
 - **R1 is the whole rescan story for now.** The cold walk meets the target, so nothing is skipped and nothing about
   the previous scan has to be trusted.
 - **R3 in detail, for watch mode.** Each node of the arena tree ([scanning](./scanning.md)) gets a 64-bit
   fingerprint: xxh3 of `(device, inode, logical size, allocated size, mtime, ctime)` for a file; for a folder, xxh3 of
   its children's `(name, fingerprint)` in name order. Equal fingerprints at a folder mean an equal subtree, so the diff
-  of two scans ([snapshots and watch mode](./snapshots-and-watch-mode.md)) skips it. Only the fingerprints of the
-  summary tree are stored between scans ([snapshot summaries](./snapshot-summaries.md)).
-- **If R5 is ever reconsidered** (home folders far past the target): keep the last event id and the volume's
-  event-store UUID; walk in full when the UUID changed, the ids wrapped, the history was dropped or the root changed;
-  re-check a random sample of folders the history calls unchanged. One reviewer adds that skipping folders means
-  keeping the previous full tree on disk — against [snapshot summaries](./snapshot-summaries.md).
+  of two scans ([snapshots and watch mode](./snapshots-and-watch-mode.md)) skips it. Stored per folder in plan
+  004's cache file, they let the merge pass of plan [010](../../plans/010-history/readme.md) skip equal subtrees.
+- **If R5 is kept** (plan 004, call 1): the plan already walks in full when the history was reset or dropped
+  events, the volume changed, the cache is missing, or the patched total disagrees with the volume's used space. The
+  reviewers add one more check: re-read a random sample of folders the history calls unchanged, and walk in full on
+  any mismatch. Whether the history reaches back a week or a month on a busy Mac is **unverified** — the question plan
+  004 asks in its first step.
 
 ### When to read the APFS size attributes
 
@@ -152,7 +169,7 @@ Taken:
 
 - R3 moved from "taken" to **later, with watch mode** — both reviewers: it speeds up diffs, not the cold walk.
 - The **whole-group case** for clones, the **"at least"** wording, and the note on Trash and local snapshots.
-- The walk visits **rule anchors first**, so first findings come in 1–2 s while the rest of the walk goes on.
+- The walk visits **rule anchors first**, so first findings come in 1–2 s — already in plan 004, §1.
 - **`F_NOCACHE`** for hashing reads; **BLAKE3 vs hardware SHA-256** decided by measurement.
 - The re-check before deletion goes **through a file descriptor** (`O_NOFOLLOW` + `fstat`).
 - The 30-second target is honest only up to ~2 million entries; larger home folders rely on streaming.
@@ -176,5 +193,6 @@ open, all for the plan:
 
 Open questions:
 
-- The hash cache: kept in the database between scans, or in memory only (a reviewer's privacy argument)?
-- The summary tree's fingerprints: enough for watch mode, or does R3 need the full tree of the latest scan?
+- The hash cache of duplicates: kept on disk between scans (inside plan 004's budget), or in memory only (a
+  reviewer's privacy argument)?
+- Are per-folder fingerprints (8 bytes each) worth their place in plan 004's cache file, for plan 010's comparisons?

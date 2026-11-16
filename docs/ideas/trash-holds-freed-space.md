@@ -14,15 +14,19 @@ trusting every other number in the app.
 
 - **Say "moved", not "freed".** The result screen: "Moved 20 GB to the Trash. You get the space back when you empty
   the Trash." and an **Open Trash** button (Finder; we never empty it).
+- **Plan [008](../plans/008-safe-removal/readme.md) reports the freed space "as measured on the volume"**: while the
+  items wait in the Trash that number is close to zero. The result screen shows both — moved to the Trash, and freed on
+  the volume — so the zero reads as expected, not as a failure.
 - **The Trash as information** on the main screen: "Waiting in the Trash: 23 GB, of which 20 GB from cleanups in this
-  app" — the second number from our own undo log ([macOS specifics](./architecture/macos.md), "Moving to the Trash").
+  app" — the second number from the cleanup journal of plan [008](../plans/008-safe-removal/readme.md).
   Never a cleanable category: what the user put there is theirs.
 - **Per volume.** An item trashed on an external drive goes to that drive's `.Trashes` and frees space there, not on
   the Mac ([External Drive Analyzer](./external-drive-analyzer.md)); the numbers are shown per volume.
 - **Permanent delete stays the honest alternative**, unchanged: a separate, explicit choice in the confirmation,
   whose description says "frees the space now; you cannot put these items back".
-- **Watch mode is not fooled.** Items the app moved to the Trash are known from the undo log; the next scan reports
-  them as "cleaned", not as "removed" or "shrank by itself", and does not attribute the Trash's growth to any app.
+- **History is not fooled.** Items the app moved to the Trash are known from the cleanup journal; the next scan
+  reports them as "cleaned", not as "removed" or "shrank by itself", and does not attribute the Trash's growth to any
+  app ([history and watch mode](../plans/010-history/readme.md)).
 
 Open questions:
 

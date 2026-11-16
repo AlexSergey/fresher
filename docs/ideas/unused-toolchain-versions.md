@@ -25,7 +25,10 @@ The rule is **"not used", not "old"**: a version is offered only when nothing on
 | Android       | `~/Library/Android/sdk/system-images`, `ndk/`, `build-tools/`             | an AVD's `config.ini` naming the image, a project's `ndkVersion`                               |
 
 - "A project" is any project found by [stale project cleanup](./stale-project-cleanup.md) in the folders the user
-  chose; the finding says so: "not used by any project in `~/dev`".
+  chose; the finding says so: "not used by any project in `~/dev`". Projects come from the `Projects` service of plan
+  [009](../plans/009-system-knowledge/readme.md); their pins and a virtualenv's `pyvenv.cfg` are small files the rule
+  must read, and plan 002's `ModuleContext` has no file access yet — proposed: a read-only reader with a size cap,
+  offered by plan 009.
 - One finding per version: the toolchain, the version, its size, the last time it was used when that can be told, and
   how it comes back (`rustup toolchain install 1.82`).
 - Removal through the manager's own command where it has one (`rustup toolchain uninstall`, `nvm uninstall`,
