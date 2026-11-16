@@ -1,6 +1,6 @@
 {
   "name": "fresher",
-  "version": "0.5.5",
+  "version": "0.1.0",
   "private": true,
   "description": "A fast macOS disk cleaner: a Rust core with a Tauri 2 shell and a React UI",
   "repository": {

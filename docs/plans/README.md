@@ -39,6 +39,11 @@ measured, decided, learned) and the user has looked at its result.
 Rows are in priority order: the order they are implemented in — 001, then 002. The 📝 drafts below them are listed by
 number; their order is set when they are approved.
 
+**Versions.** The version was reset to 0.1.0 on 2026-11-16 and stays there while the app is built: plans do not bump
+it (the user's decision: nobody has tested the app or looked for its bugs yet). The versions in the plans done before
+then (0.0.1 to 0.5.5) are kept as history; the "Version" of a plan not yet done is not a target any more. Numbering and
+an automated release are decided before the first release ([`../deferred/release-versioning.md`](../deferred/release-versioning.md)).
+
 | #   | Global plan                                                          | Status         | Version | Modules                                           |
 | --- | -------------------------------------------------------------------- | -------------- | ------- | ------------------------------------------------- |
 | 001 | [Repository setup](./001-repository-setup/readme.md)                 | ✔️ done        | 0.0.1   | repo, ci, workspace, app                          |
