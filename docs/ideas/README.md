@@ -1,9 +1,12 @@
 # Ideas
 
-The user's ideas that are not planned yet: no design, no date, often only a sentence or two. Unlike
-[`../deferred/`](../deferred/README.md), which holds agreed work postponed to a known stage, an idea may still be
-dropped or reshaped. When one is taken up it gets a design and a plan in [`../plans/`](../plans/README.md), and its file
-here links there.
+The user's ideas and the agent's proposals that are not planned yet: no design, no date, often only a sentence or
+two. Unlike [`../deferred/`](../deferred/README.md), which holds agreed work postponed to a known stage, an idea may
+still be dropped or reshaped. When one is taken up it gets a design and a plan in [`../plans/`](../plans/README.md), and
+its file here links there.
+
+The **From** column tells the user's ideas from the agent's proposals. An agent's proposal becomes the user's idea when
+the user accepts it (its **From** turns to `user`), or is removed.
 
 ## Format
 
@@ -12,7 +15,7 @@ One file per idea, `<topic>.md`:
 ```markdown
 # <Idea>
 
-**Since:** YYYY-MM-DD
+**Since:** YYYY-MM-DD · **Proposed by:** the agent (only on the agent's proposals)
 
 ## Problem
 
@@ -23,31 +26,35 @@ One file per idea, `<topic>.md`:
 <A rough approach, open questions.>
 ```
 
-| Idea                                                                    | Since      | What                                                                                                                                  |
-| ----------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| [User settings](./user-settings.md)                                     | 2026-11-15 | a settings screen stored in the local SQLite database; never turns off confirmation                                                   |
-| [Stale project cleanup](./stale-project-cleanup.md)                     | 2026-11-15 | find projects untouched for a customizable period (default 1 year); offer their `node_modules`, `target/` and other regenerable parts |
-| [Ignore list](./ignore-list.md)                                         | 2026-11-15 | an Ignore button on a section or item (e.g. Docker images), remembered in settings, restorable from there; ignored means not watched  |
-| [Uninstalled app leftovers](./uninstalled-app-leftovers.md)             | 2026-11-15 | Orphaned Files Finder: data left in `~/Library` by apps the user removed, matched by bundle identifier, offered per app               |
-| [Large Files Finder](./large-files-finder.md)                           | 2026-11-15 | the largest files, folders and archives, sorted by size; a treemap and a list over one result                                         |
-| [Duplicate Finder](./duplicate-finder.md)                               | 2026-11-15 | exact duplicates by staged hashing, similar images by perceptual hash; APFS clones and hard links are not duplicates                  |
-| [System Junk Cleaner](./system-junk-cleaner.md)                         | 2026-11-15 | caches, temporary files, logs, crash reports, old device updates — each a named category                                              |
-| [System Data Analyzer](./system-data-analyzer.md)                       | 2026-11-15 | "System Data" broken down: APFS local snapshots, purgeable space, swap, caches; a reconciliation line, no "Other"                     |
-| [External Drive Analyzer](./external-drive-analyzer.md)                 | 2026-11-15 | external SSD/HDD/USB and network volumes; their Trash, AppleDouble files, Time Machine backups; history per volume UUID               |
-| [Smart Uninstaller](./smart-uninstaller.md)                             | 2026-11-15 | remove an app with everything it owns, or keep its settings; Homebrew and App Store apps the way their manager expects                |
-| [Application Footprint](./application-footprint.md)                     | 2026-11-15 | the real size of each app including its data outside `/Applications`, with the last time it was used                                  |
-| [Developer Environment Cleaner](./developer-environment-cleaner.md)     | 2026-11-15 | Xcode, simulators, Docker, package managers, IDEs — through each tool's own cleanup command where it has one                          |
-| [Cleanup Preview & Safe Removal](./cleanup-preview-and-safe-removal.md) | 2026-11-15 | the confirmation screen and flow: preview, re-check before delete, Trash first, result screen, cleanup history                        |
-| [Startup & Login Items Manager](./startup-and-login-items-manager.md)   | 2026-11-15 | login items and launch agents; **conflicts with a non-goal of `goal.md`** — needs the user's decision                                 |
-| [Opportunities](./opportunities.md)                                     | 2026-11-15 | the user's product strategy: where Fresher can win — time, history, attribution                                                   |
-| [Live Storage Attribution](./live-storage-attribution.md)               | 2026-11-15 | which process writes what, where and how fast — recorded only while open and started by the user                                      |
-| [Storage Leak Detector](./storage-leak-detector.md)                     | 2026-11-15 | folders that keep growing without a clear reason: abnormal storage behaviour, not big files                                           |
-| [App Resource Profile](./app-resource-profile.md)                       | 2026-11-15 | **not now** — "App Resource DNA": one card per app — size, data, cache, logs, RAM, CPU, writes, network, background                   |
-| [Storage History](./storage-history.md)                                 | 2026-11-15 | the disk over time by app and category; compare any two states                                                                        |
-| [Cleanup Simulator](./cleanup-simulator.md)                             | 2026-11-15 | a virtual result while choosing categories; an estimate from private sizes, not a guarantee                                           |
-| [Cleanup Guardian](./cleanup-guardian.md)                               | 2026-11-15 | remembers what came back and suggests personal maintenance rules on the next visit                                                    |
-| [Process-to-Storage Timeline](./process-storage-timeline.md)            | 2026-11-15 | **later, needs a tiny daemon** — what happened before the disk ran out: processes, file events and history on one timeline            |
-| [Intelligent Storage Explainer](./storage-explainer.md)                 | 2026-11-15 | every gigabyte explained, with confidence; consistent, never double-counted, no "not classified"                                      |
-| [Safe Cleanup Journal](./cleanup-journal.md)                            | 2026-11-15 | every cleanup a transaction: what, where, which rule, recoverable or not; put back                                                    |
-| [Best practices of the field](./best-practices.md)                      | 2026-11-15 | what the best open-source cleaners, analyzers and duplicate finders do well, and what users complain about — ideas only               |
-| [Architecture ideas](./architecture/README.md)                          | 2026-11-15 | scanning, hashing, macOS specifics, crates: what the best open-source projects do and what we take                                    |
+| Idea                                                                    | Since      | From  | What                                                                                                                                  |
+| ----------------------------------------------------------------------- | ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| [User settings](./user-settings.md)                                     | 2026-11-15 | user  | a settings screen stored in the local SQLite database; never turns off confirmation                                                   |
+| [Stale project cleanup](./stale-project-cleanup.md)                     | 2026-11-15 | user  | find projects untouched for a customizable period (default 1 year); offer their `node_modules`, `target/` and other regenerable parts |
+| [Ignore list](./ignore-list.md)                                         | 2026-11-15 | user  | an Ignore button on a section or item (e.g. Docker images), remembered in settings, restorable from there; ignored means not watched  |
+| [Uninstalled app leftovers](./uninstalled-app-leftovers.md)             | 2026-11-15 | user  | Orphaned Files Finder: data left in `~/Library` by apps the user removed, matched by bundle identifier, offered per app               |
+| [Large Files Finder](./large-files-finder.md)                           | 2026-11-15 | user  | the largest files, folders and archives, sorted by size; a treemap and a list over one result                                         |
+| [Duplicate Finder](./duplicate-finder.md)                               | 2026-11-15 | user  | exact duplicates by staged hashing, similar images by perceptual hash; APFS clones and hard links are not duplicates                  |
+| [System Junk Cleaner](./system-junk-cleaner.md)                         | 2026-11-15 | user  | caches, temporary files, logs, crash reports, old device updates — each a named category                                              |
+| [System Data Analyzer](./system-data-analyzer.md)                       | 2026-11-15 | user  | "System Data" broken down: APFS local snapshots, purgeable space, swap, caches; a reconciliation line, no "Other"                     |
+| [External Drive Analyzer](./external-drive-analyzer.md)                 | 2026-11-15 | user  | external SSD/HDD/USB and network volumes; their Trash, AppleDouble files, Time Machine backups; history per volume UUID               |
+| [Smart Uninstaller](./smart-uninstaller.md)                             | 2026-11-15 | user  | remove an app with everything it owns, or keep its settings; Homebrew and App Store apps the way their manager expects                |
+| [Application Footprint](./application-footprint.md)                     | 2026-11-15 | user  | the real size of each app including its data outside `/Applications`, with the last time it was used                                  |
+| [Developer Environment Cleaner](./developer-environment-cleaner.md)     | 2026-11-15 | user  | Xcode, simulators, Docker, package managers, IDEs — through each tool's own cleanup command where it has one                          |
+| [Cleanup Preview & Safe Removal](./cleanup-preview-and-safe-removal.md) | 2026-11-15 | user  | the confirmation screen and flow: preview, re-check before delete, Trash first, result screen, cleanup history                        |
+| [Startup & Login Items Manager](./startup-and-login-items-manager.md)   | 2026-11-15 | user  | login items and launch agents; **conflicts with a non-goal of `goal.md`** — needs the user's decision                                 |
+| [Opportunities](./opportunities.md)                                     | 2026-11-15 | user  | the user's product strategy: where Fresher can win — time, history, attribution                                                       |
+| [Live Storage Attribution](./live-storage-attribution.md)               | 2026-11-15 | user  | which process writes what, where and how fast — recorded only while open and started by the user                                      |
+| [Storage Leak Detector](./storage-leak-detector.md)                     | 2026-11-15 | user  | folders that keep growing without a clear reason: abnormal storage behaviour, not big files                                           |
+| [App Resource Profile](./app-resource-profile.md)                       | 2026-11-15 | user  | **not now** — "App Resource DNA": one card per app — size, data, cache, logs, RAM, CPU, writes, network, background                   |
+| [Storage History](./storage-history.md)                                 | 2026-11-15 | user  | the disk over time by app and category; compare any two states                                                                        |
+| [Cleanup Simulator](./cleanup-simulator.md)                             | 2026-11-15 | user  | a virtual result while choosing categories; an estimate from private sizes, not a guarantee                                           |
+| [Cleanup Guardian](./cleanup-guardian.md)                               | 2026-11-15 | user  | remembers what came back and suggests personal maintenance rules on the next visit                                                    |
+| [Process-to-Storage Timeline](./process-storage-timeline.md)            | 2026-11-15 | user  | **later, needs a tiny daemon** — what happened before the disk ran out: processes, file events and history on one timeline            |
+| [Intelligent Storage Explainer](./storage-explainer.md)                 | 2026-11-15 | user  | every gigabyte explained, with confidence; consistent, never double-counted, no "not classified"                                      |
+| [Safe Cleanup Journal](./cleanup-journal.md)                            | 2026-11-15 | user  | every cleanup a transaction: what, where, which rule, recoverable or not; put back                                                    |
+| [Best practices of the field](./best-practices.md)                      | 2026-11-15 | user  | what the best open-source cleaners, analyzers and duplicate finders do well, and what users complain about — ideas only               |
+| [Architecture ideas](./architecture/README.md)                          | 2026-11-15 | user  | scanning, hashing, macOS specifics, crates: what the best open-source projects do and what we take                                    |
+| [Local AI models](./local-ai-models.md)                                 | 2026-11-15 | agent | model stores of local AI tools, one finding per model; shared layers counted once; locally built models never claimed                 |
+| [Unused toolchain versions](./unused-toolchain-versions.md)             | 2026-11-15 | agent | rustup, Node, Python, Java and Android SDK versions that no project or virtualenv uses; "not used", not "old"                         |
+| [The Trash holds the freed space](./trash-holds-freed-space.md)         | 2026-11-15 | agent | Trash first plus never emptying it means nothing is freed yet: say "moved", show what waits in the Trash                              |
+| [Why Docker does not give the space back](./container-disk-image.md)    | 2026-11-15 | agent | the container VM disk image: maximum vs on-disk vs used inside; counted once, never offered for deletion                              |
