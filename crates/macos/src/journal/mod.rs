@@ -126,7 +126,7 @@ impl Mount {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::time::{Duration, Instant};
 
     use fresher_core::{CancelToken, ChangeJournal, Changes, JournalPosition, VolumeId, Volumes};
@@ -159,6 +159,23 @@ mod tests {
             changes
         }
 
+        /// The changes since `since` once every folder of `expected` is among them: the system numbers an event a
+        /// little after the change, so a single read right after it may not see it yet.
+        pub(super) fn changes_showing(&self, since: &JournalPosition, expected: &[&str]) -> Changes {
+            let expected: Vec<PathBuf> = expected
+                .iter()
+                .map(|relative| if relative.is_empty() { self.root.clone() } else { self.path(relative) })
+                .collect();
+            let started = Instant::now();
+            loop {
+                let changes = self.changes_since(since);
+                if expected.iter().all(|folder| changes.folders.contains(folder)) {
+                    return changes;
+                }
+                assert!(started.elapsed() < Duration::from_secs(10), "{changes:?}");
+            }
+        }
+
         /// The position once every change made so far is in the journal: the system numbers an event a little after
         /// the change, so the setup's own events are waited for before the test's position is taken.
         pub(super) fn settled(&self) -> JournalPosition {
@@ -176,16 +193,12 @@ mod tests {
         }
     }
 
-    pub(super) fn folders(changes: &Changes) -> Vec<&Path> {
-        changes.folders.iter().map(PathBuf::as_path).collect()
-    }
-
     mod negative {
         use std::fs;
 
         use fresher_core::{CancelToken, ChangeJournal, JournalGap, JournalPosition, VolumeId, Volumes};
 
-        use super::{Watched, folders};
+        use super::Watched;
         use crate::disk_image::{DiskImage, Format};
         use crate::journal::stream::live_streams;
         use crate::{MacChangeJournal, MacVolumes};
@@ -260,8 +273,7 @@ mod tests {
             fs::write(sibling.join("new"), b"x").unwrap();
             fs::write(watched.path("inside"), b"x").unwrap();
 
-            let changes = watched.changes_since(&since);
-            assert!(folders(&changes).contains(&watched.root.as_path()));
+            let changes = watched.changes_showing(&since, &[""]);
             assert!(changes.folders.iter().chain(&changes.subtrees).all(|folder| !folder.starts_with(&sibling)));
         }
 
@@ -286,7 +298,7 @@ mod tests {
 
         use fresher_core::ChangeJournal as _;
 
-        use super::{Watched, folders};
+        use super::Watched;
 
         #[test]
         fn a_new_file_reports_its_folder() {
@@ -296,8 +308,7 @@ mod tests {
 
             fs::write(watched.path("a/new"), b"x").unwrap();
 
-            let changes = watched.changes_since(&since);
-            assert!(folders(&changes).contains(&watched.path("a").as_path()), "{changes:?}");
+            let changes = watched.changes_showing(&since, &["a"]);
             assert!(changes.end.cursor >= since.cursor);
         }
 
@@ -315,8 +326,7 @@ mod tests {
                 .write_all(&vec![b'x'; 65_536])
                 .unwrap();
 
-            let changes = watched.changes_since(&since);
-            assert!(folders(&changes).contains(&watched.path("a").as_path()), "{changes:?}");
+            watched.changes_showing(&since, &["a"]);
         }
 
         #[test]
@@ -328,8 +338,7 @@ mod tests {
             let removed = Command::new("/bin/rmdir").arg(watched.path("a/gone")).status().unwrap();
             assert!(removed.success());
 
-            let changes = watched.changes_since(&since);
-            assert!(folders(&changes).contains(&watched.path("a").as_path()), "{changes:?}");
+            watched.changes_showing(&since, &["a"]);
         }
 
         #[test]
@@ -341,12 +350,7 @@ mod tests {
 
             fs::rename(watched.path("a/moving"), watched.path("b/moving")).unwrap();
 
-            let changes = watched.changes_since(&since);
-            let found = folders(&changes);
-            assert!(
-                found.contains(&watched.path("a").as_path()) && found.contains(&watched.path("b").as_path()),
-                "{changes:?}"
-            );
+            watched.changes_showing(&since, &["a", "b"]);
         }
 
         #[test]
@@ -358,9 +362,17 @@ mod tests {
             fs::write(watched.path("new"), b"x").unwrap();
 
             // A whole busy volume may overflow the stream while other tests write: a gap, which means a full scan.
-            match journal.changes_since(&watched.volume, &since, &fresher_core::CancelToken::new()) {
-                Ok(changes) => assert!(changes.folders.contains(&watched.root), "{} folders", changes.folders.len()),
-                Err(gap) => assert_eq!(gap, fresher_core::JournalGap::Dropped),
+            // The change is numbered a little after it is made, so the journal is read until it shows up.
+            let started = std::time::Instant::now();
+            loop {
+                match journal.changes_since(&watched.volume, &since, &fresher_core::CancelToken::new()) {
+                    Ok(changes) if changes.folders.contains(&watched.root) => return,
+                    Ok(changes) => {
+                        let waited = started.elapsed();
+                        assert!(waited < std::time::Duration::from_secs(10), "{} folders", changes.folders.len());
+                    }
+                    Err(gap) => return assert_eq!(gap, fresher_core::JournalGap::Dropped),
+                }
             }
         }
     }
