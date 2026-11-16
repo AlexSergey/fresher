@@ -48,8 +48,8 @@ pub enum RuleError {
     DuplicateId { rule: String },
     #[error("rule `{rule}` has an id that is not a kebab-case name")]
     InvalidId { rule: String },
-    #[error("rule `{rule}` looks at a path that is not inside the home folder")]
-    PathOutOfHome { rule: String },
+    #[error("rule `{rule}` looks at a path that is not inside its known folder")]
+    PathOutOfFolder { rule: String },
     #[error("rule `{rule}` has a pattern that is not a name with `*` and `?` only")]
     BadPattern { rule: String },
 }
@@ -114,10 +114,10 @@ impl Rule {
             .transpose()?;
         let interest =
             compile_look(spec.look, recognize.sibling.iter().cloned().collect()).map_err(|error| match error {
-                InterestError::OutsideHome { .. } => RuleError::PathOutOfHome { rule: id.clone() },
+                InterestError::OutsideFolder { .. } => RuleError::PathOutOfFolder { rule: id.clone() },
                 InterestError::EmptyName | InterestError::NotAName { .. } => bad_pattern(),
             })?;
-        if let Pattern::UnderHome(path) = interest.pattern()
+        if let Pattern::Under(_, path) = interest.pattern()
             && path.split('/').any(|segment| Glob::new(segment).is_none())
         {
             return Err(bad_pattern());
@@ -157,7 +157,7 @@ impl Rule {
 /// The interest a rule's `[rule.look]` compiles to; a rule claims the matched item as a whole.
 fn compile_look(look: LookSpec, siblings: Vec<String>) -> Result<Interest, InterestError> {
     let pattern = match look {
-        LookSpec::UnderHome(path) => Pattern::UnderHome(path),
+        LookSpec::Under(under) => Pattern::Under(under.folder, under.path),
         LookSpec::FolderName(name) => Pattern::FolderName(name),
         LookSpec::Marker(name) => Pattern::MarkerFile(name),
         LookSpec::Extension(extension) => Pattern::Extension(extension),
@@ -186,7 +186,7 @@ category = "example.caches"
 danger = "medium"
 removal = "empty-folder"
 [rule.look]
-under-home = "Library/Caches/*"
+under = { folder = "home", path = "Library/Caches/*" }
 [rule.recognize]
 name = "com.example.*"
 version = "{major}.{minor}"
@@ -250,11 +250,29 @@ mod tests {
         }
 
         #[test]
-        fn rejects_a_path_that_climbs_out_of_home() {
-            for path in ["../Library", "Library/../../etc", "/Library/Caches"] {
-                let toml = minimal_with("folder-name = \"Caches\"", &format!("under-home = \"{path}\""));
+        fn rejects_a_folder_that_is_not_a_known_folder() {
+            for under in [
+                r#"under = { folder = "caches", path = "*" }"#,
+                r#"under = { folder = "/Library", path = "*" }"#,
+                r#"under = { path = "*" }"#,
+                r#"under = { folder = "home", path = "*", deep = true }"#,
+                r#"under-home = "Library""#,
+            ] {
+                let toml = minimal_with("folder-name = \"Caches\"", under);
 
-                assert_eq!(parse(&toml), Err(RuleError::PathOutOfHome { rule: caches() }), "{path}");
+                assert!(matches!(parse(&toml), Err(RuleError::Toml { .. })), "{under}");
+            }
+        }
+
+        #[test]
+        fn rejects_a_path_that_climbs_out_of_its_folder() {
+            for path in ["../Library", "Library/../../etc", "/Library/Caches"] {
+                let toml = minimal_with(
+                    "folder-name = \"Caches\"",
+                    &format!("under = {{ folder = \"home\", path = \"{path}\" }}"),
+                );
+
+                assert_eq!(parse(&toml), Err(RuleError::PathOutOfFolder { rule: caches() }), "{path}");
             }
         }
 
@@ -291,7 +309,7 @@ mod tests {
         fn rejects_a_glob_with_brackets() {
             for (from, to) in [
                 ("name = \"com.apple.*\"", "name = \"com.[ab]*\""),
-                ("folder-name = \"Caches\"", "under-home = \"Library/[Cc]aches\""),
+                ("folder-name = \"Caches\"", "under = { folder = \"home\", path = \"Library/[Cc]aches\" }"),
                 ("folder-name = \"Caches\"", "folder-name = \"a/b\""),
                 ("removal = \"trash\"", "removal = \"trash\"\n[rule.recognize]\nname = \"{a,b}\""),
                 ("removal = \"trash\"", "removal = \"trash\"\n[rule.recognize]\nversion = \"{major}{minor}\""),
@@ -315,7 +333,7 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{Claim, DangerLevel, Interest, Pattern, TextKey};
+        use fresher_core::{Claim, DangerLevel, Interest, KnownFolder, Pattern, TextKey};
 
         use super::{minimal_with, parse};
         use crate::format::RemovalSpec;
@@ -333,8 +351,11 @@ mod tests {
             assert_eq!(rule.category().id().as_str(), "example.caches");
             assert_eq!(rule.danger(), DangerLevel::Medium);
             assert_eq!(rule.removal, RemovalSpec::EmptyFolder);
-            let interest =
-                Interest::new(Pattern::UnderHome("Library/Caches/*".into()), Claim::Whole, vec!["package.json".into()]);
+            let interest = Interest::new(
+                Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()),
+                Claim::Whole,
+                vec!["package.json".into()],
+            );
             assert_eq!(rule.interest, interest.unwrap());
             assert_eq!(rule.name, Glob::new("com.example.*"));
             assert_eq!(rule.version, VersionPattern::new("{major}.{minor}"));
@@ -362,7 +383,7 @@ mod tests {
             for (look, pattern) in [
                 ("marker = \"CACHEDIR.TAG\"", Pattern::MarkerFile("CACHEDIR.TAG".into())),
                 ("extension = \"dmg\"", Pattern::Extension("dmg".into())),
-                ("under-home = \"Library/Logs\"", Pattern::UnderHome("Library/Logs".into())),
+                ("under = { folder = \"logs\", path = \"*\" }", Pattern::Under(KnownFolder::Logs, "*".into())),
             ] {
                 let rules = parse(&minimal_with("folder-name = \"Caches\"", look)).unwrap();
 

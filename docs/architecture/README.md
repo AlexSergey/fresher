@@ -2,7 +2,8 @@
 
 The crates, the layers and the data, as plan [002](../plans/002-base-architecture/readme.md) built them, plan
 [004](../plans/004-fast-scan/readme.md) added the disk walk to them and plan
-[008](../plans/008-safe-removal/readme.md) the removal; their designs argue every choice
+[008](../plans/008-safe-removal/readme.md) the removal, and plan [009](../plans/009-system-knowledge/readme.md) the
+system's facts; their designs argue every choice
 ([002](../plans/002-base-architecture/00-design.md), [004](../plans/004-fast-scan/00-design.md),
 [008](../plans/008-safe-removal/00-design.md)). A crate a later plan creates keeps its row here and is described in
 detail by that plan. How to write a module: [`modules.md`](./modules.md); how anything is removed, for a developer
@@ -26,8 +27,9 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
           │                      walk → findings, each           the only code that removes  (fresher-store: files)
           │                      removal described as data                     │
           ▼                                                                    ▼
- OS ports: FolderReader, ChangeJournal, Volumes                  Trash, OpenFiles, CommandRunner, and the calls
- (fresher-macos: the only unsafe code)                           beneath held folders (fresher-macos)
+ OS ports: FolderReader, ChangeJournal, Volumes                  Trash, OpenFiles, RunningApps, CommandRunner, and
+ (fresher-macos: the only unsafe code); KnownFolders,            the calls beneath held folders (fresher-macos,
+ InstalledApps, RunningApps (fresher-system)                      fresher-system)
 ```
 
 - **Strict modularity**: every feature is a module in its own crate under `modules/`; a module never knows another,
@@ -47,6 +49,7 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-macos`       | `crates/macos`   | the only crate with `unsafe` (in `mod ffi`): the bulk read, volumes, the change journal, the IO policy, the Trash call, open files, the protection list, the calls beneath held folders | core          |
 | `fresher-scanner`     | `crates/scanner` | the walk, the tree, the matcher, the cache codec, the rescan and the queries behind `DiskWalk`/`DiskState`                                                                              | core, macos   |
 | `fresher-rules`       | `crates/rules`   | the shared matcher for declarative rule data (TOML); holds no rules, each module owns its own                                                                                           | core          |
+| `fresher-system`      | `crates/system`  | the safe adapters of system knowledge (plan 009): `MacKnownFolders`, `MacInstalledApps` with its own `Info.plist` and code-signature readers, `MacRunningApps`, `SystemClock`, `ProcessCommandRunner` | core, macos   |
 | `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
 | `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
@@ -68,7 +71,8 @@ Rules of the layout:
 - **The core, the engine and the modules know nothing about the operating system** (the user's decision of
   2026-11-15: macOS first, Windows not ruled out). Every OS call is an adapter behind a port, and only `fresher-macos`
   and the adapters built on it are macOS-specific; a module names a known folder (plan
-  [009](../plans/009-system-knowledge/readme.md), `KnownFolders`), never a macOS path such as `~/Library/Caches`.
+  [009](../plans/009-system-knowledge/readme.md), `KnownFolders`, `Pattern::Under`), never a macOS path such as
+  `~/Library/Caches`.
 - Only `fresher-cleaner` may call a deleting file system function (`std::fs`'s, or `fresher-macos`'s `remove_at`),
   at its single deletion point (enforced by Clippy's `disallowed-methods`; [`removal.md`](./removal.md)). The app
   gives the system's `Trash` to the cleaner and to nothing else; the engine reaches the cleaner only through the
@@ -77,6 +81,10 @@ Rules of the layout:
   sandbox marker; only a release build's composition makes the token for the real disk
   ([`removal.md`](./removal.md), "Reach and the sandbox").
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
+- **The system's facts** (plan [009](../plans/009-system-knowledge/readme.md)): the engine's `Ports.system`
+  (`SystemPorts`: known folders, installed apps, running apps) becomes one lazy `SystemFacts` per scan, handed to
+  every module as `cx.system()`; the engine adds its own interests for the projects under `ModuleId::system()` and
+  sets the projects before any `finish`. Nothing of it is written to disk.
 - The UI gets everything it shows (names, descriptions, sizes, danger levels, the text of a refusal) from the core, as
   dictionary keys with arguments; the UI's own dictionary holds only its chrome.
 - The IPC types are generated from the core's Rust types (`ts-rs`) into `app/ui/src/ipc/bindings.generated.ts`; a
@@ -86,10 +94,13 @@ Rules of the layout:
 
 | Port             | Implemented by                                                                                                  | Fake for tests                                              |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `Clock`          | the app (system time)                                                                                           | `FakeClock`                                                 |
+| `Clock`          | `fresher-system`'s `SystemClock`                                                                                | `FakeClock`                                                 |
 | `Trash`          | `fresher-macos`'s `MacTrash` (the system's Trash call; put back by `renamex_np`)                                | `FakeTrash` (a Trash folder inside the fixture)             |
 | `OpenFiles`      | `fresher-macos`'s `MacOpenFiles` (the user's own processes, `libproc`)                                          | `FakeOpenFiles`                                             |
-| `CommandRunner`  | the app's `ProcessCommandRunner` (`std::process`, no shell)                                                     | `FakeCommandRunner`                                         |
+| `CommandRunner`  | `fresher-system`'s `ProcessCommandRunner` (`std::process`, no shell; a 60 s timeout; the caller's cancel token kills it) | `FakeCommandRunner`                                         |
+| `KnownFolders`   | `fresher-system`'s `MacKnownFolders` (the macOS layout of a home folder; opens nothing)                         | `FakeKnownFolders` (`home_layout` of a fixture root)        |
+| `InstalledApps`  | `fresher-system`'s `MacInstalledApps` (the apps folders and one below; `Info.plist`, code signature)            | `FakeInstalledApps`, `installed_app`                        |
+| `RunningApps`    | `fresher-system`'s `MacRunningApps` (`fresher-macos`'s process table, each executable's bundles)                | `FakeRunningApps` (a script), `running_app`                 |
 | `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
 | `CleanupJournal` | `fresher-store`'s `FileCleanupJournal`                                                                          | `MemoryCleanupJournal`                                      |
 | `DiskWalk`       | `fresher-scanner`'s `Scanner`, with the macOS reader in the app                                                 | `NaiveWalk` on a fixture tree                               |

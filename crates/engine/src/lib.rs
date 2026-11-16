@@ -2,7 +2,7 @@
 //! cleanups: the plan the user confirms, the cleanup it starts, the history and put back.
 //!
 //! The engine depends on the core alone: the walk, the settings file, the clock, external commands, the access status,
-//! the system's interface, the cleaner, the cleanup journal and the volumes are ports, implemented elsewhere and
+//! the system's interface and facts, the cleaner, the cleanup journal and the volumes are ports, implemented elsewhere and
 //! injected by the app.
 
 #![forbid(unsafe_code)]
@@ -16,7 +16,10 @@ mod coverage;
 mod disk;
 mod engine;
 mod error;
+#[cfg(test)]
+mod facts_tests;
 mod ignore;
+mod projects;
 mod registry;
 mod results;
 mod session;

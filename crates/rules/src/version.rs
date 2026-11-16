@@ -163,7 +163,7 @@ category = "example.settings"
 danger = "medium"
 removal = "trash"
 [rule.look]
-under-home = "Library/Application Support/Example/*"
+under = { folder = "app-support", path = "Example/*" }
 [rule.recognize]
 version = "{major}.{minor}"
 [[rule.must-not-match]]

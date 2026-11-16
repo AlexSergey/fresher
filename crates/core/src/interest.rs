@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::{EntryFacts, ModuleId, Sizes, Timestamp};
+use crate::{EntryFacts, KnownFolder, ModuleId, Sizes, Timestamp};
 
 /// One thing a module wants the walk to report.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -12,13 +12,14 @@ pub struct Interest {
     siblings: Vec<String>,
 }
 
-/// Where the walk looks. Names are single file or folder names; the home path is relative to the home folder.
+/// Where the walk looks. Names are single file or folder names; the path of `Under` is relative to its known folder.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Pattern {
     /// Any folder with this name (`node_modules`).
     FolderName(String),
-    /// A path under the home folder, `*` matching one name (`Library/Caches/*`).
-    UnderHome(String),
+    /// A path under a known folder, `*` matching one name (`AppCaches` and `JetBrains/*`). The folder is resolved
+    /// through the `KnownFolders` port, so a module never names an OS path.
+    Under(KnownFolder, String),
     /// A folder holding a file with this name (`CACHEDIR.TAG`).
     MarkerFile(String),
     /// Files with this extension, without the dot (`dmg`).
@@ -41,8 +42,8 @@ pub enum InterestError {
     EmptyName,
     #[error("`{name}` is not a single file or folder name")]
     NotAName { name: String },
-    #[error("`{path}` is not a relative path inside the home folder")]
-    OutsideHome { path: String },
+    #[error("`{path}` is not a relative path inside its known folder")]
+    OutsideFolder { path: String },
 }
 
 impl Interest {
@@ -51,7 +52,7 @@ impl Interest {
     pub fn new(pattern: Pattern, claim: Claim, siblings: Vec<String>) -> Result<Self, InterestError> {
         match &pattern {
             Pattern::FolderName(name) | Pattern::MarkerFile(name) | Pattern::Extension(name) => check_name(name)?,
-            Pattern::UnderHome(path) => check_home_path(path)?,
+            Pattern::Under(_, path) => check_relative_path(path)?,
         }
         for sibling in &siblings {
             check_name(sibling)?;
@@ -82,12 +83,12 @@ fn check_name(name: &str) -> Result<(), InterestError> {
     Ok(())
 }
 
-fn check_home_path(path: &str) -> Result<(), InterestError> {
+fn check_relative_path(path: &str) -> Result<(), InterestError> {
     if path.is_empty() {
         return Err(InterestError::EmptyName);
     }
     let inside = !path.contains('\0') && Path::new(path).components().all(|part| matches!(part, Component::Normal(_)));
-    if inside { Ok(()) } else { Err(InterestError::OutsideHome { path: path.into() }) }
+    if inside { Ok(()) } else { Err(InterestError::OutsideFolder { path: path.into() }) }
 }
 
 /// Every module's interests, each with its owner; the walk gets one set for all modules.
@@ -172,7 +173,7 @@ pub enum MarkerCheck {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::{Claim, Interest, InterestError, Pattern};
+        use crate::{Claim, Interest, InterestError, KnownFolder, Pattern};
 
         #[test]
         fn rejects_an_interest_with_an_empty_name() {
@@ -180,7 +181,7 @@ mod tests {
                 Pattern::FolderName(String::new()),
                 Pattern::MarkerFile(String::new()),
                 Pattern::Extension(String::new()),
-                Pattern::UnderHome(String::new()),
+                Pattern::Under(KnownFolder::AppCaches, String::new()),
             ] {
                 assert_eq!(Interest::new(pattern, Claim::Whole, vec![]), Err(InterestError::EmptyName));
             }
@@ -198,10 +199,10 @@ mod tests {
         }
 
         #[test]
-        fn rejects_an_under_home_path_that_climbs_out() {
+        fn rejects_a_path_that_climbs_out_of_its_folder() {
             for path in ["../Library", "Library/../../etc", "/Library/Caches", "./Library", "Library\0"] {
-                let interest = Interest::new(Pattern::UnderHome(path.into()), Claim::Whole, vec![]);
-                assert_eq!(interest, Err(InterestError::OutsideHome { path: path.into() }), "{path:?}");
+                let interest = Interest::new(Pattern::Under(KnownFolder::Home, path.into()), Claim::Whole, vec![]);
+                assert_eq!(interest, Err(InterestError::OutsideFolder { path: path.into() }), "{path:?}");
             }
         }
 
@@ -216,7 +217,7 @@ mod tests {
     }
 
     mod positive {
-        use crate::{Claim, Interest, InterestSet, ModuleId, Pattern};
+        use crate::{Claim, Interest, InterestSet, KnownFolder, ModuleId, Pattern};
 
         fn folder(name: &str) -> Interest {
             Interest::new(Pattern::FolderName(name.into()), Claim::Whole, vec!["package.json".into()]).unwrap()
@@ -224,9 +225,10 @@ mod tests {
 
         #[test]
         fn accepts_a_valid_interest() {
-            let interest = Interest::new(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, vec![]).unwrap();
+            let pattern = Pattern::Under(KnownFolder::AppCaches, "JetBrains/*".into());
+            let interest = Interest::new(pattern.clone(), Claim::Item, vec![]).unwrap();
 
-            assert_eq!(interest.pattern(), &Pattern::UnderHome("Library/Caches/*".into()));
+            assert_eq!(interest.pattern(), &pattern);
             assert_eq!(interest.claim(), Claim::Item);
             assert_eq!(interest.siblings(), Vec::<String>::new());
         }

@@ -537,6 +537,8 @@ pub(crate) struct Fixture {
     pub(crate) commands: Arc<FakeCommandRunner>,
     pub(crate) access: Arc<FakeAccess>,
     pub(crate) system_ui: Arc<FakeSystemUi>,
+    /// The system of the fixture home `/home`: nothing installed, nothing running.
+    pub(crate) system: fresher_core::SystemPorts,
     pub(crate) cleaner: Arc<dyn Cleaner>,
     pub(crate) journal: Arc<MemoryCleanupJournal>,
     pub(crate) volumes: Arc<FakeVolumes>,
@@ -552,6 +554,7 @@ impl Fixture {
             commands: Arc::default(),
             access: Arc::default(),
             system_ui: Arc::default(),
+            system: fresher_testing::fake_system(std::path::Path::new("/home")),
             cleaner: Arc::new(FakeCleaner::default()),
             journal: Arc::default(),
             volumes: Arc::default(),
@@ -589,6 +592,11 @@ impl Fixture {
         self
     }
 
+    pub(crate) fn system(mut self, system: fresher_core::SystemPorts) -> Self {
+        self.system = system;
+        self
+    }
+
     pub(crate) fn module(mut self, module: TestModuleBuilder) -> Self {
         self.modules.push(module.boxed());
         self
@@ -611,6 +619,7 @@ impl Fixture {
             commands: self.commands,
             access: self.access,
             system_ui: self.system_ui,
+            system: self.system,
         };
         let cleanup = CleanupPorts { cleaner: self.cleaner, journal: self.journal, volumes: self.volumes };
         Engine::with_cleanup(registry, ports, cleanup).unwrap()

@@ -25,7 +25,7 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{Claim, Pattern};
+        use fresher_core::{Claim, KnownFolder, Pattern};
 
         use crate::RuleSet;
         use crate::rules::sample;
@@ -37,7 +37,7 @@ mod tests {
             let interests = rules.interests();
 
             assert_eq!(interests.len(), rules.rules().len());
-            assert_eq!(interests[0].pattern(), &Pattern::UnderHome("Library/Caches/*".into()));
+            assert_eq!(interests[0].pattern(), &Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()));
             assert_eq!(interests[0].claim(), Claim::Whole);
             assert_eq!(interests[0].siblings(), ["package.json"]);
         }

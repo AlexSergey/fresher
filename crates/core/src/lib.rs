@@ -1,8 +1,8 @@
 //! The shared core of Fresher: domain types, the module contract, ports, events, commands, errors and text keys.
 //!
 //! The core does no IO. The ports to the outside world (the clock, the Trash, external commands, open files, folders,
-//! the change journal, volumes, the scan cache, the disk state, the access probe, the system's interface, the cleaner
-//! and the cleanup journal) are traits here, so every other crate can be tested with the fakes of `fresher-testing`.
+//! the known folders, the change journal, volumes, the scan cache, the disk state, the access probe, the system's
+//! interface, the cleaner and the cleanup journal) are traits here, so every other crate can be tested with the fakes of `fresher-testing`.
 
 #![forbid(unsafe_code)]
 
@@ -24,6 +24,7 @@ mod hash;
 mod ids;
 mod interest;
 mod journal;
+mod known_folder;
 mod module;
 mod ports;
 mod removability;
@@ -33,6 +34,7 @@ mod settings;
 mod size;
 mod store;
 mod subject;
+mod system;
 mod text;
 mod texts;
 mod volume;
@@ -75,6 +77,7 @@ pub use hash::stable_hash;
 pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Timestamp, ToolId};
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
+pub use known_folder::{KnownFolder, KnownFolders};
 pub use module::{DescriptorError, FindingSink, Locales, Module, ModuleContext, ModuleDescriptor, ModuleError};
 pub use ports::{
     AccessProbe, Clock, CommandOutput, CommandRunError, CommandRunner, Landed, OpenFiles, OpenFilesError, OpenSet,
@@ -91,6 +94,10 @@ pub use settings::{
 pub use size::{ByteSize, Completeness, Sizes};
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};
 pub use subject::Subject;
+pub use system::{
+    AppIdError, BundleId, InstalledApp, InstalledApps, Project, ProjectKind, RunningApp, RunningApps, RunningSet,
+    SystemError, SystemFacts, SystemPorts, TeamId,
+};
 pub use text::{Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;
 pub use volume::{VolumeFacts, VolumeId, Volumes};

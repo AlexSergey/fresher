@@ -12,7 +12,7 @@ pub(crate) mod walk;
 
 use fresher_core::{
     AccessStatus, Action, CancelToken, Depth, EntryKind, GuardedPlace, ItemIdentity, OpenSet, PlanItem, Protection,
-    SkipReason, ToolCommand,
+    RunningSet, SkipReason, ToolCommand,
 };
 
 use crate::guard::walk::{SizeWalk, WalkStop};
@@ -46,6 +46,8 @@ pub(crate) struct GuardContext<'a> {
     pub(crate) guarded: &'a [GuardedPlace],
     /// The snapshot of open files the pipeline keeps fresh.
     pub(crate) open: &'a OpenSet,
+    /// The running apps, taken with the open files.
+    pub(crate) running: &'a RunningSet,
     pub(crate) purpose: Purpose,
     /// The walk of check 11.
     pub(crate) walk: &'a dyn SizeWalk,
@@ -120,7 +122,7 @@ pub(crate) fn verify(item: &PlanItem, cx: &GuardContext<'_>, depth: Depth) -> Re
     }
     facts::check(&handle, &placed, cx.user)?;
     access::check(&placed, cx.guarded, cx.access)?;
-    in_use::check(&placed, cx.open)?;
+    in_use::check(&placed, cx.open, cx.running)?;
     if depth == Depth::Full && identity.kind() != EntryKind::Symlink {
         let now =
             cx.walk.measure(handle.file(), handle.metadata(), placed.device, cx.cancel).map_err(|stop| match stop {

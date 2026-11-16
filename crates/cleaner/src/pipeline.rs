@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use fresher_core::{
     Action, CancelToken, CleanupContext, ConfirmedPlan, Depth, Ended, ItemDone, ItemOutcome, OpenSet, PlanItem,
-    Protection, Rehearsal, SkipReason,
+    Protection, Rehearsal, RunningSet, SkipReason,
 };
 
 use crate::CleanerPorts;
@@ -16,8 +16,24 @@ use crate::paths::{Roots, expand_home};
 use crate::reach::Reach;
 use crate::remove::{Removed, Way, delete, empty, run_tool, to_trash};
 
-/// The open-files snapshot is taken again when this much time has passed on the clock.
+/// The snapshot of open files and running apps is taken again when this much time has passed on the clock.
 pub(crate) const SNAPSHOT_AGE: Duration = Duration::from_secs(2);
+
+/// What is in use at one moment: the open files under the roots and the running apps.
+#[derive(Debug)]
+struct InUse {
+    open: OpenSet,
+    running: RunningSet,
+}
+
+impl InUse {
+    /// Both taken now; `None` when either cannot be: nothing is acted on without them.
+    fn take(ports: &CleanerPorts, within: &[PathBuf]) -> Option<Self> {
+        let open = ports.open_files.snapshot(within).ok()?;
+        let running = RunningSet::new(ports.running.list().ok()?);
+        Some(Self { open, running })
+    }
+}
 
 /// What the cleaner was made with.
 #[derive(Clone, Copy, Debug)]
@@ -39,7 +55,7 @@ impl Cleaning<'_> {
         &'a self,
         cx: &'a CleanupContext<'_>,
         roots: &'a Roots,
-        open: &'a OpenSet,
+        in_use: &'a InUse,
         purpose: Purpose,
         cancel: &'a CancelToken,
     ) -> GuardContext<'a> {
@@ -51,7 +67,8 @@ impl Cleaning<'_> {
             roots,
             access: cx.access,
             guarded: cx.guarded,
-            open,
+            open: &in_use.open,
+            running: &in_use.running,
             purpose,
             walk: &HeldWalk,
             cancel,
@@ -59,7 +76,8 @@ impl Cleaning<'_> {
     }
 }
 
-/// Every check of every item, in order, and nothing done: one snapshot of open files, then each item's identity or
+/// Every check of every item, in order, and nothing done: one snapshot of open files and running apps, then each
+/// item's identity or
 /// why it would be skipped. It holds an unconfirmed plan's items and no `Act`, so it cannot call a removal. A snapshot
 /// that cannot be taken skips every item (`CheckFailed`).
 pub(crate) fn rehearse(
@@ -70,11 +88,11 @@ pub(crate) fn rehearse(
     depth: Depth,
 ) -> Vec<Rehearsal> {
     let roots = cleaning.roots(plan_roots, cx.roots);
-    let Ok(open) = cleaning.ports.open_files.snapshot(&roots.within()) else {
+    let Some(in_use) = InUse::take(cleaning.ports, &roots.within()) else {
         return items.iter().map(|_| Rehearsal::Skipped(SkipReason::CheckFailed)).collect();
     };
     let never = CancelToken::new();
-    let guard = cleaning.guard(cx, &roots, &open, Purpose::Rehearse, &never);
+    let guard = cleaning.guard(cx, &roots, &in_use, Purpose::Rehearse, &never);
     let rehearse_one = |item: &PlanItem| match item.action() {
         Action::Tool(command) => match verify_tool(command, &guard) {
             Ok(()) => Rehearsal::Passed(None),
@@ -103,18 +121,18 @@ pub(crate) fn execute(
     let ports = cleaning.ports;
     let roots = cleaning.roots(plan.plan().roots(), cx.roots);
     let within = roots.within();
-    let mut snapshot = ports.open_files.snapshot(&within).ok();
+    let mut snapshot = InUse::take(ports, &within);
     let mut taken = ports.clock.now();
     for (index, item) in (0..).zip(plan.items()) {
         let now = ports.clock.now();
         if now.duration_since(taken).map_or(true, |age| age >= SNAPSHOT_AGE) {
-            snapshot = snapshot.and_then(|_| ports.open_files.snapshot(&within).ok());
+            snapshot = snapshot.and_then(|_| InUse::take(ports, &within));
             taken = now;
         }
         let removed = if cancel.is_cancelled() {
             Removed::ended(ItemOutcome::NotReached)
-        } else if let Some(open) = &snapshot {
-            let guard = cleaning.guard(cx, &roots, open, Purpose::Act, cancel);
+        } else if let Some(in_use) = &snapshot {
+            let guard = cleaning.guard(cx, &roots, in_use, Purpose::Act, cancel);
             act_on(item, &guard, plan, ports)
         } else {
             Removed::ended(ItemOutcome::Skipped { reason: SkipReason::CheckFailed })
@@ -196,7 +214,7 @@ mod tests {
         use fresher_core::{
             Action, CancelToken, Cleaner as _, Depth, Ended, ItemOutcome, Method, Protection, Rehearsal, SkipReason,
         };
-        use fresher_testing::FakeOpenFiles;
+        use fresher_testing::{FakeOpenFiles, FakeRunningApps};
 
         use super::{files, rig, tool};
         use crate::test_support::{listing, plan_item};
@@ -271,6 +289,53 @@ mod tests {
             assert!(done.iter().all(|item| item.outcome == ItemOutcome::Skipped { reason: SkipReason::CheckFailed }));
             assert!(rehearsed.iter().all(|answer| *answer == Rehearsal::Skipped(SkipReason::CheckFailed)));
             assert_eq!(listing(rig.setup.tree.root()), before);
+        }
+
+        #[test]
+        fn an_item_a_running_app_owns_is_skipped_as_in_use() {
+            let notes = fresher_testing::running_app("Notes", &["b.bin"]).unwrap();
+            // Not running when the plan is made, running when the cleanup starts.
+            let rig = rig().with_running(FakeRunningApps::new(Vec::new()).then(vec![notes]));
+            let items = rig.items(files(&rig));
+
+            let (done, ended) = rig.execute(&items, Method::Trash, &CancelToken::new());
+
+            let outcomes: Vec<_> = done.iter().map(|item| item.outcome.clone()).collect();
+            let in_use = ItemOutcome::Skipped { reason: SkipReason::InUse { app: "Notes".into() } };
+            assert_eq!(outcomes, [ItemOutcome::Moved, in_use, ItemOutcome::Moved]);
+            assert_eq!(ended, Ended::Completed);
+            assert!(rig.at("home/b.bin").exists());
+        }
+
+        #[test]
+        fn a_failed_listing_of_the_running_apps_acts_on_nothing() {
+            let rig = rig().with_running(FakeRunningApps::failing("the process table cannot be read"));
+            let items: Vec<_> = (1..).zip(files(&rig)).map(|(id, action)| plan_item(id, action, 4096)).collect();
+            let before = listing(rig.setup.tree.root());
+
+            let (done, _) = rig.execute(&items, Method::Trash, &CancelToken::new());
+            let rehearsed =
+                rig.cleaner.rehearse(&[rig.setup.tree.root().to_path_buf()], &items, &rig.cx(), Depth::Full);
+
+            assert!(done.iter().all(|item| item.outcome == ItemOutcome::Skipped { reason: SkipReason::CheckFailed }));
+            assert!(rehearsed.iter().all(|answer| *answer == Rehearsal::Skipped(SkipReason::CheckFailed)));
+            assert_eq!(listing(rig.setup.tree.root()), before);
+        }
+
+        #[test]
+        fn an_app_started_after_the_first_snapshot_is_seen_after_two_seconds() {
+            let preview = fresher_testing::running_app("Preview", &["c.bin"]).unwrap();
+            let rig = rig().with_running(FakeRunningApps::new(Vec::new()).then(vec![preview]));
+            let clock = std::sync::Arc::clone(&rig.clock);
+            let rig = rig.meddling(move || clock.advance(Duration::from_secs(2)));
+            let items = rig.items(files(&rig));
+            let listed = rig.running.calls();
+
+            let (done, _) = rig.execute(&items, Method::Trash, &CancelToken::new());
+
+            assert_eq!(done[1].outcome, ItemOutcome::Moved);
+            assert_eq!(done[2].outcome, ItemOutcome::Skipped { reason: SkipReason::InUse { app: "Preview".into() } });
+            assert_eq!(rig.running.calls() - listed, 2);
         }
 
         #[test]

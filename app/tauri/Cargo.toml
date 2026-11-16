@@ -23,6 +23,7 @@ fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-trial = { path = "../../modules/trial" }
 fresher-scanner = { path = "../../crates/scanner" }
 fresher-store = { path = "../../crates/store" }
+fresher-system = { path = "../../crates/system" }
 tauri = { version = "=2.12.5", features = ["macos-private-api"] }
 tauri-plugin-dialog = "=2.8.4"
 tauri-plugin-single-instance = "=2.5.5"

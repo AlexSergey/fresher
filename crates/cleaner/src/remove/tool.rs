@@ -1,6 +1,6 @@
 //! A tool's removal: its program with its fixed arguments through the `CommandRunner` port, never a shell.
 
-use fresher_core::{Act, CommandRunner, Failure, ItemOutcome, ToolCommand};
+use fresher_core::{Act, CancelToken, CommandRunner, Failure, ItemOutcome, ToolCommand};
 
 use crate::remove::Removed;
 
@@ -9,9 +9,12 @@ const ERROR_LENGTH: usize = 200;
 
 /// Runs the tool: exit 0 is `ToolDone`; any other status fails with the first line of its standard error (shown,
 /// never journalled: the journal keeps the status); a tool that cannot be started fails as missing.
+///
+/// The tool runs to its end (or its timeout) even when the user stops the cleanup: Stop ends the cleanup after the
+/// item in flight, and a removal killed halfway would leave its state unknown.
 pub(crate) fn run_tool(command: &ToolCommand, _act: Act<'_>, runner: &dyn CommandRunner) -> Removed {
     let args: Vec<&str> = command.args().iter().map(String::as_str).collect();
-    match runner.run(command.tool().as_str(), &args) {
+    match runner.run(command.tool().as_str(), &args, &CancelToken::new()) {
         Ok(output) if output.status == 0 => {
             Removed { outcome: ItemOutcome::ToolDone, trashed: Vec::new(), status: Some(0) }
         }
@@ -38,7 +41,12 @@ mod tests {
     struct Failing(String);
 
     impl CommandRunner for Failing {
-        fn run(&self, _program: &str, _args: &[&str]) -> Result<CommandOutput, CommandRunError> {
+        fn run(
+            &self,
+            _program: &str,
+            _args: &[&str],
+            _cancel: &fresher_core::CancelToken,
+        ) -> Result<CommandOutput, CommandRunError> {
             Ok(CommandOutput { status: 1, stdout: String::new(), stderr: self.0.clone() })
         }
     }

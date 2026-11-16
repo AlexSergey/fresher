@@ -1,6 +1,6 @@
 # The in-use check sees only the user's own processes
 
-**Status:** open · **Updated:** 2026-11-16
+**Status:** open (narrowed by plan 009) · **Updated:** 2026-11-16
 
 ## Symptom
 
@@ -23,8 +23,10 @@ other users and the cleaner would then never act.
 
 ## Options left
 
-- Plan 009 adds app ownership to the same check: a folder that belongs to a running app or service is skipped whether
-  or not the cleaner can see its open files.
+- **Done by plan 009** (2026-11-16): check 10 also skips an item a running app or service owns by bundle id (a name of
+  its path is the id, or starts with it and a dot), whether or not the cleaner can see its open files; the running
+  apps include other users' processes whose executable the system names. Left: an item of another user's process
+  that is not named after its bundle id.
 - A privileged helper could read every process; it would need administrator rights the app does not ask for.
 - What limits the harm now: the Trash is the default, so a wrong move can be put back; a rule never claims a running
   service's data folder.

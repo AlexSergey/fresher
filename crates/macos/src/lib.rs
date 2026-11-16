@@ -29,7 +29,7 @@ pub use bulk::MacFolderReader;
 pub use journal::MacChangeJournal;
 pub use open_files::MacOpenFiles;
 pub use places::places_that_prompt;
-pub use process::{current_user, peak_memory};
+pub use process::{Process, current_user, peak_memory, running_processes};
 pub use protection::protection;
 pub use trash::MacTrash;
 pub use volume::MacVolumes;

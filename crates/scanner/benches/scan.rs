@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use criterion::{Criterion, criterion_group, criterion_main};
 use fresher_core::{
     ByteSize, CancelToken, ChangeJournal, Changes, Claim, DiskWalk, EntryKind, Interest, InterestSet, JournalGap,
-    JournalPosition, ModuleId, Pattern, VolumeId, WalkMode, WalkRequest,
+    JournalPosition, KnownFolder, ModuleId, Pattern, VolumeId, WalkMode, WalkRequest,
 };
 use fresher_macos::{MacFolderReader, MacVolumes};
 use fresher_scanner::bench::{CacheBench, MatcherBench, QueryBench, walked_folders};
@@ -55,7 +55,7 @@ fn interests() -> InterestSet {
         list.push(interest(Pattern::FolderName(format!("folder{index}")), Claim::Whole, &["package.json"]));
         list.push(interest(Pattern::Extension(format!("e{index}")), Claim::Item, &[]));
         list.push(interest(Pattern::MarkerFile(format!("marker{index}")), Claim::Item, &[]));
-        list.push(interest(Pattern::UnderHome(format!("Library/Caches{index}/*")), Claim::Item, &[]));
+        list.push(interest(Pattern::Under(KnownFolder::Home, format!("Library/Caches{index}/*")), Claim::Item, &[]));
     }
     let mut set = InterestSet::new();
     set.add(ModuleId::new("bench").unwrap_or_else(|error| panic!("{error}")), &list);
@@ -87,7 +87,7 @@ fn scan_interests() -> InterestSet {
         &[
             interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &["package.json"]),
             interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
-            interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
+            interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
             interest(Pattern::Extension("tmp".into()), Claim::Item, &[]),
         ],
     );
@@ -107,7 +107,7 @@ fn cache_interests() -> InterestSet {
         &[
             interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &["package.json"]),
             interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
-            interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
+            interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
         ],
     );
     set

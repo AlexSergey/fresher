@@ -1,7 +1,7 @@
 mod negative {
     use std::path::Path;
 
-    use fresher_core::{Claim, EntryKind, Pattern};
+    use fresher_core::{Claim, EntryKind, KnownFolder, Pattern};
     use fresher_testing::{FixtureTree, NaiveWalk};
 
     use crate::matcher::Matcher;
@@ -51,7 +51,7 @@ mod negative {
 
     #[test]
     fn star_matches_exactly_one_name() {
-        let caches = [interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[])];
+        let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[])];
         let tree = fixture("[[file]]\npath = \"Library/Caches/a/b\"\n");
         let set = set_of(&caches);
         let found = matched(&tree, &set);
@@ -62,7 +62,7 @@ mod negative {
 
     #[test]
     fn a_star_does_not_match_a_name_that_is_not_utf8() {
-        let caches = [interest(Pattern::UnderHome("Caches/*".into()), Claim::Item, &[])];
+        let caches = [interest(Pattern::Under(KnownFolder::Home, "Caches/*".into()), Claim::Item, &[])];
         let matcher = compile(&set_of(&caches), Path::new("/home"));
         let caches = matcher.child_state(matcher.root_state(Path::new("/home")), b"Caches");
         assert!(matcher.entry(caches, b"\xff", EntryKind::Folder).is_empty());
@@ -71,7 +71,7 @@ mod negative {
 
     #[test]
     fn an_anchor_that_does_not_resolve_matches_nothing() {
-        let caches = [interest(Pattern::UnderHome("Library/Caches".into()), Claim::Item, &[])];
+        let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches".into()), Claim::Item, &[])];
         let set = set_of(&caches);
         let tree = fixture("[[dir]]\npath = \"Library/Caches\"\n");
         let unresolved = Matcher::compile(&set, &|_| None);
@@ -141,7 +141,7 @@ mod negative {
 
     #[test]
     fn a_root_off_every_anchor_is_dead() {
-        let caches = [interest(Pattern::UnderHome("Library/Caches".into()), Claim::Item, &[])];
+        let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches".into()), Claim::Item, &[])];
         let matcher = compile(&set_of(&caches), Path::new("/home/user"));
         for root in ["/home/other", "/home/user/Documents", "relative", "/home/user/Library/../Library"] {
             assert!(!matcher.root_state(Path::new(root)).is_live(), "{root}");
@@ -152,7 +152,7 @@ mod negative {
 mod positive {
     use std::path::Path;
 
-    use fresher_core::{Claim, EntryKind, Pattern};
+    use fresher_core::{Claim, EntryKind, KnownFolder, Pattern};
     use fresher_testing::FixtureTree;
 
     use crate::matcher::testing::{compile, interest, listing, matched, reference, set_of};
@@ -191,7 +191,7 @@ mod positive {
 
     #[test]
     fn an_anchored_path_matches_under_its_anchor_only() {
-        let caches = [interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[])];
+        let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[])];
         let toml = "[[dir]]\npath = \"Library/Caches/app\"\n[[dir]]\npath = \"other/Library/Caches/app\"\n";
         let found = agrees(toml, &caches);
         assert_eq!(found.len(), 1);
@@ -200,7 +200,7 @@ mod positive {
 
     #[test]
     fn a_root_below_an_anchor_starts_inside_the_trie() {
-        let caches = [interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[])];
+        let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[])];
         let matcher = compile(&set_of(&caches), Path::new("/home/user"));
         let below = matcher.root_state(Path::new("/home/user/Library"));
         let inside = matcher.child_state(below, b"Caches");
@@ -236,7 +236,7 @@ mod positive {
     fn two_interests_on_one_name_both_hit() {
         let interests = [
             interest(Pattern::FolderName("Caches".into()), Claim::Item, &[]),
-            interest(Pattern::UnderHome("Library/Caches".into()), Claim::Item, &[]),
+            interest(Pattern::Under(KnownFolder::Home, "Library/Caches".into()), Claim::Item, &[]),
             interest(Pattern::FolderName("Caches".into()), Claim::Item, &[]),
         ];
         let matcher = compile(&set_of(&interests), Path::new("/home"));
@@ -268,7 +268,7 @@ mod property {
     use std::fmt::Write;
     use std::path::Path;
 
-    use fresher_core::{Claim, EntryKind, Interest, InterestSet, ModuleId, Pattern};
+    use fresher_core::{Claim, EntryKind, Interest, InterestSet, KnownFolder, ModuleId, Pattern};
     use fresher_testing::FixtureTree;
     use proptest::prelude::*;
 
@@ -297,7 +297,7 @@ mod property {
             name().prop_map(Pattern::FolderName),
             name().prop_map(Pattern::MarkerFile),
             prop::sample::select(&["log", "gz", "json", "TAG"][..]).prop_map(|ext| Pattern::Extension(ext.into())),
-            prop::collection::vec(segment, 1..4).prop_map(|parts| Pattern::UnderHome(parts.join("/"))),
+            prop::collection::vec(segment, 1..4).prop_map(|parts| Pattern::Under(KnownFolder::Home, parts.join("/"))),
         ]
     }
 
@@ -348,17 +348,17 @@ mod property {
         set.add(
             ModuleId::new("demo").unwrap(),
             &[
-                interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
+                interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
                 interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
                 interest(Pattern::Extension("log".into()), Claim::Item, &[]),
             ],
         );
-        assert_eq!(compile(&set, Path::new("/Users/fixed")).fingerprint(), 0xaecc_720c_e700_5655);
+        assert_eq!(compile(&set, Path::new("/Users/fixed")).fingerprint(), 0x73b7_bf11_ede0_8e26);
     }
 
     #[test]
     fn the_fingerprint_changes_with_the_anchor() {
-        let set = set_of(&[interest(Pattern::UnderHome("Library".into()), Claim::Item, &[])]);
+        let set = set_of(&[interest(Pattern::Under(KnownFolder::Home, "Library".into()), Claim::Item, &[])]);
         assert_ne!(
             compile(&set, Path::new("/Users/a")).fingerprint(),
             compile(&set, Path::new("/Users/b")).fingerprint()
@@ -373,7 +373,11 @@ mod property {
             interests.push(interest(Pattern::FolderName(name.clone()), Claim::Whole, &["package.json"]));
             interests.push(interest(Pattern::Extension(format!("e{index}")), Claim::Item, &[]));
             interests.push(interest(Pattern::MarkerFile(format!("marker{index}")), Claim::Item, &[]));
-            interests.push(interest(Pattern::UnderHome(format!("Library/Caches{index}/*")), Claim::Item, &[]));
+            interests.push(interest(
+                Pattern::Under(KnownFolder::Home, format!("Library/Caches{index}/*")),
+                Claim::Item,
+                &[],
+            ));
         }
         let matcher = compile(&set_of(&interests), Path::new("/home"));
         let state = matcher.root_state(Path::new("/home"));
@@ -399,7 +403,11 @@ mod property {
             interests.push(interest(Pattern::FolderName(format!("folder{index}")), Claim::Whole, &["package.json"]));
             interests.push(interest(Pattern::Extension(format!("e{index}")), Claim::Item, &[]));
             interests.push(interest(Pattern::MarkerFile(format!("marker{index}")), Claim::Item, &[]));
-            interests.push(interest(Pattern::UnderHome(format!("Library/Caches{index}/*")), Claim::Item, &[]));
+            interests.push(interest(
+                Pattern::Under(KnownFolder::Home, format!("Library/Caches{index}/*")),
+                Claim::Item,
+                &[],
+            ));
         }
         let matcher = compile(&set_of(&interests), Path::new("/home"));
         let state = matcher.root_state(Path::new("/home"));
@@ -458,7 +466,11 @@ mod property {
             Pattern::FolderName(name) => Pattern::MarkerFile(name.clone()),
             Pattern::MarkerFile(name) => Pattern::FolderName(name.clone()),
             Pattern::Extension(name) => Pattern::Extension(format!("{name}x")),
-            Pattern::UnderHome(path) => Pattern::UnderHome(format!("{path}/x")),
+            // Another folder, the same path: the fingerprint names the folder.
+            Pattern::Under(folder, path) => {
+                let other = if *folder == KnownFolder::Home { KnownFolder::AppCaches } else { KnownFolder::Home };
+                Pattern::Under(other, path.clone())
+            }
         }
     }
 }

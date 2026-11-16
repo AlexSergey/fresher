@@ -8,9 +8,9 @@ use std::time::Duration;
 
 use fresher_core::{
     Access, ByteSize, Capability, CategoryDescriptor, CategoryId, ChangeJournal, ChildOrder, Claim, DangerLevel, Event,
-    FindingOrder, FindingSink, FindingsQuery, FolderReader, Interest, Locales, Match, Module, ModuleContext,
-    ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, Subject, Text, TextKey, VolumeFacts,
-    VolumeId,
+    FindingOrder, FindingSink, FindingsQuery, FolderReader, Interest, KnownFolder, Locales, Match, Module,
+    ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, Subject, Text, TextKey,
+    VolumeFacts, VolumeId,
 };
 use fresher_engine::{Engine, Ports, Registry};
 use fresher_module_demo::DemoModule;
@@ -48,7 +48,7 @@ impl Probe {
             descriptor: ModuleDescriptor::new(id, vec![category], vec![], Locales { en: TEXTS }).unwrap(),
             interests: vec![
                 interest(Pattern::FolderName("Caches".into()), Claim::Item, &[]),
-                interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Whole, &[]),
+                interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Whole, &[]),
                 interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &["package.json"]),
                 interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
                 interest(Pattern::Extension("dmg".into()), Claim::Item, &[]),
@@ -131,6 +131,7 @@ pub(crate) fn engine_on(
         commands: Arc::new(FakeCommandRunner::default()),
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
         system_ui: Arc::new(FakeSystemUi::default()),
+        system: fresher_testing::fake_system(root),
     };
     Engine::new(registry, ports).unwrap()
 }

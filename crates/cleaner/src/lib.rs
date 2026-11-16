@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use fresher_core::{
     CancelToken, Cleaner, CleanupContext, Clock, CommandRunner, ConfirmedPlan, Depth, Ended, ItemDone, OpenFiles,
-    PlanItem, Protection, PutBackOutcome, Rehearsal, Trash, TrashState, TrashedItem,
+    PlanItem, Protection, PutBackOutcome, Rehearsal, RunningApps, Trash, TrashState, TrashedItem,
 };
 
 use crate::pipeline::Cleaning;
@@ -35,6 +35,8 @@ pub use reach::{Reach, RealDiskToken};
 pub struct CleanerPorts {
     pub trash: Arc<dyn Trash>,
     pub open_files: Arc<dyn OpenFiles>,
+    /// The running apps: an item a running app owns is skipped as in use.
+    pub running: Arc<dyn RunningApps>,
     pub commands: Arc<dyn CommandRunner>,
     pub clock: Arc<dyn Clock>,
 }

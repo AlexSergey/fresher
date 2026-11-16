@@ -34,6 +34,8 @@ pub struct Ports {
     pub commands: Arc<dyn CommandRunner>,
     pub access: Arc<dyn AccessProbe>,
     pub system_ui: Arc<dyn SystemUi>,
+    /// The system's facts: known folders, installed and running apps. Each scan gathers them anew, when asked.
+    pub system: fresher_core::SystemPorts,
 }
 
 impl std::fmt::Debug for Ports {

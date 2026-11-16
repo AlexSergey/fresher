@@ -1,21 +1,10 @@
-//! The app's own implementations of the core's ports, until the crates of later plans provide the real ones.
+//! The app's own stand-ins for the core's ports, until the crates of later plans provide the real ones.
 
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, Capability, CapabilityState, Clock, GuardedPlace, SystemUi, SystemUiError,
+    Access, AccessProbe, AccessStatus, Capability, CapabilityState, GuardedPlace, SystemUi, SystemUiError,
 };
-
-/// The wall clock of the system.
-#[derive(Debug)]
-pub(crate) struct SystemClock;
-
-impl Clock for SystemClock {
-    fn now(&self) -> SystemTime {
-        SystemTime::now()
-    }
-}
 
 /// Answers `Unknown` for Full Disk Access and `NotAsked` for every other permission, knows no guarded place and
 /// never tries one, until plan 006/03 asks macOS (`docs/hacks/`).
@@ -58,16 +47,13 @@ impl SystemUi for NoSystemUi {
 mod tests {
     mod positive {
         use std::path::PathBuf;
-        use std::time::SystemTime;
 
-        use fresher_core::{
-            Access, AccessProbe, Capability, Clock, GuardedFolder, GuardedPlace, SystemUi, SystemUiError,
-        };
+        use fresher_core::{Access, AccessProbe, Capability, GuardedFolder, GuardedPlace, SystemUi, SystemUiError};
 
-        use crate::adapters::{NoSystemUi, SystemClock, UnknownAccess};
+        use crate::adapters::{NoSystemUi, UnknownAccess};
 
         #[test]
-        fn the_placeholders_know_nothing_and_the_clock_runs() {
+        fn the_placeholders_know_nothing() {
             let roots = [PathBuf::from("~")];
             let access = UnknownAccess.status();
             assert_eq!(access.access(&Capability::AllFiles), Access::Unknown);
@@ -78,7 +64,6 @@ mod tests {
             assert_eq!(UnknownAccess.try_place(&place), Access::Unknown);
             assert_eq!(NoSystemUi.open_access_settings(&Capability::AllFiles), Err(SystemUiError::Unsupported));
             assert_eq!(NoSystemUi.reveal(&place.path), Err(SystemUiError::Unsupported));
-            assert!(SystemClock.now() > SystemTime::UNIX_EPOCH);
         }
     }
 }

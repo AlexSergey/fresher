@@ -22,6 +22,7 @@ module.exports = {
         'rules',
         'scanner',
         'store',
+        'system',
         'testing',
         'ui',
       ],

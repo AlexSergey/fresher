@@ -15,6 +15,6 @@ mod state;
 mod tree;
 mod walk;
 
-pub use scanner::{AnchorResolver, Scanner, ScannerOptions, home_anchor};
+pub use scanner::{AnchorResolver, Scanner, ScannerOptions, home_anchor, known_folders_anchor};
 pub use walk::counting::CountingReader;
 pub use walk::std_reader::StdReader;

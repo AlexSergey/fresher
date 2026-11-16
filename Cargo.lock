@@ -1236,6 +1236,7 @@ dependencies = [
  "fresher-module-trial",
  "fresher-scanner",
  "fresher-store",
+ "fresher-system",
  "fresher-testing",
  "serde_json",
  "tauri",
@@ -1374,6 +1375,19 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
+name = "fresher-system"
+version = "0.5.5"
+dependencies = [
+ "fresher-core",
+ "fresher-macos",
+ "fresher-testing",
+ "proptest",
  "tempfile",
  "thiserror 2.0.21",
  "tracing",

@@ -96,7 +96,7 @@ impl Module for TrialModule {
             return Err(ModuleError::Cancelled);
         }
         let failed = || ModuleError::Failed { reason: self.failed.clone() };
-        let Some(listing) = tool::list(self.tool, cx.commands()).map_err(|_| failed())? else {
+        let Some(listing) = tool::list(self.tool, cx.commands(), cx.cancel()).map_err(|_| failed())? else {
             return Ok(());
         };
         let category = &self.descriptor.categories()[TOOL];

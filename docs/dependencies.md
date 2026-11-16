@@ -27,10 +27,10 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
 | `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |
-| `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, scanner, store, testing                                   |
-| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, core, engine, macos, module-demo, module-trial, rules, scanner, store, testing |
+| `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, scanner, store, system, testing                           |
+| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, core, engine, macos, module-demo, module-trial, rules, scanner, store, system, testing |
 | `toml`                         | 1.2.1   | MIT OR Apache-2.0         | rules, testing                                                                      |
-| `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, scanner, store                                                  |
+| `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, scanner, store, system                                          |
 | `ts-rs`                        | 12.0.1  | MIT                       | app, core                                                                           |
 
 The full tree is `Cargo.lock`: 510 packages for every platform, our own crates included. Every licence in it is on the
@@ -62,7 +62,7 @@ Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-t
 | Crate         | Version | Licence           | Used by                                                                       |
 | ------------- | ------- | ----------------- | ----------------------------------------------------------------------------- |
 | `criterion`   | 0.8.2   | Apache-2.0 OR MIT | the benches of `scanner` (default features off)                               |
-| `proptest`    | 1.12.0  | MIT OR Apache-2.0 | tests of `cleaner`, `core`, `engine`, `macos`, `rules`, `scanner` and `store` |
+| `proptest`    | 1.12.0  | MIT OR Apache-2.0 | tests of `cleaner`, `core`, `engine`, `macos`, `rules`, `scanner`, `store` and `system` |
 | `tauri-build` | 2.7.4   | Apache-2.0 OR MIT | the build script of `fresher-app`                                             |
 | `trybuild`    | 1.0.125 | MIT OR Apache-2.0 | the compile-fail tests of `cleaner` and `core`                                |
 

@@ -58,11 +58,16 @@ impl AccessView {
     }
 
     /// Runs each check once: success → `Granted`; not installed → `Denied` with `core.access.tool.not-installed`; any
-    /// other answer → `Denied` with `core.access.tool.not-ready`. `true` when a state changed.
-    pub(crate) fn check_tools<'a>(&self, checks: impl Iterator<Item = &'a ToolCommand>) -> bool {
+    /// other answer → `Denied` with `core.access.tool.not-ready`; a check stopped by `cancel` changes nothing. `true`
+    /// when a state changed.
+    pub(crate) fn check_tools<'a>(
+        &self,
+        checks: impl Iterator<Item = &'a ToolCommand>,
+        cancel: &fresher_core::CancelToken,
+    ) -> bool {
         let mut changed = false;
         for check in checks {
-            let state = self.check(check);
+            let Some(state) = self.check(check, cancel) else { continue };
             let mut known = lock_anyway(&self.known);
             match known.tools.iter_mut().find(|known| known.capability == state.capability) {
                 Some(known) if *known == state => {}
@@ -79,13 +84,15 @@ impl AccessView {
         changed
     }
 
-    fn check(&self, check: &ToolCommand) -> CapabilityState {
+    /// The tool's state; `None` when the check was cancelled.
+    fn check(&self, check: &ToolCommand, cancel: &fresher_core::CancelToken) -> Option<CapabilityState> {
         let tool = check.tool();
         let args: Vec<&str> = check.args().iter().map(String::as_str).collect();
-        match self.commands.run(tool.as_str(), &args) {
-            Ok(output) if output.status == 0 => CapabilityState::new(Capability::Tool(tool), Access::Granted),
-            Err(CommandRunError::NotInstalled { .. }) => CapabilityState::tool_not_installed(tool),
-            Ok(_) | Err(CommandRunError::Failed { .. }) => CapabilityState::tool_not_ready(tool),
+        match self.commands.run(tool.as_str(), &args, cancel) {
+            Ok(output) if output.status == 0 => Some(CapabilityState::new(Capability::Tool(tool), Access::Granted)),
+            Err(CommandRunError::NotInstalled { .. }) => Some(CapabilityState::tool_not_installed(tool)),
+            Ok(_) | Err(CommandRunError::Failed { .. }) => Some(CapabilityState::tool_not_ready(tool)),
+            Err(CommandRunError::Cancelled { .. }) => None,
         }
     }
 }

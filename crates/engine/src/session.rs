@@ -9,8 +9,8 @@ use std::sync::Arc;
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
     FindingId, FindingSink, InterestSet, LastScan, Match, Module, ModuleContext, ModuleError, ModuleId, ModuleOutcome,
-    ModuleSettings, NewFinding, Removability, Removal, ScanId, ScanKind, ScanOutcome, Timestamp, WalkError, WalkMode,
-    WalkProgress, WalkRequest, WalkSummary,
+    ModuleSettings, NewFinding, Removability, Removal, ScanId, ScanKind, ScanOutcome, SystemFacts, Timestamp,
+    WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -18,6 +18,7 @@ use crate::claims;
 use crate::coverage;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
+use crate::projects::{self, ProjectCollector};
 use crate::throttle::Throttle;
 
 /// What a scan runs, fixed when it starts: later changes to the settings wait for the next scan.
@@ -50,21 +51,21 @@ pub(crate) struct Planned {
 /// nothing to restore publishes nothing and leaves the engine as it was.
 pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &ScanPlan) {
     let ids: Vec<ModuleId> = plan.modules.iter().map(|planned| planned.module.descriptor().id()).collect();
-    // Every registered module's interests, enabled or not, so turning one off never changes what the walk reads
-    // (design call 22); the matches of a module that is off are dropped below.
-    let mut interests = InterestSet::new();
-    for module in shared.registry.registered() {
-        interests.add(module.descriptor().id(), module.interests());
-    }
+    let interests = all_interests(shared);
     let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
     // The previous scan's findings are forgotten only now that this scan runs; `None` when the ids ran out.
     let first_id = lock_anyway(&shared.results).begin(&plan.roots);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
-    let (access, unavailable) = decide_access(shared, plan);
+    let (access, unavailable) = decide_access(shared, plan, cancel);
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
-    let contexts: Vec<ModuleContext<'_>> =
-        plan.modules.iter().map(|planned| ModuleContext::new(clock, commands, &planned.settings, cancel)).collect();
+    // One scan's facts of the system, shared by every module and gathered only when one asks.
+    let system = SystemFacts::new(&shared.ports.system);
+    let contexts: Vec<ModuleContext<'_>> = plan
+        .modules
+        .iter()
+        .map(|planned| ModuleContext::new(clock, commands, &system, &planned.settings, cancel))
+        .collect();
     let mut outcomes: Vec<Option<ModuleOutcome>> = vec![None; plan.modules.len()];
     let mut output = Output {
         shared,
@@ -89,9 +90,14 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let publish_progress = |progress: WalkProgress| {
         shared.bus.publish(&Event::ScanProgress { scan, entries: progress.entries, bytes: progress.bytes });
     };
+    let mut projects = ProjectCollector::default();
     let walked = {
         let mut on_match = |found: Match| {
             let Some((owner, local)) = interests.owner(found.interest) else { return };
+            if owner == ModuleId::system() {
+                projects.add(local, &found);
+                return;
+            }
             // A module that is off is not in the plan, one not run for what it lacks has its outcome: no match.
             let Some(index) = ids.iter().position(|&id| id == owner) else { return };
             if outcomes[index].is_some() {
@@ -120,6 +126,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         }
     };
     throttle.take().into_iter().for_each(&publish_progress);
+    system.set_projects(projects.finish());
     let summary = summary_of(walked);
     output.coverage = coverage::after_walk(entry.not_entered, summary.as_ref());
     if let Some(summary) = &summary {
@@ -129,18 +136,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         }
     }
 
-    for (index, planned) in plan.modules.iter().enumerate() {
-        if outcomes[index].is_some() {
-            continue;
-        }
-        let outcome = if cancel.is_cancelled() {
-            ModuleOutcome::Cancelled
-        } else {
-            isolated(|| planned.module.finish(&contexts[index], &mut output))
-                .map_or_else(|outcome| outcome, |()| ModuleOutcome::Completed)
-        };
-        outcomes[index] = Some(output.module_finished(ids[index], outcome));
-    }
+    finish_modules(plan, &contexts, &mut outcomes, &mut output, cancel);
 
     let committed = !cancel.is_cancelled() && {
         let claims = resolve_claims(shared);
@@ -157,10 +153,48 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     output.end(outcome);
 }
 
+/// Every registered module's interests, enabled or not, so turning one off never changes what the walk reads (design
+/// call 22; the matches of a module that is off are dropped), then the engine's own for the projects, owned by
+/// `ModuleId::system()`.
+fn all_interests(shared: &Shared) -> InterestSet {
+    let mut interests = InterestSet::new();
+    for module in shared.registry.registered() {
+        interests.add(module.descriptor().id(), module.interests());
+    }
+    interests.add(ModuleId::system(), &projects::interests());
+    interests
+}
+
+/// Calls `finish` of every module that has no outcome yet, in order; after a cancel, each is `Cancelled` instead.
+fn finish_modules(
+    plan: &ScanPlan,
+    contexts: &[ModuleContext<'_>],
+    outcomes: &mut [Option<ModuleOutcome>],
+    output: &mut Output<'_>,
+    cancel: &CancelToken,
+) {
+    for ((planned, cx), outcome) in plan.modules.iter().zip(contexts).zip(outcomes.iter_mut()) {
+        if outcome.is_some() {
+            continue;
+        }
+        let finished = if cancel.is_cancelled() {
+            ModuleOutcome::Cancelled
+        } else {
+            isolated(|| planned.module.finish(cx, output)).map_or_else(|outcome| outcome, |()| ModuleOutcome::Completed)
+        };
+        *outcome = Some(output.module_finished(planned.module.descriptor().id(), finished));
+    }
+}
+
 /// Checks the tools of the scan's modules (`AccessChanged` when a tool's state changed), then decides with the access
 /// what each module lacks to run at all (`None` when it can run) and which categories are limited.
-fn decide_access(shared: &Shared, plan: &ScanPlan) -> (AccessStatus, Vec<Option<Vec<Capability>>>) {
-    if shared.access.check_tools(plan.modules.iter().flat_map(|planned| planned.module.descriptor().tool_checks())) {
+fn decide_access(
+    shared: &Shared,
+    plan: &ScanPlan,
+    cancel: &CancelToken,
+) -> (AccessStatus, Vec<Option<Vec<Capability>>>) {
+    let checks = plan.modules.iter().flat_map(|planned| planned.module.descriptor().tool_checks());
+    if shared.access.check_tools(checks, cancel) {
         shared.bus.publish(&Event::AccessChanged { status: shared.access.status() });
     }
     let access = shared.access.status();

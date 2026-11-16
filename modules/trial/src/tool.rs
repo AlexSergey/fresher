@@ -4,8 +4,8 @@
 //! that does not read so, or whose id is not a plain name, is not claimed.
 
 use fresher_core::{
-    ByteSize, CategoryDescriptor, CommandRunError, CommandRunner, NewFinding, Removal, RemovalError, Sizes, Subject,
-    Text, TextArg, TextKey, ToolCommand, ToolId,
+    ByteSize, CancelToken, CategoryDescriptor, CommandRunError, CommandRunner, NewFinding, Removal, RemovalError,
+    Sizes, Subject, Text, TextArg, TextKey, ToolCommand, ToolId,
 };
 
 /// The arguments of the tool's check: success means the tool is ready.
@@ -24,12 +24,17 @@ pub(crate) struct Object {
     bytes: u64,
 }
 
-/// The tool's objects; `None` when the tool is not installed (it never is, outside the tests).
-pub(crate) fn list(tool: ToolId, commands: &dyn CommandRunner) -> Result<Option<Vec<Object>>, ListFailed> {
-    match commands.run(tool.as_str(), &["list"]) {
+/// The tool's objects; `None` when the tool is not installed (it never is, outside the tests). A listing stopped by
+/// `cancel` is a failed one: the engine reports the scan as cancelled anyway.
+pub(crate) fn list(
+    tool: ToolId,
+    commands: &dyn CommandRunner,
+    cancel: &CancelToken,
+) -> Result<Option<Vec<Object>>, ListFailed> {
+    match commands.run(tool.as_str(), &["list"], cancel) {
         Ok(output) if output.status == 0 => Ok(Some(output.stdout.lines().filter_map(Object::parse).collect())),
         Err(CommandRunError::NotInstalled { .. }) => Ok(None),
-        Ok(_) | Err(CommandRunError::Failed { .. }) => Err(ListFailed),
+        Ok(_) | Err(CommandRunError::Failed { .. } | CommandRunError::Cancelled { .. }) => Err(ListFailed),
     }
 }
 
@@ -76,7 +81,7 @@ mod tests {
     use crate::TRIAL_TOOL;
 
     fn listed(runner: &FakeCommandRunner) -> Result<Option<Vec<Object>>, ListFailed> {
-        list(ToolId::new(TRIAL_TOOL).unwrap(), runner)
+        list(ToolId::new(TRIAL_TOOL).unwrap(), runner, &fresher_core::CancelToken::new())
     }
 
     mod negative {

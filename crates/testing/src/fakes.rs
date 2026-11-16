@@ -154,9 +154,13 @@ impl FakeCommandRunner {
 }
 
 impl CommandRunner for FakeCommandRunner {
-    fn run(&self, program: &str, args: &[&str]) -> Result<CommandOutput, CommandRunError> {
+    /// Records the command; a set token answers `Cancelled` instead of the table.
+    fn run(&self, program: &str, args: &[&str], cancel: &CancelToken) -> Result<CommandOutput, CommandRunError> {
         let command = std::iter::once(program).chain(args.iter().copied()).collect::<Vec<_>>().join(" ");
         lock(&self.calls).push(command.clone());
+        if cancel.is_cancelled() {
+            return Err(CommandRunError::Cancelled { program: program.into() });
+        }
         self.answers
             .get(&command)
             .cloned()
@@ -393,10 +397,22 @@ mod tests {
         }
 
         #[test]
+        fn a_set_token_answers_cancelled_and_the_call_is_recorded() {
+            let runner = FakeCommandRunner::default().answering("docker ps", "");
+            let cancel = CancelToken::new();
+            cancel.cancel();
+
+            let error = runner.run("docker", &["ps"], &cancel);
+
+            assert_eq!(error, Err(CommandRunError::Cancelled { program: "docker".into() }));
+            assert_eq!(runner.calls(), ["docker ps"]);
+        }
+
+        #[test]
         fn an_unknown_command_is_not_installed() {
             let runner = FakeCommandRunner::default();
 
-            let error = runner.run("docker", &["images"]).unwrap_err();
+            let error = runner.run("docker", &["images"], &CancelToken::new()).unwrap_err();
 
             assert_eq!(error, CommandRunError::NotInstalled { program: "docker".into() });
         }
@@ -457,7 +473,7 @@ mod tests {
             let error = CommandRunError::Failed { program: "docker".into(), reason: "daemon down".into() };
             let runner = FakeCommandRunner::default().failing("docker ps", error.clone());
 
-            assert_eq!(runner.run("docker", &["ps"]), Err(error));
+            assert_eq!(runner.run("docker", &["ps"], &CancelToken::new()), Err(error));
         }
     }
 
@@ -563,12 +579,12 @@ mod tests {
         fn a_known_command_answers_and_is_recorded() {
             let runner = FakeCommandRunner::default().answering("docker images --format json", "[]");
 
-            let output = runner.run("docker", &["images", "--format", "json"]).unwrap();
+            let output = runner.run("docker", &["images", "--format", "json"], &CancelToken::new()).unwrap();
 
             assert_eq!(output.stdout, "[]");
             assert_eq!(runner.calls(), ["docker images --format json"]);
             let stopped = FakeCommandRunner::default().exiting("docker info", 1);
-            assert_eq!(stopped.run("docker", &["info"]).map(|output| output.status), Ok(1));
+            assert_eq!(stopped.run("docker", &["info"], &CancelToken::new()).map(|output| output.status), Ok(1));
         }
     }
 }

@@ -7,17 +7,22 @@ use std::time::Duration;
 #[cfg(not(any(debug_assertions, test)))]
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
-use fresher_core::{Clock, CommandRunner, ProtectionError, SchemaError, Volumes};
+use fresher_core::{
+    Clock, CommandRunner, KnownFolders, ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
+};
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 use fresher_macos::{
     MacChangeJournal, MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, io_policy, places_that_prompt,
     protection,
 };
-use fresher_scanner::{Scanner, ScannerOptions, home_anchor};
+use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
-use crate::adapters::{NoSystemUi, SystemClock, UnknownAccess};
-use crate::process::{COMMAND_TIMEOUT, ProcessCommandRunner};
+use fresher_system::{
+    COMMAND_TIMEOUT, MacInstalledApps, MacKnownFolders, MacRunningApps, ProcessCommandRunner, SystemClock,
+};
+
+use crate::adapters::{NoSystemUi, UnknownAccess};
 
 /// Why the app could not start its engine.
 #[derive(Debug, thiserror::Error)]
@@ -64,7 +69,7 @@ const MACOS_POLICY: IoPolicy = IoPolicy {
 };
 
 /// The engine of the app, with its settings in `data_folder` (Tauri's `app_data_dir`) and `home` the user's home
-/// folder (Tauri's `home_dir`): the anchor of home-relative interests and of `~` in the scan roots.
+/// folder (Tauri's `home_dir`): where the known folders are (`MacKnownFolders`), and `~` in the scan roots.
 pub(crate) fn engine(data_folder: impl Into<PathBuf>, home: &Path) -> Result<Engine, ComposeError> {
     engine_with(data_folder, home, &MACOS_POLICY)
 }
@@ -81,6 +86,7 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         cache_body_limit: CachePolicy::DEFAULT.body_limit,
         ..ScannerOptions::default()
     };
+    let known_folders: Arc<dyn KnownFolders> = Arc::new(MacKnownFolders::new(home));
     let journal = MacChangeJournal::new().with_time_limit(JOURNAL_TIME_LIMIT);
     let volumes: Arc<dyn Volumes> = Arc::new(MacVolumes::new());
     let walk = Scanner::new(
@@ -88,15 +94,17 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         Arc::clone(&volumes),
         Arc::new(journal),
         Arc::new(FileScanCache::new(folder.clone())),
-        home_anchor(home),
+        known_folders_anchor(&*known_folders),
         options,
     );
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    let running: Arc<dyn RunningApps> = Arc::new(MacRunningApps::new());
     let commands: Arc<dyn CommandRunner> = Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT));
     // The system's Trash goes to the cleaner and to nothing else.
     let cleaner = CleanerPorts {
         trash: Arc::new(MacTrash::new()),
         open_files: Arc::new(MacOpenFiles::new()),
+        running: Arc::clone(&running),
         commands: Arc::clone(&commands),
         clock: Arc::clone(&clock),
     };
@@ -108,6 +116,11 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         commands,
         access: Arc::new(UnknownAccess),
         system_ui: Arc::new(NoSystemUi),
+        system: SystemPorts {
+            known_folders: Arc::clone(&known_folders),
+            apps: Arc::new(MacInstalledApps::new(known_folders)),
+            running,
+        },
     };
     Ok(Engine::with_cleanup(registry()?, ports, cleanup)?)
 }

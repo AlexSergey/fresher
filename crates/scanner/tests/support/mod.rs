@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    ByteSize, CancelToken, Claim, DiskWalk, FolderReader, Interest, InterestSet, Match, ModuleId, Pattern, VolumeFacts,
-    VolumeId, WalkMode, WalkRequest, WalkSummary,
+    ByteSize, CancelToken, Claim, DiskWalk, FolderReader, Interest, InterestSet, KnownFolder, Match, ModuleId, Pattern,
+    VolumeFacts, VolumeId, WalkMode, WalkRequest, WalkSummary,
 };
-use fresher_scanner::{Scanner, ScannerOptions, home_anchor};
-use fresher_testing::{FakeChangeJournal, FakeVolumes, MemoryScanCache, NaiveWalk};
+use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
+use fresher_testing::{FakeChangeJournal, FakeKnownFolders, FakeVolumes, MemoryScanCache, NaiveWalk};
 
 pub(crate) fn interest(pattern: Pattern, claim: Claim, siblings: &[&str]) -> Interest {
     Interest::new(pattern, claim, siblings.iter().map(|&name| name.into()).collect()).unwrap()
@@ -23,8 +23,11 @@ pub(crate) fn every_interest() -> Vec<Interest> {
         interest(Pattern::MarkerFile("Cargo.toml".into()), Claim::Item, &["Cargo.lock"]),
         interest(Pattern::Extension("json".into()), Claim::Item, &[]),
         interest(Pattern::Extension("dmg".into()), Claim::Whole, &[]),
-        interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
-        interest(Pattern::UnderHome("Library/Logs".into()), Claim::Whole, &[]),
+        interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
+        interest(Pattern::Under(KnownFolder::Home, "Library/Logs".into()), Claim::Whole, &[]),
+        // The same caches through their known folder, and a known folder the fixture home does not have.
+        interest(Pattern::Under(KnownFolder::AppCaches, "*".into()), Claim::Item, &[]),
+        interest(Pattern::Under(KnownFolder::SystemApplications, "*".into()), Claim::Item, &[]),
     ]
 }
 
@@ -73,7 +76,8 @@ pub(crate) fn scanner(
         .with("/", VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) });
     let journal = Arc::new(FakeChangeJournal::default());
     let cache = Arc::new(MemoryScanCache::with_cap(ByteSize::new(8 << 20)));
-    let scanner = Scanner::new(reader, Arc::new(volumes), journal, cache, home_anchor(root), ScannerOptions::default());
+    let anchor = known_folders_anchor(&FakeKnownFolders::home_layout(root));
+    let scanner = Scanner::new(reader, Arc::new(volumes), journal, cache, anchor, ScannerOptions::default());
     let roots = [root.to_path_buf()];
     let mut matches = Vec::new();
     let summary = scanner

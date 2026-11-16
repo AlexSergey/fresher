@@ -101,7 +101,7 @@ category = "example.caches"
 danger = "medium"
 removal = "empty-folder"
 [rule.look]
-under-home = "Library/Caches/*"
+under = { folder = "home", path = "Library/Caches/*" }
 [rule.recognize]
 name = "com.example.*"
 min-age-days = 30
@@ -145,7 +145,8 @@ name = "Library"
         let module = ModuleId::new("example").unwrap();
         let (clock, commands, cancel) = (FakeClock::at(NOW), FakeCommandRunner::default(), CancelToken::new());
         let settings = ModuleSettings::empty(module);
-        rules.evaluate(matched, &ModuleContext::new(&clock, &commands, &settings, &cancel))
+        let system = fresher_core::SystemFacts::new(&fresher_testing::fake_system(Path::new("/home")));
+        rules.evaluate(matched, &ModuleContext::new(&clock, &commands, &system, &settings, &cancel))
     }
 
     mod negative {

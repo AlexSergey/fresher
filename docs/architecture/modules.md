@@ -30,7 +30,7 @@ small `thiserror` error of its own: no panicking path.
 | Method            | What the module does there                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------- |
 | `descriptor()`    | its id, categories (each with its danger level), settings and dictionary (`locales/en.json`)        |
-| `interests()`     | what the walk should report to it: a folder name, a path under the home, a marker file or an extension |
+| `interests()`     | what the walk should report to it: a folder name, a path under a known folder, a marker file or an extension |
 | `on_match(…)`     | one match of one of its interests (`matched.interest` is the index in its own list) → findings     |
 | `finish(…)`       | the end of the walk: work that needs every match (the newest version), or that reads no disk (a tool) |
 
@@ -40,8 +40,33 @@ small `thiserror` error of its own: no panicking path.
   `<id>.enabled` for every module; the module ships its label and description too.
 - `NewFinding::new(&category, …)` starts at the category's danger level; `raise_danger` only goes up.
 - The ports a module may use come in `ModuleContext`: the clock, the command runner (an external tool, with a fixed
-  argument list), its settings, the cancel token. A long `finish` checks `cx.cancel()` and returns
-  `ModuleError::Cancelled`.
+  argument list; pass `cx.cancel()`, so a cancelled scan stops the tool), the system's facts (`cx.system()`, below),
+  its settings, the cancel token. A long `finish` checks `cx.cancel()` and returns `ModuleError::Cancelled`.
+- **A module never writes an OS path** (the user's decision of 2026-11-15): a place is a known folder and a relative
+  path, `Pattern::Under(KnownFolder::AppCaches, "JetBrains/*")` (in rules, `under = { folder = "app-caches", path =
+  "JetBrains/*" }`); `KnownFolder::Home` is the home folder itself. The walk resolves the folder through the
+  `KnownFolders` port; a folder this system does not have matches nothing.
+
+## The system's facts (`cx.system()`)
+
+Plan [009](../plans/009-system-knowledge/readme.md). One `SystemFacts` per scan, shared by every module; each fact is
+gathered on the first ask and kept for the scan, a rescan gathers it anew, nothing is written.
+
+| Ask                          | Answers                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `locate(KnownFolder)`        | where this system keeps the folder                                                                |
+| `installed_apps()`           | every installed app: bundle id, team id, name, version, build, path, its helpers' bundle ids      |
+| `running_apps()`             | the running apps (`RunningSet`); `owner_of(path)` names the running app a path is named after     |
+| `projects()`                 | the projects the walk found (root, kinds, artifact folders, last activity); `None` during the walk |
+
+- An app is identified by its bundle id and team id only (`BundleId` compares ignoring case), never by a loose name.
+- The projects are known in `finish`, not in `on_match`. A project's last activity is its folder's own modification
+  time for now ([deferred](../deferred/project-last-activity.md)).
+- An item a running app owns is skipped by the cleaner anyway; a module may raise a finding's danger or say "quit the
+  app first" with `running_apps()`.
+- In tests, `run_module`'s `Ports` carry `apps: FakeInstalledApps`, `running: FakeRunningApps` and the known folders
+  (by default laid out under the fixture root); `installed_app("com.example.Editor", "Editor", "2026.3")` makes one
+  up.
 - A module that returns an error, or panics, ends `ModuleFinished { Failed }` alone: the engine catches the panic
   (`catch_unwind`; the release profile unwinds), the other modules finish and the scan ends `Partial`.
 

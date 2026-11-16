@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use crate::{Access, AccessStatus, Capability, GuardedPlace};
+use crate::{Access, AccessStatus, CancelToken, Capability, GuardedPlace};
 
 /// The wall clock, injected so that tests never read the real time.
 pub trait Clock: Send + Sync {
@@ -104,7 +104,9 @@ pub struct CommandOutput {
 
 /// Runs external programs, injected so that tests use a fake instead of the real Docker CLI.
 pub trait CommandRunner: Send + Sync {
-    fn run(&self, program: &str, args: &[&str]) -> Result<CommandOutput, CommandRunError>;
+    /// Runs `program` with exactly `args`, never through a shell. Once `cancel` is set the program is stopped and the
+    /// run answers `Cancelled`; a token set before the call runs nothing.
+    fn run(&self, program: &str, args: &[&str], cancel: &CancelToken) -> Result<CommandOutput, CommandRunError>;
 }
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
@@ -113,6 +115,9 @@ pub enum CommandRunError {
     NotInstalled { program: String },
     #[error("{program} could not be started: {reason}")]
     Failed { program: String, reason: String },
+    /// The caller's cancel token was set: the program was stopped, or never started.
+    #[error("{program} was stopped: the operation was cancelled")]
+    Cancelled { program: String },
 }
 
 /// What the system lets the app see. Only reads: a probe never opens anything on the system's interface.

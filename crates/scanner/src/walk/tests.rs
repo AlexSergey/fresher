@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, PoisonError};
 
 use fresher_core::{
-    CancelToken, Claim, DiskWalk, FolderIdentity, FolderListing, FolderReader, Interest, InterestSet, Match, Pattern,
-    ReadError, WalkError, WalkMode, WalkRequest, WalkSummary,
+    CancelToken, Claim, DiskWalk, FolderIdentity, FolderListing, FolderReader, Interest, InterestSet, KnownFolder,
+    Match, Pattern, ReadError, WalkError, WalkMode, WalkRequest, WalkSummary,
 };
 use fresher_testing::{LargeTree, TreeSpec};
 
@@ -63,7 +63,7 @@ pub(crate) fn interests() -> InterestSet {
         interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &["package.json"]),
         interest(Pattern::Extension("json".into()), Claim::Item, &[]),
         interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
-        interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
+        interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
     ])
 }
 
@@ -153,7 +153,7 @@ impl<R: FolderReader> FolderReader for Vanishing<R> {
 
 /// The interest of `Library/Caches/*` only.
 fn caches() -> Vec<Interest> {
-    vec![interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[])]
+    vec![interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[])]
 }
 
 mod negative {

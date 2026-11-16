@@ -11,12 +11,12 @@ use std::sync::{Arc, Mutex};
 use fresher_core::{
     Access, AccessStatus, Action, ByteSize, CancelToken, Capability, CapabilityState, CategoryDescriptor, CategoryId,
     DangerLevel, Finding, FindingId, GuardedPlace, ModuleId, NewFinding, OpenSet, PlanItem, Protection, Removability,
-    Removal, Sizes, Subject, Text, TextKey,
+    Removal, RunningApps, RunningSet, Sizes, Subject, Text, TextKey,
 };
 use fresher_core::{
     Cleaner as _, CleanupContext, Clock, CommandRunner, Ended, ItemDone, Landed, OpenFiles, Trash, TrashError,
 };
-use fresher_testing::{FakeClock, FakeCommandRunner, FakeOpenFiles, FakeTrash, FixtureTree};
+use fresher_testing::{FakeClock, FakeCommandRunner, FakeOpenFiles, FakeRunningApps, FakeTrash, FixtureTree};
 use tempfile::TempDir;
 
 use crate::{CleanerPorts, DiskCleaner};
@@ -68,6 +68,7 @@ pub(crate) struct Setup {
     pub(crate) access: AccessStatus,
     pub(crate) guarded: Vec<GuardedPlace>,
     pub(crate) open: OpenSet,
+    pub(crate) running: RunningSet,
     pub(crate) walk: Box<dyn SizeWalk>,
     pub(crate) cancel: CancelToken,
 }
@@ -94,6 +95,7 @@ impl Setup {
             access: AccessStatus::default(),
             guarded: Vec::new(),
             open: OpenSet::default(),
+            running: RunningSet::default(),
             walk: Box::new(HeldWalk),
             cancel: CancelToken::new(),
             tree,
@@ -126,6 +128,7 @@ impl Setup {
             access: &self.access,
             guarded: &self.guarded,
             open: &self.open,
+            running: &self.running,
             purpose,
             walk: &*self.walk,
             cancel: &self.cancel,
@@ -242,6 +245,7 @@ pub(crate) struct Rig {
     pub(crate) setup: Setup,
     pub(crate) trash: Arc<FakeTrash>,
     pub(crate) open_files: Arc<FakeOpenFiles>,
+    pub(crate) running: Arc<FakeRunningApps>,
     pub(crate) clock: Arc<FakeClock>,
     pub(crate) runner: Arc<FakeCommandRunner>,
     pub(crate) cleaner: DiskCleaner,
@@ -253,18 +257,20 @@ impl Rig {
         let setup = Setup::new(toml);
         let trash = Arc::new(FakeTrash::new(setup.at(".Trash")));
         let open_files = Arc::new(FakeOpenFiles::default());
+        let running = Arc::new(FakeRunningApps::default());
         let clock = Arc::new(FakeClock::at(1_000));
         let runner = Arc::new(FakeCommandRunner::default());
         let roots = vec![setup.tree.root().to_path_buf()];
         let ports = CleanerPorts {
             trash: Arc::clone(&trash) as Arc<dyn Trash>,
             open_files: Arc::clone(&open_files) as Arc<dyn OpenFiles>,
+            running: Arc::clone(&running) as Arc<dyn RunningApps>,
             commands: Arc::clone(&runner) as Arc<dyn CommandRunner>,
             clock: Arc::clone(&clock) as Arc<dyn Clock>,
         };
         let home = setup.tree.root().to_path_buf();
         let cleaner = DiskCleaner::new(Reach::Sandbox, setup.user, home, Protection::default(), ports);
-        Self { setup, trash, open_files, clock, runner, cleaner, roots }
+        Self { setup, trash, open_files, running, clock, runner, cleaner, roots }
     }
 
     /// The same rig whose Trash does `first` on its first move.
@@ -283,6 +289,13 @@ impl Rig {
     pub(crate) fn with_open_files(mut self, open_files: FakeOpenFiles) -> Self {
         self.open_files = Arc::new(open_files);
         self.cleaner.ports.open_files = Arc::clone(&self.open_files) as Arc<dyn OpenFiles>;
+        self
+    }
+
+    /// The same rig with other running apps.
+    pub(crate) fn with_running(mut self, running: FakeRunningApps) -> Self {
+        self.running = Arc::new(running);
+        self.cleaner.ports.running = Arc::clone(&self.running) as Arc<dyn RunningApps>;
         self
     }
 

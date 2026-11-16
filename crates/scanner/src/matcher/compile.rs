@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Component, Path, PathBuf};
 
-use fresher_core::{CACHEDIR_TAG, Claim, InterestSet, Pattern};
+use fresher_core::{CACHEDIR_TAG, Claim, InterestSet, KnownFolder, Pattern};
 
 use crate::matcher::fingerprint::fingerprint;
 use crate::matcher::small_list::SmallList;
@@ -18,11 +18,11 @@ const MAX_SIBLINGS: usize = 64;
 /// resolve.
 pub(crate) type Anchor<'a> = &'a dyn Fn(&Pattern) -> Option<(PathBuf, Vec<Segment>)>;
 
-/// The resolver of today's only anchor: `Pattern::UnderHome` against the home folder.
+/// The resolver of the home folder alone (tests and benches): `Pattern::Under(Home, …)` against `home`.
 pub(crate) fn under_home(home: &Path) -> impl Fn(&Pattern) -> Option<(PathBuf, Vec<Segment>)> + '_ {
     move |pattern| match pattern {
-        Pattern::UnderHome(relative) => Some((home.to_path_buf(), Segment::parse(relative))),
-        Pattern::FolderName(_) | Pattern::MarkerFile(_) | Pattern::Extension(_) => None,
+        Pattern::Under(KnownFolder::Home, relative) => Some((home.to_path_buf(), Segment::parse(relative))),
+        Pattern::Under(..) | Pattern::FolderName(_) | Pattern::MarkerFile(_) | Pattern::Extension(_) => None,
     }
 }
 
@@ -48,7 +48,7 @@ impl Matcher {
                     facts.cachedir_tag = marker == CACHEDIR_TAG;
                     add(&mut matcher.markers, marker, id);
                 }
-                Pattern::UnderHome(_) => {
+                Pattern::Under(..) => {
                     let Some(segments) = anchor(interest.pattern()).and_then(|(at, below)| absolute(&at, below)) else {
                         tracing::warn!(interest = index, "an anchored interest does not resolve; it matches nothing");
                         matcher.interests.push(InterestFacts::default());

@@ -1,32 +1,37 @@
 //! The real `CommandRunner`: runs a program with a fixed argument list, never through a shell, and kills it when it
-//! runs past its time. The port takes no cancel token, so a run that is not timed out cannot be cancelled early.
+//! runs past its time or the caller's cancel token is set.
 
 use std::io::{self, Read};
 use std::process::{Child, Command, Stdio};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use fresher_core::{CommandOutput, CommandRunError, CommandRunner};
+use fresher_core::{CancelToken, CommandOutput, CommandRunError, CommandRunner};
 
 /// How long a program may run before it is killed.
-pub(crate) const COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
+pub const COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// How often a running program is checked.
 const POLL: Duration = Duration::from_millis(10);
 
+/// Runs external programs with `std::process`.
 #[derive(Debug)]
-pub(crate) struct ProcessCommandRunner {
+pub struct ProcessCommandRunner {
     timeout: Duration,
 }
 
 impl ProcessCommandRunner {
-    pub(crate) fn new(timeout: Duration) -> Self {
+    /// A runner that kills a program after `timeout`.
+    pub const fn new(timeout: Duration) -> Self {
         Self { timeout }
     }
 }
 
 impl CommandRunner for ProcessCommandRunner {
-    fn run(&self, program: &str, args: &[&str]) -> Result<CommandOutput, CommandRunError> {
+    fn run(&self, program: &str, args: &[&str], cancel: &CancelToken) -> Result<CommandOutput, CommandRunError> {
+        if cancel.is_cancelled() {
+            return Err(CommandRunError::Cancelled { program: program.into() });
+        }
         let failed = |reason: String| CommandRunError::Failed { program: program.into(), reason };
         let mut child = Command::new(program)
             .args(args)
@@ -45,9 +50,13 @@ impl CommandRunner for ProcessCommandRunner {
         let status = loop {
             match child.try_wait() {
                 Ok(Some(status)) => break status,
+                // The readers are left to end on their own: a child of the program may still hold the pipes.
+                Ok(None) if cancel.is_cancelled() => {
+                    kill(&mut child);
+                    return Err(CommandRunError::Cancelled { program: program.into() });
+                }
                 Ok(None) if Instant::now() >= deadline => {
                     kill(&mut child);
-                    // The readers are left to end on their own: a child of the program may still hold the pipes.
                     return Err(failed(format!("it ran longer than {} ms and was stopped", self.timeout.as_millis())));
                 }
                 Ok(None) => thread::sleep(POLL),
@@ -94,17 +103,22 @@ fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> String {
 #[cfg(test)]
 mod tests {
     mod negative {
+        use std::thread;
         use std::time::{Duration, Instant};
 
-        use fresher_core::{CommandRunError, CommandRunner};
+        use fresher_core::{CancelToken, CommandRunError, CommandRunner};
 
         use crate::process::{COMMAND_TIMEOUT, ProcessCommandRunner};
+
+        fn runner() -> ProcessCommandRunner {
+            ProcessCommandRunner::new(COMMAND_TIMEOUT)
+        }
 
         #[test]
         fn a_missing_program_is_not_installed() {
             let program = "/nonexistent/fresher-no-such-program";
 
-            let error = ProcessCommandRunner::new(COMMAND_TIMEOUT).run(program, &[]);
+            let error = runner().run(program, &[], &CancelToken::new());
 
             assert_eq!(error, Err(CommandRunError::NotInstalled { program: program.into() }));
         }
@@ -112,7 +126,7 @@ mod tests {
         #[test]
         fn a_program_that_cannot_be_started_fails() {
             // A folder is not a program: the system refuses to start it.
-            let error = ProcessCommandRunner::new(COMMAND_TIMEOUT).run("/", &[]);
+            let error = runner().run("/", &[], &CancelToken::new());
 
             assert!(matches!(error, Err(CommandRunError::Failed { .. })), "{error:?}");
         }
@@ -121,7 +135,8 @@ mod tests {
         fn a_program_that_runs_past_its_time_is_stopped() {
             let started = Instant::now();
 
-            let error = ProcessCommandRunner::new(Duration::from_millis(50)).run("/bin/sleep", &["5"]);
+            let error =
+                ProcessCommandRunner::new(Duration::from_millis(50)).run("/bin/sleep", &["5"], &CancelToken::new());
 
             assert_eq!(
                 error,
@@ -132,16 +147,50 @@ mod tests {
             );
             assert!(started.elapsed() < Duration::from_secs(2), "{:?}", started.elapsed());
         }
+
+        #[test]
+        fn a_program_running_when_the_token_is_set_is_stopped() {
+            let cancel = CancelToken::new();
+            let setter = {
+                let cancel = cancel.clone();
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_millis(100));
+                    cancel.cancel();
+                })
+            };
+            let started = Instant::now();
+
+            let error = runner().run("/bin/sleep", &["5"], &cancel);
+
+            setter.join().unwrap();
+            assert_eq!(error, Err(CommandRunError::Cancelled { program: "/bin/sleep".into() }));
+            assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+        }
+
+        #[test]
+        fn a_token_set_before_the_start_runs_nothing() {
+            let cancel = CancelToken::new();
+            cancel.cancel();
+
+            let error = runner().run("/nonexistent/fresher-no-such-program", &[], &cancel);
+
+            assert_eq!(
+                error,
+                Err(CommandRunError::Cancelled { program: "/nonexistent/fresher-no-such-program".into() })
+            );
+        }
     }
 
     mod positive {
-        use fresher_core::CommandRunner;
+        use fresher_core::{CancelToken, CommandRunner};
 
         use crate::process::{COMMAND_TIMEOUT, ProcessCommandRunner};
 
         #[test]
         fn runs_a_program_with_its_arguments() {
-            let output = ProcessCommandRunner::new(COMMAND_TIMEOUT).run("/bin/echo", &["fresher", "test"]).unwrap();
+            let output =
+                ProcessCommandRunner::new(COMMAND_TIMEOUT).run("/bin/echo", &["fresher", "test"], &CancelToken::new());
+            let output = output.unwrap();
 
             assert_eq!((output.status, output.stdout.as_str(), output.stderr.as_str()), (0, "fresher test\n", ""));
         }
@@ -149,7 +198,7 @@ mod tests {
         #[test]
         fn reads_an_output_larger_than_a_pipe_holds() {
             let output = ProcessCommandRunner::new(COMMAND_TIMEOUT)
-                .run("/bin/dd", &["if=/dev/zero", "bs=1024", "count=512"])
+                .run("/bin/dd", &["if=/dev/zero", "bs=1024", "count=512"], &CancelToken::new())
                 .unwrap();
 
             assert_eq!((output.status, output.stdout.len()), (0, 512 * 1024));

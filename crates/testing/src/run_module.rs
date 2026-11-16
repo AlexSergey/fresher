@@ -1,16 +1,21 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use fresher_core::{
     CancelToken, DiskWalk, InterestSet, Match, Module, ModuleContext, ModuleError, ModuleOutcome, NewFinding,
-    SchemaError, SettingsSchema, StoredSettings, WalkError, WalkMode, WalkRequest,
+    SchemaError, SettingsSchema, StoredSettings, SystemFacts, SystemPorts, WalkError, WalkMode, WalkRequest,
 };
 use serde_json::{Value, json};
 
-use crate::{FakeAccess, FakeClock, FakeCommandRunner, FakeSystemUi, FixtureTree, NaiveWalk};
+use crate::{
+    FakeAccess, FakeClock, FakeCommandRunner, FakeInstalledApps, FakeKnownFolders, FakeRunningApps, FakeSystemUi,
+    FixtureTree, NaiveWalk,
+};
 
 /// The ports a module runs with in a test: a stopped clock, a table of command answers, the stored settings, a cancel
-/// token, and the access and the system's interface.
+/// token, the access and the system's interface, and the system's facts: the installed and running apps, and the
+/// known folders (by default laid out under the fixture tree's root, its home).
 #[derive(Debug)]
 pub struct Ports {
     pub clock: FakeClock,
@@ -21,11 +26,17 @@ pub struct Ports {
     /// No capability at all by default: every one is `NotApplicable`.
     pub access: FakeAccess,
     pub system_ui: FakeSystemUi,
+    /// No app installed by default.
+    pub apps: Arc<FakeInstalledApps>,
+    /// Nothing running by default.
+    pub running: Arc<FakeRunningApps>,
+    /// `None`: the home layout under the fixture tree's root.
+    pub known_folders: Option<FakeKnownFolders>,
 }
 
 impl Ports {
-    /// The clock at `seconds` after the Unix epoch, no command answers, every setting at its default, no capability
-    /// and a system interface that records its calls.
+    /// The clock at `seconds` after the Unix epoch, no command answers, every setting at its default, no capability,
+    /// a system interface that records its calls, no app installed or running, and the fixture home's folders.
     pub fn at(seconds: u64) -> Self {
         Self {
             clock: FakeClock::at(seconds),
@@ -34,6 +45,9 @@ impl Ports {
             cancel: CancelToken::new(),
             access: FakeAccess::default(),
             system_ui: FakeSystemUi::default(),
+            apps: Arc::default(),
+            running: Arc::default(),
+            known_folders: None,
         }
     }
 }
@@ -63,7 +77,13 @@ pub enum HarnessError {
 pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Result<ModuleRun, HarnessError> {
     let id = module.descriptor().id();
     let settings = SettingsSchema::new([module.descriptor()])?.resolve(&ports.settings).module(id);
-    let cx = ModuleContext::new(&ports.clock, &ports.commands, &settings, &ports.cancel);
+    let known_folders = ports.known_folders.clone().unwrap_or_else(|| FakeKnownFolders::home_layout(tree.root()));
+    let system = SystemFacts::new(&SystemPorts {
+        known_folders: Arc::new(known_folders.clone()),
+        apps: Arc::clone(&ports.apps) as _,
+        running: Arc::clone(&ports.running) as _,
+    });
+    let cx = ModuleContext::new(&ports.clock, &ports.commands, &system, &settings, &ports.cancel);
     let mut interests = InterestSet::new();
     interests.add(id, module.interests());
     let mut findings = Vec::new();
@@ -81,7 +101,8 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     };
     let roots = [tree.root().to_path_buf()];
     let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
-    let walked = NaiveWalk::new(tree.root()).walk(&request, &ports.cancel, &mut on_match, &mut |_| {});
+    let walk = NaiveWalk::new(tree.root()).with_known_folders(known_folders);
+    let walked = walk.walk(&request, &ports.cancel, &mut on_match, &mut |_| {});
     match walked {
         Ok(_) => {}
         Err(WalkError::Cancelled) => failure = failure.or(Some(ModuleError::Cancelled)),

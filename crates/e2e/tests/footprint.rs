@@ -14,9 +14,9 @@ mod run {
     use fresher_core::{
         ActionKind, BeginRecord, ByteSize, CancelToken, ChangeJournal, Changes, Claim, CleanupJournal, DangerLevel,
         DiskWalk, EndRecord, Ended, EntryKind, Interest, InterestSet, ItemIdentity, ItemRecord, JournalGap,
-        JournalItem, JournalPosition, Method, ModuleId, Pattern, RecordedOutcome, ScanKind, SettingsStore, Sizes,
-        StoredSettings, Text, TextArg, TextKey, Timestamp, TrashedItem, VolumeFacts, VolumeId, VolumeSpace, WalkMode,
-        WalkRequest,
+        JournalItem, JournalPosition, KnownFolder, Method, ModuleId, Pattern, RecordedOutcome, ScanKind, SettingsStore,
+        Sizes, StoredSettings, Text, TextArg, TextKey, Timestamp, TrashedItem, VolumeFacts, VolumeId, VolumeSpace,
+        WalkMode, WalkRequest,
     };
     use fresher_scanner::{Scanner, ScannerOptions, StdReader, home_anchor};
     use fresher_store::{
@@ -60,7 +60,7 @@ mod run {
             &[
                 interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &["package.json"]),
                 interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
-                interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
+                interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
             ],
         );
         set

@@ -170,7 +170,7 @@ mod positive {
         assert_eq!(tagged.marker, Some(MarkerCheck::Valid));
         let modules = fast.matches.iter().find(|found| found.path == root.join("app/node_modules")).unwrap();
         assert_eq!(modules.sizes.logical.bytes(), 34, "a hard link counts once per name in a match");
-        assert_eq!(fast.matches.len(), 11);
+        assert_eq!(fast.matches.len(), 12, "the cache folder matched under the home and under its known folder");
         assert!(fast.matches.iter().all(|found| found.facts == EntryFacts::REMOVABLE), "all the user's own");
     }
 

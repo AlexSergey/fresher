@@ -183,6 +183,7 @@ mod tests {
                 commands: fixture.commands,
                 access: fixture.access,
                 system_ui: fixture.system_ui,
+                system: fixture.system,
             };
             let mut registry = Registry::new().unwrap();
             let alpha = crate::testing::TestModule::builder("alpha")

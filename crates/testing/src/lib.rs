@@ -1,4 +1,4 @@
-//! Test helpers of Fresher: fixture trees, fake clock, fake Trash, fake external commands, fake volumes and change
+//! Test helpers of Fresher: fixture trees, fake known folders, installed and running apps, fake clock, fake Trash, fake external commands, fake volumes and change
 //! journal, an in-memory scan cache, fake open files, an in-memory cleanup journal, a fake cleaner, a fixed disk state,
 //! fake access and system interface, the reference walk, a folder swapped for a link in a race, and the module
 //! harness and contract checks.
@@ -16,10 +16,12 @@ mod fake_access;
 mod fakes;
 mod fixed_disk_state;
 mod fixture_tree;
+mod known_folders;
 mod large_tree;
 mod naive_walk;
 mod run_module;
 mod swapper;
+mod system_fakes;
 mod tree_report;
 
 pub use cleanup_fakes::{ExecutedPlan, FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
@@ -31,8 +33,10 @@ pub use fake_access::{FakeAccess, FakeSystemUi, SystemUiCall};
 pub use fakes::{FakeChangeJournal, FakeClock, FakeCommandRunner, FakeTrash, FakeVolumes, MemoryScanCache};
 pub use fixed_disk_state::FixedDiskState;
 pub use fixture_tree::{FixtureError, FixtureTree};
+pub use known_folders::FakeKnownFolders;
 pub use large_tree::{Expected, LargeTree, TreeSpec};
 pub use naive_walk::NaiveWalk;
 pub use run_module::{HarnessError, ModuleRun, Ports, run_module};
 pub use swapper::Swapper;
+pub use system_fakes::{FakeInstalledApps, FakeRunningApps, fake_system, installed_app, running_app, signed_by};
 pub use tree_report::{EntryKind, TreeEntry, TreeReport};

@@ -6,7 +6,6 @@ mod adapters;
 mod commands;
 mod compose;
 mod events;
-mod process;
 mod settings_commands;
 mod shell;
 #[cfg(test)]

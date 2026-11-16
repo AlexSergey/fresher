@@ -535,6 +535,7 @@ mod tests {
                 commands: fixture.commands,
                 access: fixture.access,
                 system_ui: fixture.system_ui,
+                system: fixture.system,
             };
             let engine = crate::Engine::new(crate::Registry::new().unwrap(), ports).unwrap();
 

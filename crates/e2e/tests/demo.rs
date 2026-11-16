@@ -80,6 +80,7 @@ mod app {
             commands: Arc::new(FakeCommandRunner::default()),
             access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
             system_ui: Arc::new(FakeSystemUi::default()),
+            system: fresher_testing::fake_system(folder),
         };
         Engine::new(registry, ports).unwrap()
     }

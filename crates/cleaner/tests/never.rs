@@ -189,6 +189,7 @@ mod model {
             let ports = CleanerPorts {
                 trash: Arc::clone(&trash) as _,
                 open_files: Arc::new(FakeOpenFiles::default()),
+                running: Arc::new(fresher_testing::FakeRunningApps::default()),
                 commands: Arc::clone(&runner) as _,
                 clock: Arc::new(FakeClock::at(1_000)),
             };

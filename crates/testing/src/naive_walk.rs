@@ -6,13 +6,13 @@ use std::sync::{Arc, Mutex};
 
 use fresher_core::{
     ByteSize, CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, Claim, ClaimedPath, Completeness, DiskState, DiskWalk,
-    EntryKind, Interest, MarkerCheck, Match, NodeKind, NotScanned, Pattern, Sizes, StateId, Timestamp, Unreadable,
-    WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary, is_valid_cachedir_tag,
+    EntryKind, Interest, KnownFolders, MarkerCheck, Match, NodeKind, NotScanned, Pattern, Sizes, StateId, Timestamp,
+    Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary, is_valid_cachedir_tag,
 };
 
-use crate::FixedDiskState;
 use crate::entry_facts::entry_facts;
 use crate::fakes::lock;
+use crate::{FakeKnownFolders, FixedDiskState};
 
 /// A size nothing is known of: a folder not read.
 const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZERO };
@@ -28,6 +28,7 @@ const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZE
 #[derive(Debug)]
 pub struct NaiveWalk {
     home: PathBuf,
+    folders: FakeKnownFolders,
     walked: Mutex<Walked>,
 }
 
@@ -40,10 +41,19 @@ struct Walked {
 }
 
 impl NaiveWalk {
-    /// A walk for which `home` is the home folder that `Pattern::UnderHome` paths are relative to: in a test, the
+    /// A walk for which `home` is the home folder, its known folders laid out under it as macOS lays them out
+    /// (`FakeKnownFolders::home_layout`), that `Pattern::Under` paths are relative to: in a test, the
     /// root of the fixture tree.
     pub fn new(home: impl Into<PathBuf>) -> Self {
-        Self { home: home.into(), walked: Mutex::default() }
+        let home = home.into();
+        Self { folders: FakeKnownFolders::home_layout(&home), home, walked: Mutex::default() }
+    }
+
+    /// This walk, resolving known folders with `folders` instead of the home layout.
+    #[must_use]
+    pub fn with_known_folders(mut self, folders: FakeKnownFolders) -> Self {
+        self.folders = folders;
+        self
     }
 }
 
@@ -59,7 +69,7 @@ impl DiskWalk for NaiveWalk {
             return Err(WalkError::NothingToRestore);
         }
         let mut walker = Walker {
-            home: &self.home,
+            folders: &self.folders,
             user: fs::metadata(&self.home).ok().map(|home| home.uid()),
             request,
             cancel,
@@ -102,7 +112,7 @@ impl DiskWalk for NaiveWalk {
 }
 
 struct Walker<'a> {
-    home: &'a Path,
+    folders: &'a FakeKnownFolders,
     /// The owner of the home folder: the user the facts of an entry are read for.
     user: Option<u32>,
     request: &'a WalkRequest<'a>,
@@ -179,7 +189,7 @@ impl Walker<'_> {
     fn report(&mut self, path: &Path, metadata: &Metadata, kind: EntryKind, device: u64) -> bool {
         let mut claimed_whole = false;
         for (index, interest) in self.request.interests.iter() {
-            if !matches(interest.pattern(), self.home, path, kind) {
+            if !matches(interest.pattern(), self.folders, path, kind) {
                 continue;
             }
             let whole = interest.claim() == Claim::Whole;
@@ -231,7 +241,7 @@ fn entry_kind(metadata: &Metadata) -> EntryKind {
     }
 }
 
-fn matches(pattern: &Pattern, home: &Path, path: &Path, kind: EntryKind) -> bool {
+fn matches(pattern: &Pattern, folders: &FakeKnownFolders, path: &Path, kind: EntryKind) -> bool {
     let name = path.file_name().and_then(|name| name.to_str());
     match pattern {
         Pattern::FolderName(folder) => kind != EntryKind::File && name == Some(folder.as_str()),
@@ -241,12 +251,14 @@ fn matches(pattern: &Pattern, home: &Path, path: &Path, kind: EntryKind) -> bool
         Pattern::Extension(extension) => {
             kind != EntryKind::Folder && path.extension().and_then(|found| found.to_str()) == Some(extension.as_str())
         }
-        Pattern::UnderHome(pattern) => path.strip_prefix(home).is_ok_and(|relative| {
-            let names: Vec<_> = relative.iter().filter_map(|name| name.to_str()).collect();
-            let segments: Vec<_> = pattern.split('/').collect();
-            names.len() == relative.iter().count()
-                && names.len() == segments.len()
-                && names.iter().zip(&segments).all(|(name, segment)| *segment == "*" || name == segment)
+        Pattern::Under(folder, pattern) => folders.locate(*folder).is_some_and(|anchor| {
+            path.strip_prefix(anchor).is_ok_and(|relative| {
+                let names: Vec<_> = relative.iter().filter_map(|name| name.to_str()).collect();
+                let segments: Vec<_> = pattern.split('/').collect();
+                names.len() == relative.iter().count()
+                    && names.len() == segments.len()
+                    && names.iter().zip(&segments).all(|(name, segment)| *segment == "*" || name == segment)
+            })
         }),
     }
 }
@@ -365,7 +377,8 @@ mod tests {
 
         use fresher_core::{
             CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, Claim, Completeness, DiskWalk, EntryKind, InterestSet,
-            MarkerCheck, ModuleId, NotScanned, Pattern, ScanKind, Unreadable, WalkError, WalkMode, WalkRequest,
+            KnownFolder, MarkerCheck, ModuleId, NotScanned, Pattern, ScanKind, Unreadable, WalkError, WalkMode,
+            WalkRequest,
         };
 
         use super::{PathBuf, interest, paths, request, walk};
@@ -413,7 +426,7 @@ mod tests {
             let interests = [
                 interest(Pattern::FolderName("Caches".into()), Claim::Item, &[]),
                 interest(Pattern::Extension("dmg".into()), Claim::Item, &[]),
-                interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Item, &[]),
+                interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
                 interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Item, &[]),
             ];
 
@@ -635,7 +648,7 @@ mod tests {
     mod positive {
         use fresher_core::{
             ByteSize, CACHEDIR_TAG, CancelToken, CategoryId, ChildOrder, Claim, ClaimedPath, DiskWalk, EntryKind,
-            InterestSet, MarkerCheck, ModuleId, NotScanned, Pattern, Timestamp, Unreadable,
+            InterestSet, KnownFolder, MarkerCheck, ModuleId, NotScanned, Pattern, Timestamp, Unreadable,
         };
 
         use super::{interest, paths, request, walk};
@@ -651,7 +664,7 @@ mod tests {
             .unwrap();
             let interests = [
                 interest(Pattern::Extension("dmg".into()), Claim::Item, &[]),
-                interest(Pattern::UnderHome("Library/Caches/*".into()), Claim::Whole, &[]),
+                interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Whole, &[]),
                 interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
                 interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &["package.json", "yarn.lock"]),
             ];

@@ -12,7 +12,8 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
   which only the guard can make.
 - `DiskCleaner::new(reach, user, home, protection, ports)`: the reach (below), the uid the app runs as, the home folder
   (a root written `~` or `~/…` is read under it), the system's protected places, and the ports it acts through
-  (`Trash`, `OpenFiles`, `CommandRunner`, `Clock`). The app gives the system's Trash to the cleaner and to nothing else.
+  (`Trash`, `OpenFiles`, `RunningApps`, `CommandRunner`, `Clock`). The app gives the system's Trash to the cleaner and
+  to nothing else.
 - It depends on `fresher-core` and, on macOS, on `fresher-macos`'s `beneath` module (the calls that name one entry of
   a held folder, below); it reaches the disk through `std`, those calls and the ports, so every test runs on a
   temporary fixture tree with the fakes of `fresher-testing`. Off macOS nothing opens and nothing is acted on.
@@ -63,7 +64,7 @@ skips the item with its reason. It reads the disk only through paths and handles
 | 7   | Still the confirmed item: device, file id, kind                                             | `guard/identity.rs` | `Replaced`, `KindChanged`          |
 | 8   | Removable now: owner, write access, flags, read again from the handle and its parent        | `guard/facts.rs`   | `NotRemovable { removability }`     |
 | 9   | Capability of each guarded place it lies in or holds                                        | `guard/access.rs`  | `MissingCapability { capability }`  |
-| 10  | Not in use: no open file of the user's processes is the item or inside it                   | `guard/in_use.rs`  | `InUse { app }`                     |
+| 10  | Not in use: no open file of the user's processes is the item or inside it, and no running app owns it by bundle id (plan 009) | `guard/in_use.rs`  | `InUse { app }`                     |
 | 11  | Not grown (`Depth::Full`): over by more than 25 % and 64 MiB; no other volume inside, walked beneath the handle | `guard/walk.rs` | `Grown`, `OtherVolume` |
 
 - A check that cannot tell (an IO error other than "not found", a root that cannot be made canonical, an act on an
@@ -145,7 +146,7 @@ through no link on the root's volume; the `Trash` port moves it back and never r
 | A protected path, a parent of one, a user's own folder  | both protections by components, check 8 for what macOS protects                                | a place the list misses                                                                  | `paths.rs`, `pipeline.rs` (the system's list alone), `never.rs` (never, carve-out, whole, ignored, their ancestors)    |
 | The item changed between prepare and act                | the identity through the open handle; the folder walk right before the act                     | a same-size rewrite inside a folder that kept its identity                               | `guard/mod.rs` (replaced, kind changed, grown), `guard/walk.rs`                                                        |
 | The item changed between the check and the act         | the handle kept open; the landed check after a move; deletes and the walk beneath held folders | the Trash call takes a path (detected after the move); an entry replaced inside a held folder between its check and `unlinkat` | `remove/trash.rs` (decoy, unlocated), `remove/empty.rs` (an entry or the folder swapped for a link), `remove/permanent.rs` (a parent and a folder inside swapped during the delete, 100 races each; a parent swapped or a folder replaced after the check), `never.rs` (the swap case) |
-| A file in use                                           | the open-files snapshot, refreshed every 2 s                                                   | other users' processes; withheld paths; a file opened after the snapshot                 | `guard/in_use.rs`, `guard/mod.rs`, `pipeline.rs` (refresh after two seconds, not before)                               |
+| A file in use                                           | the open-files snapshot and the running apps by bundle id, both refreshed every 2 s; a failed listing of either acts on nothing | other users' processes' open files where no running app owns the item by name; withheld paths; a file opened or an app started after the snapshot | `guard/in_use.rs`, `guard/mod.rs`, `pipeline.rs` (refresh after two seconds, not before)                               |
 | Another volume inside a folder                          | the walk compares devices before any delete; the delete never descends into another volume     | nothing                                                                                  | `guard/walk.rs`, `paths.rs`, `pipeline.rs`, `remove/permanent.rs` (disk images mounted inside the fixture)             |
 | A wrong selection or rule                               | only a confirmed plan's items, re-checked; tools' arguments never forced                       | a harmless-looking wrong item, recoverable from the Trash                                | `never.rs`, `guard/mod.rs`                                                                                             |
 | A development accident                                  | `Reach::Sandbox` in every debug build and test; the token only in the release composition      | a release build run against the real disk, which is the product working                  | `reach.rs` and `tests/reach.rs`, `pipeline.rs` (no tool runs in the sandbox)                                            |

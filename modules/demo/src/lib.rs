@@ -191,7 +191,8 @@ mod tests {
         let module = DemoModule::new().unwrap();
         let (clock, commands) = (FakeClock::at(0), FakeCommandRunner::default());
         let settings = settings(&module, count);
-        let cx = ModuleContext::new(&clock, &commands, &settings, cancel);
+        let system = fresher_core::SystemFacts::new(&fresher_testing::fake_system(std::path::Path::new("/home")));
+        let cx = ModuleContext::new(&clock, &commands, &system, &settings, cancel);
         let mut found = Vec::new();
         let result = module.finish(&cx, &mut found).map(|()| found);
         (result, commands.calls())
@@ -307,7 +308,8 @@ mod tests {
             let (clock, commands) = (FakeClock::at(0), FakeCommandRunner::default());
             let settings = settings(&module, None);
             let cancel = CancelToken::new();
-            let cx = ModuleContext::new(&clock, &commands, &settings, &cancel);
+            let system = fresher_core::SystemFacts::new(&fresher_testing::fake_system(std::path::Path::new("/home")));
+            let cx = ModuleContext::new(&clock, &commands, &system, &settings, &cancel);
             let matched = Match {
                 interest: 0,
                 path: "/demo/x".into(),

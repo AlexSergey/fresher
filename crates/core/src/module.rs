@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use crate::settings::schema::ENABLED;
 use crate::{
     CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, Match, ModuleId, ModuleSettings,
-    NewFinding, SettingDescriptor, Text, ToolCommand, ToolId,
+    NewFinding, SettingDescriptor, SystemFacts, Text, ToolCommand, ToolId,
 };
 
 /// A feature of the app (Docker, `node_modules`, duplicates): it states what it wants to see during the walk and
@@ -180,6 +180,7 @@ impl FindingSink for Vec<NewFinding> {
 pub struct ModuleContext<'a> {
     clock: &'a dyn Clock,
     commands: &'a dyn CommandRunner,
+    system: &'a SystemFacts,
     settings: &'a ModuleSettings,
     cancel: &'a CancelToken,
 }
@@ -188,10 +189,11 @@ impl<'a> ModuleContext<'a> {
     pub fn new(
         clock: &'a dyn Clock,
         commands: &'a dyn CommandRunner,
+        system: &'a SystemFacts,
         settings: &'a ModuleSettings,
         cancel: &'a CancelToken,
     ) -> Self {
-        Self { clock, commands, settings, cancel }
+        Self { clock, commands, system, settings, cancel }
     }
 
     pub fn clock(&self) -> &'a dyn Clock {
@@ -200,6 +202,12 @@ impl<'a> ModuleContext<'a> {
 
     pub fn commands(&self) -> &'a dyn CommandRunner {
         self.commands
+    }
+
+    /// What the scan knows of the system: known folders, installed and running apps, projects. Shared by every
+    /// module and gathered at most once per scan.
+    pub fn system(&self) -> &'a SystemFacts {
+        self.system
     }
 
     /// The module's own settings.
@@ -253,7 +261,12 @@ mod tests {
     struct NoCommands;
 
     impl CommandRunner for NoCommands {
-        fn run(&self, program: &str, _args: &[&str]) -> Result<CommandOutput, CommandRunError> {
+        fn run(
+            &self,
+            program: &str,
+            _args: &[&str],
+            _cancel: &crate::CancelToken,
+        ) -> Result<CommandOutput, CommandRunError> {
             Err(CommandRunError::NotInstalled { program: program.into() })
         }
     }
@@ -412,7 +425,8 @@ mod tests {
             let cancel = CancelToken::new();
             let settings = crate::ModuleSettings::empty(demo());
             cancel.cancel();
-            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &settings, &cancel);
+            let system = crate::system::nothing_known();
+            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &system, &settings, &cancel);
 
             let error = EchoModule::new().finish(&cx, &mut Vec::new());
 
@@ -431,7 +445,8 @@ mod tests {
             let module = EchoModule { descriptor, interests: vec![] };
             let cancel = CancelToken::new();
             let settings = crate::ModuleSettings::empty(demo());
-            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &settings, &cancel);
+            let system = crate::system::nothing_known();
+            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &system, &settings, &cancel);
 
             assert_eq!(module.finish(&cx, &mut Vec::new()), Ok(()));
             assert_eq!(module.interests(), []);
@@ -447,7 +462,8 @@ mod tests {
             let module: Box<dyn Module> = Box::new(EchoModule::new());
             let cancel = CancelToken::new();
             let settings = crate::ModuleSettings::empty(demo());
-            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &settings, &cancel);
+            let system = crate::system::nothing_known();
+            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &system, &settings, &cancel);
             let mut found: Vec<NewFinding> = Vec::new();
 
             module.on_match(&matched(), &cx, &mut found).unwrap();
@@ -458,7 +474,7 @@ mod tests {
             assert_eq!(found.len(), 1);
             assert_eq!(found[0].key().identity(), "/home/Library/Caches");
             assert_eq!(cx.clock().now(), std::time::SystemTime::UNIX_EPOCH);
-            assert!(cx.commands().run("docker", &[]).is_err());
+            assert!(cx.commands().run("docker", &[], cx.cancel()).is_err());
             assert!(format!("{cx:?}").starts_with("ModuleContext"));
         }
 

@@ -46,6 +46,12 @@ impl ModuleId {
     pub const fn as_str(self) -> &'static str {
         self.0
     }
+
+    /// The owner of the interests the engine adds to the walk for the system's facts (the projects): the core's own
+    /// namespace, which no module can take.
+    pub const fn system() -> Self {
+        Self(CORE_NAMESPACE)
+    }
 }
 
 impl fmt::Display for ModuleId {

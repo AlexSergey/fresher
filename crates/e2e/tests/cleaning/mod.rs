@@ -149,6 +149,7 @@ pub(crate) fn home(setup: Setup) -> Home {
     let ports = CleanerPorts {
         trash: Arc::new(FakeTrash::new(fixture.join("trash"))),
         open_files: Arc::new(FakeOpenFiles::default()),
+        running: Arc::new(fresher_testing::FakeRunningApps::default()),
         commands: Arc::clone(&commands) as _,
         clock: Arc::clone(&clock) as _,
     };
@@ -178,6 +179,7 @@ pub(crate) fn home(setup: Setup) -> Home {
         commands,
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
         system_ui: Arc::new(FakeSystemUi::default()),
+        system: fresher_testing::fake_system(&root),
     };
     let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
     // The reference walk reads its roots as they are written: the default `~` is given as the home itself.

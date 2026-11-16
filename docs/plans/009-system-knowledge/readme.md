@@ -1,68 +1,38 @@
 # 009 — System knowledge: apps, projects, processes
 
-**Status:** 📝 draft · **Version:** 0.5.0 · **Date:** 2026-11-15 · **Modules:** core, macos, system, engine, testing
+**Status:** ✔️ done · **Version:** 0.5.5 · **Date:** 2026-11-16 · **Modules:** core, macos, system, scanner, rules,
+engine, cleaner, testing, app
 
-A one-file draft: the design in short, with the recommended decisions taken as agent's calls. Plans, steps and
-`00-design.md` are written when the draft is approved.
+Approved on 2026-11-16 by delegation: the user asked the agent to take the recommended option on every open question
+and record it ([`00-design.md`](./00-design.md), "Decisions"). The agent's calls wait for the user's check.
 
-## Intent
+**Built and checked on 2026-11-16; the user looked at the result and asked for the squash-merge the same day**
+([`../README.md`](../README.md), "Design"). The agent's calls stay open for the user's check.
 
-Several modules need the same facts about the Mac: which apps are installed and in which version, where the projects
-are, what is running. Modules may not depend on each other, so these facts are shared services behind ports of the core
-— gathered once, used by all.
+## Goal
 
-## Goals
+The facts several modules need about the Mac — where the system keeps app data, which apps are installed (by bundle
+id and team id), which apps are running, where the projects are — become shared services behind ports of the core,
+gathered at most once per scan and only when asked, each with a fake. Modules name places by known folders, never by
+macOS paths; the cleaner skips an item that belongs to a running app; an external tool can be stopped.
 
-1. One source of truth for each fact; no module gathers it on its own.
-2. Gathered once per scan, in memory, and only when a module asks.
-3. Every service has a fake, so a module is tested with made-up apps and processes.
+Branch: `feat/009-system-knowledge`, squash-merged into `main` once when done ([`../../workflow.md`](../../workflow.md)).
+Depends on plans [002](../002-base-architecture/readme.md), [004](../004-fast-scan/readme.md) and
+[008](../008-safe-removal/readme.md) (done). Plan [005](../005-settings/readme.md) is built in parallel; this plan
+stays out of its settings files.
 
-## Non-goals
+## Plans
 
-- Per-process disk activity ([live storage attribution](../../ideas/live-storage-attribution.md)).
-- Storing any of it: these facts are cheap to gather again and are not kept on disk.
+| #   | Plan                                            | Status      | Depends on | What                                                                                   |
+| --- | ----------------------------------------------- | ----------- | ---------- | -------------------------------------------------------------------------------------- |
+| 01  | [Known folders](./01-known-folders/readme.md)   | ✔️ done     | —          | `KnownFolders`, `Pattern::Under` instead of `UnderHome`, the crate `fresher-system`    |
+| 02  | [Contracts](./02-contracts/readme.md)           | ✔️ done     | 01         | apps, running apps, projects, `SystemFacts` in the module context, stoppable commands  |
+| 03  | [Installed apps](./03-installed-apps/readme.md) | ✔️ done     | 02         | the `Info.plist` reader, the team id reader, `MacInstalledApps`                        |
+| 04  | [Running apps](./04-running-apps/readme.md)     | ✔️ done     | 03         | `MacRunningApps`, app ownership in the cleaner's check 10                              |
+| 05  | [Projects](./05-projects/readme.md)             | ✔️ done     | 02         | projects collected from the shared walk                                                |
+| 06  | [Finish](./06-finish/readme.md)                 | ✔️ done     | all        | docs, version 0.5.5, the checks, conclusions                                           |
 
-## Design
-
-### The services
-
-| Port               | Answers                                                                    | Who needs it                                   |
-| ------------------ | -------------------------------------------------------------------------- | ---------------------------------------------- |
-| `InstalledApps`    | apps with bundle id, team id, version, path, helpers                       | stale app versions, leftovers, uninstaller, app footprint |
-| `Projects`         | projects by marker file, their kind, artifact folders, last activity       | `node_modules`, build folders, stale projects  |
-| `RunningProcesses` | which apps and services are running, and whose a folder is                 | "in use" checks of modules and of the cleaner  |
-| `Volumes`          | volumes, their kind, free and purgeable space                              | overview, external drives, the scan's total check |
-| `KnownFolders`     | where the system keeps app caches, settings, logs, support data, the Trash | every module that names a place                |
-| `Clock`            | the current time                                                           | everything with an age                         |
-| `CommandRunner`    | runs an external tool with a fixed argument list                           | Docker, package managers                       |
-
-### Rules of the services
-
-- Implemented in a new crate `fresher-system` (depends on core and macos); modules see only the traits.
-- **Apps are identified by bundle id and team id**, read from each app's own `Info.plist` and signature — never by a
-  loose name (the top cause of wrong deletions in the field).
-- **Projects are found during the one shared walk**: the service registers its marker files as interests like a module
-  does, so no second pass over the disk. A project's last activity ignores its artifact folders.
-- Reads only what identifies things (`Info.plist`, container metadata); never file contents beyond that.
-- Lazy and cached for the session; a rescan refreshes them.
-- An app that is running while its data is offered raises the finding's caution ("quit the app first"), and the cleaner
-  skips items in use.
-
-### Testing
-
-Each port has a fake in `fresher-testing`, filled from the scenario files of plan
-[007](../007-safe-development/readme.md): "WebStorm 2026.3 installed, 2026.1 not" is three lines of data.
-
-## Plans (after approval)
-
-| #   | Plan              | What                                                             |
-| --- | ----------------- | ---------------------------------------------------------------- |
-| 01  | Ports and fakes   | the traits in the core, the fakes, scenario support              |
-| 02  | Installed apps    | discovery, bundle and team ids, versions, helpers                |
-| 03  | Projects          | marker files in the shared walk, kinds, last activity            |
-| 04  | Processes and volumes | running apps and services, ownership of folders, volume facts |
-
-Depends on plans 002 and 004. `Clock` and `CommandRunner` are needed earlier and are created in plan 002.
+In order; 03/01 and 03/02 (pure readers) may be built in parallel with 05.
 
 ## Ideas this touches
 
@@ -70,25 +40,36 @@ Depends on plans 002 and 004. `Clock` and `CommandRunner` are needed earlier and
 [rules as data](../../ideas/architecture/rules-as-data.md) (project artifacts),
 [stale project cleanup](../../ideas/stale-project-cleanup.md), [application footprint](../../ideas/application-footprint.md),
 [uninstalled app leftovers](../../ideas/uninstalled-app-leftovers.md), the
-[smart uninstaller](../../ideas/smart-uninstaller.md).
-
-## Decisions
-
-1. **macOS first, Windows not ruled out** (the user, 2026-11-15): modules name known folders through `KnownFolders`,
-   never macOS paths; the macOS adapter answers `~/Library/Caches` and the like, a later Windows adapter would answer
-   its own folders.
-
-## Agent's calls (to check)
-
-1. **A new crate `fresher-system`** for the implementations.
-2. **Nothing is persisted**; gathered per scan.
-3. **Identity by bundle id and team id only.**
-4. **Project detection rides on the shared walk.**
-5. **Target version 0.5.0.**
-6. **`KnownFolders` replaces `Pattern::UnderHome`**: an interest names a known folder and a relative path under it
-   (`AppCaches` + `JetBrains/*`); the walk resolves it through the port. Built before the first real module, so no
-   module is written with a macOS path.
+[smart uninstaller](../../ideas/smart-uninstaller.md). None is built here: they are the consumers.
 
 ## Conclusions
 
-Not written yet.
+Built on `feat/009-system-knowledge` in one session on 2026-11-16, step by step, every commit through the hooks.
+
+- **What is there now**: the core's ports `KnownFolders`, `InstalledApps` and `RunningApps` with `SystemPorts` and
+  the lazy, per-scan `SystemFacts` (`cx.system()`); `Pattern::Under(KnownFolder, path)` instead of `UnderHome`; the
+  projects of the walk; `CommandRunner` with a cancel token. The new crate `fresher-system` holds `MacKnownFolders`,
+  `MacInstalledApps` (our own `Info.plist` and code-signature readers), `MacRunningApps`, `SystemClock` and
+  `ProcessCommandRunner`. The cleaner's check 10 also skips an item a running app owns by bundle id.
+- **Reused, not duplicated**: `Clock`, `CommandRunner` and `Volumes` stayed the ports plans 002/004/008 made;
+  `MacRunningApps` reads the process table through `fresher-macos`'s existing `libproc` calls (no new `unsafe`); the
+  projects ride on the one shared walk; the scanner's anchor resolver took the known folders as plan 004 foresaw.
+- **Changed from the design while building** (each in its step's conclusions): the cleaner's tool removal runs to its
+  end rather than taking the cleanup's token (02/03); the projects' artifacts come from their own `FolderName`
+  interests, since a marker's sibling names are read beside the matched folder (05/01); the readers were committed
+  with their first user (03).
+- **Measured**: listing this Mac's `/Applications` (31 entries) and `/System/Applications` with team ids and helpers
+  takes 0.25 s in the instrumented test build; the process table 0.06 s. Both run only when asked, at most once per
+  scan.
+- **Effects to know**: the fingerprint of the interests changed (known folders, the engine's project interests), so
+  the first scan after this change reads every folder once; every scan now also reports the projects' markers and
+  artifact folders to the engine (`Claim::Item`, no module sees them).
+- **Checks on the last code commit (85f748b)**: `npm run pre-push` passes (lint, crate guard, knip, machete, deny, the scripts' 25
+  tests; 1536 Rust tests, 4 skipped, 97.4 % of lines; 828 UI tests, 98.6 % of lines). `npm run test:e2e`: the core's
+  30 pass; the UI's 213 pass on the second run — the first run had one gallery screenshot (`AppShell/narrow`) differ
+  by a few anti-aliased pixels at the sidebar's edge, a flake of a screen this plan does not touch.
+- **Left**: the volume facts ([deferred](../../deferred/volume-facts.md), plan 012); a project's precise last activity
+  ([deferred](../../deferred/project-last-activity.md)); the known issue of other users' processes is narrowed, not
+  closed ([known issue](../../known-issues/cleaner-other-users-processes.md)). No module uses the facts yet: the first
+  real module is the first consumer. No shortcut was taken (nothing in `docs/hacks/`).
+- **For the user to check**: the design's agent's calls 1–11, and the version decision (0.5.5, the user's).

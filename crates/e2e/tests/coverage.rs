@@ -47,6 +47,7 @@ mod app {
             commands: Arc::new(FakeCommandRunner::default()),
             access: Arc::clone(&access) as Arc<dyn fresher_core::AccessProbe>,
             system_ui: Arc::new(FakeSystemUi::default()),
+            system: fresher_testing::fake_system(home),
         };
         let engine = Engine::new(registry, ports).unwrap();
         let roots = SettingValue::Folders(vec![home.to_path_buf()]);

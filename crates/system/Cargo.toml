@@ -1,0 +1,22 @@
+[package]
+name = "fresher-system"
+description = "What Fresher knows of the system: known folders, installed and running apps, the clock, external programs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+fresher-core = { path = "../core" }
+fresher-macos = { path = "../macos" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+fresher-testing = { path = "../testing" }
+proptest.workspace = true
+tempfile.workspace = true

@@ -150,6 +150,7 @@ impl Shell {
         let cleaner = CleanerPorts {
             trash: Arc::new(FakeTrash::new(folder.path().join("trash"))),
             open_files: Arc::new(FakeOpenFiles::default()),
+            running: Arc::new(fresher_testing::FakeRunningApps::default()),
             commands: Arc::clone(&commands),
             clock: Arc::clone(&clock),
         };
@@ -164,6 +165,7 @@ impl Shell {
             commands,
             access: Arc::new(UnknownAccess),
             system_ui: Arc::new(NoSystemUi),
+            system: fresher_testing::fake_system(&home),
         };
         let app = mock_app();
         app.manage(Engine::with_cleanup(registry().unwrap(), ports, cleanup).unwrap());

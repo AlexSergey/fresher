@@ -9,8 +9,8 @@ use std::time::SystemTime;
 
 use fresher_core::{
     ByteSize, CancelToken, CategoryId, ChangeJournal, ClaimedPath, Clock, DiskState, DiskWalk, FolderReader,
-    FullScanReason, JournalPosition, Match, Pattern, ScanCache, ScanKind, StateId, Timestamp, VolumeId, Volumes,
-    WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    FullScanReason, JournalPosition, KnownFolder, KnownFolders, Match, Pattern, ScanCache, ScanKind, StateId,
+    Timestamp, VolumeId, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::codec::fit::{Limits, fit};
@@ -33,17 +33,30 @@ use crate::walk::roots::Roots;
 /// The most worker threads: more than the cores made the walk slower in plan 004/01.
 const MAX_THREADS: usize = 16;
 
-/// Resolves an anchored pattern to the absolute folder it is relative to; `None` when it has no anchor.
-pub type AnchorResolver = Arc<dyn Fn(&Pattern) -> Option<PathBuf> + Send + Sync>;
+/// Resolves a known folder to the absolute folder `Pattern::Under` paths are relative to; `None` when this system has
+/// no such folder.
+pub type AnchorResolver = Arc<dyn Fn(KnownFolder) -> Option<PathBuf> + Send + Sync>;
 
-/// The resolver of today's only anchor: `Pattern::UnderHome` against `home`, canonicalized once here (so it agrees
-/// with the canonical roots), as given when it cannot be.
+/// The resolver of the known folders `folders` answers, each canonicalized once here (so it agrees with the canonical
+/// roots), as given when it cannot be.
+pub fn known_folders_anchor(folders: &dyn KnownFolders) -> AnchorResolver {
+    let resolved: Vec<(KnownFolder, PathBuf)> = KnownFolder::ALL
+        .into_iter()
+        .filter_map(|folder| folders.locate(folder).map(|path| (folder, canonical(path))))
+        .collect();
+    Arc::new(move |folder| resolved.iter().find(|(known, _)| *known == folder).map(|(_, path)| path.clone()))
+}
+
+/// The resolver of the home folder alone, for tests and benches over a fixture home: every other known folder does
+/// not resolve.
 pub fn home_anchor(home: &Path) -> AnchorResolver {
-    let home = std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
-    Arc::new(move |pattern| match pattern {
-        Pattern::UnderHome(_) => Some(home.clone()),
-        Pattern::FolderName(_) | Pattern::MarkerFile(_) | Pattern::Extension(_) => None,
-    })
+    let home = canonical(home.to_path_buf());
+    Arc::new(move |folder| (folder == KnownFolder::Home).then(|| home.clone()))
+}
+
+/// `path` canonicalized, as given when it cannot be (it does not exist yet).
+fn canonical(path: PathBuf) -> PathBuf {
+    std::fs::canonicalize(&path).unwrap_or(path)
 }
 
 /// How the scanner walks.
@@ -174,7 +187,7 @@ impl Scanner {
         if parts.next().map(std::path::Component::as_os_str) != Some(std::ffi::OsStr::new("~")) {
             return root.to_path_buf();
         }
-        match (self.anchor)(&Pattern::UnderHome(String::new())) {
+        match (self.anchor)(KnownFolder::Home) {
             Some(home) => home.join(parts.as_path()),
             None => root.to_path_buf(),
         }
@@ -182,8 +195,8 @@ impl Scanner {
 
     fn compile(&self, request: &WalkRequest<'_>) -> Matcher {
         let anchor = |pattern: &Pattern| {
-            let Pattern::UnderHome(relative) = pattern else { return None };
-            (self.anchor)(pattern).map(|at| (at, Segment::parse(relative)))
+            let Pattern::Under(folder, relative) = pattern else { return None };
+            (self.anchor)(*folder).map(|at| (at, Segment::parse(relative)))
         };
         Matcher::compile(request.interests, &anchor)
     }
@@ -203,7 +216,7 @@ impl Scanner {
     /// The user the scan is for: the owner of the home folder, read through the reader. The app runs as the user whose
     /// home it scans; without a home folder, or one that cannot be read, no user is known and nothing is owned.
     fn user(&self) -> Option<u32> {
-        let home = (self.anchor)(&Pattern::UnderHome(String::new()))?;
+        let home = (self.anchor)(KnownFolder::Home)?;
         match self.reader.access(&home) {
             Ok(access) => access.owner,
             Err(error) => {
