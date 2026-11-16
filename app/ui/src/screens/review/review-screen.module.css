@@ -1,0 +1,95 @@
+/*
+ * The review screen: the summary panel, then one section per category of the selection, each over a finding list as
+ * tall as its rows (`--review-rows`, at most six) that scrolls past them.
+ */
+@layer components {
+  .content {
+    display: grid;
+    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-10);
+    gap: var(--space-8);
+  }
+
+  .empty {
+    display: grid;
+    padding: var(--space-16) var(--content-inset, var(--size-gutter));
+  }
+
+  .summary {
+    display: grid;
+    align-items: center;
+    gap: var(--space-6);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .figures {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .count {
+    color: var(--text-secondary);
+  }
+
+  .level {
+    min-width: 0;
+  }
+
+  .remove {
+    display: grid;
+    max-width: 320px;
+    gap: var(--space-2);
+    justify-items: end;
+  }
+
+  .later {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    text-align: right;
+  }
+
+  .group {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .groupHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .groupName {
+    min-width: 0;
+    flex: 1;
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .groupCount {
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .groupSize {
+    display: inline-flex;
+    min-width: 72px;
+    justify-content: flex-end;
+  }
+
+  .lost {
+    color: var(--text-secondary);
+  }
+
+  /* The list's column names, then its rows. */
+  .list {
+    height: calc(var(--review-rows) * var(--size-finding-row) + 2 * var(--space-2) + var(--type-caption-line) + 1px);
+  }
+
+  .listSurface {
+    height: 100%;
+    overflow: hidden;
+  }
+}

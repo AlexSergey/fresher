@@ -1,0 +1,82 @@
+/*
+ * The sidebar's content. The top strip leaves room for the traffic lights and drags the window. The indicator (a soft
+ * pill with an Iris edge) sits under the active item, at `--indicator-y` from the sidebar's top, and slides by
+ * transform when the active item changes. The sidebar does not scroll, so an item's offset is its place.
+ */
+@layer components {
+  .sidebar {
+    position: relative;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    padding: 0 var(--space-2) var(--space-3);
+    overflow: hidden;
+  }
+
+  .strip {
+    height: var(--size-toolbar);
+    flex: none;
+  }
+
+  .sections {
+    display: grid;
+    flex: 1;
+    align-content: start;
+    gap: var(--space-4);
+  }
+
+  .section {
+    display: grid;
+    gap: var(--space-0-5);
+  }
+
+  .heading {
+    padding: 0 var(--space-2) var(--space-1);
+    color: var(--text-tertiary);
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
+    line-height: var(--type-label-line);
+    text-transform: uppercase;
+  }
+
+  .footer {
+    display: grid;
+    flex: none;
+    gap: var(--space-0-5);
+  }
+
+  .indicator {
+    position: absolute;
+    top: 0;
+    right: var(--space-2);
+    left: var(--space-2);
+    height: var(--size-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-pressed);
+    box-shadow: inset 2px 0 0 var(--accent-text);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(var(--indicator-y, 0));
+    transition: transform var(--duration-move) var(--ease-standard);
+  }
+
+  .indicator[data-shown] {
+    opacity: 1;
+  }
+
+  .indicator[data-instant] {
+    transition: none;
+  }
+
+  /* Reduced motion: the indicator jumps, nothing travels. */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .indicator {
+      transition: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .indicator {
+    transition: none;
+  }
+}

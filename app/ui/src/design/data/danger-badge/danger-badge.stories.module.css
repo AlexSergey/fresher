@@ -1,0 +1,14 @@
+/* The danger badge's stories: the small and medium badges side by side, the large one under them. */
+@layer components {
+  .column {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-4);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+}

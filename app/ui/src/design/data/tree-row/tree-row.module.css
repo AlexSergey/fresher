@@ -1,0 +1,61 @@
+/* A tree row's indent and disclosure: the chevron turns by transform; under reduced motion it turns without moving. */
+@layer components {
+  .indent {
+    --tree-indent: var(--space-5);
+
+    display: inline-flex;
+    align-items: center;
+    padding-left: calc(var(--tree-level) * var(--tree-indent));
+    gap: var(--space-2);
+  }
+
+  .disclosure {
+    display: inline-flex;
+    width: var(--size-control-small);
+    height: var(--size-control-small);
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    margin-left: calc(var(--space-1) * -1);
+    background-color: transparent;
+    color: var(--text-secondary);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .disclosure:hover:not(:disabled) {
+    background-color: var(--surface-pressed);
+    color: var(--text-primary);
+  }
+
+  .disclosure:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  .disclosure:disabled {
+    color: var(--text-disabled);
+  }
+
+  .chevron {
+    display: inline-flex;
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .disclosure[aria-expanded='true'] .chevron {
+    transform: rotate(90deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .chevron {
+      transition: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .chevron {
+    transition: none;
+  }
+}

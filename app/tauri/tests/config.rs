@@ -1,4 +1,4 @@
-//! The shell's configuration, read as files: the commands the app exposes and what the window is allowed.
+//! The shell's configuration, read as files: the commands the app exposes, the window and what it is allowed.
 
 // Helpers of an integration test are test code too; `cfg(test)` lets Clippy's in-test allowances apply to them.
 #[cfg(test)]
@@ -55,10 +55,24 @@ mod support {
         let permissions = capability["permissions"].as_array().unwrap();
         permissions.iter().map(|permission| permission.as_str().unwrap().to_owned()).collect()
     }
+
+    /// The core permissions of the overlay title bar's drag region: dragging the window, and zooming it by a double
+    /// click (Tauri's drag script calls `start_dragging` and `internal_toggle_maximize`).
+    pub(crate) const DRAG_REGION: [&str; 2] =
+        ["core:window:allow-start-dragging", "core:window:allow-internal-toggle-maximize"];
+
+    /// The core and plugin permissions of a list beyond the drag region's two.
+    pub(crate) fn beyond_drag_region(permissions: &[String]) -> Vec<String> {
+        permissions
+            .iter()
+            .filter(|permission| permission.contains(':') && !DRAG_REGION.contains(&permission.as_str()))
+            .cloned()
+            .collect()
+    }
 }
 
 mod negative {
-    use crate::support::{capability_permissions, config, directives};
+    use crate::support::{beyond_drag_region, capability_permissions, config, directives};
 
     #[test]
     fn the_config_keeps_no_remote_origin_in_the_csp() {
@@ -105,18 +119,20 @@ mod negative {
     }
 
     #[test]
-    fn the_capability_file_grants_no_core_or_plugin_permission() {
-        // The UI calls only the app's commands. A `Channel` needs no permission: its JS side is a callback, and the
-        // core's `plugin:__TAURI_CHANNEL__|fetch` is exempt from the ACL. Closing the window is native, not IPC.
-        let plugins: Vec<String> =
-            capability_permissions().into_iter().filter(|permission| permission.contains(':')).collect();
+    fn the_capability_allows_no_core_permission_beyond_dragging() {
+        // The UI calls only the app's commands and the drag region's two. A `Channel` needs no permission: its JS
+        // side is a callback, and the core's `plugin:__TAURI_CHANNEL__|fetch` is exempt from the ACL. Closing the
+        // window is native, not IPC; the zoom hotkeys stay off (they would need a webview permission).
+        let mut with_a_third = capability_permissions();
+        with_a_third.push("core:window:allow-close".to_owned());
 
-        assert_eq!(plugins, Vec::<String>::new());
+        assert_eq!(beyond_drag_region(&capability_permissions()), Vec::<String>::new());
+        assert_eq!(beyond_drag_region(&with_a_third), ["core:window:allow-close"]);
     }
 }
 
 mod positive {
-    use crate::support::{capability_permissions, config, handler_commands, manifest_commands};
+    use crate::support::{DRAG_REGION, capability_permissions, config, handler_commands, manifest_commands};
 
     #[test]
     fn the_main_window_is_incognito() {
@@ -139,5 +155,26 @@ mod positive {
         assert!(handler.len() > 1, "{handler:?}");
         assert_eq!(manifest_commands(), handler);
         assert_eq!(granted, allowed);
+    }
+
+    #[test]
+    fn the_capability_allows_dragging_and_zoom_by_double_click() {
+        let core: Vec<String> =
+            capability_permissions().into_iter().filter(|permission| permission.contains(':')).collect();
+
+        assert_eq!(core, DRAG_REGION);
+    }
+
+    #[test]
+    fn the_main_window_is_transparent_over_the_sidebar_material() {
+        let config = config();
+        let window = &config["app"]["windows"][0];
+
+        assert_eq!(config["app"]["macOSPrivateApi"], true);
+        assert_eq!(window["titleBarStyle"], "Overlay");
+        assert_eq!(window["hiddenTitle"], true);
+        assert_eq!(window["transparent"], true);
+        assert_eq!(window["windowEffects"]["effects"], serde_json::json!(["sidebar"]));
+        assert_eq!(window["windowEffects"]["state"], "followsWindowActiveState");
     }
 }

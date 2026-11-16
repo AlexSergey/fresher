@@ -1,0 +1,86 @@
+/* The gallery's own frame: a sidebar of components and a pane of their states. */
+@layer components {
+  .gallery {
+    display: grid;
+    min-height: 100vh;
+    grid-template-columns: var(--size-sidebar) 1fr;
+  }
+
+  .sidebar {
+    padding: var(--space-4) var(--space-2);
+    border-right: 1px solid var(--border-subtle);
+    background: var(--surface-sidebar);
+  }
+
+  .components {
+    display: grid;
+    padding: 0;
+    gap: var(--space-0-5);
+    list-style: none;
+  }
+
+  .link {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+
+  .link[aria-current='page'] {
+    background-color: var(--surface-pressed);
+    color: var(--text-primary);
+  }
+
+  .pane {
+    display: grid;
+    padding: var(--space-8);
+    align-content: start;
+    gap: var(--space-8);
+  }
+
+  .hint {
+    color: var(--text-secondary);
+  }
+
+  .state {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .title {
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
+    line-height: var(--type-label-line);
+    text-transform: uppercase;
+  }
+
+  /* A story alone, as Playwright photographs it. */
+  .alone {
+    display: flex;
+    min-height: 100vh;
+    align-items: flex-start;
+    padding: var(--space-6);
+  }
+
+  .frame {
+    width: var(--story-width, auto);
+    max-width: 100%;
+    padding: var(--space-6);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .window {
+    background-color: var(--surface-window);
+  }
+
+  .raised {
+    background-color: var(--surface-raised);
+  }
+
+  .overlay {
+    background-color: var(--surface-overlay);
+  }
+}

@@ -1,0 +1,20 @@
+/* The ambient light's stories: a hero's number on the window surface, the light filling the stage behind it. */
+@layer components {
+  .stage {
+    position: relative;
+    display: grid;
+    height: 280px;
+    margin: calc(-1 * var(--space-6));
+    isolation: isolate;
+    place-items: center;
+  }
+
+  .number {
+    position: relative;
+    font-size: var(--type-hero-size);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--type-hero-weight);
+    letter-spacing: var(--type-hero-tracking);
+    line-height: var(--type-hero-line);
+  }
+}

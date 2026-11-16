@@ -1,0 +1,84 @@
+/*
+ * The confirmation's body. Static by the safety rule: nothing here moves; the dialog's own fade and scale is the one
+ * motion. A long group's virtual list is set still (its rows do not enter), and the permanent choice's mark appears at
+ * once instead of drawing itself.
+ */
+@layer components {
+  .content {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .summary {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+
+  .total {
+    display: grid;
+    flex: none;
+    justify-items: end;
+  }
+
+  .totalLabel {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .group {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .groupHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .groupName {
+    min-width: 0;
+    flex: 1;
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+  }
+
+  .groupCount {
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .size {
+    display: inline-flex;
+    min-width: 72px;
+    justify-content: flex-end;
+    color: var(--text-primary);
+  }
+
+  .lost {
+    color: var(--text-secondary);
+  }
+
+  .long {
+    height: 320px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+
+  .long [data-index] > [data-entering] {
+    animation: none;
+  }
+
+  .choice {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .choice path {
+    transition: none;
+  }
+}

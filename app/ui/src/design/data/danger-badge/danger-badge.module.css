@@ -1,0 +1,89 @@
+/*
+ * A danger level: the icon and the word in the level's colour, on its tint with its border. Small and medium are
+ * pills in a line of text; large is a block with the level's sentence under the word. Static: no pulse.
+ */
+@layer components {
+  .badge {
+    --badge-fg: var(--level-safe-fg);
+    --badge-tint: var(--level-safe-tint);
+    --badge-border: var(--level-safe-border);
+    --badge-icon: 14px;
+
+    display: inline-grid;
+    flex: none;
+    align-items: center;
+    padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-1-5);
+    border: 1px solid var(--badge-border);
+    border-radius: var(--radius-xs);
+    background-color: var(--badge-tint);
+    color: var(--badge-fg);
+    column-gap: var(--space-1);
+    font-size: var(--type-footnote-size);
+    font-weight: var(--type-caption-weight);
+    grid-template-columns: auto auto;
+    line-height: var(--type-footnote-line);
+    white-space: nowrap;
+  }
+
+  .badge[data-level='low'] {
+    --badge-fg: var(--level-low-fg);
+    --badge-tint: var(--level-low-tint);
+    --badge-border: var(--level-low-border);
+  }
+
+  .badge[data-level='medium'] {
+    --badge-fg: var(--level-medium-fg);
+    --badge-tint: var(--level-medium-tint);
+    --badge-border: var(--level-medium-border);
+  }
+
+  .badge[data-level='high'] {
+    --badge-fg: var(--level-high-fg);
+    --badge-tint: var(--level-high-tint);
+    --badge-border: var(--level-high-border);
+
+    box-shadow: var(--glow-high);
+  }
+
+  .badge[data-size='small'] {
+    --badge-icon: 12px;
+
+    padding: 0 var(--space-1-5) 0 var(--space-1);
+    column-gap: var(--space-0-5);
+    font-size: var(--type-caption-size);
+    letter-spacing: var(--type-caption-tracking);
+    line-height: var(--type-caption-line);
+  }
+
+  .badge[data-size='large'] {
+    --badge-icon: 20px;
+
+    align-items: start;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
+    border-radius: var(--radius-md);
+    column-gap: var(--space-2);
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    grid-template-columns: auto 1fr;
+    line-height: var(--type-body-strong-line);
+    row-gap: var(--space-0-5);
+    white-space: normal;
+  }
+
+  .icon {
+    width: var(--badge-icon);
+    height: var(--badge-icon);
+  }
+
+  .badge[data-size='large'] .icon {
+    grid-row: span 2;
+  }
+
+  .description {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    font-weight: var(--type-footnote-weight);
+    grid-column: 2;
+    line-height: var(--type-footnote-line);
+  }
+}

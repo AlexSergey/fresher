@@ -1,0 +1,181 @@
+/*
+ * The cleaned moment. In full motion the check mark draws itself (stroke-dashoffset, a named paint-only exception)
+ * and one soft green light wave expands and fades behind the freed size, once. Under reduced motion the whole summary
+ * fades in once, with no draw and no wave; with motion off it is simply there.
+ */
+@layer components {
+  .summary {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-10) var(--space-6) var(--space-8);
+    gap: var(--space-4);
+    isolation: isolate;
+    text-align: center;
+  }
+
+  .summary[data-motion='reduced'] {
+    animation: result-fade var(--duration-fast) var(--ease-standard) both;
+  }
+
+  .moment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .check {
+    display: inline-flex;
+    width: var(--space-12);
+    height: var(--space-12);
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-2);
+    border: 1px solid var(--level-safe-border);
+    border-radius: var(--radius-full);
+    background-color: var(--level-safe-tint);
+    color: var(--level-safe-fg);
+  }
+
+  /* The check icon's path is 22.6 units long. */
+  .check path {
+    --check-length: 23;
+
+    stroke-dasharray: var(--check-length);
+  }
+
+  .summary[data-motion='full'] .check path {
+    animation: result-check-draw var(--duration-fast) var(--ease-standard) both;
+  }
+
+  .title {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-title-1-size);
+    font-weight: var(--type-title-1-weight);
+    letter-spacing: var(--type-title-1-tracking);
+    line-height: var(--type-title-1-line);
+  }
+
+  .freed {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .number {
+    position: relative;
+    color: var(--text-primary);
+    font-size: var(--type-display-size);
+    font-weight: var(--type-display-weight);
+    letter-spacing: var(--type-display-tracking);
+    line-height: var(--type-display-line);
+  }
+
+  /* One wave, 900 ms, once: removed from the page when it ends. */
+  .wave {
+    position: absolute;
+    z-index: -1;
+    width: 240%;
+    aspect-ratio: 2;
+    background: radial-gradient(closest-side, var(--level-safe-glow), transparent);
+    opacity: 0;
+    pointer-events: none;
+    animation: result-wave 900ms var(--ease-enter) 1 both;
+  }
+
+  .method {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-callout-size);
+    font-weight: var(--type-callout-weight);
+    letter-spacing: var(--type-callout-tracking);
+    line-height: var(--type-callout-line);
+  }
+
+  .skipped {
+    display: grid;
+    width: 100%;
+    max-width: 480px;
+    gap: var(--space-2);
+    text-align: start;
+  }
+
+  .skippedTitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+  }
+
+  .list {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-2);
+    list-style: none;
+  }
+
+  .item {
+    display: grid;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    gap: var(--space-0-5);
+  }
+
+  .itemTitle {
+    color: var(--text-primary);
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+  }
+
+  .reason {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  @keyframes result-check-draw {
+    from {
+      stroke-dashoffset: var(--check-length);
+    }
+
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes result-wave {
+    from {
+      opacity: 0.5;
+      transform: scale(0.6);
+    }
+
+    to {
+      opacity: 0;
+      transform: scale(1.4);
+    }
+  }
+
+  @keyframes result-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}

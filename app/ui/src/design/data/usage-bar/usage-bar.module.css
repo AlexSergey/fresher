@@ -1,0 +1,105 @@
+/*
+ * The usage bar: an 8 px track with rounded ends holding one segment per share, 2 px apart, in the levels' colours.
+ * A segment enters by scaleX from its left edge; its width is never animated. The legend wraps in a grid.
+ */
+@layer components {
+  .usage {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .bar {
+    display: flex;
+    overflow: hidden;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background-color: var(--border-subtle);
+    gap: 2px;
+  }
+
+  .segment {
+    min-width: 2px;
+    flex: 0 1 auto;
+    animation: usage-bar-enter var(--duration-slow) var(--ease-standard) backwards;
+    background-color: var(--level-safe-fg);
+    transform-origin: left center;
+  }
+
+  .segment:last-child {
+    border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  }
+
+  .segment[data-level='low'],
+  .dot[data-level='low'] {
+    background-color: var(--level-low-fg);
+  }
+
+  .segment[data-level='medium'],
+  .dot[data-level='medium'] {
+    background-color: var(--level-medium-fg);
+  }
+
+  .segment[data-level='high'],
+  .dot[data-level='high'] {
+    background-color: var(--level-high-fg);
+  }
+
+  .legend {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-2) var(--space-4);
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1-5);
+    line-height: var(--type-footnote-line);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: var(--radius-full);
+    background-color: var(--level-safe-fg);
+  }
+
+  .name {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* A size never breaks between its number and its unit: the name gives way first. */
+  .size {
+    flex: none;
+    margin-left: auto;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  /* Reduced motion: no scale; a segment is simply there. */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .segment {
+      animation: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .segment {
+    animation: none;
+  }
+
+  @keyframes usage-bar-enter {
+    from {
+      transform: scaleX(0);
+    }
+  }
+}

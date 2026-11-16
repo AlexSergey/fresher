@@ -1,0 +1,99 @@
+/*
+ * A running scan: the count of what it looked at beside Stop, the indeterminate bar, then one chip per module. A
+ * waiting chip is dim; a running one has an Iris dot breathing with the scan; done, failed and stopped show a mark.
+ */
+@layer components {
+  .progress {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .looked {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-2);
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+  }
+
+  .chip {
+    display: inline-flex;
+    height: var(--size-control-small);
+    align-items: center;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    background-color: var(--surface-raised);
+    color: var(--text-secondary);
+    font-size: var(--type-caption-size);
+    font-weight: var(--type-caption-weight);
+    gap: var(--space-1-5);
+    letter-spacing: var(--type-caption-tracking);
+    line-height: var(--type-caption-line);
+    outline: none;
+    white-space: nowrap;
+  }
+
+  .chip:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  .chip[data-state='waiting'] {
+    color: var(--text-tertiary);
+  }
+
+  .chip[data-state='completed'] svg {
+    color: var(--level-safe-fg);
+  }
+
+  .chip[data-state='failed'] {
+    border-color: var(--level-high-border);
+  }
+
+  .chip[data-state='failed'] svg {
+    color: var(--level-high-fg);
+  }
+
+  .chip[data-state='cancelled'] svg {
+    color: var(--text-tertiary);
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: var(--radius-full);
+    background-color: var(--text-disabled);
+  }
+
+  .chip[data-state='running'] .dot {
+    animation: scan-progress-breathe var(--duration-breath) var(--ease-standard) infinite alternate;
+    animation-play-state: var(--loop-state);
+    background-color: var(--accent-text);
+    box-shadow: var(--glow-accent);
+  }
+
+  @keyframes scan-progress-breathe {
+    to {
+      opacity: 0.4;
+    }
+  }
+}

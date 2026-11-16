@@ -1,0 +1,8 @@
+/* In the app the page is transparent over the native sidebar material; the main pane paints the window's surface.
+   Without the attribute (a browser, the gallery, the tests) the page keeps the solid `--surface-window`. */
+@layer base {
+  [data-window='vibrant'],
+  [data-window='vibrant'] body {
+    background-color: transparent;
+  }
+}

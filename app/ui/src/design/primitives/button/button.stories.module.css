@@ -1,0 +1,8 @@
+/* The button's stories: its sizes side by side. */
+@layer components {
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+}

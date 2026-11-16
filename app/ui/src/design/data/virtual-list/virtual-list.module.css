@@ -1,0 +1,36 @@
+/*
+ * A virtual list: a scrolling viewport over a spacer as tall as every row; each rendered row sits in a slot placed by
+ * translateY. The slot's motion layer is what glides (FLIP) and what enters: fade and rise --distance-1, staggered by
+ * its `--i` (set by the list, at most --stagger-steps).
+ */
+@layer components {
+  .viewport {
+    position: relative;
+    overflow: hidden auto;
+    height: 100%;
+    overscroll-behavior: contain;
+  }
+
+  .spacer {
+    position: relative;
+  }
+
+  .slot {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+  }
+
+  .motion[data-entering] {
+    animation: virtual-list-enter var(--duration-base) var(--ease-enter) backwards;
+    animation-delay: calc(min(var(--i), var(--stagger-steps)) * var(--stagger));
+  }
+
+  @keyframes virtual-list-enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--distance-1));
+    }
+  }
+}

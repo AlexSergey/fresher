@@ -1,0 +1,46 @@
+/*
+ * The spotlight: a 240 px radial highlight (white at 5 %: the layer's opacity) centred on the pointer, moved by
+ * transform from `--spot-x` and `--spot-y`, which `useSpotlight` writes once per frame. It fades in on hover only,
+ * never on keyboard focus, and is not drawn under reduced motion. Under motion off it does not follow the pointer
+ * (nothing writes its place); a gallery story places it.
+ */
+@layer components {
+  .spotlight {
+    --spotlight-colour: var(--text-on-fill);
+    --spotlight-size: 240px;
+
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .spotlight::before {
+    position: absolute;
+    z-index: -1;
+    top: calc(var(--spotlight-size) / -2);
+    left: calc(var(--spotlight-size) / -2);
+    width: var(--spotlight-size);
+    height: var(--spotlight-size);
+    background: radial-gradient(closest-side, var(--spotlight-colour), transparent);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(var(--spot-x, 0), var(--spot-y, 0));
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .spotlight:hover::before,
+  .spotlight[data-hover]::before {
+    opacity: 0.05;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full'], [data-motion='off']) .spotlight::before {
+      display: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .spotlight::before {
+    display: none;
+  }
+}

@@ -1,0 +1,52 @@
+/*
+ * A toast: a solid card at elevation 3 (never blurred); it rises --distance-2 and fades in on arrival. It leaves by
+ * fading, played by its toaster.
+ */
+@layer components {
+  .toast {
+    --toast-fg: var(--level-low-fg);
+
+    display: flex;
+    width: max-content;
+    max-width: min(480px, calc(100vw - 2 * var(--space-6)));
+    align-items: center;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+    border: 1px solid var(--elevation-3-border);
+    border-radius: var(--radius-md);
+    animation: toast-enter var(--duration-base) var(--ease-enter) backwards;
+    background-color: var(--elevation-3-surface);
+    box-shadow: var(--elevation-3-shadow);
+    color: var(--text-primary);
+    gap: var(--space-2);
+    pointer-events: auto;
+  }
+
+  .toast[data-tone='success'] {
+    --toast-fg: var(--level-safe-fg);
+  }
+
+  .toast[data-tone='error'] {
+    --toast-fg: var(--level-high-fg);
+  }
+
+  .icon {
+    display: inline-flex;
+    flex: none;
+    color: var(--toast-fg);
+  }
+
+  .text {
+    min-width: 0;
+    flex: 1;
+    margin: 0 var(--space-1) 0 0;
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+  }
+
+  @keyframes toast-enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--distance-2));
+    }
+  }
+}

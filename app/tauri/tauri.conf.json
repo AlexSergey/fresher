@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Fresher",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "io.github.alexsergey.fresher",
   "build": {
     "beforeDevCommand": { "script": "npm run dev", "cwd": "../ui" },
@@ -18,9 +18,15 @@
         "height": 720,
         "minWidth": 900,
         "minHeight": 600,
-        "incognito": true
+        "incognito": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 18, "y": 22 },
+        "transparent": true,
+        "windowEffects": { "effects": ["sidebar"], "state": "followsWindowActiveState" }
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost",
       "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420"

@@ -1,0 +1,16 @@
+/* The sheet's story: a page reaching the window's bottom edge, where the sheet is attached. */
+@layer components {
+  .stage {
+    height: 646px;
+  }
+
+  .behind {
+    font-size: var(--type-title-1-size);
+    font-weight: var(--type-title-1-weight);
+    line-height: var(--type-title-1-line);
+  }
+
+  .text {
+    color: var(--text-secondary);
+  }
+}

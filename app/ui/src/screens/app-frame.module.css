@@ -1,0 +1,47 @@
+/*
+ * The app frame: the app's name in the sidebar, the stack of screens in the main pane and the unreachable state.
+ * Every screen fills the one cell of the stack and is the positioned parent of its own bottom bars (the selection
+ * bar), so they stay in view while the screen scrolls under them.
+ */
+@layer components {
+  .name {
+    padding: 0 var(--space-2);
+    color: var(--text-primary);
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .stack {
+    display: grid;
+    min-height: 0;
+    flex: 1;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  }
+
+  .screen {
+    position: relative;
+    min-height: 0;
+    grid-area: 1 / 1;
+  }
+
+  .screen[inert] {
+    pointer-events: none;
+  }
+
+  .screen[data-arrived] {
+    animation: screen-in var(--duration-base) var(--ease-enter);
+  }
+
+  .unreachable {
+    flex: 1;
+  }
+
+  @keyframes screen-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--distance-1));
+    }
+  }
+}

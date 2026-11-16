@@ -1,0 +1,50 @@
+/*
+ * The elevation table of the design: each level picks its fill, hairline and shadow from the semantic tokens; the
+ * raised sheen (a top gradient) lies over every fill.
+ */
+@layer components {
+  .surface {
+    --surface-fill: var(--elevation-1-surface);
+    --surface-border: var(--elevation-1-border);
+    --surface-shadow: var(--elevation-1-shadow);
+
+    position: relative;
+    padding: var(--surface-padding, var(--space-5));
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised-sheen), var(--surface-fill);
+    box-shadow: var(--surface-shadow);
+  }
+
+  .surface[data-elevation='2'] {
+    --surface-fill: var(--elevation-2-surface);
+    --surface-border: var(--elevation-2-border);
+    --surface-shadow: var(--elevation-2-shadow);
+  }
+
+  .surface[data-elevation='3'] {
+    --surface-fill: var(--elevation-3-surface);
+    --surface-border: var(--elevation-3-border);
+    --surface-shadow: var(--elevation-3-shadow);
+  }
+
+  .surface[data-radius='lg'] {
+    border-radius: var(--radius-lg);
+  }
+
+  .surface[data-radius='xl'] {
+    border-radius: var(--radius-xl);
+  }
+
+  .surface[data-padding='none'] {
+    --surface-padding: 0;
+  }
+
+  .surface[data-padding='small'] {
+    --surface-padding: var(--space-3);
+  }
+
+  .surface[data-padding='large'] {
+    --surface-padding: var(--space-8);
+  }
+}

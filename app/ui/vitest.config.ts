@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     coverage: {
-      exclude: ['src/main.tsx', 'src/ipc/mock.ts', 'src/test/**', 'src/**/*.test.{ts,tsx}'],
+      exclude: ['src/main.tsx', 'src/gallery/main.tsx', 'src/ipc/mock.ts', 'src/test/**', 'src/**/*.test.{ts,tsx}'],
       include: ['src/**/*.{ts,tsx}'],
       provider: 'v8',
       reportsDirectory: '../../coverage/ui',

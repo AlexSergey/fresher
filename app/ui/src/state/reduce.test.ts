@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Event, Finding, Overview, ScanId } from '../ipc/bindings.generated';
+import type { Event, Overview, ScanId, SettingsView, SettingValue } from '../ipc/bindings.generated';
 
-import { DEMO_DICTIONARY, DEMO_FINDINGS, DEMO_SCAN, IDLE } from '../test/demo-scan';
+import { DEMO_DICTIONARY, DEMO_FINDINGS, DEMO_OVERVIEW, DEMO_SCAN, FIRST_BATCH, IDLE } from '../test/demo-scan';
 import { type CoreAction, type CoreState, INITIAL_STATE, reduce } from './reduce';
 
 const run = (actions: readonly CoreAction[], from: CoreState = INITIAL_STATE): CoreState =>
@@ -12,47 +12,82 @@ const started: Event = { modules: ['demo'], scan: 1, type: 'scan-started' };
 
 const scanning = (scan: ScanId): Overview => ({ ...IDLE, status: { scan, state: 'scanning' } });
 
-// `count` findings of scan 1, spread over `categories` categories in turn, with ids from 0.
-const manyFindings = (count: number, categories: number): readonly Finding[] => {
-  const [model] = DEMO_FINDINGS;
+const requested: CoreAction = { type: 'overview-requested' };
 
-  if (model === undefined) {
-    throw new Error('The demo scan has no finding');
-  }
+const loaded = (overview: Overview): CoreAction => ({ overview, type: 'overview-loaded' });
 
-  return Array.from({ length: count }, (_, id) => ({ ...model, category: `demo.category-${id % categories}`, id }));
+const changed = (key: string, value: SettingValue): CoreAction => ({ key, type: 'setting-changed', value });
+
+const SETTINGS: SettingsView = {
+  file: 'loaded',
+  problems: [
+    { key: 'demo.count', kind: 'out-of-range', max: 50, min: 1 },
+    { key: 'demo.enabled', kind: 'wrong-type' },
+  ],
+  settings: [
+    { default: { kind: 'switch', value: true }, key: 'demo.enabled', kind: { kind: 'switch' } },
+    { default: { kind: 'number', value: 8 }, key: 'demo.count', kind: { kind: 'number', max: 50, min: 1, unit: null } },
+  ],
+  values: { 'demo.count': { kind: 'number', value: 8 }, 'demo.enabled': { kind: 'switch', value: true } },
 };
-
-// The findings in batches of the engine's size (256), as a scan sends them.
-const inBatches = (findings: readonly Finding[]): readonly CoreAction[] =>
-  Array.from({ length: Math.ceil(findings.length / 256) }, (_, at) => ({
-    findings: findings.slice(at * 256, (at + 1) * 256),
-    scan: 1,
-    type: 'findings-added',
-  }));
 
 describe('reduce', () => {
   describe('negative cases', () => {
-    it('ignores an event of another scan', () => {
+    it('a findings batch does not grow the state', () => {
+      const once = run([started, FIRST_BATCH]);
+
+      const state = run(
+        Array.from({ length: 1000 }, (): CoreAction => FIRST_BATCH),
+        once,
+      );
+
+      expect(state).toBe(once);
+      expect(JSON.stringify(state)).not.toContain('editor-cache');
+    });
+
+    it('an event of another scan does not mark the overview stale', () => {
       const state = run([
         started,
         { findings: [...DEMO_FINDINGS], scan: 2, type: 'findings-added' },
+        { module: 'demo', outcome: { kind: 'completed' }, scan: 2, type: 'module-finished' },
         { outcome: { kind: 'completed' }, scan: 2, type: 'scan-finished' },
       ]);
 
-      expect(state.groups).toEqual([]);
+      expect(state.stale).toBe(false);
+      expect(state.modules).toEqual([]);
       expect(state.status).toEqual({ scan: 1, state: 'scanning' });
     });
 
-    it('keeps findings when the scan is cancelled and marks it partial', () => {
+    it('a scan learned of from an overview only has no module list', () => {
+      expect(run([loaded(scanning(4))]).scanModules).toBeNull();
+    });
+
+    it('an overview of an older scan is ignored', () => {
+      const finished = run([...DEMO_SCAN, requested]);
+
+      expect(run([loaded({ ...DEMO_OVERVIEW, lastScan: null })], finished)).toBe(finished);
+      expect(
+        run([{ modules: ['demo'], scan: 2, type: 'scan-started' }, loaded(DEMO_OVERVIEW)], finished).overview,
+      ).toBeNull();
+    });
+
+    it('keeps the overview stale when an event comes after the request', () => {
+      const state = run([started, FIRST_BATCH, requested, FIRST_BATCH]);
+
+      expect(state.stale).toBe(true);
+    });
+
+    it('keeps findings counted when the scan is cancelled and marks it partial', () => {
       const state = run([
         started,
-        { findings: DEMO_FINDINGS.slice(0, 1), scan: 1, type: 'findings-added' },
+        FIRST_BATCH,
         { module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
         { outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
+        requested,
+        loaded({ ...DEMO_OVERVIEW, lastScan: { finished: 1, outcome: { kind: 'partial' }, scan: 1 } }),
       ]);
 
-      expect(state.groups).toEqual([{ category: 'demo.caches', findings: DEMO_FINDINGS.slice(0, 1) }]);
+      expect(state.overview?.totals).toEqual(DEMO_OVERVIEW.totals);
       expect(state.outcome).toEqual({ kind: 'partial' });
       expect(state.modules).toEqual([{ module: 'demo', outcome: { kind: 'cancelled' } }]);
       expect(state.status).toEqual({ state: 'idle' });
@@ -66,7 +101,7 @@ describe('reduce', () => {
     });
 
     it('keeps a scan the events started when a stale idle overview arrives', () => {
-      const state = run([started, { overview: IDLE, type: 'overview-loaded' }]);
+      const state = run([started, loaded(IDLE)]);
 
       expect(state.status).toEqual({ scan: 1, state: 'scanning' });
       expect(state.scan).toBe(1);
@@ -76,110 +111,151 @@ describe('reduce', () => {
       const state = run([
         { bytes: 2048, entries: 10, scan: 4, type: 'scan-progress' },
         { outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
-        { overview: scanning(4), type: 'overview-loaded' },
+        loaded(scanning(4)),
       ]);
 
       expect(state.status).toEqual({ state: 'idle' });
+      expect(state.overview).toBeNull();
     });
 
     it('keeps the scan of the events when the overview reports an older one', () => {
-      const state = run([
-        { modules: ['demo'], scan: 5, type: 'scan-started' },
-        { overview: scanning(4), type: 'overview-loaded' },
-      ]);
+      const state = run([{ modules: ['demo'], scan: 5, type: 'scan-started' }, loaded(scanning(4))]);
 
       expect(state.status).toEqual({ scan: 5, state: 'scanning' });
       expect(state.scan).toBe(5);
     });
 
-    it('leaves the state as it is for the settings and the permissions', () => {
-      const state = run([
-        { key: 'demo.count', type: 'setting-changed', value: { kind: 'number', value: 3 } },
-        { status: { fullDiskAccess: 'granted' }, type: 'access-changed' },
-      ]);
+    it('leaves the state as it is for a setting changed before the settings arrived and a request of a fresh overview', () => {
+      const state = run([changed('demo.count', { kind: 'number', value: 3 }), requested]);
 
       expect(state).toBe(INITIAL_STATE);
+    });
+
+    it('an access status answered after an access-changed event does not undo it', () => {
+      const state = run([
+        { status: { fullDiskAccess: 'granted' }, type: 'access-changed' },
+        { status: { fullDiskAccess: 'denied' }, type: 'access-loaded' },
+      ]);
+
+      expect(state.access).toEqual({ fullDiskAccess: 'granted' });
+    });
+
+    it('a settings view answered again does not undo the changes since the first', () => {
+      const first = run([
+        { settings: SETTINGS, type: 'settings-loaded' },
+        changed('demo.count', { kind: 'number', value: 3 }),
+      ]);
+
+      expect(run([{ settings: SETTINGS, type: 'settings-loaded' }], first)).toBe(first);
     });
   });
 
   describe('positive cases', () => {
-    it('adds findings in batches', () => {
-      const state = run(DEMO_SCAN.slice(0, 2));
-
-      expect(state.groups.flatMap((group) => group.findings)).toEqual(DEMO_FINDINGS.slice(0, 2));
-      expect(run(DEMO_SCAN.slice(2, 3), state).groups.flatMap((group) => group.findings)).toHaveLength(3);
+    it('findings, a module and the end of the scan mark the overview stale', () => {
+      expect(run([started, FIRST_BATCH]).stale).toBe(true);
+      expect(
+        run([started, { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' }]).stale,
+      ).toBe(true);
+      expect(run([started, { outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' }]).stale).toBe(true);
     });
 
-    it('groups a batch of 20,000 findings in the order they came', () => {
-      const findings = manyFindings(20_000, 7);
-
-      const state = run([started, { findings: [...findings], scan: 1, type: 'findings-added' }]);
-
-      expect(state.groups.map((group) => group.category)).toEqual(
-        Array.from({ length: 7 }, (_, category) => `demo.category-${category}`),
-      );
-      expect(state.groups.map((group) => group.findings.length)).toEqual([2858, 2857, 2857, 2857, 2857, 2857, 2857]);
-      expect(state.groups[3]?.findings.map((finding) => finding.id).slice(0, 3)).toEqual([3, 10, 17]);
+    it('a request clears the stale mark', () => {
+      expect(run([started, FIRST_BATCH, requested]).stale).toBe(false);
     });
 
-    // The timeout only guards against a quadratic reducer: a linear one takes a few tens of milliseconds.
-    it(
-      'adds a scan of 50,000 findings in one category without copying the group per finding',
-      { timeout: 1000 },
-      () => {
-        const findings = manyFindings(50_000, 1);
+    it('keeps the overview of the finished scan', () => {
+      const state = run([...DEMO_SCAN, requested, loaded(DEMO_OVERVIEW)]);
 
-        const state = run([started, ...inBatches(findings)]);
-
-        expect(state.groups).toHaveLength(1);
-        expect(state.groups[0]?.findings).toHaveLength(50_000);
-        expect(state.groups[0]?.findings.at(-1)).toBe(findings.at(-1));
-      },
-    );
-
-    it('groups findings by category', () => {
-      const state = run(DEMO_SCAN);
-
-      expect(state.groups.map((group) => [group.category, group.findings.map((finding) => finding.id)])).toEqual([
-        ['demo.caches', [1, 3]],
-        ['demo.downloads', [2]],
-      ]);
+      expect(state.overview).toBe(DEMO_OVERVIEW);
+      expect(state.stale).toBe(false);
       expect(state.outcome).toEqual({ kind: 'completed' });
       expect(state.modules).toEqual([{ module: 'demo', outcome: { kind: 'completed' } }]);
     });
 
-    it('starts a new scan from nothing', () => {
-      const state = run([...DEMO_SCAN, { modules: ['demo'], scan: 2, type: 'scan-started' }]);
+    it('keeps the totals counted so far during a scan', () => {
+      const sofar: Overview = { ...DEMO_OVERVIEW, status: { scan: 1, state: 'scanning' } };
 
-      expect(state.groups).toEqual([]);
+      const state = run([started, FIRST_BATCH, requested, loaded(sofar)]);
+
+      expect(state.overview).toBe(sofar);
+      expect(state.status).toEqual({ scan: 1, state: 'scanning' });
+    });
+
+    it('starts a new scan from nothing but the last scan', () => {
+      const state = run([...DEMO_SCAN, loaded(DEMO_OVERVIEW), { modules: ['demo'], scan: 2, type: 'scan-started' }]);
+
+      expect(state.overview).toEqual({
+        ...DEMO_OVERVIEW,
+        found: { allocated: 0, completeness: 'complete', logical: 0 },
+        status: { scan: 2, state: 'scanning' },
+        totals: [],
+      });
+      expect(state.stale).toBe(false);
       expect(state.outcome).toBeNull();
       expect(state.scan).toBe(2);
+    });
+
+    it('keeps the modules a scan runs, as its scan-started listed them', () => {
+      const state = run([...DEMO_SCAN, { modules: ['logs'], scan: 2, type: 'scan-started' }]);
+
+      expect(run([started]).scanModules).toStrictEqual(['demo']);
+      expect(state.scanModules).toStrictEqual(['logs']);
     });
 
     it('keeps the progress, the dictionary and the state of the engine', () => {
       const state = run([
         { dictionary: DEMO_DICTIONARY, type: 'dictionary-loaded' },
-        { overview: scanning(4), type: 'overview-loaded' },
+        loaded(scanning(4)),
         { bytes: 2048, entries: 10, scan: 4, type: 'scan-progress' },
       ]);
 
       expect(state.dictionary).toBe(DEMO_DICTIONARY);
       expect(state.scan).toBe(4);
       expect(state.progress).toEqual({ bytes: 2048, entries: 10 });
-      const cleaning = run([{ overview: { ...IDLE, status: { state: 'cleaning' } }, type: 'overview-loaded' }]);
+      const cleaning = run([loaded({ ...IDLE, status: { state: 'cleaning' } })]);
       expect(cleaning.status).toEqual({ state: 'cleaning' });
+    });
+
+    it('keeps the settings view and the access status the core answered', () => {
+      const state = run([
+        { settings: SETTINGS, type: 'settings-loaded' },
+        { status: { fullDiskAccess: 'denied' }, type: 'access-loaded' },
+      ]);
+
+      expect(state.settings).toBe(SETTINGS);
+      expect(state.access).toEqual({ fullDiskAccess: 'denied' });
+    });
+
+    it('a setting-changed event replaces its value and clears its problem', () => {
+      const state = run([
+        { settings: SETTINGS, type: 'settings-loaded' },
+        changed('demo.count', { kind: 'number', value: 3 }),
+      ]);
+
+      expect(state.settings?.values['demo.count']).toEqual({ kind: 'number', value: 3 });
+      expect(state.settings?.values['demo.enabled']).toEqual({ kind: 'switch', value: true });
+      expect(state.settings?.problems).toEqual([{ key: 'demo.enabled', kind: 'wrong-type' }]);
+    });
+
+    it('an access-changed event replaces the access status', () => {
+      const state = run([
+        { status: { fullDiskAccess: 'denied' }, type: 'access-loaded' },
+        { status: { fullDiskAccess: 'granted' }, type: 'access-changed' },
+      ]);
+
+      expect(state.access).toEqual({ fullDiskAccess: 'granted' });
     });
 
     it('follows the scan an overview reports after a reload during that scan', () => {
       const state = run([
         { bytes: 1024, entries: 5, scan: 4, type: 'scan-progress' },
-        { overview: scanning(4), type: 'overview-loaded' },
+        loaded(scanning(4)),
         { findings: DEMO_FINDINGS.slice(0, 1).map((finding) => ({ ...finding })), scan: 4, type: 'findings-added' },
         { outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
       ]);
 
       expect(state.scan).toBe(4);
-      expect(state.groups.flatMap((group) => group.findings)).toEqual(DEMO_FINDINGS.slice(0, 1));
+      expect(state.stale).toBe(true);
       expect(state.status).toEqual({ state: 'idle' });
       expect(state.outcome).toEqual({ kind: 'completed' });
     });

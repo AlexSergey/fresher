@@ -1,0 +1,40 @@
+/* A module's section: its name, its found size and its status on one line, a failure notice, then its content. */
+@layer components {
+  .section {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
+  .name {
+    color: var(--text-primary);
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1-5);
+    line-height: var(--type-footnote-line);
+    align-self: center;
+  }
+
+  .status[data-state='completed'] svg {
+    color: var(--level-safe-fg);
+  }
+
+  .status[data-state='failed'] {
+    color: var(--level-high-fg);
+  }
+}

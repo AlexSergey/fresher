@@ -1,0 +1,9 @@
+/* The design system's global styles, in the order of their layers. */
+@import './base/layers.css';
+@import './tokens/primitive.css';
+@import './tokens/semantic.css';
+@import './tokens/motion.css';
+@import './base/reset.css';
+@import './base/typography.css';
+@import './base/effects.css';
+@import './base/window.css';

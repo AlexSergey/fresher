@@ -1,0 +1,84 @@
+/*
+ * A sidebar row. The active row's pill is not drawn here: one indicator per sidebar slides under it. The rows stagger
+ * in once, when they are first shown.
+ */
+@layer components {
+  .item {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: var(--size-control);
+    align-items: center;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    animation: nav-item-in var(--duration-base) var(--ease-enter) backwards;
+    animation-delay: calc(min(var(--i, 0), var(--stagger-steps)) * var(--stagger));
+    color: var(--text-secondary);
+    cursor: default;
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-weight);
+    gap: var(--space-2);
+    line-height: var(--type-body-line);
+    text-align: start;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .item:hover:not([aria-current='page']),
+  .item[data-hover]:not([aria-current='page']) {
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .item[aria-current='page'] {
+    color: var(--text-primary);
+  }
+
+  .item:focus-visible,
+  .item[data-focus] {
+    box-shadow: var(--focus-ring);
+  }
+
+  .icon {
+    flex: none;
+  }
+
+  .item[aria-current='page'] .icon {
+    color: var(--accent-text);
+  }
+
+  .label {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .trailing {
+    display: flex;
+    flex: none;
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--type-footnote-line);
+  }
+
+  /* The tertiary text is below AA on the active row's pill. */
+  .item[aria-current='page'] .trailing {
+    color: var(--text-secondary);
+  }
+
+  @keyframes nav-item-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--distance-1));
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

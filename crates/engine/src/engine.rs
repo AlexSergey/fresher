@@ -124,11 +124,12 @@ impl Engine {
         }
     }
 
-    /// The state, the last scan and one total per category of the current findings.
+    /// The state, the last scan, one total per category of the current findings and all of them summed.
     pub fn overview(&self) -> Result<Overview, CommandError> {
         let status = lock(&self.shared.machine)?.status();
         let results = lock(&self.shared.results)?;
-        Ok(Overview { status, last_scan: results.last(), totals: results.totals(self.shared.registry.categories()) })
+        let (totals, found) = results.totals(self.shared.registry.categories());
+        Ok(Overview { status, last_scan: results.last(), totals, found })
     }
 
     /// A page of the current findings, by module and category. An unknown module is refused; a category nobody
@@ -140,7 +141,13 @@ impl Engine {
                 Some(self.shared.registry.module_id(id).ok_or_else(|| CommandError::UnknownModule { id: id.into() })?)
             }
         };
-        let filter = Filter { module, category: query.category(), offset: query.offset(), limit: query.limit() };
+        let filter = Filter {
+            module,
+            category: query.category(),
+            order: query.order(),
+            offset: query.offset(),
+            limit: query.limit(),
+        };
         Ok(lock(&self.shared.results)?.page(filter))
     }
 

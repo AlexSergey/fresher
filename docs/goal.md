@@ -68,8 +68,10 @@ when — so an app that keeps accumulating junk is named, not guessed.
 ### 6. A simple, premium interface
 
 - Simple and intuitive; not overloaded with data. The first screen answers "where did my space go" in one look.
-- Visual direction **Dark Premium**: graphite background, soft surfaces, thin borders, careful typography, expressive
-  charts, minimal visual noise.
+- Visual direction **Graphite and Iris** (dark): layered graphite surfaces, a translucent native sidebar, thin borders,
+  careful typography, light only from the Iris accent and the danger levels, one hero visual per screen, expressive
+  charts, minimal visual noise; motion that makes a scan feel alive and keeps the moment of deletion calm and exact.
+  The design: plan [003](./plans/003-base-ui/00-design.md), "The visual language: Graphite and Iris".
 
 ### 7. Complete privacy and security
 

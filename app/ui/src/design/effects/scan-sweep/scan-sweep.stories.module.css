@@ -1,0 +1,10 @@
+/* The sweep's story: the ring's square, with a faint track under the band. */
+@layer components {
+  .square {
+    position: relative;
+    width: 232px;
+    height: 232px;
+    box-shadow: inset 0 0 0 12px var(--border-subtle);
+    border-radius: var(--radius-full);
+  }
+}

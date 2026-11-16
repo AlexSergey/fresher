@@ -40,6 +40,7 @@ The production dependencies of `app/ui`, bundled into the UI.
 | Package           | Version | Licence           |
 | ----------------- | ------- | ----------------- |
 | `@tauri-apps/api` | 2.12.4  | Apache-2.0 OR MIT |
+| `lucide-react`    | 1.70.0  | ISC               |
 | `react`           | 19.3.1  | MIT               |
 | `react-dom`       | 19.3.1  | MIT               |
 
@@ -61,6 +62,7 @@ Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-t
 
 | Package                     | Version | Licence    |
 | --------------------------- | ------- | ---------- |
+| `@axe-core/playwright`      | 4.14.0  | MPL-2.0    |
 | `@playwright/test`          | 1.65.1  | Apache-2.0 |
 | `@testing-library/dom`      | 10.4.2  | MIT        |
 | `@testing-library/jest-dom` | 7.0.1   | MIT        |
@@ -115,16 +117,17 @@ The installed npm tree (385 packages) is mostly MIT, Apache-2.0, ISC and BSD. Th
 them ships in the app, so they are allowed as development tools
 ([`restrictions/dependencies.md`](./restrictions/dependencies.md), "Any open-source licence for development tools"):
 
-| Package                                        | Licence       | Pulled in by                     |
-| ---------------------------------------------- | ------------- | -------------------------------- |
-| `eslint-plugin-sonarjs`                        | LGPL-3.0-only | direct                           |
-| `@sonarsource/analyzer-commons-configurations` | LGPL-3.0-only | `eslint-plugin-sonarjs`          |
-| `axe-core`                                     | MPL-2.0       | `eslint-plugin-jsx-a11y-x`       |
-| `lightningcss`, `lightningcss-darwin-arm64`    | MPL-2.0       | `vite` (CSS transforms at build) |
-| `minimatch`, `@isaacs/nonrecursive-glob-match` | BlueOak-1.0.0 | the lint tooling                 |
-| `argparse`                                     | Python-2.0    | the lint tooling                 |
-| `caniuse-lite`                                 | CC-BY-4.0     | the build tooling (browser data) |
-| `spdx-exceptions`                              | CC-BY-3.0     | the lint tooling (licence data)  |
+| Package                                        | Licence       | Pulled in by                                       |
+| ---------------------------------------------- | ------------- | -------------------------------------------------- |
+| `eslint-plugin-sonarjs`                        | LGPL-3.0-only | direct                                             |
+| `@sonarsource/analyzer-commons-configurations` | LGPL-3.0-only | `eslint-plugin-sonarjs`                            |
+| `@axe-core/playwright`                         | MPL-2.0       | direct (the accessibility specs)                   |
+| `axe-core`                                     | MPL-2.0       | `eslint-plugin-jsx-a11y-x`, `@axe-core/playwright` |
+| `lightningcss`, `lightningcss-darwin-arm64`    | MPL-2.0       | `vite` (CSS transforms at build)                   |
+| `minimatch`, `@isaacs/nonrecursive-glob-match` | BlueOak-1.0.0 | the lint tooling                                   |
+| `argparse`                                     | Python-2.0    | the lint tooling                                   |
+| `caniuse-lite`                                 | CC-BY-4.0     | the build tooling (browser data)                   |
+| `spdx-exceptions`                              | CC-BY-3.0     | the lint tooling (licence data)                    |
 
 ## Tools on the machine
 

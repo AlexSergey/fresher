@@ -1,0 +1,80 @@
+/*
+ * A field: its label, the input box, a description and an error. The search field and the select reuse these classes
+ * for their own boxes.
+ */
+@layer components {
+  .field {
+    display: grid;
+    gap: var(--space-1-5);
+  }
+
+  .label {
+    color: var(--text-primary);
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+  }
+
+  .input {
+    width: 100%;
+    height: var(--size-control);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius-sm);
+    appearance: none;
+    background-color: var(--surface-window);
+    color: var(--text-primary);
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .input::placeholder {
+    color: var(--text-tertiary);
+    opacity: 1;
+  }
+
+  .input:hover:not(:disabled),
+  .input[data-hover] {
+    border-color: var(--text-secondary);
+  }
+
+  .input:focus-visible,
+  .input[data-focus] {
+    border-color: var(--accent-text);
+    box-shadow: var(--focus-ring);
+  }
+
+  .input[aria-invalid='true'] {
+    border-color: var(--level-high-fg);
+  }
+
+  .input:disabled {
+    border-color: var(--border-default);
+    background-color: var(--surface-hover);
+    color: var(--text-disabled);
+  }
+
+  .input:disabled::placeholder {
+    color: var(--text-disabled);
+  }
+
+  .description {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .error {
+    display: flex;
+    align-items: flex-start;
+    color: var(--level-high-fg);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1-5);
+    line-height: var(--type-footnote-line);
+  }
+
+  .errorIcon {
+    flex: none;
+  }
+}

@@ -1,0 +1,57 @@
+/*
+ * The sidebar (232 px) and the main pane. In the app (`data-window='vibrant'`) the sidebar shows the native material
+ * through a light tint; elsewhere it paints its own gradient. The main pane sets the content column for everything in
+ * it: `--content-inset` is the side padding that keeps content at most 1,120 px wide with 32 px gutters, 24 px when
+ * the window is under 1,000 px wide.
+ */
+@layer components {
+  .shell {
+    display: grid;
+    height: var(--shell-height, 100vh);
+    container: shell / inline-size;
+    grid-template-columns: var(--size-sidebar) minmax(0, 1fr);
+  }
+
+  .sidebar {
+    min-height: 0;
+    background: var(--surface-sidebar);
+  }
+
+  [data-window='vibrant'] .sidebar {
+    background: var(--surface-sidebar-over-material);
+  }
+
+  .main {
+    --layout-gutter: var(--size-gutter);
+    --content-inset: max(var(--layout-gutter), calc((100% - var(--size-content)) / 2));
+
+    position: relative;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    border-left: 1px solid var(--border-subtle);
+    background-color: var(--surface-window);
+    isolation: isolate;
+  }
+
+  @container shell (max-width: 999px) {
+    .main {
+      --layout-gutter: var(--size-gutter-narrow);
+    }
+  }
+
+  .ambient {
+    position: absolute;
+    z-index: -1;
+    overflow: hidden;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .content {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+}

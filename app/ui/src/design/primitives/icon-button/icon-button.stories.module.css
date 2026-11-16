@@ -1,0 +1,15 @@
+/* The icon button's stories: its sizes side by side, and a stage with room for its tooltip. */
+@layer components {
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .stage {
+    display: flex;
+    height: 96px;
+    align-items: flex-end;
+    justify-content: center;
+  }
+}

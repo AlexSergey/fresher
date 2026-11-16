@@ -1,0 +1,44 @@
+/* Utilities shared by components. */
+@layer utilities {
+  /* Read by assistive technology, not shown. */
+  .u-visually-hidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    margin: -1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/*
+ * The texture: a static noise layer at 3 % over the whole window, rendered once; off under increased contrast. Its
+ * blend is the normal one: on these dark surfaces `overlay` and `soft-light` draw the same image, with half the grain,
+ * too little to break the bands of the gradients (plan 003/04/04).
+ */
+@layer base {
+  html::after {
+    position: fixed;
+    z-index: var(--z-texture);
+    background-image: url('./noise.svg');
+    background-size: 160px 160px;
+    content: '';
+    inset: 0;
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  /* A gallery story turns it off for the page, to compare the window with and without it. */
+  :root[data-noise='off']::after {
+    display: none;
+  }
+
+  @media (prefers-contrast: more) {
+    html::after {
+      display: none;
+    }
+  }
+}

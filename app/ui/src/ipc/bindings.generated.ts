@@ -21,7 +21,11 @@ export type CommandError = { "code": "busy", running: Operation, } | { "code": "
 /**
  * The answer of `get_overview`.
  */
-export type Overview = { status: EngineStatus, lastScan: LastScan | null, totals: Array<CategoryTotal>, };
+export type Overview = { status: EngineStatus, lastScan: LastScan | null, totals: Array<CategoryTotal>, 
+/**
+ * Every finding of the current scan summed; the weakest completeness wins.
+ */
+found: Sizes, };
 
 /**
  * What the engine is doing.
@@ -55,7 +59,12 @@ settings: Array<SettingKey>, };
 /**
  * The input of `get_findings`: a page of the last scan's findings, optionally of one module or category.
  */
-export type FindingsQuery = { module: string | null, category: string | null, offset: number, limit: number, };
+export type FindingsQuery = { module: string | null, category: string | null, order: FindingOrder, offset: number, limit: number, };
+
+/**
+ * The order of a page of findings.
+ */
+export type FindingOrder = "found" | "largest";
 
 /**
  * The answer of `get_findings`.

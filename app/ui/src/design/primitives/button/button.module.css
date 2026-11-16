@@ -1,0 +1,141 @@
+/*
+ * The button's box, variants and states; the icon button reuses it. The primary's hover glow is a pseudo-element
+ * holding the glow, faded in by opacity: a shadow is never animated. A busy button (`aria-disabled`) keeps its look
+ * but neither glows nor presses.
+ */
+@layer components {
+  .button {
+    --button-height: var(--size-control);
+    --button-padding: var(--space-3);
+
+    position: relative;
+    display: inline-flex;
+    height: var(--button-height);
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--button-padding);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background-origin: border-box;
+    color: var(--text-primary);
+    cursor: default;
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    gap: var(--space-1-5);
+    line-height: var(--type-body-strong-line);
+    transition:
+      transform var(--duration-press) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+    white-space: nowrap;
+  }
+
+  .button[data-size='small'] {
+    --button-height: var(--size-control-small);
+    --button-padding: var(--space-2);
+
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .button[data-size='large'] {
+    --button-height: var(--size-control-large);
+    --button-padding: var(--space-4);
+  }
+
+  .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Primary: the Iris fill, a top highlight hairline, white text. */
+  .button[data-variant='primary'] {
+    background: var(--accent-fill);
+    box-shadow: inset 0 1px 0 var(--border-strong);
+    color: var(--text-on-fill);
+  }
+
+  .button[data-variant='primary']::after {
+    position: absolute;
+    border-radius: inherit;
+    box-shadow: var(--glow-accent);
+    content: '';
+    inset: -1px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .button[data-variant='primary']:hover:not(:disabled, [aria-disabled='true'])::after,
+  .button[data-variant='primary'][data-hover]::after {
+    opacity: 1;
+  }
+
+  /* Secondary: the raised surface. */
+  .button[data-variant='secondary'] {
+    border-color: var(--border-default);
+    background-color: var(--surface-raised);
+  }
+
+  .button[data-variant='secondary']:hover:not(:disabled, [aria-disabled='true']),
+  .button[data-variant='secondary'][data-hover] {
+    border-color: var(--border-strong);
+    background-color: var(--surface-hover);
+  }
+
+  /* Ghost: no fill until hover. */
+  .button[data-variant='ghost'] {
+    color: var(--text-secondary);
+  }
+
+  .button[data-variant='ghost']:hover:not(:disabled, [aria-disabled='true']),
+  .button[data-variant='ghost'][data-hover] {
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  /* Danger: the red fill, for the permanent-delete choice; it never glows. */
+  .button[data-variant='danger'] {
+    background: var(--danger-fill);
+    box-shadow: inset 0 1px 0 var(--border-strong);
+    color: var(--text-on-fill);
+  }
+
+  /* Pressed. */
+  .button:active:not(:disabled, [aria-disabled='true']),
+  .button[data-pressed] {
+    transform: scale(var(--scale-press));
+  }
+
+  .button[data-variant='secondary']:active:not(:disabled, [aria-disabled='true']),
+  .button[data-variant='secondary'][data-pressed],
+  .button[data-variant='ghost']:active:not(:disabled, [aria-disabled='true']),
+  .button[data-variant='ghost'][data-pressed] {
+    background-color: var(--surface-pressed);
+  }
+
+  /* After the variants, whose own shadows would otherwise hide the ring. */
+  .button:focus-visible,
+  .button[data-focus] {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Disabled: no fill, no hover, no press. */
+  .button:disabled {
+    border-color: var(--border-subtle);
+    background: var(--surface-hover);
+    box-shadow: none;
+    color: var(--text-disabled);
+  }
+
+  .button[data-variant='ghost']:disabled {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .button:disabled::after {
+    display: none;
+  }
+}

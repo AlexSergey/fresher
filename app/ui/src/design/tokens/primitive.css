@@ -1,0 +1,84 @@
+/*
+ * The primitive palette of "Graphite and Iris" (docs/plans/003-base-ui/00-design.md, "Palette"): the only file with
+ * colour values. Every tint, border and glow is precomputed here, because color-mix() is not in the baseline.
+ * Components never use these: they use the semantic tokens.
+ */
+@layer tokens {
+  /* `::backdrop` inherits no custom property before Safari 17.4: the tokens are defined on it too. */
+  :root,
+  ::backdrop {
+    --gray-1000: #08090b;
+    --gray-950: #0e0f12;
+    --gray-900: #15171b;
+    --gray-850: #1c1f25;
+    --gray-800: #1f232a;
+    --gray-750: #262b33;
+    --gray-700: #313741;
+    --gray-600: #444b57;
+    --gray-500: #5a616d;
+    --gray-400: #8a919c;
+    --gray-300: #a3a9b4;
+    --gray-100: #eceef2;
+
+    --iris-300: #a7b1ff;
+    --iris-400: #8b98ff;
+    --iris-500: #7c8cff;
+    --iris-600: #5465eb;
+    --iris-700: #4553dc;
+
+    --green-400: #3dd68c;
+    --cyan-400: #4cc3e6;
+    --amber-400: #f5b544;
+    --red-400: #ff6b70;
+    --red-600: #d9363e;
+    --red-700: #c42a30;
+
+    --white: #fff;
+    --white-a0: rgb(255 255 255 / 0%);
+    --white-a3-5: rgb(255 255 255 / 3.5%);
+    --white-a4: rgb(255 255 255 / 4%);
+    --white-a6: rgb(255 255 255 / 6%);
+    --white-a10: rgb(255 255 255 / 10%);
+    --white-a16: rgb(255 255 255 / 16%);
+    --white-a36: rgb(255 255 255 / 36%);
+    --white-a52: rgb(255 255 255 / 52%);
+
+    --black-a50: rgb(0 0 0 / 50%);
+    --black-a55: rgb(0 0 0 / 55%);
+    --black-a60: rgb(0 0 0 / 60%);
+    --black-a70: rgb(0 0 0 / 70%);
+
+    /* The sidebar's veil over the native material. */
+    --gray-950-a45: rgb(14 15 18 / 45%);
+
+    --iris-400-a45: rgb(139 152 255 / 45%);
+    --iris-500-a30: rgb(124 140 255 / 30%);
+    --iris-500-a35: rgb(124 140 255 / 35%);
+    --iris-500-a45: rgb(124 140 255 / 45%);
+
+    /* Each level's fg at 14 % over the raised surface, then at 30, 32, 40 and 45 %. */
+    --green-400-tint: #1b322b;
+    --green-400-a30: rgb(61 214 140 / 30%);
+    --green-400-a32: rgb(61 214 140 / 32%);
+    --green-400-a40: rgb(61 214 140 / 40%);
+    --green-400-a45: rgb(61 214 140 / 45%);
+
+    --cyan-400-tint: #1d2f37;
+    --cyan-400-a30: rgb(76 195 230 / 30%);
+    --cyan-400-a32: rgb(76 195 230 / 32%);
+    --cyan-400-a40: rgb(76 195 230 / 40%);
+    --cyan-400-a45: rgb(76 195 230 / 45%);
+
+    --amber-400-tint: #342d21;
+    --amber-400-a30: rgb(245 181 68 / 30%);
+    --amber-400-a32: rgb(245 181 68 / 32%);
+    --amber-400-a40: rgb(245 181 68 / 40%);
+    --amber-400-a45: rgb(245 181 68 / 45%);
+
+    --red-400-tint: #362327;
+    --red-400-a30: rgb(255 107 112 / 30%);
+    --red-400-a32: rgb(255 107 112 / 32%);
+    --red-400-a40: rgb(255 107 112 / 40%);
+    --red-400-a45: rgb(255 107 112 / 45%);
+  }
+}

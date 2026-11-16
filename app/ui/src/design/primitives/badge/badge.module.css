@@ -1,0 +1,27 @@
+/* A small pill in the caption type: neutral on a raised surface, or tinted with the accent. */
+@layer components {
+  .badge {
+    display: inline-flex;
+    min-width: 18px;
+    height: 18px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--space-1-5);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xs);
+    background-color: var(--surface-pressed);
+    color: var(--text-secondary);
+    font-size: var(--type-caption-size);
+    font-weight: var(--type-caption-weight);
+    letter-spacing: var(--type-caption-tracking);
+    line-height: var(--type-caption-line);
+    white-space: nowrap;
+  }
+
+  .badge[data-tone='accent'] {
+    border-color: transparent;
+    background: var(--accent-fill);
+    color: var(--text-on-fill);
+  }
+}

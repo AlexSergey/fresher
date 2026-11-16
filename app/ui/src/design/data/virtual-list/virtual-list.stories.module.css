@@ -1,0 +1,8 @@
+/* The virtual list's stories: a framed viewport of a fixed height. */
+@layer components {
+  .frame {
+    height: 320px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+}

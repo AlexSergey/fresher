@@ -1,6 +1,14 @@
 # The UI keeps every finding of a scan in memory
 
-**Status:** open · **Updated:** 2026-11-15
+**Status:** fixed ([plan 003/05](../plans/003-base-ui/05-data-flow/readme.md)) · **Updated:** 2026-11-16
+
+## Fix
+
+Plan 003/05/02: the store keeps no finding. `findings-added` only marks the overview stale, and the refresher
+(`app/ui/src/state/refresh.ts`) asks `get_overview` for the totals per category at most 4 times a second, and once
+more when the scan finishes. The lists ask the core for pages of findings (`app/ui/src/state/findings.ts`, step
+003/05/03), at most 10 pages of 100 cached. Measured in plan 003/08/01: over a streamed scan of 50,000 findings the
+page's JS heap after a full collection grows from 2.7 MB to 4.9 MB, so the page holds no scan.
 
 ## Symptom
 

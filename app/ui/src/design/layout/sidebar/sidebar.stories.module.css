@@ -1,0 +1,8 @@
+/* The sidebar's story: the fallback sidebar as the app shell paints it, as tall as a short window. */
+@layer components {
+  .stage {
+    height: 420px;
+    margin: calc(-1 * var(--space-6));
+    background: var(--surface-sidebar);
+  }
+}

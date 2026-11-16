@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window's permissions: the app's own commands only; no core or plugin permission, no network, no shell, no file system.",
+  "description": "The main window's permissions: the app's own commands, and two window permissions for the drag region of the overlay title bar (dragging the window, and zooming it by a double click, as every Mac window does); no other core or plugin permission, no network, no shell, no file system.",
   "windows": ["main"],
   "permissions": [
     "allow-app-version",
@@ -14,6 +14,8 @@
     "allow-get-settings",
     "allow-update-setting",
     "allow-get-dictionary",
-    "allow-get-access-status"
+    "allow-get-access-status",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize"
   ]
 }

@@ -1,0 +1,77 @@
+/*
+ * Equal segments on a sunken track; one indicator under the chosen segment slides by transform, from
+ * `--segment-index` and `--segment-count`, which the component sets.
+ */
+@layer components {
+  .control {
+    --segment-inset: 2px;
+
+    position: relative;
+    display: inline-grid;
+    height: var(--size-control);
+    padding: var(--segment-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-window);
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+  }
+
+  .indicator {
+    position: absolute;
+    top: var(--segment-inset);
+    bottom: var(--segment-inset);
+    left: var(--segment-inset);
+    width: calc((100% - 2 * var(--segment-inset)) / var(--segment-count));
+    border: 1px solid var(--border-default);
+    border-radius: calc(var(--radius-sm) - var(--segment-inset));
+    background-color: var(--surface-pressed);
+    box-shadow: var(--elevation-1-shadow);
+    transform: translateX(calc(var(--segment-index) * 100%));
+    transition: transform var(--duration-base) var(--ease-settle);
+  }
+
+  .option {
+    position: relative;
+    padding: 0 var(--space-3);
+    border-radius: calc(var(--radius-sm) - var(--segment-inset));
+    color: var(--text-secondary);
+    cursor: default;
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-line);
+    transition: color var(--duration-fast) var(--ease-standard);
+    white-space: nowrap;
+  }
+
+  .option:hover,
+  .option[data-hover],
+  .option[aria-checked='true'] {
+    color: var(--text-primary);
+  }
+
+  .option[data-focus] {
+    box-shadow: var(--focus-ring);
+  }
+
+  .option:disabled,
+  .option:disabled:hover {
+    color: var(--text-disabled);
+  }
+
+  .control[aria-disabled='true'] .indicator {
+    border-color: var(--border-subtle);
+    background-color: var(--surface-hover);
+  }
+
+  /* Reduced motion: the indicator jumps, nothing travels. */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .indicator {
+      transition: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .indicator {
+    transition: none;
+  }
+}

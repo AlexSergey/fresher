@@ -1,0 +1,68 @@
+/*
+ * The ambient light: two glows per tone, each a radial gradient of the tone's glow colour whose strength is the
+ * layer's opacity (14 % for the wide glow, 6 % for the faint inner one). The tones crossfade; the whole light breathes
+ * by opacity while asked.
+ */
+@layer components {
+  .light {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .light[data-breathing] {
+    animation: ambient-breathe var(--duration-breath) var(--ease-standard) infinite alternate;
+    animation-play-state: var(--loop-state);
+  }
+
+  .glow {
+    --glow-colour: var(--accent-glow);
+    --glow-wide: 0.4;
+    --glow-inner: 0.17;
+
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--duration-deliberate) var(--ease-standard);
+  }
+
+  /* The safe glow colour is at 40 % where the accent's is at 35 %: the same 14 % and 6 % on screen. */
+  .glow[data-tone='safe'] {
+    --glow-colour: var(--level-safe-glow);
+    --glow-wide: 0.35;
+    --glow-inner: 0.15;
+  }
+
+  .glow[data-shown] {
+    opacity: 1;
+  }
+
+  .glow::before,
+  .glow::after {
+    position: absolute;
+    content: '';
+    inset: 0;
+  }
+
+  .glow::before {
+    background: radial-gradient(60% 50% at 50% 0%, var(--glow-colour), transparent);
+    opacity: var(--glow-wide);
+  }
+
+  .glow::after {
+    background: radial-gradient(30% 28% at 50% 0%, var(--glow-colour), transparent);
+    opacity: var(--glow-inner);
+  }
+
+  @keyframes ambient-breathe {
+    to {
+      opacity: 0.7;
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    .light {
+      display: none;
+    }
+  }
+}

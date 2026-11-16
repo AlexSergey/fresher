@@ -1,0 +1,143 @@
+/*
+ * The native modal dialog, at elevation 3. The dialog element is the frame (and its backdrop is the click target
+ * outside the panel); the panel inside lays out the header, the body that scrolls and the footer.
+ *
+ * `::backdrop` inherits no custom property before Safari 17.4: the colour tokens are defined on it (tokens/), its
+ * durations and easings carry their values as fallbacks, and motion off stops its animation here (the motion
+ * utilities do not reach it).
+ */
+@layer components {
+  .modal {
+    --modal-width: 560px;
+    --modal-edge: var(--space-8);
+
+    width: min(var(--modal-width), 100vw - 2 * var(--modal-edge));
+    max-width: none;
+    max-height: calc(100vh - 2 * var(--modal-edge));
+    padding: 0;
+    border: 1px solid var(--elevation-3-border);
+    border-radius: var(--radius-lg);
+    animation: modal-in var(--duration-base) var(--ease-standard);
+    background: var(--surface-raised-sheen), var(--elevation-3-surface);
+    box-shadow: var(--elevation-3-shadow);
+    color: var(--text-primary);
+  }
+
+  .modal[data-size='large'] {
+    --modal-width: 720px;
+  }
+
+  .modal[open] {
+    display: flex;
+  }
+
+  .modal::backdrop {
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    animation: modal-backdrop-in var(--duration-base, 200ms) var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+    background-color: var(--surface-backdrop);
+  }
+
+  .modal[data-closing]::backdrop {
+    animation: modal-backdrop-out var(--duration-fast, 120ms) var(--ease-exit, cubic-bezier(0.4, 0, 1, 1)) forwards;
+  }
+
+  :root[data-motion='off'] .modal::backdrop {
+    animation: none;
+  }
+
+  :root[data-motion='off'] .modal[data-closing]::backdrop {
+    opacity: 0;
+  }
+
+  /* The sheet: attached to the bottom of the main pane, as wide as its content column, rising as it enters. */
+  .modal[data-kind='sheet'] {
+    --sheet-inset: max(var(--size-gutter), calc((100vw - var(--size-sidebar) - var(--size-content)) / 2));
+
+    width: auto;
+    max-height: 70vh;
+    margin: auto var(--sheet-inset) 0 calc(var(--size-sidebar) + var(--sheet-inset));
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: sheet-in var(--duration-base) var(--ease-enter);
+  }
+
+  @media (max-width: 999px) {
+    .modal[data-kind='sheet'] {
+      --sheet-inset: var(--size-gutter-narrow);
+    }
+  }
+
+  .panel {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: var(--space-5) var(--space-5) var(--space-3) var(--space-6);
+    gap: var(--space-4);
+  }
+
+  .heading {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .title {
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .description {
+    color: var(--text-secondary);
+  }
+
+  .body {
+    min-height: 0;
+    flex: 1;
+    padding: var(--space-2) var(--space-6) var(--space-5);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--border-subtle);
+    gap: var(--space-2);
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: scale(var(--scale-enter));
+    }
+  }
+
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--distance-3));
+    }
+  }
+
+  @keyframes modal-backdrop-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes modal-backdrop-out {
+    to {
+      opacity: 0;
+    }
+  }
+}

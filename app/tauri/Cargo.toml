@@ -19,7 +19,7 @@ fresher-engine = { path = "../../crates/engine" }
 # Registered in debug builds only (`src/compose.rs`); Cargo cannot make a dependency depend on `debug_assertions`.
 fresher-module-demo = { path = "../../modules/demo" }
 fresher-store = { path = "../../crates/store" }
-tauri = { version = "=2.12.5", features = [] }
+tauri = { version = "=2.12.5", features = ["macos-private-api"] }
 tauri-plugin-single-instance = "=2.5.5"
 thiserror.workspace = true
 

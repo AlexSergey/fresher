@@ -27,8 +27,8 @@ mod walk;
 pub use cancel::CancelToken;
 pub use category::{CategoryDescriptor, CategoryText};
 pub use command::{
-    CategoryTotal, EngineStatus, FindingsPage, FindingsQuery, LastScan, Locale, ModuleInfo, Operation, Overview,
-    SettingUpdate, SettingsFile, SettingsView,
+    CategoryTotal, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, LastScan, Locale, ModuleInfo, Operation,
+    Overview, SettingUpdate, SettingsFile, SettingsView,
 };
 pub use danger::DangerLevel;
 pub use dictionary::{Dictionary, DictionaryError};

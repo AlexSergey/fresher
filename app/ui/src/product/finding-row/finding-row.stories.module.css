@@ -1,0 +1,6 @@
+/* A finding row's stories: the row on its own, in a list's frame. */
+@layer components {
+  .frame {
+    display: grid;
+  }
+}

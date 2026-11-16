@@ -1,0 +1,93 @@
+/*
+ * The motion tokens (docs/plans/003-base-ui/00-design.md, "Motion"); motion.ts mirrors them for the hooks.
+ * The mode is one attribute on <html>, `data-motion="full | reduced | off"`; without it, the system's "Reduce motion"
+ * decides. Components take every duration, easing and distance from here, and run loops with `--loop-state`.
+ */
+@layer tokens {
+  :root {
+    --duration-press: 80ms;
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --duration-move: 320ms;
+    --duration-slow: 480ms;
+    --duration-deliberate: 800ms;
+    --duration-sweep: 1600ms;
+    --duration-breath: 4000ms;
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --ease-settle: cubic-bezier(0.34, 1.36, 0.64, 1);
+    --ease-linear: linear;
+
+    --distance-1: 4px;
+    --distance-2: 8px;
+    --distance-3: 16px;
+
+    --scale-press: 0.97;
+    --scale-press-card: 0.99;
+    --scale-enter: 0.98;
+
+    /* A child's delay is calc(min(var(--i), var(--stagger-steps)) * var(--stagger)). */
+    --stagger: 30ms;
+    --stagger-steps: 8;
+
+    --loop-state: running;
+  }
+
+  /* Reduced: nothing travels or scales, fades last at most --duration-fast, loops stand still. */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full'], [data-motion='off']) {
+      --duration-base: var(--duration-fast);
+      --duration-move: var(--duration-fast);
+      --duration-slow: var(--duration-fast);
+      --duration-deliberate: var(--duration-fast);
+      --distance-1: 0px;
+      --distance-2: 0px;
+      --distance-3: 0px;
+      --scale-press: 1;
+      --scale-press-card: 1;
+      --scale-enter: 1;
+      --stagger: 0ms;
+      --loop-state: paused;
+    }
+  }
+
+  :root[data-motion='reduced'] {
+    --duration-base: var(--duration-fast);
+    --duration-move: var(--duration-fast);
+    --duration-slow: var(--duration-fast);
+    --duration-deliberate: var(--duration-fast);
+    --distance-1: 0px;
+    --distance-2: 0px;
+    --distance-3: 0px;
+    --scale-press: 1;
+    --scale-press-card: 1;
+    --scale-enter: 1;
+    --stagger: 0ms;
+    --loop-state: paused;
+  }
+
+  /* Off, for screenshots and tests: every change is instant, every loop stands at its first frame. */
+  :root[data-motion='off'] {
+    --duration-press: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-move: 0ms;
+    --duration-slow: 0ms;
+    --duration-deliberate: 0ms;
+    --stagger: 0ms;
+    --loop-state: paused;
+  }
+}
+
+@layer utilities {
+  [data-motion='off'] *,
+  [data-motion='off'] *::before,
+  [data-motion='off'] *::after {
+    animation-delay: 0s;
+    animation-play-state: paused;
+    transition-delay: 0s;
+    transition-duration: 0s;
+  }
+}

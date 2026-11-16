@@ -12,9 +12,9 @@ mod support {
 
     use fresher_core::{
         Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Completeness,
-        DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingsPage, FindingsQuery,
-        LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, Operation, Overview, Refusal, Removal, ScanId,
-        ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue,
+        DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage,
+        FindingsQuery, LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, Operation, Overview, Refusal, Removal,
+        ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue,
         SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit,
     };
     use ts_rs::{Config, TS};
@@ -46,6 +46,7 @@ mod support {
             declaration::<CategoryTotal>(&config),
             declaration::<ModuleInfo>(&config),
             declaration::<FindingsQuery>(&config),
+            declaration::<FindingOrder>(&config),
             declaration::<FindingsPage>(&config),
             declaration::<Finding>(&config),
             declaration::<FindingId>(&config),

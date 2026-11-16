@@ -141,7 +141,7 @@ mod negative {
 }
 
 mod positive {
-    use fresher_core::{FindingsQuery, SettingKey, SettingUpdate, SettingValue, SettingsFile};
+    use fresher_core::{FindingOrder, FindingsQuery, SettingKey, SettingUpdate, SettingValue, SettingsFile};
     use serde_json::json;
 
     use crate::app::{engine, until_finished};
@@ -176,7 +176,7 @@ mod positive {
         let view = restarted.settings().unwrap();
         assert_eq!(view.file, SettingsFile::Loaded);
         assert_eq!(view.values.get(&count), Some(&SettingValue::Number(3)));
-        let page = restarted.findings(&FindingsQuery::new(None, None, 0, 100)).unwrap();
+        let page = restarted.findings(&FindingsQuery::new(None, None, FindingOrder::Found, 0, 100)).unwrap();
         assert_eq!(page.total, 3);
     }
 }

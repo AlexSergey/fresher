@@ -1,0 +1,21 @@
+/* A 1 px hairline in the subtle border colour. */
+@layer components {
+  .divider {
+    flex: none;
+    align-self: stretch;
+    border: 0;
+    margin: 0;
+    background-color: var(--border-subtle);
+  }
+
+  .divider[aria-orientation='horizontal'] {
+    width: 100%;
+    height: 1px;
+  }
+
+  .divider[aria-orientation='vertical'] {
+    width: 1px;
+    height: auto;
+    min-height: 1em;
+  }
+}

@@ -1,0 +1,8 @@
+/* The size's stories: its type steps one under another. */
+@layer components {
+  .column {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-2);
+  }
+}

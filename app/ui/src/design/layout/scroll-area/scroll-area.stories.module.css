@@ -1,0 +1,13 @@
+/* The scroll area's stories: a box of a fixed height, filled or not. */
+@layer components {
+  .stage {
+    height: 200px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+  }
+
+  .paragraph {
+    padding: var(--space-2) var(--space-3);
+    color: var(--text-secondary);
+  }
+}

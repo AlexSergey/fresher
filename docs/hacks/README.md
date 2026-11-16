@@ -100,3 +100,13 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
   feature takes the module over.
 - **If cleaned up:** removing the `cfg` registers made-up findings in the shipped app; removing the dependency breaks
   debug builds.
+
+## Review cannot remove yet
+
+- **What:** the review screen's **Move to Trash…** button is disabled, with a plain line under it saying removal comes
+  in a later version; the screen mounts no `ConfirmDialog` and no `ResultSummary` (both are complete in the gallery).
+- **Where:** `app/ui/src/screens/review/review-screen.tsx`.
+- **Why:** the core has no cleanup command until plan [008](../plans/008-safe-removal/readme.md); the dialog must show
+  the core's cleanup plan, never the UI's own sums.
+- **If cleaned up:** enabling the button without a core plan would show the confirmation with the UI's preview sums and
+  nothing behind its confirm; plan 008 enables it and feeds `ConfirmDialog` from the core's plan.

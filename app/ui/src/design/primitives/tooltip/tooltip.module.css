@@ -1,0 +1,50 @@
+/*
+ * A short text on an overlay surface, above everything; it fades in from --distance-1 toward the child's side.
+ * Until the component has measured and placed it, it is laid out hidden.
+ */
+@layer components {
+  .anchor {
+    display: inline-flex;
+  }
+
+  .tooltip {
+    --tooltip-from: var(--distance-1);
+
+    position: fixed;
+    z-index: var(--z-tooltip);
+    top: 0;
+    left: 0;
+    max-width: 240px;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--elevation-2-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-overlay);
+    box-shadow: var(--elevation-2-shadow);
+    color: var(--text-primary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .tooltip[data-side='bottom'] {
+    --tooltip-from: calc(-1 * var(--distance-1));
+  }
+
+  .tooltip[data-placed] {
+    animation: tooltip-in var(--duration-fast) var(--ease-enter);
+    visibility: visible;
+  }
+
+  @keyframes tooltip-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--tooltip-from));
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

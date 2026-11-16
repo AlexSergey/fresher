@@ -33,9 +33,13 @@ describe('the IPC module', () => {
     it('treats a failure that is not a refusal as an unreachable core', async () => {
       mockCore({ getFindings: refuse({ code: 'busy', running: 'scan' } as unknown as Refusal) });
 
-      const notRefusal: unknown = await getFindings({ category: null, limit: 1, module: null, offset: 0 }).catch(
-        (failure: unknown) => failure,
-      );
+      const notRefusal: unknown = await getFindings({
+        category: null,
+        limit: 1,
+        module: null,
+        offset: 0,
+        order: 'found',
+      }).catch((failure: unknown) => failure);
       const unanswered: unknown = await getOverview().catch((failure: unknown) => failure);
 
       expect(failureOf(notRefusal)).toEqual({ kind: 'unreachable' });
@@ -62,7 +66,7 @@ describe('the IPC module', () => {
 
   describe('positive cases', () => {
     it('passes every command its arguments by name', async () => {
-      const query: FindingsQuery = { category: 'demo.caches', limit: 50, module: 'demo', offset: 0 };
+      const query: FindingsQuery = { category: 'demo.caches', limit: 50, module: 'demo', offset: 0, order: 'largest' };
       const update = { key: 'demo.count', value: { kind: 'number', value: 3 } } as const;
       const seen: unknown[] = [];
       const answer =

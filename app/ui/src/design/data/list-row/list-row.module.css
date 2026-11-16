@@ -1,0 +1,131 @@
+/*
+ * A list's row: hover lightens its background; selection lays the accent's glow at 40 % over it (14 % Iris, the
+ * tint recipe of the levels) and lights a 2 px leading edge, in a level's colour when one is given (High also glows).
+ * The focus ring is inset: a scrolling list would clip one drawn outside.
+ */
+@layer components {
+  .row {
+    --row-edge: var(--accent-text);
+    --row-edge-glow: none;
+    --row-focus-ring: inset 0 0 0 2px var(--accent-text);
+
+    position: relative;
+    display: flex;
+    height: var(--size-row);
+    align-items: center;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: var(--text-primary);
+    cursor: default;
+    gap: var(--space-3);
+    isolation: isolate;
+    outline: none;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .row::before {
+    position: absolute;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--accent-glow);
+    content: '';
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .row::after {
+    position: absolute;
+    top: var(--space-2);
+    bottom: var(--space-2);
+    left: 0;
+    width: 2px;
+    border-radius: var(--radius-full);
+    background-color: var(--row-edge);
+    box-shadow: var(--row-edge-glow);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .row:hover:not([data-disabled]),
+  .row[data-hover] {
+    background-color: var(--surface-hover);
+  }
+
+  .row[data-selected]::before {
+    opacity: 0.4;
+  }
+
+  .row[data-selected]::after {
+    opacity: 1;
+  }
+
+  .row[data-level='safe'] {
+    --row-edge: var(--level-safe-fg);
+  }
+
+  .row[data-level='low'] {
+    --row-edge: var(--level-low-fg);
+  }
+
+  .row[data-level='medium'] {
+    --row-edge: var(--level-medium-fg);
+  }
+
+  .row[data-level='high'] {
+    --row-edge: var(--level-high-fg);
+    --row-edge-glow: var(--glow-high);
+  }
+
+  .row:focus-visible,
+  .row[data-focus] {
+    box-shadow: var(--row-focus-ring);
+  }
+
+  .leading,
+  .trailing {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .trailing {
+    color: var(--text-secondary);
+  }
+
+  .content {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .title,
+  .subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .title {
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .row[data-disabled],
+  .row[data-disabled] .subtitle,
+  .row[data-disabled] .trailing {
+    color: var(--text-disabled);
+  }
+}

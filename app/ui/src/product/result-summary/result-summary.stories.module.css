@@ -1,0 +1,8 @@
+/* The result summary's stories: the summary fills the story's frame, as it fills its panel in the app. */
+@layer components {
+  .stage {
+    overflow: hidden;
+    margin: calc(-1 * var(--space-6));
+    border-radius: var(--radius-lg);
+  }
+}

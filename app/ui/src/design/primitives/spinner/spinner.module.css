@@ -1,0 +1,35 @@
+/* An arc on a faint track, turned by a transform loop that runs only while `--loop-state` is `running`. */
+@layer components {
+  .spinner {
+    /* A quarter and a bit of the circle's 39.3 units. */
+    --spinner-arc: 12 40;
+
+    flex: none;
+    animation: spinner-turn var(--duration-deliberate) var(--ease-linear) infinite;
+    animation-play-state: var(--loop-state);
+    color: currentcolor;
+    fill: none;
+    stroke-width: 2;
+  }
+
+  .track {
+    stroke: currentcolor;
+    stroke-opacity: 0.2;
+  }
+
+  .arc {
+    stroke: currentcolor;
+    stroke-dasharray: var(--spinner-arc);
+    stroke-linecap: round;
+  }
+
+  @keyframes spinner-turn {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

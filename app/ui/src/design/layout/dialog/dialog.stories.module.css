@@ -1,0 +1,27 @@
+/* The dialog's stories: a page as tall as the window behind the dialog, and the list of what it removes. */
+@layer components {
+  .stage {
+    display: grid;
+    height: 646px;
+    align-content: start;
+    gap: var(--space-4);
+    justify-items: start;
+  }
+
+  .behind {
+    font-size: var(--type-title-1-size);
+    font-weight: var(--type-title-1-weight);
+    line-height: var(--type-title-1-line);
+  }
+
+  .list {
+    display: grid;
+    padding: 0;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1);
+    line-height: var(--type-footnote-line);
+    list-style: none;
+  }
+}

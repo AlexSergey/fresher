@@ -1,0 +1,7 @@
+/* The button's box (button.module.css), made square around its one icon, whatever the order of the two sheets. */
+@layer components {
+  .square[data-size] {
+    width: var(--button-height);
+    padding: 0;
+  }
+}

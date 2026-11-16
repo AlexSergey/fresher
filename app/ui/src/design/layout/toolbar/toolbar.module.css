@@ -1,0 +1,70 @@
+/*
+ * A sticky bar at the top of the scrolling content, transparent at rest so the light behind the screen shows. Once
+ * content scrolls under it, its window-coloured fill with a strong hairline (`::before`) and a soft shade below it
+ * (`::after`) fade in.
+ */
+@layer components {
+  .sentinel {
+    height: 1px;
+    margin-bottom: -1px;
+  }
+
+  .toolbar {
+    position: sticky;
+    z-index: var(--z-sticky);
+    top: 0;
+    display: flex;
+    height: var(--size-toolbar);
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--content-inset, var(--size-gutter));
+    gap: var(--space-4);
+  }
+
+  .toolbar::before,
+  .toolbar::after {
+    position: absolute;
+    right: 0;
+    left: 0;
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .toolbar::before {
+    z-index: -1;
+    top: 0;
+    bottom: 0;
+    border-bottom: 1px solid var(--border-strong);
+    background-color: var(--surface-window);
+  }
+
+  .toolbar::after {
+    top: 100%;
+    height: var(--space-3);
+    background: linear-gradient(180deg, var(--surface-window), transparent);
+  }
+
+  .toolbar[data-scrolled]::before,
+  .toolbar[data-scrolled]::after {
+    opacity: 1;
+  }
+
+  .title {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}

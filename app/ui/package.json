@@ -1,6 +1,6 @@
 {
   "name": "@fresher/ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "The user interface of Fresher",
   "repository": {
@@ -12,19 +12,23 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
+    "build:e2e": "tsc --noEmit && vite build --mode e2e",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:update": "playwright test --update-snapshots"
+    "test:e2e": "playwright test --project gallery --project webkit --project chromium",
+    "test:e2e:update": "playwright test --project gallery --project webkit --project chromium --update-snapshots",
+    "test:perf": "playwright test --project perf --project perf-chromium --workers 1"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.4",
+    "lucide-react": "1.70.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.65.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",

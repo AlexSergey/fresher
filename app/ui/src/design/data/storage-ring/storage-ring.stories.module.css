@@ -1,0 +1,14 @@
+/* The ring's stories: a centre as the overview's hero has it, a caption over the number. */
+@layer components {
+  .centre {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-0-5);
+  }
+
+  .caption {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+}

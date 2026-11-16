@@ -1,0 +1,8 @@
+/* A finding list's stories: the list in a frame of a fixed height, as a screen gives it. */
+@layer components {
+  .frame {
+    height: 420px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+}

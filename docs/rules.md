@@ -40,7 +40,7 @@ No network access, no telemetry, no crash upload. The scan results, the scan cac
 ## 7. Simple interface
 
 Every screen answers one question. A number on screen has a label in plain English; detail is shown on demand, not by
-default. The visual direction is Dark Premium ([`goal.md`](./goal.md), section 6).
+default. The visual direction is Graphite and Iris ([`goal.md`](./goal.md), section 6).
 
 Every choice offered to the user (a cleanup option, a button, a setting) carries a very clear, short, plain-English
 description of what it does and what the user keeps or loses — one or two sentences, no jargon (the user, 2026-11-15).

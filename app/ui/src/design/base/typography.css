@@ -1,0 +1,39 @@
+/* The page's text: system fonts on the macOS body size, tabular figures for every number. */
+@layer base {
+  html {
+    background-color: var(--surface-window);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: var(--type-body-line);
+    text-rendering: optimizelegibility;
+  }
+
+  body {
+    min-height: 100vh;
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-weight);
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+
+  [data-numeric],
+  [data-size] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @supports (text-wrap: balance) {
+    h1,
+    h2,
+    h3 {
+      text-wrap: balance;
+    }
+  }
+}

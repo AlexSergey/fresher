@@ -78,7 +78,9 @@ pub(crate) fn get_access_status(engine: State<'_, Engine>) -> AccessStatus {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{CommandError, FindingsQuery, Operation, Refusal, SettingKey, SettingUpdate, SettingValue};
+        use fresher_core::{
+            CommandError, FindingOrder, FindingsQuery, Operation, Refusal, SettingKey, SettingUpdate, SettingValue,
+        };
 
         use crate::commands::{cancel_scan, get_dictionary, get_findings, start_scan, subscribe, update_setting};
         use crate::testing::{Shell, is_scan_finished, recording_channel, until_finished};
@@ -105,7 +107,7 @@ mod tests {
         #[test]
         fn get_findings_with_an_unknown_module_is_refused() {
             let shell = Shell::new();
-            let query = FindingsQuery::new(Some("gone".into()), None, 0, 10);
+            let query = FindingsQuery::new(Some("gone".into()), None, FindingOrder::Found, 0, 10);
 
             assert_eq!(
                 get_findings(shell.engine(), query),
@@ -152,7 +154,9 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{Access, EngineStatus, FindingsQuery, SettingUpdate, SettingValue, SettingsFile};
+        use fresher_core::{
+            Access, EngineStatus, FindingOrder, FindingsQuery, SettingUpdate, SettingValue, SettingsFile,
+        };
 
         use crate::commands::{
             app_version, get_access_status, get_dictionary, get_findings, get_modules, get_overview, get_settings,
@@ -179,7 +183,11 @@ mod tests {
             assert!(types.contains(&"findings-added"), "{types:?}");
             assert_eq!(events.last().map(|event| event["scan"].as_u64()), Some(Some(scan.get().into())));
             assert_eq!(get_overview(shell.engine()).unwrap().status, EngineStatus::Idle);
-            let page = get_findings(shell.engine(), FindingsQuery::new(Some("demo".into()), None, 0, 500)).unwrap();
+            let page = get_findings(
+                shell.engine(),
+                FindingsQuery::new(Some("demo".into()), None, FindingOrder::Found, 0, 500),
+            )
+            .unwrap();
             assert!(page.total > 0);
         }
 

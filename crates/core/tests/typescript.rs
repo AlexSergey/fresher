@@ -3,10 +3,11 @@
 mod positive {
     use fresher_core::{
         Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Completeness,
-        DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingsPage, FindingsQuery,
-        LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, NewFinding, Operation, Overview, Refusal, Removal,
-        ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue,
-        SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit,
+        DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage,
+        FindingsQuery, LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, NewFinding, Operation, Overview, Refusal,
+        Removal, ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate,
+        SettingValue, SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand,
+        ToolId, Unit,
     };
     use ts_rs::{Config, TS};
 
@@ -32,6 +33,7 @@ mod positive {
             declaration::<Finding>(),
             declaration::<FindingId>(),
             declaration::<FindingKey>(),
+            declaration::<FindingOrder>(),
             declaration::<FindingsPage>(),
             declaration::<FindingsQuery>(),
             declaration::<LastScan>(),

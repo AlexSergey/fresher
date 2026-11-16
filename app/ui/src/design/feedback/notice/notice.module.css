@@ -1,0 +1,56 @@
+/* An inline banner on a level's tint: info on Low's cyan, warning on Medium's amber, danger on High's red. */
+@layer components {
+  .notice {
+    --notice-fg: var(--level-low-fg);
+    --notice-tint: var(--level-low-tint);
+    --notice-border: var(--level-low-border);
+
+    display: flex;
+    align-items: flex-start;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--notice-border);
+    border-radius: var(--radius-md);
+    background-color: var(--notice-tint);
+    color: var(--text-primary);
+    gap: var(--space-3);
+  }
+
+  .notice[data-tone='warning'] {
+    --notice-fg: var(--level-medium-fg);
+    --notice-tint: var(--level-medium-tint);
+    --notice-border: var(--level-medium-border);
+  }
+
+  .notice[data-tone='danger'] {
+    --notice-fg: var(--level-high-fg);
+    --notice-tint: var(--level-high-tint);
+    --notice-border: var(--level-high-border);
+  }
+
+  .icon {
+    display: inline-flex;
+    flex: none;
+    margin-top: calc((var(--type-body-strong-line) - 16px) / 2);
+    color: var(--notice-fg);
+  }
+
+  .body {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: var(--space-0-5);
+  }
+
+  .title {
+    margin: 0;
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+  }
+
+  .text {
+    color: var(--text-secondary);
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+  }
+}

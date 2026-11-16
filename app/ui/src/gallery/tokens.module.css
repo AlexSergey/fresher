@@ -1,0 +1,110 @@
+/* The samples of the token stories; each sample takes its token through a custom property set by the story. */
+@layer components {
+  .rows {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .swatch {
+    display: grid;
+    width: 96px;
+    margin: 0;
+    gap: var(--space-1-5);
+  }
+
+  .chip {
+    height: 48px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--swatch);
+  }
+
+  .name {
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: var(--type-caption-size);
+    line-height: var(--type-caption-line);
+  }
+
+  .typeRow,
+  .measureRow,
+  .levelRow {
+    display: grid;
+    align-items: center;
+    gap: var(--space-4);
+    grid-template-columns: 96px 1fr;
+  }
+
+  .sample {
+    font-size: var(--sample-size);
+    font-weight: var(--sample-weight);
+    letter-spacing: var(--sample-tracking);
+    line-height: var(--sample-line);
+  }
+
+  .space {
+    width: var(--sample-space);
+    height: var(--space-2);
+    border-radius: var(--radius-xs);
+    background-color: var(--accent-text);
+  }
+
+  .radius {
+    width: 96px;
+    height: 48px;
+    border: 1px solid var(--border-control);
+    border-radius: var(--sample-radius);
+    background-color: var(--surface-raised);
+  }
+
+  .cards {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .card {
+    display: grid;
+    height: 96px;
+    padding: var(--space-4);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    background-color: var(--card-surface);
+    background-image: var(--surface-raised-sheen);
+    box-shadow: var(--card-shadow);
+  }
+
+  .level {
+    display: inline-flex;
+    width: max-content;
+    align-items: center;
+    padding: var(--space-0-5) var(--space-2);
+    border: 1px solid var(--level-border);
+    border-radius: var(--radius-xs);
+    background-color: var(--level-tint);
+    color: var(--level-fg);
+    font-size: var(--type-caption-size);
+    font-weight: var(--type-caption-weight);
+    gap: var(--space-1);
+    letter-spacing: var(--type-caption-tracking);
+    line-height: var(--type-caption-line);
+  }
+
+  .glow {
+    display: inline-grid;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background-color: var(--surface-raised);
+    box-shadow: var(--level-glow);
+    color: var(--level-fg);
+    place-items: center;
+  }
+}

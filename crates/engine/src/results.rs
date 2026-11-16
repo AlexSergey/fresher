@@ -1,10 +1,11 @@
 //! The findings of the current or last scan, by id, and the totals per category.
 
+use std::cmp::Reverse;
 use std::collections::BTreeMap;
 
 use fresher_core::{
-    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Finding, FindingId, FindingsPage, LastScan,
-    ModuleId, Sizes,
+    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Finding, FindingId, FindingOrder,
+    FindingsPage, LastScan, ModuleId, Sizes,
 };
 
 /// The findings of one scan, in id order. Ids keep increasing across scans, so an id from an earlier scan is unknown.
@@ -20,6 +21,7 @@ pub(crate) struct Results {
 pub(crate) struct Filter<'a> {
     pub(crate) module: Option<ModuleId>,
     pub(crate) category: Option<&'a str>,
+    pub(crate) order: FindingOrder,
     pub(crate) offset: u32,
     pub(crate) limit: u32,
 }
@@ -59,16 +61,27 @@ impl Results {
             filter.module.is_none_or(|module| finding.module() == module)
                 && filter.category.is_none_or(|category| finding.finding().category().as_str() == category)
         });
-        let total = u32::try_from(matching.clone().count()).unwrap_or(u32::MAX);
         let skip = usize::try_from(filter.offset).unwrap_or(usize::MAX);
         let take = usize::try_from(filter.limit).unwrap_or(usize::MAX);
-        let findings = matching.skip(skip).take(take).cloned().collect();
+        let (total, findings) = match filter.order {
+            FindingOrder::Found => (matching.clone().count(), matching.skip(skip).take(take).cloned().collect()),
+            FindingOrder::Largest => {
+                let mut sorted: Vec<&Finding> = matching.collect();
+                sorted.sort_unstable_by_key(|finding| (Reverse(finding.finding().sizes().allocated), finding.id()));
+                (sorted.len(), sorted.into_iter().skip(skip).take(take).cloned().collect())
+            }
+        };
+        let total = u32::try_from(total).unwrap_or(u32::MAX);
         FindingsPage { findings, offset: filter.offset, total }
     }
 
-    /// One total per category that has findings, in the order of `categories`.
-    pub(crate) fn totals<'a>(&self, categories: impl Iterator<Item = &'a CategoryDescriptor>) -> Vec<CategoryTotal> {
+    /// One total per category that has findings, in the order of `categories`, and every finding summed.
+    pub(crate) fn totals<'a>(
+        &self,
+        categories: impl Iterator<Item = &'a CategoryDescriptor>,
+    ) -> (Vec<CategoryTotal>, Sizes) {
         let mut totals: BTreeMap<CategoryId, CategoryTotal> = BTreeMap::new();
+        let mut found = Sizes::ZERO;
         for finding in &self.findings {
             let new = finding.finding();
             let total = totals.entry(new.category()).or_insert(CategoryTotal {
@@ -80,8 +93,9 @@ impl Results {
             total.count = total.count.saturating_add(1);
             total.sizes = add(total.sizes, new.sizes());
             total.highest_danger = total.highest_danger.max(new.danger());
+            found = add(found, new.sizes());
         }
-        categories.filter_map(|category| totals.remove(&category.id())).collect()
+        (categories.filter_map(|category| totals.remove(&category.id())).collect(), found)
     }
 
     #[cfg(test)]
@@ -102,10 +116,46 @@ fn add(total: Sizes, more: Sizes) -> Sizes {
 
 #[cfg(test)]
 mod tests {
-    mod negative {
-        use fresher_core::{ByteSize, Completeness, Sizes};
+    use fresher_core::{ByteSize, CategoryDescriptor, DangerLevel, Finding, FindingId, FindingOrder, Sizes};
 
-        use crate::results::add;
+    use crate::results::{Filter, Results};
+    use crate::testing::{category, finding};
+
+    fn alpha() -> CategoryDescriptor {
+        category("alpha.caches", DangerLevel::Safe)
+    }
+
+    fn beta() -> CategoryDescriptor {
+        category("beta.deps", DangerLevel::Low)
+    }
+
+    fn sizes(allocated: u64) -> Sizes {
+        Sizes::complete(ByteSize::new(allocated), ByteSize::new(allocated))
+    }
+
+    /// Results holding one finding per entry, ids from 1 in the order given.
+    fn results(findings: &[(&CategoryDescriptor, Sizes)]) -> Results {
+        let mut results = Results::new();
+        let batch: Vec<Finding> = (1..)
+            .zip(findings)
+            .map(|(id, (category, sizes))| {
+                Finding::new(FindingId::new(id), finding(category, format!("/f/{id}"), *sizes))
+            })
+            .collect();
+        results.append(&batch);
+        results
+    }
+
+    fn page_ids(results: &Results, order: FindingOrder, offset: u32, limit: u32) -> Vec<u32> {
+        let filter = Filter { module: None, category: None, order, offset, limit };
+        results.page(filter).findings.iter().map(|finding| finding.id().get()).collect()
+    }
+
+    mod negative {
+        use fresher_core::{ByteSize, Completeness, FindingOrder, Sizes};
+
+        use super::{alpha, beta, page_ids, results, sizes};
+        use crate::results::{Filter, add};
 
         #[test]
         fn a_sum_past_the_largest_size_stays_at_the_largest() {
@@ -119,6 +169,112 @@ mod tests {
             assert_eq!(sum.logical, ByteSize::new(u64::MAX));
             assert_eq!(sum.allocated, ByteSize::new(6));
             assert_eq!(sum.completeness, Completeness::Unknown);
+        }
+
+        #[test]
+        fn found_is_zero_and_complete_without_findings() {
+            let (totals, found) = results(&[]).totals([alpha()].iter());
+
+            assert_eq!(totals, []);
+            assert_eq!(found, Sizes::ZERO);
+        }
+
+        #[test]
+        fn found_takes_the_weakest_completeness() {
+            let partial = Sizes { completeness: Completeness::Partial, ..sizes(5) };
+            let unknown = Sizes { completeness: Completeness::Unknown, ..sizes(0) };
+
+            let (_, found) = results(&[(&alpha(), sizes(1)), (&beta(), unknown), (&alpha(), partial)])
+                .totals([alpha(), beta()].iter());
+
+            assert_eq!(found.allocated, ByteSize::new(6));
+            assert_eq!(found.completeness, Completeness::Unknown);
+        }
+
+        #[test]
+        fn found_saturates_at_the_largest_size() {
+            let (_, found) =
+                results(&[(&alpha(), sizes(u64::MAX)), (&beta(), sizes(7))]).totals([alpha(), beta()].iter());
+
+            assert_eq!(found, sizes(u64::MAX));
+        }
+
+        #[test]
+        fn largest_order_breaks_ties_by_id() {
+            let results =
+                results(&[(&alpha(), sizes(5)), (&beta(), sizes(9)), (&alpha(), sizes(5)), (&beta(), sizes(5))]);
+
+            assert_eq!(page_ids(&results, FindingOrder::Largest, 0, 10), [2, 1, 3, 4]);
+        }
+
+        #[test]
+        fn an_offset_past_the_end_gives_an_empty_page_in_both_orders() {
+            let results = results(&[(&alpha(), sizes(1)), (&alpha(), sizes(2))]);
+
+            for order in [FindingOrder::Found, FindingOrder::Largest] {
+                let page = results.page(Filter { module: None, category: None, order, offset: 5, limit: 10 });
+
+                assert_eq!(page.findings, []);
+                assert_eq!(page.offset, 5);
+                assert_eq!(page.total, 2);
+            }
+        }
+    }
+
+    mod positive {
+        use fresher_core::FindingOrder;
+
+        use super::{alpha, beta, page_ids, results, sizes};
+        use crate::results::Filter;
+
+        #[test]
+        fn found_sums_every_category() {
+            let (totals, found) = results(&[(&alpha(), sizes(1)), (&beta(), sizes(20)), (&alpha(), sizes(300))])
+                .totals([alpha(), beta()].iter());
+
+            assert_eq!(totals.len(), 2);
+            assert_eq!(found, sizes(321));
+        }
+
+        #[test]
+        fn largest_order_pages_through_every_finding_once() {
+            let all: Vec<_> =
+                (0..25_u64).map(|n| (if n % 2 == 0 { alpha() } else { beta() }, sizes(n * 7 % 11))).collect();
+            let entries: Vec<_> = all.iter().map(|(category, sizes)| (category, *sizes)).collect();
+            let results = results(&entries);
+
+            let mut paged = Vec::new();
+            for offset in (0..25).step_by(4) {
+                paged.extend(page_ids(&results, FindingOrder::Largest, offset, 4));
+            }
+
+            let mut expected: Vec<u32> = (1..=25).collect();
+            expected.sort_by_key(|id| (std::cmp::Reverse(all[*id as usize - 1].1.allocated), *id));
+            assert_eq!(paged, expected);
+        }
+
+        #[test]
+        fn largest_order_keeps_the_filter() {
+            let results = results(&[(&alpha(), sizes(1)), (&beta(), sizes(50)), (&alpha(), sizes(9))]);
+
+            let page = results.page(Filter {
+                module: None,
+                category: Some("alpha.caches"),
+                order: FindingOrder::Largest,
+                offset: 0,
+                limit: 10,
+            });
+
+            assert_eq!(page.findings.iter().map(|finding| finding.id().get()).collect::<Vec<_>>(), [3, 1]);
+            assert_eq!(page.total, 2);
+        }
+
+        #[test]
+        fn found_order_is_the_order_of_the_scan() {
+            let results = results(&[(&alpha(), sizes(1)), (&beta(), sizes(50)), (&alpha(), sizes(9))]);
+
+            assert_eq!(page_ids(&results, FindingOrder::Found, 0, 10), [1, 2, 3]);
+            assert_eq!(page_ids(&results, FindingOrder::Found, 1, 1), [2]);
         }
     }
 }

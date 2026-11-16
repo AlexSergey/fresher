@@ -1,0 +1,13 @@
+/* The divider's stories: text on both sides of it. */
+@layer components {
+  .column {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+}

@@ -1102,7 +1102,7 @@ dependencies = [
 
 [[package]]
 name = "fresher-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "fresher-engine",
@@ -1120,11 +1120,11 @@ dependencies = [
 
 [[package]]
 name = "fresher-cleaner"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "fresher-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "serde",
@@ -1135,7 +1135,7 @@ dependencies = [
 
 [[package]]
 name = "fresher-e2e"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "fresher-engine",
@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "fresher-engine"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "fresher-testing",
@@ -1160,7 +1160,7 @@ dependencies = [
 
 [[package]]
 name = "fresher-module-demo"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "fresher-testing",
@@ -1170,7 +1170,7 @@ dependencies = [
 
 [[package]]
 name = "fresher-rules"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "fresher-testing",
@@ -1183,11 +1183,11 @@ dependencies = [
 
 [[package]]
 name = "fresher-scanner"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "fresher-store"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "serde",
@@ -1199,7 +1199,7 @@ dependencies = [
 
 [[package]]
 name = "fresher-testing"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fresher-core",
  "serde",

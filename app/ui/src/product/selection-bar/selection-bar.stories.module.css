@@ -1,0 +1,7 @@
+/* The selection bar's stories: a stage as a screen gives it, the bar floating at its bottom. */
+@layer components {
+  .stage {
+    position: relative;
+    height: 160px;
+  }
+}

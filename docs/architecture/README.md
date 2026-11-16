@@ -100,3 +100,67 @@ No database: the app keeps its own state in small plain files, with nothing to i
 - **The webview keeps nothing**: the window runs `incognito`.
 - The scan cache (plan 004), the cleanup journal (plan 008) and history (plan 010) choose their files in their own
   plans, under the same policy.
+
+## UI
+
+The interface, as plan [003](../plans/003-base-ui/readme.md) built it; its design argues every choice
+([`00-design.md`](../plans/003-base-ui/00-design.md)): the visual language "Graphite and Iris", the motion system, the
+components and the screens. React, TypeScript and plain CSS Modules over one cascade of layers; no component, animation,
+router, state or CSS library. The baseline is Safari 16.0 (macOS 13, the minimum).
+
+### Folders and boundaries
+
+```
+app/ui/src/
+├── design/    generic, knows nothing of the product; every text comes in by props
+│   ├── tokens/  base/  motion/  icons/        tokens, the cascade, the motion hooks, the icon allowlist
+│   └── primitives/  data/  feedback/  layout/  effects/      one folder per component
+├── product/   the app's components: take the core's types, render texts through i18n
+├── screens/   the app frame and the screens (overview, module, review, settings): wire state to product
+├── modules/   optional custom views per module (none yet); the generic module page is the default
+├── state/  ipc/  i18n/  locales/  test/
+└── gallery/   the dev-only gallery: every component in every state (`gallery.html`, never in `dist/`)
+```
+
+The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imports`, one config per folder in
+`eslint.config.ts`):
+
+- `design/` imports `design/` and React; only `design/icons/` imports `lucide-react`. Never `product/`, `screens/`,
+  `state/`, `ipc/` or `i18n/`.
+- `product/` imports `design/`, `i18n/` and types from `ipc/bindings.generated` (`import type`). Never `ipc/index`,
+  `state/` or `screens/`: it takes its data by props.
+- `screens/` imports everything above, `state/` and `ipc/`.
+- `gallery/` imports `design/`, `product/` and `test/`. Never `state/` or `ipc/index`.
+- Only `ipc/` imports `@tauri-apps/api`.
+
+### State
+
+- **The store keeps totals, not findings**: the engine status, progress, module outcomes, the overview (totals per
+  category and `Overview.found`), the settings, the access status, the dictionary, the last failure. A batch of
+  findings only marks the overview stale; `state/refresh.ts` asks `get_overview` at most 4 times a second during a
+  scan and once more at its end; progress reaches React at most 10 times a second.
+- **Lists are paged**: `state/findings.ts` keeps at most 10 pages of 100 findings per app, least recently used
+  dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. The module page asks the core
+  for `FindingsQuery.order: largest`.
+- **Selection** (`state/selection.ts`): findings, and whole categories minus the findings ticked off in them; emptied
+  when a scan starts; nothing is pre-selected, selecting by level stops at Safe. Its total is a preview summed with
+  the core's rule; the confirmation shows only the core's cleanup plan (plan 008).
+- **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`overview`, `module`, `review`,
+  `settings`); no router. When the focused element leaves the screen, the focus goes to the screen's heading
+  (`screens/keep-focus.ts`).
+
+### The window
+
+- An overlay title bar with the traffic lights inset into the sidebar (`titleBarStyle: "Overlay"`, `hiddenTitle`,
+  `trafficLightPosition`); the top strip is the drag region.
+- The sidebar is the native sidebar material through a transparent window (`transparent: true`, `windowEffects`
+  `sidebar`, following the window's active state). `main.tsx` sets `data-window="vibrant"` only inside the app; in a
+  browser and in every test the window is drawn solid (`design/base/window.css`).
+- `app.macOSPrivateApi: true` with the `macos-private-api` feature of `tauri`: the transparent window needs it, and it
+  only bars the Mac App Store, which the app does not use (the user's decision of 2026-11-15; plan
+  [013](../plans/013-release/readme.md) distributes outside it). Since Tauri 2.12.1 both are documented as no-ops, but
+  `tauri-build` still checks that they agree.
+- The capability (`app/tauri/capabilities/default.json`) allows the app's own commands and exactly two window
+  permissions, for the drag region: `core:window:allow-start-dragging` and `core:window:allow-internal-toggle-maximize`
+  (a double click zooms, as in every Mac window). A test in `app/tauri/tests/` fails on any other `core:` or plugin
+  permission.

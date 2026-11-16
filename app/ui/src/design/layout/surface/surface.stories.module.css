@@ -1,0 +1,14 @@
+/* The surface's stories: a card's title and its line. */
+@layer components {
+  .title {
+    font-size: var(--type-callout-size);
+    font-weight: var(--type-callout-weight);
+    letter-spacing: var(--type-callout-tracking);
+    line-height: var(--type-callout-line);
+  }
+
+  .text {
+    margin-top: var(--space-1);
+    color: var(--text-secondary);
+  }
+}

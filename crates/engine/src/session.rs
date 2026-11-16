@@ -215,8 +215,8 @@ mod tests {
 
     mod negative {
         use fresher_core::{
-            CommandError, DangerLevel, EngineStatus, Event, FindingsQuery, ModuleError, ModuleId, ModuleOutcome,
-            ScanOutcome, WalkError,
+            CommandError, DangerLevel, EngineStatus, Event, FindingOrder, FindingsQuery, ModuleError, ModuleId,
+            ModuleOutcome, ScanOutcome, WalkError,
         };
         use serde_json::json;
 
@@ -446,7 +446,7 @@ mod tests {
         #[test]
         fn refuses_a_query_for_an_unknown_module() {
             let engine = Fixture::new(ScriptedWalk::new()).module(TestModule::builder("alpha")).engine();
-            let query = FindingsQuery::new(Some("gamma".into()), None, 0, 10);
+            let query = FindingsQuery::new(Some("gamma".into()), None, FindingOrder::Found, 0, 10);
 
             assert_eq!(engine.findings(&query), Err(CommandError::UnknownModule { id: "gamma".into() }));
         }
@@ -458,7 +458,9 @@ mod tests {
                 .engine();
             scan(&engine);
 
-            let page = engine.findings(&FindingsQuery::new(None, Some("alpha.unknown".into()), 0, 10)).unwrap();
+            let page = engine
+                .findings(&FindingsQuery::new(None, Some("alpha.unknown".into()), FindingOrder::Found, 0, 10))
+                .unwrap();
 
             assert_eq!((page.findings.len(), page.total), (0, 0));
         }
@@ -468,8 +470,8 @@ mod tests {
         use std::time::Duration;
 
         use fresher_core::{
-            ByteSize, Completeness, DangerLevel, EngineStatus, Event, FindingsQuery, LastScan, ScanId, ScanOutcome,
-            Sizes, Timestamp,
+            ByteSize, Completeness, DangerLevel, EngineStatus, Event, FindingOrder, FindingsQuery, LastScan, ScanId,
+            ScanOutcome, Sizes, Timestamp,
         };
 
         use super::{id, ids, scan_outcome};
@@ -654,9 +656,12 @@ mod tests {
             let engine = Fixture::new(walk).module(alpha).module(beta).engine();
             scan(&engine);
 
-            let alpha = engine.findings(&FindingsQuery::new(Some("alpha".into()), None, 1, 1)).unwrap();
-            let deps = engine.findings(&FindingsQuery::new(None, Some("beta.deps".into()), 0, 10)).unwrap();
-            let all = engine.findings(&FindingsQuery::new(None, None, 0, 10)).unwrap();
+            let alpha =
+                engine.findings(&FindingsQuery::new(Some("alpha".into()), None, FindingOrder::Found, 1, 1)).unwrap();
+            let deps = engine
+                .findings(&FindingsQuery::new(None, Some("beta.deps".into()), FindingOrder::Found, 0, 10))
+                .unwrap();
+            let all = engine.findings(&FindingsQuery::new(None, None, FindingOrder::Found, 0, 10)).unwrap();
 
             assert_eq!((alpha.offset, alpha.total, alpha.findings[0].id()), (1, 3, id(2)));
             assert_eq!((deps.total, deps.findings[0].id()), (1, id(4)));

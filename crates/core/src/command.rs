@@ -45,6 +45,8 @@ pub struct Overview {
     pub status: EngineStatus,
     pub last_scan: Option<LastScan>,
     pub totals: Vec<CategoryTotal>,
+    /// Every finding of the current scan summed; the weakest completeness wins.
+    pub found: Sizes,
 }
 
 /// The scan whose findings the engine holds.
@@ -86,11 +88,22 @@ impl From<&ModuleDescriptor> for ModuleInfo {
     }
 }
 
+/// The order of a page of findings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum FindingOrder {
+    /// The order the scan found them.
+    Found,
+    /// Allocated size, largest first; ties by id.
+    Largest,
+}
+
 /// The input of `get_findings`: a page of the last scan's findings, optionally of one module or category.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, TS)]
 pub struct FindingsQuery {
     module: Option<String>,
     category: Option<String>,
+    order: FindingOrder,
     offset: u32,
     limit: u32,
 }
@@ -99,8 +112,14 @@ impl FindingsQuery {
     /// The largest page the engine returns.
     pub const MAX_LIMIT: u32 = 500;
 
-    pub const fn new(module: Option<String>, category: Option<String>, offset: u32, limit: u32) -> Self {
-        Self { module, category, offset, limit }
+    pub const fn new(
+        module: Option<String>,
+        category: Option<String>,
+        order: FindingOrder,
+        offset: u32,
+        limit: u32,
+    ) -> Self {
+        Self { module, category, order, offset, limit }
     }
 
     pub fn module(&self) -> Option<&str> {
@@ -109,6 +128,10 @@ impl FindingsQuery {
 
     pub fn category(&self) -> Option<&str> {
         self.category.as_deref()
+    }
+
+    pub const fn order(&self) -> FindingOrder {
+        self.order
     }
 
     pub const fn offset(&self) -> u32 {
@@ -211,8 +234,10 @@ mod tests {
 
         #[test]
         fn a_findings_query_over_the_limit_is_capped() {
-            let query: FindingsQuery =
-                serde_json::from_str(r#"{ "module": null, "category": null, "offset": 0, "limit": 100000 }"#).unwrap();
+            let query: FindingsQuery = serde_json::from_str(
+                r#"{ "module": null, "category": null, "order": "found", "offset": 0, "limit": 100000 }"#,
+            )
+            .unwrap();
 
             assert_eq!(query.limit(), FindingsQuery::MAX_LIMIT);
         }
@@ -236,17 +261,19 @@ mod tests {
 
         use crate::{
             Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, DangerLevel, EngineStatus,
-            FindingsQuery, Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Operation, Overview, ScanId,
-            SettingDescriptor, SettingKey, SettingKind, SettingUpdate, SettingValue, SettingsFile, SettingsSchema,
-            SettingsView, Sizes, StoredSettings,
+            FindingOrder, FindingsQuery, Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Operation, Overview,
+            ScanId, SettingDescriptor, SettingKey, SettingKind, SettingUpdate, SettingValue, SettingsFile,
+            SettingsSchema, SettingsView, Sizes, StoredSettings,
         };
 
         #[test]
         fn a_findings_query_keeps_what_it_was_given() {
-            let query = FindingsQuery::new(Some("demo".into()), Some("demo.caches".into()), 20, 50);
+            let query =
+                FindingsQuery::new(Some("demo".into()), Some("demo.caches".into()), FindingOrder::Found, 20, 50);
 
             assert_eq!(query.module(), Some("demo"));
             assert_eq!(query.category(), Some("demo.caches"));
+            assert_eq!(query.order(), FindingOrder::Found);
             assert_eq!(query.offset(), 20);
             assert_eq!(query.limit(), 50);
         }
@@ -267,7 +294,8 @@ mod tests {
 
         #[test]
         fn multi_word_fields_serialize_in_camel_case() {
-            let overview = Overview { status: EngineStatus::Idle, last_scan: None, totals: Vec::new() };
+            let overview =
+                Overview { status: EngineStatus::Idle, last_scan: None, totals: Vec::new(), found: Sizes::ZERO };
             let demo = ModuleId::new("demo").unwrap();
             let total = CategoryTotal {
                 category: CategoryId::new(demo, "demo.caches").unwrap(),

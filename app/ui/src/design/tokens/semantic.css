@@ -1,0 +1,199 @@
+/*
+ * The semantic tokens components use (docs/plans/003-base-ui/00-design.md, "The visual language"). Values come from
+ * primitive.css only; a component's own tokens are defined in its module, from these.
+ */
+@layer tokens {
+  /* `::backdrop` inherits no custom property before Safari 17.4: the tokens are defined on it too. */
+  :root,
+  ::backdrop {
+    color-scheme: dark;
+
+    /* Surfaces: lighter as they come forward. */
+    --surface-window: var(--gray-950);
+    --surface-sidebar: linear-gradient(180deg, var(--gray-1000), var(--gray-950));
+    --surface-sidebar-over-material: var(--gray-950-a45);
+    --surface-raised: var(--gray-900);
+    --surface-raised-sheen: linear-gradient(180deg, var(--white-a3-5), var(--white-a0) 48%);
+    --surface-overlay: var(--gray-850);
+    --surface-hover: var(--gray-800);
+    --surface-pressed: var(--gray-750);
+    /* Under a modal dialog, with the app's one live backdrop blur. */
+    --surface-backdrop: var(--black-a55);
+
+    /* Borders. */
+    --border-subtle: var(--white-a6);
+    --border-default: var(--white-a10);
+    --border-strong: var(--white-a16);
+    --border-control: var(--white-a36);
+
+    /* Text. */
+    --text-primary: var(--gray-100);
+    --text-secondary: var(--gray-300);
+    --text-tertiary: var(--gray-400);
+    --text-disabled: var(--gray-500);
+    --text-on-fill: var(--white);
+
+    /* The accent, Iris, and the one red fill. */
+    --accent-text: var(--iris-400);
+    --accent-fill-top: var(--iris-600);
+    --accent-fill-bottom: var(--iris-700);
+    --accent-fill: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill-bottom));
+    --accent-glow: var(--iris-500-a35);
+    --danger-fill-top: var(--red-600);
+    --danger-fill-bottom: var(--red-700);
+    --danger-fill: linear-gradient(180deg, var(--danger-fill-top), var(--danger-fill-bottom));
+
+    /* The danger levels: an icon and a word in fg, on its tint, with its border and its glow. */
+    --level-safe-fg: var(--green-400);
+    --level-safe-tint: var(--green-400-tint);
+    --level-safe-border: var(--green-400-a32);
+    --level-safe-glow: var(--green-400-a40);
+    --level-low-fg: var(--cyan-400);
+    --level-low-tint: var(--cyan-400-tint);
+    --level-low-border: var(--cyan-400-a32);
+    --level-low-glow: var(--cyan-400-a40);
+    --level-medium-fg: var(--amber-400);
+    --level-medium-tint: var(--amber-400-tint);
+    --level-medium-border: var(--amber-400-a32);
+    --level-medium-glow: var(--amber-400-a40);
+    --level-high-fg: var(--red-400);
+    --level-high-tint: var(--red-400-tint);
+    --level-high-border: var(--red-400-a32);
+    --level-high-glow: var(--red-400-a40);
+
+    /* Type: system fonts on a 13 px root; each step is a size, a line height, a weight and a tracking. */
+    --font-sans: system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+    --type-label-size: calc(11rem / 13);
+    --type-label-line: calc(14rem / 13);
+    --type-label-weight: 600;
+    --type-label-tracking: 0.06em;
+    --type-caption-size: calc(11rem / 13);
+    --type-caption-line: calc(14rem / 13);
+    --type-caption-weight: 500;
+    --type-caption-tracking: 0.01em;
+    --type-footnote-size: calc(12rem / 13);
+    --type-footnote-line: calc(16rem / 13);
+    --type-footnote-weight: 400;
+    --type-footnote-tracking: 0;
+    --type-body-size: 1rem;
+    --type-body-line: calc(18rem / 13);
+    --type-body-weight: 400;
+    --type-body-tracking: 0;
+    --type-body-strong-size: 1rem;
+    --type-body-strong-line: calc(18rem / 13);
+    --type-body-strong-weight: 600;
+    --type-body-strong-tracking: 0;
+    --type-callout-size: calc(15rem / 13);
+    --type-callout-line: calc(20rem / 13);
+    --type-callout-weight: 500;
+    --type-callout-tracking: -0.005em;
+    --type-title-3-size: calc(17rem / 13);
+    --type-title-3-line: calc(22rem / 13);
+    --type-title-3-weight: 600;
+    --type-title-3-tracking: -0.01em;
+    --type-title-2-size: calc(22rem / 13);
+    --type-title-2-line: calc(28rem / 13);
+    --type-title-2-weight: 600;
+    --type-title-2-tracking: -0.015em;
+    --type-title-1-size: calc(28rem / 13);
+    --type-title-1-line: calc(34rem / 13);
+    --type-title-1-weight: 700;
+    --type-title-1-tracking: -0.02em;
+    --type-display-size: calc(40rem / 13);
+    --type-display-line: calc(44rem / 13);
+    --type-display-weight: 700;
+    --type-display-tracking: -0.025em;
+    --type-hero-size: calc(56rem / 13);
+    --type-hero-line: calc(60rem / 13);
+    --type-hero-weight: 700;
+    --type-hero-tracking: -0.03em;
+
+    /* Spacing on a 4 px grid. */
+    --space-0-5: 2px;
+    --space-1: 4px;
+    --space-1-5: 6px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* Radii. */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Sizes. */
+    --size-sidebar: 232px;
+    --size-toolbar: 52px;
+    --size-control: 28px;
+    --size-control-small: 24px;
+    --size-control-large: 36px;
+    --size-row: 44px;
+    --size-finding-row: 52px;
+    --size-content: 1120px;
+    --size-gutter: 32px;
+    --size-gutter-narrow: 24px;
+
+    /* Elevation: each level adds to the one before; only overlays cast a real shadow. */
+    --elevation-1-surface: var(--surface-raised);
+    --elevation-1-border: var(--border-subtle);
+    --elevation-1-shadow: inset 0 1px 0 var(--white-a4);
+    --elevation-2-surface: var(--surface-raised);
+    --elevation-2-border: var(--border-default);
+    --elevation-2-shadow: inset 0 1px 0 var(--white-a4), 0 8px 24px -8px var(--black-a50);
+    --elevation-3-surface: var(--surface-overlay);
+    --elevation-3-border: var(--border-strong);
+    --elevation-3-shadow: inset 0 1px 0 var(--white-a4), 0 24px 64px -16px var(--black-a70), 0 0 0 1px var(--black-a60);
+
+    /* Glows: a 1 px ring and a 20 px halo in the accent's or the level's colour. */
+    --glow-accent: 0 0 0 1px var(--iris-500-a45), 0 0 20px var(--iris-500-a30);
+    --glow-safe: 0 0 0 1px var(--green-400-a45), 0 0 20px var(--green-400-a30);
+    --glow-low: 0 0 0 1px var(--cyan-400-a45), 0 0 20px var(--cyan-400-a30);
+    --glow-medium: 0 0 0 1px var(--amber-400-a45), 0 0 20px var(--amber-400-a30);
+    --glow-high: 0 0 0 1px var(--red-400-a45), 0 0 20px var(--red-400-a30);
+
+    /* The focus ring: crisp, with a soft glow, drawn as a box shadow so it follows the radius. */
+    --focus-ring: 0 0 0 2px var(--surface-window), 0 0 0 4px var(--accent-text), 0 0 16px 2px var(--iris-400-a45);
+
+    /* Stacking. */
+    --z-content: 0;
+    --z-sticky: 10;
+    --z-selection-bar: 40;
+    --z-toast: 50;
+    --z-dialog: 100;
+    --z-tooltip: 200;
+    --z-texture: 300;
+  }
+
+  /* Increased contrast: borders one step stronger, secondary text becomes primary, no glows. */
+  @media (prefers-contrast: more) {
+    :root {
+      --border-subtle: var(--white-a10);
+      --border-default: var(--white-a16);
+      --border-strong: var(--white-a36);
+      --border-control: var(--white-a52);
+      --text-secondary: var(--gray-100);
+      --accent-glow: var(--white-a0);
+      --level-safe-glow: var(--white-a0);
+      --level-low-glow: var(--white-a0);
+      --level-medium-glow: var(--white-a0);
+      --level-high-glow: var(--white-a0);
+      --glow-accent: none;
+      --glow-safe: none;
+      --glow-low: none;
+      --glow-medium: none;
+      --glow-high: none;
+      --focus-ring: 0 0 0 2px var(--surface-window), 0 0 0 4px var(--accent-text);
+    }
+  }
+}

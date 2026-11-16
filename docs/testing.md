@@ -26,8 +26,9 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 | Golden reports | a fixture home gives exactly the expected report                                 | `crates/e2e` against `fixtures/golden/`     | —                                          |
 | Core e2e       | command → engine → modules → events → settings file, end to end                  | `crates/e2e` on fixture homes               | —                                          |
 | UI e2e         | the user flows of the interface, on a mocked core                                | —                                           | Playwright on the Vite build, mocked IPC   |
-| Visual         | the Dark Premium screens did not change unnoticed                                | —                                           | Playwright screenshots, ≤ 50 pixels differ |
-| Performance    | the scan stays within its time and memory budget                                 | criterion benches on a large generated tree | —                                          |
+| Visual         | the gallery's stories and the screens did not change unnoticed                   | —                                           | Playwright screenshots, ≤ 50 pixels differ |
+| Accessibility  | keyboard, focus, contrast, page zoom and WCAG 2.1 AA on every story and screen   | —                                           | Playwright and axe; VoiceOver by hand      |
+| Performance    | the scan stays within its time and memory budget; the UI within its frame budget | criterion benches on a large generated tree | `test:perf`, run by hand                   |
 
 The full app (WebView + Rust) cannot be driven by WebDriver on macOS (`tauri-driver` supports Linux and Windows only),
 so the UI e2e run against the web build with the Tauri IPC mocked, and the core e2e cover the Rust side end to end.
@@ -68,11 +69,41 @@ cache → diff → confirm → clean.
   the command keys of `src/ipc/index.ts` (the only place the Rust command names are spelled); `refuse(refusal)` answers
   with a `Refusal` (the error and the text the core built for it), `pushEvents(...)` streams events through the
   subscribed channel. `src/test/demo-scan.ts` is a demo scan as the core streams it, with its texts, shared by the unit
-  and the e2e tests.
-- UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, and the events a
-  scan streams through the channel); screenshots in
-  `app/ui/e2e/screenshots/`, per browser. WebKit is the reference engine (the app runs in WebKit on macOS); Chromium
-  runs too.
+  and the e2e tests; `src/test/large-scan.ts` generates a scan of N findings in M categories (the same on every run),
+  `src/test/page-of.ts` answers `get_findings` over a list of findings as the engine does, and
+  `src/test/fake-clock.ts` is the clock the store's timers are tested on.
+- UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
+  scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
+  (one event every so many ms, each asked of Node, as the engine streams), the overview during and after the scan,
+  `get_findings` paged from the findings streamed so far, a second scan refused while one runs, and the
+  `setting-changed` event of an update); `SCRIPTS` there are the scripts the flows and screenshots play;
+  `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
+  reference engine (the app runs in WebKit on macOS); Chromium runs too. The suite runs on `npm run build:e2e` (the
+  app and the gallery in `dist-e2e/`), served with the app's production CSP; every spec checks that the policy
+  refused nothing.
+- **The gallery** (`app/ui/gallery.html`, `src/gallery/`): every component in every state, each `*.stories.tsx`
+  found by `import.meta.glob`; built only by `build:e2e`, never into the app's `dist/`. `gallery.spec.ts` photographs
+  every story in WebKit; `visual.spec.ts` photographs every screen in each of its states in WebKit and Chromium.
+- **Motion is off in the visual tests**: `e2e/support/motion.ts` sets `data-motion="off"` before the app runs (every
+  duration 0, every loop at its first frame), so a screenshot is the same on every run. `motion.spec.ts` checks the
+  system's "Reduce motion" and full motion in the engines.
+- **Guards of the design system**, unit tests: the CSS guard (`src/test/css-guard.test.ts`: every stylesheet stays
+  inside the Safari 16.0 baseline and animates only the compositor-friendly properties and the named paint-only
+  exceptions), the contrast test
+  (`src/design/tokens/contrast.test.ts`: every text and level pair of the tokens meets WCAG AA, computed from the
+  token files), the motion tokens' mirror (`src/design/tokens/motion.test.ts`: `motion.css` and `motion.ts` agree);
+  the import boundaries are ESLint's ([`architecture/`](./architecture/README.md), "UI").
+- **Accessibility**: `axe.spec.ts` (every screen state and every story, no WCAG 2.0/2.1 A or AA violation; its one
+  exemption is written in the spec), `keyboard.spec.ts` (every focus stop reached by Tab with a visible ring, a
+  control answers its key, a dialog keeps and returns the focus, a screen change never drops it), `contrast.spec.ts`
+  (under `prefers-contrast: more` no glow and no noise, stronger borders), `zoom.spec.ts` (125 % and 150 %: nothing
+  cut or overlapping). VoiceOver and the real window's materials are checked by hand.
+- **Performance**: `perf.spec.ts`, run only by `npm run test:perf --workspace app/ui`, by hand, never in the hooks or
+  CI (frame timing on a shared machine is noise). Two projects run it with one worker, headed, full motion: `perf`
+  (WebKit, where the budget is held: p95 ≤ 17 ms or the idle page's p95, no frame over 50 ms, at most about 60 list
+  rows) and `perf-chromium` (reports long tasks and the JS heap). It streams a 50,000-finding scan, changes screens,
+  scrolls 100,000 rows and checks the bundle's gzipped size; run it on a quiet Mac when a change touches the lists,
+  the scan's screens or motion, and write the numbers in the plan's conclusions. `test:e2e` never runs it.
 
 ## Fixture homes
 
@@ -110,6 +141,8 @@ target = "/Library/Caches"
 | `npm run test:e2e`             | `crates/e2e` and the Playwright suite                                                 |
 | `npm run test:e2e:core`        | `cargo nextest run -p fresher-e2e --locked`                                           |
 | `npm run test:e2e:ui`          | Playwright (needs `npx playwright install webkit chromium` once)                      |
+| `npm run build:e2e -w app/ui`  | the app and the gallery into `app/ui/dist-e2e/` (the e2e suite builds it itself)      |
+| `npm run test:perf -w app/ui`  | the performance spec, headed, by hand on a quiet Mac                                  |
 | `cargo nextest run -p <crate>` | one crate                                                                             |
 | Golden files                   | `UPDATE_GOLDEN=1 npm run test:e2e:core`; review the diff before committing            |
 | IPC bindings                   | `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test bindings`; review the diff |

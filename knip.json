@@ -6,6 +6,7 @@
       "ignoreBinaries": ["gitleaks", "rustfmt", "taplo", "typos"]
     },
     "app/ui": {
+      "entry": ["gallery.html", "src/gallery/main.tsx", "src/**/*.stories.tsx"],
       "ignore": ["src/**/*.generated.ts"]
     }
   }

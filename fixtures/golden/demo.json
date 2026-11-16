@@ -345,6 +345,11 @@
     }
   ],
   "overview": {
+    "found": {
+      "allocated": 9054244044,
+      "completeness": "partial",
+      "logical": 9054244044
+    },
     "lastScan": {
       "finished": 1763200000,
       "outcome": {

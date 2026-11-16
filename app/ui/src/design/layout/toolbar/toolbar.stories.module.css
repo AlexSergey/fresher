@@ -1,0 +1,21 @@
+/* The toolbar's stories: a short window pane with a list to scroll under the toolbar. */
+@layer components {
+  .stage {
+    height: 240px;
+    margin: calc(-1 * var(--space-6));
+  }
+
+  .list {
+    display: grid;
+    padding: 0 var(--size-gutter) var(--space-4);
+    gap: var(--space-2);
+    list-style: none;
+  }
+
+  .line {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-raised);
+    color: var(--text-secondary);
+  }
+}

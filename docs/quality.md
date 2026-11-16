@@ -60,8 +60,20 @@ What the Rust lints enforce:
   — test files
 - `eslint-plugin-package-json`, `@eslint/json` — `package.json` and JSON files
 - `eslint-plugin-prettier` — Prettier as a lint rule
+- `@typescript-eslint/no-restricted-imports` — the UI's import boundaries, one config per folder: only `ipc/` talks to
+  the Tauri API, only `design/icons/` imports `lucide-react`, `design/` knows nothing of the product, `product/` takes
+  its data by props and only types from the IPC bindings, the gallery never reaches the state or the core
+  ([`architecture/`](./architecture/README.md), "UI")
 - `tsc --noEmit` — the type check
 - knip (`knip.json`) — unused files, exports and dependencies
+
+The design system has guards of its own, unit tests that run with the UI's tests (`npm run test:cov`, so in the
+pre-push hook and CI): the **CSS guard** (`app/ui/src/test/css-guard.test.ts`) reads every stylesheet of `src/` and
+fails on a feature newer than Safari 16.0 (`color-mix()`, `@property`, nesting, `linear()`, `@starting-style`, …), on
+`backdrop-filter` without its `-webkit-` twin, and on a transition or keyframe of a property outside the motion budget
+(compositor-only, plus the named paint-only exceptions); the **contrast test**
+(`app/ui/src/design/tokens/contrast.test.ts`) holds every text and level pair of the tokens to WCAG AA; the **motion
+tokens' mirror** keeps `motion.css` and `motion.ts` equal ([`testing.md`](./testing.md)).
 
 ### Whole repository
 
@@ -109,7 +121,9 @@ Conventional Commits: `type(scope): subject`.
 5. `npm run test:cov` — Rust tests with coverage (`cargo llvm-cov nextest`, lines ≥ 90 %) and the UI unit tests with
    coverage (Vitest, ≥ 90 % on every metric)
 
-The e2e suites (`npm run test:e2e`) are run by hand and in CI, not in the hook: the UI e2e needs a browser.
+The e2e suites (`npm run test:e2e`) are run by hand and in CI, not in the hook: the UI e2e needs a browser. The
+performance spec (`npm run test:perf --workspace app/ui`) is run by hand only, on a quiet Mac: frame times on a shared
+runner are noise.
 
 CI (GitHub Actions) runs the same on every pull request and on `main`; commits starting with `chore(release)` are
 skipped. The workflows live in `.github/workflows/`; every action is pinned to a full commit SHA with its version in a

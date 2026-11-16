@@ -14,6 +14,8 @@ import type {
   SettingUpdate,
 } from './bindings.generated';
 
+export { inApp } from './runtime';
+
 // The only module that talks to the Rust core: every command is typed here, components never call `invoke`.
 
 // The Rust names of the commands (`#[tauri::command]` in app/tauri), the only place they are spelled.

@@ -167,6 +167,77 @@ const uiConfigs: Linter.Config[] = [
   },
 ];
 
+// The UI's import boundaries (docs/plans/003-base-ui/00-design.md, "Folders and boundaries"). Each folder gets one
+// config with its whole list, because a later config with the same rule replaces an earlier one.
+type RestrictedPattern = { readonly allowTypeImports?: boolean; readonly message: string; readonly regex: string };
+
+// A relative import that climbs out of its folder into one of `folders` of `src/`.
+const climbingInto = (folders: string): string => String.raw`^(?:\.\./)+(?:${folders})(?:/|$)`;
+
+const tauriApi: RestrictedPattern = {
+  message: 'Only src/ipc/ talks to the Tauri API.',
+  regex: '^@tauri-apps/api(?:/|$)',
+};
+const lucide: RestrictedPattern = {
+  message: 'Icons come from design/icons/, the allowlist of the icons the app uses.',
+  regex: '^lucide-react(?:/|$)',
+};
+const outOfDesign: RestrictedPattern = {
+  message: 'design/ knows nothing of the product: no product, screens, state, ipc or i18n.',
+  regex: climbingInto('product|screens|state|ipc|i18n'),
+};
+
+const boundary = (files: string[], ignores: string[], patterns: readonly RestrictedPattern[]): Linter.Config => ({
+  files,
+  ignores,
+  rules: { '@typescript-eslint/no-restricted-imports': ['error', { patterns }] },
+});
+
+const boundaryConfigs: Linter.Config[] = [
+  boundary(
+    uiFiles,
+    [
+      'app/ui/src/ipc/**',
+      // The unit tests' setup clears the Tauri mocks after each test.
+      'app/ui/src/test/setup.ts',
+      'app/ui/src/design/**',
+      'app/ui/src/product/**',
+      'app/ui/src/gallery/**',
+    ],
+    [tauriApi, lucide],
+  ),
+  boundary(['app/ui/src/design/**/*.{ts,tsx}'], ['app/ui/src/design/icons/**'], [tauriApi, lucide, outOfDesign]),
+  boundary(['app/ui/src/design/icons/**/*.{ts,tsx}'], [], [tauriApi, outOfDesign]),
+  boundary(
+    ['app/ui/src/product/**/*.{ts,tsx}'],
+    [],
+    [
+      tauriApi,
+      lucide,
+      { message: 'product/ takes its data by props: no state or screens.', regex: climbingInto('state|screens') },
+      {
+        message: 'product/ never calls the core: only types from ipc/bindings.generated.',
+        regex: String.raw`^(?:\.\./)+ipc(?:/(?!bindings\.generated$).*)?$`,
+      },
+      {
+        allowTypeImports: true,
+        message: 'product/ takes only types from ipc/bindings.generated (import type).',
+        regex: String.raw`^(?:\.\./)+ipc/bindings\.generated$`,
+      },
+    ],
+  ),
+  boundary(
+    ['app/ui/src/gallery/**/*.{ts,tsx}'],
+    [],
+    [
+      tauriApi,
+      lucide,
+      { message: 'The gallery renders components, not the app: no state.', regex: climbingInto('state') },
+      { message: 'The gallery never calls the core.', regex: String.raw`^(?:\.\./)+ipc(?:/index)?$` },
+    ],
+  ),
+];
+
 // Tooling: configs and repository scripts run on Node.
 const nodeConfig: Linter.Config = {
   files: [...configFiles, 'scripts/**/*.ts', ...jsFiles],
@@ -260,6 +331,7 @@ export default [
   regexpConfig,
   typescriptConfig,
   ...uiConfigs,
+  ...boundaryConfigs,
   nodeConfig,
   jsonCustomConfig,
   jsoncConfig,

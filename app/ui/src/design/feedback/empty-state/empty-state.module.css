@@ -1,0 +1,49 @@
+/* An empty or failed area: its icon in a soft halo of the accent (or High's glow), centred with its text. */
+@layer components {
+  .state {
+    --empty-state-fg: var(--accent-text);
+    --empty-state-glow: var(--accent-glow);
+
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8) var(--space-6);
+    text-align: center;
+  }
+
+  .state[data-tone='danger'] {
+    --empty-state-fg: var(--level-high-fg);
+    --empty-state-glow: var(--level-high-glow);
+  }
+
+  .halo {
+    display: inline-flex;
+    width: var(--space-16);
+    height: var(--space-16);
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-4);
+    background: radial-gradient(circle, var(--empty-state-glow), transparent 70%);
+    border-radius: var(--radius-full);
+    color: var(--empty-state-fg);
+  }
+
+  .title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-callout-size);
+    font-weight: var(--type-callout-weight);
+    letter-spacing: var(--type-callout-tracking);
+    line-height: var(--type-callout-line);
+  }
+
+  .text {
+    max-width: 40ch;
+    margin: var(--space-1) 0 var(--space-4);
+    color: var(--text-secondary);
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+  }
+}

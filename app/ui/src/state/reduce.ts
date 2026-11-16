@@ -1,39 +1,56 @@
 import type { Failure } from '../ipc';
 import type {
+  AccessStatus,
   ByteSize,
-  CategoryId,
   Dictionary,
   EngineStatus,
   Event,
-  Finding,
   ModuleId,
   ModuleOutcome,
   Overview,
   ScanId,
   ScanOutcome,
+  SettingsView,
+  Sizes,
 } from '../ipc/bindings.generated';
 
-// The findings of one category, in the order the core sent them.
-export type CategoryGroup = { readonly category: CategoryId; readonly findings: readonly Finding[] };
+import { NOTHING_SELECTED, reduceSelection, type Selection, type SelectionAction } from './selection';
 
-// What happened to the UI itself: answers of commands, next to the core's events.
+// What happened to the UI itself: answers of commands and what the user picked, next to the core's events.
 export type CoreAction =
   | Event
+  | SelectionAction
   | { readonly dictionary: Dictionary; readonly type: 'dictionary-loaded' }
   | { readonly failure: Failure; readonly type: 'command-failed' }
-  | { readonly overview: Overview; readonly type: 'overview-loaded' };
+  | { readonly overview: Overview; readonly type: 'overview-loaded' }
+  | { readonly settings: SettingsView; readonly type: 'settings-loaded' }
+  | { readonly status: AccessStatus; readonly type: 'access-loaded' }
+  | { readonly type: 'overview-requested' };
 
-// What the UI knows of the core: the scan whose events it keeps, and everything that scan sent.
+// What the UI knows of the core: the scan whose events it follows, what they told, and the core's totals. No finding
+// is kept: the lists ask the core for pages (state/findings.ts), so the memory does not grow with the scan.
 export type CoreState = {
+  // The permissions the app has, as `get_access_status` answered and `access-changed` events keep them.
+  readonly access: AccessStatus | null;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
-  readonly groups: readonly CategoryGroup[];
   readonly modules: readonly { readonly module: ModuleId; readonly outcome: ModuleOutcome }[];
   readonly outcome: null | ScanOutcome;
+  // The totals per category, everything found and the last scan, as `get_overview` answered them.
+  readonly overview: null | Overview;
   readonly progress: null | { readonly bytes: ByteSize; readonly entries: number };
   readonly scan: null | ScanId;
+  // The modules the followed scan runs, as its `scan-started` listed them (a module switched off is not among them);
+  // `null` until a `scan-started` arrived, as for a scan the UI learned of from an overview only.
+  readonly scanModules: null | readonly ModuleId[];
   // The newest scan the events told of, and whether it finished: what an overview answered later must not undo.
   readonly seen: null | SeenScan;
+  // What the user picked for removal in this scan (state/selection.ts); nothing is picked when a scan starts.
+  readonly selection: Selection;
+  // Every setting and its value, as `get_settings` answered and `setting-changed` events keep them.
+  readonly settings: null | SettingsView;
+  // The events told of changes the overview does not count yet: the refresher (state/refresh.ts) asks for a new one.
+  readonly stale: boolean;
   readonly status: EngineStatus;
 };
 
@@ -42,45 +59,26 @@ type ScanEvent = Extract<Event, { readonly scan: ScanId }>;
 type SeenScan = { readonly finished: boolean; readonly scan: ScanId };
 
 export const INITIAL_STATE: CoreState = {
+  access: null,
   dictionary: null,
   failure: null,
-  groups: [],
   modules: [],
   outcome: null,
+  overview: null,
   progress: null,
   scan: null,
+  scanModules: null,
   seen: null,
+  selection: NOTHING_SELECTED,
+  settings: null,
+  stale: false,
   status: { state: 'idle' },
 };
 
-// A batch is grouped in one pass, then each group it touches is copied once: a scan costs no more than its batches.
-const addFindings = (groups: readonly CategoryGroup[], findings: readonly Finding[]): readonly CategoryGroup[] => {
-  const batch = new Map<CategoryId, Finding[]>();
+const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0 };
 
-  for (const finding of findings) {
-    const added = batch.get(finding.category);
-
-    if (added === undefined) {
-      batch.set(finding.category, [finding]);
-    } else {
-      added.push(finding);
-    }
-  }
-
-  const grown = groups.map((group) => {
-    const added = batch.get(group.category);
-
-    if (added === undefined) {
-      return group;
-    }
-
-    batch.delete(group.category);
-
-    return { ...group, findings: [...group.findings, ...added] };
-  });
-
-  return [...grown, ...Array.from(batch, ([category, added]) => ({ category, findings: added }))];
-};
+// The overview no longer counts everything: unchanged when it already did not, so a batch renders nothing.
+const markStale = (state: CoreState): CoreState => (state.stale ? state : { ...state, stale: true });
 
 const reduceEvent = (state: CoreState, event: Event): CoreState => {
   // Every event of a scan belongs to one scan: one the UI does not follow is ignored.
@@ -88,32 +86,50 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
 
   switch (event.type) {
     case 'access-changed':
-    case 'setting-changed':
-      // The settings and the permissions have their screens in plans 005 and 006.
-      return state;
+      return { ...state, access: event.status };
     case 'findings-added':
-      return follows(event.scan) ? { ...state, groups: addFindings(state.groups, event.findings) } : state;
+      return follows(event.scan) ? markStale(state) : state;
     case 'module-finished':
       return follows(event.scan)
-        ? { ...state, modules: [...state.modules, { module: event.module, outcome: event.outcome }] }
+        ? markStale({ ...state, modules: [...state.modules, { module: event.module, outcome: event.outcome }] })
         : state;
     case 'scan-finished':
-      return follows(event.scan) ? { ...state, outcome: event.outcome, status: { state: 'idle' } } : state;
+      // The overview is always asked for once more at the end, so the last totals are the finished scan's.
+      return follows(event.scan) ? markStale({ ...state, outcome: event.outcome, status: { state: 'idle' } }) : state;
     case 'scan-progress':
       return follows(event.scan) ? { ...state, progress: { bytes: event.bytes, entries: event.entries } } : state;
-    case 'scan-started':
+    case 'scan-started': {
+      const status: EngineStatus = { scan: event.scan, state: 'scanning' };
+
+      // The core forgets the previous scan's findings when a scan starts: nothing is counted until the next overview.
       return {
         ...state,
         failure: null,
-        groups: [],
         modules: [],
         outcome: null,
+        overview: state.overview === null ? null : { ...state.overview, found: NOTHING, status, totals: [] },
         progress: null,
         scan: event.scan,
-        status: { scan: event.scan, state: 'scanning' },
+        scanModules: event.modules,
+        selection: NOTHING_SELECTED,
+        stale: false,
+        status,
       };
+    }
+    case 'setting-changed':
+      return state.settings === null ? state : { ...state, settings: changeSetting(state.settings, event) };
   }
 };
+
+// A stored value's problem is gone once the setting holds a new value.
+const changeSetting = (
+  settings: SettingsView,
+  { key, value }: Extract<Event, { readonly type: 'setting-changed' }>,
+): SettingsView => ({
+  ...settings,
+  problems: settings.problems.filter((problem) => problem.key !== key),
+  values: { ...settings.values, [key]: value },
+});
 
 const see = (seen: null | SeenScan, event: ScanEvent): null | SeenScan => {
   const finished = event.type === 'scan-finished';
@@ -122,19 +138,23 @@ const see = (seen: null | SeenScan, event: ScanEvent): null | SeenScan => {
   return known ? seen : { finished, scan: event.scan };
 };
 
-// The overview is answered after the events are subscribed, so an event that came before it may be newer than it is.
+// The overview is answered after the events, so an event that came before it may be newer than it is: an older
+// overview changes nothing, neither the engine's status nor the totals.
 const loadOverview = (state: CoreState, overview: Overview): CoreState => {
   const { seen } = state;
+  const { status } = overview;
 
-  if (overview.status.state === 'scanning') {
-    const { scan } = overview.status;
-    const outdated = seen !== null && (seen.scan > scan || (seen.scan === scan && seen.finished));
+  if (status.state === 'scanning') {
+    const outdated = seen !== null && (seen.scan > status.scan || (seen.scan === status.scan && seen.finished));
 
-    return outdated ? state : { ...state, scan, status: overview.status };
+    return outdated ? state : { ...state, overview, scan: status.scan, status };
   }
 
-  // A scan the events started is running until its own `scan-finished` arrives.
-  return seen !== null && !seen.finished ? state : { ...state, status: overview.status };
+  // A scan the events started is running until its own `scan-finished` arrives; an earlier scan's totals are old.
+  const last = overview.lastScan?.scan;
+  const outdated = seen !== null && (!seen.finished || last === undefined || last < seen.scan);
+
+  return outdated ? state : { ...state, overview, status };
 };
 
 // The next state: a pure function of the state and one action.
@@ -143,6 +163,16 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     case 'access-changed':
     case 'setting-changed':
       return reduceEvent(state, action);
+    case 'access-loaded':
+      // An event told of the access before the answer came: the event is newer.
+      return state.access === null ? { ...state, access: action.status } : state;
+    case 'clear':
+    case 'toggle-category':
+    case 'toggle-finding': {
+      const selection = reduceSelection(state.selection, action);
+
+      return selection === state.selection ? state : { ...state, selection };
+    }
     case 'command-failed':
       return { ...state, failure: action.failure };
     case 'dictionary-loaded':
@@ -158,5 +188,11 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     }
     case 'overview-loaded':
       return loadOverview(state, action.overview);
+    case 'overview-requested':
+      // The request counts every event so far; an event after it marks the overview stale again.
+      return state.stale ? { ...state, stale: false } : state;
+    case 'settings-loaded':
+      // The settings are asked for once; the events since keep them, so a later answer is older than they are.
+      return state.settings === null ? { ...state, settings: action.settings } : state;
   }
 };

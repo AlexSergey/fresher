@@ -1,0 +1,35 @@
+/* A page's title and actions, on the content column the app shell sets (`--content-inset`). */
+@layer components {
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: var(--space-2) var(--content-inset, var(--size-gutter)) var(--space-6);
+    gap: var(--space-4);
+  }
+
+  .text {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-1);
+  }
+
+  .title {
+    font-size: var(--type-title-2-size);
+    font-weight: var(--type-title-2-weight);
+    letter-spacing: var(--type-title-2-tracking);
+    line-height: var(--type-title-2-line);
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+  }
+
+  .actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}
