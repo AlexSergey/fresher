@@ -38,7 +38,7 @@ const sized = (category: string, allocated: number): CategoryTotal => {
     category,
     count: total?.count ?? 1,
     highestDanger: total?.highestDanger ?? 'safe',
-    sizes: { allocated, completeness: 'complete', logical: allocated },
+    sizes: { allocated, completeness: 'complete', logical: allocated, reclaimable: allocated },
   };
 };
 
@@ -137,7 +137,9 @@ describe('CategoryGrid', () => {
     });
 
     it('a category of no size has no share bar', () => {
-      render(<CategoryGrid {...props({ found: { allocated: 0, completeness: 'unknown', logical: 0 } })} />);
+      render(
+        <CategoryGrid {...props({ found: { allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 } })} />,
+      );
 
       // eslint-disable-next-line testing-library/no-node-access -- the share bar is decoration, without a role
       expect(document.querySelectorAll('[data-share]')).toHaveLength(0);

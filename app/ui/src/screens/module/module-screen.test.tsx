@@ -28,7 +28,12 @@ const DICTIONARY = {
   'demo.failed': 'The demo folder could not be read.',
 };
 
-const sized = (bytes: number): Overview['found'] => ({ allocated: bytes, completeness: 'complete', logical: bytes });
+const sized = (bytes: number): Overview['found'] => ({
+  allocated: bytes,
+  completeness: 'complete',
+  logical: bytes,
+  reclaimable: bytes,
+});
 
 // The demo scan with the downloads grown past the caches.
 const DOWNLOADS_LARGEST: Overview = {
@@ -172,7 +177,7 @@ describe('ModuleScreen', () => {
           scan: 1,
           type: 'module-finished',
         });
-        store.dispatch({ outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' });
+        store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' });
         store.dispatch({ overview: DEMO_OVERVIEW, type: 'overview-loaded' });
       });
 

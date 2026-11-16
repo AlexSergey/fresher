@@ -25,6 +25,8 @@ pub enum FixtureError {
     PathOutsideRoot { path: PathBuf },
     #[error("cannot create {path} in the fixture tree: {source}")]
     Create { path: PathBuf, source: std::io::Error },
+    #[error("the tree spec is not valid: {reason}")]
+    InvalidSpec { reason: &'static str },
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -36,6 +38,8 @@ struct Description {
     files: Vec<FileSpec>,
     #[serde(default, rename = "symlink")]
     symlinks: Vec<SymlinkSpec>,
+    #[serde(default, rename = "hardlink")]
+    hardlinks: Vec<HardlinkSpec>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,6 +61,14 @@ struct FileSpec {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SymlinkSpec {
+    path: PathBuf,
+    target: PathBuf,
+}
+
+/// A second name of a file of the tree; `target` is relative to the root too.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HardlinkSpec {
     path: PathBuf,
     target: PathBuf,
 }
@@ -99,6 +111,11 @@ impl FixtureTree {
             let path = self.resolve(&link.path)?;
             create_parent(&path)?;
             symlink(&link.target, &path).map_err(|source| FixtureError::Create { path, source })?;
+        }
+        for link in &description.hardlinks {
+            let (path, target) = (self.resolve(&link.path)?, self.resolve(&link.target)?);
+            create_parent(&path)?;
+            fs::hard_link(&target, &path).map_err(|source| FixtureError::Create { path, source })?;
         }
         Ok(())
     }
@@ -160,6 +177,14 @@ mod tests {
         }
 
         #[test]
+        fn rejects_a_hard_link_to_a_file_outside_the_root() {
+            let error =
+                FixtureTree::from_toml_str("[[hardlink]]\npath = \"a\"\ntarget = \"/etc/hosts\"\n").unwrap_err();
+
+            assert!(matches!(error, FixtureError::PathOutsideRoot { .. }));
+        }
+
+        #[test]
         fn reports_a_missing_fixture_file() {
             let error = FixtureTree::from_toml(std::path::Path::new("/nonexistent/fixture.toml")).unwrap_err();
 
@@ -200,6 +225,20 @@ mod tests {
 
             assert!(tree.root().join("Projects/empty").is_dir());
             assert!(tree.root().join("Projects/out").symlink_metadata().unwrap().is_symlink());
+        }
+
+        #[test]
+        fn creates_hard_links() {
+            let tree = FixtureTree::from_toml_str(
+                "[[file]]\npath = \"a\"\nsize = 3\n[[hardlink]]\npath = \"b/a\"\ntarget = \"a\"\n",
+            )
+            .unwrap();
+
+            let (a, b) = (
+                std::fs::metadata(tree.root().join("a")).unwrap(),
+                std::fs::metadata(tree.root().join("b/a")).unwrap(),
+            );
+            assert_eq!((a.ino(), a.nlink()), (b.ino(), 2));
         }
 
         #[test]

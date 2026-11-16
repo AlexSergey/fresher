@@ -1,0 +1,65 @@
+//! The fingerprint of a compiled interest set, stored with the cache: another fingerprint means a full scan.
+
+use fresher_core::{Claim, InterestSet, Pattern, stable_hash};
+
+use crate::matcher::Matcher;
+use crate::matcher::trie::Segment;
+
+impl Matcher {
+    /// A stable 64-bit hash of every interest and every resolved anchor: the same on every run for the same modules,
+    /// different after any change of an interest.
+    pub(crate) const fn fingerprint(&self) -> u64 {
+        self.fingerprint
+    }
+}
+
+/// The hash of a canonical encoding: each interest's owner, local index, pattern, claim and siblings, then each
+/// anchored interest's resolved segments. Every string and list is length-prefixed, so no two sets encode alike.
+pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>)]) -> u64 {
+    let mut bytes = Vec::new();
+    for (index, interest) in interests.iter() {
+        let (owner, local) = interests.owner(index).map_or(("", 0), |(owner, local)| (owner.as_str(), local));
+        put_bytes(&mut bytes, owner.as_bytes());
+        put_number(&mut bytes, local);
+        let (kind, value) = match interest.pattern() {
+            Pattern::FolderName(value) => (0, value),
+            Pattern::UnderHome(value) => (1, value),
+            Pattern::MarkerFile(value) => (2, value),
+            Pattern::Extension(value) => (3, value),
+        };
+        bytes.push(kind);
+        put_bytes(&mut bytes, value.as_bytes());
+        bytes.push(match interest.claim() {
+            Claim::Whole => 0,
+            Claim::Item => 1,
+        });
+        put_number(&mut bytes, interest.siblings().len());
+        for sibling in interest.siblings() {
+            put_bytes(&mut bytes, sibling.as_bytes());
+        }
+    }
+    put_number(&mut bytes, anchors.len());
+    for (interest, segments) in anchors {
+        put_number(&mut bytes, *interest as usize);
+        put_number(&mut bytes, segments.len());
+        for segment in segments {
+            match segment {
+                Segment::Literal(name) => {
+                    bytes.push(0);
+                    put_bytes(&mut bytes, name);
+                }
+                Segment::Any => bytes.push(1),
+            }
+        }
+    }
+    stable_hash(&bytes)
+}
+
+fn put_number(bytes: &mut Vec<u8>, number: usize) {
+    bytes.extend_from_slice(&(number as u64).to_le_bytes());
+}
+
+fn put_bytes(bytes: &mut Vec<u8>, value: &[u8]) {
+    put_number(bytes, value.len());
+    bytes.extend_from_slice(value);
+}

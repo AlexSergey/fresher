@@ -1,0 +1,26 @@
+# Nested claims and hard links: `Library/Caches` is an item claim, `Library/Caches/<app>` whole claims inside it.
+
+[[file]]
+path = "Library/Caches/app/data.bin"
+size = 5000000
+
+[[file]]
+path = "Library/Caches/app/small"
+size = 3
+
+[[file]]
+path = "Library/Caches/other/blob"
+size = 3000
+
+# A second name of a file of another claim, and two names of one installer.
+[[hardlink]]
+path = "Library/Caches/other/data-link.bin"
+target = "Library/Caches/app/data.bin"
+
+[[file]]
+path = "Downloads/a.dmg"
+size = 7
+
+[[hardlink]]
+path = "Downloads/b.dmg"
+target = "Downloads/a.dmg"

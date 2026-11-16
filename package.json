@@ -1,6 +1,6 @@
 {
   "name": "fresher",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "A fast macOS disk cleaner: a Rust core with a Tauri 2 shell and a React UI",
   "repository": {
@@ -13,6 +13,7 @@
     "app/ui"
   ],
   "scripts": {
+    "bench": "cargo bench -p fresher-scanner --bench scan --locked",
     "build": "tauri build",
     "check:crate-deps": "node scripts/check-crate-deps.ts",
     "check:deny": "cargo deny check",

@@ -6,6 +6,8 @@ use std::io;
 
 use serde::{Deserialize, Serialize};
 
+use crate::ByteSize;
+
 /// Reads and writes the settings file. Values come back raw: the `SettingsSchema` checks them.
 pub trait SettingsStore: Send + Sync {
     fn load(&self) -> Result<StoredSettings, StoreError>;
@@ -58,29 +60,40 @@ pub enum VersionPolicy {
     Discard,
 }
 
-/// Why the settings could not be read or written. No path is held: paths are not logged.
+/// Why a stored file (the settings, the scan cache) could not be read or written. No path is held: paths are not
+/// logged.
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum StoreError {
     /// The file is from a newer version of the app: it is never overwritten.
-    #[error("the settings file has version {found}, this app supports up to {supported}")]
+    #[error("the file has version {found}, this app supports up to {supported}")]
     NewerVersion { found: FormatVersion, supported: FormatVersion },
-    /// The file is not a settings file the app can read.
-    #[error("the settings file is broken")]
+    /// The file is not a file of this kind the app can read.
+    #[error("the file is broken")]
     Broken,
-    #[error("the settings file could not be read or written: {kind}")]
+    #[error("the file could not be read or written: {kind}")]
     Io { kind: io::ErrorKind },
+    /// The body is larger than the cap of what is kept.
+    #[error("the body of {size} is over the cap of {cap}")]
+    TooLarge { size: ByteSize, cap: ByteSize },
 }
 
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::{FormatVersion, StoreError};
+        use crate::{ByteSize, FormatVersion, StoreError};
 
         #[test]
         fn a_newer_file_names_both_versions() {
             let error = StoreError::NewerVersion { found: FormatVersion::new(3), supported: FormatVersion::new(1) };
 
-            assert_eq!(error.to_string(), "the settings file has version 3, this app supports up to 1");
+            assert_eq!(error.to_string(), "the file has version 3, this app supports up to 1");
+        }
+
+        #[test]
+        fn a_body_over_the_cap_names_both_sizes() {
+            let error = StoreError::TooLarge { size: ByteSize::new(10), cap: ByteSize::new(8) };
+
+            assert_eq!(error.to_string(), "the body of 10 B is over the cap of 8 B");
         }
     }
 

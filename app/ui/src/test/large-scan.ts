@@ -38,7 +38,12 @@ const sequence = (seed: number): (() => number) => {
   };
 };
 
-const complete = (bytes: number): Sizes => ({ allocated: bytes, completeness: 'complete', logical: bytes });
+const complete = (bytes: number): Sizes => ({
+  allocated: bytes,
+  completeness: 'complete',
+  logical: bytes,
+  reclaimable: bytes,
+});
 
 const add = (a: Sizes, b: Sizes): Sizes => complete(a.allocated + b.allocated);
 
@@ -122,12 +127,12 @@ export const largeScan = ({
       { modules: ['demo'], scan: 1, type: 'scan-started' },
       ...batches,
       { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
-      { outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
+      { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
     ],
     findings,
     overview: {
       found: findings.reduce((sum, finding) => add(sum, finding.sizes), complete(0)),
-      lastScan: { finished: 1_735_689_600, outcome: { kind: 'completed' }, scan: 1 },
+      lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1 },
       status: { state: 'idle' },
       totals: [...totalsOf(findings, ids)],
     },

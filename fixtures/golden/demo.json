@@ -29,7 +29,8 @@
           "sizes": {
             "allocated": 734003200,
             "completeness": "complete",
-            "logical": 734003200
+            "logical": 734003200,
+            "reclaimable": 734003200
           },
           "subject": {
             "kind": "path",
@@ -65,7 +66,8 @@
           "sizes": {
             "allocated": 268435456,
             "completeness": "complete",
-            "logical": 268435456
+            "logical": 268435456,
+            "reclaimable": 268435456
           },
           "subject": {
             "kind": "path",
@@ -107,7 +109,8 @@
           "sizes": {
             "allocated": 1288490188,
             "completeness": "complete",
-            "logical": 1288490188
+            "logical": 1288490188,
+            "reclaimable": 1288490188
           },
           "subject": {
             "kind": "external",
@@ -152,7 +155,8 @@
           "sizes": {
             "allocated": 536870912,
             "completeness": "complete",
-            "logical": 536870912
+            "logical": 536870912,
+            "reclaimable": 536870912
           },
           "subject": {
             "kind": "external",
@@ -191,7 +195,8 @@
           "sizes": {
             "allocated": 2147483648,
             "completeness": "partial",
-            "logical": 2147483648
+            "logical": 2147483648,
+            "reclaimable": 2147483648
           },
           "subject": {
             "kind": "path",
@@ -227,7 +232,8 @@
           "sizes": {
             "allocated": 52428800,
             "completeness": "complete",
-            "logical": 52428800
+            "logical": 52428800,
+            "reclaimable": 52428800
           },
           "subject": {
             "kind": "path",
@@ -269,7 +275,8 @@
           "sizes": {
             "allocated": 805306368,
             "completeness": "complete",
-            "logical": 805306368
+            "logical": 805306368,
+            "reclaimable": 805306368
           },
           "subject": {
             "kind": "external",
@@ -308,7 +315,8 @@
           "sizes": {
             "allocated": 3221225472,
             "completeness": "complete",
-            "logical": 3221225472
+            "logical": 3221225472,
+            "reclaimable": 3221225472
           },
           "subject": {
             "kind": "path",
@@ -337,6 +345,9 @@
       "type": "module-finished"
     },
     {
+      "kind": {
+        "kind": "full"
+      },
       "outcome": {
         "kind": "completed"
       },
@@ -348,10 +359,14 @@
     "found": {
       "allocated": 9054244044,
       "completeness": "partial",
-      "logical": 9054244044
+      "logical": 9054244044,
+      "reclaimable": 9054244044
     },
     "lastScan": {
       "finished": 1763200000,
+      "kind": {
+        "kind": "full"
+      },
       "outcome": {
         "kind": "completed"
       },
@@ -368,7 +383,8 @@
         "sizes": {
           "allocated": 6102712320,
           "completeness": "partial",
-          "logical": 6102712320
+          "logical": 6102712320,
+          "reclaimable": 6102712320
         }
       },
       {
@@ -378,7 +394,8 @@
         "sizes": {
           "allocated": 320864256,
           "completeness": "complete",
-          "logical": 320864256
+          "logical": 320864256,
+          "reclaimable": 320864256
         }
       },
       {
@@ -388,7 +405,8 @@
         "sizes": {
           "allocated": 2093796556,
           "completeness": "complete",
-          "logical": 2093796556
+          "logical": 2093796556,
+          "reclaimable": 2093796556
         }
       },
       {
@@ -398,7 +416,8 @@
         "sizes": {
           "allocated": 536870912,
           "completeness": "complete",
-          "logical": 536870912
+          "logical": 536870912,
+          "reclaimable": 536870912
         }
       }
     ]

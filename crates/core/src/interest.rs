@@ -153,6 +153,18 @@ pub struct Match {
     pub modified: Option<Timestamp>,
     /// Which of the interest's sibling names exist next to the entry.
     pub siblings: Vec<String>,
+    /// For a `Pattern::MarkerFile` interest named `CACHEDIR.TAG`, whether the tag holds the signature; `None` for
+    /// every other interest.
+    pub marker: Option<MarkerCheck>,
+}
+
+/// What the walk found in a marker file whose content it checks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum MarkerCheck {
+    /// A regular file with the expected content.
+    Valid,
+    /// Not a regular file, unreadable, or not the expected content.
+    Invalid,
 }
 
 #[cfg(test)]

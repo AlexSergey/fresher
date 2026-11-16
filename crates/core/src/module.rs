@@ -272,6 +272,7 @@ mod tests {
             sizes: Sizes::ZERO,
             modified: None,
             siblings: vec![],
+            marker: None,
         }
     }
 

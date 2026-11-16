@@ -31,16 +31,21 @@ export const stories = storiesOf('SelectionBar', {
   'many-high': shown({
     count: 128,
     highest: 'high',
-    sizes: { allocated: 42_800_000_000, completeness: 'complete', logical: 42_800_000_000 },
+    sizes: {
+      allocated: 42_800_000_000,
+      completeness: 'complete',
+      logical: 42_800_000_000,
+      reclaimable: 42_800_000_000,
+    },
   }),
   'one-safe': shown({
     count: 1,
     highest: 'safe',
-    sizes: { allocated: 1_500_000_000, completeness: 'complete', logical: 1_500_000_000 },
+    sizes: { allocated: 1_500_000_000, completeness: 'complete', logical: 1_500_000_000, reclaimable: 1_500_000_000 },
   }),
   partial: shown({
     count: 12,
     highest: 'medium',
-    sizes: { allocated: 7_300_000_000, completeness: 'partial', logical: 7_300_000_000 },
+    sizes: { allocated: 7_300_000_000, completeness: 'partial', logical: 7_300_000_000, reclaimable: 7_300_000_000 },
   }),
 });

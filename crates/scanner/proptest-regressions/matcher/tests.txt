@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a31dcab3ad76ad61d1ae619f06501c728ddb711b3e1d637feff057d2f76ff9f0 # shrinks to interests = [Interest { pattern: FolderName("a"), claim: Item, siblings: [] }], toml = "[[dir]]\npath = \"node_modules\"\n[[file]]\npath = \"Node_modules\"\nsize = 10\n"
+cc d3c086bdb64a21821dd043176b0314a84dd30cd455ea0fc834fa89c71ac8ce85 # shrinks to interests = [Interest { pattern: UnderHome("Node_modules"), claim: Item, siblings: ["node_modules"] }], toml = "[[dir]]\npath = \"Node_modules\"\n"

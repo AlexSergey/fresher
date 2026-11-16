@@ -1,0 +1,50 @@
+# A home folder for the scanner's end-to-end test: what it must not claim first, then what it must.
+
+# A look-alike: a `Caches` folder outside `Library` is an item, its files are not under the anchored path.
+[[file]]
+path = "Projects/Library/Caches/old/notes.md"
+size = 2048
+modified = 1762000000
+
+# A link out of the root: listed, never followed.
+[[symlink]]
+path = "Library/Caches/system"
+target = "/Library/Caches"
+
+# An avoided place (the app's standing list): listed as not scanned, never opened.
+[[file]]
+path = "Documents/Caches/secret.dmg"
+size = 4096
+
+# An app cache, claimed whole under the home's `Library/Caches`.
+[[file]]
+path = "Library/Caches/com.example.editor/Cache.db"
+size = 52428800
+modified = 1735689600
+
+[[file]]
+path = "Library/Caches/com.example.editor/blobs/0001.bin"
+size = 10485760
+modified = 1735689600
+
+# A dependency folder with its sibling, and a folder tagged as a cache (an empty tag: not valid).
+[[file]]
+path = "Projects/app/node_modules/pkg/index.js"
+size = 1200
+
+[[file]]
+path = "Projects/app/package.json"
+size = 300
+
+[[file]]
+path = "Projects/app/build/CACHEDIR.TAG"
+
+[[file]]
+path = "Projects/app/build/out.o"
+size = 70000
+
+# An installer.
+[[file]]
+path = "Downloads/tool.dmg"
+size = 3145728
+modified = 1760000000

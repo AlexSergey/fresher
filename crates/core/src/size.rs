@@ -44,11 +44,14 @@ pub enum Completeness {
     Unknown,
 }
 
-/// The size of an item: the bytes its files hold, the bytes they take on disk, and how much of that is known.
+/// The size of an item: the bytes its files hold, the bytes they take on disk, the bytes removing it frees, and how
+/// much of that is known.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 pub struct Sizes {
     pub logical: ByteSize,
     pub allocated: ByteSize,
+    /// The private part of `allocated`: not shared with a clone or another hard link.
+    pub reclaimable: ByteSize,
     pub completeness: Completeness,
 }
 
@@ -56,8 +59,14 @@ impl Sizes {
     /// Nothing, completely known.
     pub const ZERO: Self = Self::complete(ByteSize::ZERO, ByteSize::ZERO);
 
+    /// A completely known size whose bytes are all private: removing it frees all it takes.
     pub const fn complete(logical: ByteSize, allocated: ByteSize) -> Self {
-        Self { logical, allocated, completeness: Completeness::Complete }
+        Self::new(logical, allocated, allocated)
+    }
+
+    /// A completely known size with its private part told apart.
+    pub const fn new(logical: ByteSize, allocated: ByteSize, reclaimable: ByteSize) -> Self {
+        Self { logical, allocated, reclaimable, completeness: Completeness::Complete }
     }
 
     /// Adds two sizes, keeping the weaker completeness; `None` when a sum does not fit.
@@ -65,6 +74,7 @@ impl Sizes {
         Some(Self {
             logical: self.logical.checked_add(other.logical)?,
             allocated: self.allocated.checked_add(other.allocated)?,
+            reclaimable: self.reclaimable.checked_add(other.reclaimable)?,
             completeness: self.completeness.max(other.completeness),
         })
     }
@@ -102,6 +112,22 @@ mod tests {
 
     mod positive {
         use super::ByteSize;
+        use crate::Sizes;
+
+        #[test]
+        fn sizes_add_all_three() {
+            let a = Sizes::new(ByteSize::new(1), ByteSize::new(10), ByteSize::new(100));
+            let b = Sizes::new(ByteSize::new(2), ByteSize::new(20), ByteSize::new(200));
+
+            assert_eq!(a.checked_add(b), Some(Sizes::new(ByteSize::new(3), ByteSize::new(30), ByteSize::new(300))));
+        }
+
+        #[test]
+        fn a_complete_size_frees_all_it_takes() {
+            let sizes = Sizes::complete(ByteSize::new(5), ByteSize::new(4096));
+
+            assert_eq!(sizes.reclaimable, ByteSize::new(4096));
+        }
 
         #[test]
         fn checked_add_sums_two_sizes() {
@@ -139,11 +165,26 @@ mod tests {
         }
 
         fn sizes() -> impl Strategy<Value = Sizes> {
-            (any::<u64>(), any::<u64>(), completeness()).prop_map(|(logical, allocated, completeness)| Sizes {
-                logical: ByteSize::new(logical),
-                allocated: ByteSize::new(allocated),
-                completeness,
-            })
+            (any::<u64>(), any::<u64>(), any::<u64>(), completeness()).prop_map(
+                |(logical, allocated, reclaimable, completeness)| Sizes {
+                    logical: ByteSize::new(logical),
+                    allocated: ByteSize::new(allocated),
+                    reclaimable: ByteSize::new(reclaimable),
+                    completeness,
+                },
+            )
+        }
+
+        /// Sizes small enough that three of them never overflow.
+        fn small_sizes() -> impl Strategy<Value = Sizes> {
+            (0..u64::MAX / 4, 0..u64::MAX / 4, 0..u64::MAX / 4, completeness()).prop_map(
+                |(logical, allocated, reclaimable, completeness)| Sizes {
+                    logical: ByteSize::new(logical),
+                    allocated: ByteSize::new(allocated),
+                    reclaimable: ByteSize::new(reclaimable),
+                    completeness,
+                },
+            )
         }
 
         proptest! {
@@ -151,14 +192,28 @@ mod tests {
             fn sizes_add_up_or_refuse_an_overflow(a in sizes(), b in sizes()) {
                 let logical = a.logical.bytes().checked_add(b.logical.bytes());
                 let allocated = a.allocated.bytes().checked_add(b.allocated.bytes());
+                let reclaimable = a.reclaimable.bytes().checked_add(b.reclaimable.bytes());
                 match a.checked_add(b) {
                     Some(sum) => {
                         prop_assert_eq!(Some(sum.logical.bytes()), logical);
                         prop_assert_eq!(Some(sum.allocated.bytes()), allocated);
+                        prop_assert_eq!(Some(sum.reclaimable.bytes()), reclaimable);
                         prop_assert_eq!(sum.completeness, a.completeness.max(b.completeness));
                     }
-                    None => prop_assert!(logical.is_none() || allocated.is_none()),
+                    None => prop_assert!(logical.is_none() || allocated.is_none() || reclaimable.is_none()),
                 }
+            }
+
+            #[test]
+            fn checked_add_is_associative_and_keeps_the_weaker_completeness(
+                a in small_sizes(), b in small_sizes(), c in small_sizes()
+            ) {
+                let left = a.checked_add(b).and_then(|ab| ab.checked_add(c));
+                let right = b.checked_add(c).and_then(|bc| a.checked_add(bc));
+
+                prop_assert_eq!(left, right);
+                let weakest = a.completeness.max(b.completeness).max(c.completeness);
+                prop_assert_eq!(left.map(|sum| sum.completeness), Some(weakest));
             }
 
             #[test]

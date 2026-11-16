@@ -21,7 +21,7 @@ export type FrameSidebarProps = {
   readonly screen: Screen;
 };
 
-const NOT_SCANNED = sizeLabel({ allocated: 0, completeness: 'unknown', logical: 0 });
+const NOT_SCANNED = sizeLabel({ allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 });
 
 // The sidebar: the app's name, Overview, one item per module with what it found, Review with the selection's count,
 // and Settings at the bottom.

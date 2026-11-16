@@ -6,12 +6,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use fresher_core::{
-    CancelToken, Event, Finding, FindingId, FindingSink, InterestSet, LastScan, Match, Module, ModuleContext,
-    ModuleError, ModuleId, ModuleOutcome, ModuleSettings, NewFinding, ScanId, ScanOutcome, Timestamp, WalkError,
-    WalkProgress,
+    CancelToken, ClaimedPath, Event, Finding, FindingId, FindingSink, InterestSet, LastScan, Match, Module,
+    ModuleContext, ModuleError, ModuleId, ModuleOutcome, ModuleSettings, NewFinding, ScanId, ScanKind, ScanOutcome,
+    Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
+use crate::claims;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
 use crate::throttle::Throttle;
@@ -20,6 +21,8 @@ use crate::throttle::Throttle;
 pub(crate) struct ScanPlan {
     pub(crate) roots: Vec<PathBuf>,
     pub(crate) modules: Vec<Planned>,
+    /// How the walk reads the disk; `Restore` reads nothing.
+    pub(crate) mode: WalkMode,
 }
 
 /// An enabled module and its settings.
@@ -28,26 +31,41 @@ pub(crate) struct Planned {
     pub(crate) settings: ModuleSettings,
 }
 
-/// Runs `plan` to its end: `ScanStarted`, progress and findings, one `ModuleFinished` per module, `ScanFinished`.
+/// Runs `plan` to its end: `ScanStarted`, progress and findings, one `ModuleFinished` per module, the commit of the
+/// walk's state, `ScanFinished`.
 ///
 /// A module that panics is caught and counts as failed; any other panic still ends the scan `Partial` (see
-/// [`Output`]'s `Drop`), so the engine never stays `Scanning`.
+/// [`Output`]'s `Drop`), so the engine never stays `Scanning`. A cancelled or stopped walk is not committed: the
+/// engine keeps the state it had.
+///
+/// A restore first collects the walk's matches (from memory, no disk): only then does it start, so a restore with
+/// nothing to restore publishes nothing and leaves the engine as it was.
 pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &ScanPlan) {
     let ids: Vec<ModuleId> = plan.modules.iter().map(|planned| planned.module.descriptor().id()).collect();
+    // Every registered module's interests, enabled or not, so turning one off never changes what the walk reads
+    // (design call 22); the matches of a module that is off are dropped below.
+    let mut interests = InterestSet::new();
+    for module in shared.registry.registered() {
+        interests.add(module.descriptor().id(), module.interests());
+    }
+    let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
     // The previous scan's findings are forgotten only now that this scan runs; `None` when the ids ran out.
     let first_id = lock_anyway(&shared.results).begin();
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
-    let mut interests = InterestSet::new();
-    for planned in &plan.modules {
-        interests.add(planned.module.descriptor().id(), planned.module.interests());
-    }
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
     let contexts: Vec<ModuleContext<'_>> =
         plan.modules.iter().map(|planned| ModuleContext::new(clock, commands, &planned.settings, cancel)).collect();
     let mut outcomes: Vec<Option<ModuleOutcome>> = vec![None; plan.modules.len()];
-    let mut output =
-        Output { shared, scan, next_id: first_id, batcher: Batcher::default(), exhausted: false, ended: false };
+    let mut output = Output {
+        shared,
+        scan,
+        next_id: first_id,
+        batcher: Batcher::default(),
+        exhausted: false,
+        ended: false,
+        kind: ScanKind::Full,
+    };
 
     let mut throttle = Throttle::default();
     let publish_progress = |progress: WalkProgress| {
@@ -56,6 +74,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let walked = {
         let mut on_match = |found: Match| {
             let Some((owner, local)) = interests.owner(found.interest) else { return };
+            // A module that is off is not in the plan: its match reaches no module.
             let Some(index) = ids.iter().position(|&id| id == owner) else { return };
             if outcomes[index].is_some() {
                 return;
@@ -72,19 +91,32 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
                 publish_progress(due);
             }
         };
-        shared.ports.walk.walk(&plan.roots, &interests, cancel, &mut on_match, &mut on_progress)
+        if let Some((matches, summary)) = restored {
+            matches.into_iter().for_each(&mut on_match);
+            Ok(summary)
+        } else {
+            // Until plan 006 the request avoids nothing: the app gives the scanner a standing avoid list (docs/hacks/).
+            let request = WalkRequest { roots: &plan.roots, interests: &interests, avoid: &[], mode: plan.mode };
+            shared.ports.walk.walk(&request, cancel, &mut on_match, &mut on_progress)
+        }
     };
     if let Some(last) = throttle.take() {
         publish_progress(last);
     }
-    let walk_complete = match walked {
-        Ok(summary) => summary.is_complete(),
-        Err(WalkError::Cancelled) => false,
-        Err(error @ WalkError::RootUnreadable { .. }) => {
+    let summary = match walked {
+        Ok(summary) => Some(summary),
+        Err(WalkError::Cancelled) => None,
+        Err(error) => {
             tracing::warn!(%error, "the walk stopped early");
-            false
+            None
         }
     };
+    if let Some(summary) = &summary {
+        output.kind = summary.kind;
+        if let Some(reason) = summary.fallback {
+            tracing::info!(?reason, "the rescan read every folder");
+        }
+    }
 
     for (index, planned) in plan.modules.iter().enumerate() {
         if outcomes[index].is_some() {
@@ -99,10 +131,63 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         outcomes[index] = Some(output.module_finished(ids[index], outcome));
     }
 
+    let committed = !cancel.is_cancelled() && {
+        let claims = resolve_claims(shared);
+        summary.is_some() && commit(shared, &claims)
+    };
+    let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
     let every_module_completed = outcomes.iter().all(|outcome| outcome == &Some(ModuleOutcome::Completed));
-    let complete = walk_complete && every_module_completed && !output.exhausted && !cancel.is_cancelled();
+    let complete = walk_complete && committed && every_module_completed && !output.exhausted && !cancel.is_cancelled();
     let outcome = if complete { ScanOutcome::Completed } else { ScanOutcome::Partial };
     output.end(outcome);
+}
+
+/// The matches and the summary of a `Restore` walk, collected before the scan starts; `None` for any other walk. A
+/// restore with nothing to restore ends here, quietly: the engine goes idle and nothing is published.
+fn restore(
+    shared: &Shared,
+    scan: ScanId,
+    plan: &ScanPlan,
+    interests: &InterestSet,
+    cancel: &CancelToken,
+) -> Result<Option<(Vec<Match>, WalkSummary)>, WalkError> {
+    if plan.mode != WalkMode::Restore {
+        return Ok(None);
+    }
+    let request = WalkRequest { roots: &plan.roots, interests, avoid: &[], mode: WalkMode::Restore };
+    let mut matches = Vec::new();
+    match shared.ports.walk.walk(&request, cancel, &mut |found| matches.push(found), &mut |_| {}) {
+        Ok(summary) => Ok(Some((matches, summary))),
+        Err(error) => {
+            tracing::info!(%error, "nothing was restored");
+            lock_anyway(&shared.machine).finish(scan);
+            Err(error)
+        }
+    }
+}
+
+/// Resolves the claims of the scan's findings and keeps them for the category totals; gives the claimed paths.
+fn resolve_claims(shared: &Shared) -> Vec<ClaimedPath> {
+    let order: Vec<ModuleId> = shared.registry.registered().iter().map(|module| module.descriptor().id()).collect();
+    let mut results = lock_anyway(&shared.results);
+    let claims = claims::resolve(results.findings(), &order);
+    let paths = claims.paths();
+    results.keep_claims(claims);
+    paths
+}
+
+/// Commits the walk's state with the scan's claims and keeps it; `false` when the commit failed (logged).
+fn commit(shared: &Shared, claims: &[ClaimedPath]) -> bool {
+    match shared.ports.walk.commit(claims) {
+        Ok(state) => {
+            lock_anyway(&shared.results).keep_state(state);
+            true
+        }
+        Err(error) => {
+            tracing::warn!(%error, "the scan's state was not kept");
+            false
+        }
+    }
 }
 
 /// Calls a module; its error or its panic becomes the outcome it ends with. The panic does not reach the scan: what
@@ -130,6 +215,8 @@ struct Output<'a> {
     batcher: Batcher,
     exhausted: bool,
     ended: bool,
+    /// How the walk read the disk; `Full` until it says otherwise.
+    kind: ScanKind,
 }
 
 impl Output<'_> {
@@ -138,9 +225,9 @@ impl Output<'_> {
         self.ended = true;
         let finished = Timestamp::from_system_time(self.shared.ports.clock.now());
         let mut machine = lock_anyway(&self.shared.machine);
-        let last = LastScan { scan: self.scan, finished, outcome: outcome.clone() };
+        let last = LastScan { scan: self.scan, finished, outcome: outcome.clone(), kind: self.kind };
         lock_anyway(&self.shared.results).finish(last, self.next_id);
-        self.shared.bus.publish(&Event::ScanFinished { scan: self.scan, outcome });
+        self.shared.bus.publish(&Event::ScanFinished { scan: self.scan, outcome, kind: self.kind });
         machine.finish(self.scan);
     }
 
@@ -313,7 +400,7 @@ mod tests {
             assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
             assert_eq!(engine.status(), Ok(EngineStatus::Idle));
             assert_eq!(engine.overview().unwrap().last_scan.map(|last| last.outcome), Some(ScanOutcome::Partial));
-            assert!(engine.start_scan().is_ok());
+            assert!(engine.start_scan(crate::ScanMode::Auto).is_ok());
         }
 
         #[test]
@@ -401,7 +488,7 @@ mod tests {
             let module = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
             let engine = Fixture::new(walk).module(module).engine();
             let events = engine.subscribe();
-            engine.start_scan().unwrap();
+            engine.start_scan(crate::ScanMode::Auto).unwrap();
 
             engine.cancel_scan().unwrap();
 
@@ -423,6 +510,46 @@ mod tests {
             assert_eq!(scan_outcome(&unreadable), Some(ScanOutcome::Partial));
             assert_eq!(scan_outcome(&stopped), Some(ScanOutcome::Partial));
             assert_eq!(module_outcomes(&stopped), vec![(alpha(), ModuleOutcome::Completed)]);
+        }
+
+        #[test]
+        fn a_cancelled_scan_is_not_committed() {
+            let (walk, _gate) = ScriptedWalk::held();
+            let commits = walk.commits();
+            let engine = Fixture::new(walk).engine();
+            let events = engine.subscribe();
+            engine.start_scan(crate::ScanMode::Auto).unwrap();
+
+            engine.cancel_scan().unwrap();
+
+            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
+            assert!(commits.lock().unwrap().is_empty());
+            assert!(engine.disk_state().unwrap().is_none());
+        }
+
+        #[test]
+        fn a_walk_that_stopped_is_not_committed() {
+            let root = WalkError::RootUnreadable { index: 0, kind: std::io::ErrorKind::NotFound };
+            let walk = ScriptedWalk::new().failing(root);
+            let commits = walk.commits();
+            let engine = Fixture::new(walk).engine();
+
+            scan(&engine);
+
+            assert!(commits.lock().unwrap().is_empty());
+        }
+
+        #[test]
+        fn a_failed_commit_ends_the_scan_partial() {
+            let walk = ScriptedWalk::new().failing_commit(WalkError::Commit { kind: std::io::ErrorKind::Other });
+            let commits = walk.commits();
+            let engine = Fixture::new(walk).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(commits.lock().unwrap().len(), 1);
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert!(engine.disk_state().unwrap().is_none());
         }
 
         #[test]
@@ -464,6 +591,54 @@ mod tests {
 
             assert_eq!((page.findings.len(), page.total), (0, 0));
         }
+
+        #[test]
+        fn a_disabled_modules_match_reaches_no_module() {
+            let walk = ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(1));
+            let off = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
+            let off_seen = off.seen();
+            let on = TestModule::builder("beta").category("beta.caches", DangerLevel::Safe).folder("Caches");
+            let on_seen = on.seen();
+            let settings = MemorySettings::with(&[("alpha.enabled", json!(false))]);
+            let engine = Fixture::new(walk).module(off).module(on).settings(settings).engine();
+
+            scan(&engine);
+
+            assert_eq!(off_seen.lock().unwrap().len(), 0);
+            assert_eq!(on_seen.lock().unwrap().len(), 1, "the walk still matched both modules' interests");
+            assert_eq!(on_seen.lock().unwrap()[0].interest, 0, "the module sees its own interest index");
+        }
+
+        #[test]
+        fn a_tool_finding_is_counted_whole_and_not_claimed() {
+            let tools = category("alpha.images", DangerLevel::Low);
+            let module =
+                TestModule::builder("alpha").category("alpha.images", DangerLevel::Low).on_finish(move |_, out| {
+                    let mut image = finding(&tools, "/unused", bytes(9));
+                    image = fresher_core::NewFinding::new(
+                        &tools,
+                        "image",
+                        fresher_core::Subject::External {
+                            tool: fresher_core::ToolId::new("docker").unwrap(),
+                            id: "sha256:1".into(),
+                        },
+                        image.sizes(),
+                        image.title().clone(),
+                        image.reason().clone(),
+                        image.removal().clone(),
+                    );
+                    out.push(image);
+                    Ok(())
+                });
+            let walk = ScriptedWalk::new();
+            let commits = walk.commits();
+            let engine = Fixture::new(walk).module(module).engine();
+
+            scan(&engine);
+
+            assert_eq!(commits.lock().unwrap().as_slice(), [vec![]]);
+            assert_eq!(engine.overview().unwrap().totals[0].sizes, bytes(9));
+        }
     }
 
     mod positive {
@@ -471,7 +646,7 @@ mod tests {
 
         use fresher_core::{
             ByteSize, Completeness, DangerLevel, EngineStatus, Event, FindingOrder, FindingsQuery, LastScan, ScanId,
-            ScanOutcome, Sizes, Timestamp,
+            ScanKind, ScanOutcome, Sizes, Timestamp,
         };
 
         use super::{id, ids, scan_outcome};
@@ -499,6 +674,58 @@ mod tests {
             assert_eq!(alpha_seen, [(0, "/home/Caches".into())]);
             assert_eq!(beta_seen, [(0, "/home/app/node_modules".into()), (1, "/home/app/target".into())]);
             assert_eq!(scan_outcome(&events), Some(ScanOutcome::Completed));
+        }
+
+        #[test]
+        fn the_overview_counts_nested_claims_once_and_commits_them() {
+            let walk = ScriptedWalk::new().folder("project", "/home/project", bytes(100)).folder(
+                "cache",
+                "/home/project/cache",
+                bytes(30),
+            );
+            let commits = walk.commits();
+            let alpha = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe);
+            let engine = Fixture::new(walk).module(alpha.folder("project").folder("cache")).engine();
+
+            scan(&engine);
+
+            let overview = engine.overview().unwrap();
+            assert_eq!((overview.totals[0].count, overview.totals[0].sizes), (2, bytes(100)));
+            assert_eq!(overview.found, bytes(100), "the overview's sum counts a nested claim once too");
+            let claimed: Vec<_> = commits.lock().unwrap()[0].iter().map(|claim| claim.path.clone()).collect();
+            assert_eq!(claimed, ["/home/project", "/home/project/cache"].map(std::path::PathBuf::from));
+            let page = engine.findings(&FindingsQuery::new(None, None, FindingOrder::Found, 0, 10)).unwrap();
+            assert_eq!(page.findings[0].finding().sizes(), bytes(100), "a finding keeps its own size for display");
+        }
+
+        #[test]
+        fn a_completed_scan_is_committed_and_its_state_kept() {
+            let walk = ScriptedWalk::new();
+            let commits = walk.commits();
+            let engine = Fixture::new(walk).engine();
+            assert!(engine.disk_state().unwrap().is_none());
+
+            scan(&engine);
+            let first = engine.disk_state().unwrap().unwrap().id();
+            scan(&engine);
+            let second = engine.disk_state().unwrap().unwrap().id();
+
+            assert_eq!(*commits.lock().unwrap(), [vec![], vec![]]);
+            assert_eq!((first.get(), second.get()), (1, 2));
+        }
+
+        #[test]
+        fn scan_finished_carries_the_scan_kind() {
+            let kind = ScanKind::Rescan { changed_folders: 7 };
+            let engine = Fixture::new(ScriptedWalk::new().kind(kind)).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(
+                events.last(),
+                Some(&Event::ScanFinished { scan: ScanId::new(1), outcome: ScanOutcome::Completed, kind })
+            );
+            assert_eq!(engine.overview().unwrap().last_scan.map(|last| last.kind), Some(kind));
         }
 
         #[test]
@@ -579,7 +806,8 @@ mod tests {
 
             assert_eq!(overview.status, EngineStatus::Idle);
             let finished = Timestamp::from_secs(START);
-            let last = LastScan { scan: ScanId::new(1), finished, outcome: ScanOutcome::Completed };
+            let last =
+                LastScan { scan: ScanId::new(1), finished, outcome: ScanOutcome::Completed, kind: ScanKind::Full };
             assert_eq!(overview.last_scan, Some(last));
             let totals: Vec<_> = overview
                 .totals

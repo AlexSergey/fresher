@@ -26,7 +26,7 @@ equivalent of every TypeScript tool.
 | Tool                                         | What it is                                                          | Command                                                          |
 | -------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `rust-toolchain.toml`                        | pins the compiler for everyone, with `rustfmt`, `clippy`, llvm      | installed by `rustup` on first use                               |
-| compiler lints (`[workspace.lints.rust]`)    | stricter compiler warnings; `unsafe_code = "forbid"` in the core    | part of every build                                              |
+| compiler lints (`[workspace.lints.rust]`)    | stricter compiler warnings; `unsafe_code = "deny"` (see below)      | part of every build                                              |
 | Clippy (`clippy.toml` + `[workspace.lints]`) | `all` + `pedantic` + picked restriction lints                       | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 | cargo-deny (`deny.toml`)                     | licences, security advisories, duplicate and banned crates, sources | `cargo deny check`                                               |
 | cargo-machete                                | dependencies a crate declares and never uses                        | `cargo machete`                                                  |
@@ -36,8 +36,11 @@ What the Rust lints enforce:
 - **Clippy `all` + `pedantic`**; the pedantic lints that only add noise are allowed one by one in `Cargo.toml`.
 - **No `unwrap()` / `expect()` / `panic!` / `todo!` / `unimplemented!` / `dbg!` / `println!` / `eprintln!`** outside
   tests: errors are returned, output goes through `tracing`.
-- **No `unsafe` in the core crates**; where an FFI call is unavoidable, one unsafe operation per block with a
-  `// SAFETY:` comment.
+- **`unsafe` only in `fresher-macos`'s `ffi` module**: `unsafe_code = "deny"` in the workspace;
+  `#![forbid(unsafe_code)]` at the root of every crate but `fresher-macos`, checked by the crate guard
+  (`npm run check:crate-deps`); in `fresher-macos` only `mod ffi` carries `#[expect(unsafe_code, reason = "...")]`, with
+  one unsafe operation per block and a `// SAFETY:` comment (Clippy's `multiple_unsafe_ops_per_block` and
+  `undocumented_unsafe_blocks`).
 - **`#[allow(...)]` needs a reason**: `#[expect(lint, reason = "...")]`.
 - **File system hygiene**: `std::fs::remove_dir_all` and `remove_file` are disallowed by `clippy.toml`
   (`disallowed-methods`) everywhere except the cleaner crate, so nothing else can delete.
@@ -82,7 +85,7 @@ tokens' mirror** keeps `motion.css` and `motion.ts` equal ([`testing.md`](./test
 | gitleaks              | keys, tokens and passwords in staged changes       | `npm run check:secrets` |
 | typos (`_typos.toml`) | misspellings in code and docs (Rust, TS, Markdown) | `npm run check:typos`   |
 | staged-files guard    | any file over 1 MiB, any `*.sqlite` or `.env`      | `npm run check:staged`  |
-| crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module | `npm run check:crate-deps` |
+| crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module; a crate root other than `fresher-macos`'s without `#![forbid(unsafe_code)]` | `npm run check:crate-deps` |
 
 ## Layer 3. Pre-commit (Husky + lint-staged)
 
@@ -124,6 +127,11 @@ Conventional Commits: `type(scope): subject`.
 The e2e suites (`npm run test:e2e`) are run by hand and in CI, not in the hook: the UI e2e needs a browser. The
 performance spec (`npm run test:perf --workspace app/ui`) is run by hand only, on a quiet Mac: frame times on a shared
 runner are noise.
+
+The scan benches (`npm run bench`, criterion, a release build) are run by hand only, neither in the hook nor in CI:
+their timings depend on the machine and its load. The deterministic bars of the scan (folders read, bytes per node,
+the cache's cap, the data folder's footprint) are tests and run in the hook; see
+[`testing.md`](./testing.md#performance).
 
 CI (GitHub Actions) runs the same on every pull request and on `main`; commits starting with `chore(release)` are
 skipped. The workflows live in `.github/workflows/`; every action is pinned to a full commit SHA with its version in a

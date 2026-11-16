@@ -190,6 +190,7 @@ name = "*.lock"
             sizes: Sizes::ZERO,
             modified: None,
             siblings: vec![],
+            marker: None,
         }
     }
 

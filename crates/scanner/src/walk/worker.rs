@@ -1,0 +1,228 @@
+//! The worker loop: take a job, read the folder, match and fold its entries, send one report to the aggregator.
+
+use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt as _;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::mpsc::SyncSender;
+
+use fresher_core::{
+    CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, EntryKind, FolderIdentity, FolderListing, FolderReader, MarkerCheck,
+    ReadError, Sizes, is_valid_cachedir_tag,
+};
+
+use crate::matcher::entry::sibling_mask;
+use crate::matcher::state::TrieState;
+use crate::matcher::{Hits, Matcher};
+use crate::tree::fold::{FolderBatch, SharedFile, fold};
+use crate::tree::node::{Hit, NodeIndex, Sums};
+use crate::walk::boundary::{Boundary, Decision};
+use crate::walk::errors;
+use crate::walk::queue::{Job, WorkQueue};
+
+/// What every worker shares, read-only.
+#[derive(Clone, Copy)]
+pub(crate) struct Context<'a> {
+    pub(crate) matcher: &'a Matcher,
+    pub(crate) boundary: &'a Boundary,
+    pub(crate) reader: &'a dyn FolderReader,
+    pub(crate) queue: &'a WorkQueue,
+    pub(crate) cancel: &'a CancelToken,
+    pub(crate) threshold: u64,
+}
+
+/// A subfolder of a listing, with what the walk decided about it; in listing order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Child {
+    pub(crate) path: PathBuf,
+    pub(crate) identity: FolderIdentity,
+    pub(crate) state: TrieState,
+    pub(crate) decision: Decision,
+    /// An interest claims it whole: its subtree is summed, not kept.
+    pub(crate) whole: bool,
+}
+
+/// What one job gives the aggregator.
+#[derive(Debug)]
+pub(crate) struct Report {
+    pub(crate) node: NodeIndex,
+    pub(crate) opaque: Option<NodeIndex>,
+    pub(crate) root_device: u64,
+    pub(crate) body: Body,
+}
+
+#[derive(Debug)]
+pub(crate) enum Body {
+    /// The folder could not be read.
+    Failed(ReadError),
+    /// A folder outside any opaque subtree.
+    Folder(FolderReport),
+    /// A folder whose insides are summed: inside an opaque subtree, or claimed whole by its own marker.
+    Opaque(OpaqueReport),
+}
+
+/// The entries a folder counts in the walk's summary and progress.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Counted {
+    pub(crate) entries: u64,
+    pub(crate) bytes: u64,
+    /// Entries that could not be read.
+    pub(crate) failed: u64,
+}
+
+#[derive(Debug)]
+pub(crate) struct FolderReport {
+    pub(crate) batch: FolderBatch,
+    /// One per kept folder of the batch, in the same order.
+    pub(crate) children: Vec<Child>,
+    /// The listing's sibling masks, shared by every subfolder's job.
+    pub(crate) child_siblings: Option<Arc<[(u32, u64)]>>,
+    pub(crate) counted: Counted,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct OpaqueReport {
+    /// The folder's own marker hits, when it is the opaque root.
+    pub(crate) own_hits: Vec<Hit>,
+    /// The plain files and links, for the tree.
+    pub(crate) sums: Sums,
+    /// The files whose bytes may be shared, counted once by the tree.
+    pub(crate) shared: Vec<SharedFile>,
+    /// Every file counted once per name, as a match reports it.
+    pub(crate) sizes: Sizes,
+    pub(crate) folders: u32,
+    /// Something in it could not be read or was not entered.
+    pub(crate) incomplete: bool,
+    pub(crate) children: Vec<Child>,
+    pub(crate) counted: Counted,
+}
+
+/// Takes jobs until the queue ends; a cancelled token or a gone aggregator stops the walk.
+pub(crate) fn run(context: Context<'_>, sender: &SyncSender<Report>) {
+    let mut listing = FolderListing::new();
+    while let Some(job) = context.queue.pop() {
+        if context.cancel.is_cancelled() {
+            context.queue.cancel();
+            break;
+        }
+        let report = read(context, &job, &mut listing);
+        if sender.send(report).is_err() {
+            context.queue.cancel();
+            break;
+        }
+    }
+}
+
+fn read(context: Context<'_>, job: &Job, listing: &mut FolderListing) -> Report {
+    let body = match errors::read_folder(context.reader, &job.path, job.identity, listing) {
+        Err(error) => Body::Failed(error),
+        Ok(()) => folder(context, job, listing),
+    };
+    Report { node: job.node, opaque: job.opaque, root_device: job.root_device, body }
+}
+
+fn folder(context: Context<'_>, job: &Job, listing: &FolderListing) -> Body {
+    let is_opaque_root = job.opaque.is_none_or(|root| root == job.node);
+    if !is_opaque_root {
+        return Body::Opaque(summed(context, job, listing, Vec::new()));
+    }
+    let facts = context.matcher.folder(listing);
+    let own_hits = if job.is_root { Vec::new() } else { own_hits(context, job, facts.markers()) };
+    if job.opaque.is_some() || own_hits.iter().any(|hit| context.matcher.claims_whole(hit.interest)) {
+        return Body::Opaque(summed(context, job, listing, own_hits));
+    }
+    let mut hits: Vec<Hits> = Vec::with_capacity(listing.len());
+    let mut children = Vec::new();
+    let mut counted = Counted::default();
+    for (name, entry) in listing.iter() {
+        if entry.error.is_some() {
+            counted.failed += 1;
+            hits.push(Hits::default());
+            continue;
+        }
+        if entry.kind != EntryKind::Folder {
+            counted.entries += 1;
+            if entry.kind == EntryKind::File {
+                counted.bytes = counted.bytes.saturating_add(entry.sizes.logical.bytes());
+            }
+            hits.push(context.matcher.entry(job.state, name, entry.kind));
+            continue;
+        }
+        let path = job.path.join(OsStr::from_bytes(name));
+        let decision = context.boundary.decide(&path, entry.device, job.root_device);
+        let found = if decision == Decision::Enter {
+            context.matcher.entry(job.state, name, entry.kind)
+        } else {
+            Hits::default()
+        };
+        if decision != Decision::NotScanned(fresher_core::NotScanned::OtherVolume) {
+            counted.entries += 1;
+        }
+        let whole = found.as_slice().iter().any(|&interest| context.matcher.claims_whole(interest));
+        let identity = FolderIdentity { device: entry.device, file_id: entry.file_id };
+        let state = context.matcher.child_state(job.state, name);
+        children.push(Child { path, identity, state, decision, whole });
+        hits.push(found);
+    }
+    let mut batch = fold(job.node, listing, &facts, &hits, context.threshold);
+    batch.own_hits = own_hits;
+    let child_siblings = (!facts.siblings().is_empty()).then(|| Arc::from(facts.siblings()));
+    Body::Folder(FolderReport { batch, children, child_siblings, counted })
+}
+
+/// The folder's own marker hits: their sibling masks come from the parent's listing; a `CACHEDIR.TAG` is read.
+fn own_hits(context: Context<'_>, job: &Job, markers: &[u32]) -> Vec<Hit> {
+    let siblings = job.parent_siblings.as_deref().unwrap_or_default();
+    markers
+        .iter()
+        .map(|&interest| {
+            let marker = context.matcher.checks_cachedir_tag(interest).then(|| {
+                match context.reader.head(&job.path, CACHEDIR_TAG, CACHEDIR_SIGNATURE.len()) {
+                    Ok(head) if is_valid_cachedir_tag(&head) => MarkerCheck::Valid,
+                    _ => MarkerCheck::Invalid,
+                }
+            });
+            Hit { interest, marker, siblings: sibling_mask(siblings, interest) }
+        })
+        .collect()
+}
+
+/// Sums a folder inside an opaque subtree: nothing in it is matched or kept.
+fn summed(context: Context<'_>, job: &Job, listing: &FolderListing, own_hits: Vec<Hit>) -> OpaqueReport {
+    let mut report = OpaqueReport { own_hits, ..OpaqueReport::default() };
+    for (name, entry) in listing.iter() {
+        if entry.error.is_some() {
+            report.incomplete = true;
+            continue;
+        }
+        report.counted.entries += 1;
+        match entry.kind {
+            EntryKind::Folder => {
+                let path = job.path.join(OsStr::from_bytes(name));
+                let decision = context.boundary.decide(&path, entry.device, job.root_device);
+                match decision {
+                    Decision::NotScanned(fresher_core::NotScanned::OtherVolume) => continue,
+                    Decision::Enter => {}
+                    Decision::NotScanned(_) | Decision::Protected => report.incomplete = true,
+                }
+                report.folders = report.folders.saturating_add(1);
+                let identity = FolderIdentity { device: entry.device, file_id: entry.file_id };
+                report.children.push(Child { path, identity, state: TrieState::DEAD, decision, whole: false });
+            }
+            EntryKind::File => {
+                report.counted.bytes = report.counted.bytes.saturating_add(entry.sizes.logical.bytes());
+                report.sizes = report.sizes.checked_add(entry.sizes).unwrap_or_else(|| {
+                    report.incomplete = true;
+                    report.sizes
+                });
+                if entry.links > 1 || entry.clone.is_some() {
+                    report.shared.push(SharedFile::of(entry));
+                } else {
+                    report.sums = report.sums.saturating_add(Sums::file(entry.sizes));
+                }
+            }
+            EntryKind::Symlink => report.sums = report.sums.saturating_add(Sums::file(Sizes::ZERO)),
+        }
+    }
+    report
+}

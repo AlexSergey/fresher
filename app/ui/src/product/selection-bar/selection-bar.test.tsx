@@ -14,7 +14,7 @@ const css = readFileSync(path.join(import.meta.dirname, 'selection-bar.module.cs
 const MANY: SelectionBarProps['summary'] = {
   count: 128,
   highest: 'high',
-  sizes: { allocated: 4_200_000_000, completeness: 'complete', logical: 4_200_000_000 },
+  sizes: { allocated: 4_200_000_000, completeness: 'complete', logical: 4_200_000_000, reclaimable: 4_200_000_000 },
 };
 
 const bar = (props: Partial<SelectionBarProps> = {}): React.JSX.Element => (
@@ -43,7 +43,13 @@ describe('SelectionBar', () => {
       expect(screen.queryByRole('region', { name: 'Selection' })).not.toBeInTheDocument();
 
       rerender(
-        bar({ summary: { count: 0, highest: null, sizes: { allocated: 0, completeness: 'complete', logical: 0 } } }),
+        bar({
+          summary: {
+            count: 0,
+            highest: null,
+            sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+          },
+        }),
       );
 
       expect(screen.queryByRole('region', { name: 'Selection' })).not.toBeInTheDocument();
@@ -105,7 +111,7 @@ describe('SelectionBar', () => {
           summary: {
             count: 1,
             highest: 'safe',
-            sizes: { allocated: 640_000_000, completeness: 'partial', logical: 1 },
+            sizes: { allocated: 640_000_000, completeness: 'partial', logical: 1, reclaimable: 640_000_000 },
           },
         }),
       );

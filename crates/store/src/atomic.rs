@@ -15,12 +15,30 @@ use crate::DataFolder;
 /// The folder's `fsync` comes after the rename, when the new file is already in place: its failure is logged, not
 /// reported, because the write did happen and a retry would change nothing.
 pub(crate) fn write_atomic(folder: &DataFolder, name: &str, bytes: &[u8]) -> Result<(), StoreError> {
+    let staged = stage(folder, name, bytes)?;
+    commit(folder, staged)
+}
+
+/// The first half of `write_atomic`: `bytes` written and synced to a temporary file for `name`, not yet in place.
+/// Dropping it removes the temporary file and leaves the folder as it was.
+#[derive(Debug)]
+pub(crate) struct Staged {
+    temporary: NamedTempFile,
+    target: PathBuf,
+}
+
+pub(crate) fn stage(folder: &DataFolder, name: &str, bytes: &[u8]) -> Result<Staged, StoreError> {
     let target = file_path(folder, name)?;
     let mut temporary = temporary_file(folder, name)?;
     temporary.write_all(bytes).map_err(|error| io_error(&error))?;
     temporary.as_file().sync_all().map_err(|error| io_error(&error))?;
+    Ok(Staged { temporary, target })
+}
+
+/// The second half of `write_atomic`: the staged file renamed over its target, then the folder synced.
+pub(crate) fn commit(folder: &DataFolder, staged: Staged) -> Result<(), StoreError> {
     // A failed rename hands the temporary file back inside the error; dropping it removes it.
-    temporary.persist(&target).map_err(|error| io_error(&error.error))?;
+    staged.temporary.persist(&staged.target).map_err(|error| io_error(&error.error))?;
     if let Err(error) = File::open(folder.path()).and_then(|opened| opened.sync_all()) {
         tracing::warn!(kind = %error.kind(), "the data folder could not be synced after a write");
     }

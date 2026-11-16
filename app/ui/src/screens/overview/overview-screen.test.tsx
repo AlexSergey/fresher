@@ -25,13 +25,14 @@ const DICTIONARY = { ...DEMO_DICTIONARY, 'demo.error.failed': 'The demo folder v
 
 const PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
-  lastScan: { finished: 1_735_689_600, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
 };
 
 const FAILED: Overview = {
   ...IDLE,
   lastScan: {
     finished: 1_735_689_600,
+    kind: { kind: 'full' },
     outcome: { kind: 'failed', reason: { args: {}, key: 'demo.error.failed' } },
     scan: 1,
   },
@@ -39,7 +40,7 @@ const FAILED: Overview = {
 
 // The overview during scan 1, with only the downloads counted so far.
 const SCANNING: Overview = {
-  found: { allocated: 750_000_000, completeness: 'complete', logical: 750_000_000 },
+  found: { allocated: 750_000_000, completeness: 'complete', logical: 750_000_000, reclaimable: 750_000_000 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: DEMO_OVERVIEW.totals.filter(({ category }) => category === 'demo.downloads'),

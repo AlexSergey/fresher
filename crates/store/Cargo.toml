@@ -11,7 +11,9 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+crc32fast.workspace = true
 fresher-core = { path = "../core" }
+miniz_oxide.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

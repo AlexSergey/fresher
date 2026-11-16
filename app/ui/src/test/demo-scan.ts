@@ -19,7 +19,7 @@ const finding = (id: number, category: string, name: string, bytes: number, dang
   module: 'demo',
   reason: { args: {}, key: 'demo.finding.reason' },
   removal: { kind: 'move-to-trash', value: `/demo/${name}` },
-  sizes: { allocated: bytes, completeness: 'complete', logical: bytes },
+  sizes: { allocated: bytes, completeness: 'complete', logical: bytes, reclaimable: bytes },
   subject: { kind: 'path', value: `/demo/${name}` },
   title: { args: { name: { kind: 'text', value: name } }, key: 'demo.finding.title' },
 });
@@ -51,7 +51,7 @@ export const DEMO_SCAN: readonly Event[] = [
   FIRST_BATCH,
   { findings: DEMO_FINDINGS.slice(2), scan: 1, type: 'findings-added' },
   { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
-  { outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
+  { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];
 
 // What the core sends when a scan is asked for during a scan: the error and its text, built by the core.
@@ -71,20 +71,30 @@ export const DEMO_SETTINGS: SettingsView = {
 };
 
 export const IDLE: Overview = {
-  found: { allocated: 0, completeness: 'complete', logical: 0 },
+  found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
   lastScan: null,
   status: { state: 'idle' },
   totals: [],
 };
 
-const complete = (bytes: number): Overview['found'] => ({ allocated: bytes, completeness: 'complete', logical: bytes });
+const complete = (bytes: number): Overview['found'] => ({
+  allocated: bytes,
+  completeness: 'complete',
+  logical: bytes,
+  reclaimable: bytes,
+});
 
-const partial = (bytes: number): Overview['found'] => ({ allocated: bytes, completeness: 'partial', logical: bytes });
+const partial = (bytes: number): Overview['found'] => ({
+  allocated: bytes,
+  completeness: 'partial',
+  logical: bytes,
+  reclaimable: bytes,
+});
 
 // What `get_overview` answers once the demo scan finished: its totals, as the engine sums them.
 export const DEMO_OVERVIEW: Overview = {
   found: complete(2_570_000_000),
-  lastScan: { finished: 1_735_689_600, outcome: { kind: 'completed' }, scan: 1 },
+  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1 },
   status: { state: 'idle' },
   totals: [
     { category: 'demo.caches', count: 2, highestDanger: 'safe', sizes: complete(1_820_000_000) },
@@ -141,12 +151,12 @@ export const DEMO_SCANNING: Overview = {
 // What the core streams when the live scan is stopped after its first batch, and the overview it answers then.
 export const DEMO_STOP: readonly Event[] = [
   { module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
-  { outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
+  { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
 ];
 
 export const DEMO_STOPPED: Overview = {
   found: complete(2_250_000_000),
-  lastScan: { finished: 1_735_689_600, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
   status: { state: 'idle' },
   totals: FIRST_TOTALS,
 };
@@ -154,12 +164,12 @@ export const DEMO_STOPPED: Overview = {
 // A scan that could not read some folders: every finding, the caches' size only a lower bound.
 export const DEMO_PARTIAL_SCAN: readonly Event[] = [
   ...DEMO_SCAN.slice(0, -1),
-  { outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
+  { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
 ];
 
 export const DEMO_PARTIAL: Overview = {
   found: partial(2_570_000_000),
-  lastScan: { finished: 1_735_689_600, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
   status: { state: 'idle' },
   totals: [
     { category: 'demo.caches', count: 2, highestDanger: 'safe', sizes: partial(1_820_000_000) },
@@ -174,12 +184,12 @@ export const DEMO_FAILED_SCAN: readonly Event[] = [
   SCAN_STARTED,
   FIRST_BATCH,
   { module: 'demo', outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'module-finished' },
-  { outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'scan-finished' },
+  { kind: { kind: 'full' }, outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'scan-finished' },
 ];
 
 export const DEMO_FAILED: Overview = {
   found: complete(2_250_000_000),
-  lastScan: { finished: 1_735_689_600, outcome: { kind: 'failed', reason: FAILURE }, scan: 1 },
+  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'failed', reason: FAILURE }, scan: 1 },
   status: { state: 'idle' },
   totals: FIRST_TOTALS,
 };

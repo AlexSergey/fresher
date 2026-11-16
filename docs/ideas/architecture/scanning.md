@@ -2,6 +2,12 @@
 
 **Since:** 2026-11-15
 
+**Taken by plan [004](../../plans/004-fast-scan/readme.md)** (2026-11-16): the bulk read per batch of entries, the
+three sizes (the private size read only for files that may share blocks), hard links and clones counted once, one
+device per root with nested roots dropped, errors collected by kind, and the arena tree (72 bytes a node). Changed by
+measurement: one `Mutex` queue instead of work stealing, and one thread per core (at most 16) instead of 3 × the cores,
+which was slower on a warm tree.
+
 ## Parallel traversal
 
 - **Work-stealing beats a sorted parallel walk.** One leading Rust analyzer replaced a rayon-based sorted walker with

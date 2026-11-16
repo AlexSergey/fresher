@@ -50,7 +50,7 @@ describe('reduce', () => {
         started,
         { findings: [...DEMO_FINDINGS], scan: 2, type: 'findings-added' },
         { module: 'demo', outcome: { kind: 'completed' }, scan: 2, type: 'module-finished' },
-        { outcome: { kind: 'completed' }, scan: 2, type: 'scan-finished' },
+        { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 2, type: 'scan-finished' },
       ]);
 
       expect(state.stale).toBe(false);
@@ -82,9 +82,12 @@ describe('reduce', () => {
         started,
         FIRST_BATCH,
         { module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
-        { outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
+        { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
         requested,
-        loaded({ ...DEMO_OVERVIEW, lastScan: { finished: 1, outcome: { kind: 'partial' }, scan: 1 } }),
+        loaded({
+          ...DEMO_OVERVIEW,
+          lastScan: { finished: 1, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
+        }),
       ]);
 
       expect(state.overview?.totals).toEqual(DEMO_OVERVIEW.totals);
@@ -110,7 +113,7 @@ describe('reduce', () => {
     it('keeps a scan the events finished when a stale overview says it still runs', () => {
       const state = run([
         { bytes: 2048, entries: 10, scan: 4, type: 'scan-progress' },
-        { outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
+        { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
         loaded(scanning(4)),
       ]);
 
@@ -156,7 +159,10 @@ describe('reduce', () => {
       expect(
         run([started, { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' }]).stale,
       ).toBe(true);
-      expect(run([started, { outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' }]).stale).toBe(true);
+      expect(
+        run([started, { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' }])
+          .stale,
+      ).toBe(true);
     });
 
     it('a request clears the stale mark', () => {
@@ -186,7 +192,7 @@ describe('reduce', () => {
 
       expect(state.overview).toEqual({
         ...DEMO_OVERVIEW,
-        found: { allocated: 0, completeness: 'complete', logical: 0 },
+        found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
         status: { scan: 2, state: 'scanning' },
         totals: [],
       });
@@ -251,7 +257,7 @@ describe('reduce', () => {
         { bytes: 1024, entries: 5, scan: 4, type: 'scan-progress' },
         loaded(scanning(4)),
         { findings: DEMO_FINDINGS.slice(0, 1).map((finding) => ({ ...finding })), scan: 4, type: 'findings-added' },
-        { outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
+        { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
       ]);
 
       expect(state.scan).toBe(4);

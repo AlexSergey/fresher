@@ -3,6 +3,8 @@
 //! It has no interests, reads nothing from the disk and runs no command: `finish` describes example items under a
 //! made-up `/demo/` root that does not exist, and example images and volumes of a made-up tool.
 
+#![forbid(unsafe_code)]
+
 mod settings;
 
 use fresher_core::{
@@ -313,6 +315,7 @@ mod tests {
                 sizes: Sizes::ZERO,
                 modified: None,
                 siblings: vec![],
+                marker: None,
             };
             let mut found = Vec::new();
 

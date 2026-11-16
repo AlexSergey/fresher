@@ -3,7 +3,7 @@
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{AccessStatus, ByteSize, Finding, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey};
+use crate::{AccessStatus, ByteSize, Finding, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp};
 
 /// Something that happened; a discriminated union on `type` in TypeScript.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -31,6 +31,7 @@ pub enum Event {
     ScanFinished {
         scan: ScanId,
         outcome: ScanOutcome,
+        kind: ScanKind,
     },
     SettingChanged {
         key: SettingKey,
@@ -39,6 +40,22 @@ pub enum Event {
     AccessChanged {
         status: AccessStatus,
     },
+}
+
+/// How a scan read the disk.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum ScanKind {
+    /// Every folder was read.
+    #[default]
+    Full,
+    /// Only the folders changed since the last scan were read.
+    Rescan {
+        #[serde(rename = "changedFolders")]
+        changed_folders: u32,
+    },
+    /// Nothing was read: the last scan, taken at `taken`, was restored from the cache.
+    Restored { taken: Timestamp },
 }
 
 /// How one module's part of a scan ended.
@@ -78,7 +95,9 @@ mod tests {
         use serde_json::json;
         use ts_rs::{Config, TS};
 
-        use crate::{ByteSize, Event, ModuleId, ModuleOutcome, ScanId, ScanOutcome, Text, TextKey};
+        use crate::{
+            ByteSize, Event, ModuleId, ModuleOutcome, ScanId, ScanKind, ScanOutcome, Text, TextKey, Timestamp,
+        };
 
         #[test]
         fn events_serialize_with_a_type_tag() {
@@ -103,10 +122,30 @@ mod tests {
                 })
             );
             assert_eq!(
-                serde_json::to_value(Event::ScanFinished { scan: ScanId::new(1), outcome: ScanOutcome::Partial })
-                    .unwrap(),
-                json!({ "type": "scan-finished", "scan": 1, "outcome": { "kind": "partial" } })
+                serde_json::to_value(Event::ScanFinished {
+                    scan: ScanId::new(1),
+                    outcome: ScanOutcome::Partial,
+                    kind: ScanKind::Full
+                })
+                .unwrap(),
+                json!({ "type": "scan-finished", "scan": 1, "outcome": { "kind": "partial" }, "kind": { "kind": "full" } })
             );
+        }
+
+        #[test]
+        fn scan_finished_carries_the_scan_kind() {
+            let rescan = Event::ScanFinished {
+                scan: ScanId::new(2),
+                outcome: ScanOutcome::Completed,
+                kind: ScanKind::Rescan { changed_folders: 12 },
+            };
+            let restored = ScanKind::Restored { taken: Timestamp::from_secs(100) };
+
+            assert_eq!(
+                serde_json::to_value(rescan).unwrap()["kind"],
+                json!({ "kind": "rescan", "changedFolders": 12 })
+            );
+            assert_eq!(serde_json::to_value(restored).unwrap(), json!({ "kind": "restored", "taken": 100 }));
         }
 
         #[test]

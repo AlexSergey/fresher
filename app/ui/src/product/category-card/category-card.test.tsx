@@ -74,7 +74,9 @@ describe('CategoryCard', () => {
     it('an unknown size shows — and never 0', () => {
       render(
         <CategoryCard
-          {...card({ total: { ...CACHES, sizes: { allocated: 0, completeness: 'unknown', logical: 0 } } })}
+          {...card({
+            total: { ...CACHES, sizes: { allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 } },
+          })}
         />,
       );
 

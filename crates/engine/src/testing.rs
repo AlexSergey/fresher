@@ -9,12 +9,13 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, DangerLevel,
-    DiskWalk, EntryKind, Event, Finding, FindingSink, Interest, InterestSet, Locales, Match, Module, ModuleContext,
-    ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, SettingsStore, Sizes, StoreError,
-    StoredSettings, Subject, Text, TextKey, Unreadable, WalkError, WalkProgress, WalkSummary,
+    Access, AccessProbe, AccessStatus, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath,
+    DangerLevel, DiskState, DiskWalk, EntryKind, Event, Finding, FindingSink, Interest, Locales, Match, Module,
+    ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, ScanKind, SettingsStore,
+    Sizes, StateId, StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, Unreadable, WalkError, WalkMode,
+    WalkProgress, WalkRequest, WalkSummary,
 };
-use fresher_testing::{FakeClock, FakeCommandRunner};
+use fresher_testing::{FakeClock, FakeCommandRunner, FixedDiskState};
 
 use crate::{Engine, Ports, Registry};
 
@@ -179,17 +180,22 @@ pub(crate) const fn bytes(size: u64) -> Sizes {
 }
 
 /// A walk that delivers a fixed list of folders to the interests that name them; held, it then waits until it is
-/// released or cancelled.
-#[derive(Debug, Default)]
+/// released or cancelled. Its `commit` returns an empty state numbered by the commits so far, or a scripted error.
+#[derive(Default)]
 pub(crate) struct ScriptedWalk {
     folders: Vec<(String, PathBuf, Sizes)>,
     progress: Vec<WalkProgress>,
     unreadable: u64,
+    kind: ScanKind,
     error: Option<WalkError>,
+    commit_error: Option<WalkError>,
     panics: bool,
     deaf: bool,
     hold: Option<Gate>,
     roots: Arc<Mutex<Vec<PathBuf>>>,
+    commits: Arc<Mutex<Vec<Vec<ClaimedPath>>>>,
+    modes: Arc<Mutex<Vec<WalkMode>>>,
+    states: Vec<Arc<dyn DiskState>>,
 }
 
 /// Lets a held [`ScriptedWalk`] finish.
@@ -240,6 +246,23 @@ impl ScriptedWalk {
         self
     }
 
+    /// The walk reports that it read the disk as `kind`.
+    pub(crate) const fn kind(mut self, kind: ScanKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    /// The commit fails with `error`.
+    pub(crate) fn failing_commit(mut self, error: WalkError) -> Self {
+        self.commit_error = Some(error);
+        self
+    }
+
+    /// The claims of every commit, in order.
+    pub(crate) fn commits(&self) -> Arc<Mutex<Vec<Vec<ClaimedPath>>>> {
+        Arc::clone(&self.commits)
+    }
+
     /// The walk ends with `error` after delivering its folders.
     pub(crate) fn failing(mut self, error: WalkError) -> Self {
         self.error = Some(error);
@@ -262,20 +285,37 @@ impl ScriptedWalk {
     pub(crate) fn roots(&self) -> Arc<Mutex<Vec<PathBuf>>> {
         Arc::clone(&self.roots)
     }
+
+    /// The commits return `states` in turn; past the last, an empty state numbered by the commits so far.
+    pub(crate) fn committing(mut self, states: Vec<Arc<dyn DiskState>>) -> Self {
+        self.states = states;
+        self
+    }
+
+    /// The mode of every walk asked, in order.
+    pub(crate) fn modes(&self) -> Arc<Mutex<Vec<WalkMode>>> {
+        Arc::clone(&self.modes)
+    }
+}
+
+impl std::fmt::Debug for ScriptedWalk {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("ScriptedWalk").field("folders", &self.folders).finish_non_exhaustive()
+    }
 }
 
 impl DiskWalk for ScriptedWalk {
     fn walk(
         &self,
-        roots: &[PathBuf],
-        interests: &InterestSet,
+        request: &WalkRequest<'_>,
         cancel: &CancelToken,
         on_match: &mut dyn FnMut(Match),
         on_progress: &mut dyn FnMut(WalkProgress),
     ) -> Result<WalkSummary, WalkError> {
-        self.roots.lock().unwrap().extend_from_slice(roots);
+        self.roots.lock().unwrap().extend_from_slice(request.roots);
+        self.modes.lock().unwrap().push(request.mode);
         for (name, path, sizes) in &self.folders {
-            for (interest, wanted) in interests.iter() {
+            for (interest, wanted) in request.interests.iter() {
                 if wanted.pattern() == &Pattern::FolderName(name.clone()) {
                     let (path, sizes) = (path.clone(), *sizes);
                     on_match(Match {
@@ -285,6 +325,7 @@ impl DiskWalk for ScriptedWalk {
                         sizes,
                         modified: None,
                         siblings: vec![],
+                        marker: None,
                     });
                 }
             }
@@ -305,7 +346,21 @@ impl DiskWalk for ScriptedWalk {
             return Err(error.clone());
         }
         let unreadable = BTreeMap::from([(Unreadable::NoPermission, self.unreadable)]);
-        Ok(WalkSummary { entries: u64::try_from(self.folders.len()).unwrap(), unreadable })
+        let entries = u64::try_from(self.folders.len()).unwrap();
+        Ok(WalkSummary { entries, unreadable, kind: self.kind, ..WalkSummary::default() })
+    }
+
+    fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
+        let mut commits = self.commits.lock().unwrap();
+        commits.push(claims.to_vec());
+        if let Some(error) = &self.commit_error {
+            return Err(error.clone());
+        }
+        if let Some(state) = self.states.get(commits.len() - 1) {
+            return Ok(Arc::clone(state));
+        }
+        let id = StateId::new(u32::try_from(commits.len()).unwrap());
+        Ok(Arc::new(FixedDiskState::new(id, Timestamp::from_secs(0), [])))
     }
 }
 
@@ -434,10 +489,19 @@ pub(crate) fn wait_for_finish(events: &Receiver<Event>) -> Vec<Event> {
     }
 }
 
+/// Waits until `engine` is idle; fails after 10 s instead of hanging.
+pub(crate) fn wait_until_idle(engine: &Engine) {
+    let deadline = std::time::Instant::now() + PATIENCE;
+    while engine.status() != Ok(fresher_core::EngineStatus::Idle) {
+        assert!(std::time::Instant::now() < deadline, "the engine did not go idle");
+        thread::yield_now();
+    }
+}
+
 /// Runs one scan of `engine` to its end and gives its events.
 pub(crate) fn scan(engine: &Engine) -> Vec<Event> {
     let events = engine.subscribe();
-    engine.start_scan().unwrap();
+    engine.start_scan(crate::ScanMode::Auto).unwrap();
     wait_for_finish(&events)
 }
 

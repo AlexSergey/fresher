@@ -11,15 +11,17 @@ beforeEach(() => {
 describe('sizes', () => {
   describe('negative cases', () => {
     it('an unknown size has no text and is never 0', () => {
-      expect(honestSize({ allocated: 0, completeness: 'unknown', logical: 0 })).toStrictEqual({
+      expect(honestSize({ allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 })).toStrictEqual({
         accessibleText: 'Size not known',
         completeness: 'unknown',
       });
-      expect(sizeLabel({ allocated: 0, completeness: 'unknown', logical: 0 })).toBe('—');
+      expect(sizeLabel({ allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 })).toBe('—');
     });
 
     it('a partial size says it is a lower bound, with the core reason', () => {
-      expect(honestSize({ allocated: 42_000_000_000, completeness: 'partial', logical: 1 })).toStrictEqual({
+      expect(
+        honestSize({ allocated: 42_000_000_000, completeness: 'partial', logical: 1, reclaimable: 42_000_000_000 }),
+      ).toStrictEqual({
         accessibleText: 'at least 42 GB',
         completeness: 'partial',
         hint: 'Some files could not be read.',
@@ -30,12 +32,16 @@ describe('sizes', () => {
 
   describe('positive cases', () => {
     it('a complete size shows its allocated bytes, not its logical ones', () => {
-      expect(honestSize({ allocated: 1_500_000_000, completeness: 'complete', logical: 9 })).toStrictEqual({
+      expect(
+        honestSize({ allocated: 1_500_000_000, completeness: 'complete', logical: 9, reclaimable: 1_500_000_000 }),
+      ).toStrictEqual({
         accessibleText: '1.5 GB',
         completeness: 'complete',
         text: '1.5 GB',
       });
-      expect(sizeLabel({ allocated: 1_500_000_000, completeness: 'partial', logical: 9 })).toBe('1.5 GB+');
+      expect(
+        sizeLabel({ allocated: 1_500_000_000, completeness: 'partial', logical: 9, reclaimable: 1_500_000_000 }),
+      ).toBe('1.5 GB+');
     });
 
     it('formats a count with grouping and no fraction', () => {

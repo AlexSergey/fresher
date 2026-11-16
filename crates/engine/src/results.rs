@@ -2,18 +2,38 @@
 
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
+use std::fmt;
+use std::sync::Arc;
 
 use fresher_core::{
-    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Finding, FindingId, FindingOrder,
+    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, DiskState, Finding, FindingId, FindingOrder,
     FindingsPage, LastScan, ModuleId, Sizes,
 };
 
+use crate::claims::Claims;
+
 /// The findings of one scan, in id order. Ids keep increasing across scans, so an id from an earlier scan is unknown.
-#[derive(Debug)]
+/// Also the disk state of the last committed scan, kept until another scan commits one.
 pub(crate) struct Results {
     findings: Vec<Finding>,
     next_id: Option<u32>,
     last: Option<LastScan>,
+    state: Option<Arc<dyn DiskState>>,
+    /// The claims of the findings once the scan resolved them; until then every finding counts its own sizes.
+    claims: Option<Claims>,
+}
+
+impl fmt::Debug for Results {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Results")
+            .field("findings", &self.findings.len())
+            .field("next_id", &self.next_id)
+            .field("last", &self.last)
+            .field("state", &self.state.as_ref().map(|state| state.id()))
+            .field("claims", &self.claims.is_some())
+            .finish()
+    }
 }
 
 /// Which findings a page holds.
@@ -28,12 +48,13 @@ pub(crate) struct Filter<'a> {
 
 impl Results {
     pub(crate) const fn new() -> Self {
-        Self { findings: Vec::new(), next_id: Some(1), last: None }
+        Self { findings: Vec::new(), next_id: Some(1), last: None, state: None, claims: None }
     }
 
     /// Forgets the previous scan's findings; gives the first id of the new scan (`None` when the ids ran out).
     pub(crate) fn begin(&mut self) -> Option<u32> {
         self.findings.clear();
+        self.claims = None;
         self.next_id
     }
 
@@ -47,8 +68,27 @@ impl Results {
         self.next_id = next_id;
     }
 
+    /// The findings of the current scan, in id order.
+    pub(crate) fn findings(&self) -> &[Finding] {
+        &self.findings
+    }
+
+    /// From now on, category totals add each finding's counted size.
+    pub(crate) fn keep_claims(&mut self, claims: Claims) {
+        self.claims = Some(claims);
+    }
+
     pub(crate) fn last(&self) -> Option<LastScan> {
         self.last.clone()
+    }
+
+    /// Keeps `state`, the disk state a scan committed, in place of the previous one.
+    pub(crate) fn keep_state(&mut self, state: Arc<dyn DiskState>) {
+        self.state = Some(state);
+    }
+
+    pub(crate) fn state(&self) -> Option<Arc<dyn DiskState>> {
+        self.state.clone()
     }
 
     pub(crate) fn finding(&self, id: FindingId) -> Result<Finding, CommandError> {
@@ -75,7 +115,9 @@ impl Results {
         FindingsPage { findings, offset: filter.offset, total }
     }
 
-    /// One total per category that has findings, in the order of `categories`, and every finding summed.
+    /// One total per category that has findings, in the order of `categories`, and every finding summed. Once the
+    /// claims are resolved, a finding adds its counted size, so a path claimed twice or nested in another finding is
+    /// counted once.
     pub(crate) fn totals<'a>(
         &self,
         categories: impl Iterator<Item = &'a CategoryDescriptor>,
@@ -91,9 +133,10 @@ impl Results {
                 highest_danger: new.danger(),
             });
             total.count = total.count.saturating_add(1);
-            total.sizes = add(total.sizes, new.sizes());
+            let sizes = self.claims.as_ref().map_or_else(|| new.sizes(), |claims| claims.counted(finding));
+            total.sizes = add(total.sizes, sizes);
             total.highest_danger = total.highest_danger.max(new.danger());
-            found = add(found, new.sizes());
+            found = add(found, sizes);
         }
         (categories.filter_map(|category| totals.remove(&category.id())).collect(), found)
     }
@@ -110,6 +153,7 @@ fn add(total: Sizes, more: Sizes) -> Sizes {
     Sizes {
         logical: sum(total.logical, more.logical),
         allocated: sum(total.allocated, more.allocated),
+        reclaimable: sum(total.reclaimable, more.reclaimable),
         completeness: total.completeness.max(more.completeness),
     }
 }

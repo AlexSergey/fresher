@@ -26,7 +26,11 @@ describe('ModuleSection', () => {
     });
 
     it('an unknown size shows — and never 0', () => {
-      render(<ModuleSection {...section({ found: { allocated: 0, completeness: 'unknown', logical: 0 } })} />);
+      render(
+        <ModuleSection
+          {...section({ found: { allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 } })}
+        />,
+      );
 
       expect(screen.getByText('Size not known')).toBeInTheDocument();
       expect(screen.queryByText(/bytes/u)).not.toBeInTheDocument();

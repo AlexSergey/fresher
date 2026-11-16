@@ -1,24 +1,46 @@
 //! What the shell's tests share: an engine of fakes over the app's real modules, in a temporary data folder.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use fresher_core::{CancelToken, DiskWalk, Event, InterestSet, Match, WalkError, WalkProgress, WalkSummary};
+use fresher_core::{
+    CancelToken, ClaimedPath, DiskState, DiskWalk, Event, Match, StateId, Timestamp, WalkError, WalkProgress,
+    WalkRequest, WalkSummary,
+};
 use fresher_engine::{Engine, Ports};
 use fresher_store::{DataFolder, FileSettingsStore};
-use fresher_testing::{FakeClock, FakeCommandRunner};
+use fresher_testing::{FakeClock, FakeCommandRunner, FixedDiskState};
 use serde_json::Value;
 use tauri::Manager;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::test::{MockRuntime, mock_app};
 use tempfile::TempDir;
 
-use crate::adapters::{NoWalk, UnknownAccess};
+use crate::adapters::UnknownAccess;
 use crate::compose::registry;
 use crate::events::EventForwarder;
+
+/// A walk that finds nothing and commits an empty state: the shell's tests drive the commands, not the disk.
+#[derive(Debug)]
+pub(crate) struct NoWalk;
+
+impl DiskWalk for NoWalk {
+    fn walk(
+        &self,
+        _request: &WalkRequest<'_>,
+        _cancel: &CancelToken,
+        _on_match: &mut dyn FnMut(Match),
+        _on_progress: &mut dyn FnMut(WalkProgress),
+    ) -> Result<WalkSummary, WalkError> {
+        Ok(WalkSummary::default())
+    }
+
+    fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
+        Ok(Arc::new(FixedDiskState::new(StateId::new(0), Timestamp::from_secs(0), [])))
+    }
+}
 
 /// A walk that holds the scan until it is cancelled.
 #[derive(Debug)]
@@ -27,8 +49,7 @@ pub(crate) struct HeldWalk;
 impl DiskWalk for HeldWalk {
     fn walk(
         &self,
-        _roots: &[PathBuf],
-        _interests: &InterestSet,
+        _request: &WalkRequest<'_>,
         cancel: &CancelToken,
         _on_match: &mut dyn FnMut(Match),
         _on_progress: &mut dyn FnMut(WalkProgress),
@@ -37,6 +58,10 @@ impl DiskWalk for HeldWalk {
             thread::yield_now();
         }
         Err(WalkError::Cancelled)
+    }
+
+    fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
+        NoWalk.commit(claims)
     }
 }
 

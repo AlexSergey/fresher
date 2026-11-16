@@ -24,7 +24,7 @@ const summary = (props: Partial<ResultSummaryProps>): (() => JSX.Element) =>
     return (
       <div className={styles.stage}>
         <ResultSummary
-          freed={{ allocated: FREED, completeness: 'complete', logical: FREED }}
+          freed={{ allocated: FREED, completeness: 'complete', logical: FREED, reclaimable: FREED }}
           method="trash"
           moved={DEMO_FINDINGS.length}
           onDone={ignore}
@@ -41,7 +41,7 @@ export const stories = storiesOf('ResultSummary', {
   permanent: { render: summary({ method: 'permanent' }), surface: 'raised', width: 560 },
   'some-skipped': {
     render: summary({
-      freed: { allocated: 1_500_000_000, completeness: 'complete', logical: 1_500_000_000 },
+      freed: { allocated: 1_500_000_000, completeness: 'complete', logical: 1_500_000_000, reclaimable: 1_500_000_000 },
       moved: 1,
       skipped: [
         {

@@ -26,6 +26,7 @@ describe('moduleFound', () => {
         allocated: 0,
         completeness: 'complete',
         logical: 0,
+        reclaimable: 0,
       });
     });
   });
@@ -36,13 +37,19 @@ describe('moduleFound', () => {
         allocated: 2_570_000_000,
         completeness: 'complete',
         logical: 2_570_000_000,
+        reclaimable: 2_570_000_000,
       });
     });
 
     it('counts from the start of the first scan', () => {
       const scanning: Overview = { ...IDLE, status: { scan: 1, state: 'scanning' } };
 
-      expect(moduleFound(DEMO, scanning)).toStrictEqual({ allocated: 0, completeness: 'complete', logical: 0 });
+      expect(moduleFound(DEMO, scanning)).toStrictEqual({
+        allocated: 0,
+        completeness: 'complete',
+        logical: 0,
+        reclaimable: 0,
+      });
     });
 
     it('keeps the weakest completeness of its categories', () => {

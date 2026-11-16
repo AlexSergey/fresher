@@ -8,7 +8,8 @@ use ts_rs::TS;
 use crate::settings::schema::ENABLED;
 use crate::{
     CategoryDescriptor, CategoryId, CommandError, DangerLevel, Finding, ModuleDescriptor, ModuleId, ResolvedSettings,
-    ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
+    ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes,
+    Timestamp,
 };
 
 /// A long operation of the engine; only one runs at a time.
@@ -45,7 +46,7 @@ pub struct Overview {
     pub status: EngineStatus,
     pub last_scan: Option<LastScan>,
     pub totals: Vec<CategoryTotal>,
-    /// Every finding of the current scan summed; the weakest completeness wins.
+    /// Every finding of the current scan summed, a path counted once; the weakest completeness wins.
     pub found: Sizes,
 }
 
@@ -55,6 +56,7 @@ pub struct LastScan {
     pub scan: ScanId,
     pub finished: Timestamp,
     pub outcome: ScanOutcome,
+    pub kind: ScanKind,
 }
 
 /// The findings of one category in the last scan.
@@ -261,10 +263,30 @@ mod tests {
 
         use crate::{
             Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, DangerLevel, EngineStatus,
-            FindingOrder, FindingsQuery, Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Operation, Overview,
-            ScanId, SettingDescriptor, SettingKey, SettingKind, SettingUpdate, SettingValue, SettingsFile,
-            SettingsSchema, SettingsView, Sizes, StoredSettings,
+            FindingOrder, FindingsQuery, LastScan, Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Operation,
+            Overview, ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingUpdate,
+            SettingValue, SettingsFile, SettingsSchema, SettingsView, Sizes, StoredSettings, Timestamp,
         };
+
+        #[test]
+        fn last_scan_serializes_its_kind() {
+            let last = LastScan {
+                scan: ScanId::new(3),
+                finished: Timestamp::from_secs(200),
+                outcome: ScanOutcome::Completed,
+                kind: ScanKind::Restored { taken: Timestamp::from_secs(100) },
+            };
+
+            assert_eq!(
+                serde_json::to_value(last).unwrap(),
+                json!({
+                    "scan": 3,
+                    "finished": 200,
+                    "outcome": { "kind": "completed" },
+                    "kind": { "kind": "restored", "taken": 100 },
+                })
+            );
+        }
 
         #[test]
         fn a_findings_query_keeps_what_it_was_given() {

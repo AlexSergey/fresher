@@ -45,6 +45,22 @@ small `thiserror` error of its own: no panicking path.
 - A module that returns an error, or panics, ends `ModuleFinished { Failed }` alone: the engine catches the panic
   (`catch_unwind`; the release profile unwinds), the other modules finish and the scan ends `Partial`.
 
+## What a module sees of the walk
+
+- Only the matches of its own interests, one `Match` each: `interest` (the index in its own `interests()`), `path`,
+  `kind`, `modified`, `siblings` (which of the interest's sibling names exist next to the entry) and `marker` (for a
+  `CACHEDIR.TAG` marker, whether the tag holds its signature: `Valid` or `Invalid`; `None` for every other interest).
+  The module never reads the file itself.
+- Three sizes in `sizes`: `logical` (what Finder shows), `allocated` (what the entry takes on disk) and `reclaimable`
+  (the part of `allocated` shared with no clone or other hard link: what removing it frees), with their
+  completeness. For a `Claim::Whole` folder they cover everything inside it.
+- **Matches come in no fixed order**: the walk is parallel, and a rescan or a restore at launch hands the same matches
+  in another order. `finish` must not depend on it (sort, or keep the newest by value).
+- The walk matches the interests of every registered module, enabled or not, so turning a module off never changes
+  what the walk reads or the cache; the engine drops a disabled module's matches before they reach it.
+- A rescan runs every module over all the matches again, not over the changes; a restore at launch runs the modules
+  with interests over the cached matches (a module with none waits for the user's scan).
+
 ## Rules or code
 
 - **Rules** (`rules.toml`, matched by `fresher-rules`) when a kind of leftover is recognized by where it is and what it

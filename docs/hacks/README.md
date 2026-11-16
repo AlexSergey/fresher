@@ -55,15 +55,17 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **Why:** the scripts run on Node's own TypeScript support with no build; `node --test` needs no dependency.
 - **If cleaned up:** applying the Vitest rules to them reports every `node:test` import and `describe` call.
 
-## No disk walk until plan 004
+## Places that prompt are avoided until plan 006
 
-- **What:** the app wires `NoWalk`, a `DiskWalk` that finds nothing; a scan in the app runs only the modules with no
-  interests (the `demo` module in debug builds).
-- **Where:** `app/tauri/src/adapters.rs` (`NoWalk`), `app/tauri/src/compose.rs`.
-- **Why:** the fast walk is plan [004](../plans/004-fast-scan/readme.md); plan 002 proves the path UI → engine → module
-  → events without it.
-- **If cleaned up:** removing it before plan 004 leaves the engine without a walk; plan 004 replaces it with
-  `fresher-scanner`'s walk.
+- **What:** the app's scanner has a standing avoid list: the home folder's places whose opening may raise a system
+  prompt (Desktop, Documents, Downloads, Pictures, Movies, Music, `Library/Containers`, `Library/Group Containers`,
+  `Library/Mobile Documents`, `Library/CloudStorage`, `Library/Calendars`, the address book folder). It is added to
+  every walk request's own `avoid` (the engine's request carries none yet); each place is reported as not scanned.
+- **Where:** `crates/macos/src/places.rs` (`places_that_prompt`), `app/tauri/src/compose.rs`
+  (`ScannerOptions::standing_avoid`).
+- **Why:** a first scan must not raise a wall of system prompts; which places to open is decided by plan 006 with the
+  capability state, which then feeds the request's `avoid` and the standing list goes.
+- **If cleaned up:** removing the list before plan 006 makes the first scan raise a prompt for each protected folder.
 
 ## Access answers Unknown until plan 006
 
@@ -73,16 +75,6 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
   it cannot check.
 - **If cleaned up:** answering `Granted` or `Denied` without a probe shows the user a permission state that is not
   true.
-
-## CACHEDIR.TAG read by the rules
-
-- **What:** `fresher-rules` reads the first 43 bytes of a `CACHEDIR.TAG` itself, because a `Match` does not carry
-  whether the tag is valid; the matcher is pure for every other rule.
-- **Where:** `crates/rules/src/cachedir.rs`.
-- **Why:** the core was frozen when the matcher was built (plan 002/06/02); a `Match` says only that the folder holds
-  the marker. Plan 004's walk should report the tag's validity (a field of `Match`), and the read moves to the scanner.
-- **If cleaned up:** dropping the read makes any file named `CACHEDIR.TAG` mark a folder as a cache, which a rule must
-  not trust.
 
 ## Command arguments by value
 

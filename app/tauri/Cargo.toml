@@ -16,12 +16,15 @@ tauri-build = { version = "=2.7.4", features = [] }
 [dependencies]
 fresher-core = { path = "../../crates/core" }
 fresher-engine = { path = "../../crates/engine" }
+fresher-macos = { path = "../../crates/macos" }
 # Registered in debug builds only (`src/compose.rs`); Cargo cannot make a dependency depend on `debug_assertions`.
 fresher-module-demo = { path = "../../modules/demo" }
+fresher-scanner = { path = "../../crates/scanner" }
 fresher-store = { path = "../../crates/store" }
 tauri = { version = "=2.12.5", features = ["macos-private-api"] }
 tauri-plugin-single-instance = "=2.5.5"
 thiserror.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 fresher-testing = { path = "../../crates/testing" }

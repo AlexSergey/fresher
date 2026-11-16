@@ -99,8 +99,9 @@ do not exist yet.
 - Silence a lint only with `#[expect(lint, reason = "...")]`, never a bare `#[allow]`
 - No `unwrap()` / `expect()` / `panic!` / `todo!` / `dbg!` / `println!` outside tests
 - Typed errors in library crates (`thiserror`); `anyhow` only at the binary edge
-- No `unsafe` in the core crates (`unsafe_code = "forbid"`); a macOS FFI call lives in one dedicated module with a
-  `// SAFETY:` comment stating the invariant
+- `unsafe_code = "deny"` in the workspace; `#![forbid(unsafe_code)]` at the root of every crate but `fresher-macos`,
+  checked by the crate guard; in `fresher-macos` only the module `ffi` may use `unsafe`, one operation per block, each
+  with a `// SAFETY:` comment stating the invariant
 - Prefer enums over flags and stringly-typed values
 - Prefer `&Path` / `PathBuf` over strings for paths; never build paths by string concatenation
 - Keep the scan allocation-light and parallel; never block the UI thread

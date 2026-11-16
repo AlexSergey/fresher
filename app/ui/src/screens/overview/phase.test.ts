@@ -6,7 +6,12 @@ import { phaseOf, scanFailure } from './phase';
 
 const REASON = { args: {}, key: 'core.scan.outcome.failed' };
 
-const last = (outcome: ScanOutcome): LastScan => ({ finished: 1_735_689_600, outcome, scan: 1 });
+const last = (outcome: ScanOutcome): LastScan => ({
+  finished: 1_735_689_600,
+  kind: { kind: 'full' },
+  outcome,
+  scan: 1,
+});
 
 describe('phaseOf', () => {
   describe('negative cases', () => {

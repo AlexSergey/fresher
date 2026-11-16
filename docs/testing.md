@@ -32,11 +32,13 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 
 The full app (WebView + Rust) cannot be driven by WebDriver on macOS (`tauri-driver` supports Linux and Windows only),
 so the UI e2e run against the web build with the Tauri IPC mocked, and the core e2e cover the Rust side end to end.
-Until the scanner exists (plan 004), the core e2e prove the harness (`smoke.rs`: a fixture home is built and read back
-against `fixtures/golden/smoke.json`) and the whole Rust path on the `demo` module (`demo.rs`: the engine, the `demo`
-module and a real settings file, the events and the overview against `fixtures/golden/demo.json`; the settings survive
-a restart; a settings file from a newer version is never overwritten). Later plans extend it to scan → classify →
-cache → diff → confirm → clean.
+The core e2e prove the harness (`smoke.rs`: a fixture home is built and read back against
+`fixtures/golden/smoke.json`), the whole Rust path on the `demo` module (`demo.rs`: the engine, the `demo` module and a
+real settings file, the events and the overview against `fixtures/golden/demo.json`; the settings survive a restart; a
+settings file from a newer version is never overwritten), and since plan 004 scan → classify → cache: `scan.rs` (the
+engine with the real scanner on fixture homes, `fixtures/golden/scan.json`), `rescan.rs` (a scan, a scripted change, a
+rescan that reads only the changed folders and the check's sample, a restore in a new engine that reads no folder,
+`fixtures/golden/rescan.json`) and `footprint.rs` (below). Later plans extend it to diff → confirm → clean.
 
 ## Where things live
 
@@ -48,6 +50,10 @@ cache → diff → confirm → clean.
   `CommandRunner`) live in `fresher-core`. For modules ([`architecture/modules.md`](./architecture/modules.md)):
   - `NaiveWalk` — the reference `DiskWalk` over a fixture root, with `std::fs`: links listed, never followed, nothing
     on another device; the scanner is tested against it (the same fixture gives the same matches).
+  - The fakes of the scan's ports: `FakeVolumes` (fixed facts per root), `FakeChangeJournal` (a script of positions,
+    changed folders and gaps, so no test waits on the system's journal), `MemoryScanCache`, `FixedDiskState` (a tree
+    from paths and sizes, for the engine's queries).
+  - `LargeTree` — the generated trees of the benches and the large tests ("Performance").
   - `run_module(&module, &tree, &Ports::at(seconds))` — one module run as the engine would, on the fixture tree as the
     home folder: walk, matches, `finish` → `ModuleRun { findings, outcome }`; `ModuleRun::golden()` is its stable JSON
     report, paths relative to the fixture root.
@@ -57,6 +63,13 @@ cache → diff → confirm → clean.
     (`Catalogue::DevOnly` for the `demo` module). `assert_texts_used(&module, &runs)` — every text is a descriptor key
     or used by a finding of the runs, and every finding's text exists with the args its placeholders name. Their
     `check_…` forms return the list of `ContractProblem`s instead of failing.
+- `crates/scanner/tests/reference.rs` — the scanner against `NaiveWalk`: the same matches and the same summary on
+  every fixture home and on random trees (proptest, its failing seeds kept in `reference.proptest-regressions`), with
+  the portable reader; `macos_reader.rs` runs the same with the macOS reader. `CountingReader` counts the folder reads,
+  so a test holds "one bulk read per folder" and "a rescan with nothing changed reads only the sample and the
+  unreadable folders".
+- `crates/macos` — tested on temporary folders and on disk images the tests mount with `-nobrowse` (a test skips itself
+  when `hdiutil` is missing); nothing reads the home folder.
 - `crates/rules` — the shared matcher of rule data (`RuleSet::parse`, `interests`, `evaluate`, `stale`), tested on
   `FixtureTree`s and `FakeClock`, with property tests of the glob and of the version order.
 - `crates/e2e` — the core's end-to-end and golden tests (a crate with tests only).
@@ -105,6 +118,35 @@ cache → diff → confirm → clean.
   scrolls 100,000 rows and checks the bundle's gzipped size; run it on a quiet Mac when a change touches the lists,
   the scan's screens or motion, and write the numbers in the plan's conclusions. `test:e2e` never runs it.
 
+## Performance
+
+The scan's timings and peak memory are measured by criterion benches run by hand, never in a hook (the UI's frame budget
+is `perf.spec.ts`, above): `npm run bench` (`cargo bench -p fresher-scanner --bench scan`, a release build). The benches
+live in `crates/scanner/benches/scan.rs`, grouped as `matcher/*`, `scan/*` (the full scan by thread count, the rescan
+with nothing changed and after 1 000 changed folders, the restore: the cache decoded and the matches emitted), `cache/*`
+(encode, decode, fit to the cap) and `state/*` (largest files, search by name); after each group the bench prints the
+process's peak memory (`fresher_macos::peak_memory`, bytes).
+
+They run on a generated tree (`LargeTree` in `crates/testing`): a seeded shape of folders, sparse files (declared sizes
+cost no data blocks), hard links, `node_modules`-like dependency trees and folders tagged with `CACHEDIR.TAG`. Two
+specs: `TreeSpec::SMALL` (100 000 entries, also used by tests) and `TreeSpec::LARGE` (3 000 000 entries), picked with
+`FRESHER_BENCH_TREE=large` (the small one by default). A tree is built once under `target/bench-trees/<name>-<hash>/`
+with a `.complete` marker written last, reused by later runs, and removed by `cargo clean`; the generator never removes
+anything. Peak memory is a high-water mark: measure it on a run that does not build the tree.
+
+The timing bars (plan 004's design, section 13) are held by hand: each step that can move them writes the numbers in
+its plan; the last measured table is in plan 004's conclusions. Run them on a quiet machine on power, after one warm-up
+run. `LARGE`'s 3 million entries do not fit the kernel's metadata cache, so its full scan reads cold; the warm bar is
+measured on `SMALL`. What can be checked deterministically is held by tests in `npm run pre-push` instead: bulk reads
+per folder (`CountingReader`), the folders a rescan reads, the tree's heap bytes per node (≤ 96 B,
+`heap_bytes_per_node_stays_under_96`), the cache's bytes per node (≤ 32 B) and its cap.
+
+**The footprint test** (`crates/e2e/tests/footprint.rs`): ten scans of a generated tree through the real scanner and
+`FileScanCache` on a temporary data folder, with a scripted journal and changes between the scans; the data folder
+stays within `FOOTPRINT_BUDGET` and holds only the settings file and the cache's slot files. On `SMALL` it runs in the
+hooks; on `LARGE` it is ignored and run by hand:
+`cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture ten_scans_of_the_large`.
+
 ## Fixture homes
 
 A fixture home is a TOML file; every path is relative and must stay inside the root.
@@ -124,6 +166,11 @@ path = "Library/Logs"
 [[symlink]]
 path = "Library/Caches/system"
 target = "/Library/Caches"
+
+# A hard link: a second name of a file of the tree; both paths are relative to the root.
+[[hardlink]]
+path = "Library/Caches/copy.db"
+target = "Library/Caches/com.example.editor/Cache.db"
 ```
 
 `FixtureTree::from_toml(path)` builds it in a temporary folder that is removed when the tree is dropped;
@@ -141,6 +188,7 @@ target = "/Library/Caches"
 | `npm run test:e2e`             | `crates/e2e` and the Playwright suite                                                 |
 | `npm run test:e2e:core`        | `cargo nextest run -p fresher-e2e --locked`                                           |
 | `npm run test:e2e:ui`          | Playwright (needs `npx playwright install webkit chromium` once)                      |
+| `npm run bench`                | the scan benches on a generated tree, by hand ("Performance")                         |
 | `npm run build:e2e -w app/ui`  | the app and the gallery into `app/ui/dist-e2e/` (the e2e suite builds it itself)      |
 | `npm run test:perf -w app/ui`  | the performance spec, headed, by hand on a quiet Mac                                  |
 | `cargo nextest run -p <crate>` | one crate                                                                             |

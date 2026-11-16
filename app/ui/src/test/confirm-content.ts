@@ -18,7 +18,7 @@ const highestOf = (findings: readonly Finding[]): DangerLevel =>
 const sumOf = (findings: readonly Finding[]): Sizes => {
   const bytes = findings.reduce((sum, finding) => sum + finding.sizes.allocated, 0);
 
-  return { allocated: bytes, completeness: 'complete', logical: bytes };
+  return { allocated: bytes, completeness: 'complete', logical: bytes, reclaimable: bytes };
 };
 
 const subjectOf = (finding: Finding): string =>

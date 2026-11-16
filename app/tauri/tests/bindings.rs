@@ -11,11 +11,12 @@ mod support {
     use std::path::PathBuf;
 
     use fresher_core::{
-        Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Completeness,
-        DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage,
-        FindingsQuery, LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, Operation, Overview, Refusal, Removal,
-        ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue,
-        SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit,
+        Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, ChildOrder, CommandError,
+        Completeness, DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder,
+        FindingsPage, FindingsQuery, LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, NodeId, NodeInfo, NodeKind,
+        NodePage, NotScanned, Operation, Overview, Refusal, Removal, ScanId, ScanKind, ScanOutcome, SettingDescriptor,
+        SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes,
+        StateId, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit, Unreadable, UnreadablePlace,
     };
     use ts_rs::{Config, TS};
 
@@ -32,7 +33,8 @@ mod support {
         Declaration { name: T::name(config), text, dependencies }
     }
 
-    /// Every type the IPC carries: the events, the commands' inputs and outputs, the refusal, and all they contain.
+    /// Every type the IPC carries: the events, the commands' inputs and outputs, the refusal, and all they contain; the
+    /// disk state's types too, before a command returns them.
     pub(crate) fn declarations() -> Vec<Declaration> {
         let config = Config::new();
         vec![
@@ -61,6 +63,7 @@ mod support {
             declaration::<ScanId>(&config),
             declaration::<ModuleOutcome>(&config),
             declaration::<ScanOutcome>(&config),
+            declaration::<ScanKind>(&config),
             declaration::<DangerLevel>(&config),
             declaration::<Sizes>(&config),
             declaration::<ByteSize>(&config),
@@ -82,6 +85,15 @@ mod support {
             declaration::<TextArg>(&config),
             declaration::<AccessStatus>(&config),
             declaration::<Access>(&config),
+            declaration::<NodeInfo>(&config),
+            declaration::<NodeId>(&config),
+            declaration::<StateId>(&config),
+            declaration::<NodeKind>(&config),
+            declaration::<NotScanned>(&config),
+            declaration::<Unreadable>(&config),
+            declaration::<ChildOrder>(&config),
+            declaration::<NodePage>(&config),
+            declaration::<UnreadablePlace>(&config),
         ]
     }
 

@@ -10,6 +10,7 @@ const sizes = (bytes: number, completeness: Sizes['completeness'] = 'complete'):
   allocated: bytes,
   completeness,
   logical: bytes,
+  reclaimable: bytes,
 });
 
 const total = (category: string, count: number, bytes: number, highestDanger: DangerLevel): CategoryTotal => ({

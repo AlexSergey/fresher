@@ -7,7 +7,7 @@ use fresher_core::{
     AccessStatus, Dictionary, Event, FindingsPage, FindingsQuery, Locale, ModuleInfo, Overview, Refusal, ScanId,
     SettingUpdate, SettingsView,
 };
-use fresher_engine::Engine;
+use fresher_engine::{Engine, ScanMode};
 use tauri::State;
 use tauri::ipc::Channel;
 
@@ -31,7 +31,7 @@ pub(crate) fn subscribe(
 
 #[tauri::command(async)]
 pub(crate) fn start_scan(engine: State<'_, Engine>) -> Result<ScanId, Refusal> {
-    engine.start_scan().map_err(Refusal::from)
+    engine.start_scan(ScanMode::Auto).map_err(Refusal::from)
 }
 
 #[tauri::command(async)]

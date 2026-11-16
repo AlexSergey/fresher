@@ -33,7 +33,7 @@ pub(crate) fn on_exit<R: Runtime>(app: &AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{EngineStatus, Event, ScanOutcome};
+        use fresher_core::{EngineStatus, Event, ScanKind, ScanOutcome};
 
         use tauri::Manager;
 
@@ -44,12 +44,15 @@ mod tests {
         fn exit_requested_shuts_the_engine_down() {
             let shell = Shell::held();
             let events = shell.engine().subscribe();
-            let scan = shell.engine().start_scan().unwrap();
+            let scan = shell.engine().start_scan(fresher_engine::ScanMode::Auto).unwrap();
 
             on_exit(shell.app.handle());
 
             assert_eq!(shell.engine().status(), Ok(EngineStatus::Idle));
-            assert_eq!(events.try_iter().last(), Some(Event::ScanFinished { scan, outcome: ScanOutcome::Partial }));
+            assert_eq!(
+                events.try_iter().last(),
+                Some(Event::ScanFinished { scan, outcome: ScanOutcome::Partial, kind: ScanKind::Full })
+            );
         }
 
         #[test]

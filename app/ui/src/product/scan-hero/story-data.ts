@@ -47,7 +47,7 @@ export const withTexts =
     return render();
   };
 
-const partial = ({ allocated, logical }: Sizes): Sizes => ({ allocated, completeness: 'partial', logical });
+const partial = (sizes: Sizes): Sizes => ({ ...sizes, completeness: 'partial' });
 
 // The demo scan's overview, finished.
 export const DEMO_FINISHED: Overview = DEMO_OVERVIEW;
@@ -56,11 +56,16 @@ export const DEMO_FINISHED: Overview = DEMO_OVERVIEW;
 export const DEMO_PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
   found: partial(DEMO_OVERVIEW.found),
-  lastScan: { finished: 1_735_689_600, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
   totals: DEMO_OVERVIEW.totals.map((total, index) => (index === 0 ? { ...total, sizes: partial(total.sizes) } : total)),
 };
 
-const complete = (bytes: number): Sizes => ({ allocated: bytes, completeness: 'complete', logical: bytes });
+const complete = (bytes: number): Sizes => ({
+  allocated: bytes,
+  completeness: 'complete',
+  logical: bytes,
+  reclaimable: bytes,
+});
 
 // The demo scan's overview half way: its first batch counted.
 export const DEMO_RUNNING: Overview = {
@@ -76,7 +81,7 @@ export const DEMO_RUNNING: Overview = {
 // A finished scan that found nothing.
 export const NOTHING_FOUND: Overview = {
   ...DEMO_OVERVIEW,
-  found: { allocated: 0, completeness: 'complete', logical: 0 },
+  found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
   totals: [],
 };
 

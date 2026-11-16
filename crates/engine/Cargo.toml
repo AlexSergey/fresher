@@ -17,4 +17,5 @@ tracing.workspace = true
 
 [dev-dependencies]
 fresher-testing = { path = "../testing" }
+proptest.workspace = true
 serde_json.workspace = true

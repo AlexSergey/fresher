@@ -48,7 +48,7 @@ const RING_STATES: Readonly<Record<ScanPhase, StorageRingProps['state']>> = {
   scanning: 'scanning',
 };
 
-const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0 };
+const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
 
 const FADE_OUT: readonly Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
 

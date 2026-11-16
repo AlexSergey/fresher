@@ -22,7 +22,12 @@ export const FINDING_DICTIONARY: Dictionary = {
   'demo.projects.name': 'Example projects',
 };
 
-const sized = (bytes: number): Finding['sizes'] => ({ allocated: bytes, completeness: 'complete', logical: bytes });
+const sized = (bytes: number): Finding['sizes'] => ({
+  allocated: bytes,
+  completeness: 'complete',
+  logical: bytes,
+  reclaimable: bytes,
+});
 
 // A demo finding at `level`, with its own id, name, size and category.
 export const findingOf = ({
@@ -79,5 +84,5 @@ export const EXTERNAL_FINDING: Finding = {
 
 export const PARTIAL_FINDING: Finding = {
   ...findingOf({ bytes: 640_000_000, id: 15, level: 'low', name: 'mail-downloads' }),
-  sizes: { allocated: 640_000_000, completeness: 'partial', logical: 640_000_000 },
+  sizes: { allocated: 640_000_000, completeness: 'partial', logical: 640_000_000, reclaimable: 640_000_000 },
 };

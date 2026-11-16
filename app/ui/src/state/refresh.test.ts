@@ -149,7 +149,7 @@ describe('the overview refresher', () => {
       store.dispatch(SCAN_STARTED);
       store.dispatch(FIRST_BATCH);
 
-      store.dispatch({ outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+      store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
       await core.answer(SCANNING);
       clock.advance(250);
       await core.answer(DEMO_OVERVIEW);

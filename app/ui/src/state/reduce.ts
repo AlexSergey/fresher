@@ -75,7 +75,7 @@ export const INITIAL_STATE: CoreState = {
   status: { state: 'idle' },
 };
 
-const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0 };
+const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
 
 // The overview no longer counts everything: unchanged when it already did not, so a batch renders nothing.
 const markStale = (state: CoreState): CoreState => (state.stale ? state : { ...state, stale: true });

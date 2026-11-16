@@ -18,7 +18,7 @@ const DANGER_ORDER: readonly DangerLevel[] = ['safe', 'low', 'medium', 'high'];
 
 const COMPLETENESS_ORDER: readonly Sizes['completeness'][] = ['complete', 'partial', 'unknown'];
 
-const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0 };
+const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
 
 const weakest = (a: Sizes['completeness'], b: Sizes['completeness']): Sizes['completeness'] =>
   COMPLETENESS_ORDER.indexOf(a) >= COMPLETENESS_ORDER.indexOf(b) ? a : b;
@@ -31,6 +31,7 @@ const add = (a: Sizes, b: Sizes): Sizes => ({
   allocated: Math.min(a.allocated + b.allocated, LARGEST_SIZE),
   completeness: weakest(a.completeness, b.completeness),
   logical: Math.min(a.logical + b.logical, LARGEST_SIZE),
+  reclaimable: Math.min(a.reclaimable + b.reclaimable, LARGEST_SIZE),
 });
 
 // A category's total without the findings ticked off inside it; its completeness stays the category's.
@@ -38,6 +39,7 @@ const without = (total: Sizes, excluded: Sizes): Sizes => ({
   allocated: Math.max(total.allocated - excluded.allocated, 0),
   completeness: total.completeness,
   logical: Math.max(total.logical - excluded.logical, 0),
+  reclaimable: Math.max(total.reclaimable - excluded.reclaimable, 0),
 });
 
 const sumOf = (picked: Iterable<Picked>): Sizes => [...picked].reduce((sum, one) => add(sum, one.sizes), NOTHING);

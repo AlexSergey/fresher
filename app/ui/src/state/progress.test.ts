@@ -68,7 +68,7 @@ describe('throttleProgress', () => {
       dispatch(progress(1));
       dispatch(progress(2));
 
-      dispatch({ outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+      dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
 
       expect(sent.map((action) => action.type)).toEqual(['scan-progress', 'scan-progress', 'scan-finished']);
       expect(entriesOf(sent)).toEqual([1, 2]);

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use fresher_core::{
     CancelToken, DiskWalk, InterestSet, Match, Module, ModuleContext, ModuleError, ModuleOutcome, NewFinding,
-    SchemaError, SettingsSchema, StoredSettings, WalkError,
+    SchemaError, SettingsSchema, StoredSettings, WalkError, WalkMode, WalkRequest,
 };
 use serde_json::{Value, json};
 
@@ -68,13 +68,9 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         }
         failure = module.on_match(&matched, &cx, &mut findings).err();
     };
-    let walked = NaiveWalk::new(tree.root()).walk(
-        &[tree.root().to_path_buf()],
-        &interests,
-        &ports.cancel,
-        &mut on_match,
-        &mut |_| {},
-    );
+    let roots = [tree.root().to_path_buf()];
+    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
+    let walked = NaiveWalk::new(tree.root()).walk(&request, &ports.cancel, &mut on_match, &mut |_| {});
     match walked {
         Ok(_) => {}
         Err(WalkError::Cancelled) => failure = failure.or(Some(ModuleError::Cancelled)),

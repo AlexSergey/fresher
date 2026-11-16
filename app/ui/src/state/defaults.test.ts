@@ -10,7 +10,7 @@ const total = (category: string, highestDanger: DangerLevel): CategoryTotal => (
   category,
   count: 1,
   highestDanger,
-  sizes: { allocated: 1, completeness: 'complete', logical: 1 },
+  sizes: { allocated: 1, completeness: 'complete', logical: 1, reclaimable: 1 },
 });
 
 const TOTALS: readonly CategoryTotal[] = [

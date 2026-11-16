@@ -36,10 +36,10 @@ impl EventBus {
 
 #[cfg(test)]
 mod tests {
-    use fresher_core::{Event, ScanId, ScanOutcome};
+    use fresher_core::{Event, ScanId, ScanKind, ScanOutcome};
 
     fn finished(scan: u32) -> Event {
-        Event::ScanFinished { scan: ScanId::new(scan), outcome: ScanOutcome::Completed }
+        Event::ScanFinished { scan: ScanId::new(scan), outcome: ScanOutcome::Completed, kind: ScanKind::Full }
     }
 
     mod negative {

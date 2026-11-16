@@ -32,7 +32,7 @@ impl Settings {
                 let file = match error {
                     StoreError::NewerVersion { .. } => SettingsFile::NewerVersion,
                     StoreError::Broken => SettingsFile::Broken,
-                    StoreError::Io { .. } => SettingsFile::Unreadable,
+                    StoreError::Io { .. } | StoreError::TooLarge { .. } => SettingsFile::Unreadable,
                 };
                 (StoredSettings::default(), file)
             }
@@ -269,7 +269,7 @@ mod tests {
                 engine.update_setting(update("alpha.enabled", SettingValue::Switch(false))),
                 Err(CommandError::Internal)
             );
-            assert_eq!(engine.start_scan(), Err(CommandError::Internal));
+            assert_eq!(engine.start_scan(crate::ScanMode::Auto), Err(CommandError::Internal));
         }
     }
 

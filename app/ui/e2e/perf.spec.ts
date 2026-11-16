@@ -70,11 +70,18 @@ const sized = (order: 'ascending' | 'descending'): Overview => {
     const gigabytes = order === 'ascending' ? at + 1 : TWELVE.overview.totals.length - at;
     const bytes = gigabytes * 1_000_000_000;
 
-    return { ...total, sizes: { allocated: bytes, completeness: 'complete', logical: bytes } } as const;
+    return {
+      ...total,
+      sizes: { allocated: bytes, completeness: 'complete', logical: bytes, reclaimable: bytes },
+    } as const;
   });
   const found = totals.reduce((sum, total) => sum + total.sizes.allocated, 0);
 
-  return { ...TWELVE.overview, found: { allocated: found, completeness: 'complete', logical: found }, totals };
+  return {
+    ...TWELVE.overview,
+    found: { allocated: found, completeness: 'complete', logical: found, reclaimable: found },
+    totals,
+  };
 };
 
 const RESORTED: CoreScript = {

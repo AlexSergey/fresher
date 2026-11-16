@@ -1,10 +1,13 @@
 //! A match the walk delivered, judged against the rule that asked for it.
 
-use fresher_core::{EntryKind, Match, ModuleContext, NewFinding, Pattern, Removal, Subject, Text, TextArg, Timestamp};
+use fresher_core::{
+    CACHEDIR_TAG, EntryKind, MarkerCheck, Match, ModuleContext, NewFinding, Pattern, Removal, Subject, Text, TextArg,
+    Timestamp,
+};
 
+use crate::RuleSet;
 use crate::format::RemovalSpec;
 use crate::rules::Rule;
-use crate::{RuleSet, cachedir};
 
 const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
 
@@ -12,7 +15,7 @@ impl RuleSet {
     /// The finding for `matched` when the rule at `matched.interest` claims it; `None` otherwise. A symlink is never
     /// claimed; `must-not-match` is checked first and wins; then the name, the version, the age (the clock of `cx`
     /// against the match's modification time) and the sibling must all hold. A `marker = "CACHEDIR.TAG"` rule also
-    /// needs the tag's signature, the one read from disk; nothing else does IO.
+    /// needs the walk's check of the tag's signature. Pure: no IO.
     pub fn evaluate(&self, matched: &Match, cx: &ModuleContext<'_>) -> Option<NewFinding> {
         let rule = self.rules.get(matched.interest)?;
         let name = matched.path.file_name()?.to_str()?;
@@ -39,10 +42,10 @@ impl Rule {
             && self.tag_holds(matched)
     }
 
-    /// A `CACHEDIR.TAG` marker counts only with its signature; other markers need nothing more.
+    /// A `CACHEDIR.TAG` marker counts only when the walk found its signature; other markers need nothing more.
     fn tag_holds(&self, matched: &Match) -> bool {
         match self.interest.pattern() {
-            Pattern::MarkerFile(marker) if marker == cachedir::TAG => cachedir::holds_valid_tag(&matched.path),
+            Pattern::MarkerFile(marker) if marker == CACHEDIR_TAG => matched.marker == Some(MarkerCheck::Valid),
             _ => true,
         }
     }
@@ -77,7 +80,8 @@ mod tests {
     use std::path::Path;
 
     use fresher_core::{
-        ByteSize, CancelToken, EntryKind, Match, ModuleContext, ModuleId, ModuleSettings, NewFinding, Sizes, Timestamp,
+        ByteSize, CancelToken, EntryKind, MarkerCheck, Match, ModuleContext, ModuleId, ModuleSettings, NewFinding,
+        Sizes, Timestamp,
     };
     use fresher_testing::{FakeClock, FakeCommandRunner};
 
@@ -127,11 +131,13 @@ name = "Library"
             sizes: Sizes::complete(ByteSize::new(10), ByteSize::new(4096)),
             modified: Some(Timestamp::from_secs(NOW - 31 * 86_400)),
             siblings: vec!["Info.plist".into()],
+            marker: None,
         }
     }
 
-    fn tagged(folder: &Path) -> Match {
-        Match { interest: 1, path: folder.into(), siblings: vec![], ..cache("unused") }
+    /// A match of the `tagged` rule, with the walk's check of the tag.
+    fn tagged(marker: Option<MarkerCheck>) -> Match {
+        Match { interest: 1, path: "/home/project/cache".into(), siblings: vec![], marker, ..cache("unused") }
     }
 
     fn evaluate(rules: &RuleSet, matched: &Match) -> Option<NewFinding> {
@@ -142,10 +148,9 @@ name = "Library"
     }
 
     mod negative {
-        use fresher_core::{EntryKind, Match, Timestamp};
+        use fresher_core::{EntryKind, MarkerCheck, Match, Timestamp};
 
         use super::{NOW, cache, evaluate, rules, tagged};
-        use crate::cachedir::sample::tagged as tag_tree;
 
         #[test]
         fn a_look_alike_name_is_not_claimed() {
@@ -190,20 +195,22 @@ name = "Library"
         }
 
         #[test]
-        fn a_cachedir_tag_without_the_signature_is_ignored() {
-            let tree = tag_tree(b"Signature: not the standard one");
+        fn a_marker_rule_does_not_claim_an_invalid_tag() {
+            assert_eq!(evaluate(&rules(), &tagged(Some(MarkerCheck::Invalid))), None);
+        }
 
-            assert_eq!(evaluate(&rules(), &tagged(&tree.root().join("cache"))), None);
+        #[test]
+        fn a_marker_rule_does_not_claim_a_match_with_no_marker_check() {
+            assert_eq!(evaluate(&rules(), &tagged(None)), None);
         }
     }
 
     mod positive {
         use std::path::PathBuf;
 
-        use fresher_core::{DangerLevel, Removal, Subject, TextArg};
+        use fresher_core::{DangerLevel, MarkerCheck, Removal, Subject, TextArg};
 
         use super::{cache, evaluate, rules, tagged};
-        use crate::cachedir::sample::tagged as tag_tree;
 
         #[test]
         fn claims_a_matching_folder_with_the_rule_danger() {
@@ -224,14 +231,13 @@ name = "Library"
         }
 
         #[test]
-        fn a_valid_cachedir_tag_is_recognized() {
-            let tree = tag_tree(b"Signature: 8a477f597d28d172789f06886806bc55\n");
-            let folder = tree.root().join("cache");
+        fn a_marker_rule_claims_a_valid_tag() {
+            let matched = tagged(Some(MarkerCheck::Valid));
 
-            let finding = evaluate(&rules(), &tagged(&folder)).unwrap();
+            let finding = evaluate(&rules(), &matched).unwrap();
 
             assert_eq!(finding.danger(), DangerLevel::Low);
-            assert_eq!(finding.removal(), &Removal::MoveToTrash(folder));
+            assert_eq!(finding.removal(), &Removal::MoveToTrash(matched.path));
             assert_eq!(finding.reason().key().as_str(), "example.rule.tagged.reason");
         }
     }

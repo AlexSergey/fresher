@@ -4,7 +4,7 @@
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
  */
-export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, };
+export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, };
 
 /**
  * A refused command as the UI receives it: the error, and the text to show for it, built by `CommandError::text()`.
@@ -16,14 +16,14 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "internal" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "internal" };
 
 /**
  * The answer of `get_overview`.
  */
 export type Overview = { status: EngineStatus, lastScan: LastScan | null, totals: Array<CategoryTotal>, 
 /**
- * Every finding of the current scan summed; the weakest completeness wins.
+ * Every finding of the current scan summed, a path counted once; the weakest completeness wins.
  */
 found: Sizes, };
 
@@ -40,7 +40,7 @@ export type Operation = "scan" | "clean";
 /**
  * The scan whose findings the engine holds.
  */
-export type LastScan = { scan: ScanId, finished: Timestamp, outcome: ScanOutcome, };
+export type LastScan = { scan: ScanId, finished: Timestamp, outcome: ScanOutcome, kind: ScanKind, };
 
 /**
  * The findings of one category in the last scan.
@@ -142,14 +142,24 @@ export type ModuleOutcome = { "kind": "completed" } | { "kind": "failed", reason
 export type ScanOutcome = { "kind": "completed" } | { "kind": "partial" } | { "kind": "failed", reason: Text, };
 
 /**
+ * How a scan read the disk.
+ */
+export type ScanKind = { "kind": "full" } | { "kind": "rescan", changedFolders: number, } | { "kind": "restored", taken: Timestamp, };
+
+/**
  * The danger level of a category or a finding, from `Safe` (comes back by itself) to `High` (the user's own data).
  */
 export type DangerLevel = "safe" | "low" | "medium" | "high";
 
 /**
- * The size of an item: the bytes its files hold, the bytes they take on disk, and how much of that is known.
+ * The size of an item: the bytes its files hold, the bytes they take on disk, the bytes removing it frees, and how
+ * much of that is known.
  */
-export type Sizes = { logical: ByteSize, allocated: ByteSize, completeness: Completeness, };
+export type Sizes = { logical: ByteSize, allocated: ByteSize, 
+/**
+ * The private part of `allocated`: not shared with a clone or another hard link.
+ */
+reclaimable: ByteSize, completeness: Completeness, };
 
 /**
  * A number of bytes on disk; a `number` in TypeScript (exact below 2^53 bytes, 9 PB).
@@ -256,3 +266,80 @@ fullDiskAccess: Access, };
  * One permission: granted, denied, or not known (the probe could not tell).
  */
 export type Access = "granted" | "denied" | "unknown";
+
+/**
+ * One node as the UI sees it.
+ */
+export type NodeInfo = { id: NodeId, 
+/**
+ * The name for display: lossy UTF-8 (the scanner keeps the bytes).
+ */
+name: string, kind: NodeKind, 
+/**
+ * The node's own size; a folder's holds everything inside it.
+ */
+sizes: Sizes, 
+/**
+ * The files inside a folder, at every depth; 0 for anything else.
+ */
+files: number, 
+/**
+ * The folders inside a folder, at every depth; 0 for anything else.
+ */
+folders: number, 
+/**
+ * The category that claimed the node in the scan.
+ */
+owner: CategoryId | null, modified: Timestamp | null, 
+/**
+ * Why the node was not scanned; `None` when it was.
+ */
+notScanned: NotScanned | null, };
+
+/**
+ * A node of one state; another state refuses it, like a `FindingId` of another session.
+ */
+export type NodeId = { state: StateId, index: number, };
+
+/**
+ * The id of one committed state in a session.
+ */
+export type StateId = number;
+
+/**
+ * What a node is.
+ */
+export type NodeKind = "folder" | "file" | "link" | "collapsed";
+
+/**
+ * Why a folder was not scanned.
+ */
+export type NotScanned = { "kind": "unreadable", "value": Unreadable } | { "kind": "avoided" } | { "kind": "other-volume" };
+
+/**
+ * Why a folder could not be read.
+ */
+export type Unreadable = "no-permission" | "guarded" | "failed";
+
+/**
+ * The order of a page of children.
+ */
+export type ChildOrder = "by-size" | "by-name";
+
+/**
+ * One page of the children of a node.
+ */
+export type NodePage = { nodes: Array<NodeInfo>, offset: number, 
+/**
+ * How many children the node has in all.
+ */
+total: number, };
+
+/**
+ * A top-most folder that was not scanned.
+ */
+export type UnreadablePlace = { node: NodeInfo, reason: NotScanned, 
+/**
+ * The folders under it that were not scanned with it.
+ */
+hiddenFolders: number, };

@@ -37,7 +37,7 @@ const mountHero = (overrides: Partial<ScanHeroProps> = {}): ((next: Partial<Scan
 
 const running = (allocated: number): Overview => ({
   ...DEMO_RUNNING,
-  found: { allocated, completeness: 'complete', logical: allocated },
+  found: { allocated, completeness: 'complete', logical: allocated, reclaimable: allocated },
 });
 
 // The ring's drawing has no roles: its arcs and the sweep are found by their markers.
@@ -92,7 +92,7 @@ describe('ScanHero', () => {
 
     it('an unknown found size shows — and never 0', () => {
       mountHero({
-        overview: { ...DEMO_FINISHED, found: { allocated: 0, completeness: 'unknown', logical: 0 } },
+        overview: { ...DEMO_FINISHED, found: { allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 } },
         phase: 'finished',
       });
 

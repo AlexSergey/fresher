@@ -2,10 +2,10 @@
 //!
 //! A module keeps its rules in `rules.toml` next to its code and embeds them with `include_str!`; [`RuleSet::parse`]
 //! validates them against the module's descriptor, [`RuleSet::interests`] tells the walk where to look, and
-//! [`RuleSet::evaluate`] turns what the walk matched into findings, with no IO but one bounded read of a
-//! `CACHEDIR.TAG`.
+//! [`RuleSet::evaluate`] turns what the walk matched into findings, with no IO.
 
-mod cachedir;
+#![forbid(unsafe_code)]
+
 mod compile;
 mod evaluate;
 mod format;

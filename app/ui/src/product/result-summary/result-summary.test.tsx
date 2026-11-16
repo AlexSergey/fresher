@@ -8,7 +8,12 @@ import { setCoreDictionary } from '../../i18n';
 import { fakeFrames, fakeReducedMotion, setMotion } from '../../test/animation';
 import { ResultSummary, type ResultSummaryProps } from './result-summary';
 
-const FREED: Sizes = { allocated: 2_250_000_000, completeness: 'complete', logical: 2_200_000_000 };
+const FREED: Sizes = {
+  allocated: 2_250_000_000,
+  completeness: 'complete',
+  logical: 2_200_000_000,
+  reclaimable: 2_250_000_000,
+};
 
 const SKIPPED: ResultSummaryProps['skipped'] = [
   {

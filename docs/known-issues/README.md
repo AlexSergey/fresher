@@ -28,6 +28,7 @@ When an issue is fixed, its file stays with the status `fixed` and a link to the
 
 | Issue                                                                                | Part  | Status | What                                                                                        |
 | ------------------------------------------------------------------------------------ | ----- | ------ | ------------------------------------------------------------------------------------------- |
+| [A FIFO is read as a regular file](./core-fifo-read-as-file.md)                     | core  | open   | a named pipe with a marker's name counts as that marker; the core's entry kinds have no "other" |
 | [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md) | repo  | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only) |
 | [No licence check of npm dependencies yet](./repo-no-npm-licence-check.md)          | repo  | open   | the restriction promises an npm licence check that does not exist; packages are checked by hand |
 | [Stale temporary files in the data folder](./store-stale-temporary-files.md)         | store | open   | a crash during an atomic write leaves a `.<target>.<random>.tmp` file that nothing removes  |

@@ -2,6 +2,13 @@
 
 **Since:** 2026-11-15
 
+**Taken by plan [004](../../plans/004-fast-scan/readme.md)** (2026-11-16): a scan is stored as a compact compressed
+file of our own format in fixed slots (two scopes, two generations), not as an SQLite `items` table; rescans read only
+the folders the change journal names. **The FSEvents question is answered**: the journal records a file growing in
+place as an event for its folder, but a position older than its history gives no flag, and a long replay is slow, so
+every rescan also reads a sample of the unchanged folders, bounds the replay by age and time, and falls back to a full
+scan on any doubt. Folder modification times are never trusted. Diffing two scans stays for plan 010.
+
 ## Storing a scan
 
 - A proven SQLite shape for a scanned tree:

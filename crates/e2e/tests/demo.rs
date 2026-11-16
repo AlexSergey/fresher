@@ -9,20 +9,25 @@ mod support;
 
 #[cfg(test)]
 mod app {
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use std::sync::Arc;
     use std::sync::mpsc::Receiver;
     use std::thread;
     use std::time::Duration;
 
     use fresher_core::{
-        Access, AccessProbe, AccessStatus, CancelToken, DiskWalk, Event, InterestSet, Match, WalkError, WalkProgress,
-        WalkSummary,
+        Access, AccessProbe, AccessStatus, CancelToken, ClaimedPath, DiskState, DiskWalk, Event, Match, StateId,
+        Timestamp, WalkError, WalkProgress, WalkRequest, WalkSummary,
     };
     use fresher_engine::{Engine, Ports, Registry};
     use fresher_module_demo::DemoModule;
     use fresher_store::{DataFolder, FileSettingsStore};
-    use fresher_testing::{FakeClock, FakeCommandRunner};
+    use fresher_testing::{FakeClock, FakeCommandRunner, FixedDiskState};
+
+    /// The state both walks commit: nothing was walked.
+    fn empty_state() -> Arc<dyn DiskState> {
+        Arc::new(FixedDiskState::new(StateId::new(1), Timestamp::from_secs(0), []))
+    }
 
     /// The walk of the app until plan 004: it finds nothing.
     struct NoWalk;
@@ -30,13 +35,16 @@ mod app {
     impl DiskWalk for NoWalk {
         fn walk(
             &self,
-            _roots: &[PathBuf],
-            _interests: &InterestSet,
+            _request: &WalkRequest<'_>,
             _cancel: &CancelToken,
             _on_match: &mut dyn FnMut(Match),
             _on_progress: &mut dyn FnMut(WalkProgress),
         ) -> Result<WalkSummary, WalkError> {
             Ok(WalkSummary::default())
+        }
+
+        fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
+            Ok(empty_state())
         }
     }
 
@@ -46,8 +54,7 @@ mod app {
     impl DiskWalk for HeldWalk {
         fn walk(
             &self,
-            _roots: &[PathBuf],
-            _interests: &InterestSet,
+            _request: &WalkRequest<'_>,
             cancel: &CancelToken,
             _on_match: &mut dyn FnMut(Match),
             _on_progress: &mut dyn FnMut(WalkProgress),
@@ -56,6 +63,10 @@ mod app {
                 thread::yield_now();
             }
             Err(WalkError::Cancelled)
+        }
+
+        fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
+            Ok(empty_state())
         }
     }
 
@@ -115,9 +126,12 @@ mod negative {
         let folder = tempfile::tempdir().unwrap();
         let engine = held_engine(folder.path());
         let events = engine.subscribe();
-        engine.start_scan().unwrap();
+        engine.start_scan(fresher_engine::ScanMode::Auto).unwrap();
 
-        assert_eq!(engine.start_scan(), Err(CommandError::Busy { running: Operation::Scan }));
+        assert_eq!(
+            engine.start_scan(fresher_engine::ScanMode::Auto),
+            Err(CommandError::Busy { running: Operation::Scan })
+        );
 
         engine.cancel_scan().unwrap();
         until_finished(&events);
@@ -153,7 +167,7 @@ mod positive {
         let engine = engine(folder.path());
         let events = engine.subscribe();
 
-        engine.start_scan().unwrap();
+        engine.start_scan(fresher_engine::ScanMode::Auto).unwrap();
 
         let events = until_finished(&events);
         let report = json!({ "events": events, "overview": engine.overview().unwrap() });
@@ -170,7 +184,7 @@ mod positive {
 
         let restarted = engine(folder.path());
         let events = restarted.subscribe();
-        restarted.start_scan().unwrap();
+        restarted.start_scan(fresher_engine::ScanMode::Auto).unwrap();
         until_finished(&events);
 
         let view = restarted.settings().unwrap();

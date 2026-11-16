@@ -29,6 +29,8 @@ mod tests {
             | CommandError::UnknownLocale { .. }
             | CommandError::SettingsReadOnly
             | CommandError::Storage
+            | CommandError::NoScan
+            | CommandError::StaleNode
             | CommandError::Internal => error,
         };
         vec![
@@ -41,6 +43,8 @@ mod tests {
             sample(CommandError::UnknownLocale { locale: "fr".into() }),
             sample(CommandError::SettingsReadOnly),
             sample(CommandError::Storage),
+            sample(CommandError::NoScan),
+            sample(CommandError::StaleNode),
             sample(CommandError::Internal),
         ]
     }

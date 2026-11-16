@@ -32,6 +32,12 @@ pub enum CommandError {
     /// The settings could not be written.
     #[error("the settings could not be saved")]
     Storage,
+    /// A query of the disk state before any scan committed one.
+    #[error("there is no scan to read")]
+    NoScan,
+    /// A node of an older state than the engine holds.
+    #[error("the node is of an older scan")]
+    StaleNode,
     /// A bug: the operation stopped safely.
     #[error("an internal error stopped the operation")]
     Internal,
@@ -39,7 +45,7 @@ pub enum CommandError {
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 10] = [
+    pub const CODES: [&str; 12] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -49,6 +55,8 @@ impl CommandError {
         "unknown-locale",
         "settings-read-only",
         "storage",
+        "no-scan",
+        "stale-node",
         "internal",
     ];
 
@@ -64,6 +72,8 @@ impl CommandError {
             Self::UnknownLocale { .. } => "unknown-locale",
             Self::SettingsReadOnly => "settings-read-only",
             Self::Storage => "storage",
+            Self::NoScan => "no-scan",
+            Self::StaleNode => "stale-node",
             Self::Internal => "internal",
         }
     }
@@ -78,7 +88,12 @@ impl CommandError {
             Self::UnknownSetting { key } => text.with("key", TextArg::Text(key.clone())),
             Self::InvalidSettingValue { key } => text.with("key", TextArg::Text(key.as_str().into())),
             Self::UnknownLocale { locale } => text.with("locale", TextArg::Text(locale.clone())),
-            Self::NotRunning | Self::SettingsReadOnly | Self::Storage | Self::Internal => text,
+            Self::NotRunning
+            | Self::SettingsReadOnly
+            | Self::Storage
+            | Self::NoScan
+            | Self::StaleNode
+            | Self::Internal => text,
         }
     }
 }
@@ -115,6 +130,8 @@ mod tests {
             | CommandError::UnknownLocale { .. }
             | CommandError::SettingsReadOnly
             | CommandError::Storage
+            | CommandError::NoScan
+            | CommandError::StaleNode
             | CommandError::Internal => error,
         };
         vec![
@@ -127,6 +144,8 @@ mod tests {
             sample(CommandError::UnknownLocale { locale: "fr".into() }),
             sample(CommandError::SettingsReadOnly),
             sample(CommandError::Storage),
+            sample(CommandError::NoScan),
+            sample(CommandError::StaleNode),
             sample(CommandError::Internal),
         ]
     }
@@ -211,6 +230,8 @@ mod tests {
                     vec!["key"],
                     vec!["key"],
                     vec!["locale"],
+                    vec![],
+                    vec![],
                     vec![],
                     vec![],
                     vec![],
