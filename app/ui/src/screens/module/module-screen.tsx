@@ -59,7 +59,10 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
 
   const found = moduleFound(module, overview);
   const totals = overview?.totals ?? [];
-  const shown = shownOf(module.categories, totals);
+  const shown = shownOf(
+    module.categories.map(({ descriptor }) => descriptor),
+    totals,
+  );
   const largest = shown[0]?.category.id;
   const present = category !== undefined && shown.some((one) => one.category.id === category);
 

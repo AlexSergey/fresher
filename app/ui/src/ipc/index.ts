@@ -2,12 +2,23 @@ import { Channel, invoke, type InvokeArgs } from '@tauri-apps/api/core';
 
 import type {
   AccessStatus,
+  CleanupDetail,
+  CleanupId,
+  CleanupItemRef,
+  CleanupPlanView,
+  CleanupSelection,
+  CleanupsPage,
+  CleanupsQuery,
+  Confirmation,
   Dictionary,
   Event,
   FindingsPage,
   FindingsQuery,
   ModuleInfo,
   Overview,
+  PlanId,
+  PutBackReport,
+  PutBackRequest,
   Refusal,
   ScanId,
   SettingsView,
@@ -21,13 +32,22 @@ export { inApp } from './runtime';
 // The Rust names of the commands (`#[tauri::command]` in app/tauri), the only place they are spelled.
 export const COMMANDS = {
   appVersion: 'app_version',
+  cancelCleanup: 'cancel_cleanup',
   cancelScan: 'cancel_scan',
+  confirmCleanup: 'confirm_cleanup',
+  discardCleanup: 'discard_cleanup',
   getAccessStatus: 'get_access_status',
+  getCleanup: 'get_cleanup',
+  getCleanups: 'get_cleanups',
   getDictionary: 'get_dictionary',
   getFindings: 'get_findings',
   getModules: 'get_modules',
   getOverview: 'get_overview',
   getSettings: 'get_settings',
+  prepareCleanup: 'prepare_cleanup',
+  putBack: 'put_back',
+  quitAfterCleanup: 'quit_after_cleanup',
+  revealInTrash: 'reveal_in_trash',
   startScan: 'start_scan',
   subscribe: 'subscribe',
   updateSetting: 'update_setting',
@@ -103,3 +123,28 @@ export const updateSetting = (update: SettingUpdate): Promise<void> => call('upd
 export const getDictionary = (locale: string): Promise<Dictionary> => call('getDictionary', { locale });
 
 export const getAccessStatus = (): Promise<AccessStatus> => call('getAccessStatus');
+
+// The core checks every item of the selection and answers the plan the confirmation shows; nothing is removed.
+export const prepareCleanup = (selection: CleanupSelection): Promise<CleanupPlanView> =>
+  call('prepareCleanup', { selection });
+
+// The confirmation was cancelled: the core forgets the plan.
+export const discardCleanup = (plan: PlanId): Promise<void> => call('discardCleanup', { plan });
+
+// What the confirmation showed, sent back: the core compares it with its plan and starts the cleanup.
+export const confirmCleanup = (confirmation: Confirmation): Promise<CleanupId> =>
+  call('confirmCleanup', { confirmation });
+
+// Stops the running cleanup after the item in hand.
+export const cancelCleanup = (): Promise<void> => call('cancelCleanup');
+
+export const getCleanups = (query: CleanupsQuery): Promise<CleanupsPage> => call('getCleanups', { query });
+
+export const getCleanup = (cleanup: CleanupId): Promise<CleanupDetail> => call('getCleanup', { cleanup });
+
+export const putBack = (request: PutBackRequest): Promise<PutBackReport> => call('putBack', { request });
+
+export const revealInTrash = (item: CleanupItemRef): Promise<void> => call('revealInTrash', { item });
+
+// The user chose to quit during a cleanup: it stops after the item in hand, then the app quits.
+export const quitAfterCleanup = (): Promise<void> => call('quitAfterCleanup');

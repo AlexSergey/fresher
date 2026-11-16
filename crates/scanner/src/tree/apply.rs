@@ -24,6 +24,7 @@ impl Tree {
             let entry = &kept.entry;
             let node = self.add_child(folder, batch.name(kept), entry.kind)?;
             self.set_modified(node, entry.modified)?;
+            self.set_access(node, kept.access)?;
             self.add_hits(node, batch.hits_of(kept))?;
             match entry.kind {
                 EntryKind::File => {

@@ -1,0 +1,17 @@
+error[E0382]: use of moved value: `verified`
+ --> tests/compile_fail/verified_used_twice.rs:9:9
+  |
+7 | fn twice(verified: Verified) {
+  |          -------- move occurs because `verified` has type `Verified`, which does not implement the `Copy` trait
+8 |     act(verified);
+  |         -------- value moved here
+9 |     act(verified);
+  |         ^^^^^^^^ value used here after move
+  |
+note: consider changing this parameter type in function `act` to borrow instead if owning the value isn't necessary
+ --> tests/compile_fail/verified_used_twice.rs:5:19
+  |
+5 | fn act(_verified: Verified) {}
+  |    ---            ^^^^^^^^ this parameter takes ownership of the value
+  |    |
+  |    in this function

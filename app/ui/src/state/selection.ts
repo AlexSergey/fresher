@@ -1,4 +1,4 @@
-import type { CategoryId, Finding, FindingId } from '../ipc/bindings.generated';
+import type { CategoryId, CleanupSelection, Finding, FindingId } from '../ipc/bindings.generated';
 
 // A finding the user ticked, as the core sent it: the summary counts it and the review screen lists it with no
 // request. Only the findings the user ticked one by one are kept, never a page of them.
@@ -80,3 +80,9 @@ export const checkedOf = (selection: Selection, category: CategoryId): 'mixed' |
 
   return [...selection.findings.values()].some((picked) => picked.category === category) ? 'mixed' : false;
 };
+
+// The selection as the core takes it: ids only, never a path.
+export const cleanupSelectionOf = (selection: Selection): CleanupSelection => ({
+  categories: [...selection.categories].map(([category, except]) => ({ category, except: [...except.keys()] })),
+  findings: [...selection.findings.keys()],
+});

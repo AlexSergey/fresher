@@ -26,10 +26,14 @@ One file per issue, named `<part>-<name>.md` (`core-`, `scanner-`, `rules-`, `st
 
 When an issue is fixed, its file stays with the status `fixed` and a link to the change.
 
-| Issue                                                                                | Part  | Status | What                                                                                        |
-| ------------------------------------------------------------------------------------ | ----- | ------ | ------------------------------------------------------------------------------------------- |
-| [A FIFO is read as a regular file](./core-fifo-read-as-file.md)                     | core  | open   | a named pipe with a marker's name counts as that marker; the core's entry kinds have no "other" |
-| [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md) | repo  | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only) |
-| [No licence check of npm dependencies yet](./repo-no-npm-licence-check.md)          | repo  | open   | the restriction promises an npm licence check that does not exist; packages are checked by hand |
-| [Stale temporary files in the data folder](./store-stale-temporary-files.md)         | store | open   | a crash during an atomic write leaves a `.<target>.<random>.tmp` file that nothing removes  |
-| [The UI keeps every finding of a scan in memory](./ui-findings-kept-in-memory.md)    | ui    | fixed  | the store held every streamed finding; it keeps totals now, lists are paged (plan 003/05)   |
+| Issue                                                                                     | Part    | Status | What                                                                                              |
+| ----------------------------------------------------------------------------------------- | ------- | ------ | ------------------------------------------------------------------------------------------------- |
+| [Quitting from the Dock during a cleanup does not ask](./app-quit-during-cleanup.md)      | app     | open   | The Dock's Quit cannot be held: the cleanup stops after the item in flight, no question; ⌘Q asks |
+| [The cleaner acts on a path after checking a handle](./cleaner-act-by-path.md)            | cleaner | fixed  | a permanent delete, an emptying and the growth walk act beneath held folders now (plan 008/04)    |
+| [The in-use check sees only the user's own processes](./cleaner-other-users-processes.md) | cleaner | open   | a file held only by another user's process, or opened after the last snapshot, is not seen        |
+| [The system's Trash call takes a path](./cleaner-trash-call-by-path.md)                   | cleaner | open   | a parent swapped for a link at the call moves the item behind it; detected after the move         |
+| [A FIFO is read as a regular file](./core-fifo-read-as-file.md)                           | core    | open   | a named pipe with a marker's name counts as that marker; the core's entry kinds have no "other"   |
+| [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md)      | repo    | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only)       |
+| [No licence check of npm dependencies yet](./repo-no-npm-licence-check.md)                | repo    | open   | the restriction promises an npm licence check that does not exist; packages are checked by hand   |
+| [Stale temporary files in the data folder](./store-stale-temporary-files.md)              | store   | open   | a crash during an atomic write leaves a `.<target>.<random>.tmp` file that nothing removes        |
+| [The UI keeps every finding of a scan in memory](./ui-findings-kept-in-memory.md)         | ui      | fixed  | the store held every streamed finding; it keeps totals now, lists are paged (plan 003/05)         |

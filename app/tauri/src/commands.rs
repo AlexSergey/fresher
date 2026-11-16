@@ -4,14 +4,16 @@
 #![expect(clippy::needless_pass_by_value, reason = "Tauri hands a command its state and inputs by value")]
 
 use fresher_core::{
-    AccessStatus, Dictionary, Event, FindingsPage, FindingsQuery, Locale, ModuleInfo, Overview, Refusal, ScanId,
-    SettingUpdate, SettingsView,
+    AccessStatus, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView, CleanupSelection, CleanupsPage,
+    CleanupsQuery, Confirmation, Dictionary, Event, FindingsPage, FindingsQuery, Locale, ModuleInfo, Overview, PlanId,
+    PutBackReport, PutBackRequest, Refusal, ScanId, SettingUpdate, SettingsView,
 };
 use fresher_engine::{Engine, ScanMode};
-use tauri::State;
 use tauri::ipc::Channel;
+use tauri::{AppHandle, Runtime, State};
 
 use crate::events::EventForwarder;
+use crate::shell;
 
 /// The version of the app.
 #[tauri::command]
@@ -75,15 +77,86 @@ pub(crate) fn get_access_status(engine: State<'_, Engine>) -> AccessStatus {
     engine.access_status()
 }
 
+/// The plan of what `selection` would remove, rehearsed and nothing done: what the confirmation shows.
+#[tauri::command(async)]
+pub(crate) fn prepare_cleanup(
+    engine: State<'_, Engine>,
+    selection: CleanupSelection,
+) -> Result<CleanupPlanView, Refusal> {
+    engine.prepare_cleanup(&selection).map_err(Refusal::from)
+}
+
+/// The confirmation's Cancel: the plan is dropped.
+#[tauri::command(async)]
+pub(crate) fn discard_cleanup(engine: State<'_, Engine>, plan: PlanId) -> Result<(), Refusal> {
+    engine.discard_cleanup(plan).map_err(Refusal::from)
+}
+
+/// The user confirmed the plan with the summary they saw; the cleanup runs on its own thread and reports by events.
+#[tauri::command(async)]
+pub(crate) fn confirm_cleanup(engine: State<'_, Engine>, confirmation: Confirmation) -> Result<CleanupId, Refusal> {
+    engine.confirm_cleanup(&confirmation).map_err(Refusal::from)
+}
+
+/// Stops the running cleanup after the item in flight.
+#[tauri::command(async)]
+pub(crate) fn cancel_cleanup(engine: State<'_, Engine>) -> Result<(), Refusal> {
+    engine.cancel_cleanup().map_err(Refusal::from)
+}
+
+/// A page of the history of cleanups, newest first, at most 100.
+#[tauri::command(async)]
+pub(crate) fn get_cleanups(engine: State<'_, Engine>, query: CleanupsQuery) -> CleanupsPage {
+    engine.cleanups(query.offset(), query.limit())
+}
+
+#[tauri::command(async)]
+pub(crate) fn get_cleanup(engine: State<'_, Engine>, cleanup: CleanupId) -> Result<CleanupDetail, Refusal> {
+    engine.cleanup(cleanup).map_err(Refusal::from)
+}
+
+/// Puts items of a cleanup back from the Trash, never replacing anything.
+#[tauri::command(async)]
+pub(crate) fn put_back(engine: State<'_, Engine>, request: PutBackRequest) -> Result<PutBackReport, Refusal> {
+    engine.put_back(request.cleanup(), request.items()).map_err(Refusal::from)
+}
+
+#[tauri::command(async)]
+pub(crate) fn reveal_in_trash(engine: State<'_, Engine>, item: CleanupItemRef) -> Result<(), Refusal> {
+    engine.reveal_in_trash(item.cleanup(), item.item()).map_err(Refusal::from)
+}
+
+/// The user chose to quit during a cleanup: it stops after the item in flight, then the app quits.
+#[tauri::command(async)]
+pub(crate) fn quit_after_cleanup<R: Runtime>(app: AppHandle<R>) {
+    shell::quit_after_cleanup(&app);
+}
+
 #[cfg(test)]
 mod tests {
+    use fresher_core::CleanupsQuery;
+    use serde_json::json;
+
+    fn first_page() -> CleanupsQuery {
+        serde_json::from_value(json!({ "offset": 0, "limit": 10 })).unwrap()
+    }
+
     mod negative {
         use fresher_core::{
             CommandError, FindingOrder, FindingsQuery, Operation, Refusal, SettingKey, SettingUpdate, SettingValue,
         };
 
-        use crate::commands::{cancel_scan, get_dictionary, get_findings, start_scan, subscribe, update_setting};
-        use crate::testing::{Shell, is_scan_finished, recording_channel, until_finished};
+        use fresher_core::{CleanupId, LeftOut, SkipReason};
+        use serde_json::json;
+
+        use super::first_page;
+        use crate::commands::{
+            cancel_cleanup, cancel_scan, confirm_cleanup, discard_cleanup, get_cleanup, get_cleanups, get_dictionary,
+            get_findings, prepare_cleanup, put_back, reveal_in_trash, start_scan, subscribe, update_setting,
+        };
+        use crate::testing::{
+            Shell, caches, echo, is_scan_finished, recording_channel, scan, trial_home, until_finished,
+        };
 
         #[test]
         fn start_scan_twice_is_busy() {
@@ -143,6 +216,80 @@ mod tests {
         }
 
         #[test]
+        fn confirm_with_a_mismatched_echo_is_refused() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning(tree.root());
+            scan(&shell);
+            let view = prepare_cleanup(shell.engine(), caches()).unwrap();
+            let count = view.summary.count + 1;
+            let echo = json!({ "plan": view.plan, "count": count, "allocated": view.summary.sizes.allocated,
+                               "highest": view.summary.highest, "method": "trash" });
+
+            let error = confirm_cleanup(shell.engine(), serde_json::from_value(echo).unwrap());
+
+            assert_eq!(error, Err(Refusal::from(CommandError::PlanMismatch)));
+            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(!shell.trash().exists());
+            assert_eq!(get_cleanups(shell.engine(), first_page()).total, 0);
+        }
+
+        #[test]
+        fn a_discarded_plan_cannot_be_confirmed() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning(tree.root());
+            scan(&shell);
+            let view = prepare_cleanup(shell.engine(), caches()).unwrap();
+            discard_cleanup(shell.engine(), view.plan).unwrap();
+
+            let error = confirm_cleanup(shell.engine(), echo(&view));
+
+            assert_eq!(error, Err(Refusal::from(CommandError::PlanGone)));
+            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+        }
+
+        #[test]
+        fn a_debug_build_cleans_nothing_outside_a_sandbox() {
+            let tree = trial_home(false);
+            let shell = Shell::cleaning(tree.root());
+            scan(&shell);
+            let selection = json!({ "findings": [], "categories": [
+                { "category": "trial.caches", "except": [] }, { "category": "trial.kept", "except": [] } ] });
+
+            let view = prepare_cleanup(shell.engine(), serde_json::from_value(selection).unwrap()).unwrap();
+
+            let reasons: Vec<&SkipReason> = view.left_out.iter().map(LeftOut::reason).collect();
+            assert_eq!(view.summary.count, 0);
+            assert_eq!(reasons, [&SkipReason::NotInSandbox, &SkipReason::NotInSandbox]);
+        }
+
+        #[test]
+        fn put_back_while_scanning_is_busy() {
+            let shell = Shell::held();
+            let events = shell.engine().subscribe();
+            start_scan(shell.engine()).unwrap();
+
+            let error =
+                put_back(shell.engine(), serde_json::from_value(json!({ "cleanup": 1, "items": null })).unwrap());
+
+            assert_eq!(error, Err(Refusal::from(CommandError::Busy { running: Operation::Scan })));
+            cancel_scan(shell.engine()).unwrap();
+            until_finished(&events, is_scan_finished);
+        }
+
+        #[test]
+        fn the_cleanup_commands_refuse_what_is_not_there() {
+            let shell = Shell::new();
+            let id: CleanupId = serde_json::from_value(json!(7)).unwrap();
+            let unknown = Refusal::from(CommandError::UnknownCleanup { id });
+
+            assert_eq!(cancel_cleanup(shell.engine()), Err(Refusal::from(CommandError::NotRunning)));
+            assert_eq!(prepare_cleanup(shell.engine(), caches()), Err(Refusal::from(CommandError::NoScan)));
+            assert_eq!(get_cleanup(shell.engine(), id), Err(unknown.clone()));
+            let item = json!({ "cleanup": 7, "item": 0 });
+            assert_eq!(reveal_in_trash(shell.engine(), serde_json::from_value(item).unwrap()), Err(unknown));
+        }
+
+        #[test]
         fn get_dictionary_for_an_unknown_locale_is_refused() {
             let shell = Shell::new();
 
@@ -155,14 +302,51 @@ mod tests {
 
     mod positive {
         use fresher_core::{
-            Access, EngineStatus, FindingOrder, FindingsQuery, SettingUpdate, SettingValue, SettingsFile,
+            Access, Capability, EngineStatus, FindingOrder, FindingsQuery, SettingUpdate, SettingValue, SettingsFile,
         };
 
+        use fresher_core::{PutBackOutcome, TrashState};
+        use serde_json::json;
+
+        use super::first_page;
         use crate::commands::{
-            app_version, get_access_status, get_dictionary, get_findings, get_modules, get_overview, get_settings,
-            start_scan, subscribe, update_setting,
+            app_version, confirm_cleanup, get_access_status, get_cleanup, get_cleanups, get_dictionary, get_findings,
+            get_modules, get_overview, get_settings, prepare_cleanup, put_back, start_scan, subscribe, update_setting,
         };
-        use crate::testing::{Shell, recording_channel, until_finished};
+        use crate::testing::{Shell, caches, echo, recording_channel, scan, trial_home, until_finished};
+
+        #[test]
+        fn prepare_then_confirm_cleans_a_sandbox_through_the_commands() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning(tree.root());
+            let (channel, received) = recording_channel();
+            subscribe(shell.engine(), shell.forwarder(), channel).unwrap();
+            scan(&shell);
+            let view = prepare_cleanup(shell.engine(), caches()).unwrap();
+
+            let cleanup = confirm_cleanup(shell.engine(), echo(&view)).unwrap();
+
+            let events = until_finished(&received, |event| event["type"] == "cleanup-finished");
+            let types: Vec<&str> = events.iter().filter_map(|event| event["type"].as_str()).collect();
+            assert!(types.ends_with(&["cleanup-started", "cleanup-items", "findings-removed", "cleanup-finished"]));
+            assert_eq!(events.last().map(|event| event["report"]["counts"]["moved"].as_u64()), Some(Some(1)));
+            assert_eq!((view.summary.count, view.left_out.len()), (1, 0));
+            assert!(!tree.root().join("sandbox/fresher-trial-cache").exists());
+            assert!(tree.root().join("sandbox/keep-me.txt").exists());
+            assert!(tree.root().join("sandbox/fresher-trial-kept/entry.bin").exists());
+            assert_eq!(std::fs::read_dir(shell.trash()).unwrap().count(), 1);
+            let page = get_cleanups(shell.engine(), first_page());
+            assert_eq!((page.total, page.cleanups[0].cleanup, page.cleanups[0].in_trash), (1, cleanup, 1));
+            let detail = get_cleanup(shell.engine(), cleanup).unwrap();
+            assert_eq!(detail.items[0].trash, Some(TrashState::InTrash));
+
+            let back =
+                put_back(shell.engine(), serde_json::from_value(json!({ "cleanup": cleanup, "items": null })).unwrap());
+
+            assert_eq!(back.unwrap().items[0].outcome, PutBackOutcome::PutBack);
+            assert!(tree.root().join("sandbox/fresher-trial-cache/nested/blob.bin").exists());
+            assert_eq!(get_cleanups(shell.engine(), first_page()).cleanups[0].in_trash, 0);
+        }
 
         #[test]
         fn app_version_is_the_crate_version() {
@@ -240,8 +424,8 @@ mod tests {
 
             let modules: Vec<_> = get_modules(shell.engine()).into_iter().map(|module| module.id.as_str()).collect();
 
-            assert_eq!(modules, ["demo"]);
-            assert_eq!(get_access_status(shell.engine()).full_disk_access, Access::Unknown);
+            assert_eq!(modules, ["demo", "trial"]);
+            assert_eq!(get_access_status(shell.engine()).access(&Capability::AllFiles), Access::Unknown);
         }
     }
 }

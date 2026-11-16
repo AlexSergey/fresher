@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use fresher_core::{
-    CategoryDescriptor, Dictionary, DictionaryError, Module, ModuleDescriptor, ModuleId, ModuleInfo, SchemaError,
-    SettingsSchema, core_dictionary,
+    AccessStatus, CategoryDescriptor, DescriptorError, Dictionary, DictionaryError, Module, ModuleDescriptor, ModuleId,
+    ModuleInfo, SchemaError, SettingsSchema, ToolCommand, core_dictionary,
 };
 
 /// Every module of the app, with the settings schema and the dictionary they make together.
@@ -25,6 +25,8 @@ pub enum RegistryError {
     Dictionary { id: String, source: DictionaryError },
     #[error("the settings of module `{id}` are refused: {source}")]
     Settings { id: String, source: SchemaError },
+    #[error("the descriptor of module `{id}` is refused: {source}")]
+    Descriptor { id: String, source: DescriptorError },
 }
 
 impl Registry {
@@ -41,6 +43,7 @@ impl Registry {
         if self.modules.iter().any(|known| known.descriptor().id() == id) {
             return Err(RegistryError::DuplicateModule { id: id.as_str().into() });
         }
+        descriptor.check_tools().map_err(|source| RegistryError::Descriptor { id: id.as_str().into(), source })?;
         let refused = |source| RegistryError::Dictionary { id: id.as_str().into(), source };
         let dictionary = Dictionary::parse(id.as_str(), descriptor.locales().en).map_err(refused)?;
         let schema = SettingsSchema::new(self.descriptors().chain([descriptor]))
@@ -52,9 +55,14 @@ impl Registry {
         Ok(())
     }
 
-    /// The modules for the UI, in registration order.
-    pub fn modules(&self) -> Vec<ModuleInfo> {
-        self.descriptors().map(ModuleInfo::from).collect()
+    /// The modules for the UI, in registration order, each category's availability worked out from `access`.
+    pub fn modules(&self, access: &AccessStatus) -> Vec<ModuleInfo> {
+        self.descriptors().map(|descriptor| ModuleInfo::new(descriptor, access)).collect()
+    }
+
+    /// The checks of the tools every module needs, in registration order.
+    pub fn tool_checks(&self) -> impl Iterator<Item = &ToolCommand> {
+        self.descriptors().flat_map(ModuleDescriptor::tool_checks)
     }
 
     /// Every category of every module, in registration order.
@@ -100,7 +108,7 @@ impl std::fmt::Debug for Registry {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{DangerLevel, DictionaryError};
+        use fresher_core::{AccessStatus, DangerLevel, DictionaryError};
 
         use crate::testing::TestModule;
         use crate::{Registry, RegistryError};
@@ -113,7 +121,7 @@ mod tests {
             let error = registry.register(TestModule::builder("alpha").boxed());
 
             assert_eq!(error, Err(RegistryError::DuplicateModule { id: "alpha".into() }));
-            assert_eq!(registry.modules().len(), 1);
+            assert_eq!(registry.modules(&AccessStatus::default()).len(), 1);
         }
 
         #[test]
@@ -125,7 +133,7 @@ mod tests {
 
             let source = DictionaryError::OutsideNamespace { key: "beta.caches.name".into() };
             assert_eq!(error, Err(RegistryError::Dictionary { id: "alpha".into(), source }));
-            assert_eq!(registry.modules(), vec![]);
+            assert_eq!(registry.modules(&AccessStatus::default()), vec![]);
         }
 
         #[test]
@@ -143,23 +151,44 @@ mod tests {
         }
 
         #[test]
+        fn refuses_a_module_that_needs_a_tool_without_its_check() {
+            let mut registry = Registry::new().unwrap();
+            let docker = fresher_core::Capability::Tool(fresher_core::ToolId::new("docker").unwrap());
+            let module = TestModule::builder("alpha").needing(
+                "alpha.images",
+                DangerLevel::Low,
+                vec![fresher_core::Need::required(docker)],
+            );
+
+            let error = registry.register(module.boxed());
+
+            let source = fresher_core::DescriptorError::MissingToolCheck { tool: "docker".into() };
+            assert_eq!(error, Err(RegistryError::Descriptor { id: "alpha".into(), source }));
+            assert_eq!(registry.tool_checks().count(), 0);
+        }
+
+        #[test]
         fn a_refused_module_leaves_the_registry_as_it_was() {
             let mut registry = Registry::new().unwrap();
             let good = TestModule::builder("alpha")
                 .category("alpha.caches", DangerLevel::Safe)
                 .locales(r#"{ "alpha.caches.name": "Caches" }"#);
             registry.register(good.boxed()).unwrap();
-            let before = (registry.modules(), registry.dictionary().clone(), registry.schema().unwrap());
+            let before =
+                (registry.modules(&AccessStatus::default()), registry.dictionary().clone(), registry.schema().unwrap());
 
             let error = registry.register(TestModule::builder("beta").locales(r#"{ "beta.A": "A" }"#).boxed());
 
             assert!(error.is_err());
-            assert_eq!((registry.modules(), registry.dictionary().clone(), registry.schema().unwrap()), before);
+            assert_eq!(
+                (registry.modules(&AccessStatus::default()), registry.dictionary().clone(), registry.schema().unwrap()),
+                before
+            );
         }
     }
 
     mod positive {
-        use fresher_core::{CategoryId, DangerLevel, ModuleId, core_dictionary};
+        use fresher_core::{AccessStatus, CategoryId, DangerLevel, ModuleId, core_dictionary};
 
         use crate::Registry;
         use crate::testing::TestModule;
@@ -187,7 +216,8 @@ mod tests {
                 registry.register(TestModule::builder(id).boxed()).unwrap();
             }
 
-            let ids: Vec<_> = registry.modules().iter().map(|module| module.id.as_str()).collect();
+            let ids: Vec<_> =
+                registry.modules(&AccessStatus::default()).iter().map(|module| module.id.as_str()).collect();
 
             assert_eq!(ids, ["gamma", "alpha", "beta"]);
         }
@@ -205,9 +235,10 @@ mod tests {
             assert_eq!(categories, ["alpha.caches", "beta.images"]);
             let schema = registry.schema().unwrap();
             let keys: Vec<_> = schema.descriptors().iter().map(|setting| setting.key().as_str()).collect();
-            assert_eq!(keys, ["core.scan.roots", "alpha.enabled", "beta.enabled"]);
+            assert_eq!(keys[keys.len() - 2..], ["alpha.enabled", "beta.enabled"]);
+            assert_eq!(keys[0], "core.scan.roots");
             let beta_images = CategoryId::new(ModuleId::new("beta").unwrap(), "beta.images").unwrap();
-            assert_eq!(registry.modules()[1].categories[0].id(), beta_images);
+            assert_eq!(registry.modules(&AccessStatus::default())[1].categories[0].descriptor.id(), beta_images);
         }
 
         #[test]
@@ -216,7 +247,8 @@ mod tests {
 
             let schema = registry.schema().unwrap();
 
-            assert_eq!(schema.descriptors().len(), 1);
+            assert!(schema.descriptors().iter().all(|setting| setting.key().namespace() == "core"));
+            assert_eq!(schema.descriptors().len(), 5);
             assert_eq!(registry.dictionary().len(), core_dictionary().unwrap().len());
             assert_eq!(format!("{registry:?}"), "Registry { modules: [], .. }");
         }

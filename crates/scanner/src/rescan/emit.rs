@@ -55,6 +55,7 @@ pub(crate) fn emit(tree: &Tree, matcher: &Matcher, interests: &InterestSet, on_m
                     modified: node.modified(),
                     siblings,
                     marker: hit.marker,
+                    facts: tree.facts(index),
                 });
                 count += 1;
             }

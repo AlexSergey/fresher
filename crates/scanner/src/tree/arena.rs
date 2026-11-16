@@ -4,9 +4,10 @@ use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Component, Path, PathBuf};
 
-use fresher_core::{Completeness, EntryKind, FolderIdentity, Timestamp, Unreadable};
+use fresher_core::{Completeness, EntryFacts, EntryKind, FolderIdentity, Timestamp, Unreadable};
 
 use crate::tree::TreeError;
+use crate::tree::access::NodeAccess;
 use crate::tree::links::{LinkSet, Member};
 use crate::tree::names::{NameRef, Names};
 use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums};
@@ -108,6 +109,20 @@ impl Tree {
     pub(crate) fn set_modified(&mut self, index: NodeIndex, modified: Option<Timestamp>) -> Result<(), TreeError> {
         self.node_mut(index)?.set_modified(modified);
         Ok(())
+    }
+
+    /// Records the access of the node's entry; allowed on a frozen tree, which a rescan copies into a new one.
+    pub(crate) fn set_access(&mut self, index: NodeIndex, access: NodeAccess) -> Result<(), TreeError> {
+        self.node_mut(index)?.access = access;
+        Ok(())
+    }
+
+    /// The facts of the node's entry, from its access and its folder's; nothing known (not removable) for a node that
+    /// is not in the tree.
+    pub(crate) fn facts(&self, index: NodeIndex) -> EntryFacts {
+        let Some(node) = self.node(index) else { return EntryFacts::default() };
+        let parent = self.node(node.parent).map_or(NodeAccess::NONE, |parent| parent.access);
+        node.access.facts(node.flags.kind(), parent)
     }
 
     /// Records the claim that owns the node: an index into the committed state's table of categories (the cache's

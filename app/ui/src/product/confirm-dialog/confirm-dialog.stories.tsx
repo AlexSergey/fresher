@@ -1,10 +1,18 @@
 import { type JSX, useEffect, useRef } from 'react';
 
-import type { ConfirmContent } from './confirm-dialog';
+import type { CleanupPlanView } from '../../ipc/bindings.generated';
 
 import { stories as storiesOf } from '../../gallery/story';
 import { setCoreDictionary } from '../../i18n';
-import { confirmContentOf, LONG_CONTENT, SHORT_CONTENT } from '../../test/confirm-content';
+import {
+  ALL_LEFT_OUT_PLAN,
+  CLEANUP_DICTIONARY,
+  DEMO_PLAN,
+  HIGH_PLAN,
+  LEFT_OUT_PLAN,
+  LONG_PLAN,
+  TOOL_PLAN,
+} from '../../test/cleanup-plan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
 import { ConfirmDialog } from './confirm-dialog';
 import styles from './confirm-dialog.stories.module.css';
@@ -13,13 +21,13 @@ const ignore = (): void => undefined;
 
 // The open confirmation over a page; `permanent` ticks the permanent choice, as a person would.
 const open = (
-  content: ConfirmContent,
+  plan: CleanupPlanView,
   permanent = false,
 ): { readonly render: () => JSX.Element; readonly width: number } => ({
   render: function Story(): JSX.Element {
     const stageRef = useRef<HTMLDivElement>(null);
 
-    setCoreDictionary(FINDING_DICTIONARY);
+    setCoreDictionary({ ...FINDING_DICTIONARY, ...CLEANUP_DICTIONARY });
 
     useEffect(() => {
       if (permanent) {
@@ -30,7 +38,7 @@ const open = (
     return (
       <div className={styles.stage} ref={stageRef}>
         <p className={styles.behind}>The review of the selection.</p>
-        <ConfirmDialog content={content} onCancel={ignore} onConfirm={ignore} open />
+        <ConfirmDialog onCancel={ignore} onConfirm={ignore} open plan={plan} />
       </div>
     );
   },
@@ -38,8 +46,11 @@ const open = (
 });
 
 export const stories = storiesOf('ConfirmDialog', {
-  'highest-high': open(confirmContentOf('high')),
-  'long-list': open(LONG_CONTENT),
-  permanent: open(SHORT_CONTENT, true),
-  trash: open(SHORT_CONTENT),
+  'all-left-out': open(ALL_LEFT_OUT_PLAN),
+  'highest-high': open(HIGH_PLAN),
+  'left-out': open(LEFT_OUT_PLAN),
+  'long-list': open(LONG_PLAN),
+  permanent: open(DEMO_PLAN, true),
+  'tool-group': open(TOOL_PLAN),
+  trash: open(DEMO_PLAN),
 });

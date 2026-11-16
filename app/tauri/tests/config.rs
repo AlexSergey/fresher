@@ -72,7 +72,21 @@ mod support {
 }
 
 mod negative {
-    use crate::support::{beyond_drag_region, capability_permissions, config, directives};
+    use crate::support::{
+        DRAG_REGION, beyond_drag_region, capability_permissions, config, directives, handler_commands,
+    };
+
+    #[test]
+    fn the_capability_allows_no_new_permission() {
+        // Exactly the app's own commands and the drag region's two: a command, plugin or core permission added
+        // anywhere else fails here.
+        let mut expected: Vec<String> =
+            handler_commands().iter().map(|command| format!("allow-{}", command.replace('_', "-"))).collect();
+        expected.extend(DRAG_REGION.iter().map(|permission| (*permission).to_owned()));
+
+        assert_eq!(capability_permissions(), expected);
+        assert!(handler_commands().iter().any(|command| command == "quit_after_cleanup"));
+    }
 
     #[test]
     fn the_config_keeps_no_remote_origin_in_the_csp() {

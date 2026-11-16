@@ -4,8 +4,8 @@
 use std::path::PathBuf;
 
 use fresher_core::{
-    CommandError, Event, ModuleId, ModuleSettings, ResolvedSettings, SettingProblem, SettingUpdate, SettingValue,
-    SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings,
+    CommandError, Event, ModuleId, ModuleSettings, ResolvedSettings, SettingKey, SettingProblem, SettingUpdate,
+    SettingValue, SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings,
 };
 
 /// The core's setting of the folders a scan walks.
@@ -45,6 +45,11 @@ impl Settings {
         SettingsView::new(&self.schema, &self.resolved, self.file)
     }
 
+    /// How the settings file was read: only a `Loaded` file tells what the user ignores.
+    pub(crate) const fn file(&self) -> SettingsFile {
+        self.file
+    }
+
     /// Checks `update`, saves it through `store`, then takes it; the event announces it. Nothing changes on a refusal.
     pub(crate) fn update(&mut self, update: SettingUpdate, store: &dyn SettingsStore) -> Result<Event, CommandError> {
         let SettingUpdate { key, value } = update;
@@ -79,9 +84,21 @@ impl Settings {
         self.resolved.module(module)
     }
 
+    /// Whether the core's switch `key` is on; a key that is not a switch is off.
+    pub(crate) fn core_switch(&self, key: &str) -> bool {
+        matches!(self.resolved.get(key), Some(SettingValue::Switch(true)))
+    }
+
     pub(crate) fn is_enabled(&self, module: ModuleId) -> bool {
         self.module(module).switch(ENABLED).unwrap_or(true)
     }
+}
+
+/// Whether a change of `key` changes what a scan reads: the roots or a module's switch. A pending cleanup plan dies
+/// with such a change.
+pub(crate) fn changes_what_is_scanned(key: &SettingKey) -> bool {
+    let key = key.as_str();
+    key == SCAN_ROOTS || key.strip_suffix(ENABLED).is_some_and(|module| module.ends_with('.'))
 }
 
 fn problem_key(problem: &SettingProblem) -> &str {
@@ -336,8 +353,9 @@ mod tests {
             let view = engine.settings().unwrap();
 
             let keys: Vec<_> = view.settings.iter().map(|setting| setting.key().as_str()).collect();
-            assert_eq!(keys, ["core.scan.roots", "alpha.enabled"]);
-            assert_eq!(view.values.len(), 2);
+            assert_eq!(keys.first(), Some(&"core.scan.roots"));
+            assert_eq!(keys.last(), Some(&"alpha.enabled"));
+            assert_eq!(view.values.len(), keys.len());
             assert_eq!(engine.settings().map(|view| view.file), Ok(SettingsFile::Loaded));
         }
     }

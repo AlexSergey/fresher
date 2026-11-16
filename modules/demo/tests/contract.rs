@@ -20,7 +20,10 @@ mod helpers {
 }
 
 mod positive {
-    use fresher_testing::{Catalogue, ContractProblem, assert_module_contract, check_texts_used};
+    use fresher_core::Removal;
+    use fresher_testing::{
+        Catalogue, ContractProblem, assert_module_contract, check_removals_matched, check_texts_used,
+    };
 
     use crate::helpers::{demo, run_on_an_empty_home};
 
@@ -39,5 +42,24 @@ mod positive {
         let problems = check_texts_used(&module, &[run]);
 
         assert_eq!(problems, [ContractProblem::UnusedText { key: "demo.error.failed".into() }]);
+    }
+
+    /// The demo's paths are made up and nothing matches them, so the kit flags every path removal: the engine shows
+    /// those items as needing an administrator, and only the tool removals as removable.
+    #[test]
+    fn the_made_up_paths_are_flagged_and_the_tool_removals_are_not() {
+        let module = demo();
+        let run = run_on_an_empty_home(&module);
+        let paths = run
+            .findings
+            .iter()
+            .filter(|finding| !matches!(finding.removal(), Removal::ToolCommand(_)))
+            .map(|finding| ContractProblem::UnmatchedRemoval { identity: finding.key().identity().into() })
+            .collect::<Vec<_>>();
+
+        let problems = check_removals_matched(&[run]);
+
+        assert_ne!(problems, []);
+        assert_eq!(problems, paths);
     }
 }

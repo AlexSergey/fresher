@@ -1,0 +1,54 @@
+# A home for the trial module where nothing may be claimed. The test marks `look-alike`, `file` and `link` as sandbox
+# folders; `unmarked` has no marker, and `marked-above` has it only one level up (the test marks it).
+
+# Names that only resemble the trial folders, right next to the marker.
+[[file]]
+path = "look-alike/fresher-trial-cache2/blob.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "look-alike/fresher-trial-cache.txt/blob.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "look-alike/fresher-trial-kept2/blob.bin"
+size = 4096
+modified = 1762000000
+
+# Files, not folders, with the trial names.
+[[file]]
+path = "file/fresher-trial-cache"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "file/fresher-trial-kept"
+size = 4096
+modified = 1762000000
+
+# Links with the trial names, to a folder outside the sandbox.
+[[file]]
+path = "outside/data/blob.bin"
+size = 4096
+modified = 1762000000
+
+[[symlink]]
+path = "link/fresher-trial-cache"
+target = "../outside/data"
+
+[[symlink]]
+path = "link/fresher-trial-kept"
+target = "../outside/data"
+
+# Trial folders with no marker next to them.
+[[file]]
+path = "unmarked/fresher-trial-cache/blob.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "marked-above/deeper/fresher-trial-kept/blob.bin"
+size = 4096
+modified = 1762000000

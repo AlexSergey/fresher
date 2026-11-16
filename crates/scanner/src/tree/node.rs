@@ -2,6 +2,8 @@
 
 use fresher_core::{EntryKind, MarkerCheck, Sizes, Timestamp, Unreadable};
 
+use crate::tree::access::NodeAccess;
+
 /// The index of a node in the arena; 32 bits, so a node stays small.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct NodeIndex(u32);
@@ -187,7 +189,8 @@ pub(crate) struct Hit {
     pub(crate) siblings: u64,
 }
 
-/// A node: a folder or a kept entry. 72 bytes; lists and names are 32-bit indices into the arena's buffers.
+/// A node: a folder or a kept entry. 72 bytes (its access takes a byte that was padding); lists and names are 32-bit
+/// indices into the arena's buffers.
 ///
 /// The three sizes and the file count hold the node's own bytes (a folder's folded files, a kept file's sizes) until
 /// the tree is frozen, and the subtree's after: storing both would cost 28 bytes a node.
@@ -211,6 +214,8 @@ pub(crate) struct Node {
     pub(crate) name_len: u16,
     pub(crate) hits_len: u16,
     pub(crate) flags: NodeFlags,
+    /// Its entry's access for the scan's user; [`NodeAccess::NONE`] until it is read.
+    pub(crate) access: NodeAccess,
 }
 
 impl Node {
@@ -234,6 +239,7 @@ impl Node {
             name_len,
             hits_len: 0,
             flags,
+            access: NodeAccess::NONE,
         }
     }
 

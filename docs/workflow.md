@@ -14,6 +14,9 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
 - **Small changes outside any plan** (an idea, the README, a rule, a doc fix) are committed **straight to `main`**, one
   commit through the hooks, no branch.
 - The merged branch is kept for two weeks, then deleted.
+- **An unfinished global plan may be merged with a dependent one** when the user asks (the user's decision of
+  2026-11-16, plans 006 and 008): its built parts go into `main` in the dependent plan's squash-merge, it stays
+  🔨 in progress, and its rest continues on a new branch from `main`.
 
 ## Pushing
 

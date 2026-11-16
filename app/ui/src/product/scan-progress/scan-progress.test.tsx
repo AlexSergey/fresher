@@ -55,6 +55,16 @@ describe('ScanProgress', () => {
   });
 
   describe('positive cases', () => {
+    it('a module not run for what it lacks shows as not available', () => {
+      const unavailable: ModuleProgress = {
+        module: 'demo',
+        state: { kind: 'unavailable', missing: [{ kind: 'all-files' }] },
+      };
+      render(<ScanProgress entries={0} modules={[unavailable]} onStop={vi.fn()} />);
+
+      expect(chips().map((chip) => chip.textContent)).toStrictEqual(['Demo module, not available']);
+    });
+
     it('Stop calls onStop', () => {
       const onStop = vi.fn();
       render(<ScanProgress entries={0} modules={MODULES} onStop={onStop} />);

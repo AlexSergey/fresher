@@ -26,6 +26,14 @@
         "type": "module-finished"
       },
       {
+        "coverage": {
+          "notEntered": [],
+          "unreadable": []
+        },
+        "scan": 2,
+        "type": "scan-coverage"
+      },
+      {
         "kind": {
           "changedFolders": 2,
           "kind": "rescan"
@@ -50,6 +58,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "tool-command",
           "value": {
@@ -95,6 +104,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "tool-command",
           "value": {
@@ -140,6 +150,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "tool-command",
           "value": {
@@ -185,6 +196,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "needs-administrator",
         "removal": {
           "kind": "move-to-trash",
           "value": "/demo/Downloads/example-archive.zip"
@@ -221,6 +233,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "needs-administrator",
         "removal": {
           "kind": "move-to-trash",
           "value": "/demo/Downloads/example-installer.dmg"
@@ -257,6 +270,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "needs-administrator",
         "removal": {
           "kind": "empty-folder",
           "value": "/demo/Library/Caches/com.example.browser"
@@ -293,6 +307,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "needs-administrator",
         "removal": {
           "kind": "empty-folder",
           "value": "/demo/Library/Caches/com.example.editor"
@@ -329,6 +344,7 @@
           "args": {},
           "key": "demo.finding.reason"
         },
+        "removability": "needs-administrator",
         "removal": {
           "kind": "move-to-trash",
           "value": "/demo/Library/Caches/com.example.music"
@@ -365,6 +381,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Downloads/tool.dmg"
@@ -396,6 +413,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Library/Caches"
@@ -427,6 +445,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Library/Caches/com.example.editor"
@@ -458,6 +477,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Library/Caches/system"
@@ -489,6 +509,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Projects/Library/Caches"
@@ -520,6 +541,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Projects/app/build"
@@ -551,6 +573,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Projects/app/node_modules"
@@ -579,6 +602,10 @@
         "reclaimable": 9054244044
       },
       "lastScan": {
+        "coverage": {
+          "notEntered": [],
+          "unreadable": []
+        },
         "finished": 1763200000,
         "kind": {
           "changedFolders": 2,
@@ -754,6 +781,14 @@
         "type": "module-finished"
       },
       {
+        "coverage": {
+          "notEntered": [],
+          "unreadable": []
+        },
+        "scan": 1,
+        "type": "scan-coverage"
+      },
+      {
         "kind": {
           "kind": "restored",
           "taken": 1763200000
@@ -778,6 +813,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Downloads/tool.dmg"
@@ -809,6 +845,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Library/Caches"
@@ -840,6 +877,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Library/Caches/com.example.editor"
@@ -871,6 +909,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Library/Caches/system"
@@ -902,6 +941,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Projects/Library/Caches"
@@ -933,6 +973,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Projects/app/build"
@@ -964,6 +1005,7 @@
           "args": {},
           "key": "probe.finding.reason"
         },
+        "removability": "removable",
         "removal": {
           "kind": "move-to-trash",
           "value": "~/Projects/app/node_modules"
@@ -992,6 +1034,10 @@
         "reclaimable": 0
       },
       "lastScan": {
+        "coverage": {
+          "notEntered": [],
+          "unreadable": []
+        },
         "finished": 1763200000,
         "kind": {
           "kind": "restored",

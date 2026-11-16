@@ -1,0 +1,5 @@
+error[E0599]: no method named `clone` found for struct `ConfirmedPlan` in the current scope
+ --> tests/compile_fail/confirmed_plan_clone.rs:6:11
+  |
+6 |     (plan.clone(), plan)
+  |           ^^^^^ method not found in `ConfirmedPlan`

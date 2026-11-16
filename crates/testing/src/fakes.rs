@@ -1,12 +1,13 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fs;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, SystemTime};
 
 use fresher_core::{
     ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandOutput, CommandRunError, CommandRunner, JournalGap,
-    JournalPosition, ReadError, ScanCache, ScopeKey, StoreError, Trash, TrashError, VolumeFacts, VolumeId, Volumes,
+    JournalPosition, Landed, ReadError, ScanCache, ScopeKey, StoreError, Trash, TrashError, VolumeFacts, VolumeId,
+    Volumes,
 };
 
 /// Locks `mutex`; a test that panicked while holding it leaves the data as it was.
@@ -37,24 +38,41 @@ impl Clock for FakeClock {
     }
 }
 
-/// A Trash inside the fixture tree: items are moved (renamed) into its folder, never deleted.
+/// A Trash inside the fixture tree: items are moved (renamed) into its folder as `<n>-<name>`, never deleted, and put
+/// back without replacing anything.
 #[derive(Debug)]
 pub struct FakeTrash {
     dir: PathBuf,
     moved: Mutex<Vec<PathBuf>>,
     refused: HashSet<PathBuf>,
+    no_trash: bool,
+    reports: bool,
 }
 
 impl FakeTrash {
     /// A Trash whose folder is `dir`; it is created on the first move.
     pub fn new(dir: impl Into<PathBuf>) -> Self {
-        Self { dir: dir.into(), moved: Mutex::new(Vec::new()), refused: HashSet::new() }
+        Self { dir: dir.into(), moved: Mutex::new(Vec::new()), refused: HashSet::new(), no_trash: false, reports: true }
     }
 
-    /// Makes the Trash refuse `path`, as macOS does for a file in use or without permission.
+    /// Makes the Trash refuse `path`, as macOS does for a locked item or a read-only folder.
     #[must_use]
     pub fn refusing(mut self, path: impl Into<PathBuf>) -> Self {
         self.refused.insert(path.into());
+        self
+    }
+
+    /// A volume without a Trash: every move answers `NoTrash` and moves nothing.
+    #[must_use]
+    pub const fn without_trash(mut self) -> Self {
+        self.no_trash = true;
+        self
+    }
+
+    /// A Trash call that moves but returns no landed path, as the system's call sometimes does.
+    #[must_use]
+    pub const fn reporting_nothing(mut self) -> Self {
+        self.reports = false;
         self
     }
 
@@ -65,23 +83,36 @@ impl FakeTrash {
 }
 
 impl Trash for FakeTrash {
-    fn move_to_trash(&self, path: &Path) -> Result<(), TrashError> {
+    fn move_to_trash(&self, path: &Path, _held: &File) -> Result<Landed, TrashError> {
         if self.refused.contains(path) {
-            return Err(TrashError::Refused { path: path.to_path_buf(), reason: "refused by the test".into() });
+            return Err(TrashError::NotAllowed);
         }
-        let Some(name) = path.file_name() else {
-            return Err(TrashError::NotFound { path: path.to_path_buf() });
+        if self.no_trash {
+            return Err(TrashError::NoTrash);
+        }
+        let (Some(name), Ok(_)) = (path.file_name(), path.symlink_metadata()) else {
+            return Err(TrashError::NotFound);
         };
-        if path.symlink_metadata().is_err() {
-            return Err(TrashError::NotFound { path: path.to_path_buf() });
-        }
-        let refused =
-            |error: std::io::Error| TrashError::Refused { path: path.to_path_buf(), reason: error.to_string() };
+        let refused = |error: std::io::Error| TrashError::Refused { reason: error.to_string() };
         fs::create_dir_all(&self.dir).map_err(refused)?;
         let mut moved = lock(&self.moved);
-        fs::rename(path, self.dir.join(format!("{}-{}", moved.len(), name.to_string_lossy()))).map_err(refused)?;
+        let landed = self.dir.join(format!("{}-{}", moved.len(), name.to_string_lossy()));
+        fs::rename(path, &landed).map_err(refused)?;
         moved.push(path.to_path_buf());
-        Ok(())
+        Ok(Landed { reported: self.reports.then(|| landed.clone()), at: landed })
+    }
+
+    fn put_back(&self, landed: &Path, original: &Path) -> Result<(), TrashError> {
+        if original.symlink_metadata().is_ok() {
+            return Err(TrashError::Occupied);
+        }
+        if !original.parent().is_some_and(Path::is_dir) {
+            return Err(TrashError::NoParent);
+        }
+        if landed.symlink_metadata().is_err() {
+            return Err(TrashError::NotFound);
+        }
+        fs::rename(landed, original).map_err(|error| TrashError::Refused { reason: error.to_string() })
     }
 }
 
@@ -97,6 +128,14 @@ impl FakeCommandRunner {
     #[must_use]
     pub fn answering(mut self, command: &str, stdout: &str) -> Self {
         let output = CommandOutput { status: 0, stdout: stdout.into(), stderr: String::new() };
+        self.answers.insert(command.into(), Ok(output));
+        self
+    }
+
+    /// Answers `command` with the exit status `status` and nothing on its outputs.
+    #[must_use]
+    pub fn exiting(mut self, command: &str, status: i32) -> Self {
+        let output = CommandOutput { status, stdout: String::new(), stderr: String::new() };
         self.answers.insert(command.into(), Ok(output));
         self
     }
@@ -125,10 +164,12 @@ impl CommandRunner for FakeCommandRunner {
     }
 }
 
-/// Fixed volume facts per root: a path is on the volume of the longest root it starts with.
+/// Fixed volume facts per root: a path is on the volume of the longest root it starts with. The available space is
+/// played from a script, one value per call.
 #[derive(Debug, Default)]
 pub struct FakeVolumes {
     roots: Vec<(PathBuf, VolumeFacts)>,
+    available: Mutex<VecDeque<Result<ByteSize, ReadError>>>,
 }
 
 impl FakeVolumes {
@@ -136,6 +177,13 @@ impl FakeVolumes {
     #[must_use]
     pub fn with(mut self, root: impl Into<PathBuf>, facts: VolumeFacts) -> Self {
         self.roots.push((root.into(), facts));
+        self
+    }
+
+    /// Adds the next answer of `available`; once the script runs out, it answers `ReadError::Failed`.
+    #[must_use]
+    pub fn answering_available(self, answer: Result<ByteSize, ReadError>) -> Self {
+        lock(&self.available).push_back(answer);
         self
     }
 }
@@ -148,6 +196,10 @@ impl Volumes for FakeVolumes {
             .max_by_key(|(root, _)| root.components().count())
             .map(|&(_, facts)| facts)
             .ok_or(ReadError::Vanished)
+    }
+
+    fn available(&self, _path: &Path) -> Result<ByteSize, ReadError> {
+        lock(&self.available).pop_front().unwrap_or(Err(ReadError::Failed))
     }
 }
 
@@ -250,6 +302,11 @@ impl ScanCache for MemoryScanCache {
 mod tests {
     use fresher_core::{ByteSize, VolumeFacts, VolumeId};
 
+    /// An open handle of `path`, as the cleaner holds one; the fake Trash does not read it.
+    fn held(path: &std::path::Path) -> std::fs::File {
+        std::fs::File::open(path).unwrap()
+    }
+
     fn facts(id: u128) -> VolumeFacts {
         VolumeFacts { id: VolumeId::new(id), device: 16, case_sensitive: false, used: ByteSize::new(1 << 30) }
     }
@@ -257,11 +314,14 @@ mod tests {
     mod negative {
         use std::path::Path;
 
+        use std::fs;
+
         use fresher_core::{
             ByteSize, CancelToken, ChangeJournal, CommandRunError, CommandRunner, JournalGap, JournalPosition,
             ReadError, ScanCache, ScopeKey, StoreError, Trash, TrashError, VolumeId, Volumes,
         };
 
+        use super::held;
         use crate::{FakeChangeJournal, FakeCommandRunner, FakeTrash, FakeVolumes, FixtureTree, MemoryScanCache};
 
         #[test]
@@ -269,9 +329,9 @@ mod tests {
             let tree = FixtureTree::from_toml_str("").unwrap();
             let trash = FakeTrash::new(tree.root().join(".Trash"));
 
-            let error = trash.move_to_trash(&tree.root().join("missing")).unwrap_err();
+            let error = trash.move_to_trash(&tree.root().join("missing"), &held(tree.root())).unwrap_err();
 
-            assert!(matches!(error, TrashError::NotFound { .. }));
+            assert_eq!(error, TrashError::NotFound);
             assert_eq!(trash.moved(), Vec::<std::path::PathBuf>::new());
         }
 
@@ -279,7 +339,7 @@ mod tests {
         fn the_trash_reports_a_path_without_a_name() {
             let trash = FakeTrash::new("/nonexistent/.Trash");
 
-            assert!(matches!(trash.move_to_trash(Path::new("/")), Err(TrashError::NotFound { .. })));
+            assert_eq!(trash.move_to_trash(Path::new("/"), &held(Path::new("/"))), Err(TrashError::NotFound));
         }
 
         #[test]
@@ -288,8 +348,48 @@ mod tests {
             let locked = tree.root().join("locked.db");
             let trash = FakeTrash::new(tree.root().join(".Trash")).refusing(&locked);
 
-            assert!(matches!(trash.move_to_trash(&locked), Err(TrashError::Refused { .. })));
+            assert_eq!(trash.move_to_trash(&locked, &held(&locked)), Err(TrashError::NotAllowed));
             assert!(locked.exists());
+        }
+
+        #[test]
+        fn the_fake_trash_without_a_trash_moves_nothing() {
+            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a.bin\"\n").unwrap();
+            let item = tree.root().join("a.bin");
+            let trash = FakeTrash::new(tree.root().join(".Trash")).without_trash();
+
+            assert_eq!(trash.move_to_trash(&item, &held(&item)), Err(TrashError::NoTrash));
+            assert!(item.exists());
+            assert!(!tree.root().join(".Trash").exists());
+        }
+
+        #[test]
+        fn the_fake_trash_never_replaces_on_put_back() {
+            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a.bin\"\nsize = 3\n").unwrap();
+            let item = tree.root().join("a.bin");
+            let trash = FakeTrash::new(tree.root().join(".Trash"));
+            let landed = trash.move_to_trash(&item, &held(&item)).unwrap().at;
+            fs::write(&item, b"new").unwrap();
+
+            assert_eq!(trash.put_back(&landed, &item), Err(TrashError::Occupied));
+            assert_eq!(fs::read(&item).unwrap(), b"new");
+            assert!(landed.exists());
+            let gone = tree.root().join("gone/a.bin");
+            assert_eq!(trash.put_back(&landed, &gone), Err(TrashError::NoParent));
+            fs::rename(&item, tree.root().join("aside")).unwrap();
+            assert_eq!(trash.put_back(&tree.root().join(".Trash/9-x"), &item), Err(TrashError::NotFound));
+        }
+
+        #[test]
+        fn a_call_that_reports_nothing_still_says_where_the_handle_is() {
+            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a.bin\"\n").unwrap();
+            let item = tree.root().join("a.bin");
+            let trash = FakeTrash::new(tree.root().join(".Trash")).reporting_nothing();
+
+            let landed = trash.move_to_trash(&item, &held(&item)).unwrap();
+
+            assert_eq!(landed.reported, None);
+            assert_eq!(landed.at, tree.root().join(".Trash/0-a.bin"));
         }
 
         #[test]
@@ -328,6 +428,7 @@ mod tests {
 
             assert_eq!(volumes.identify(Path::new("/elsewhere")), Err(ReadError::Vanished));
             assert_eq!(volumes.identify(Path::new("/homeless")), Err(ReadError::Vanished));
+            assert_eq!(volumes.available(Path::new("/home")), Err(ReadError::Failed));
         }
 
         #[test]
@@ -365,8 +466,8 @@ mod tests {
         use std::time::{Duration, SystemTime};
 
         use fresher_core::{
-            ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandRunner, JournalPosition, ScanCache, ScopeKey,
-            Trash, VolumeId, Volumes,
+            ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandRunner, JournalPosition, Landed, ScanCache,
+            ScopeKey, Trash, VolumeId, Volumes,
         };
 
         use crate::{
@@ -421,16 +522,41 @@ mod tests {
         }
 
         #[test]
-        fn the_trash_moves_items_into_its_folder() {
+        fn the_fake_trash_returns_where_the_item_landed() {
             let tree = FixtureTree::from_toml_str("[[file]]\npath = \"Library/Caches/a.bin\"\nsize = 10\n").unwrap();
             let item = tree.root().join("Library/Caches/a.bin");
             let trash = FakeTrash::new(tree.root().join(".Trash"));
 
-            trash.move_to_trash(&item).unwrap();
+            let landed = trash.move_to_trash(&item, &super::held(&item)).unwrap();
 
             assert!(!item.exists());
-            assert!(tree.root().join(".Trash/0-a.bin").exists());
+            let at = tree.root().join(".Trash/0-a.bin");
+            assert!(at.exists());
+            assert_eq!(landed, Landed { at: at.clone(), reported: Some(at) });
             assert_eq!(trash.moved(), [item]);
+        }
+
+        #[test]
+        fn the_fake_trash_puts_back() {
+            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a.bin\"\nsize = 10\n").unwrap();
+            let item = tree.root().join("a.bin");
+            let trash = FakeTrash::new(tree.root().join(".Trash"));
+            let landed = trash.move_to_trash(&item, &super::held(&item)).unwrap();
+
+            trash.put_back(&landed.at, &item).unwrap();
+
+            assert_eq!(item.metadata().unwrap().len(), 10);
+            assert!(!landed.at.exists());
+        }
+
+        #[test]
+        fn the_fake_volumes_answer_the_scripted_space() {
+            let volumes = FakeVolumes::default()
+                .answering_available(Ok(ByteSize::new(100)))
+                .answering_available(Err(fresher_core::ReadError::Vanished));
+
+            assert_eq!(volumes.available(Path::new("/home")), Ok(ByteSize::new(100)));
+            assert_eq!(volumes.available(Path::new("/home")), Err(fresher_core::ReadError::Vanished));
         }
 
         #[test]
@@ -441,6 +567,8 @@ mod tests {
 
             assert_eq!(output.stdout, "[]");
             assert_eq!(runner.calls(), ["docker images --format json"]);
+            let stopped = FakeCommandRunner::default().exiting("docker info", 1);
+            assert_eq!(stopped.run("docker", &["info"]).map(|output| output.status), Ok(1));
         }
     }
 }

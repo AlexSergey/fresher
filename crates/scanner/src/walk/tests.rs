@@ -104,6 +104,10 @@ impl<R: FolderReader> FolderReader for OtherDevice<R> {
         self.inner.identify(path)
     }
 
+    fn access(&self, path: &Path) -> Result<fresher_core::EntryAccess, ReadError> {
+        self.inner.access(path)
+    }
+
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {
         let mut listing = FolderListing::new();
         self.inner.read(path, expected, &mut listing)?;
@@ -132,6 +136,10 @@ struct Vanishing<R> {
 impl<R: FolderReader> FolderReader for Vanishing<R> {
     fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
         self.inner.identify(path)
+    }
+
+    fn access(&self, path: &Path) -> Result<fresher_core::EntryAccess, ReadError> {
+        self.inner.access(path)
     }
 
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {

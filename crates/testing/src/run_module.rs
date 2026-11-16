@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
@@ -6,10 +7,10 @@ use fresher_core::{
 };
 use serde_json::{Value, json};
 
-use crate::{FakeClock, FakeCommandRunner, FixtureTree, NaiveWalk};
+use crate::{FakeAccess, FakeClock, FakeCommandRunner, FakeSystemUi, FixtureTree, NaiveWalk};
 
-/// The ports a module runs with in a test: a stopped clock, a table of command answers, the stored settings and a
-/// cancel token.
+/// The ports a module runs with in a test: a stopped clock, a table of command answers, the stored settings, a cancel
+/// token, and the access and the system's interface.
 #[derive(Debug)]
 pub struct Ports {
     pub clock: FakeClock,
@@ -17,16 +18,22 @@ pub struct Ports {
     /// The stored values, resolved against the module's schema: a missing value takes its default.
     pub settings: StoredSettings,
     pub cancel: CancelToken,
+    /// No capability at all by default: every one is `NotApplicable`.
+    pub access: FakeAccess,
+    pub system_ui: FakeSystemUi,
 }
 
 impl Ports {
-    /// The clock at `seconds` after the Unix epoch, no command answers, every setting at its default.
+    /// The clock at `seconds` after the Unix epoch, no command answers, every setting at its default, no capability
+    /// and a system interface that records its calls.
     pub fn at(seconds: u64) -> Self {
         Self {
             clock: FakeClock::at(seconds),
             commands: FakeCommandRunner::default(),
             settings: StoredSettings::default(),
             cancel: CancelToken::new(),
+            access: FakeAccess::default(),
+            system_ui: FakeSystemUi::default(),
         }
     }
 }
@@ -37,6 +44,8 @@ pub struct ModuleRun {
     pub findings: Vec<NewFinding>,
     pub outcome: ModuleOutcome,
     root: PathBuf,
+    /// The path of every match the module received.
+    pub(crate) matched: BTreeSet<PathBuf>,
 }
 
 /// Why the harness could not run the module at all.
@@ -59,10 +68,12 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     interests.add(id, module.interests());
     let mut findings = Vec::new();
     let mut failure = None;
+    let mut matched_paths = BTreeSet::new();
     let mut on_match = |mut matched: Match| {
         if failure.is_some() {
             return;
         }
+        matched_paths.insert(matched.path.clone());
         if let Some((_, local)) = interests.owner(matched.interest) {
             matched.interest = local;
         }
@@ -84,7 +95,7 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         Some(ModuleError::Cancelled) => ModuleOutcome::Cancelled,
         Some(ModuleError::Failed { reason }) => ModuleOutcome::Failed { reason },
     };
-    Ok(ModuleRun { findings, outcome, root: tree.root().to_path_buf() })
+    Ok(ModuleRun { findings, outcome, root: tree.root().to_path_buf(), matched: matched_paths })
 }
 
 impl ModuleRun {

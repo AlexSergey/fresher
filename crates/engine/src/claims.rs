@@ -1,7 +1,7 @@
 //! Claims: one owner per path among a scan's findings, so no byte is counted twice in the category totals.
 
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use fresher_core::{ByteSize, ClaimedPath, Finding, FindingId, ModuleId, Sizes, Subject};
@@ -18,6 +18,12 @@ impl Claims {
     /// another finding owns its path. A finding that is not about a path keeps its own sizes.
     pub(crate) fn counted(&self, finding: &Finding) -> Sizes {
         self.counted.get(&finding.id()).copied().unwrap_or_else(|| finding.finding().sizes())
+    }
+
+    /// Forgets the claims of `findings`; the others keep their counted sizes.
+    pub(crate) fn forget(&mut self, findings: &HashSet<FindingId>) {
+        self.counted.retain(|id, _| !findings.contains(id));
+        self.owners.retain(|_, owner| !findings.contains(&owner.id()));
     }
 
     /// Every claimed path with the category that owns it, by path.
@@ -90,12 +96,14 @@ fn minus(total: Sizes, part: Sizes) -> Sizes {
 mod tests {
     use std::path::PathBuf;
 
-    use fresher_core::{CategoryDescriptor, Finding, FindingId, ModuleId, NewFinding, Removal, Subject, ToolId};
+    use fresher_core::{
+        CategoryDescriptor, Finding, FindingId, ModuleId, NewFinding, Removability, Removal, Subject, ToolId,
+    };
 
     use crate::testing::{bytes, finding, text};
 
     pub(super) fn found(id: u32, category: &CategoryDescriptor, path: &str, size: u64) -> Finding {
-        Finding::new(FindingId::new(id), finding(category, PathBuf::from(path), bytes(size)))
+        Finding::new(FindingId::new(id), finding(category, PathBuf::from(path), bytes(size)), Removability::Removable)
     }
 
     pub(super) fn order() -> Vec<ModuleId> {
@@ -113,7 +121,7 @@ mod tests {
             text("test.finding.reason"),
             Removal::MoveToTrash("/nowhere".into()),
         );
-        Finding::new(FindingId::new(id), new)
+        Finding::new(FindingId::new(id), new, Removability::Removable)
     }
 
     mod negative {

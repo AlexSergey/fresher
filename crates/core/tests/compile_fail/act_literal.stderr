@@ -1,0 +1,5 @@
+error[E0451]: field `plan` of struct `Act` is private
+ --> tests/compile_fail/act_literal.rs:6:11
+  |
+6 |     Act { plan }
+  |           ^^^^ private field

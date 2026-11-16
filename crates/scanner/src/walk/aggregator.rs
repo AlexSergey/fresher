@@ -283,6 +283,7 @@ impl<'a> Aggregator<'a> {
             modified,
             siblings,
             marker: hit.marker,
+            facts: self.tree.facts(node),
         });
     }
 }

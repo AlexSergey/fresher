@@ -13,9 +13,11 @@ workspace = true
 [dependencies]
 
 [dev-dependencies]
+fresher-cleaner = { path = "../cleaner" }
 fresher-core = { path = "../core" }
 fresher-engine = { path = "../engine" }
 fresher-module-demo = { path = "../../modules/demo" }
+fresher-module-trial = { path = "../../modules/trial" }
 fresher-scanner = { path = "../scanner" }
 fresher-store = { path = "../store" }
 fresher-testing = { path = "../testing" }

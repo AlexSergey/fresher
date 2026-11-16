@@ -1,0 +1,7 @@
+/* The cleanup row's stories: the list as the Cleanups screen sets it, with no indent of its own. */
+@layer components {
+  .list {
+    padding: 0;
+    margin: 0;
+  }
+}

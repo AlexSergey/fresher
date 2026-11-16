@@ -4,9 +4,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 
-use fresher_core::{FolderIdentity, FolderListing, FolderReader, ReadError};
+use fresher_core::{EntryAccess, FolderIdentity, FolderListing, FolderReader, ReadError};
 
-/// Wraps a reader and records each `read`, in the order they were made. `identify` and `head` are not recorded.
+/// Wraps a reader and records each `read`, in the order they were made. `identify`, `access` and `head` are not
+/// recorded.
 #[derive(Debug, Default)]
 pub struct CountingReader<R> {
     inner: R,
@@ -41,6 +42,10 @@ impl<R> CountingReader<R> {
 impl<R: FolderReader> FolderReader for CountingReader<R> {
     fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
         self.inner.identify(path)
+    }
+
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+        self.inner.access(path)
     }
 
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {

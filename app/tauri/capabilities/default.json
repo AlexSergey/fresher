@@ -15,6 +15,15 @@
     "allow-update-setting",
     "allow-get-dictionary",
     "allow-get-access-status",
+    "allow-prepare-cleanup",
+    "allow-discard-cleanup",
+    "allow-confirm-cleanup",
+    "allow-cancel-cleanup",
+    "allow-get-cleanups",
+    "allow-get-cleanup",
+    "allow-put-back",
+    "allow-reveal-in-trash",
+    "allow-quit-after-cleanup",
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize"
   ]

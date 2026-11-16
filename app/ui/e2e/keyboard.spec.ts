@@ -171,7 +171,7 @@ test.describe('negative cases', () => {
   });
 
   test('a screen change never drops the focus', async ({ page }) => {
-    await mockCore(page, SCRIPTS.demo);
+    await mockCore(page, SCRIPTS.cleaning);
     await page.goto('/');
     await expect(heading(page, 'Overview')).toBeVisible();
 
@@ -184,6 +184,7 @@ test.describe('negative cases', () => {
     for (const [nav, name] of [
       [/^Demo module/, 'Demo module'],
       [/^Review/, 'Review'],
+      ['Cleanups', 'Cleanups'],
       ['Settings', 'Settings'],
       ['Overview', 'Overview'],
     ] as const) {
@@ -225,6 +226,27 @@ test.describe('positive cases', () => {
 
     await expect(dialog).toHaveCount(0);
     await expect(opener).toBeFocused();
+  });
+
+  test('the confirmation opened by keyboard starts on Cancel and gives the focus back', async ({ page }) => {
+    await mockCore(page, SCRIPTS.cleaning);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: /^Review/ })
+      .click();
+    const remove = page.getByRole('button', { name: 'Move to Trash…' });
+    await remove.focus();
+
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(dialog).toHaveCount(0);
+    await expect(remove).toBeFocused();
   });
 
   // The stories are shared among this many tests, which run in parallel.

@@ -8,16 +8,24 @@ use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _};
 use std::path::Path;
 
 use fresher_core::{
-    ByteSize, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Sizes, Timestamp,
+    ByteSize, EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Sizes,
+    Timestamp,
 };
 
 /// How many times a call interrupted by a signal is tried again.
 const RETRIES: usize = 3;
 const FOLDER_FLAGS: i32 = libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+/// The restricted flag (`SF_RESTRICTED` of `<sys/stat.h>`): the system's integrity protection guards the entry.
+#[cfg(target_os = "macos")]
+const SF_RESTRICTED: u32 = 0x0008_0000;
+/// The no-unlink flag (`SF_NOUNLINK`), which `libc` does not name: the item cannot be removed.
+#[cfg(target_os = "macos")]
+const SF_NOUNLINK: u32 = 0x0010_0000;
 
 /// Lists a folder with `read_dir` and one `symlink_metadata` per entry. Never follows a link: the folder is opened
 /// with `O_NOFOLLOW | O_DIRECTORY` and checked against the identity its parent's listing announced, before and after
-/// the listing. It cannot see clones: every file's reclaimable size is its allocated size.
+/// the listing. It cannot see clones: every file's reclaimable size is its allocated size. An entry's locks are read
+/// from `st_flags` on macOS; elsewhere it has none.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct StdReader;
 
@@ -30,6 +38,10 @@ impl StdReader {
 impl FolderReader for StdReader {
     fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
         identity(&open_folder(path)?)
+    }
+
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+        Ok(access(&open_folder(path)?.metadata().map_err(|error| read_error(&error))?))
     }
 
     /// Clears `out` first. A folder that is no longer `expected` is `Replaced`; one removed while read, `Vanished`.
@@ -105,8 +117,41 @@ fn raw_entry(metadata: &Metadata) -> RawEntry {
         clone: None,
         modified: u64::try_from(metadata.mtime()).ok().map(Timestamp::from_secs),
         cloud_only: false,
+        access: access(metadata),
         error: None,
     }
+}
+
+/// Who owns the entry, its permission bits and its locks.
+fn access(metadata: &Metadata) -> EntryAccess {
+    let (user_immutable, system_immutable, restricted) = locks(metadata);
+    EntryAccess {
+        owner: Some(metadata.uid()),
+        mode: u16::try_from(metadata.mode() & 0o7777).unwrap_or(0),
+        user_immutable,
+        system_immutable,
+        restricted,
+    }
+}
+
+/// The user lock (immutable or append-only), the system lock (immutable, append-only or no-unlink) and the restricted
+/// flag.
+#[cfg(target_os = "macos")]
+fn locks(metadata: &Metadata) -> (bool, bool, bool) {
+    use std::os::macos::fs::MetadataExt as _;
+
+    let flags = metadata.st_flags();
+    (
+        flags & (libc::UF_IMMUTABLE | libc::UF_APPEND) != 0,
+        flags & (libc::SF_IMMUTABLE | libc::SF_APPEND | SF_NOUNLINK) != 0,
+        flags & SF_RESTRICTED != 0,
+    )
+}
+
+/// No locks off macOS.
+#[cfg(not(target_os = "macos"))]
+fn locks(_metadata: &Metadata) -> (bool, bool, bool) {
+    (false, false, false)
 }
 
 const fn unreadable_entry(error: ReadError) -> RawEntry {
@@ -119,6 +164,7 @@ const fn unreadable_entry(error: ReadError) -> RawEntry {
         clone: None,
         modified: None,
         cloud_only: false,
+        access: EntryAccess { owner: None, mode: 0, user_immutable: false, system_immutable: false, restricted: false },
         error: Some(error),
     }
 }

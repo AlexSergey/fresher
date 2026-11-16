@@ -42,8 +42,9 @@ What the Rust lints enforce:
   one unsafe operation per block and a `// SAFETY:` comment (Clippy's `multiple_unsafe_ops_per_block` and
   `undocumented_unsafe_blocks`).
 - **`#[allow(...)]` needs a reason**: `#[expect(lint, reason = "...")]`.
-- **File system hygiene**: `std::fs::remove_dir_all` and `remove_file` are disallowed by `clippy.toml`
-  (`disallowed-methods`) everywhere except the cleaner crate, so nothing else can delete.
+- **File system hygiene**: `std::fs::remove_dir_all`, `remove_dir`, `remove_file` and `fresher-macos`'s `remove_at`
+  are disallowed by `clippy.toml` (`disallowed-methods`) everywhere except the cleaner's single deletion point, so
+  nothing else can delete (`crates/cleaner/tests/deletion_point.rs`).
 - **Release profile**: thin LTO, one codegen unit, stripped symbols.
 
 ### TypeScript (the UI)

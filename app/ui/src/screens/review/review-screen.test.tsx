@@ -4,12 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Finding, FindingsQuery, Overview } from '../../ipc/bindings.generated';
 import type { CommandKey } from '../../ipc/index';
 
-import { mockCore } from '../../ipc/mock';
+import { type CoreAnswers, mockCore, refuse } from '../../ipc/mock';
 import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { summarize } from '../../state/selection-summary';
 import { type CoreStore, createCoreStore, useCore } from '../../state/store';
 import { setMotion } from '../../test/animation';
+import {
+  CLEANUP_DICTIONARY,
+  cleanupEventsOf,
+  DEMO_PLAN,
+  MOVED_REPORT,
+  PLAN_GONE,
+  PLAN_MISMATCH,
+} from '../../test/cleanup-plan';
 import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW } from '../../test/demo-scan';
 import { FINDING_DICTIONARY, HIGH_FINDING } from '../../test/finding-fixtures';
 import { pageOf } from '../../test/page-of';
@@ -33,6 +41,8 @@ const OVERVIEW: Overview = {
 const READS: readonly CommandKey[] = ['getDictionary', 'getFindings', 'getModules', 'getOverview', 'subscribe'];
 
 type Rendered = {
+  // Every command but the reads, with its arguments.
+  readonly changes: readonly (readonly [CommandKey, unknown])[];
   readonly commands: readonly CommandKey[];
   readonly navigation: Navigation;
   readonly store: CoreStore;
@@ -47,17 +57,26 @@ const Bar = (): React.JSX.Element => {
 };
 
 // The screen, once the core's dictionary and overview have arrived, with what `select` picks.
-const renderReview = async (select: (store: CoreStore) => void, withBar = false): Promise<Rendered> => {
+const renderReview = async (
+  select: (store: CoreStore) => void,
+  withBar = false,
+  cleanup: Partial<CoreAnswers> = {},
+): Promise<Rendered> => {
   const commands: CommandKey[] = [];
+  const changes: (readonly [CommandKey, unknown])[] = [];
   const recorded =
     (key: CommandKey, answer: (args: unknown) => unknown) =>
     (args: unknown): unknown => {
       commands.push(key);
+      if (!READS.includes(key)) {
+        changes.push([key, args]);
+      }
 
       return answer(args);
     };
   mockCore({
-    getDictionary: recorded('getDictionary', () => FINDING_DICTIONARY),
+    ...Object.fromEntries(Object.entries(cleanup).map(([key, answer]) => [key, recorded(key as CommandKey, answer)])),
+    getDictionary: recorded('getDictionary', () => ({ ...FINDING_DICTIONARY, ...CLEANUP_DICTIONARY })),
     getFindings: recorded('getFindings', (args) => pageOf(FINDINGS, (args as { query: FindingsQuery }).query)),
     getModules: recorded('getModules', () => DEMO_MODULES),
     getOverview: recorded('getOverview', () => OVERVIEW),
@@ -80,7 +99,23 @@ const renderReview = async (select: (store: CoreStore) => void, withBar = false)
     select(store);
   });
 
-  return { commands, navigation, store };
+  return { changes, commands, navigation, store };
+};
+
+// The core answers the demo plan and names the cleanup 1.
+const CLEANUP: Partial<CoreAnswers> = {
+  confirmCleanup: () => 1,
+  discardCleanup: () => null,
+  prepareCleanup: () => DEMO_PLAN,
+};
+
+const removeButton = (): HTMLElement => screen.getByRole('button', { name: 'Move to Trash…' });
+
+const openConfirmation = async (): Promise<HTMLElement> => {
+  removeButton().focus();
+  fireEvent.click(removeButton());
+
+  return screen.findByRole('dialog');
 };
 
 const pickFinding =
@@ -133,28 +168,67 @@ describe('ReviewScreen', () => {
       expect(navigation.getScreen()).toStrictEqual({ kind: 'overview' });
     });
 
-    it('the remove button is disabled and says why', async () => {
-      await renderReview(pickCategory('demo.downloads'));
+    it('cancel discards the plan', async () => {
+      const { changes } = await renderReview(pickCategory('demo.downloads'), false, CLEANUP);
+      await openConfirmation();
 
-      expect(screen.getByRole('button', { name: 'Move to Trash…' })).toBeDisabled();
-      expect(
-        screen.getByText('Removal comes in a later version of the app. Nothing is removed from this screen yet.'),
-      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      await vi.waitFor(() => {
+        expect(changes).toHaveLength(2);
+      });
+
+      expect(changes).toStrictEqual([
+        ['prepareCleanup', { selection: { categories: [{ category: 'demo.downloads', except: [] }], findings: [] } }],
+        ['discardCleanup', { plan: DEMO_PLAN.plan }],
+      ]);
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(removeButton()).toHaveFocus();
     });
 
-    it('confirm is never sent: the remove button opens no dialog, and Escape or Enter sends nothing', async () => {
-      const { commands, store } = await renderReview(pickCategory('demo.downloads'));
-      await screen.findByRole('listitem', { name: 'Example: installer.dmg, Low, 750 MB' });
+    it('no key confirms', async () => {
+      const { changes, store } = await renderReview(pickCategory('demo.downloads'), false, CLEANUP);
+      const dialog = await openConfirmation();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash…' }));
-      const heading = screen.getByRole('heading', { level: 1 });
-      fireEvent.keyDown(heading, { key: 'Escape' });
-      fireEvent.keyDown(heading, { key: 'Enter' });
+      fireEvent.keyDown(dialog, { key: 'Enter' });
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Enter' });
 
+      expect(changes.map(([key]) => key)).toStrictEqual(['prepareCleanup']);
+      expect(store.getState().cleanup.kind).toBe('confirming');
+    });
+
+    it('the permanent choice is off at every opening', async () => {
+      await renderReview(pickCategory('demo.downloads'), false, CLEANUP);
+      await openConfirmation();
+      fireEvent.click(screen.getByRole('checkbox', { name: /^Delete permanently instead/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await openConfirmation();
+
+      expect(screen.getByRole('checkbox', { name: /^Delete permanently instead/ })).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Move to Trash' })).toBeInTheDocument();
+    });
+
+    it.each([
+      ['an expired plan', PLAN_GONE],
+      ['a refused echo', PLAN_MISMATCH],
+    ])('%s shows the core’s text and the way to review it again', async (_, refusal) => {
+      const { store } = await renderReview(pickCategory('demo.downloads'), false, {
+        ...CLEANUP,
+        confirmCleanup: refuse(refusal),
+      });
+      await openConfirmation();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+
+      const notice = await screen.findByRole('alert');
+      expect(notice).toHaveTextContent(CLEANUP_DICTIONARY[refusal.text.key] ?? '');
       expect(screen.queryByRole('dialog')).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
-      expect(commands.filter((command) => !READS.includes(command))).toStrictEqual([]);
       expect(store.getState().selection.categories.has('demo.downloads')).toBe(true);
+
+      fireEvent.click(within(notice).getByRole('button', { name: 'Review it again' }));
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(removeButton()).toBeEnabled();
     });
 
     it('unticking the last item of a picked group removes the group', async () => {
@@ -233,6 +307,100 @@ describe('ReviewScreen', () => {
       expect(screen.getByRole('checkbox', { name: 'Select Example: browser-cache' })).not.toBeChecked();
       expect(screen.getByRole('checkbox', { name: 'Select Example: editor-cache' })).toBeChecked();
       expect(store.getState().selection.categories.get('demo.caches')?.has(BROWSER_CACHE.id)).toBe(true);
+    });
+
+    it('Move to Trash checks each item, then opens the core’s plan', async () => {
+      let answer: (plan: typeof DEMO_PLAN) => void = () => undefined;
+      await renderReview(pickCategory('demo.caches'), false, {
+        prepareCleanup: () =>
+          new Promise((resolve) => {
+            answer = resolve;
+          }),
+      });
+
+      fireEvent.click(removeButton());
+
+      expect(screen.getByText('Checking each item…')).toHaveAttribute('role', 'status');
+      expect(screen.queryByRole('dialog')).toBeNull();
+
+      act(() => {
+        answer(DEMO_PLAN);
+      });
+      const dialog = await screen.findByRole('dialog');
+
+      // The plan's figures, not the selection's: the plan holds three items, the selection two.
+      expect(dialog).toHaveAccessibleName('Move 3 items to the Trash?');
+      expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    });
+
+    it('confirm sends the echo of the shown plan', async () => {
+      const { changes, store } = await renderReview(pickCategory('demo.caches'), false, CLEANUP);
+      await openConfirmation();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      await vi.waitFor(() => {
+        expect(store.getState().cleanup).toMatchObject({ cleanup: 1, kind: 'running' });
+      });
+
+      expect(changes[1]).toStrictEqual([
+        'confirmCleanup',
+        { confirmation: { allocated: 2_570_000_000, count: 3, highest: 'low', method: 'trash', plan: 1 } },
+      ]);
+    });
+
+    it('the permanent choice turns the button red and sends permanent', async () => {
+      const { changes } = await renderReview(pickCategory('demo.caches'), false, CLEANUP);
+      await openConfirmation();
+
+      fireEvent.click(screen.getByRole('checkbox', { name: /^Delete permanently instead/ }));
+      const confirm = screen.getByRole('button', { name: 'Delete permanently' });
+      expect(confirm).toHaveAttribute('data-variant', 'danger');
+      fireEvent.click(confirm);
+      await vi.waitFor(() => {
+        expect(changes).toHaveLength(2);
+      });
+
+      expect(changes[1]).toMatchObject(['confirmCleanup', { confirmation: { method: 'permanent' } }]);
+    });
+
+    it('the progress follows the cleanup, then the result; Done returns to the overview', async () => {
+      const cancelCleanup = vi.fn(() => null);
+      const revealInTrash = vi.fn(() => null);
+      const { navigation, store } = await renderReview(pickCategory('demo.caches'), false, {
+        ...CLEANUP,
+        cancelCleanup,
+        revealInTrash,
+      });
+      await openConfirmation();
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      const events = cleanupEventsOf(DEMO_PLAN, MOVED_REPORT);
+
+      expect(await screen.findByText('Moving 1 of 3 to the Trash…')).toBeInTheDocument();
+      act(() => {
+        store.dispatch(events.started);
+        store.dispatch(events.items[0] as (typeof events.items)[number]);
+      });
+      expect(screen.getByText('Moving 2 of 3 to the Trash…')).toBeInTheDocument();
+      expect(screen.getByText('Now: Example: browser-cache')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+      expect(screen.getByText('Stopping after this item…')).toBeInTheDocument();
+      act(() => {
+        store.dispatch(events.finished);
+      });
+
+      expect(screen.getByRole('region', { name: 'Moved to the Trash' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Show in the Trash' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      await vi.waitFor(() => {
+        expect(revealInTrash).toHaveBeenCalledExactlyOnceWith({ item: { cleanup: 1, item: 0 } });
+      });
+
+      expect(cancelCleanup).toHaveBeenCalledOnce();
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'overview' });
+      expect(store.getState().cleanup).toStrictEqual({ kind: 'idle' });
+      expect(store.getState().selection.categories.size).toBe(0);
     });
 
     it('Clear selection empties the selection', async () => {

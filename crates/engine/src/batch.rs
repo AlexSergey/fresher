@@ -1,35 +1,39 @@
-//! Findings go out in batches, so a scan never floods the UI: at 256 findings, when 50 ms have passed on the clock
-//! since the batch opened, and when a module finishes.
+//! Findings and a cleanup's outcomes go out in batches, so neither floods the UI: at 256, when 50 ms have passed on
+//! the clock since the batch opened, and when a module or the cleanup finishes.
 
 use std::mem;
 use std::time::{Duration, SystemTime};
 
-use fresher_core::Finding;
-
-/// The most findings in one batch.
+/// The most findings or outcomes in one batch.
 pub(crate) const BATCH_LIMIT: usize = 256;
 /// The longest a finding waits in an open batch, on the `Clock` port.
 pub(crate) const BATCH_INTERVAL: Duration = Duration::from_millis(50);
 
-/// Collects findings until a batch is due.
-#[derive(Debug, Default)]
-pub(crate) struct Batcher {
-    pending: Vec<Finding>,
+/// Collects findings or outcomes until a batch is due.
+#[derive(Debug)]
+pub(crate) struct Batcher<T> {
+    pending: Vec<T>,
     opened: Option<SystemTime>,
 }
 
-impl Batcher {
-    /// Adds `finding` at `now`; gives the batch back when it is full or old enough to send.
-    pub(crate) fn push(&mut self, finding: Finding, now: SystemTime) -> Option<Vec<Finding>> {
+impl<T> Default for Batcher<T> {
+    fn default() -> Self {
+        Self { pending: Vec::new(), opened: None }
+    }
+}
+
+impl<T> Batcher<T> {
+    /// Adds `item` at `now`; gives the batch back when it is full or old enough to send.
+    pub(crate) fn push(&mut self, item: T, now: SystemTime) -> Option<Vec<T>> {
         let opened = *self.opened.get_or_insert(now);
-        self.pending.push(finding);
+        self.pending.push(item);
         // A clock that went back counts as time passed: the batch goes out rather than waits.
         let due = now.duration_since(opened).map_or(true, |waited| waited >= BATCH_INTERVAL);
         if due || self.pending.len() >= BATCH_LIMIT { self.take() } else { None }
     }
 
     /// The open batch, if it holds anything.
-    pub(crate) fn take(&mut self) -> Option<Vec<Finding>> {
+    pub(crate) fn take(&mut self) -> Option<Vec<T>> {
         self.opened = None;
         if self.pending.is_empty() { None } else { Some(mem::take(&mut self.pending)) }
     }
@@ -39,13 +43,13 @@ impl Batcher {
 mod tests {
     use std::time::{Duration, SystemTime};
 
-    use fresher_core::{DangerLevel, Finding, FindingId, Sizes};
+    use fresher_core::{DangerLevel, Finding, FindingId, Removability, Sizes};
 
     use crate::testing::{category, finding};
 
     fn numbered(id: u32) -> Finding {
         let caches = category("alpha.caches", DangerLevel::Safe);
-        Finding::new(FindingId::new(id), finding(&caches, format!("/demo/{id}"), Sizes::ZERO))
+        Finding::new(FindingId::new(id), finding(&caches, format!("/demo/{id}"), Sizes::ZERO), Removability::Removable)
     }
 
     fn at(millis: u64) -> SystemTime {
@@ -67,7 +71,7 @@ mod tests {
 
         #[test]
         fn an_empty_batch_is_not_sent() {
-            assert_eq!(Batcher::default().take(), None);
+            assert_eq!(Batcher::<u32>::default().take(), None);
         }
     }
 

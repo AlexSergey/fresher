@@ -3,17 +3,27 @@
 use std::io;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use fresher_core::CommandError;
+use fresher_core::{CommandError, JournalError, PlanError, SystemUiError};
 
 /// A failure inside the engine. It is a bug or a broken host, never the user's input: the UI sees `Internal`.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub(crate) enum EngineError {
     #[error("a lock of the engine was poisoned by a panic")]
     Poisoned,
-    #[error("the scan thread could not be started: {kind}")]
+    #[error("the thread of an operation could not be started: {kind}")]
     Spawn { kind: io::ErrorKind },
     #[error("the scan ids ran out")]
     ScanIdsExhausted,
+    #[error("the plan ids ran out")]
+    PlanIdsExhausted,
+    #[error("the plan could not be made: {0}")]
+    Plan(PlanError),
+    #[error("the rehearsal answered {answers} times for {items} items")]
+    Rehearsal { items: usize, answers: usize },
+    #[error("the cleanup journal could not be read: {0}")]
+    Journal(JournalError),
+    #[error("the system could not show the item: {0}")]
+    SystemUi(SystemUiError),
 }
 
 impl From<EngineError> for CommandError {
@@ -48,6 +58,11 @@ mod tests {
                 EngineError::Poisoned,
                 EngineError::Spawn { kind: io::ErrorKind::OutOfMemory },
                 EngineError::ScanIdsExhausted,
+                EngineError::PlanIdsExhausted,
+                EngineError::Plan(fresher_core::PlanError::Overflow),
+                EngineError::Rehearsal { items: 2, answers: 1 },
+                EngineError::Journal(fresher_core::JournalError::ReadOnly),
+                EngineError::SystemUi(fresher_core::SystemUiError::Unsupported),
             ];
 
             for error in errors {

@@ -22,8 +22,8 @@ mod scripted {
     use std::time::Duration;
 
     use fresher_core::{
-        CancelToken, ChangeJournal, Changes, Event, FolderIdentity, FolderListing, FolderReader, JournalGap,
-        JournalPosition, ReadError, VolumeId,
+        CancelToken, ChangeJournal, Changes, EntryAccess, Event, FolderIdentity, FolderListing, FolderReader,
+        JournalGap, JournalPosition, ReadError, VolumeId,
     };
     use fresher_engine::Engine;
     use fresher_scanner::StdReader;
@@ -75,6 +75,11 @@ mod scripted {
             Err(ReadError::Failed)
         }
 
+        fn access(&self, _path: &Path) -> Result<EntryAccess, ReadError> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Err(ReadError::Failed)
+        }
+
         fn read(&self, _path: &Path, _expected: FolderIdentity, _out: &mut FolderListing) -> Result<(), ReadError> {
             self.calls.fetch_add(1, Ordering::Relaxed);
             Err(ReadError::Failed)
@@ -96,6 +101,10 @@ mod scripted {
     impl FolderReader for Gated {
         fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
             StdReader::new().identify(path)
+        }
+
+        fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+            StdReader::new().access(path)
         }
 
         fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {

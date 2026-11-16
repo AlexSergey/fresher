@@ -16,13 +16,13 @@ mod app {
     use std::time::Duration;
 
     use fresher_core::{
-        Access, AccessProbe, AccessStatus, CancelToken, ClaimedPath, DiskState, DiskWalk, Event, Match, StateId,
-        Timestamp, WalkError, WalkProgress, WalkRequest, WalkSummary,
+        Access, CancelToken, Capability, ClaimedPath, DiskState, DiskWalk, Event, Match, StateId, Timestamp, WalkError,
+        WalkProgress, WalkRequest, WalkSummary,
     };
     use fresher_engine::{Engine, Ports, Registry};
     use fresher_module_demo::DemoModule;
     use fresher_store::{DataFolder, FileSettingsStore};
-    use fresher_testing::{FakeClock, FakeCommandRunner, FixedDiskState};
+    use fresher_testing::{FakeAccess, FakeClock, FakeCommandRunner, FakeSystemUi, FixedDiskState};
 
     /// The state both walks commit: nothing was walked.
     fn empty_state() -> Arc<dyn DiskState> {
@@ -70,15 +70,6 @@ mod app {
         }
     }
 
-    /// The access probe of the app until plan 006: it cannot tell.
-    struct UnknownAccess;
-
-    impl AccessProbe for UnknownAccess {
-        fn status(&self) -> AccessStatus {
-            AccessStatus { full_disk_access: Access::Unknown }
-        }
-    }
-
     fn engine_with(folder: &Path, walk: Arc<dyn DiskWalk>) -> Engine {
         let mut registry = Registry::new().unwrap();
         registry.register(Box::new(DemoModule::new().unwrap())).unwrap();
@@ -87,7 +78,8 @@ mod app {
             settings: Arc::new(FileSettingsStore::new(DataFolder::open(folder).unwrap())),
             clock: Arc::new(FakeClock::at(1_763_200_000)),
             commands: Arc::new(FakeCommandRunner::default()),
-            access: Arc::new(UnknownAccess),
+            access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+            system_ui: Arc::new(FakeSystemUi::default()),
         };
         Engine::new(registry, ports).unwrap()
     }

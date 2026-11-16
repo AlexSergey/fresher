@@ -4,10 +4,12 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::{
-    CategoryDescriptor, CategoryId, DangerLevel, FindingId, FindingKey, ModuleId, Removal, Sizes, Subject, Text,
+    CategoryDescriptor, CategoryId, DangerLevel, FindingId, FindingKey, ModuleId, Removability, Removal, Sizes,
+    Subject, Text,
 };
 
-/// A finding as a module produces it.
+/// A finding as a module produces it. It has no removability: only the engine sets that, from what the walk read, so a
+/// module cannot make an item removable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 pub struct NewFinding {
     key: FindingKey,
@@ -83,19 +85,24 @@ impl NewFinding {
     }
 }
 
-/// A finding the engine published, with the id the UI names it by in this session. It serializes flat: the id and
-/// the module next to the fields of the module's finding.
+/// A finding the engine published, with the id the UI names it by in this session and whether the app can remove
+/// it. It serializes flat: the id, the module and the removability next to the fields of the module's finding.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 pub struct Finding {
     id: FindingId,
     module: ModuleId,
+    removability: Removability,
     #[serde(flatten)]
     inner: NewFinding,
 }
 
 impl Finding {
-    pub const fn new(id: FindingId, finding: NewFinding) -> Self {
-        Self { id, module: finding.key.module(), inner: finding }
+    pub const fn new(id: FindingId, finding: NewFinding, removability: Removability) -> Self {
+        Self { id, module: finding.key.module(), removability, inner: finding }
+    }
+
+    pub const fn removability(&self) -> Removability {
+        self.removability
     }
 
     pub const fn id(&self) -> FindingId {
@@ -146,6 +153,15 @@ mod tests {
         use crate::finding::sample;
 
         #[test]
+        fn a_module_cannot_set_removability() {
+            let finding = sample::finding(&sample::caches(DangerLevel::Safe));
+
+            let json = serde_json::to_value(&finding).unwrap();
+
+            assert!(json.get("removability").is_none(), "{json}");
+        }
+
+        #[test]
         fn never_lowers_the_category_danger_level() {
             let mut finding = sample::finding(&sample::caches(DangerLevel::Medium));
 
@@ -157,7 +173,7 @@ mod tests {
 
     mod positive {
         use crate::finding::sample;
-        use crate::{DangerLevel, Finding, FindingId, Removal, Sizes, Subject};
+        use crate::{DangerLevel, Finding, FindingId, Removability, Removal, Sizes, Subject};
 
         #[test]
         fn starts_at_the_category_danger_level() {
@@ -186,15 +202,18 @@ mod tests {
 
         #[test]
         fn a_published_finding_names_its_module() {
-            let finding = Finding::new(FindingId::new(4), sample::finding(&sample::caches(DangerLevel::Safe)));
+            let new = sample::finding(&sample::caches(DangerLevel::Safe));
+            let finding = Finding::new(FindingId::new(4), new, Removability::Locked);
 
             assert_eq!(finding.id(), FindingId::new(4));
+            assert_eq!(finding.removability(), Removability::Locked);
             assert_eq!(finding.module(), sample::demo());
             assert_eq!(finding.finding().danger(), DangerLevel::Safe);
             let json = serde_json::to_value(&finding).unwrap();
             assert_eq!(json["id"], 4);
             assert_eq!(json["module"], "demo");
             assert_eq!(json["danger"], "safe");
+            assert_eq!(json["removability"], "locked");
         }
     }
 }

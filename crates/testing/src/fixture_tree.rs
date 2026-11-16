@@ -3,6 +3,7 @@ use std::os::unix::fs::symlink;
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use fresher_core::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
 use serde::Deserialize;
 use tempfile::TempDir;
 
@@ -94,6 +95,20 @@ impl FixtureTree {
         Ok(tree)
     }
 
+    /// The tree with the sandbox marker at its root: the only kind of tree a development build or a test of the
+    /// cleaner may remove anything from. A tree without it is safe by default.
+    pub fn with_sandbox(self) -> Result<Self, FixtureError> {
+        write_marker(self.root())?;
+        Ok(self)
+    }
+
+    /// Writes the sandbox marker into `folder`, a folder of the tree given relative to its root.
+    pub fn mark_sandbox(&self, folder: &Path) -> Result<(), FixtureError> {
+        let folder = self.resolve(folder)?;
+        fs::create_dir_all(&folder).map_err(|source| FixtureError::Create { path: folder.clone(), source })?;
+        write_marker(&folder)
+    }
+
     /// The root of the tree: the only folder a test may scan or clean.
     pub fn root(&self) -> &Path {
         self.root.path()
@@ -141,6 +156,12 @@ impl FixtureTree {
     }
 }
 
+/// Writes the sandbox marker, its signature as its first line, into `folder`.
+fn write_marker(folder: &Path) -> Result<(), FixtureError> {
+    let marker = folder.join(SANDBOX_MARKER);
+    fs::write(&marker, format!("{SANDBOX_SIGNATURE}\n")).map_err(|source| FixtureError::Create { path: marker, source })
+}
+
 fn create_parent(path: &Path) -> Result<(), FixtureError> {
     match path.parent() {
         Some(parent) => {
@@ -185,6 +206,17 @@ mod tests {
         }
 
         #[test]
+        fn a_fixture_tree_without_sandbox_has_no_marker() {
+            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a\"\n").unwrap();
+
+            assert!(!tree.root().join(fresher_core::SANDBOX_MARKER).exists());
+            assert!(matches!(
+                tree.mark_sandbox(std::path::Path::new("../out")),
+                Err(FixtureError::PathOutsideRoot { .. })
+            ));
+        }
+
+        #[test]
         fn reports_a_missing_fixture_file() {
             let error = FixtureTree::from_toml(std::path::Path::new("/nonexistent/fixture.toml")).unwrap_err();
 
@@ -197,6 +229,17 @@ mod tests {
         use std::time::{Duration, SystemTime};
 
         use crate::FixtureTree;
+
+        #[test]
+        fn a_fixture_tree_holds_the_sandbox_marker() {
+            let tree = FixtureTree::from_toml_str("[[dir]]\npath = \"cache\"\n").unwrap().with_sandbox().unwrap();
+            tree.mark_sandbox(std::path::Path::new("cache/inner")).unwrap();
+
+            for folder in [tree.root().to_path_buf(), tree.root().join("cache/inner")] {
+                let marker = std::fs::read_to_string(folder.join(fresher_core::SANDBOX_MARKER)).unwrap();
+                assert_eq!(marker.lines().next(), Some(fresher_core::SANDBOX_SIGNATURE));
+            }
+        }
 
         #[test]
         fn creates_a_large_file_that_costs_no_disk() {

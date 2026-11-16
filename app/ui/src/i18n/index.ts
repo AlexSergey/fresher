@@ -15,3 +15,7 @@ export const t = (key: UiKey, args: TextArgs = {}): string => translate(chrome, 
 
 // A text the core sent.
 export const tText = (text: Text): string => translate(coreDictionary, text);
+
+// A text the core may have: `null` when its dictionary has no such key (an instruction only some reasons carry).
+export const tTextIfKnown = (text: Text): null | string =>
+  coreDictionary[text.key] === undefined ? null : translate(coreDictionary, text);

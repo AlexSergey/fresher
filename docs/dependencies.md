@@ -5,7 +5,8 @@ and the tools a machine needs. The rules they must follow are in
 [`restrictions/dependencies.md`](./restrictions/dependencies.md); this page is the inventory.
 
 A change that adds, removes or updates a dependency updates this page in the same change. Versions are exact
-(`Cargo.toml`, `package.json`); the lock files hold the full trees. Listed as of 2026-11-15, on `main`.
+(`Cargo.toml`, `package.json`); the lock files hold the full trees. Checked against `Cargo.lock`,
+`package-lock.json` and `cargo metadata` on 2026-11-16 (plan 008).
 
 ## Shipped with the app
 
@@ -14,22 +15,24 @@ A change that adds, removes or updates a dependency updates this page in the sam
 Direct dependencies of the workspace. All are taken from `[workspace.dependencies]` except the Tauri crates, which only
 `fresher-app` uses. "Used by" names our crates without the `fresher-` prefix.
 
-| Crate                          | Version | Licence                   | Used by                                               |
-| ------------------------------ | ------- | ------------------------- | ----------------------------------------------------- |
-| `crc32fast`                    | 1.5.5   | MIT OR Apache-2.0         | store                                                 |
-| `libc`                         | 0.2.191 | MIT OR Apache-2.0         | macos, scanner, testing                               |
-| `miniz_oxide`                  | 0.9.1   | MIT OR Zlib OR Apache-2.0 | scanner, store                                        |
-| `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, rules, store, testing                      |
-| `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, core, e2e, engine, module-demo, store, testing   |
-| `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                   |
-| `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                   |
-| `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, e2e, store, testing                              |
-| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, core, engine, module-demo, rules, store, testing |
-| `toml`                         | 1.2.1   | MIT OR Apache-2.0         | rules, testing                                        |
-| `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, scanner, store                    |
-| `ts-rs`                        | 12.0.1  | MIT                       | app, core                                             |
+| Crate                          | Version | Licence                   | Used by                                                                             |
+| ------------------------------ | ------- | ------------------------- | ----------------------------------------------------------------------------------- |
+| `crc32fast`                    | 1.5.5   | MIT OR Apache-2.0         | store                                                                               |
+| `libc`                         | 0.2.191 | MIT OR Apache-2.0         | macos, scanner, testing                                                             |
+| `miniz_oxide`                  | 0.9.1   | MIT OR Zlib OR Apache-2.0 | scanner, store                                                                      |
+| `objc2`                        | 0.6.5   | MIT                       | macos                                                                               |
+| `objc2-foundation`             | 0.3.2   | MIT                       | macos                                                                               |
+| `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, rules, store, testing                                                    |
+| `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-demo, store, testing                        |
+| `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
+| `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |
+| `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, scanner, store, testing                                   |
+| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, core, engine, macos, module-demo, module-trial, rules, scanner, store, testing |
+| `toml`                         | 1.2.1   | MIT OR Apache-2.0         | rules, testing                                                                      |
+| `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, scanner, store                                                  |
+| `ts-rs`                        | 12.0.1  | MIT                       | app, core                                                                           |
 
-The full tree is `Cargo.lock`: 485 packages for every platform, our own crates included. Every licence in it is on the
+The full tree is `Cargo.lock`: 510 packages for every platform, our own crates included. Every licence in it is on the
 allowlist, or is a choice (`A OR B`) that includes an allowed one, except the MPL-2.0 crates that Tauri needs:
 `cssparser`, `cssparser-macros`, `dtoa-short`, `option-ext` and `selectors`, accepted by the user on 2026-11-15
 ([`restrictions/dependencies.md`](./restrictions/dependencies.md), "MPL-2.0 for five crates of Tauri"). `cargo deny
@@ -55,11 +58,12 @@ Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-t
 
 ### Rust crates
 
-| Crate         | Version | Licence           | Used by                                          |
-| ------------- | ------- | ----------------- | ------------------------------------------------ |
-| `criterion`   | 0.8.2   | Apache-2.0 OR MIT | the benches of `scanner` (default features off)  |
-| `proptest`    | 1.12.0  | MIT OR Apache-2.0 | tests of `core`, `engine`, `rules` and `scanner` |
-| `tauri-build` | 2.7.4   | Apache-2.0 OR MIT | the build script of `fresher-app`                |
+| Crate         | Version | Licence           | Used by                                                                       |
+| ------------- | ------- | ----------------- | ----------------------------------------------------------------------------- |
+| `criterion`   | 0.8.2   | Apache-2.0 OR MIT | the benches of `scanner` (default features off)                               |
+| `proptest`    | 1.12.0  | MIT OR Apache-2.0 | tests of `cleaner`, `core`, `engine`, `macos`, `rules`, `scanner` and `store` |
+| `tauri-build` | 2.7.4   | Apache-2.0 OR MIT | the build script of `fresher-app`                                             |
+| `trybuild`    | 1.0.125 | MIT OR Apache-2.0 | the compile-fail tests of `cleaner` and `core`                                |
 
 ### npm packages: the UI (`app/ui`)
 

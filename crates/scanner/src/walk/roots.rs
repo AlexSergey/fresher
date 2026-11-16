@@ -5,7 +5,9 @@ use std::io;
 use std::os::unix::ffi::OsStrExt as _;
 use std::path::PathBuf;
 
-use fresher_core::{FolderIdentity, FolderReader, ReadError, ScopeKey, VolumeFacts, Volumes, WalkError, stable_hash};
+use fresher_core::{
+    EntryAccess, FolderIdentity, FolderReader, ReadError, ScopeKey, VolumeFacts, Volumes, WalkError, stable_hash,
+};
 
 /// One root of the walk.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,6 +16,8 @@ pub(crate) struct Root {
     pub(crate) path: PathBuf,
     pub(crate) identity: FolderIdentity,
     pub(crate) volume: VolumeFacts,
+    /// Who owns the root folder, its permission bits and its locks: the parent's access of its entries.
+    pub(crate) access: EntryAccess,
 }
 
 /// The roots of one walk, in the order asked; a root inside another one is dropped (the outer one covers it).
@@ -31,21 +35,23 @@ impl Roots {
         volumes: &dyn Volumes,
         reader: &dyn FolderReader,
     ) -> Result<Self, WalkError> {
-        Self::with_identities(roots, volumes, |path| reader.identify(path))
+        Self::with_identities(roots, volumes, |path| Ok((reader.identify(path)?, reader.access(path)?)))
     }
 
     /// The roots as `prepare` makes them, without asking the reader anything: a root's identity is its volume's
-    /// device and no file id. What a restore needs, which must not touch the disk beyond the roots' metadata.
+    /// device and no file id, its access nothing known. What a restore needs, which must not touch the disk beyond
+    /// the roots' metadata.
     pub(crate) fn locate(roots: &[PathBuf], volumes: &dyn Volumes) -> Result<Self, WalkError> {
         Self::with_identities(roots, volumes, |path| {
-            volumes.identify(path).map(|volume| FolderIdentity { device: volume.device, file_id: 0 })
+            let identity = volumes.identify(path).map(|volume| FolderIdentity { device: volume.device, file_id: 0 })?;
+            Ok((identity, EntryAccess::default()))
         })
     }
 
     fn with_identities(
         roots: &[PathBuf],
         volumes: &dyn Volumes,
-        identity_of: impl Fn(&std::path::Path) -> Result<FolderIdentity, ReadError>,
+        identity_of: impl Fn(&std::path::Path) -> Result<(FolderIdentity, EntryAccess), ReadError>,
     ) -> Result<Self, WalkError> {
         let mut prepared: Vec<Root> = Vec::with_capacity(roots.len());
         for (index, root) in roots.iter().enumerate() {
@@ -55,9 +61,9 @@ impl Roots {
                 return Err(unreadable(io::ErrorKind::NotADirectory));
             }
             let path = fs::canonicalize(root).map_err(|error| unreadable(error.kind()))?;
-            let identity = identity_of(&path).map_err(|error| unreadable(kind_of(error)))?;
+            let (identity, access) = identity_of(&path).map_err(|error| unreadable(kind_of(error)))?;
             let volume = volumes.identify(&path).map_err(|error| unreadable(kind_of(error)))?;
-            prepared.push(Root { path, identity, volume });
+            prepared.push(Root { path, identity, volume, access });
         }
         let mut kept: Vec<Root> = Vec::with_capacity(prepared.len());
         let mut dropped = 0;

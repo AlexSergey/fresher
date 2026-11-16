@@ -1,0 +1,23 @@
+# A home for the trial module: a sandbox folder (the test writes its marker) with a folder to move to the Trash and a
+# folder to empty and keep.
+
+[[file]]
+path = "sandbox/fresher-trial-cache/blob.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "sandbox/fresher-trial-cache/nested/blob.bin"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "sandbox/fresher-trial-kept/entry.bin"
+size = 8192
+modified = 1762000000
+
+# Not a trial folder: never claimed, never removed.
+[[file]]
+path = "sandbox/keep-me.txt"
+size = 512
+modified = 1762000000

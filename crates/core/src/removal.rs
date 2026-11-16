@@ -48,6 +48,18 @@ impl ToolCommand {
     pub fn args(&self) -> &[String] {
         &self.args
     }
+
+    /// Whether one of the arguments tells the tool to force: `-f`, `--force`, `--force=…`, or `f` among short flags
+    /// written together (`-rf`). A forced tool is never run; the plan and the cleaner both ask this one rule.
+    pub fn forces(&self) -> bool {
+        self.args.iter().any(|arg| {
+            let short = arg.strip_prefix('-').filter(|flags| !flags.starts_with('-') && !flags.is_empty());
+            arg == "--force"
+                || arg.starts_with("--force=")
+                || short
+                    .is_some_and(|flags| flags.chars().all(|flag| flag.is_ascii_alphabetic()) && flags.contains('f'))
+        })
+    }
 }
 
 #[cfg(test)]
@@ -63,10 +75,30 @@ mod tests {
 
             assert_eq!(error, Err(RemovalError::NulByte { index: 1 }));
         }
+
+        #[test]
+        fn arguments_that_do_not_force_are_not_forcing() {
+            let rm = ToolId::new("rm").unwrap();
+
+            for args in [&["a"][..], &["--filter", "x"], &["-q"], &["-"], &["--forced-x"], &["-r1"]] {
+                let command = ToolCommand::new(rm, args.iter().map(|arg| (*arg).to_owned()).collect()).unwrap();
+                assert!(!command.forces(), "{args:?}");
+            }
+        }
     }
 
     mod positive {
         use serde_json::json;
+
+        #[test]
+        fn every_form_of_force_is_forcing() {
+            let rm = ToolId::new("rm").unwrap();
+
+            for args in [&["-f", "a"][..], &["--force"], &["--force=true"], &["-rf", "a"], &["-fr"], &["-Rf"]] {
+                let command = ToolCommand::new(rm, args.iter().map(|arg| (*arg).to_owned()).collect()).unwrap();
+                assert!(command.forces(), "{args:?}");
+            }
+        }
 
         use crate::{Removal, ToolCommand, ToolId};
 

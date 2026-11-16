@@ -51,6 +51,10 @@ mod tests {
             Ok(FolderIdentity { device: 1, file_id: 1 })
         }
 
+        fn access(&self, _path: &Path) -> Result<fresher_core::EntryAccess, ReadError> {
+            Ok(fresher_core::EntryAccess::default())
+        }
+
         fn read(&self, _path: &Path, _expected: FolderIdentity, _out: &mut FolderListing) -> Result<(), ReadError> {
             let read = self.reads.fetch_add(1, Ordering::Relaxed);
             if read < self.failures { Err(ReadError::Interrupted) } else { Ok(()) }

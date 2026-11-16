@@ -191,6 +191,7 @@ name = "*.lock"
             modified: None,
             siblings: vec![],
             marker: None,
+            facts: fresher_core::EntryFacts::REMOVABLE,
         }
     }
 

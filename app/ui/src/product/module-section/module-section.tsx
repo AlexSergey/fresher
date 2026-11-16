@@ -52,6 +52,13 @@ const Status = ({ state }: { readonly state: SectionState }): JSX.Element => {
           {t('ui.module-section.scanning')}
         </span>
       );
+    case 'unavailable':
+      return (
+        <span className={styles.status} data-state={state.kind}>
+          <Icon icon={Minus} />
+          {t('ui.module-section.unavailable')}
+        </span>
+      );
   }
 };
 

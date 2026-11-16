@@ -20,8 +20,19 @@ type Layer = { readonly arrived: boolean; readonly key: string; readonly open: b
 const FADE_OUT: readonly Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
 
 // The screens of one kind share one scroll position: a module's page keeps its own, whatever category it opened at.
-export const screenKey = (screen: Screen): string =>
-  screen.kind === 'module' ? `module:${screen.module}` : screen.kind;
+export const screenKey = (screen: Screen): string => {
+  switch (screen.kind) {
+    case 'cleanup':
+      return `cleanup:${String(screen.cleanup)}`;
+    case 'cleanups':
+    case 'overview':
+    case 'review':
+    case 'settings':
+      return screen.kind;
+    case 'module':
+      return `module:${screen.module}`;
+  }
+};
 
 type ScreenLayerProps = {
   readonly children: ReactNode;

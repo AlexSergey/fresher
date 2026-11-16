@@ -7,6 +7,7 @@ export {
   ChevronRight,
   CircleAlert,
   CircleCheck,
+  History,
   Info,
   LayoutGrid,
   ListChecks,

@@ -43,7 +43,7 @@ export const OverviewScreen = (): JSX.Element => {
   const totals = overview?.totals ?? [];
 
   const open = (category: CategoryId): void => {
-    const module = modules?.find(({ categories }) => categories.some(({ id }) => id === category));
+    const module = modules?.find(({ categories }) => categories.some(({ descriptor }) => descriptor.id === category));
 
     if (module !== undefined) {
       navigation.navigate({ category, kind: 'module', module: module.id });

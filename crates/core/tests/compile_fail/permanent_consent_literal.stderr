@@ -1,0 +1,12 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+ --> tests/compile_fail/permanent_consent_literal.rs:6:40
+  |
+6 |     let _ = ConfirmedMethod::Permanent(PermanentConsent(()));
+  |                                        ^^^^^^^^^^^^^^^^
+  |
+  = note: a struct named `PermanentConsent` exists in another namespace
+note: constructor is not visible here due to private fields
+ --> src/cleanup/confirm.rs
+  |
+  | pub struct PermanentConsent(());
+  |                             ^^ private field

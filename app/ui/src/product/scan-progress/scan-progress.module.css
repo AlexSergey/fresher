@@ -72,7 +72,8 @@
     color: var(--level-high-fg);
   }
 
-  .chip[data-state='cancelled'] svg {
+  .chip[data-state='cancelled'] svg,
+  .chip[data-state='unavailable'] svg {
     color: var(--text-tertiary);
   }
 

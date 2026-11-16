@@ -3,30 +3,31 @@
 
 use std::path::{Path, PathBuf};
 
-use fresher_core::{EntryKind, FolderIdentity, MarkerCheck, Timestamp, Unreadable};
+use fresher_core::{EntryAccess, EntryKind, FolderIdentity, MarkerCheck, Timestamp, Unreadable};
 use proptest::prelude::*;
 
 use crate::codec::encode::GROUP_KINDS;
+use crate::tree::access::NodeAccess;
 use crate::tree::arena::{Shared, Tree};
 use crate::tree::node::{Flag, Hit, NodeIndex, Sums};
 use crate::tree::testing::{Shape, canonical, sums};
 
-/// Everything a body keeps of a tree: the canonical nodes, each node's time and owner, the roots' identities, and
-/// every group with the paths of its members and the bytes it counts once.
+/// Everything a body keeps of a tree: the canonical nodes, each node's time, owner and access, the roots' identities,
+/// and every group with the paths of its members and the bytes it counts once.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Snapshot {
     pub(crate) shapes: Vec<Shape>,
-    pub(crate) times_and_owners: Vec<(Option<Timestamp>, u32)>,
+    pub(crate) per_node: Vec<(Option<Timestamp>, u32, NodeAccess)>,
     pub(crate) identities: Vec<FolderIdentity>,
     pub(crate) groups: Vec<(usize, u64, u64, Vec<PathBuf>, Sums)>,
 }
 
 pub(crate) fn snapshot(tree: &Tree) -> Snapshot {
-    let mut times_and_owners = Vec::new();
+    let mut per_node = Vec::new();
     let mut stack: Vec<NodeIndex> = tree.roots().iter().rev().map(|root| root.node).collect();
     while let Some(index) = stack.pop() {
         let node = tree.node(index).unwrap();
-        times_and_owners.push((node.modified(), node.owner));
+        per_node.push((node.modified(), node.owner, node.access));
         let children: Vec<_> = tree.children(index).collect();
         stack.extend(children.into_iter().rev());
     }
@@ -48,7 +49,7 @@ pub(crate) fn snapshot(tree: &Tree) -> Snapshot {
     }
     Snapshot {
         shapes: canonical(tree),
-        times_and_owners,
+        per_node,
         identities: tree.roots().iter().map(|root| root.identity).collect(),
         groups,
     }
@@ -63,6 +64,7 @@ pub(crate) fn small_tree() -> Tree {
     let mut tree = Tree::new();
     let home = tree.add_root(Path::new("/home/user"), FolderIdentity { device: 16, file_id: 2 }).unwrap();
     tree.set_modified(home, Some(Timestamp::from_secs(1_763_000_000))).unwrap();
+    tree.set_access(home, access(0o755, false)).unwrap();
     tree.add_own(home, sums(4, 9_000, 16_384, 16_384)).unwrap();
     let library = folder(&mut tree, home, "Library", sums(1, 100, 4096, 4096));
     let caches = folder(&mut tree, library, "Caches", Sums::ZERO);
@@ -79,7 +81,9 @@ pub(crate) fn small_tree() -> Tree {
     tree.apply_opaque(modules, sums(812, 40 * MIB, 48 * MIB, 48 * MIB), 97, &[]).unwrap();
     let target = folder(&mut tree, app, "target", Sums::ZERO);
     tree.add_hits(target, &[Hit { interest: 5, marker: Some(MarkerCheck::Valid), siblings: 1 }]).unwrap();
+    tree.set_access(target, access(0o555, false)).unwrap();
     let video = tree.add_child(home, b"video.mov", EntryKind::File).unwrap();
+    tree.set_access(video, access(0o444, true)).unwrap();
     tree.add_own(video, sums(0, 700 * MIB, 700 * MIB, 700 * MIB)).unwrap();
     let link = tree.add_child(app, b"app.log", EntryKind::Symlink).unwrap();
     tree.add_hits(link, &[Hit { interest: 7, marker: Some(MarkerCheck::Invalid), siblings: 0 }]).unwrap();
@@ -94,6 +98,11 @@ pub(crate) fn small_tree() -> Tree {
     tree.set_owner(modules, 0).unwrap();
     tree.set_owner(target, 1).unwrap();
     tree
+}
+
+/// The access of the user's own entry of `mode`, locked by the user when `locked`.
+fn access(mode: u16, locked: bool) -> NodeAccess {
+    NodeAccess::of(EntryAccess { owner: Some(501), mode, user_immutable: locked, ..EntryAccess::default() }, Some(501))
 }
 
 fn folder(tree: &mut Tree, parent: NodeIndex, name: &str, own: Sums) -> NodeIndex {
@@ -133,6 +142,8 @@ pub(crate) struct NodeSpec {
     modified: Option<u32>,
     hits: Vec<(u32, u8, u64)>,
     owner: Option<u8>,
+    /// The bits of its access.
+    access: u8,
     /// 0 read, 1 unreadable, 2 avoided, 3 an entry unreadable, 4 opaque (when it has no children), 5 another volume.
     state: u8,
     /// A group it belongs to: a hard link group when true, else a clone group; the group's id; the bytes.
@@ -152,16 +163,18 @@ pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpe
         prop::option::of(1_700_000_000..1_800_000_000_u32),
         prop::option::weighted(0.2, hits),
         prop::option::weighted(0.1, 0..3_u8),
+        0..32_u8,
         prop::sample::select(vec![0_u8, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5]),
         shared,
     )
-        .prop_map(|(parent, kind, own, modified, hits, owner, state, shared)| NodeSpec {
+        .prop_map(|(parent, kind, own, modified, hits, owner, access, state, shared)| NodeSpec {
             parent,
             kind,
             own,
             modified,
             hits: hits.unwrap_or_default(),
             owner,
+            access,
             state,
             shared,
         });
@@ -185,6 +198,7 @@ pub(crate) fn build(two_roots: bool, specs: &[NodeSpec]) -> Tree {
         let own = if kind == EntryKind::Folder { spec.own } else { Sums { files: 0, ..spec.own } };
         tree.add_own(index, own).unwrap();
         tree.set_modified(index, spec.modified.map(|secs| Timestamp::from_secs(u64::from(secs)))).unwrap();
+        tree.set_access(index, NodeAccess::from_bits(spec.access).unwrap()).unwrap();
         let hits: Vec<Hit> = spec
             .hits
             .iter()

@@ -12,12 +12,13 @@ use crate::codec::CodecError;
 use crate::codec::encode::GROUP_KINDS;
 use crate::codec::header::Header;
 use crate::codec::varint::Reader;
+use crate::tree::access::NodeAccess;
 use crate::tree::arena::{Shared, Tree};
 use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums};
 
-/// The fewest bytes a node's record takes: an empty suffix, flags, four sums, a time, no hits, no owner, and the
-/// name's prefix and suffix lengths.
-const MIN_RECORD: usize = 10;
+/// The fewest bytes a node's record takes: an empty suffix, flags, four sums, a time, no hits, no owner, the access,
+/// and the name's prefix and suffix lengths.
+const MIN_RECORD: usize = 11;
 /// The fewest bytes a hit takes: interest, marker check, sibling bits.
 const MIN_HIT: usize = 3;
 /// The flags only a folder may carry.
@@ -95,6 +96,7 @@ struct Record {
     own: Sums,
     modified: i64,
     owner: u32,
+    access: NodeAccess,
     identity: Option<FolderIdentity>,
 }
 
@@ -131,8 +133,10 @@ fn read_record(
             owner
         }
     };
+    let [access] = reader.array::<1>()?;
+    let access = NodeAccess::from_bits(access).ok_or(CodecError::BadFlags)?;
     let identity = if is_root { Some(FolderIdentity { device: reader.u64()?, file_id: reader.u64()? }) } else { None };
-    Ok(Record { flags, children, hidden, own, modified, owner, identity })
+    Ok(Record { flags, children, hidden, own, modified, owner, access, identity })
 }
 
 /// Reads a front-coded name into `name`: the prefix it shares with `previous`, then the rest.
@@ -209,6 +213,7 @@ fn add(
     tree.set_modified(index, modified)?;
     tree.add_hits(index, hits)?;
     tree.set_owner(index, record.owner)?;
+    tree.set_access(index, record.access)?;
     Ok(index)
 }
 

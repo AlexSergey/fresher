@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import type { ModuleInfo } from '../ipc/bindings.generated';
 import type { Screen } from '../state/navigation';
 
-import { LayoutGrid, ListChecks, Package, Settings } from '../design/icons/icons';
+import { History, LayoutGrid, ListChecks, Package, Settings } from '../design/icons/icons';
 import { NavItem } from '../design/layout/nav-item/nav-item';
 import { NavSection } from '../design/layout/sidebar/nav-section';
 import { Sidebar } from '../design/layout/sidebar/sidebar';
@@ -24,7 +24,7 @@ export type FrameSidebarProps = {
 const NOT_SCANNED = sizeLabel({ allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 });
 
 // The sidebar: the app's name, Overview, one item per module with what it found, Review with the selection's count,
-// and Settings at the bottom.
+// Cleanups, and Settings at the bottom.
 export const FrameSidebar = ({ modules, onNavigate, screen }: FrameSidebarProps): JSX.Element => {
   const overview = useCore((state) => state.overview);
   const selection = useCore((state) => state.selection);
@@ -92,6 +92,14 @@ export const FrameSidebar = ({ modules, onNavigate, screen }: FrameSidebarProps)
               />
             )
           }
+        />
+        <NavItem
+          active={screen.kind === 'cleanups' || screen.kind === 'cleanup'}
+          icon={History}
+          label={t('ui.screen.frame.nav.cleanups')}
+          onClick={() => {
+            onNavigate({ kind: 'cleanups' });
+          }}
         />
       </NavSection>
     </Sidebar>

@@ -96,6 +96,17 @@
     line-height: var(--type-callout-line);
   }
 
+  .notes {
+    display: grid;
+    max-width: 480px;
+    color: var(--text-secondary);
+    gap: var(--space-1);
+  }
+
+  .later {
+    color: var(--text-primary);
+  }
+
   .skipped {
     display: grid;
     width: 100%;

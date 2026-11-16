@@ -1,5 +1,9 @@
 import type {
+  Access,
   AccessStatus,
+  CategoryInfo,
+  Coverage,
+  DangerLevel,
   Dictionary,
   Event,
   Finding,
@@ -11,6 +15,20 @@ import type {
 
 // A scan of the demo module as the core streams it, with the texts it needs: shared by the unit and the e2e tests.
 
+// A scan that saw everything: no guarded place left out, no folder unreadable.
+export const FULL_COVERAGE: Coverage = { notEntered: [], unreadable: [] };
+
+// A category that needs nothing, so it is ready whatever the access.
+export const readyCategory = (id: string, danger: DangerLevel): CategoryInfo => ({
+  availability: { kind: 'ready' },
+  descriptor: { danger, id, needs: [] },
+});
+
+// What `get_access_status` answers when Full Disk Access is `access` (the core's `all-files` capability).
+export const allFiles = (access: Access): AccessStatus => ({
+  capabilities: [{ access, capability: { kind: 'all-files' }, note: null }],
+});
+
 const finding = (id: number, category: string, name: string, bytes: number, danger: Finding['danger']): Finding => ({
   category,
   danger,
@@ -18,6 +36,7 @@ const finding = (id: number, category: string, name: string, bytes: number, dang
   key: { identity: `/demo/${name}`, module: 'demo' },
   module: 'demo',
   reason: { args: {}, key: 'demo.finding.reason' },
+  removability: 'needs-administrator',
   removal: { kind: 'move-to-trash', value: `/demo/${name}` },
   sizes: { allocated: bytes, completeness: 'complete', logical: bytes, reclaimable: bytes },
   subject: { kind: 'path', value: `/demo/${name}` },
@@ -33,10 +52,7 @@ export const DEMO_FINDINGS: readonly Finding[] = [
 // What `get_modules` answers: the demo module and its categories, as its descriptor registers them.
 export const DEMO_MODULES: readonly ModuleInfo[] = [
   {
-    categories: [
-      { danger: 'safe', id: 'demo.caches' },
-      { danger: 'low', id: 'demo.downloads' },
-    ],
+    categories: [readyCategory('demo.caches', 'safe'), readyCategory('demo.downloads', 'low')],
     id: 'demo',
     settings: ['demo.enabled'],
   },
@@ -51,6 +67,7 @@ export const DEMO_SCAN: readonly Event[] = [
   FIRST_BATCH,
   { findings: DEMO_FINDINGS.slice(2), scan: 1, type: 'findings-added' },
   { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+  { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];
 
@@ -61,7 +78,7 @@ export const BUSY: Refusal = {
 };
 
 // What `get_access_status` answers on a Mac that gave the app Full Disk Access.
-export const GRANTED: AccessStatus = { fullDiskAccess: 'granted' };
+export const GRANTED: AccessStatus = allFiles('granted');
 
 export const DEMO_SETTINGS: SettingsView = {
   file: 'loaded',
@@ -94,7 +111,13 @@ const partial = (bytes: number): Overview['found'] => ({
 // What `get_overview` answers once the demo scan finished: its totals, as the engine sums them.
 export const DEMO_OVERVIEW: Overview = {
   found: complete(2_570_000_000),
-  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1 },
+  lastScan: {
+    coverage: FULL_COVERAGE,
+    finished: 1_735_689_600,
+    kind: { kind: 'full' },
+    outcome: { kind: 'completed' },
+    scan: 1,
+  },
   status: { state: 'idle' },
   totals: [
     { category: 'demo.caches', count: 2, highestDanger: 'safe', sizes: complete(1_820_000_000) },
@@ -122,7 +145,7 @@ export const DEMO_DICTIONARY: Dictionary = {
 // the e2e flows and screenshots play.
 
 // What `get_access_status` answers on a Mac that did not give the app Full Disk Access.
-export const DENIED: AccessStatus = { fullDiskAccess: 'denied' };
+export const DENIED: AccessStatus = allFiles('denied');
 
 // The demo scan with its progress: an e2e script holds it after `LIVE_HOLD` events, mid-scan.
 export const DEMO_LIVE_SCAN: readonly Event[] = [
@@ -156,7 +179,13 @@ export const DEMO_STOP: readonly Event[] = [
 
 export const DEMO_STOPPED: Overview = {
   found: complete(2_250_000_000),
-  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: {
+    coverage: FULL_COVERAGE,
+    finished: 1_735_689_600,
+    kind: { kind: 'full' },
+    outcome: { kind: 'partial' },
+    scan: 1,
+  },
   status: { state: 'idle' },
   totals: FIRST_TOTALS,
 };
@@ -169,7 +198,13 @@ export const DEMO_PARTIAL_SCAN: readonly Event[] = [
 
 export const DEMO_PARTIAL: Overview = {
   found: partial(2_570_000_000),
-  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: {
+    coverage: FULL_COVERAGE,
+    finished: 1_735_689_600,
+    kind: { kind: 'full' },
+    outcome: { kind: 'partial' },
+    scan: 1,
+  },
   status: { state: 'idle' },
   totals: [
     { category: 'demo.caches', count: 2, highestDanger: 'safe', sizes: partial(1_820_000_000) },
@@ -189,7 +224,13 @@ export const DEMO_FAILED_SCAN: readonly Event[] = [
 
 export const DEMO_FAILED: Overview = {
   found: complete(2_250_000_000),
-  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'failed', reason: FAILURE }, scan: 1 },
+  lastScan: {
+    coverage: FULL_COVERAGE,
+    finished: 1_735_689_600,
+    kind: { kind: 'full' },
+    outcome: { kind: 'failed', reason: FAILURE },
+    scan: 1,
+  },
   status: { state: 'idle' },
   totals: FIRST_TOTALS,
 };

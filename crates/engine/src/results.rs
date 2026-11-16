@@ -1,21 +1,25 @@
 //! The findings of the current or last scan, by id, and the totals per category.
 
 use std::cmp::Reverse;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, DiskState, Finding, FindingId, FindingOrder,
-    FindingsPage, LastScan, ModuleId, Sizes,
+    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness, DiskState, Finding,
+    FindingId, FindingOrder, FindingsPage, LastScan, ModuleId, Sizes, Subject,
 };
 
 use crate::claims::Claims;
 
 /// The findings of one scan, in id order. Ids keep increasing across scans, so an id from an earlier scan is unknown.
-/// Also the disk state of the last committed scan, kept until another scan commits one.
+/// Also the disk state of the last committed scan, kept until another scan commits one, and the categories the scan's
+/// access limited, and the roots the scan walked.
 pub(crate) struct Results {
     findings: Vec<Finding>,
+    roots: Vec<PathBuf>,
+    limited: BTreeSet<CategoryId>,
     next_id: Option<u32>,
     last: Option<LastScan>,
     state: Option<Arc<dyn DiskState>>,
@@ -28,6 +32,8 @@ impl fmt::Debug for Results {
         formatter
             .debug_struct("Results")
             .field("findings", &self.findings.len())
+            .field("roots", &self.roots)
+            .field("limited", &self.limited)
             .field("next_id", &self.next_id)
             .field("last", &self.last)
             .field("state", &self.state.as_ref().map(|state| state.id()))
@@ -48,14 +54,30 @@ pub(crate) struct Filter<'a> {
 
 impl Results {
     pub(crate) const fn new() -> Self {
-        Self { findings: Vec::new(), next_id: Some(1), last: None, state: None, claims: None }
+        Self {
+            findings: Vec::new(),
+            roots: Vec::new(),
+            limited: BTreeSet::new(),
+            next_id: Some(1),
+            last: None,
+            state: None,
+            claims: None,
+        }
     }
 
-    /// Forgets the previous scan's findings; gives the first id of the new scan (`None` when the ids ran out).
-    pub(crate) fn begin(&mut self) -> Option<u32> {
+    /// Forgets the previous scan's findings for those of a scan of `roots`; gives the first id of the new scan
+    /// (`None` when the ids ran out).
+    pub(crate) fn begin(&mut self, roots: &[PathBuf]) -> Option<u32> {
         self.findings.clear();
+        roots.clone_into(&mut self.roots);
+        self.limited.clear();
         self.claims = None;
         self.next_id
+    }
+
+    /// The scan's access hides part of `categories`: their totals are partial.
+    pub(crate) fn limit(&mut self, categories: BTreeSet<CategoryId>) {
+        self.limited = categories;
     }
 
     pub(crate) fn append(&mut self, batch: &[Finding]) {
@@ -71,6 +93,45 @@ impl Results {
     /// The findings of the current scan, in id order.
     pub(crate) fn findings(&self) -> &[Finding] {
         &self.findings
+    }
+
+    /// The roots the current scan walked, as the settings had them.
+    pub(crate) fn roots(&self) -> &[PathBuf] {
+        &self.roots
+    }
+
+    /// Drops `removed` from the findings, and with them every finding at or below the path of one of `cleared` (those
+    /// of `removed` whose whole path went: what was inside went too, a finding left out `Covered` among it), and their
+    /// claims: the totals are of what is left. Answers what was dropped: `removed`, then the findings below, in id
+    /// order. A finding that was counted less for one nested in it keeps its counted size, since what was inside it
+    /// is gone too.
+    pub(crate) fn remove(&mut self, removed: &[FindingId], cleared: &[FindingId]) -> Vec<FindingId> {
+        let mut dropped: HashSet<FindingId> = removed.iter().copied().collect();
+        let gone: HashSet<PathBuf> = cleared
+            .iter()
+            .filter_map(|&id| self.findings.binary_search_by_key(&id, Finding::id).ok())
+            .filter_map(|index| path(&self.findings[index]).map(Path::to_path_buf))
+            .collect();
+        let below = |finding: &Finding| path(finding).is_some_and(|path| path.ancestors().any(|at| gone.contains(at)));
+        let inside: Vec<FindingId> = self
+            .findings
+            .iter()
+            .filter(|finding| !dropped.contains(&finding.id()) && below(finding))
+            .map(Finding::id)
+            .collect();
+        dropped.extend(&inside);
+        self.findings.retain(|finding| !dropped.contains(&finding.id()));
+        if let Some(claims) = &mut self.claims {
+            claims.forget(&dropped);
+        }
+        removed.iter().copied().chain(inside).collect()
+    }
+
+    /// The disk changed since the last scan: `cleanup` acted on it.
+    pub(crate) fn mark_changed(&mut self, cleanup: CleanupId) {
+        if let Some(last) = &mut self.last {
+            last.changed_since = Some(cleanup);
+        }
     }
 
     /// From now on, category totals add each finding's counted size.
@@ -117,7 +178,7 @@ impl Results {
 
     /// One total per category that has findings, in the order of `categories`, and every finding summed. Once the
     /// claims are resolved, a finding adds its counted size, so a path claimed twice or nested in another finding is
-    /// counted once.
+    /// counted once. A category the scan's access limited is partial, and so is the sum.
     pub(crate) fn totals<'a>(
         &self,
         categories: impl Iterator<Item = &'a CategoryDescriptor>,
@@ -138,12 +199,26 @@ impl Results {
             total.highest_danger = total.highest_danger.max(new.danger());
             found = add(found, sizes);
         }
+        for (category, total) in &mut totals {
+            if self.limited.contains(category) {
+                total.sizes.completeness = total.sizes.completeness.max(Completeness::Partial);
+                found.completeness = found.completeness.max(Completeness::Partial);
+            }
+        }
         (categories.filter_map(|category| totals.remove(&category.id())).collect(), found)
     }
 
     #[cfg(test)]
     pub(crate) const fn set_next_id(&mut self, next_id: Option<u32>) {
         self.next_id = next_id;
+    }
+}
+
+/// The path a finding is about; `None` for a tool's object.
+fn path(finding: &Finding) -> Option<&Path> {
+    match finding.finding().subject() {
+        Subject::Path(path) => Some(path),
+        Subject::External { .. } => None,
     }
 }
 
@@ -160,7 +235,9 @@ fn add(total: Sizes, more: Sizes) -> Sizes {
 
 #[cfg(test)]
 mod tests {
-    use fresher_core::{ByteSize, CategoryDescriptor, DangerLevel, Finding, FindingId, FindingOrder, Sizes};
+    use fresher_core::{
+        ByteSize, CategoryDescriptor, DangerLevel, Finding, FindingId, FindingOrder, Removability, Sizes,
+    };
 
     use crate::results::{Filter, Results};
     use crate::testing::{category, finding};
@@ -183,11 +260,28 @@ mod tests {
         let batch: Vec<Finding> = (1..)
             .zip(findings)
             .map(|(id, (category, sizes))| {
-                Finding::new(FindingId::new(id), finding(category, format!("/f/{id}"), *sizes))
+                Finding::new(FindingId::new(id), finding(category, format!("/f/{id}"), *sizes), Removability::Removable)
             })
             .collect();
         results.append(&batch);
         results
+    }
+
+    /// Results holding one `alpha` finding of 1 byte per path, ids from 1 in the order given.
+    fn at(paths: &[&str]) -> Results {
+        let mut results = Results::new();
+        let batch: Vec<Finding> = (1..)
+            .zip(paths)
+            .map(|(id, path)| {
+                Finding::new(FindingId::new(id), finding(&alpha(), path, sizes(1)), Removability::Removable)
+            })
+            .collect();
+        results.append(&batch);
+        results
+    }
+
+    fn ids(results: &Results) -> Vec<u32> {
+        results.findings().iter().map(|finding| finding.id().get()).collect()
     }
 
     fn page_ids(results: &Results, order: FindingOrder, offset: u32, limit: u32) -> Vec<u32> {
@@ -198,8 +292,20 @@ mod tests {
     mod negative {
         use fresher_core::{ByteSize, Completeness, FindingOrder, Sizes};
 
-        use super::{alpha, beta, page_ids, results, sizes};
+        use fresher_core::FindingId;
+
+        use super::{alpha, at, beta, ids, page_ids, results, sizes};
         use crate::results::{Filter, add};
+
+        #[test]
+        fn only_the_findings_below_a_wholly_removed_one_go_with_it() {
+            let mut results = at(&["/f/a", "/f/ab", "/f/a2/x", "/f/b", "/f/b/in"]);
+
+            let removed = results.remove(&[FindingId::new(1), FindingId::new(4)], &[FindingId::new(1)]);
+
+            assert_eq!(removed, [1, 4].map(FindingId::new));
+            assert_eq!(ids(&results), [2, 3, 5]);
+        }
 
         #[test]
         fn a_sum_past_the_largest_size_stays_at_the_largest() {
@@ -268,8 +374,21 @@ mod tests {
     mod positive {
         use fresher_core::FindingOrder;
 
-        use super::{alpha, beta, page_ids, results, sizes};
+        use fresher_core::FindingId;
+
+        use super::{alpha, at, beta, ids, page_ids, results, sizes};
         use crate::results::Filter;
+
+        #[test]
+        fn the_findings_at_or_below_a_wholly_removed_one_go_with_it() {
+            let mut results = at(&["/f/a", "/f/a/in", "/f/b", "/f/a/in/deep", "/f/a"]);
+
+            let removed = results.remove(&[FindingId::new(1)], &[FindingId::new(1)]);
+
+            assert_eq!(removed, [1, 2, 4, 5].map(FindingId::new));
+            assert_eq!(ids(&results), [3]);
+            assert_eq!(results.totals([alpha()].iter()).1, sizes(1));
+        }
 
         #[test]
         fn found_sums_every_category() {

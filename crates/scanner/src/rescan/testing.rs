@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use fresher_core::{
-    ByteSize, CancelToken, ChangeJournal, Changes, DiskWalk, FolderIdentity, FolderListing, FolderReader, InterestSet,
-    JournalGap, JournalPosition, Match, ReadError, VolumeId, WalkMode, WalkRequest, WalkSummary,
+    ByteSize, CancelToken, ChangeJournal, Changes, DiskWalk, EntryAccess, FolderIdentity, FolderListing, FolderReader,
+    InterestSet, JournalGap, JournalPosition, Match, ReadError, VolumeId, WalkMode, WalkRequest, WalkSummary,
 };
 use fresher_testing::{FakeChangeJournal, FakeClock, FixtureTree, MemoryScanCache};
 
@@ -165,6 +165,10 @@ impl FolderReader for Refusing {
         StdReader::new().identify(path)
     }
 
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+        StdReader::new().access(path)
+    }
+
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {
         if self.refused.iter().any(|refused| path == refused) {
             return Err(ReadError::Guarded);
@@ -198,6 +202,10 @@ pub(crate) struct LoggingReader(pub(crate) Arc<CallLog>);
 impl FolderReader for LoggingReader {
     fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
         StdReader::new().identify(path)
+    }
+
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+        StdReader::new().access(path)
     }
 
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {
@@ -264,14 +272,8 @@ pub(crate) fn assert_same(rescan: &Walked, full: &Walked) {
         left.shapes.iter().zip(&right.shapes).filter(|(left, right)| left != right).take(3).collect();
     assert!(differences.is_empty(), "{differences:#?}");
     assert_eq!(left.shapes.len(), right.shapes.len());
-    let times: Vec<_> = left
-        .times_and_owners
-        .iter()
-        .zip(&right.times_and_owners)
-        .enumerate()
-        .filter(|(_, (l, r))| l != r)
-        .take(3)
-        .collect();
+    let times: Vec<_> =
+        left.per_node.iter().zip(&right.per_node).enumerate().filter(|(_, (l, r))| l != r).take(3).collect();
     assert!(times.is_empty(), "{times:?}");
     assert_eq!(left, right);
     assert_eq!(rescan.matches, full.matches);

@@ -4,7 +4,7 @@
 //! A node: its name front-coded against the previous sibling (the shared prefix's length, then the rest), its flags,
 //! for a folder its child count and its folders not kept as nodes, its own file count and three sizes, its
 //! modification time as a delta from its parent's, its hits (interest, marker check, sibling bits), its owner (0 for
-//! none, else the claim's index + 1) and, for a root, its folder identity. Totals are not written: the reader sums them
+//! none, else the claim's index + 1), its access (one byte) and, for a root, its folder identity. Totals are not written: the reader sums them
 //! again. A node's own bytes are its total minus its children's and minus the shared bytes credited to it, so the
 //! reader's `freeze` credits the groups again and reaches the same totals.
 //!
@@ -237,6 +237,7 @@ impl<'t> Layout<'t> {
             write_u64(out, hit.siblings);
         }
         write_u64(out, u64::from(node.owner.wrapping_add(1)));
+        out.push(node.access.bits());
         if node.parent == NodeIndex::NONE
             && let Some(root) = tree.roots().iter().find(|root| root.node == index)
         {

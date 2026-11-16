@@ -14,21 +14,25 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 - **Deterministic**: no wall clock (the `Clock` port, `FakeClock` in tests), no network, no real home folder. Every test
   runs on a temporary fixture tree; the Trash and external commands are ports with fakes.
 - **Nothing is ever deleted outside a temporary folder** in a test: `FakeTrash` moves items into a folder inside the
-  fixture tree.
+  fixture tree; every cleaner in a test is `Reach::Sandbox` and acts only below a fixture holding the sandbox marker
+  (`FixtureTree::with_sandbox`); the tests of the system's Trash move items only on a disk image they mount, and no
+  test lists or empties the user's Trash.
 
 ## Kinds of tests
 
-| Kind           | What it proves                                                                   | Rust core                                   | UI                                         |
-| -------------- | -------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------ |
-| Unit           | one function or module                                                           | `#[cfg(test)] mod tests`, cargo-nextest     | Vitest + Testing Library + happy-dom       |
-| Property-based | a rule holds for ANY valid input (sizes add up, versions order, no double count) | proptest (`mod property`)                   | fast-check (where logic exists)            |
-| Integration    | one crate through its public API, on fixture trees                               | the crate's `tests/`                        | —                                          |
-| Golden reports | a fixture home gives exactly the expected report                                 | `crates/e2e` against `fixtures/golden/`     | —                                          |
-| Core e2e       | command → engine → modules → events → settings file, end to end                  | `crates/e2e` on fixture homes               | —                                          |
-| UI e2e         | the user flows of the interface, on a mocked core                                | —                                           | Playwright on the Vite build, mocked IPC   |
-| Visual         | the gallery's stories and the screens did not change unnoticed                   | —                                           | Playwright screenshots, ≤ 50 pixels differ |
-| Accessibility  | keyboard, focus, contrast, page zoom and WCAG 2.1 AA on every story and screen   | —                                           | Playwright and axe; VoiceOver by hand      |
-| Performance    | the scan stays within its time and memory budget; the UI within its frame budget | criterion benches on a large generated tree | `test:perf`, run by hand                   |
+| Kind           | What it proves                                                                   | Rust core                                    | UI                                         |
+| -------------- | -------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------ |
+| Unit           | one function or module                                                           | `#[cfg(test)] mod tests`, cargo-nextest      | Vitest + Testing Library + happy-dom       |
+| Property-based | a rule holds for ANY valid input (sizes add up, versions order, no double count) | proptest (`mod property`)                    | fast-check (where logic exists)            |
+| Compile-fail   | a misuse of a safety type does not compile                                       | trybuild (`tests/types.rs`, `compile_fail/`) | —                                          |
+| Race           | a swap made by another thread during an act never sends it elsewhere             | `fresher-testing`'s `Swapper`, 100 rounds    | —                                          |
+| Integration    | one crate through its public API, on fixture trees                               | the crate's `tests/`                         | —                                          |
+| Golden reports | a fixture home gives exactly the expected report                                 | `crates/e2e` against `fixtures/golden/`      | —                                          |
+| Core e2e       | command → engine → modules → events → settings file, end to end                  | `crates/e2e` on fixture homes                | —                                          |
+| UI e2e         | the user flows of the interface, on a mocked core                                | —                                            | Playwright on the Vite build, mocked IPC   |
+| Visual         | the gallery's stories and the screens did not change unnoticed                   | —                                            | Playwright screenshots, ≤ 50 pixels differ |
+| Accessibility  | keyboard, focus, contrast, page zoom and WCAG 2.1 AA on every story and screen   | —                                            | Playwright and axe; VoiceOver by hand      |
+| Performance    | the scan stays within its time and memory budget; the UI within its frame budget | criterion benches on a large generated tree  | `test:perf`, run by hand                   |
 
 The full app (WebView + Rust) cannot be driven by WebDriver on macOS (`tauri-driver` supports Linux and Windows only),
 so the UI e2e run against the web build with the Tauri IPC mocked, and the core e2e cover the Rust side end to end.
@@ -38,7 +42,11 @@ real settings file, the events and the overview against `fixtures/golden/demo.js
 settings file from a newer version is never overwritten), and since plan 004 scan → classify → cache: `scan.rs` (the
 engine with the real scanner on fixture homes, `fixtures/golden/scan.json`), `rescan.rs` (a scan, a scripted change, a
 rescan that reads only the changed folders and the check's sample, a restore in a new engine that reads no folder,
-`fixtures/golden/rescan.json`) and `footprint.rs` (below). Later plans extend it to diff → confirm → clean.
+`fixtures/golden/rescan.json`), `footprint.rs` (below), and since plan 008 select → plan → confirm → clean:
+`cleanup.rs` (the engine with the reference walk, the `trial` module and the real `DiskCleaner` in the sandbox on
+`fixtures/homes/cleanup.toml`, the real journal; the whole path with history and put back, a cancel, an item replaced,
+a permanent cleanup, and the refusals; `fixtures/golden/cleanup-*.json`). `footprint.rs` also writes a hundred
+cleanups of a hundred items through the real journal.
 
 ## Where things live
 
@@ -47,9 +55,21 @@ rescan that reads only the changed folders and the check's sample, a restore in 
   as test code.
 - `crates/testing` — shared test helpers: `FixtureTree` (a fake home folder from TOML), `TreeReport` (a deterministic
   listing for golden files), `FakeClock`, `FakeTrash`, `FakeCommandRunner`. The ports they fake (`Clock`, `Trash`,
-  `CommandRunner`) live in `fresher-core`. For modules ([`architecture/modules.md`](./architecture/modules.md)):
+  `CommandRunner`) live in `fresher-core`. For the cleanup ([`architecture/removal.md`](./architecture/removal.md)):
+  - `FixtureTree::with_sandbox` and `mark_sandbox(folder)` write the sandbox marker with its signature (opt-in, so no
+    scan test or golden file sees it).
+  - `FakeTrash` moves into a Trash folder of the fixture and puts back without replacing anything; `without_trash`
+    (a volume with no Trash), `reporting_nothing` (no landed path) and `refusing` play the system's answers.
+  - `FakeOpenFiles` (a fixed set of held paths, or a failure), `FakeVolumes::answering_available` (the space before
+    and after), `MemoryCleanupJournal` (the journal in memory, or failing), `FakeCleaner` (records the `ExecutedPlan`
+    the engine handed it).
+  - `Swapper` swaps a folder for a link to another folder and back on its own thread until dropped, then puts the
+    folder back: the race tests of the cleaner.
+  For modules ([`architecture/modules.md`](./architecture/modules.md)):
   - `NaiveWalk` — the reference `DiskWalk` over a fixture root, with `std::fs`: links listed, never followed, nothing
-    on another device; the scanner is tested against it (the same fixture gives the same matches).
+    on another device; each match carries its entry's facts for removability (owner, write access from the mode bits,
+    flags), read for the owner of the fixture root; the scanner is tested against it (the same fixture gives the same
+    matches, with the same entry facts).
   - The fakes of the scan's ports: `FakeVolumes` (fixed facts per root), `FakeChangeJournal` (a script of positions,
     changed folders and gaps, so no test waits on the system's journal), `MemoryScanCache`, `FixedDiskState` (a tree
     from paths and sizes, for the engine's queries).
@@ -57,12 +77,15 @@ rescan that reads only the changed folders and the check's sample, a restore in 
   - `run_module(&module, &tree, &Ports::at(seconds))` — one module run as the engine would, on the fixture tree as the
     home folder: walk, matches, `finish` → `ModuleRun { findings, outcome }`; `ModuleRun::golden()` is its stable JSON
     report, paths relative to the fixture root.
-  - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category has its five texts and
-    every setting (`<module>.enabled` included) its label and description, every key is in the module's namespace;
+  - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category has its five texts and every
+    setting (`<module>.enabled` included) its label and description, every key is in the module's namespace;
     `Catalogue::Required(docs/categories)` also wants each category's catalogue file with the same danger level
-    (`Catalogue::DevOnly` for the `demo` module). `assert_texts_used(&module, &runs)` — every text is a descriptor key
-    or used by a finding of the runs, and every finding's text exists with the args its placeholders name. Their
-    `check_…` forms return the list of `ContractProblem`s instead of failing.
+    (`Catalogue::DevOnly` for the dev-only `demo` and `trial`). `assert_texts_used(&module, &runs)` — every text is a
+    descriptor key or used by a finding of the runs, and every finding's text exists with the args its placeholders
+    name. Their `check_…` forms return the list of `ContractProblem`s instead of failing.
+    `check_removals_matched(&runs)` lists every finding whose removal names a path no match of its run reported: the
+    engine takes an item's removability from that match, so such an item needs an administrator (fail closed) and can
+    never be removed by the app.
 - `crates/scanner/tests/reference.rs` — the scanner against `NaiveWalk`: the same matches and the same summary on
   every fixture home and on random trees (proptest, its failing seeds kept in `reference.proptest-regressions`), with
   the portable reader; `macos_reader.rs` runs the same with the macOS reader. `CountingReader` counts the folder reads,
@@ -72,6 +95,21 @@ rescan that reads only the changed folders and the check's sample, a restore in 
   when `hdiutil` is missing); nothing reads the home folder.
 - `crates/rules` — the shared matcher of rule data (`RuleSet::parse`, `interests`, `evaluate`, `stale`), tested on
   `FixtureTree`s and `FakeClock`, with property tests of the glob and of the version order.
+- `crates/cleaner` — every test runs on a temporary tree with the sandbox marker and the fakes above (disk images it
+  mounts inside the tree, skipped without `hdiutil`). Unit tests sit next to each check and removal, negative first
+  (`paths.rs`, `guard/`, `remove/`, `put_back.rs`, `pipeline.rs`); `remove/permanent.rs` races a delete against a
+  `Swapper` 100 times (a parent and a folder inside swapped for a link) and mounts a volume inside a folder.
+  `tests/never.rs` is the property test of what the cleaner never does, for any plan (random trees with links in, out
+  and up and a protected, carved-out, hard-blocked and ignored folder; random plans; the swap case); its default run
+  is in the hooks, `PROPTEST_CASES=10000` by hand. `tests/types.rs` holds the compile-fail cases of `Verified` and
+  `Act` (`tests/compile_fail/`); `tests/reach.rs` fails when the real-disk token is named outside its three places;
+  `tests/deletion_point.rs` fails on a second deletion point or a deleting system call outside `ffi/beneath.rs`.
+- `crates/core/tests/types.rs` — the compile-fail cases of the plan's types (`compile_fail/`: a `ConfirmedPlan`,
+  `Confirmation`, `Act` or `PermanentConsent` made by hand, a confirmed plan cloned or used twice, an unconfirmed one
+  executed); the echo's property test is in `cleanup/confirm.rs`.
+- `crates/store/src/journal/tests.rs` — the cleanup journal on a temporary data folder: a torn last record cut at every
+  byte never corrupts the records before it, `begin` is synced before it returns, the file is `0600`, a newer or
+  unreadable file is read-only, an older one is migrated line by line, rotation by rename.
 - `crates/e2e` — the core's end-to-end and golden tests (a crate with tests only).
 - `app/tauri/tests/bindings.rs` — the IPC types: every type the commands and events carry is rendered by `ts-rs` and
   compared byte for byte with `app/ui/src/ipc/bindings.generated.ts`; no listed type refers to an unlisted one, no
@@ -84,12 +122,19 @@ rescan that reads only the changed folders and the check's sample, a restore in 
   subscribed channel. `src/test/demo-scan.ts` is a demo scan as the core streams it, with its texts, shared by the unit
   and the e2e tests; `src/test/large-scan.ts` generates a scan of N findings in M categories (the same on every run),
   `src/test/page-of.ts` answers `get_findings` over a list of findings as the engine does, and
-  `src/test/fake-clock.ts` is the clock the store's timers are tested on.
+  `src/test/fake-clock.ts` is the clock the store's timers are tested on. `src/test/cleanup-plan.ts` builds the
+  core's plan, events and report over the demo scan's findings, shared by the unit tests of the cleanup state
+  (`state/cleanup.test.ts`), its screens and the e2e mock.
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
   (one event every so many ms, each asked of Node, as the engine streams), the overview during and after the scan,
   `get_findings` paged from the findings streamed so far, a second scan refused while one runs, and the
-  `setting-changed` event of an update); `SCRIPTS` there are the scripts the flows and screenshots play;
+  `setting-changed` event of an update); its cleanup part (`e2e/support/cleanup-mock.ts`) answers a plan per
+  selection, compares the echo, streams a cleanup item by item (held after `hold` items until `releaseCleanup` or
+  Stop), keeps a history and puts back, and `requestQuit` plays the close guard's `quit-requested`. `SCRIPTS` there are
+  the scripts the flows and screenshots play (`cleaning`, `cleaningHeld`, `cleaningLeftOut`, `cleanupsEmpty` for the
+  cleanup); `flows.spec.ts` walks select → review → confirm to the Trash → progress → result → Cleanups → put back,
+  the permanent path, Stop mid-cleanup, the items left out, a refused plan and the quit question;
   `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
   reference engine (the app runs in WebKit on macOS); Chromium runs too. The suite runs on `npm run build:e2e` (the
   app and the gallery in `dist-e2e/`), served with the app's production CSP; every spec checks that the policy

@@ -8,7 +8,7 @@ import type {
   Sizes,
 } from '../ipc/bindings.generated';
 
-import { DEMO_DICTIONARY } from './demo-scan';
+import { DEMO_DICTIONARY, FULL_COVERAGE } from './demo-scan';
 
 // A scan of many findings of the demo module, the same on every run: for the unit tests, the e2e mock and the
 // performance spec. Sizes spread over four orders of magnitude (10 kB to 100 MB), every danger level appears.
@@ -57,6 +57,7 @@ const findingAt = (id: number, category: string, bytes: number, danger: DangerLe
     key: { identity: path, module: 'demo' },
     module: 'demo',
     reason: { args: {}, key: 'demo.finding.reason' },
+    removability: 'removable',
     removal: { kind: 'move-to-trash', value: path },
     sizes: complete(bytes),
     subject: { kind: 'path', value: path },
@@ -132,7 +133,13 @@ export const largeScan = ({
     findings,
     overview: {
       found: findings.reduce((sum, finding) => add(sum, finding.sizes), complete(0)),
-      lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1 },
+      lastScan: {
+        coverage: FULL_COVERAGE,
+        finished: 1_735_689_600,
+        kind: { kind: 'full' },
+        outcome: { kind: 'completed' },
+        scan: 1,
+      },
       status: { state: 'idle' },
       totals: [...totalsOf(findings, ids)],
     },

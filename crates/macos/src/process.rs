@@ -2,7 +2,12 @@
 
 use fresher_core::ByteSize;
 
-use crate::ffi::rusage;
+use crate::ffi::{libproc, rusage};
+
+/// The user this process runs as (`getuid`): the owner the cleaner compares an item's with.
+pub fn current_user() -> u32 {
+    libproc::user_id()
+}
 
 /// The largest resident memory the process has used so far; zero if the system does not tell.
 pub fn peak_memory() -> ByteSize {
@@ -19,8 +24,16 @@ pub fn peak_memory() -> ByteSize {
 mod tests {
     mod positive {
         use std::hint::black_box;
+        use std::os::unix::fs::MetadataExt as _;
 
-        use crate::peak_memory;
+        use crate::{current_user, peak_memory};
+
+        #[test]
+        fn the_current_user_owns_a_new_temporary_file() {
+            let file = tempfile::NamedTempFile::new().unwrap();
+
+            assert_eq!(file.as_file().metadata().unwrap().uid(), current_user());
+        }
 
         #[test]
         fn peak_memory_grows_after_a_large_allocation() {

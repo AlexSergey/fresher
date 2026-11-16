@@ -8,11 +8,13 @@ mod negative {
     use std::os::unix::fs::{PermissionsExt, symlink};
     use std::sync::Arc;
 
-    use fresher_core::{Claim, Completeness, EntryKind, Pattern, Unreadable};
+    use fresher_core::{Claim, Completeness, EntryFacts, EntryKind, Pattern, Removability, Unreadable};
     use fresher_scanner::StdReader;
     use fresher_testing::FixtureTree;
 
-    use crate::support::{canonical, every_interest, interest, reference, scanner, set_of};
+    #[cfg(target_os = "macos")]
+    use crate::support::LockedHome;
+    use crate::support::{canonical, every_interest, facts_of, interest, reference, scanner, set_of};
 
     #[test]
     fn an_unreadable_folder_is_reported_by_kind_and_makes_whole_sizes_partial() {
@@ -92,17 +94,39 @@ mod negative {
         assert_eq!(paths, ["app/Package.json", "app/node_modules"].map(std::path::Path::new));
         assert_eq!(fast.matches[1].siblings, Vec::<String>::new(), "Package.json is not package.json");
     }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn the_std_reader_gives_no_removable_facts_to_what_the_user_cannot_remove() {
+        let home = LockedHome::new();
+        let set = LockedHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        let closed = facts_of(&fast, &home.root.join("closed/inside.json"));
+        let folder = facts_of(&fast, &home.root.join("Caches"));
+        let locked = facts_of(&fast, &home.root.join("locked.json"));
+        assert_eq!(closed, EntryFacts { parent_writable: false, ..EntryFacts::REMOVABLE });
+        assert_eq!(folder, EntryFacts { folder_writable: false, ..EntryFacts::REMOVABLE });
+        assert_eq!(locked, EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE });
+        assert_eq!(Removability::of(closed), Removability::NeedsAdministrator);
+        assert_eq!(Removability::of(folder), Removability::NeedsAdministrator);
+        assert_eq!(Removability::of(locked), Removability::Locked);
+    }
 }
 
 mod positive {
     use std::fs;
     use std::sync::Arc;
 
-    use fresher_core::{CACHEDIR_SIGNATURE, MarkerCheck};
+    use fresher_core::{CACHEDIR_SIGNATURE, EntryFacts, MarkerCheck};
     use fresher_scanner::StdReader;
     use fresher_testing::FixtureTree;
 
-    use crate::support::{canonical, every_interest, fixtures, reference, scanner, set_of};
+    #[cfg(target_os = "macos")]
+    use crate::support::LockedHome;
+    use crate::support::{canonical, every_interest, facts_of, fixtures, reference, scanner, set_of};
 
     #[test]
     fn the_scanner_and_the_reference_agree_on_every_fixture_home() {
@@ -147,6 +171,22 @@ mod positive {
         let modules = fast.matches.iter().find(|found| found.path == root.join("app/node_modules")).unwrap();
         assert_eq!(modules.sizes.logical.bytes(), 34, "a hard link counts once per name in a match");
         assert_eq!(fast.matches.len(), 11);
+        assert!(fast.matches.iter().all(|found| found.facts == EntryFacts::REMOVABLE), "all the user's own");
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn the_std_reader_gives_the_users_own_files_removable_facts() {
+        let home = LockedHome::new();
+        let set = LockedHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert_eq!(fast.matches.len(), 5);
+        assert_eq!(facts_of(&fast, &home.root.join("mine.json")), EntryFacts::REMOVABLE);
+        assert_eq!(facts_of(&fast, &home.root.join("read-only.json")), EntryFacts::REMOVABLE, "its folder is writable");
+        assert!(fast.matches.iter().all(|found| found.facts != EntryFacts::default()), "every entry was read");
     }
 }
 

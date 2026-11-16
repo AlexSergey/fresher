@@ -13,7 +13,7 @@ fn handmade(children: u64, nodes: u64, records: &[&[u8]]) -> Vec<u8> {
     write_u64(&mut out, nodes);
     out.extend_from_slice(&[0, 2, b'/', b'r', 1]);
     write_u64(&mut out, children);
-    out.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 1, 2]);
+    out.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2]);
     for record in records {
         out.extend_from_slice(record);
     }
@@ -25,7 +25,7 @@ fn handmade(children: u64, nodes: u64, records: &[&[u8]]) -> Vec<u8> {
 fn file_record(shared: u8, rest: &[u8]) -> Vec<u8> {
     let mut record = vec![shared, u8::try_from(rest.len()).unwrap()];
     record.extend_from_slice(rest);
-    record.extend_from_slice(&[2, 1, 0, 0, 0, 0, 0, 0]);
+    record.extend_from_slice(&[2, 1, 0, 0, 0, 0, 0, 0, 0]);
     record
 }
 
@@ -97,11 +97,19 @@ mod negative {
     #[test]
     fn an_owner_outside_the_claims_is_refused() {
         let mut record = file_record(0, b"a");
-        *record.last_mut().unwrap() = 4;
+        let owner = record.len() - 2;
+        record[owner] = 4;
         assert_eq!(decode(&handmade(1, 2, &[&record])).err(), Some(CodecError::UnknownOwner));
         let mut tree = small_tree();
         tree.set_owner(tree.roots()[0].node, 3).unwrap();
         assert_eq!(encode(&tree, &header()).err(), Some(CodecError::UnknownOwner));
+    }
+
+    #[test]
+    fn an_access_with_a_bit_no_fact_uses_is_refused() {
+        let mut record = file_record(0, b"a");
+        *record.last_mut().unwrap() = 1 << 5;
+        assert_eq!(decode(&handmade(1, 2, &[&record])).err(), Some(CodecError::BadFlags));
     }
 
     #[test]
@@ -129,6 +137,7 @@ mod positive {
     use crate::codec::header::testing::header;
     use crate::codec::testing::{small_tree, snapshot, wide_tree};
     use crate::codec::tests::{file_record, handmade};
+    use crate::tree::access::NodeAccess;
     use crate::tree::arena::Tree;
 
     #[test]
@@ -139,6 +148,15 @@ mod positive {
         assert_eq!(read, header());
         assert_eq!(snapshot(&decoded), snapshot(&tree));
         assert_eq!(encode(&decoded, &header()).unwrap(), body, "a second write gives the same bytes");
+    }
+
+    #[test]
+    fn every_nodes_access_survives_a_round_trip() {
+        let tree = small_tree();
+        let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();
+        let access = |tree: &Tree| snapshot(tree).per_node.iter().map(|&(_, _, access)| access).collect::<Vec<_>>();
+        assert_eq!(access(&decoded), access(&tree));
+        assert!(access(&tree).iter().filter(|&&access| access != NodeAccess::NONE).count() >= 3);
     }
 
     #[test]

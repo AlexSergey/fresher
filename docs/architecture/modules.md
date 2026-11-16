@@ -90,7 +90,9 @@ The registry refuses a module whose dictionary or settings are not valid, or who
 Through `fresher-testing` ([`../testing.md`](../testing.md)):
 
 - `tests/contract.rs`: `assert_module_contract(&module, &Catalogue::Required(docs_dir))` (`Catalogue::DevOnly` for the
-  `demo` module only) and `assert_texts_used(&module, &runs)` over the runs of its fixture homes.
+  dev-only `demo` and `trial` modules only), `assert_texts_used(&module, &runs)` over the runs of its fixture homes,
+  and `check_removals_matched(&runs)` empty: every path a removal names is a path the module was matched on, so the
+  engine can tell whether the app may remove it.
 - Fixture tests: `run_module(&module, &tree, &Ports::at(seconds))` on a `FixtureTree` → the findings, negative cases
   first; the golden report is `run.golden()` compared with `fixtures/golden/<id>.json`.
 
@@ -106,7 +108,11 @@ A module ships only when every box is ticked:
 - [ ] Negative fixtures come first: a look-alike name, the current version of a versioned item, a symlink out of the
       root; each is not claimed.
 - [ ] The golden report `fixtures/golden/<id>.json` is written and reviewed.
-- [ ] The contract test passes (`assert_module_contract`, `assert_texts_used`).
+- [ ] The contract test passes (`assert_module_contract`, `assert_texts_used`, no `check_removals_matched` problem).
 - [ ] No dependency on another module (the dependency guard checks it).
 - [ ] No danger level is lowered: a rule or a finding only raises its category's.
 - [ ] Every removal is data (`MoveToTrash`, `EmptyFolder`, `ToolCommand`); the module deletes nothing and walks nothing.
+- [ ] A path removal names the finding's own subject (`MoveToTrash` or `EmptyFolder` of the `Subject::Path`); a tool
+      removal runs the subject's own tool and never forces (no `-f`, `--force`, `--force=…`, nor `f` among short
+      flags such as `-rf`). The plan builder leaves any other out (`NotTheSubject`, `ForcedTool`;
+      `crates/engine/src/cleanup/plan.rs`), so such a finding can never be removed.

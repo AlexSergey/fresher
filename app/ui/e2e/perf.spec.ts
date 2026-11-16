@@ -7,6 +7,7 @@ import { gzipSync } from 'node:zlib';
 
 import type { CategoryTotal, ModuleInfo, Overview } from '../src/ipc/bindings.generated';
 
+import { readyCategory } from '../src/test/demo-scan';
 import { largeScan } from '../src/test/large-scan';
 import { type CoreScript, mockCore, releaseScan, SCRIPTS } from './core-mock';
 import { beginSample, endSample, type Sample, sampleFrames, settle } from './support/frames';
@@ -49,7 +50,7 @@ const LARGE = largeScan({ categories: 12, count: 50_000 });
 
 const modulesOf = (totals: readonly CategoryTotal[]): readonly ModuleInfo[] => [
   {
-    categories: totals.map(({ category }) => ({ danger: 'safe', id: category })),
+    categories: totals.map(({ category }) => readyCategory(category, 'safe')),
     id: 'demo',
     settings: ['demo.enabled'],
   },

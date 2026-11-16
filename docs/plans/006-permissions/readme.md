@@ -1,126 +1,96 @@
 # 006 — Permissions and privileges
 
-**Status:** 📝 draft · **Version:** 0.4.0 · **Date:** 2026-11-15 · **Modules:** core, macos, engine, cleaner, app
+**Status:** 🔨 in progress · **Version:** 0.4.0 · **Date:** 2026-11-16 · **Modules:** core, macos, engine, testing, app,
+app/ui
 
-A one-file draft: the design in short, with the recommended decisions taken as agent's calls. Plans, steps and
-`00-design.md` are written when the draft is approved.
+## Goal
 
-## Intent
+The app always knows what it may see and do, and says so honestly. A macOS permission is offered only next to the
+result it limits, with a plain-English reason and the right System Settings pane one click away; everything works
+without any permission, with the reduced coverage shown, never hidden. Modules declare what they need, the engine
+resolves it, and only adapters built on `fresher-macos` know what macOS guards. The app never runs as administrator:
+items that need one are shown with their size and a Finder instruction, never cleaned. The design:
+[`00-design.md`](./00-design.md).
 
-The user's task (translated): "…and for privileges and permissions, since not every action is possible without
-permissions."
+Branch: `feat/006-permissions`, squash-merged into `main` once when done ([`../../workflow.md`](../../workflow.md)).
+Depends on plan [002](../002-base-architecture/readme.md) (ports, events, the engine, IPC); plan
+[004](../004-fast-scan/readme.md) (`fresher-macos`, the walk's exclusions and entry facts) for plans 03, 02/04 and 05;
+plans [003](../003-base-ui/readme.md) and [005](../005-settings/readme.md) (components, the settings screen) for plan
+04 and step 05/02. Plans 01 and 02/01–02/03 need only plan 002 and can start at once.
 
-## Goals
+## Plans
 
-1. The app always knows what it may see and do, and says so honestly: reduced coverage is shown, never hidden.
-2. A permission is asked for only when the user starts something that needs it, with a plain-English reason and what it
-   unlocks ([`restrictions/privacy.md`](../../restrictions/privacy.md), "Least permissions").
-3. Everything works without any permission, with less coverage.
-4. Modules declare what they need; none of them talks to macOS about permissions.
+| #   | Plan                                                    | Status         | Depends on                                    | What                                                                                                     |
+| --- | ------------------------------------------------------- | -------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 01  | [Probe the system](./01-probe-the-system/readme.md)     | ✅ approved    | —                                             | throwaway probes in `NO_COMMIT/`: which places prompt, the Full Disk Access check, panes, reason strings |
+| 02  | [Capability model](./02-capability-model/readme.md)     | ✔️ done        | — (02/04: 004/03)                             | core types and ports, fakes, availability, tool checks, opt-ins, coverage                                |
+| 03  | [macOS adapter and shell](./03-macos-adapter/readme.md) | ✅ approved    | 01, 02/01, 004/02 (03/04: 02)                 | `fresher-macos::privacy`, the app's adapters, commands, focus re-check, `Info.plist`                     |
+| 04  | [UI](./04-ui/readme.md)                                 | ✅ approved    | 02, 03/04, 003, 005/03                        | the store, coverage notices, disabled sections, the Permissions group                                    |
+| 05  | [Privileges](./05-privileges/readme.md)                 | 🔨 in progress | 02/01, 004/03 (05/02: 03/04, 003; 05/03: all) | removability of findings, "needs an administrator" in the UI, the docs and the version                   |
 
-## Non-goals
+### Order and parallel work
 
-- Running anything as administrator (see "Privileges").
-- Signing and notarization: the release plan. This plan only records what they must provide.
+```
+002 ──┬── 01 ───────────────────────┐
+      └── 02/01 ─┬─ 02/02 ── 02/03 ─┤
+                 │                  ├── 03/01–03/03 ── 03/04 ──┬── 04 ─────┐
+004/02 ──────────┼──────────────────┘                          ├── 05/02 ──┼── 05/03 ── conclusions
+004/03 ──────────┴── 02/04 , 05/01 ────────────────────────────┘           │
+003, 005/03 ───────────────────────────────────────────────────────────────┘
+```
 
-## Design
+- **Wave 1, in parallel** (needs plan 002 only): 01 (probes, by hand, no product code) and 02/01–02/03 in order.
+- **Wave 2, in parallel** (needs 01 done and `fresher-macos` from 004/02; 004/03 for the walk): 03/01–03/03 in order;
+  02/04 and 05/01 (both on the walk's new inputs and facts).
+- **Wave 3**: 03/04 (commands, focus, `Info.plist`, bindings), after 02 and 03/03.
+- **Wave 4, in parallel** (needs plans 003 and 005/03): 04 in order, and 05/02.
+- **Wave 5**: 05/03 (docs, version), then the conclusions.
 
-### What macOS guards
+Each parallel plan runs in its own worktree branched from `feat/006-permissions` and is merged back when it is done;
+two agents never share a worktree. If plan 004 is not merged when wave 2 is due, 006 waits: it never creates
+`crates/macos` itself.
 
-| Permission                    | What it unlocks                                                        | How it is obtained                                      |
-| ----------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- |
-| none                          | most of the home folder, `~/Library/Caches`, developer folders         | —                                                       |
-| Files and Folders             | Desktop, Documents, Downloads, removable and network volumes           | a system prompt on first access, one per place          |
-| Other apps' data              | the containers of other apps                                           | a system prompt on first access                         |
-| Full Disk Access              | all of the above, plus Mail, Messages, Safari and similar protected data | only by the user, in System Settings                  |
-| App Management                | changing or removing other apps' bundles                               | a system prompt, or System Settings                     |
-| Administrator                 | items owned by the system or another user                              | never taken by the app                                  |
+Which files each plan touches, so parallel plans stay apart:
 
-Each system prompt shows a reason string from the app's `Info.plist`; they are written in plain English in this plan.
-The exact behaviour of each prompt on macOS 13 to the current version is checked in the first step.
+| Plan | Owns (only this plan edits it during its wave)                                                           | Shared files it touches                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 01   | `NO_COMMIT/006-probes/`, the "Probe results" section of [`00-design.md`](./00-design.md)                 | —                                                                                                                       |
+| 02   | `crates/core/src/access.rs`, `crates/core/src/coverage.rs`, `crates/engine/src/access.rs`, `crates/engine/src/coverage.rs` | `crates/core/src/{lib,ports,walk,category,module,event,command,error}.rs`, `crates/core/src/settings/core_schema.rs` (with 005/01), `crates/core/locales/en.json`, `crates/engine/src/{engine,session,registry}.rs`, `crates/testing/src/{fakes,lib}.rs`, `crates/e2e/`, `fixtures/`, `app/tauri/src/{adapters,compose}.rs` (stand-ins), `bindings.generated.ts` (regenerated), `docs/hacks/README.md`, `Cargo.lock` |
+| 03   | `crates/macos/src/privacy/`, `app/tauri/src/access.rs`, `app/tauri/Info.plist`                           | `crates/macos/src/lib.rs`, `app/tauri/src/{adapters,compose,commands,shell,lib}.rs`, `app/tauri/build.rs`, `app/tauri/capabilities/default.json`, `app/ui/src/ipc/`, `bindings.generated.ts` (regenerated, never by hand), `docs/hacks/README.md` |
+| 04   | `app/ui/src/screens/access/` (the notices, the cards, the Permissions group)                             | `app/ui/src/state/`, the overview, module and settings screens of plan 003/005, `app/ui/src/gallery/`, the dictionary of `crates/core/locales/en.json` (texts only) |
+| 05   | `crates/core/src/removability.rs`, `docs/architecture/permissions.md`                                    | `crates/core/src/{lib,finding,error}.rs`, `crates/core/locales/en.json`, `crates/engine/src/{engine,session}.rs`, `app/tauri/src/{commands,lib}.rs`, `app/tauri/build.rs`, `app/tauri/capabilities/default.json`, `app/ui/src/ipc/`, the module page, `docs/architecture/{README,modules}.md`, `docs/restrictions/{privacy,deletion-safety}.md`, `docs/testing.md`, the version files |
 
-### Capabilities
-
-- The core has one enum, `Capability` (`FullDiskAccess`, `DesktopFolder`, …, `AppManagement`, `DockerCli`), and one
-  port, `AccessService`: the state of a capability is `Granted`, `Denied`, `NotAsked` or `NotApplicable`.
-- A module's descriptor says which capability each of its categories and actions needs, as required or as "sees more
-  with". The engine combines that with the current state; modules never check anything themselves.
-- `fresher-macos` implements the port. Checks are read-only and **never cause a prompt**: Full Disk Access is detected
-  by trying to read a file only it allows; the per-folder state is learnt from the scan's own errors, not by poking the
-  folder.
-- The state is re-checked when the window gains focus — the user may grant something in System Settings while the app is
-  open — and announced with `AccessChanged`.
-- An external tool counts as a capability too: Docker's sections need the Docker CLI and a running Docker.
-
-### What the user sees
-
-- **No wall of prompts at first launch.** A scan starts with what is already allowed.
-- When a scan could not see something, the result says what and why: "312 folders could not be read. Full Disk Access
-  lets Fresher see them." — with a button that opens the right pane of System Settings and a short "how".
-- A section or action that lacks its capability is visible but disabled, with one sentence on what is missing. Nothing
-  is silently absent.
-- Sizes affected by an unreadable folder are partial (`42 GB+`).
-- The Permissions group of [settings](../005-settings/readme.md) lists every capability, its state and what it unlocks.
-- No nagging: a reminder appears only next to the result it limits.
-
-### Privileges
-
-- **The app never runs as administrator**: no privileged helper, no password prompt, no `sudo`. A helper would be a
-  background component, against [`goal.md`](../../goal.md), section 8, and a root-level deleter is the largest risk the
-  product could carry.
-- An item that needs administrator rights is shown with its size and marked "needs an administrator"; the app gives the
-  exact Finder step or command for the user to run themselves. It is never selected for cleaning.
-- The app is not sandboxed (a sandboxed app cannot scan the disk), so it is distributed outside the Mac App Store,
-  signed and notarized.
-- Grants are tied to the app's signature: a stable signing identity is needed for releases, and development builds lose
-  their grants on rebuild — recorded in the developer docs.
-
-### Before a deletion
-
-The cleaner checks the capability for every item right before acting, next to its other re-checks
-([`restrictions/deletion-safety.md`](../../restrictions/deletion-safety.md)). An item it may not remove is skipped and
-reported with the reason; it never retries with more rights.
-
-### Testing
-
-`AccessService` has a fake in `fresher-testing`: every state of every capability is a test case, and the UI states are
-in the gallery. No test asks macOS for anything.
-
-## Plans (after approval)
-
-| #   | Plan                  | What                                                                              |
-| --- | --------------------- | --------------------------------------------------------------------------------- |
-| 01  | Probe the system      | throwaway probes in `NO_COMMIT/`: each prompt and check on the supported macOS versions |
-| 02  | Capability model      | the enum, the port, the fake, module declarations, the engine's combination       |
-| 03  | macOS implementation  | the checks, the focus re-check, opening System Settings, the reason strings       |
-| 04  | UI                    | the notices, disabled states, the Permissions group, the first-run explanation    |
-| 05  | Cleaner preflight     | the per-item check, "needs an administrator" items, the developer docs            |
-
-Depends on plan 002; the scan of plan [004](../004-fast-scan/readme.md) feeds it its errors. It can run in parallel with
-plans 003 and 004.
+The core types of 02/01 are frozen once that step is merged: a contract missing later stops the step that needs it, and
+the change goes into `crates/core` in the main session. `Cargo.lock` is never merged by hand: on a conflict take either
+side, regenerate it and run the checks.
 
 ## Ideas this touches
 
-[macOS specifics](../../ideas/architecture/macos.md) (proposed decision 12, Full Disk Access by probing),
-[scanning](../../ideas/architecture/scanning.md) (decision 11, errors by kind), the
-[smart uninstaller](../../ideas/smart-uninstaller.md) (App Management), the
-[external drive analyzer](../../ideas/external-drive-analyzer.md) (removable and network volumes), and "the exact
-command the user can run" from [best practices](../../ideas/best-practices.md).
+[macOS specifics](../../ideas/architecture/macos.md) (Full Disk Access by probing, re-check on focus),
+[scanning](../../ideas/architecture/scanning.md) (errors by kind, "312 folders could not be read"), the
+[smart uninstaller](../../ideas/smart-uninstaller.md) (App Management, left to its plan), the
+[external drive analyzer](../../ideas/external-drive-analyzer.md) (removable and network volumes as an opt-in), and
+honest sizes from [best practices](../../ideas/best-practices.md) (`42 GB+`).
 
-## Decisions
+## Acceptance
 
-None yet.
-
-## Agent's calls (to check)
-
-1. **No administrator rights, ever**: such items are shown with instructions, not cleaned.
-2. **No prompts at first launch**; a permission is offered only beside the result it limits.
-3. **Checks never trigger a prompt.**
-4. **Capabilities are declared by modules and resolved by the engine.**
-5. **External tools (the Docker CLI) are capabilities too.**
-6. **Not sandboxed; outside the Mac App Store.**
-7. **Target version 0.4.0.**
+- `npm run pre-push` passes on the branch's last commit; coverage stays at or above 90 %.
+- With every capability faked in every state, the engine's availability, coverage and refusals match the design; no
+  test asks macOS for anything or reads the real home folder.
+- A scan never enters a guarded place that is not granted or opted into; the result names what was not seen and why.
+- `Info.plist` holds exactly the five reason strings of the design and no other usage key.
+- By hand, on a real Mac (written in the conclusions): a first scan shows no system prompt; the Full Disk Access card
+  opens the right pane; granting it while the app is open updates the notices (or offers "Reopen Fresher", per plan
+  01); opting into Desktop prompts once, inside the next scan.
 
 ## Conclusions
 
-Not written yet.
+Not written yet for the plan: 01, 03, 04 and 05/02–05/03 are open.
+
+**Merged in part (2026-11-16)**: at the user's request ("merge everything and push"), the built parts — the capability
+model with the coverage of a scan (02/01–02/04) and the removability of findings with the walk's entry facts (05/01) —
+went into `main` on 2026-11-16 together with plan [008](../008-safe-removal/readme.md), which was built on top of
+them, in its squash-merge. The rest — the probes by the user (01), the macOS adapter and shell (03), the UI (04), and
+05/02–05/03 — continues on a new branch `feat/006-permissions` from `main`, squash-merged once when it is done
+([`../../workflow.md`](../../workflow.md)). The stand-ins behind `AccessProbe` and `SystemUi` stay in the app until 03
+replaces them ([`../../hacks/README.md`](../../hacks/README.md)).

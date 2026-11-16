@@ -9,12 +9,14 @@ import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import {
+  allFiles,
   BUSY,
   DEMO_DICTIONARY,
   DEMO_MODULES,
   DEMO_OVERVIEW,
   DEMO_SCAN,
   FIRST_BATCH,
+  FULL_COVERAGE,
   IDLE,
   SCAN_STARTED,
 } from '../../test/demo-scan';
@@ -25,12 +27,19 @@ const DICTIONARY = { ...DEMO_DICTIONARY, 'demo.error.failed': 'The demo folder v
 
 const PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
-  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: {
+    coverage: FULL_COVERAGE,
+    finished: 1_735_689_600,
+    kind: { kind: 'full' },
+    outcome: { kind: 'partial' },
+    scan: 1,
+  },
 };
 
 const FAILED: Overview = {
   ...IDLE,
   lastScan: {
+    coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'failed', reason: { args: {}, key: 'demo.error.failed' } },
@@ -48,7 +57,7 @@ const SCANNING: Overview = {
 
 const core = (answers: Partial<CoreAnswers> = {}, access: Access = 'granted'): void => {
   mockCore({
-    getAccessStatus: () => ({ fullDiskAccess: access }),
+    getAccessStatus: () => allFiles(access),
     getDictionary: () => DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,
@@ -123,7 +132,7 @@ describe('OverviewScreen', () => {
     });
 
     it.each<Access>(['granted', 'unknown'])('a %s access shows no permission card', async (access) => {
-      const probed = vi.fn(() => ({ fullDiskAccess: access }));
+      const probed = vi.fn(() => allFiles(access));
       core({ getAccessStatus: probed });
 
       await renderOverview();

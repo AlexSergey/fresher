@@ -1,6 +1,6 @@
 import { createContext, use, useSyncExternalStore } from 'react';
 
-import type { CategoryId, ModuleId } from '../ipc/bindings.generated';
+import type { CategoryId, CleanupId, ModuleId } from '../ipc/bindings.generated';
 
 export type Navigation = {
   readonly getScreen: () => Screen;
@@ -9,9 +9,12 @@ export type Navigation = {
 };
 
 // The screen the app shows; no router: the app frame renders the one that is current. A module's page may be opened
-// at one of its categories (from the overview's cards): the page scrolls to it and expands it.
+// at one of its categories (from the overview's cards): the page scrolls to it and expands it. `cleanups` is the
+// history of cleanups, `cleanup` one of them.
 export type Screen =
   | { readonly category?: CategoryId; readonly kind: 'module'; readonly module: ModuleId }
+  | { readonly cleanup: CleanupId; readonly kind: 'cleanup' }
+  | { readonly kind: 'cleanups' }
   | { readonly kind: 'overview' }
   | { readonly kind: 'review' }
   | { readonly kind: 'settings' };

@@ -49,6 +49,7 @@ export const findingOf = ({
   key: { identity: `/demo/${name}`, module: 'demo' },
   module: 'demo',
   reason: { args: {}, key: 'demo.finding.reason' },
+  removability: 'removable',
   removal: { kind: 'move-to-trash', value: `/demo/${name}` },
   sizes: sized(bytes),
   subject: { kind: 'path', value: `/demo/${name}` },

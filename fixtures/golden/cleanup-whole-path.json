@@ -1,0 +1,1036 @@
+{
+  "detail": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "index": 0,
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "~/home/sandbox/fresher-trial-cache",
+        "putBack": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1054720,
+          "reclaimable": 0
+        },
+        "trash": "in-trash"
+      },
+      {
+        "action": "empty",
+        "category": "trial.kept",
+        "danger": "low",
+        "index": 1,
+        "outcome": {
+          "kind": "emptied",
+          "moved": 2,
+          "skipped": 0
+        },
+        "path": "~/home/sandbox/fresher-trial-kept",
+        "putBack": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "build.folders",
+        "danger": "low",
+        "index": 2,
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "~/home/sandbox/fresher-e2e-build",
+        "putBack": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "trash": "in-trash"
+      }
+    ],
+    "summary": {
+      "cleanup": 1,
+      "count": 3,
+      "counts": {
+        "deleted": 0,
+        "emptied": 1,
+        "failed": 0,
+        "moved": 2,
+        "notReached": 0,
+        "skipped": 0,
+        "toolDone": 0,
+        "unknown": 0
+      },
+      "deleted": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      },
+      "ended": "completed",
+      "inTrash": 3,
+      "method": "trash",
+      "moved": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1062912,
+        "reclaimable": 0
+      },
+      "started": 1763200000
+    }
+  },
+  "detailAfterPutBack": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "index": 0,
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "~/home/sandbox/fresher-trial-cache",
+        "putBack": {
+          "kind": "put-back"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1054720,
+          "reclaimable": 0
+        },
+        "trash": null
+      },
+      {
+        "action": "empty",
+        "category": "trial.kept",
+        "danger": "low",
+        "index": 1,
+        "outcome": {
+          "kind": "emptied",
+          "moved": 2,
+          "skipped": 0
+        },
+        "path": "~/home/sandbox/fresher-trial-kept",
+        "putBack": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "build.folders",
+        "danger": "low",
+        "index": 2,
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "~/home/sandbox/fresher-e2e-build",
+        "putBack": null,
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "trash": "in-trash"
+      }
+    ],
+    "summary": {
+      "cleanup": 1,
+      "count": 3,
+      "counts": {
+        "deleted": 0,
+        "emptied": 1,
+        "failed": 0,
+        "moved": 2,
+        "notReached": 0,
+        "skipped": 0,
+        "toolDone": 0,
+        "unknown": 0
+      },
+      "deleted": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      },
+      "ended": "completed",
+      "inTrash": 2,
+      "method": "trash",
+      "moved": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1062912,
+        "reclaimable": 0
+      },
+      "started": 1763200000
+    }
+  },
+  "events": [
+    {
+      "cleanup": 1,
+      "method": "trash",
+      "total": 3,
+      "type": "cleanup-started"
+    },
+    {
+      "cleanup": 1,
+      "done": 3,
+      "items": [
+        {
+          "finding": 5,
+          "index": 0,
+          "outcome": {
+            "kind": "moved"
+          }
+        },
+        {
+          "finding": 6,
+          "index": 1,
+          "outcome": {
+            "kind": "emptied",
+            "moved": 2,
+            "skipped": 0
+          }
+        },
+        {
+          "finding": 3,
+          "index": 2,
+          "outcome": {
+            "kind": "moved"
+          }
+        }
+      ],
+      "type": "cleanup-items"
+    },
+    {
+      "findings": [
+        5,
+        6,
+        3,
+        4
+      ],
+      "scan": 1,
+      "type": "findings-removed"
+    },
+    {
+      "cleanup": 1,
+      "report": {
+        "counts": {
+          "deleted": 0,
+          "emptied": 1,
+          "failed": 0,
+          "moved": 2,
+          "notReached": 0,
+          "skipped": 0,
+          "toolDone": 0,
+          "unknown": 0
+        },
+        "deleted": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "ended": "completed",
+        "measured": null,
+        "method": "trash",
+        "moved": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1062912,
+          "reclaimable": 0
+        }
+      },
+      "type": "cleanup-finished"
+    }
+  ],
+  "findingsAfter": [
+    {
+      "category": "trial.caches",
+      "subject": "~/home/not-a-sandbox/fresher-trial-cache"
+    },
+    {
+      "category": "trial.caches",
+      "subject": "~/home/protected/fresher-trial-cache"
+    },
+    {
+      "category": "trial.tool",
+      "subject": "fresher-trial-tool: trial-object"
+    }
+  ],
+  "history": {
+    "blocked": null,
+    "cleanups": [
+      {
+        "cleanup": 1,
+        "count": 3,
+        "counts": {
+          "deleted": 0,
+          "emptied": 1,
+          "failed": 0,
+          "moved": 2,
+          "notReached": 0,
+          "skipped": 0,
+          "toolDone": 0,
+          "unknown": 0
+        },
+        "deleted": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "ended": "completed",
+        "inTrash": 3,
+        "method": "trash",
+        "moved": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1062912,
+          "reclaimable": 0
+        },
+        "started": 1763200000
+      }
+    ],
+    "offset": 0,
+    "total": 1,
+    "waiting": 0
+  },
+  "journal": [
+    {
+      "format": "cleanup-journal",
+      "version": 1
+    },
+    {
+      "at": 1763200000,
+      "cleanup": 1,
+      "items": [
+        {
+          "action": "remove",
+          "category": "trial.caches",
+          "danger": "safe",
+          "index": 0,
+          "key": "~/home/sandbox/fresher-trial-cache",
+          "path": "~/home/sandbox/fresher-trial-cache",
+          "reason": {
+            "args": {},
+            "key": "trial.rule.cache.reason"
+          },
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 1054720,
+            "reclaimable": 0
+          }
+        },
+        {
+          "action": "empty",
+          "category": "trial.kept",
+          "danger": "low",
+          "index": 1,
+          "key": "~/home/sandbox/fresher-trial-kept",
+          "path": "~/home/sandbox/fresher-trial-kept",
+          "reason": {
+            "args": {},
+            "key": "trial.rule.kept.reason"
+          },
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 8192,
+            "reclaimable": 0
+          }
+        },
+        {
+          "action": "remove",
+          "category": "build.folders",
+          "danger": "low",
+          "index": 2,
+          "key": "~/home/sandbox/fresher-e2e-build",
+          "path": "~/home/sandbox/fresher-e2e-build",
+          "reason": {
+            "args": {},
+            "key": "build.finding.reason"
+          },
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 0,
+            "reclaimable": 0
+          }
+        }
+      ],
+      "method": "trash",
+      "roots": [
+        "~/home"
+      ],
+      "space": [],
+      "type": "begin"
+    },
+    {
+      "cleanup": 1,
+      "index": 0,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/trash/0-fresher-trial-cache",
+          "original": "~/home/sandbox/fresher-trial-cache"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "cleanup": 1,
+      "index": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 2,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/trash/1-entry.bin",
+          "original": "~/home/sandbox/fresher-trial-kept/entry.bin"
+        },
+        {
+          "landed": "~/trash/2-link-out",
+          "original": "~/home/sandbox/fresher-trial-kept/link-out"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "cleanup": 1,
+      "index": 2,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/trash/3-fresher-e2e-build",
+          "original": "~/home/sandbox/fresher-e2e-build"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "at": 1763200000,
+      "cleanup": 1,
+      "ended": "completed",
+      "space": [],
+      "type": "end"
+    },
+    {
+      "at": 1763200000,
+      "cleanup": 1,
+      "index": 0,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    }
+  ],
+  "overviewAfter": {
+    "found": {
+      "allocated": 4096,
+      "completeness": "complete",
+      "logical": 12288,
+      "reclaimable": 4096
+    },
+    "lastScan": {
+      "changedSince": 1,
+      "coverage": {
+        "notEntered": [],
+        "unreadable": []
+      },
+      "finished": 1763200000,
+      "kind": {
+        "kind": "full"
+      },
+      "outcome": {
+        "kind": "completed"
+      },
+      "scan": 1
+    },
+    "status": {
+      "state": "idle"
+    },
+    "totals": [
+      {
+        "category": "trial.caches",
+        "count": 2,
+        "highestDanger": "safe",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "trial.tool",
+        "count": 1,
+        "highestDanger": "medium",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        }
+      }
+    ]
+  },
+  "plan": {
+    "groups": [
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "items": [
+          {
+            "danger": "safe",
+            "finding": 5,
+            "path": "~/home/sandbox/fresher-trial-cache",
+            "reason": {
+              "args": {},
+              "key": "trial.rule.cache.reason"
+            },
+            "sizes": {
+              "allocated": 0,
+              "completeness": "complete",
+              "logical": 1054720,
+              "reclaimable": 0
+            },
+            "title": {
+              "args": {
+                "name": {
+                  "kind": "text",
+                  "value": "fresher-trial-cache"
+                }
+              },
+              "key": "trial.rule.cache.title"
+            }
+          }
+        ],
+        "summary": {
+          "count": 1,
+          "highest": "safe",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 1054720,
+            "reclaimable": 0
+          }
+        }
+      },
+      {
+        "action": "empty",
+        "category": "trial.kept",
+        "items": [
+          {
+            "danger": "low",
+            "finding": 6,
+            "path": "~/home/sandbox/fresher-trial-kept",
+            "reason": {
+              "args": {},
+              "key": "trial.rule.kept.reason"
+            },
+            "sizes": {
+              "allocated": 0,
+              "completeness": "complete",
+              "logical": 8192,
+              "reclaimable": 0
+            },
+            "title": {
+              "args": {
+                "name": {
+                  "kind": "text",
+                  "value": "fresher-trial-kept"
+                }
+              },
+              "key": "trial.rule.kept.title"
+            }
+          }
+        ],
+        "summary": {
+          "count": 1,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 8192,
+            "reclaimable": 0
+          }
+        }
+      },
+      {
+        "action": "remove",
+        "category": "build.folders",
+        "items": [
+          {
+            "danger": "low",
+            "finding": 3,
+            "path": "~/home/sandbox/fresher-e2e-build",
+            "reason": {
+              "args": {},
+              "key": "build.finding.reason"
+            },
+            "sizes": {
+              "allocated": 0,
+              "completeness": "complete",
+              "logical": 0,
+              "reclaimable": 0
+            },
+            "title": {
+              "args": {},
+              "key": "build.finding.title"
+            }
+          }
+        ],
+        "summary": {
+          "count": 1,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 0,
+            "reclaimable": 0
+          }
+        }
+      }
+    ],
+    "leftOut": [
+      {
+        "finding": 1,
+        "reason": {
+          "kind": "not-in-sandbox"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "fresher-trial-cache"
+            }
+          },
+          "key": "trial.rule.cache.title"
+        }
+      },
+      {
+        "finding": 2,
+        "reason": {
+          "kind": "not-in-sandbox"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "fresher-trial-cache"
+            }
+          },
+          "key": "trial.rule.cache.title"
+        }
+      },
+      {
+        "finding": 4,
+        "reason": {
+          "kind": "covered"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "fresher-trial-cache"
+            }
+          },
+          "key": "trial.rule.cache.title"
+        }
+      },
+      {
+        "finding": 7,
+        "reason": {
+          "kind": "not-in-sandbox"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "trial-object"
+            }
+          },
+          "key": "trial.object.title"
+        }
+      }
+    ],
+    "permanentAvailable": true,
+    "plan": 1,
+    "summary": {
+      "count": 3,
+      "highest": "low",
+      "irreversible": 0,
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1062912,
+        "reclaimable": 0
+      }
+    }
+  },
+  "putBack": {
+    "items": [
+      {
+        "index": 0,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      }
+    ]
+  },
+  "putBackAgain": {
+    "items": [
+      {
+        "index": 0,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      }
+    ]
+  },
+  "treeAfterCleanup": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/not-a-sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 64,
+        "path": "home/not-a-sandbox/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/not-a-sandbox/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/not-a-sandbox/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/shared.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/protected"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/protected/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/protected/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/protected/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/sandbox/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-kept"
+      },
+      {
+        "kind": "file",
+        "logical_size": 512,
+        "path": "home/sandbox/keep-me.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "outside"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "outside/target.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/0-fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "trash/0-fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/0-fresher-trial-cache/nested"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "trash/0-fresher-trial-cache/nested/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "trash/0-fresher-trial-cache/shared.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "trash/1-entry.bin"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "trash/2-link-out"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/3-fresher-e2e-build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "trash/3-fresher-e2e-build/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/3-fresher-e2e-build/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "trash/3-fresher-e2e-build/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16384,
+        "path": "trash/3-fresher-e2e-build/object.o"
+      }
+    ],
+    "total_logical_size": 1098553
+  },
+  "treeAfterPutBack": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/not-a-sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 64,
+        "path": "home/not-a-sandbox/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/not-a-sandbox/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/not-a-sandbox/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/shared.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/protected"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/protected/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/protected/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/protected/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/sandbox/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/sandbox/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-cache/nested"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "home/sandbox/fresher-trial-cache/nested/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/sandbox/fresher-trial-cache/shared.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-kept"
+      },
+      {
+        "kind": "file",
+        "logical_size": 512,
+        "path": "home/sandbox/keep-me.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "outside"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "outside/target.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "trash/1-entry.bin"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "trash/2-link-out"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/3-fresher-e2e-build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "trash/3-fresher-e2e-build/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/3-fresher-e2e-build/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "trash/3-fresher-e2e-build/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16384,
+        "path": "trash/3-fresher-e2e-build/object.o"
+      }
+    ],
+    "total_logical_size": 1098553
+  }
+}

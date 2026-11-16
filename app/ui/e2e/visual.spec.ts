@@ -1,6 +1,8 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { PLAN_GONE } from '../src/test/cleanup-plan';
 import { type CoreScript, mockCore, SCRIPTS } from './core-mock';
+import { requestQuit } from './support/cleanup-mock';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { motionOff } from './support/motion';
 
@@ -25,6 +27,24 @@ const scan = async (page: Page, found: string): Promise<void> => {
 const go = async (page: Page, nav: RegExp | string, heading: string): Promise<void> => {
   await page.getByRole('button', { name: nav }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: heading })).toBeFocused();
+};
+
+// Ticks both categories of the demo scan and opens the review.
+const reviewAll = async (page: Page, script: CoreScript): Promise<void> => {
+  await open(page, script);
+  await scan(page, '2.6 GB');
+  await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
+  await page.getByRole('checkbox', { name: 'Select Example downloads' }).check();
+  await go(page, /^Review/, 'Review');
+};
+
+const confirmation = async (page: Page, script: CoreScript): Promise<Locator> => {
+  await reviewAll(page, script);
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  return dialog;
 };
 
 const looksTheSame = async (page: Page, name: string): Promise<void> => {
@@ -128,6 +148,113 @@ test.describe('positive cases', () => {
       await expect(page.getByText('Nothing is selected')).toBeVisible();
 
       await looksTheSame(page, 'review-empty.png');
+    });
+  });
+
+  test.describe('cleanup', () => {
+    test('the confirmation', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaning);
+      await expect(dialog).toHaveAccessibleName('Move 3 items to the Trash?');
+
+      await looksTheSame(page, 'cleanup-confirm.png');
+    });
+
+    test('the confirmation, permanent', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaning);
+      await dialog.getByRole('checkbox', { name: /^Delete permanently instead/ }).check();
+      await expect(dialog.getByRole('button', { name: 'Delete permanently' })).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-confirm-permanent.png');
+    });
+
+    test('the confirmation with an item left out', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaningLeftOut);
+      const leftOut = dialog.getByRole('region', { name: 'These will not be removed' });
+      await leftOut.scrollIntoViewIfNeeded();
+      await expect(leftOut).toContainText('Quit Safari and try again.');
+
+      await looksTheSame(page, 'cleanup-confirm-left-out.png');
+    });
+
+    test('a refused confirmation', async ({ page }) => {
+      const dialog = await confirmation(page, {
+        ...SCRIPTS.cleaning,
+        refusals: { confirmCleanup: PLAN_GONE },
+      });
+      await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+      await expect(page.getByRole('alert')).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-refused.png');
+    });
+
+    test('the progress', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaningHeld);
+      await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+      await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-progress.png');
+    });
+
+    test('the quit question', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaningHeld);
+      await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+      await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
+      await requestQuit(page);
+      await expect(page.getByRole('button', { name: 'Keep cleaning' })).toBeFocused();
+
+      await looksTheSame(page, 'cleanup-quit.png');
+    });
+
+    test('the result of a move to the Trash', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaning);
+      await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+      await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-result.png');
+    });
+
+    test('the result of a stopped cleanup', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaningHeld);
+      await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('button', { name: 'Stop' }).click();
+      await expect(page.getByText('Stopped. 2 items were not touched.')).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-result-stopped.png');
+    });
+
+    test('the cleanups', async ({ page }) => {
+      await open(page, SCRIPTS.cleaning);
+      await go(page, 'Cleanups', 'Cleanups');
+      await expect(page.getByText('Waiting in the Trash from cleanups: 4.1 GB')).toBeVisible();
+
+      await looksTheSame(page, 'cleanups.png');
+    });
+
+    test('no cleanup yet', async ({ page }) => {
+      await open(page, SCRIPTS.cleanupsEmpty);
+      await go(page, 'Cleanups', 'Cleanups');
+      await expect(page.getByText('Nothing cleaned yet')).toBeVisible();
+
+      await looksTheSame(page, 'cleanups-empty.png');
+    });
+
+    test('one cleanup', async ({ page }) => {
+      await open(page, SCRIPTS.cleaning);
+      await go(page, 'Cleanups', 'Cleanups');
+      await page.getByRole('button', { name: /^Cleanup of Jan 2, 2025/ }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Cleanup of Jan 2, 2025' })).toBeFocused();
+      await expect(page.getByRole('list', { name: 'The items of this cleanup' })).toContainText('editor-cache');
+
+      await looksTheSame(page, 'cleanup-detail.png');
+    });
+
+    test('a cleanup Fresher quit during', async ({ page }) => {
+      await open(page, SCRIPTS.cleaning);
+      await go(page, 'Cleanups', 'Cleanups');
+      await page.getByRole('button', { name: /^Cleanup of Dec 31, 2024/ }).click();
+      await expect(page.getByText(/Items marked Unknown may be in the Trash/)).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-detail-interrupted.png');
     });
   });
 

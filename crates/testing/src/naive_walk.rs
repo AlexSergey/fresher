@@ -11,6 +11,7 @@ use fresher_core::{
 };
 
 use crate::FixedDiskState;
+use crate::entry_facts::entry_facts;
 use crate::fakes::lock;
 
 /// A size nothing is known of: a folder not read.
@@ -23,6 +24,7 @@ const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZE
 ///
 /// `Full` and `Auto` both walk the disk (always a full scan); there is no cache, so `Restore` has nothing to restore.
 /// `commit` returns a [`FixedDiskState`] of the folders of the last walk, with their sizes; files are not kept.
+/// Each match carries the facts of its entry, read for the owner of the home folder (see `entry_facts.rs`).
 #[derive(Debug)]
 pub struct NaiveWalk {
     home: PathBuf,
@@ -58,6 +60,7 @@ impl DiskWalk for NaiveWalk {
         }
         let mut walker = Walker {
             home: &self.home,
+            user: fs::metadata(&self.home).ok().map(|home| home.uid()),
             request,
             cancel,
             on_match,
@@ -100,6 +103,8 @@ impl DiskWalk for NaiveWalk {
 
 struct Walker<'a> {
     home: &'a Path,
+    /// The owner of the home folder: the user the facts of an entry are read for.
+    user: Option<u32>,
     request: &'a WalkRequest<'a>,
     cancel: &'a CancelToken,
     on_match: &'a mut dyn FnMut(Match),
@@ -192,6 +197,7 @@ impl Walker<'_> {
                 modified: metadata.modified().ok().map(Timestamp::from_system_time),
                 siblings: present_siblings(interest, path),
                 marker: marker_check(interest.pattern(), path),
+                facts: entry_facts(path, metadata, kind, self.user),
             });
         }
         claimed_whole

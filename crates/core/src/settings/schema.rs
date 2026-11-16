@@ -268,7 +268,19 @@ mod tests {
             let schema = schema();
             let keys: Vec<_> = schema.descriptors().iter().map(|setting| setting.key().as_str()).collect();
 
-            assert_eq!(keys, ["core.scan.roots", "demo.enabled", "demo.min-age", "demo.mode"]);
+            assert_eq!(
+                keys,
+                [
+                    "core.scan.roots",
+                    "core.access.desktop",
+                    "core.access.documents",
+                    "core.access.downloads",
+                    "core.access.other-apps-data",
+                    "demo.enabled",
+                    "demo.min-age",
+                    "demo.mode"
+                ]
+            );
             assert_eq!(schema.get("demo.enabled").map(SettingDescriptor::default), Some(&SettingValue::Switch(true)));
         }
 

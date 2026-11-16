@@ -17,6 +17,8 @@ fixtures = []
 [dependencies]
 fresher-core = { path = "../core" }
 libc.workspace = true
+objc2.workspace = true
+objc2-foundation = { workspace = true, features = ["NSError", "NSFileManager", "NSString", "NSURL"] }
 thiserror.workspace = true
 tracing.workspace = true
 

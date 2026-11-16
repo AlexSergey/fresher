@@ -1,0 +1,19 @@
+[package]
+name = "fresher-module-trial"
+description = "The trial module of Fresher: claims folders made only to try a cleanup in a sandbox; development builds only."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+fresher-core = { path = "../../crates/core" }
+fresher-rules = { path = "../../crates/rules" }
+thiserror.workspace = true
+
+[dev-dependencies]
+fresher-testing = { path = "../../crates/testing" }

@@ -4,7 +4,7 @@
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
  */
-export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, };
+export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
 
 /**
  * A refused command as the UI receives it: the error, and the text to show for it, built by `CommandError::text()`.
@@ -16,7 +16,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "internal" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" };
 
 /**
  * The answer of `get_overview`.
@@ -30,7 +30,7 @@ found: Sizes, };
 /**
  * What the engine is doing.
  */
-export type EngineStatus = { "state": "idle" } | { "state": "scanning", scan: ScanId, } | { "state": "cleaning" };
+export type EngineStatus = { "state": "idle" } | { "state": "scanning", scan: ScanId, } | { "state": "cleaning", cleanup: CleanupId, };
 
 /**
  * A long operation of the engine; only one runs at a time.
@@ -40,7 +40,34 @@ export type Operation = "scan" | "clean";
 /**
  * The scan whose findings the engine holds.
  */
-export type LastScan = { scan: ScanId, finished: Timestamp, outcome: ScanOutcome, kind: ScanKind, };
+export type LastScan = { scan: ScanId, finished: Timestamp, outcome: ScanOutcome, kind: ScanKind, coverage: Coverage, 
+/**
+ * The cleanup that changed the disk since this scan, if one did: the scan's tree is out of date.
+ */
+changedSince?: CleanupId, };
+
+/**
+ * How much of the scan roots one scan saw.
+ */
+export type Coverage = { 
+/**
+ * The guarded places the scan did not enter, once per capability.
+ */
+notEntered: Array<NotEntered>, 
+/**
+ * The folders that could not be read, counted by why.
+ */
+unreadable: Array<UnreadableCount>, };
+
+/**
+ * Places guarded by `capability` that the scan did not enter, with the capability's state that kept it out.
+ */
+export type NotEntered = { capability: Capability, access: Access, };
+
+/**
+ * How many folders could not be read for one reason, and the capability that would let the app read them, if any.
+ */
+export type UnreadableCount = { reason: Unreadable, folders: number, unlockedBy: Capability | null, };
 
 /**
  * The findings of one category in the last scan.
@@ -50,11 +77,21 @@ export type CategoryTotal = { category: CategoryId, count: number, sizes: Sizes,
 /**
  * A module as the UI sees it: what the generic module page renders.
  */
-export type ModuleInfo = { id: ModuleId, categories: Array<CategoryDescriptor>, 
+export type ModuleInfo = { id: ModuleId, categories: Array<CategoryInfo>, 
 /**
  * Its settings' keys, `<module>.enabled` first.
  */
 settings: Array<SettingKey>, };
+
+/**
+ * A category and what it can do with the current access.
+ */
+export type CategoryInfo = { descriptor: CategoryDescriptor, availability: Availability, };
+
+/**
+ * What a category can do with the current access.
+ */
+export type Availability = { "kind": "ready" } | { "kind": "limited", missing: Array<Capability>, } | { "kind": "unavailable", missing: Array<Capability>, };
 
 /**
  * The input of `get_findings`: a page of the last scan's findings, optionally of one module or category.
@@ -76,10 +113,10 @@ export type FindingsPage = { findings: Array<Finding>, offset: number,
 total: number, };
 
 /**
- * A finding the engine published, with the id the UI names it by in this session. It serializes flat: the id and
- * the module next to the fields of the module's finding.
+ * A finding the engine published, with the id the UI names it by in this session and whether the app can remove
+ * it. It serializes flat: the id, the module and the removability next to the fields of the module's finding.
  */
-export type Finding = { id: FindingId, module: ModuleId, key: FindingKey, category: CategoryId, subject: Subject, sizes: Sizes, danger: DangerLevel, title: Text, reason: Text, removal: Removal, };
+export type Finding = { id: FindingId, module: ModuleId, removability: Removability, key: FindingKey, category: CategoryId, subject: Subject, sizes: Sizes, danger: DangerLevel, title: Text, reason: Text, removal: Removal, };
 
 /**
  * The id of a finding in one session, assigned by the engine: the UI's only handle on it.
@@ -95,6 +132,11 @@ export type FindingKey = { module: ModuleId, identity: string, };
  * The thing a finding is about: a file or folder, or an object of an external tool (a Docker image).
  */
 export type Subject = { "kind": "path", "value": string } | { "kind": "external", "value": { tool: ToolId, id: string, } };
+
+/**
+ * Whether the app can remove an item, and if not, what stands in the way.
+ */
+export type Removability = "removable" | "needs-administrator" | "locked" | "protected-by-system";
 
 /**
  * How the cleaner removes a finding once the user confirmed it.
@@ -114,7 +156,11 @@ export type ToolId = string;
 /**
  * A category every finding belongs to; the floor of its findings' danger level.
  */
-export type CategoryDescriptor = { id: CategoryId, danger: DangerLevel, };
+export type CategoryDescriptor = { id: CategoryId, danger: DangerLevel, 
+/**
+ * The capabilities it needs to be found, or to be found whole.
+ */
+needs: Array<Need>, };
 
 /**
  * The id of a category: `<module>.<name>`, both kebab-case (`demo.caches`).
@@ -134,7 +180,7 @@ export type ScanId = number;
 /**
  * How one module's part of a scan ended.
  */
-export type ModuleOutcome = { "kind": "completed" } | { "kind": "failed", reason: Text, } | { "kind": "cancelled" };
+export type ModuleOutcome = { "kind": "completed" } | { "kind": "failed", reason: Text, } | { "kind": "cancelled" } | { "kind": "unavailable", missing: Array<Capability>, };
 
 /**
  * How a scan ended.
@@ -254,18 +300,45 @@ export type TextKey = string;
 export type TextArg = { "kind": "text", "value": string } | { "kind": "count", "value": number } | { "kind": "size", "value": ByteSize } | { "kind": "date", "value": Timestamp } | { "kind": "path", "value": string };
 
 /**
- * What the app may read.
+ * What the app may see and do: every capability this system has, with its state.
  */
-export type AccessStatus = { 
-/**
- * Full Disk Access: without it the protected folders of the home folder are unreadable.
- */
-fullDiskAccess: Access, };
+export type AccessStatus = { capabilities: Array<CapabilityState>, };
 
 /**
- * One permission: granted, denied, or not known (the probe could not tell).
+ * One capability and its state, with a plain-English detail when the state needs one ("Docker is installed but not
+ * running").
  */
-export type Access = "granted" | "denied" | "unknown";
+export type CapabilityState = { capability: Capability, access: Access, note: Text | null, };
+
+/**
+ * Something the app may be allowed to do.
+ */
+export type Capability = { "kind": "all-files" } | { "kind": "folder", "value": GuardedFolder } | { "kind": "other-apps-data" } | { "kind": "volume", "value": VolumeKind } | { "kind": "tool", "value": ToolId };
+
+/**
+ * A folder of the user's that the system guards.
+ */
+export type GuardedFolder = "desktop" | "documents" | "downloads";
+
+/**
+ * A volume the system guards.
+ */
+export type VolumeKind = "removable" | "network";
+
+/**
+ * The state of one capability.
+ */
+export type Access = "granted" | "denied" | "not-asked" | "unknown" | "not-applicable";
+
+/**
+ * What a category needs.
+ */
+export type Need = { capability: Capability, kind: NeedKind, };
+
+/**
+ * How much a category depends on a capability.
+ */
+export type NeedKind = "required" | "sees-more";
 
 /**
  * One node as the UI sees it.
@@ -343,3 +416,226 @@ export type UnreadablePlace = { node: NodeInfo, reason: NotScanned,
  * The folders under it that were not scanned with it.
  */
 hiddenFolders: number, };
+
+/**
+ * What the user picked for removal, as the UI sends it: ids only, never a path.
+ */
+export type CleanupSelection = { findings: Array<FindingId>, categories: Array<CategoryPick>, };
+
+/**
+ * A whole category picked for removal, minus `except`.
+ */
+export type CategoryPick = { category: string, except: Array<FindingId>, };
+
+/**
+ * The answer of `prepare_cleanup`: the plan exactly as the confirmation shows it.
+ */
+export type CleanupPlanView = { plan: PlanId, 
+/**
+ * What the user confirms, and what the confirmation sends back.
+ */
+summary: PlanSummary, 
+/**
+ * The items by category and by how they go, in the order they are acted on.
+ */
+groups: Array<PlanGroup>, 
+/**
+ * What will not be removed, each with its reason; not in the summary.
+ */
+leftOut: Array<LeftOut>, 
+/**
+ * Whether the permanent choice applies to any item (a tool's items go the same way either way).
+ */
+permanentAvailable: boolean, };
+
+/**
+ * The id of a plan in one session, assigned by the engine; one plan is pending at a time.
+ */
+export type PlanId = number;
+
+/**
+ * What the user confirms: how many items, their sizes, the highest danger level among them, and how many a tool
+ * removes (never put back).
+ */
+export type PlanSummary = { count: number, sizes: Sizes, highest: DangerLevel, irreversible: number, };
+
+/**
+ * The items of one category that go the same way.
+ */
+export type PlanGroup = { category: CategoryId, action: ActionKind, summary: PlanSummary, items: Array<PlanItemView>, };
+
+/**
+ * The kind of an action, without what it acts on.
+ */
+export type ActionKind = "remove" | "empty" | "tool";
+
+/**
+ * One item as the confirmation lists it.
+ */
+export type PlanItemView = { finding: FindingId, title: Text, reason: Text, danger: DangerLevel, sizes: Sizes, 
+/**
+ * Where it is, to show; `None` for a tool's item.
+ */
+path: string | null, };
+
+/**
+ * A finding of the selection that will not be removed, and why; shown under "These will not be removed".
+ */
+export type LeftOut = { finding: FindingId, title: Text, reason: SkipReason, };
+
+/**
+ * Why an item is left out of a plan or skipped by the cleaner: every check that can fail, each with its text.
+ */
+export type SkipReason = { "kind": "not-in-sandbox" } | { "kind": "outside-roots" } | { "kind": "protected" } | { "kind": "whole-folder" } | { "kind": "ignored" } | { "kind": "through-link" } | { "kind": "vanished" } | { "kind": "other-volume" } | { "kind": "replaced" } | { "kind": "kind-changed" } | { "kind": "not-removable", removability: Removability, } | { "kind": "missing-capability", capability: Capability, } | { "kind": "in-use", app: string, } | { "kind": "grown" } | { "kind": "no-trash" } | { "kind": "covered" } | { "kind": "not-the-subject" } | { "kind": "forced-tool" } | { "kind": "check-failed" };
+
+/**
+ * What the confirmation showed the user, sent back by the UI with the plan's id: the count, the allocated bytes of
+ * the total, the highest danger level, and the method the user chose. Only deserialized, never built in code.
+ */
+export type Confirmation = { plan: PlanId, count: number, allocated: ByteSize, highest: DangerLevel, method: Method, };
+
+/**
+ * How the items of a plan leave their place, chosen once for the whole plan in the confirmation.
+ */
+export type Method = "trash" | "permanent";
+
+/**
+ * The id of a cleanup, stable across sessions: its sequence number in the cleanup journal.
+ */
+export type CleanupId = number;
+
+/**
+ * One item's outcome as the events carry it: its index in the plan and its finding.
+ */
+export type ItemReport = { index: number, finding: FindingId, outcome: ItemOutcome, };
+
+/**
+ * How one item of a cleanup ended, as the events and the report carry it.
+ */
+export type ItemOutcome = { "kind": "moved" } | { "kind": "emptied", moved: number, skipped: number, } | { "kind": "deleted" } | { "kind": "tool-done" } | { "kind": "skipped", reason: SkipReason, } | { "kind": "failed", reason: Text, } | { "kind": "not-reached" };
+
+/**
+ * What a cleanup did: how it ended, the items by outcome, the sizes moved to the Trash and deleted (estimates from
+ * the plan), and the space measured on the volumes (`None` when a volume could not be read).
+ */
+export type CleanupReport = { method: Method, ended: Ended, counts: OutcomeCounts, moved: Sizes, deleted: Sizes, measured: ByteSize | null, };
+
+/**
+ * How a cleanup ended.
+ */
+export type Ended = "completed" | "cancelled" | "stopped" | "interrupted";
+
+/**
+ * How many items ended each way.
+ */
+export type OutcomeCounts = { moved: number, emptied: number, deleted: number, toolDone: number, skipped: number, failed: number, notReached: number, 
+/**
+ * Only in the history: items a crash left without an outcome.
+ */
+unknown: number, };
+
+/**
+ * Why no cleanup can start: the whole command is refused before any item (fail closed).
+ */
+export type BlockedReason = "settings" | "journal" | "disk-full" | "open-files";
+
+/**
+ * The input of `get_cleanups`: a page of the history, newest first.
+ */
+export type CleanupsQuery = { offset: number, limit: number, };
+
+/**
+ * The answer of `get_cleanups`.
+ */
+export type CleanupsPage = { cleanups: Array<CleanupSummary>, offset: number, 
+/**
+ * How many cleanups the history holds.
+ */
+total: number, 
+/**
+ * The sizes of every item of every cleanup still in the Trash: "Waiting in the Trash from cleanups".
+ */
+waiting: ByteSize, 
+/**
+ * Why no new cleanup can be recorded now, when the journal is read-only; the history is still shown.
+ */
+blocked: BlockedReason | null, };
+
+/**
+ * One cleanup of the history.
+ */
+export type CleanupSummary = { cleanup: CleanupId, started: Timestamp, method: Method, ended: Ended, 
+/**
+ * How many items it had.
+ */
+count: number, counts: OutcomeCounts, moved: Sizes, deleted: Sizes, 
+/**
+ * How many of its items are still in the Trash.
+ */
+inTrash: number, };
+
+/**
+ * The answer of `get_cleanup`: one cleanup with every item.
+ */
+export type CleanupDetail = { summary: CleanupSummary, items: Array<CleanupItemView>, };
+
+/**
+ * One item of a past cleanup.
+ */
+export type CleanupItemView = { 
+/**
+ * Its place in the cleanup: what `put_back` and `reveal_in_trash` name it by.
+ */
+index: number, 
+/**
+ * Where it was, to show; `None` for a tool's item.
+ */
+path: string | null, category: string, danger: DangerLevel, sizes: Sizes, action: ActionKind, outcome: RecordedOutcome, 
+/**
+ * Where it is now, for an item moved to the Trash.
+ */
+trash: TrashState | null, 
+/**
+ * How the last attempt to put it back ended, if there was one.
+ */
+putBack: PutBackOutcome | null, };
+
+/**
+ * How an item ended, as the journal keeps it and the history shows it.
+ */
+export type RecordedOutcome = { "kind": "moved" } | { "kind": "emptied", moved: number, skipped: number, } | { "kind": "deleted" } | { "kind": "tool-done" } | { "kind": "skipped", reason: SkipCode, } | { "kind": "failed", status: number | null, } | { "kind": "not-reached" } | { "kind": "unknown" };
+
+/**
+ * A skip reason without its details: what the journal keeps and the history shows.
+ */
+export type SkipCode = "not-in-sandbox" | "outside-roots" | "protected" | "whole-folder" | "ignored" | "through-link" | "vanished" | "other-volume" | "replaced" | "kind-changed" | "not-removable" | "missing-capability" | "in-use" | "grown" | "no-trash" | "covered" | "not-the-subject" | "forced-tool" | "check-failed";
+
+/**
+ * Where an item moved to the Trash is now.
+ */
+export type TrashState = "in-trash" | "gone" | "replaced";
+
+/**
+ * The input of `put_back`: items of one cleanup, or (`None`) every item of it still in the Trash.
+ */
+export type PutBackRequest = { cleanup: CleanupId, items: Array<number> | null, };
+
+/**
+ * One item of a past cleanup, as `reveal_in_trash` names it.
+ */
+export type CleanupItemRef = { cleanup: CleanupId, item: number, };
+
+/**
+ * The answer of `put_back`: how each item ended.
+ */
+export type PutBackReport = { items: Array<PutBackItem>, };
+
+/**
+ * How putting one item back ended, with its text.
+ */
+export type PutBackItem = { index: number, outcome: PutBackOutcome, text: Text, };
+
+/**
+ * How putting an item back ended. Put back never replaces anything.
+ */
+export type PutBackOutcome = { "kind": "put-back" } | { "kind": "not-trashed" } | { "kind": "gone" } | { "kind": "replaced" } | { "kind": "occupied" } | { "kind": "no-parent" } | { "kind": "refused", reason: SkipCode, } | { "kind": "failed" };

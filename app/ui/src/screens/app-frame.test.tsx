@@ -1,10 +1,10 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ModuleInfo } from '../ipc/bindings.generated';
 import type { CoreAnswers } from '../ipc/mock';
 
-import { mockCore, refuse } from '../ipc/mock';
+import { mockCore, pushEvents, refuse } from '../ipc/mock';
 import { requestScan } from '../state/connect';
 import { createNavigation, type Navigation } from '../state/navigation';
 import { type CoreStore, createCoreStore } from '../state/store';
@@ -55,8 +55,34 @@ afterEach(async () => {
   await setMotion(null);
 });
 
+const QUIT = 'A cleanup is running. Stop after the current item and quit?';
+
+const askToQuit = async (): Promise<HTMLElement> => {
+  act(() => {
+    pushEvents({ type: 'quit-requested' });
+  });
+
+  return screen.findByRole('dialog', { name: QUIT });
+};
+
 describe('AppFrame', () => {
   describe('negative cases', () => {
+    it('keep cleaning has the first focus and changes nothing', async () => {
+      const quitAfterCleanup = vi.fn(() => null);
+      core({ quitAfterCleanup });
+      const { store } = await renderFrame();
+      await askToQuit();
+
+      const keep = screen.getByRole('button', { name: 'Keep cleaning' });
+      expect(keep).toHaveFocus();
+
+      fireEvent.click(keep);
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(store.getState().quitAsked).toBe(false);
+      expect(quitAfterCleanup).not.toHaveBeenCalled();
+    });
+
     it('a module the core does not list has no nav item', async () => {
       core();
       const navigation = createNavigation();
@@ -64,7 +90,7 @@ describe('AppFrame', () => {
 
       await renderFrame(navigation);
 
-      expect(navItems()).toStrictEqual(['Overview', 'Demo module—', 'Review', 'Settings']);
+      expect(navItems()).toStrictEqual(['Overview', 'Demo module—', 'Review', 'Cleanups', 'Settings']);
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Overview');
     });
 
@@ -112,6 +138,20 @@ describe('AppFrame', () => {
   });
 
   describe('positive cases', () => {
+    it('stop and quit asks the core', async () => {
+      const quitAfterCleanup = vi.fn(() => null);
+      core({ quitAfterCleanup });
+      await renderFrame();
+      await askToQuit();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Stop and quit' }));
+
+      await vi.waitFor(() => {
+        expect(quitAfterCleanup).toHaveBeenCalledOnce();
+      });
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
     it('the nav items follow getModules in order', async () => {
       const second: ModuleInfo = { categories: [], id: 'logs', settings: ['logs.enabled'] };
       core({

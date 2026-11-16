@@ -1,0 +1,42 @@
+/* The history of cleanups and one cleanup: a column of the content's width, nothing here moves. */
+@layer components {
+  .content {
+    display: grid;
+    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-10);
+    gap: var(--space-5);
+  }
+
+  .waiting {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .waitingSize {
+    color: var(--text-primary);
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .note {
+    color: var(--text-secondary);
+  }
+
+  .list {
+    display: grid;
+    padding: var(--space-1);
+    margin: 0;
+  }
+
+  .more,
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .long {
+    height: 440px;
+  }
+}

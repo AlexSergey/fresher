@@ -60,21 +60,50 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **What:** the app's scanner has a standing avoid list: the home folder's places whose opening may raise a system
   prompt (Desktop, Documents, Downloads, Pictures, Movies, Music, `Library/Containers`, `Library/Group Containers`,
   `Library/Mobile Documents`, `Library/CloudStorage`, `Library/Calendars`, the address book folder). It is added to
-  every walk request's own `avoid` (the engine's request carries none yet); each place is reported as not scanned.
+  every walk request's own `avoid` (the engine's request carries only the guarded places the access probe names: none
+  until plan 006/03); each place is reported as not scanned.
 - **Where:** `crates/macos/src/places.rs` (`places_that_prompt`), `app/tauri/src/compose.rs`
   (`ScannerOptions::standing_avoid`).
 - **Why:** a first scan must not raise a wall of system prompts; which places to open is decided by plan 006 with the
   capability state, which then feeds the request's `avoid` and the standing list goes.
 - **If cleaned up:** removing the list before plan 006 makes the first scan raise a prompt for each protected folder.
 
-## Access answers Unknown until plan 006
+## Access answers Unknown until plan 006/03
 
-- **What:** `UnknownAccess` answers `Unknown` for Full Disk Access, whatever macOS says.
+- **What:** `UnknownAccess` answers `Unknown` for Full Disk Access and `NotAsked` for every other permission, knows
+  no guarded place and never tries one, whatever macOS says.
 - **Where:** `app/tauri/src/adapters.rs` (`UnknownAccess`), `app/tauri/src/compose.rs`.
-- **Why:** asking macOS needs the FFI module of `fresher-macos` (plans 004/02 and 006); the UI must not claim access
-  it cannot check.
+- **Why:** asking macOS needs `fresher-macos::privacy` (plan 006/03); the UI must not claim access it cannot check.
 - **If cleaned up:** answering `Granted` or `Denied` without a probe shows the user a permission state that is not
   true.
+
+## No system interface until plan 006/03
+
+- **What:** `NoSystemUi` answers `Unsupported` to every call: the app cannot open System Settings or show a file in
+  Finder yet, so `open_access_settings` is refused with `no-settings-pane` and `reveal_in_trash` with `internal`.
+- **Where:** `app/tauri/src/adapters.rs` (`NoSystemUi`), `app/tauri/src/compose.rs`.
+- **Why:** opening a settings pane with `/usr/bin/open` and the pane addresses measured per macOS version are plan
+  006/03; until then the engine's `SystemUi` port needs an implementation.
+- **If cleaned up:** removing it leaves the engine without its `SystemUi` port; a guessed pane address could open the
+  wrong pane.
+
+## Development builds clean only in a sandbox folder
+
+- **What:** the app's cleaner gets `Reach::Sandbox` in every debug build and in the app's tests: it removes an item
+  only below a folder that holds a valid `.fresher-sandbox` marker, never in the home folder itself; every other item
+  is left out with "Development build: removal works only in a sandbox folder." Only a release build gets
+  `Reach::RealDisk`.
+- **Where:** `app/tauri/src/compose.rs` (`reach`), `crates/cleaner/src/reach.rs`.
+- **Why:** a development build runs half-finished code against the developer's real disk; it must not be able to
+  remove anything a developer did not set aside for it (plan 008, goal 5). The token that allows the real disk can be
+  made only without `debug_assertions`, and a test of `fresher-cleaner` fails if it is made anywhere but in
+  `compose.rs`. To try a cleanup in `npm run tauri dev`, make a folder below the home with a `.fresher-sandbox` file
+  whose first line is the core's `SANDBOX_SIGNATURE`, put the `trial` module's folders (`fresher-trial-cache`,
+  `fresher-trial-kept`) right next to it, make the folder a scan root (in `settings.json` until plan 005 lets the
+  interface edit the roots) and scan ([`../architecture/removal.md`](../architecture/removal.md), "Reach and the
+  sandbox").
+- **If cleaned up:** giving a debug build or a test the real disk lets a bug in a rule, the plan builder or the UI
+  remove the developer's own files.
 
 ## Command arguments by value
 
@@ -85,20 +114,11 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 
 ## The demo module linked in release builds
 
-- **What:** `fresher-module-demo` is a normal dependency of the app, but it is registered only under
-  `cfg(debug_assertions)`.
+- **What:** `fresher-module-demo` and `fresher-module-trial` (plan 008/06/05) are normal dependencies of the app, but
+  they are registered only under `cfg(debug_assertions)`; the composition test checks that a build without it
+  registers neither.
 - **Where:** `app/tauri/Cargo.toml`, `app/tauri/src/compose.rs`.
 - **Why:** Cargo does not support `cfg(debug_assertions)` in a target-specific dependency table; plan 007's dev-tools
-  feature takes the module over.
-- **If cleaned up:** removing the `cfg` registers made-up findings in the shipped app; removing the dependency breaks
-  debug builds.
-
-## Review cannot remove yet
-
-- **What:** the review screen's **Move to Trash…** button is disabled, with a plain line under it saying removal comes
-  in a later version; the screen mounts no `ConfirmDialog` and no `ResultSummary` (both are complete in the gallery).
-- **Where:** `app/ui/src/screens/review/review-screen.tsx`.
-- **Why:** the core has no cleanup command until plan [008](../plans/008-safe-removal/readme.md); the dialog must show
-  the core's cleanup plan, never the UI's own sums.
-- **If cleaned up:** enabling the button without a core plan would show the confirmation with the UI's preview sums and
-  nothing behind its confirm; plan 008 enables it and feeds `ConfirmDialog` from the core's plan.
+  feature takes the modules over.
+- **If cleaned up:** removing the `cfg` registers made-up findings and the trial folders in the shipped app; removing
+  the dependencies breaks debug builds.

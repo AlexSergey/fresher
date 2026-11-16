@@ -246,6 +246,24 @@ describe('the findings source', () => {
       expect(source.total(LARGEST)).toBe(1000);
     });
 
+    it('findings removed leave the pages', async () => {
+      let findings = SCAN.findings;
+      const source = sourceOf((query) => Promise.resolve(pageOf(findings, query)));
+      const store = storeOfScan();
+      source.follow(store);
+      source.ensure(LARGEST, 0, 10);
+      await settle();
+      const [first, second] = [source.rowAt(LARGEST, 0), source.rowAt(LARGEST, 1)];
+      const removed = [first?.id ?? 0];
+      findings = findings.filter((finding) => !removed.includes(finding.id));
+
+      store.dispatch({ findings: removed, scan: 1, type: 'findings-removed' });
+      await settle();
+
+      expect(source.rowAt(LARGEST, 0)).toEqual(second);
+      expect(source.total(LARGEST)).toBe(999);
+    });
+
     it('the pages in view are refreshed at most twice a second during a scan', async () => {
       const core = coreByHand();
       const clock = createFakeClock();

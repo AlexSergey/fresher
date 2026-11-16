@@ -9,7 +9,7 @@ import type { CoreAnswers } from '../../ipc/mock';
 import { mockCore, pushEvents, refuse } from '../../ipc/mock';
 import { PermissionCard } from '../../product/permission-card/permission-card';
 import { type CoreStore, createCoreStore } from '../../state/store';
-import { BUSY, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../../test/demo-scan';
+import { allFiles, BUSY, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
 import { useAccess } from './use-access';
 
@@ -22,7 +22,7 @@ const core = (answers: Partial<CoreAnswers>): void => {
   });
 };
 
-const answering = (access: Access): Partial<CoreAnswers> => ({ getAccessStatus: () => ({ fullDiskAccess: access }) });
+const answering = (access: Access): Partial<CoreAnswers> => ({ getAccessStatus: () => allFiles(access) });
 
 // What the overview does with the access (07/02): the card while Full Disk Access is missing.
 const Probe = (): JSX.Element => {
@@ -31,7 +31,7 @@ const Probe = (): JSX.Element => {
   return (
     <>
       <p>{`Access: ${access ?? 'asking'}`}</p>
-      {access === null || access === 'granted' ? null : <PermissionCard access={access} />}
+      {access === 'denied' || access === 'unknown' ? <PermissionCard access={access} /> : null}
     </>
   );
 };
@@ -56,7 +56,7 @@ describe('useAccess', () => {
       expect(screen.getAllByText('Fresher cannot see every folder')).toHaveLength(2);
 
       act(() => {
-        pushEvents({ status: { fullDiskAccess: 'granted' }, type: 'access-changed' });
+        pushEvents({ status: allFiles('granted'), type: 'access-changed' });
       });
 
       expect(screen.getAllByText('Access: granted')).toHaveLength(2);
@@ -82,7 +82,7 @@ describe('useAccess', () => {
         getAccessStatus: () => {
           asked += 1;
 
-          return { fullDiskAccess: 'unknown' };
+          return allFiles('unknown');
         },
       });
 

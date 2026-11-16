@@ -2,6 +2,10 @@
 
 **Since:** 2026-11-15
 
+**Taken by plan [008](../plans/008-safe-removal/readme.md)** (2026-11-16): the frozen plan checked item by item, the
+confirmation of that exact list, the checks again right before each item, the Trash first, the result with the
+measured space, and the Cleanups screen with put back. No quarantine folder of our own.
+
 ## Problem
 
 The moment of deletion is where trust is won or lost. The user must see exactly what will happen and be able to undo

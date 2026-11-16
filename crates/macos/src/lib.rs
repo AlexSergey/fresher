@@ -1,11 +1,13 @@
 //! The macOS adapters of Fresher: the only crate with unsafe code.
 //!
-//! It implements the core's OS ports for macOS and sets the process's IO policy. Every FFI call lives in the module
+//! It implements the core's OS ports for macOS, sets the process's IO policy, and gives the cleaner the calls that act
+//! beneath a held folder ([`beneath`]). Every FFI call lives in the module
 //! `ffi`, one unsafe operation per block, each with a `// SAFETY:` comment; everything else here is safe Rust. On any
 //! other OS the crate is empty.
 
 #![cfg(target_os = "macos")]
 
+pub mod beneath;
 mod bulk;
 #[cfg(test)]
 mod disk_image;
@@ -16,14 +18,20 @@ mod ffi;
 pub mod fixtures;
 pub mod io_policy;
 mod journal;
+mod open_files;
 mod places;
 mod process;
+mod protection;
+mod trash;
 mod volume;
 
 pub use bulk::MacFolderReader;
 pub use journal::MacChangeJournal;
+pub use open_files::MacOpenFiles;
 pub use places::places_that_prompt;
-pub use process::peak_memory;
+pub use process::{current_user, peak_memory};
+pub use protection::protection;
+pub use trash::MacTrash;
 pub use volume::MacVolumes;
 
 #[cfg(test)]

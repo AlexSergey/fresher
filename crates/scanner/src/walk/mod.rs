@@ -15,6 +15,7 @@ use std::sync::mpsc;
 use fresher_core::{CancelToken, FolderReader, InterestSet, Match, NotScanned, WalkError, WalkProgress, WalkSummary};
 
 use crate::matcher::Matcher;
+use crate::tree::access::NodeAccess;
 use crate::tree::arena::Tree;
 use crate::tree::node::Flag;
 use crate::walk::aggregator::{Aggregator, Callbacks};
@@ -37,6 +38,8 @@ pub(crate) struct Walk<'a> {
     pub(crate) reader: &'a dyn FolderReader,
     pub(crate) threads: usize,
     pub(crate) threshold: u64,
+    /// The user the entries' access is read for; `None` owns nothing.
+    pub(crate) user: Option<u32>,
 }
 
 impl Walk<'_> {
@@ -53,6 +56,7 @@ impl Walk<'_> {
         let mut jobs = Vec::new();
         for root in self.roots.iter() {
             let node = tree.add_root(&root.path, root.identity).map_err(tree_full)?;
+            tree.set_access(node, NodeAccess::of(root.access, self.user)).map_err(tree_full)?;
             if self.boundary.is_avoided(&root.path) {
                 tree.mark(node, Flag::Avoided).map_err(tree_full)?;
                 *summary.not_scanned.entry(NotScanned::Avoided).or_default() += 1;
@@ -98,6 +102,7 @@ impl Walk<'_> {
             queue: &queue,
             cancel,
             threshold: self.threshold,
+            user: self.user,
         };
         let (sender, reports) = mpsc::sync_channel(threads * REPORTS_PER_WORKER);
         let applied = std::thread::scope(|scope| {
@@ -133,6 +138,7 @@ impl Walk<'_> {
             queue: &queue,
             cancel,
             threshold: self.threshold,
+            user: self.user,
         };
         let (sender, reports) = mpsc::sync_channel(threads * REPORTS_PER_WORKER);
         let read = std::thread::scope(|scope| {

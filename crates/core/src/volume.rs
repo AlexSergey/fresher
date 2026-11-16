@@ -1,4 +1,4 @@
-//! The volume facts the scan needs.
+//! The volume facts the scan needs, and the space a cleanup measures.
 
 use std::path::Path;
 
@@ -7,6 +7,8 @@ use crate::{ByteSize, ReadError};
 /// Tells which volume a path is on.
 pub trait Volumes: Send + Sync {
     fn identify(&self, path: &Path) -> Result<VolumeFacts, ReadError>;
+    /// The bytes the user can still write on the volume that holds `path`: measured before and after a cleanup.
+    fn available(&self, path: &Path) -> Result<ByteSize, ReadError>;
 }
 
 /// A volume's identity, stable across reboots (the volume's UUID on macOS).

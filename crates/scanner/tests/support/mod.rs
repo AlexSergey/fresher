@@ -42,6 +42,7 @@ pub(crate) struct Walked {
     pub(crate) unreadable: std::collections::BTreeMap<fresher_core::Unreadable, u64>,
 }
 
+/// Every match with its entry facts, sorted by path and interest.
 fn walked(mut matches: Vec<Match>, summary: &WalkSummary) -> Walked {
     matches.sort_by(|left, right| (&left.path, left.interest).cmp(&(&right.path, right.interest)));
     Walked { matches, entries: summary.entries, unreadable: summary.unreadable.clone() }
@@ -87,4 +88,69 @@ pub(crate) fn fixtures() -> PathBuf {
 
 pub(crate) fn canonical(path: &Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap()
+}
+
+/// A home whose matches cover every entry fact, all of the user who runs the test: `mine.json` (writable), a
+/// read-only `read-only.json`, `closed/inside.json` in a read-only folder, a read-only folder `Caches` and
+/// `locked.json`, locked by the user. Dropping it gives the modes and the flag back, so the folder can be removed.
+#[cfg(target_os = "macos")]
+pub(crate) struct LockedHome {
+    _tree: fresher_testing::FixtureTree,
+    pub(crate) root: PathBuf,
+}
+
+#[cfg(target_os = "macos")]
+impl LockedHome {
+    pub(crate) fn new() -> Self {
+        let tree = fresher_testing::FixtureTree::from_toml_str(
+            "[[file]]\npath = \"mine.json\"\n[[file]]\npath = \"read-only.json\"\n[[file]]\npath = \"closed/inside.json\"\n\
+             [[file]]\npath = \"Caches/a\"\n[[file]]\npath = \"locked.json\"\n",
+        )
+        .unwrap();
+        let root = canonical(tree.root());
+        let home = Self { _tree: tree, root };
+        home.set_mode("read-only.json", 0o444);
+        home.set_mode("closed", 0o555);
+        home.set_mode("Caches", 0o555);
+        assert!(chflags("uchg", &home.root.join("locked.json")), "chflags uchg");
+        home
+    }
+
+    /// The interests that match every entry of the home.
+    pub(crate) fn interests() -> InterestSet {
+        set_of(&[
+            interest(Pattern::Extension("json".into()), Claim::Item, &[]),
+            interest(Pattern::FolderName("Caches".into()), Claim::Item, &[]),
+        ])
+    }
+
+    fn set_mode(&self, path: &str, mode: u32) {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        std::fs::set_permissions(self.root.join(path), std::fs::Permissions::from_mode(mode)).unwrap();
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for LockedHome {
+    fn drop(&mut self) {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let _ = chflags("nouchg", &self.root.join("locked.json"));
+        for path in ["read-only.json", "closed", "Caches"] {
+            let _ = std::fs::set_permissions(self.root.join(path), std::fs::Permissions::from_mode(0o755));
+        }
+    }
+}
+
+/// Runs `chflags` with `flags` on `path`; `true` when it succeeded.
+#[cfg(target_os = "macos")]
+fn chflags(flags: &str, path: &Path) -> bool {
+    let status = std::process::Command::new("/usr/bin/chflags").arg(flags).arg(path).status();
+    status.is_ok_and(|status| status.success())
+}
+
+/// The facts of the match at `path`.
+pub(crate) fn facts_of(walked: &Walked, path: &Path) -> fresher_core::EntryFacts {
+    walked.matches.iter().find(|found| found.path == path).map(|found| found.facts).unwrap()
 }

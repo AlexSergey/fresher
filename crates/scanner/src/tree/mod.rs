@@ -1,5 +1,6 @@
 //! The tree of one scan, in an arena: folders and kept files as nodes, small files folded into their folder.
 
+pub(crate) mod access;
 mod apply;
 pub(crate) mod arena;
 pub(crate) mod fold;

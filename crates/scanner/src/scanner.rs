@@ -111,6 +111,9 @@ pub(crate) struct Prepared {
     pub(crate) boundary: Boundary,
     pub(crate) matcher: Matcher,
     pub(crate) scope: Scope,
+    /// The user the entries' access is read for: the owner of the home folder; `None` (owns nothing) when it cannot
+    /// be read.
+    pub(crate) user: Option<u32>,
 }
 
 /// The fast scan: a parallel walk with a compiled matcher, keeping a compact tree of the last walk for `commit`, and
@@ -194,7 +197,20 @@ impl Scanner {
         let boundary = Boundary::new(&canonical, &avoid);
         let matcher = self.compile(request);
         let scope = Self::scope(&roots, &avoid, &matcher);
-        Ok(Prepared { roots, boundary, matcher, scope })
+        Ok(Prepared { roots, boundary, matcher, scope, user: self.user() })
+    }
+
+    /// The user the scan is for: the owner of the home folder, read through the reader. The app runs as the user whose
+    /// home it scans; without a home folder, or one that cannot be read, no user is known and nothing is owned.
+    fn user(&self) -> Option<u32> {
+        let home = (self.anchor)(&Pattern::UnderHome(String::new()))?;
+        match self.reader.access(&home) {
+            Ok(access) => access.owner,
+            Err(error) => {
+                tracing::warn!(%error, "the owner of the home folder is unknown: nothing is shown as removable");
+                None
+            }
+        }
     }
 
     /// The cached state of the request's scope, its matches emitted, read from the cache alone: no folder is read,
@@ -299,7 +315,7 @@ impl DiskWalk for Scanner {
         if request.mode == WalkMode::Restore {
             return self.restore(request, on_match);
         }
-        let Prepared { roots, boundary, matcher, scope } = self.prepare(request)?;
+        let Prepared { roots, boundary, matcher, scope, user } = self.prepare(request)?;
         let positions = self.positions(&scope);
         let walk = Walk {
             roots: &roots,
@@ -309,6 +325,7 @@ impl DiskWalk for Scanner {
             reader: &*self.reader,
             threads: self.options.threads.get(),
             threshold: self.options.fold_threshold,
+            user,
         };
         let mut fallback = (request.mode == WalkMode::Full).then_some(FullScanReason::AskedByUser);
         if request.mode == WalkMode::Auto {

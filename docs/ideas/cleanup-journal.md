@@ -2,6 +2,9 @@
 
 **Since:** 2026-11-15
 
+**Taken by plan [008](../plans/008-safe-removal/readme.md)** (2026-11-16): an append-only journal written ahead of
+every cleanup, recording where each item went, and put back from the history for items still in the Trash.
+
 ## Problem
 
 After a cleanup the user wants to know exactly what happened, and to undo it when possible.

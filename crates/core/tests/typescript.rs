@@ -2,12 +2,13 @@
 
 mod positive {
     use fresher_core::{
-        Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CommandError, Completeness,
-        DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage,
-        FindingsQuery, LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, NewFinding, Operation, Overview, Refusal,
-        Removal, ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate,
-        SettingValue, SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand,
-        ToolId, Unit,
+        Access, AccessStatus, Availability, ByteSize, Capability, CapabilityState, CategoryDescriptor, CategoryId,
+        CategoryInfo, CategoryTotal, CommandError, Completeness, DangerLevel, Dictionary, EngineStatus, Event, Finding,
+        FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery, GuardedFolder, LastScan, Locale, ModuleId,
+        ModuleInfo, ModuleOutcome, Need, NeedKind, NewFinding, Operation, Overview, Refusal, Removal, ScanId,
+        ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue,
+        SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit,
+        VolumeKind,
     };
     use ts_rs::{Config, TS};
 
@@ -20,9 +21,17 @@ mod positive {
         let declarations = [
             declaration::<Access>(),
             declaration::<AccessStatus>(),
+            declaration::<Availability>(),
+            declaration::<Capability>(),
+            declaration::<CapabilityState>(),
+            declaration::<GuardedFolder>(),
+            declaration::<Need>(),
+            declaration::<NeedKind>(),
+            declaration::<VolumeKind>(),
             declaration::<ByteSize>(),
             declaration::<CategoryDescriptor>(),
             declaration::<CategoryId>(),
+            declaration::<CategoryInfo>(),
             declaration::<CategoryTotal>(),
             declaration::<CommandError>(),
             declaration::<Completeness>(),

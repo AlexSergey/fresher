@@ -13,8 +13,9 @@ export type FindingsSource = {
   readonly ensure: (view: FindingsView, first: number, last: number) => void;
   // Why the view's last page could not be loaded, until a page of it loads again.
   readonly failure: (view: FindingsView) => Failure | null;
-  // Follows the store: a new scan drops every page; a new overview asks the rows on screen again (at most twice a
-  // second), so they move to their new order while the scan runs. Returns the function that stops following.
+  // Follows the store: a new scan drops every page; findings a cleanup removed drop every page and ask the rows on
+  // screen again at once; a new overview asks the rows on screen again (at most twice a second), so they move to their
+  // new order while the scan runs. Returns the function that stops following.
   readonly follow: (store: CoreStore) => () => void;
   // How many findings the cache holds now.
   readonly held: () => number;
@@ -200,14 +201,19 @@ export const createFindingsSource = (
     },
     failure: (view) => failures.get(keyOf(view)) ?? null,
     follow: (store): (() => void) => {
-      let { overview, scan } = store.getState();
+      let { overview, removed, scan } = store.getState();
 
       const unsubscribe = store.subscribe(() => {
         const state = store.getState();
 
         if (state.scan !== scan) {
-          ({ overview, scan } = state);
+          ({ overview, removed, scan } = state);
           reset();
+        } else if (state.removed !== removed) {
+          // A cleanup removed findings: every page after them moved, so the rows on screen are asked for at once.
+          ({ overview, removed } = state);
+          reset();
+          refresh();
         } else if (state.overview !== overview) {
           ({ overview } = state);
           refreshSoon();

@@ -1,6 +1,6 @@
 import { type JSX, useEffect, useId, useState } from 'react';
 
-import type { Sizes, Text } from '../../ipc/bindings.generated';
+import type { CleanupReport, ItemOutcome, Text } from '../../ipc/bindings.generated';
 
 import { AnimatedNumber } from '../../design/data/animated-number/animated-number';
 import { AmbientLight } from '../../design/effects/ambient-light/ambient-light';
@@ -10,51 +10,89 @@ import { useMotion } from '../../design/motion';
 import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { formatSize } from '../../i18n/format-size';
+import { skipReasonText } from '../cleanup-texts';
 import styles from './result-summary.module.css';
 
 export type ResultSummaryProps = {
-  readonly freed: Sizes;
-  readonly method: 'permanent' | 'trash';
-  readonly moved: number;
   readonly onDone: () => void;
-  // Shown after a move to the Trash only.
-  readonly onOpenTrash?: () => void;
-  readonly skipped: readonly SkippedItem[];
+  // Opens this cleanup in the history.
+  readonly onSeeCleanup?: () => void;
+  // Shows a moved item in the Trash; offered after a move to the Trash only.
+  readonly onShowInTrash?: () => void;
+  readonly problems: readonly ResultProblem[];
+  // The core's report: every figure shown is its own.
+  readonly report: CleanupReport;
 };
 
-type SkippedItem = { readonly reason: Text; readonly title: Text };
+// An item that was not removed: the title the confirmation showed (`null` when it is not known) and why.
+type ResultProblem = {
+  readonly outcome: Extract<ItemOutcome, { readonly kind: 'failed' | 'skipped' }>;
+  readonly title: null | Text;
+};
 
-// The cleaned moment: a check mark that draws itself, the freed size counting up from 0 over one soft green light
-// wave, then — with no motion — what was moved, what was skipped and why, and the way out. Serious, not festive: no
-// bounce, no confetti. Under reduced motion the final values fade in once; with motion off they are simply there.
+const reasonOf = ({ outcome }: ResultProblem): string =>
+  outcome.kind === 'failed' ? tText(outcome.reason) : skipReasonText(outcome.reason);
+
+const countArg = (value: number): { readonly count: { readonly kind: 'count'; readonly value: number } } => ({
+  count: { kind: 'count', value },
+});
+
+// What happened besides the removal: how many a tool removed, how a stopped cleanup ended.
+const Notes = ({ report }: { readonly report: CleanupReport }): JSX.Element => {
+  const { counts, ended, measured, method } = report;
+  const size = { kind: 'size', value: measured ?? 0 } as const;
+
+  return (
+    <div className={styles.notes}>
+      {counts.toolDone === 0 ? null : <p>{t('ui.result.tool-done', countArg(counts.toolDone))}</p>}
+      {ended === 'cancelled' ? <p>{t('ui.result.stopped', countArg(counts.notReached))}</p> : null}
+      {ended === 'stopped' || ended === 'interrupted' ? (
+        <p>{tText({ args: {}, key: `core.cleanup.ended.${ended}` })}</p>
+      ) : null}
+      {method === 'trash' ? <p className={styles.later}>{t('ui.result.space-later')}</p> : null}
+      <p>
+        {measured === null
+          ? t('ui.result.unmeasured')
+          : t(method === 'trash' ? 'ui.result.measured-trash' : 'ui.result.measured', { size })}
+      </p>
+    </div>
+  );
+};
+
+// The cleaned moment, once the removal is over: a check mark that draws itself, the size counting up from 0 over one
+// soft green light wave, then — with no motion — what was done, what was not and why, and the ways on. A move to the
+// Trash says "Moved to the Trash", never "Freed": the space comes back when the Trash is emptied, and the space the
+// disk measured is shown beside it. Serious, not festive: no bounce, no confetti. Under reduced motion the final
+// values fade in once; with motion off they are simply there.
 export const ResultSummary = ({
-  freed,
-  method,
-  moved,
   onDone,
-  onOpenTrash,
-  skipped,
+  onSeeCleanup,
+  onShowInTrash,
+  problems,
+  report,
 }: ResultSummaryProps): JSX.Element => {
   const motion = useMotion();
   const titleId = useId();
-  const skippedId = useId();
-  // The number counts from 0: it mounts at 0 and is given the freed size on the next frame.
+  const problemsId = useId();
+  const trash = report.method === 'trash';
+  const sizes = trash ? report.moved : report.deleted;
+  // The number counts from 0: it mounts at 0 and is given the size on the next frame.
   const [counted, setCounted] = useState(0);
   // The wave and the green light belong to the first moment only; once the wave ends they never come back.
   const [waved, setWaved] = useState(false);
   const waving = motion === 'full' && !waved;
+  const { counts } = report;
+  const removed = trash ? counts.moved + counts.emptied : counts.deleted + counts.emptied;
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      setCounted(freed.allocated);
+      setCounted(sizes.allocated);
     });
 
     return (): void => {
       cancelAnimationFrame(frame);
     };
-  }, [freed.allocated]);
-
-  const count = { count: { kind: 'count', value: moved } } as const;
+  }, [sizes.allocated]);
 
   return (
     <section aria-labelledby={titleId} className={styles.summary} data-motion={motion}>
@@ -64,7 +102,7 @@ export const ResultSummary = ({
           <Icon icon={Check} size={24} />
         </span>
         <h2 className={styles.title} id={titleId}>
-          {t('ui.result.freed')}
+          {trash ? t('ui.result.moved-title') : t('ui.result.freed')}
         </h2>
         <span className={styles.freed}>
           {waving ? (
@@ -80,36 +118,40 @@ export const ResultSummary = ({
           <span className={styles.number}>
             <AnimatedNumber
               duration="deliberate"
-              format={(value) => formatSize(value, freed.completeness)}
-              value={motion === 'full' ? counted : freed.allocated}
+              format={(value) => formatSize(value, sizes.completeness)}
+              value={motion === 'full' ? counted : sizes.allocated}
             />
           </span>
         </span>
       </div>
       <p className={styles.method}>
-        {method === 'trash' ? t('ui.result.moved', count) : t('ui.result.deleted', count)}
+        {trash ? t('ui.result.moved', countArg(removed)) : t('ui.result.deleted', countArg(removed))}
       </p>
-      {skipped.length === 0 ? null : (
+      <Notes report={report} />
+      {problems.length === 0 ? null : (
         <div className={styles.skipped}>
-          <p className={styles.skippedTitle} id={skippedId}>
-            {t('ui.result.skipped', { count: { kind: 'count', value: skipped.length } })}
+          <p className={styles.skippedTitle} id={problemsId}>
+            {t('ui.result.skipped', countArg(problems.length))}
           </p>
-          <ul aria-labelledby={skippedId} className={styles.list}>
-            {skipped.map((item, index) => (
-              // Two skipped items may carry the same texts; their order is the order the core reported them in.
+          <ul aria-labelledby={problemsId} className={styles.list}>
+            {problems.map((problem, index) => (
+              // Two items may carry the same texts; their order is the order the core reported them in.
               // eslint-disable-next-line @eslint-react/no-array-index-key -- the list is fixed once shown
               <li className={styles.item} key={index}>
-                <span className={styles.itemTitle}>{tText(item.title)}</span>
-                <span className={styles.reason}>{tText(item.reason)}</span>
+                <span className={styles.itemTitle}>
+                  {problem.title === null ? t('ui.result.unnamed') : tText(problem.title)}
+                </span>
+                <span className={styles.reason}>{reasonOf(problem)}</span>
               </li>
             ))}
           </ul>
         </div>
       )}
       <div className={styles.actions}>
-        {method === 'trash' && onOpenTrash !== undefined ? (
-          <Button onClick={onOpenTrash}>{t('ui.result.open-trash')}</Button>
+        {trash && counts.moved > 0 && onShowInTrash !== undefined ? (
+          <Button onClick={onShowInTrash}>{t('ui.result.show-in-trash')}</Button>
         ) : null}
+        {onSeeCleanup === undefined ? null : <Button onClick={onSeeCleanup}>{t('ui.result.see-cleanup')}</Button>}
         <Button onClick={onDone} variant="primary">
           {t('ui.result.done')}
         </Button>

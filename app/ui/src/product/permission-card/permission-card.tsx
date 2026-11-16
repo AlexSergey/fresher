@@ -6,7 +6,7 @@ import { Notice } from '../../design/feedback/notice/notice';
 import { t } from '../../i18n';
 
 export type PermissionCardProps = {
-  readonly access: Exclude<Access, 'granted'>;
+  readonly access: Extract<Access, 'denied' | 'unknown'>;
   readonly onLearnMore?: () => void;
 };
 

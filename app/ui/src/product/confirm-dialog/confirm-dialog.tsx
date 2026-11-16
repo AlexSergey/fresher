@@ -1,7 +1,15 @@
 import { type JSX, useRef, useState } from 'react';
 
 import type { VirtualRowProps } from '../../design/data/virtual-list/virtual-list';
-import type { CategoryId, DangerLevel, FindingId, Sizes, Text } from '../../ipc/bindings.generated';
+import type { UiKey } from '../../i18n/types';
+import type {
+  ActionKind,
+  CleanupPlanView,
+  LeftOut,
+  Method,
+  PlanGroup,
+  PlanItemView,
+} from '../../ipc/bindings.generated';
 
 import { DangerBadge } from '../../design/data/danger-badge/danger-badge';
 import { ListRow } from '../../design/data/list-row/list-row';
@@ -13,45 +21,19 @@ import { Dialog } from '../../design/layout/dialog/dialog';
 import { Button } from '../../design/primitives/button/button';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
 import { t, tText } from '../../i18n';
+import { skipReasonText } from '../cleanup-texts';
 import { levelMeaning, levelName } from '../finding-row/texts';
 import { honestSize } from '../sizes';
 import styles from './confirm-dialog.module.css';
 
-// What the user confirms, exactly: the UI's own type until plan 008 fills it from the core's cleanup plan (or
-// replaces it with a generated type).
-export type ConfirmContent = {
-  readonly count: number;
-  readonly groups: readonly ConfirmGroup[];
-  readonly highest: DangerLevel;
-  readonly sizes: Sizes;
-};
-
 export type ConfirmDialogProps = {
-  readonly content: ConfirmContent;
   // Escape, the close button and Cancel: the owner closes it.
   readonly onCancel: () => void;
-  readonly onConfirm: (method: RemovalMethod) => void;
+  readonly onConfirm: (method: Method) => void;
   readonly open: boolean;
+  // The core's plan, shown exactly: every figure is the plan's own.
+  readonly plan: CleanupPlanView;
 };
-
-type ConfirmGroup = {
-  readonly category: CategoryId;
-  readonly count: number;
-  readonly danger: DangerLevel;
-  readonly items: readonly ConfirmItem[];
-  readonly sizes: Sizes;
-};
-
-type ConfirmItem = {
-  readonly danger: DangerLevel;
-  readonly id: FindingId;
-  readonly sizes: Sizes;
-  // The path, or an external tool's object as text.
-  readonly subject: string;
-  readonly title: Text;
-};
-
-type RemovalMethod = 'permanent' | 'trash';
 
 // A group lists up to this many items as they are; more go into a virtual list.
 const PLAIN_ITEMS = 50;
@@ -59,10 +41,17 @@ const PLAIN_ITEMS = 50;
 // Pixels: `--size-row`.
 const ITEM_HEIGHT = 44;
 
-const ItemRow = ({ item, ...row }: Partial<VirtualRowProps> & { readonly item: ConfirmItem }): JSX.Element => (
+// How a group's items go, by the method chosen: a tool's items go the same way either way.
+const HOW: Readonly<Record<ActionKind, Readonly<Record<Method, UiKey>>>> = {
+  empty: { permanent: 'ui.confirm.how.empty-permanent', trash: 'ui.confirm.how.empty-trash' },
+  remove: { permanent: 'ui.confirm.how.remove-permanent', trash: 'ui.confirm.how.remove-trash' },
+  tool: { permanent: 'ui.confirm.how.tool', trash: 'ui.confirm.how.tool' },
+};
+
+const ItemRow = ({ item, ...row }: Partial<VirtualRowProps> & { readonly item: PlanItemView }): JSX.Element => (
   <ListRow
     {...row}
-    subtitle={<PathText path={item.subject} />}
+    subtitle={item.path === null ? undefined : <PathText path={item.path} />}
     title={tText(item.title)}
     trailing={
       <>
@@ -75,13 +64,13 @@ const ItemRow = ({ item, ...row }: Partial<VirtualRowProps> & { readonly item: C
   />
 );
 
-const Items = ({ group, label }: { readonly group: ConfirmGroup; readonly label: string }): JSX.Element =>
+const Items = ({ group, label }: { readonly group: PlanGroup; readonly label: string }): JSX.Element =>
   group.items.length > PLAIN_ITEMS ? (
     <div className={styles.long}>
       <VirtualList
         count={group.items.length}
         getItem={(index) => group.items[index]}
-        getKey={(index) => String(group.items[index]?.id ?? index)}
+        getKey={(index) => String(group.items[index]?.finding ?? index)}
         label={label}
         renderRow={(_, item, row) =>
           item === undefined ? <ListRow {...row} title="" /> : <ItemRow {...row} item={item} />
@@ -92,36 +81,66 @@ const Items = ({ group, label }: { readonly group: ConfirmGroup; readonly label:
   ) : (
     <div aria-label={label} role="list">
       {group.items.map((item) => (
-        <ItemRow item={item} key={item.id} />
+        <ItemRow item={item} key={item.finding} />
       ))}
     </div>
   );
 
-const Group = ({ group }: { readonly group: ConfirmGroup }): JSX.Element => {
+const Group = ({ group, method }: { readonly group: PlanGroup; readonly method: Method }): JSX.Element => {
   const name = tText({ args: {}, key: `${group.category}.name` });
+  const { summary } = group;
 
   return (
     <section aria-label={name} className={styles.group}>
       <header className={styles.groupHeader}>
         <h3 className={styles.groupName}>{name}</h3>
-        <DangerBadge label={levelName(group.danger)} level={group.danger} size="small" />
+        <DangerBadge label={levelName(summary.highest)} level={summary.highest} size="small" />
         <span className={styles.groupCount}>
-          {t('ui.confirm.group-count', { count: { kind: 'count', value: group.count } })}
+          {t('ui.confirm.group-count', { count: { kind: 'count', value: summary.count } })}
         </span>
         <span className={styles.size}>
-          <SizeText {...honestSize(group.sizes)} />
+          <SizeText {...honestSize(summary.sizes)} />
         </span>
       </header>
+      <p className={styles.how} data-irreversible={group.action === 'tool' || method === 'permanent' || undefined}>
+        {t(HOW[group.action][method])}
+      </p>
       <p className={styles.lost}>{tText({ args: {}, key: `${group.category}.if-removed` })}</p>
       <Items group={group} label={t('ui.confirm.items', { category: { kind: 'text', value: name } })} />
     </section>
   );
 };
 
+// What the selection held that the plan leaves out, each with the core's reason: not in the count.
+const LeftOutList = ({ items }: { readonly items: readonly LeftOut[] }): JSX.Element => (
+  <section aria-label={t('ui.confirm.left-out')} className={styles.group}>
+    <h3 className={styles.groupName}>{t('ui.confirm.left-out')}</h3>
+    <ul className={styles.leftOut}>
+      {items.map((item) => (
+        <li className={styles.leftOutItem} key={item.finding}>
+          <span className={styles.leftOutTitle}>{tText(item.title)}</span>
+          <span className={styles.leftOutReason}>{skipReasonText(item.reason)}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+);
+
+const titleOf = (plan: CleanupPlanView, permanent: boolean): string => {
+  const count = { count: { kind: 'count', value: plan.summary.count } } as const;
+
+  if (!plan.permanentAvailable) {
+    return t('ui.confirm.title-tool', count);
+  }
+
+  return permanent ? t('ui.confirm.title-permanent', count) : t('ui.confirm.title-trash', count);
+};
+
 // The confirmation of a removal: the action and the count, the highest danger level with its sentence, the total
-// size, the exact items grouped by category with what each group loses, and the permanent choice, off. Cancel has the
-// first focus; no key confirms. Static by the safety rule: only the dialog's own entrance moves.
-export const ConfirmDialog = ({ content, onCancel, onConfirm, open }: ConfirmDialogProps): JSX.Element | null => {
+// size, the exact items grouped by category and by how they go, with what each group loses, what will not be removed
+// and why, and the permanent choice, off. Every figure is the core's plan: nothing is summed here. A plan whose items
+// were all left out has no confirm button. Cancel has the first focus; no key confirms. Static by the safety rule: only the dialog's own entrance moves.
+export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialogProps): JSX.Element | null => {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [permanent, setPermanent] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
@@ -135,15 +154,42 @@ export const ConfirmDialog = ({ content, onCancel, onConfirm, open }: ConfirmDia
     }
   }
 
-  const count = { kind: 'count', value: content.count } as const;
-  const level = levelName(content.highest);
-  const size = honestSize(content.sizes);
+  const { summary } = plan;
+  const method: Method = permanent && plan.permanentAvailable ? 'permanent' : 'trash';
+  const level = levelName(summary.highest);
+  const size = honestSize(summary.sizes);
+  // A plan of tool items only goes by their tools: it cannot be put back, whatever the method.
+  const irreversible = method === 'permanent' || !plan.permanentAvailable;
+
+  // Every item was left out: there is nothing to confirm, only the reasons to read.
+  if (summary.count === 0) {
+    return (
+      <Dialog
+        closeLabel={t('ui.confirm.close')}
+        description={t('ui.confirm.nothing-text')}
+        footer={
+          <Button onClick={onCancel} ref={cancelRef} variant="secondary">
+            {t('ui.confirm.back')}
+          </Button>
+        }
+        initialFocus={cancelRef}
+        onClose={onCancel}
+        open={open}
+        size="large"
+        title={t('ui.confirm.nothing')}
+      >
+        <div className={styles.content}>
+          <LeftOutList items={plan.leftOut} />
+        </div>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog
       closeLabel={t('ui.confirm.close')}
       description={t('ui.confirm.description', {
-        count,
+        count: { kind: 'count', value: summary.count },
         level: { kind: 'text', value: level },
         size: { kind: 'text', value: size.accessibleText },
       })}
@@ -155,11 +201,13 @@ export const ConfirmDialog = ({ content, onCancel, onConfirm, open }: ConfirmDia
           <Button
             icon={Trash2}
             onClick={() => {
-              onConfirm(permanent ? 'permanent' : 'trash');
+              onConfirm(method);
             }}
-            variant={permanent ? 'danger' : 'primary'}
+            variant={irreversible ? 'danger' : 'primary'}
           >
-            {permanent ? t('ui.confirm.delete') : t('ui.confirm.trash')}
+            {plan.permanentAvailable
+              ? t(method === 'permanent' ? 'ui.confirm.delete' : 'ui.confirm.trash')
+              : t('ui.confirm.remove')}
           </Button>
         </>
       }
@@ -167,22 +215,31 @@ export const ConfirmDialog = ({ content, onCancel, onConfirm, open }: ConfirmDia
       onClose={onCancel}
       open={open}
       size="large"
-      title={permanent ? t('ui.confirm.title-permanent', { count }) : t('ui.confirm.title-trash', { count })}
+      title={titleOf(plan, method === 'permanent')}
     >
       <div className={styles.content}>
         <div className={styles.summary}>
-          <DangerBadge description={levelMeaning(content.highest)} label={level} level={content.highest} size="large" />
+          <DangerBadge description={levelMeaning(summary.highest)} label={level} level={summary.highest} size="large" />
           <div className={styles.total}>
             <span className={styles.totalLabel}>{t('ui.confirm.total')}</span>
             <SizeText {...size} size="display" />
           </div>
         </div>
-        {content.groups.map((group) => (
-          <Group group={group} key={group.category} />
+        {plan.groups.map((group) => (
+          <Group group={group} key={`${group.category} ${group.action}`} method={method} />
         ))}
-        <div className={styles.choice}>
-          <Checkbox checked={permanent} label={t('ui.confirm.permanent')} onChange={setPermanent} />
-        </div>
+        {plan.leftOut.length === 0 ? null : <LeftOutList items={plan.leftOut} />}
+        {plan.permanentAvailable ? (
+          <div className={styles.choice}>
+            {method === 'trash' ? <p className={styles.space}>{t('ui.confirm.space-later')}</p> : null}
+            <Checkbox
+              checked={permanent}
+              description={t('ui.confirm.permanent-description')}
+              label={t('ui.confirm.permanent')}
+              onChange={setPermanent}
+            />
+          </div>
+        ) : null}
       </div>
     </Dialog>
   );

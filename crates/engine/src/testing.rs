@@ -9,15 +9,19 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath,
-    DangerLevel, DiskState, DiskWalk, EntryKind, Event, Finding, FindingSink, Interest, Locales, Match, Module,
-    ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, ScanKind, SettingsStore,
-    Sizes, StateId, StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, Unreadable, WalkError, WalkMode,
-    WalkProgress, WalkRequest, WalkSummary,
+    ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan,
+    DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
+    ItemDone, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, Need, NewFinding,
+    Pattern, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId, StoreError,
+    StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable,
+    WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
-use fresher_testing::{FakeClock, FakeCommandRunner, FixedDiskState};
+use fresher_testing::{
+    FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixedDiskState,
+    MemoryCleanupJournal,
+};
 
-use crate::{Engine, Ports, Registry};
+use crate::{CleanupPorts, Engine, Ports, Registry};
 
 /// How long a test waits for an event before it fails: a guard against a hang, never a timing assumption.
 const PATIENCE: Duration = Duration::from_secs(10);
@@ -45,6 +49,7 @@ enum OnMatch {
 pub(crate) struct TestModuleBuilder {
     id: ModuleId,
     categories: Vec<CategoryDescriptor>,
+    tool_checks: Vec<ToolCommand>,
     locales: &'static str,
     interests: Vec<Interest>,
     on_match: OnMatch,
@@ -58,6 +63,7 @@ impl TestModule {
         TestModuleBuilder {
             id: ModuleId::new(id).unwrap(),
             categories: Vec::new(),
+            tool_checks: Vec::new(),
             locales: "{}",
             interests: Vec::new(),
             on_match: OnMatch::Find,
@@ -70,6 +76,19 @@ impl TestModule {
 impl TestModuleBuilder {
     pub(crate) fn category(mut self, id: &'static str, danger: DangerLevel) -> Self {
         self.categories.push(CategoryDescriptor::new(CategoryId::new(self.id, id).unwrap(), danger));
+        self
+    }
+
+    /// A category `id` that needs `needs`.
+    pub(crate) fn needing(mut self, id: &'static str, danger: DangerLevel, needs: Vec<Need>) -> Self {
+        self.categories.push(CategoryDescriptor::new(CategoryId::new(self.id, id).unwrap(), danger).with_needs(needs));
+        self
+    }
+
+    /// The module checks `tool` with `args`.
+    pub(crate) fn tool_check(mut self, tool: &'static str, args: &[&str]) -> Self {
+        let args = args.iter().map(|&arg| arg.to_owned()).collect();
+        self.tool_checks.push(ToolCommand::new(ToolId::new(tool).unwrap(), args).unwrap());
         self
     }
 
@@ -109,7 +128,10 @@ impl TestModuleBuilder {
 
     pub(crate) fn build(self) -> TestModule {
         let locales = Locales { en: self.locales };
-        let descriptor = ModuleDescriptor::new(self.id, self.categories, vec![], locales).unwrap();
+        let mut descriptor = ModuleDescriptor::new(self.id, self.categories, vec![], locales).unwrap();
+        for check in self.tool_checks {
+            descriptor = descriptor.with_tool_check(check).unwrap();
+        }
         TestModule {
             descriptor,
             interests: self.interests,
@@ -183,9 +205,10 @@ pub(crate) const fn bytes(size: u64) -> Sizes {
 /// released or cancelled. Its `commit` returns an empty state numbered by the commits so far, or a scripted error.
 #[derive(Default)]
 pub(crate) struct ScriptedWalk {
-    folders: Vec<(String, PathBuf, Sizes)>,
+    folders: Vec<(String, PathBuf, Sizes, EntryFacts)>,
     progress: Vec<WalkProgress>,
     unreadable: u64,
+    unreadable_by: BTreeMap<Unreadable, u64>,
     kind: ScanKind,
     error: Option<WalkError>,
     commit_error: Option<WalkError>,
@@ -193,6 +216,7 @@ pub(crate) struct ScriptedWalk {
     deaf: bool,
     hold: Option<Gate>,
     roots: Arc<Mutex<Vec<PathBuf>>>,
+    avoided: Arc<Mutex<Vec<Vec<PathBuf>>>>,
     commits: Arc<Mutex<Vec<Vec<ClaimedPath>>>>,
     modes: Arc<Mutex<Vec<WalkMode>>>,
     states: Vec<Arc<dyn DiskState>>,
@@ -229,9 +253,14 @@ impl ScriptedWalk {
         (self, gate)
     }
 
-    /// The walk finds a folder `name` at `path`.
-    pub(crate) fn folder(mut self, name: &str, path: &str, sizes: Sizes) -> Self {
-        self.folders.push((name.into(), path.into(), sizes));
+    /// The walk finds a folder `name` at `path`, the user's own and removable.
+    pub(crate) fn folder(self, name: &str, path: &str, sizes: Sizes) -> Self {
+        self.folder_with(name, path, sizes, EntryFacts::REMOVABLE)
+    }
+
+    /// The walk finds a folder `name` at `path` with `facts`.
+    pub(crate) fn folder_with(mut self, name: &str, path: &str, sizes: Sizes, facts: EntryFacts) -> Self {
+        self.folders.push((name.into(), path.into(), sizes, facts));
         self
     }
 
@@ -243,6 +272,12 @@ impl ScriptedWalk {
     /// The walk could not read `count` entries.
     pub(crate) const fn unreadable(mut self, count: u64) -> Self {
         self.unreadable = count;
+        self
+    }
+
+    /// The walk could not read `count` folders for `reason`.
+    pub(crate) fn unreadable_by(mut self, reason: Unreadable, count: u64) -> Self {
+        self.unreadable_by.insert(reason, count);
         self
     }
 
@@ -281,6 +316,11 @@ impl ScriptedWalk {
         self
     }
 
+    /// The places every walk was asked to avoid, one list per walk.
+    pub(crate) fn avoided(&self) -> Arc<Mutex<Vec<Vec<PathBuf>>>> {
+        Arc::clone(&self.avoided)
+    }
+
     /// The roots of every walk, in order.
     pub(crate) fn roots(&self) -> Arc<Mutex<Vec<PathBuf>>> {
         Arc::clone(&self.roots)
@@ -313,8 +353,9 @@ impl DiskWalk for ScriptedWalk {
         on_progress: &mut dyn FnMut(WalkProgress),
     ) -> Result<WalkSummary, WalkError> {
         self.roots.lock().unwrap().extend_from_slice(request.roots);
+        self.avoided.lock().unwrap().push(request.avoid.to_vec());
         self.modes.lock().unwrap().push(request.mode);
-        for (name, path, sizes) in &self.folders {
+        for (name, path, sizes, facts) in &self.folders {
             for (interest, wanted) in request.interests.iter() {
                 if wanted.pattern() == &Pattern::FolderName(name.clone()) {
                     let (path, sizes) = (path.clone(), *sizes);
@@ -326,6 +367,7 @@ impl DiskWalk for ScriptedWalk {
                         modified: None,
                         siblings: vec![],
                         marker: None,
+                        facts: *facts,
                     });
                 }
             }
@@ -345,7 +387,8 @@ impl DiskWalk for ScriptedWalk {
         if let Some(error) = &self.error {
             return Err(error.clone());
         }
-        let unreadable = BTreeMap::from([(Unreadable::NoPermission, self.unreadable)]);
+        let mut unreadable = BTreeMap::from([(Unreadable::NoPermission, self.unreadable)]);
+        unreadable.extend(&self.unreadable_by);
         let entries = u64::try_from(self.folders.len()).unwrap();
         Ok(WalkSummary { entries, unreadable, kind: self.kind, ..WalkSummary::default() })
     }
@@ -361,6 +404,69 @@ impl DiskWalk for ScriptedWalk {
         }
         let id = StateId::new(u32::try_from(commits.len()).unwrap());
         Ok(Arc::new(FixedDiskState::new(id, Timestamp::from_secs(0), [])))
+    }
+}
+
+/// A cleaner that holds its first item in flight until its gate is released or the cleanup is cancelled, then acts
+/// as the fake cleaner it wraps: what a cleanup looks like while it runs.
+#[derive(Debug)]
+pub(crate) struct HeldCleaner {
+    inner: FakeCleaner,
+    gate: Gate,
+    holding: Gate,
+}
+
+impl HeldCleaner {
+    pub(crate) fn new(inner: FakeCleaner) -> (Self, Gate) {
+        let gate = Gate::default();
+        (Self { inner, gate: gate.clone(), holding: Gate::default() }, gate)
+    }
+
+    /// Waits until the first item is in flight; fails after 10 s instead of hanging.
+    pub(crate) fn wait_until_holding(&self) {
+        let deadline = std::time::Instant::now() + PATIENCE;
+        while !self.holding.is_released() {
+            assert!(std::time::Instant::now() < deadline, "the cleaner never held an item");
+            thread::yield_now();
+        }
+    }
+
+    pub(crate) const fn inner(&self) -> &FakeCleaner {
+        &self.inner
+    }
+}
+
+impl Cleaner for HeldCleaner {
+    fn rehearse(&self, roots: &[PathBuf], items: &[PlanItem], cx: &CleanupContext<'_>, depth: Depth) -> Vec<Rehearsal> {
+        self.inner.rehearse(roots, items, cx, depth)
+    }
+
+    fn execute(
+        &self,
+        plan: ConfirmedPlan,
+        cx: &CleanupContext<'_>,
+        cancel: &CancelToken,
+        out: &mut dyn FnMut(ItemDone),
+    ) -> Ended {
+        let mut first = true;
+        self.inner.execute(plan, cx, cancel, &mut |item| {
+            if first {
+                self.holding.release();
+            }
+            while first && !self.gate.is_released() && !cancel.is_cancelled() {
+                thread::yield_now();
+            }
+            first = false;
+            out(item);
+        })
+    }
+
+    fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
+        self.inner.locate(items)
+    }
+
+    fn put_back(&self, item: &TrashedItem, cx: &CleanupContext<'_>) -> PutBackOutcome {
+        self.inner.put_back(item, cx)
     }
 }
 
@@ -419,16 +525,6 @@ impl SettingsStore for MemorySettings {
     }
 }
 
-/// An access probe that always gives the same answer.
-#[derive(Debug)]
-pub(crate) struct FixedAccess;
-
-impl AccessProbe for FixedAccess {
-    fn status(&self) -> AccessStatus {
-        AccessStatus { full_disk_access: Access::Unknown }
-    }
-}
-
 /// The seconds since the Unix epoch the fixture's clock starts at.
 pub(crate) const START: u64 = 1_735_689_600;
 
@@ -438,11 +534,59 @@ pub(crate) struct Fixture {
     walk: ScriptedWalk,
     pub(crate) settings: Arc<MemorySettings>,
     pub(crate) clock: Arc<FakeClock>,
+    pub(crate) commands: Arc<FakeCommandRunner>,
+    pub(crate) access: Arc<FakeAccess>,
+    pub(crate) system_ui: Arc<FakeSystemUi>,
+    pub(crate) cleaner: Arc<dyn Cleaner>,
+    pub(crate) journal: Arc<MemoryCleanupJournal>,
+    pub(crate) volumes: Arc<FakeVolumes>,
 }
 
 impl Fixture {
     pub(crate) fn new(walk: ScriptedWalk) -> Self {
-        Self { modules: Vec::new(), walk, settings: Arc::default(), clock: Arc::new(FakeClock::at(START)) }
+        Self {
+            modules: Vec::new(),
+            walk,
+            settings: Arc::default(),
+            clock: Arc::new(FakeClock::at(START)),
+            commands: Arc::default(),
+            access: Arc::default(),
+            system_ui: Arc::default(),
+            cleaner: Arc::new(FakeCleaner::default()),
+            journal: Arc::default(),
+            volumes: Arc::default(),
+        }
+    }
+
+    /// The cleaner the engine cleans through; the test keeps its own `Arc` to look at it.
+    pub(crate) fn cleaner(mut self, cleaner: Arc<impl Cleaner + 'static>) -> Self {
+        self.cleaner = cleaner;
+        self
+    }
+
+    pub(crate) fn journal(mut self, journal: MemoryCleanupJournal) -> Self {
+        self.journal = Arc::new(journal);
+        self
+    }
+
+    pub(crate) fn volumes(mut self, volumes: FakeVolumes) -> Self {
+        self.volumes = Arc::new(volumes);
+        self
+    }
+
+    pub(crate) fn commands(mut self, commands: FakeCommandRunner) -> Self {
+        self.commands = Arc::new(commands);
+        self
+    }
+
+    pub(crate) fn access(mut self, access: FakeAccess) -> Self {
+        self.access = Arc::new(access);
+        self
+    }
+
+    pub(crate) fn system_ui(mut self, system_ui: FakeSystemUi) -> Self {
+        self.system_ui = Arc::new(system_ui);
+        self
     }
 
     pub(crate) fn module(mut self, module: TestModuleBuilder) -> Self {
@@ -464,10 +608,12 @@ impl Fixture {
             walk: Arc::new(self.walk),
             settings: self.settings,
             clock: self.clock,
-            commands: Arc::new(FakeCommandRunner::default()),
-            access: Arc::new(FixedAccess),
+            commands: self.commands,
+            access: self.access,
+            system_ui: self.system_ui,
         };
-        Engine::new(registry, ports).unwrap()
+        let cleanup = CleanupPorts { cleaner: self.cleaner, journal: self.journal, volumes: self.volumes };
+        Engine::with_cleanup(registry, ports, cleanup).unwrap()
     }
 }
 

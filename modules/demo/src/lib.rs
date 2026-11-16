@@ -269,8 +269,8 @@ mod tests {
         use std::collections::BTreeSet;
 
         use fresher_core::{
-            CancelToken, Completeness, DangerLevel, EntryKind, Match, Module, ModuleContext, NewFinding, Removal,
-            Sizes, Subject,
+            CancelToken, Completeness, DangerLevel, EntryFacts, EntryKind, Match, Module, ModuleContext, NewFinding,
+            Removal, Sizes, Subject,
         };
         use fresher_testing::{FakeClock, FakeCommandRunner};
 
@@ -316,6 +316,7 @@ mod tests {
                 modified: None,
                 siblings: vec![],
                 marker: None,
+                facts: EntryFacts::REMOVABLE,
             };
             let mut found = Vec::new();
 

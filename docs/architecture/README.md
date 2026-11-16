@@ -1,9 +1,12 @@
 # Architecture
 
-The crates, the layers and the data, as plan [002](../plans/002-base-architecture/readme.md) built them and plan
-[004](../plans/004-fast-scan/readme.md) added the disk walk to them; their designs argue every choice
-([002](../plans/002-base-architecture/00-design.md), [004](../plans/004-fast-scan/00-design.md)). A crate a later plan
-creates keeps its row here and is described in detail by that plan. How to write a module: [`modules.md`](./modules.md).
+The crates, the layers and the data, as plan [002](../plans/002-base-architecture/readme.md) built them, plan
+[004](../plans/004-fast-scan/readme.md) added the disk walk to them and plan
+[008](../plans/008-safe-removal/readme.md) the removal; their designs argue every choice
+([002](../plans/002-base-architecture/00-design.md), [004](../plans/004-fast-scan/00-design.md),
+[008](../plans/008-safe-removal/00-design.md)). A crate a later plan creates keeps its row here and is described in
+detail by that plan. How to write a module: [`modules.md`](./modules.md); how anything is removed, for a developer
+about to touch it: [`removal.md`](./removal.md).
 
 ## Layers
 
@@ -13,16 +16,18 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
       └───────────── events (one channel) ───────────────┤
                                                          ▼
                                            fresher-engine: registry, event bus,
-                                           one operation at a time, settings in memory
+                                           one operation at a time, settings in memory,
+                                           the plan builder, the cleanup and its history
                                                          │
-                         ┌───────────────────────────────┼────────────────────────────┐
-                         ▼                               ▼                            ▼
-              ports of the core: DiskWalk     modules/* (one crate per feature)    SettingsStore, ScanCache
-              (fresher-scanner) → DiskState   over ONE shared walk → findings      (fresher-store: files)
-                         │                               │
-                         ▼                               └──▶ fresher-cleaner (only from a confirmed plan, plan 008)
-              OS ports: FolderReader, ChangeJournal, Volumes
-              (fresher-macos: the only unsafe code)
+          ┌──────────────────────────────┬───────────────┴─────────────┬───────────────────────────┐
+          ▼                              ▼                             ▼                           ▼
+ ports of the core: DiskWalk     modules/* (one crate per        Cleaner, from a confirmed   SettingsStore, ScanCache,
+ (fresher-scanner) → DiskState   feature) over ONE shared        plan only: fresher-cleaner, CleanupJournal
+          │                      walk → findings, each           the only code that removes  (fresher-store: files)
+          │                      removal described as data                     │
+          ▼                                                                    ▼
+ OS ports: FolderReader, ChangeJournal, Volumes                  Trash, OpenFiles, CommandRunner, and the calls
+ (fresher-macos: the only unsafe code)                           beneath held folders (fresher-macos)
 ```
 
 - **Strict modularity**: every feature is a module in its own crate under `modules/`; a module never knows another,
@@ -36,19 +41,19 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 
 ## Crates
 
-| Crate                 | Folder           | Responsibility                                                                                             | May depend on |
-| --------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------- | ------------- |
-| `fresher-core`        | `crates/core`    | domain types, the module contract, ports (traits), settings schema, events, commands, errors, texts; no IO | —             |
-| `fresher-macos`       | `crates/macos`   | the only crate with `unsafe` (in `mod ffi`): the bulk read, volumes, the change journal, the IO policy     | core          |
-| `fresher-scanner`     | `crates/scanner` | the walk, the tree, the matcher, the cache codec, the rescan and the queries behind `DiskWalk`/`DiskState` | core, macos   |
-| `fresher-rules`       | `crates/rules`   | the shared matcher for declarative rule data (TOML); holds no rules, each module owns its own              | core          |
-| `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache | core          |
-| `fresher-cleaner`     | `crates/cleaner` | the only code that deletes: executes a confirmed plan, Trash first (plan 008)                              | core, macos   |
-| `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries          | core          |
-| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `demo` makes up findings and reads no disk                  | core, rules   |
-| `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                 | core          |
-| `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                       | anything      |
-| `fresher-app`         | `app/tauri`      | the composition root: real adapters, module registration, commands, the event channel                      | anything      |
+| Crate                 | Folder           | Responsibility                                                                                                                                                                          | May depend on |
+| --------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `fresher-core`        | `crates/core`    | domain types, the module contract, ports (traits), settings schema, events, commands, errors, texts; no IO                                                                              | —             |
+| `fresher-macos`       | `crates/macos`   | the only crate with `unsafe` (in `mod ffi`): the bulk read, volumes, the change journal, the IO policy, the Trash call, open files, the protection list, the calls beneath held folders | core          |
+| `fresher-scanner`     | `crates/scanner` | the walk, the tree, the matcher, the cache codec, the rescan and the queries behind `DiskWalk`/`DiskState`                                                                              | core, macos   |
+| `fresher-rules`       | `crates/rules`   | the shared matcher for declarative rule data (TOML); holds no rules, each module owns its own                                                                                           | core          |
+| `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
+| `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
+| `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
+| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `demo` and `trial` are dev-only (debug builds)                                                                                           | core, rules   |
+| `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
+| `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
+| `fresher-app`         | `app/tauri`      | the composition root: real adapters, module registration, commands, the event channel                                                                                                   | anything      |
 
 The "May depend on" column lists normal dependencies; `fresher-testing` is allowed as a dev-dependency of any crate,
 and a module never depends on another module. The column is the constant `TABLE` (and `MODULE_ALLOWED`) of
@@ -64,7 +69,13 @@ Rules of the layout:
   2026-11-15: macOS first, Windows not ruled out). Every OS call is an adapter behind a port, and only `fresher-macos`
   and the adapters built on it are macOS-specific; a module names a known folder (plan
   [009](../plans/009-system-knowledge/readme.md), `KnownFolders`), never a macOS path such as `~/Library/Caches`.
-- Only `fresher-cleaner` may call a deleting file system function (enforced by Clippy's `disallowed-methods`).
+- Only `fresher-cleaner` may call a deleting file system function (`std::fs`'s, or `fresher-macos`'s `remove_at`),
+  at its single deletion point (enforced by Clippy's `disallowed-methods`; [`removal.md`](./removal.md)). The app
+  gives the system's `Trash` to the cleaner and to nothing else; the engine reaches the cleaner only through the
+  `Cleaner` port, with a confirmed plan.
+- A development build and every test get `Reach::Sandbox`: the cleaner acts only below a folder that holds the
+  sandbox marker; only a release build's composition makes the token for the real disk
+  ([`removal.md`](./removal.md), "Reach and the sandbox").
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
 - The UI gets everything it shows (names, descriptions, sizes, danger levels, the text of a refusal) from the core, as
   dictionary keys with arguments; the UI's own dictionary holds only its chrome.
@@ -73,19 +84,23 @@ Rules of the layout:
 
 ## Ports
 
-| Port            | Implemented by                                                                        | Fake for tests                                   |
-| --------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `Clock`         | the app (system time)                                                                 | `FakeClock`                                      |
-| `Trash`         | plan 008                                                                              | `FakeTrash`                                      |
-| `CommandRunner` | the app (`std::process`, plan 008)                                                    | `FakeCommandRunner`                              |
-| `DiskWalk`      | `fresher-scanner`'s `Scanner`, with the macOS reader in the app                       | `NaiveWalk` on a fixture tree                    |
-| `FolderReader`  | `fresher-macos`'s `MacFolderReader` (bulk read); `fresher-scanner`'s portable `StdReader` | `StdReader` on a fixture tree                |
-| `ChangeJournal` | `fresher-macos`'s `MacChangeJournal` (FSEvents)                                       | `FakeChangeJournal` (a script)                   |
-| `Volumes`       | `fresher-macos`'s `MacVolumes` (plan 009 extends it)                                  | `FakeVolumes` (fixed facts per root)             |
-| `ScanCache`     | `fresher-store`'s `FileScanCache`                                                     | `MemoryScanCache`                                |
-| `DiskState`     | `fresher-scanner`'s `TreeState`, returned by `DiskWalk::commit`                       | `FixedDiskState` (a tree from paths and sizes)   |
-| `SettingsStore` | `fresher-store` (`FileSettingsStore`)                                                 | in memory, in the engine's tests                 |
-| `AccessProbe`   | plan 006 (`fresher-macos`); `Unknown` until then                                      | a fixed answer                                   |
+| Port             | Implemented by                                                                                                  | Fake for tests                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `Clock`          | the app (system time)                                                                                           | `FakeClock`                                                 |
+| `Trash`          | `fresher-macos`'s `MacTrash` (the system's Trash call; put back by `renamex_np`)                                | `FakeTrash` (a Trash folder inside the fixture)             |
+| `OpenFiles`      | `fresher-macos`'s `MacOpenFiles` (the user's own processes, `libproc`)                                          | `FakeOpenFiles`                                             |
+| `CommandRunner`  | the app's `ProcessCommandRunner` (`std::process`, no shell)                                                     | `FakeCommandRunner`                                         |
+| `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
+| `CleanupJournal` | `fresher-store`'s `FileCleanupJournal`                                                                          | `MemoryCleanupJournal`                                      |
+| `DiskWalk`       | `fresher-scanner`'s `Scanner`, with the macOS reader in the app                                                 | `NaiveWalk` on a fixture tree                               |
+| `FolderReader`   | `fresher-macos`'s `MacFolderReader` (bulk read); `fresher-scanner`'s portable `StdReader`                       | `StdReader` on a fixture tree                               |
+| `ChangeJournal`  | `fresher-macos`'s `MacChangeJournal` (FSEvents)                                                                 | `FakeChangeJournal` (a script)                              |
+| `Volumes`        | `fresher-macos`'s `MacVolumes`: `identify`, and `available` (the space a cleanup measures; plan 009 extends it) | `FakeVolumes` (fixed facts per root, `answering_available`) |
+| `ScanCache`      | `fresher-store`'s `FileScanCache`                                                                               | `MemoryScanCache`                                           |
+| `DiskState`      | `fresher-scanner`'s `TreeState`, returned by `DiskWalk::commit`                                                 | `FixedDiskState` (a tree from paths and sizes)              |
+| `SettingsStore`  | `fresher-store` (`FileSettingsStore`)                                                                           | in memory, in the engine's tests                            |
+| `AccessProbe`    | plan 006 (`fresher-macos`); `Unknown` and `NotAsked` until then                                                 | `FakeAccess` (any state, guarded places, tries)             |
+| `SystemUi`       | plan 006 (`/usr/bin/open`); `Unsupported` until then                                                            | `FakeSystemUi` (records every call)                         |
 
 The stand-ins until a later plan are listed in [`../hacks/`](../hacks/README.md).
 
@@ -117,11 +132,11 @@ No database: the app keeps its own state in small plain files, with nothing to i
 - **The cache body** (the scanner's `codec`): its own tree format version, the time the state was taken, the roots with
   their volumes and journal positions, the avoid list, the interest fingerprint and the claims table; then every node
   of the frozen tree depth-first, children in name order — its name front-coded against the previous sibling, its
-  flags, child count, own bytes, modification time, hits and owner, all as variable-length integers — then the hard
-  link and clone groups. Totals are not stored: the reader sums them again. A body that does not read whole is
-  refused (one full scan). A body whose file would pass the cap (measured compressed, as the store writes it) has its
-  smallest subtrees with no hit, claim or unreadable folder collapsed into their folder (totals and counts only)
-  until it fits; one that does not fit even then is not saved.
+  flags, child count, own bytes, modification time, hits, owner and access (one byte), all as variable-length
+  integers — then the hard link and clone groups. Totals are not stored: the reader sums them again. A body that does
+  not read whole is refused (one full scan). A body whose file would pass the cap (measured compressed, as the store
+  writes it) has its smallest subtrees with no hit, claim or unreadable folder collapsed into their folder (totals and
+  counts only) until it fits; one that does not fit even then is not saved.
 - **Rescan and restore** (the scanner's `rescan`): every committed scan is saved to the cache with each root's journal
   position, taken before the walk read anything. A scan the user starts (`WalkMode::Auto`) loads the cache, checks it
   is of the same roots, volumes, avoid list and interests, asks the change journal what changed since (`ChangeJournal`,
@@ -133,16 +148,32 @@ No database: the app keeps its own state in small plain files, with nothing to i
   16) taking folders from one queue, each folder read in one bulk call per batch of entries, every entry matched
   against every module's interests with one lookup, and one aggregator building the tree. Files under 1 MiB are
   folded into their folder (a small hard-linked or cloned file keeps only its identity, in the link and clone tables);
-  larger files and matched files are nodes of their own; hard links and clones are counted once. The committed tree
-  is the `DiskState`.
+  larger files and matched files are nodes of their own; hard links and clones are counted once. Each node keeps its
+  entry's access for the user (the owner of the home folder) in one byte — owned, writable by the mode bits, the
+  three locks — read in the same bulk call; a match's entry facts (removability) come from its node and its
+  parent's. The committed tree is the `DiskState`.
 - **Queries** (the engine's `disk.rs` over the last committed `DiskState`): `disk_roots`, `disk_node`,
   `disk_children` (by size or by name, paged), `largest_files`, `search_names` (case ignored, in memory, a lowercase
   copy of the names built by the first search) and `unreadable_places`, every limit capped at 500. A query reads the
   state's `Arc` outside the engine's lock, so it never blocks a scan; `NoScan` before any commit, `StaleNode` for an
   id of another state. The IPC commands come with the screens that use them (plans 003 and 012).
 - **The webview keeps nothing**: the window runs `incognito`.
-- The cleanup journal (plan 008) and history (plan 010) choose their files in their own plans, under the same
-  policy.
+- **The cleanup journal** (`FileCleanupJournal`, behind the core's `CleanupJournal`): an append-only JSON-lines file,
+  `cleanups.jsonl`, private to the user (`0600`). A header line `{"format":"cleanup-journal","version":1}`, then one
+  record per line tagged by `type` — `begin` (every item of the cleanup: its path, identity, action, category, finding
+  key, reason, danger level and sizes), `item` (its outcome and where it landed in the Trash), `end` and `put-back` —
+  in forms of the file's own, not the IPC types. A path is a string when it is UTF-8 and `{"bytes":"<hex>"}`
+  otherwise. Write-ahead: `begin` is synced before it returns (and a new file's folder before it), the engine syncs
+  the items every 50 and every second, `end` and `put-back` are synced. A torn last line (a crash) is skipped and
+  counted when reading, and the next record starts on a new line; a `begin` with no `end` reads as interrupted. Ids
+  continue from the highest in either generation. A file from a newer version or one that cannot be read makes the
+  journal read-only, and a cleanup is refused; a file that is not a journal is renamed to `cleanups.broken.jsonl` at
+  the next write; an older version is read through the migrations line by line and becomes the previous generation
+  at the next write. **Rotation**: when a `begin` finds `cleanups.jsonl` at 4 MiB or more, the file is renamed over
+  `cleanups.previous.jsonl` and a new one starts, so a cleanup never spans two files and the journal keeps about
+  8 MiB of the 50 MB budget (a hundred cleanups of a hundred items take 6.9 MB); the oldest generation drops off by
+  that rename. History reads the previous generation, then the current one, line by line.
+- History points (plan 010) choose their files in their own plan, under the same policy.
 
 ## UI
 
@@ -159,7 +190,7 @@ app/ui/src/
 │   ├── tokens/  base/  motion/  icons/        tokens, the cascade, the motion hooks, the icon allowlist
 │   └── primitives/  data/  feedback/  layout/  effects/      one folder per component
 ├── product/   the app's components: take the core's types, render texts through i18n
-├── screens/   the app frame and the screens (overview, module, review, settings): wire state to product
+├── screens/   the frame and the screens (overview, module, review, cleanups, settings): wire state to product
 ├── modules/   optional custom views per module (none yet); the generic module page is the default
 ├── state/  ipc/  i18n/  locales/  test/
 └── gallery/   the dev-only gallery: every component in every state (`gallery.html`, never in `dist/`)
@@ -188,9 +219,24 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
 - **Selection** (`state/selection.ts`): findings, and whole categories minus the findings ticked off in them; emptied
   when a scan starts; nothing is pre-selected, selecting by level stops at Safe. Its total is a preview summed with
   the core's rule; the confirmation shows only the core's cleanup plan (plan 008).
+- **Cleanup** (`state/cleanup.ts`): `idle`, `preparing`, `confirming { plan }`, `running`, `finished { report }`,
+  `refused { refusal }`, from the review screen's button to the result; the commands are sent from
+  `state/cleanup-actions.ts`. The confirmation sends back exactly the plan's own summary (`confirmationOf`); a
+  finished cleanup empties the selection, and `findings-removed` drops the finding pages and marks the overview stale.
+- **The cleanup's screens** (plan [008/07](../plans/008-safe-removal/07-interface/readme.md)): the review screen's
+  panel (`screens/review/cleanup-panel.tsx`) asks the core for a plan and shows it in the confirmation
+  (`product/confirm-dialog/`: Cancel first, the permanent choice off and red when ticked, what will not be removed and
+  why); then the progress with Stop (`product/cleanup-progress/`) and the result (`product/result-summary/`, the
+  space measured beside the estimate). The Cleanups screen (`screens/cleanups/`) lists the history from the journal;
+  one cleanup shows each item with its outcome and puts back one item or all still in the Trash. Every text of an
+  outcome or a reason comes from the core.
+- **The quit question** (`screens/quit-question.tsx`): while a cleanup runs, closing the window or the app menu's
+  Quit (⌘Q, an item of the app's own in `app/tauri/src/shell.rs`) publishes `quit-requested`, and the UI asks; **Stop
+  and quit** stops after the item in flight. The Dock's Quit cannot be held
+  ([`../known-issues/app-quit-during-cleanup.md`](../known-issues/app-quit-during-cleanup.md)).
 - **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`overview`, `module`, `review`,
-  `settings`); no router. When the focused element leaves the screen, the focus goes to the screen's heading
-  (`screens/keep-focus.ts`).
+  `cleanups`, `cleanup`, `settings`); no router. When the focused element leaves the screen, the focus goes to the
+  screen's heading (`screens/keep-focus.ts`).
 
 ### The window
 

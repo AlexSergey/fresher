@@ -13,6 +13,15 @@ const COMMANDS: &[&str] = &[
     "update_setting",
     "get_dictionary",
     "get_access_status",
+    "prepare_cleanup",
+    "discard_cleanup",
+    "confirm_cleanup",
+    "cancel_cleanup",
+    "get_cleanups",
+    "get_cleanup",
+    "put_back",
+    "reveal_in_trash",
+    "quit_after_cleanup",
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

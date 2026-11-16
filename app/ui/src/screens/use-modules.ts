@@ -17,7 +17,7 @@ export const moduleFound = (module: ModuleInfo, overview: null | Overview): null
   }
 
   // The module's categories, each selected whole: the summary's sum is the core's sum of their totals.
-  const categories = new Map(module.categories.map((category) => [category.id, new Map()] as const));
+  const categories = new Map(module.categories.map(({ descriptor }) => [descriptor.id, new Map()] as const));
 
   return summarize({ categories, findings: new Map() }, overview.totals).sizes;
 };

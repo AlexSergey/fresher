@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use crate::settings::schema::ENABLED;
 use crate::{
-    CancelToken, CategoryDescriptor, Clock, CommandRunner, Interest, Match, ModuleId, ModuleSettings, NewFinding,
-    SettingDescriptor, Text,
+    CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, Match, ModuleId, ModuleSettings,
+    NewFinding, SettingDescriptor, Text, ToolCommand, ToolId,
 };
 
 /// A feature of the app (Docker, `node_modules`, duplicates): it states what it wants to see during the walk and
@@ -23,13 +23,14 @@ pub trait Module: Send + Sync {
     fn finish(&self, cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError>;
 }
 
-/// Who a module is: its id, its categories, its settings and its texts.
+/// Who a module is: its id, its categories, its settings, its texts and the checks of the tools it needs.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleDescriptor {
     id: ModuleId,
     categories: Vec<CategoryDescriptor>,
     settings: Vec<SettingDescriptor>,
     locales: Locales,
+    tool_checks: Vec<ToolCommand>,
 }
 
 /// A module's dictionaries, one flat JSON object per language, embedded with `include_str!`.
@@ -51,6 +52,12 @@ pub enum DescriptorError {
     ForeignSetting { key: String, module: String },
     #[error("setting `{key}` is added by the engine for every module")]
     ReservedSetting { key: String },
+    #[error("tool `{tool}` has a check but no category needs it")]
+    UnusedToolCheck { tool: String },
+    #[error("tool `{tool}` is needed but has no check")]
+    MissingToolCheck { tool: String },
+    #[error("tool `{tool}` has two checks")]
+    DuplicateToolCheck { tool: String },
 }
 
 impl ModuleDescriptor {
@@ -75,7 +82,29 @@ impl ModuleDescriptor {
             }
         }
         check_settings(id, &settings)?;
-        Ok(Self { id, categories, settings, locales })
+        Ok(Self { id, categories, settings, locales, tool_checks: Vec::new() })
+    }
+
+    /// This descriptor with the command that tells whether a tool it needs is ready: success means ready. Refused
+    /// when no category has a `Tool` need of that tool, or the tool already has a check.
+    pub fn with_tool_check(mut self, check: ToolCommand) -> Result<Self, DescriptorError> {
+        let tool = check.tool();
+        if !self.needed_tools().any(|needed| needed == tool) {
+            return Err(DescriptorError::UnusedToolCheck { tool: tool.as_str().into() });
+        }
+        if self.tool_checks.iter().any(|known| known.tool() == tool) {
+            return Err(DescriptorError::DuplicateToolCheck { tool: tool.as_str().into() });
+        }
+        self.tool_checks.push(check);
+        Ok(self)
+    }
+
+    /// Refused when a category needs a tool that has no check; the registry calls it once the descriptor is built.
+    pub fn check_tools(&self) -> Result<(), DescriptorError> {
+        match self.needed_tools().find(|tool| !self.tool_checks.iter().any(|check| check.tool() == *tool)) {
+            Some(tool) => Err(DescriptorError::MissingToolCheck { tool: tool.as_str().into() }),
+            None => Ok(()),
+        }
     }
 
     pub const fn id(&self) -> ModuleId {
@@ -92,6 +121,18 @@ impl ModuleDescriptor {
 
     pub const fn locales(&self) -> Locales {
         self.locales
+    }
+
+    /// The checks of the tools its categories need.
+    pub fn tool_checks(&self) -> &[ToolCommand] {
+        &self.tool_checks
+    }
+
+    fn needed_tools(&self) -> impl Iterator<Item = ToolId> {
+        self.categories.iter().flat_map(CategoryDescriptor::needs).filter_map(|need| match need.capability {
+            Capability::Tool(tool) => Some(tool),
+            _ => None,
+        })
     }
 }
 
@@ -273,6 +314,7 @@ mod tests {
             modified: None,
             siblings: vec![],
             marker: None,
+            facts: crate::EntryFacts::REMOVABLE,
         }
     }
 
@@ -330,6 +372,41 @@ mod tests {
             assert_eq!(twice, Err(DescriptorError::DuplicateSetting { key: "demo.deep".into() }));
         }
 
+        fn docker_check() -> crate::ToolCommand {
+            let docker = crate::ToolId::new("docker").unwrap();
+            crate::ToolCommand::new(docker, vec!["info".into()]).unwrap()
+        }
+
+        fn needing_docker() -> CategoryDescriptor {
+            let docker = crate::Capability::Tool(crate::ToolId::new("docker").unwrap());
+            category("demo.images").with_needs(vec![crate::Need::required(docker)])
+        }
+
+        #[test]
+        fn a_tool_need_without_its_check_is_refused() {
+            let descriptor = ModuleDescriptor::new(demo(), vec![needing_docker()], vec![], LOCALES).unwrap();
+
+            assert_eq!(descriptor.check_tools(), Err(DescriptorError::MissingToolCheck { tool: "docker".into() }));
+        }
+
+        #[test]
+        fn a_tool_check_without_a_need_is_refused() {
+            let descriptor = ModuleDescriptor::new(demo(), vec![category("demo.caches")], vec![], LOCALES).unwrap();
+
+            let error = descriptor.with_tool_check(docker_check());
+
+            assert_eq!(error, Err(DescriptorError::UnusedToolCheck { tool: "docker".into() }));
+        }
+
+        #[test]
+        fn a_second_check_of_the_same_tool_is_refused() {
+            let descriptor = ModuleDescriptor::new(demo(), vec![needing_docker()], vec![], LOCALES).unwrap();
+
+            let error = descriptor.with_tool_check(docker_check()).unwrap().with_tool_check(docker_check());
+
+            assert_eq!(error, Err(DescriptorError::DuplicateToolCheck { tool: "docker".into() }));
+        }
+
         #[test]
         fn a_cancelled_module_reports_it() {
             let cancel = CancelToken::new();
@@ -383,6 +460,21 @@ mod tests {
             assert_eq!(cx.clock().now(), std::time::SystemTime::UNIX_EPOCH);
             assert!(cx.commands().run("docker", &[]).is_err());
             assert!(format!("{cx:?}").starts_with("ModuleContext"));
+        }
+
+        #[test]
+        fn a_needed_tool_with_its_check_is_accepted() {
+            let docker = crate::ToolId::new("docker").unwrap();
+            let need = crate::Need::required(crate::Capability::Tool(docker));
+            let images = super::category("demo.images").with_needs(vec![need]);
+            let check = crate::ToolCommand::new(docker, vec!["info".into()]).unwrap();
+
+            let descriptor =
+                ModuleDescriptor::new(demo(), vec![images], vec![], LOCALES).unwrap().with_tool_check(check.clone());
+
+            let descriptor = descriptor.unwrap();
+            assert_eq!(descriptor.check_tools(), Ok(()));
+            assert_eq!(descriptor.tool_checks(), [check]);
         }
 
         #[test]

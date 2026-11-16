@@ -1,0 +1,17 @@
+error[E0382]: use of moved value: `plan`
+  --> tests/compile_fail/confirmed_plan_used_twice.rs:11:13
+   |
+ 9 | fn run_twice(plan: ConfirmedPlan) {
+   |              ---- move occurs because `plan` has type `ConfirmedPlan`, which does not implement the `Copy` trait
+10 |     execute(plan);
+   |             ---- value moved here
+11 |     execute(plan);
+   |             ^^^^ value used here after move
+   |
+note: consider changing this parameter type in function `execute` to borrow instead if owning the value isn't necessary
+  --> tests/compile_fail/confirmed_plan_used_twice.rs:5:18
+   |
+ 5 | fn execute(plan: ConfirmedPlan) {
+   |    -------       ^^^^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function

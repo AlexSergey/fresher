@@ -45,6 +45,9 @@ deletion, not hidden behind a details button.
   level among them.
 - Items go to the Trash by default; a permanent delete is a separate, explicit choice.
 
+How the cleaner holds this, and what it checks before every act: plan
+[008](./plans/008-safe-removal/00-design.md) and [`architecture/removal.md`](./architecture/removal.md).
+
 ### 4. It understands the hard cases
 
 Beyond plain caches, the rules recognize leftovers that generic tools miss, for example:

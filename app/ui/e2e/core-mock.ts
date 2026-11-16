@@ -4,6 +4,13 @@ import type { Event, FindingsQuery, ModuleInfo, Overview, Refusal, SettingUpdate
 
 import { type CommandKey, COMMANDS } from '../src/ipc';
 import {
+  CLEANUP_DICTIONARY,
+  DELETED_DETAIL,
+  HISTORY,
+  INTERRUPTED_DETAIL,
+  MOVED_DETAIL,
+} from '../src/test/cleanup-plan';
+import {
   BUSY,
   DEMO_FAILED,
   DEMO_FAILED_SCAN,
@@ -21,17 +28,21 @@ import {
   GRANTED,
   IDLE,
   LIVE_HOLD,
+  readyCategory,
   SCRIPTS_DICTIONARY,
   SETTINGS_OF_EVERY_KIND,
   SETTINGS_READ_ONLY,
 } from '../src/test/demo-scan';
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
+import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
 export type CoreScript = {
   readonly answers?: Partial<Readonly<Record<CommandKey, unknown>>>;
+  // The cleanup commands over the scan's findings (support/cleanup-mock.ts); without it they are not answered.
+  readonly cleanup?: CleanupScript;
   // The scan streams this many events, then waits for `releaseScan` (or Stop): the live states can be looked at.
   readonly hold?: number;
   // The scan streams one event every `interval` ms, as the engine does, each asked of Node as JSON and parsed in the
@@ -54,6 +65,7 @@ type ByCommand = {
   readonly getFindings: string;
   readonly getOverview: string;
   readonly hold: null | number;
+  readonly hooks: typeof CLEANUP_HOOKS;
   readonly interval: null | number;
   readonly overviewOf: string;
   // How many events a scan paced by `interval` streams.
@@ -103,6 +115,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     getFindings: COMMANDS.getFindings,
     getOverview: COMMANDS.getOverview,
     hold: script.hold ?? null,
+    hooks: CLEANUP_HOOKS,
     interval: script.interval ?? null,
     overviewOf: OVERVIEW_OF,
     paced: script.interval === undefined ? 0 : (script.scan ?? []).length,
@@ -198,6 +211,12 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     };
 
     Object.assign(globalThis, {
+      [core.hooks.answer]: (command: string, value: unknown): void => {
+        answers[command] = value;
+      },
+      // For the cleanup's part of the mock (support/cleanup-mock.ts): it streams through the same channel and may
+      // change what a command answers.
+      [core.hooks.send]: send,
       [core.release]: (): void => {
         if (running) {
           finish(held, core.scanned);
@@ -206,6 +225,17 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     });
 
     const invoke = (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> => {
+      const cleanup = (
+        globalThis as unknown as Record<
+          string,
+          ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
+        >
+      )[core.hooks.invoke];
+      const answered = command in core.refusals ? undefined : cleanup?.(command, args);
+
+      if (answered !== undefined) {
+        return answered;
+      }
       if (command === core.subscribe) {
         channel = (args.channel as { readonly id: number }).id;
 
@@ -270,6 +300,9 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       },
     });
   }, setup);
+  if (script.cleanup !== undefined) {
+    await mockCleanup(page, findings, script.cleanup);
+  }
 };
 
 // Streams the rest of a held scan: it finishes as the script's scan.
@@ -294,10 +327,28 @@ const ANSWERS = {
 
 const LARGE = largeScan({ categories: 3, count: 1000 });
 
+// The demo scan's texts with the cleanup's.
+const CLEANING_ANSWERS = { ...ANSWERS, getDictionary: { ...SCRIPTS_DICTIONARY, ...CLEANUP_DICTIONARY } };
+
+// What the core answers once every demo finding was removed: nothing left, the scan's tree out of date.
+const CLEANED: Overview = {
+  ...DEMO_OVERVIEW,
+  found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+  lastScan: DEMO_OVERVIEW.lastScan === null ? null : { ...DEMO_OVERVIEW.lastScan, changedSince: 3 },
+  totals: [],
+};
+
+// The history of three cleanups, the newest the demo plan moved to the Trash.
+const CLEANUP = {
+  after: CLEANED,
+  details: [MOVED_DETAIL, DELETED_DETAIL, INTERRUPTED_DETAIL],
+  history: HISTORY,
+} as const;
+
 // The large scan's module: the demo module with the generated categories.
 const LARGE_MODULES: readonly ModuleInfo[] = [
   {
-    categories: LARGE.overview.totals.map(({ category }) => ({ danger: 'safe', id: category })),
+    categories: LARGE.overview.totals.map(({ category }) => readyCategory(category, 'safe')),
     id: 'demo',
     settings: ['demo.enabled'],
   },
@@ -305,6 +356,24 @@ const LARGE_MODULES: readonly ModuleInfo[] = [
 
 // The scripts the flows and the screenshots play.
 export const SCRIPTS = {
+  // The demo scan, then a cleanup of what is picked: the core's plan, the cleanup streamed at once, a history.
+  cleaning: { answers: CLEANING_ANSWERS, cleanup: CLEANUP, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
+  // The same, the cleanup held after its first item until `releaseCleanup` or Stop.
+  cleaningHeld: {
+    answers: CLEANING_ANSWERS,
+    cleanup: { ...CLEANUP, hold: 1 },
+    scan: DEMO_SCAN,
+    scanned: DEMO_OVERVIEW,
+  },
+  // The same, the browser cache left out of every plan: an app uses it.
+  cleaningLeftOut: {
+    answers: CLEANING_ANSWERS,
+    cleanup: { ...CLEANUP, leftOut: { 3: { app: 'Safari', kind: 'in-use' } } },
+    scan: DEMO_SCAN,
+    scanned: DEMO_OVERVIEW,
+  },
+  // No cleanup yet.
+  cleanupsEmpty: { answers: CLEANING_ANSWERS, cleanup: {} },
   // The demo scan, streamed at once.
   demo: { answers: ANSWERS, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
   // Full Disk Access refused: the overview shows the permission card.

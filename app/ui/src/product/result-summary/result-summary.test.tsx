@@ -1,40 +1,42 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Sizes } from '../../ipc/bindings.generated';
+import type { CleanupReport } from '../../ipc/bindings.generated';
 
 import { DURATION } from '../../design/tokens/motion';
 import { setCoreDictionary } from '../../i18n';
 import { fakeFrames, fakeReducedMotion, setMotion } from '../../test/animation';
+import {
+  CLEANUP_DICTIONARY,
+  DELETED_REPORT,
+  MOVED_REPORT,
+  reportOf,
+  STOPPED_REPORT,
+  TOOL_PLAN,
+  UNMEASURED_REPORT,
+} from '../../test/cleanup-plan';
+import { DEMO_DICTIONARY } from '../../test/demo-scan';
 import { ResultSummary, type ResultSummaryProps } from './result-summary';
 
-const FREED: Sizes = {
-  allocated: 2_250_000_000,
-  completeness: 'complete',
-  logical: 2_200_000_000,
-  reclaimable: 2_250_000_000,
-};
+const title = (name: string): ResultSummaryProps['problems'][number]['title'] => ({
+  args: { name: { kind: 'text', value: name } },
+  key: 'demo.finding.title',
+});
 
-const SKIPPED: ResultSummaryProps['skipped'] = [
-  {
-    reason: { args: {}, key: 'test.skipped.in-use' },
-    title: { args: { name: { kind: 'text', value: 'editor-cache' } }, key: 'test.skipped.title' },
-  },
-  {
-    reason: { args: {}, key: 'test.skipped.gone' },
-    title: { args: { name: { kind: 'text', value: 'installer.dmg' } }, key: 'test.skipped.title' },
-  },
+const PROBLEMS: ResultSummaryProps['problems'] = [
+  { outcome: { kind: 'skipped', reason: { app: 'Safari', kind: 'in-use' } }, title: title('editor-cache') },
+  { outcome: { kind: 'failed', reason: { args: {}, key: 'test.failed' } }, title: title('installer.dmg') },
+  { outcome: { kind: 'skipped', reason: { kind: 'vanished' } }, title: null },
 ];
 
 const renderSummary = (props: Partial<ResultSummaryProps> = {}): ReturnType<typeof render> =>
   render(
     <ResultSummary
-      freed={FREED}
-      method="trash"
-      moved={12}
       onDone={vi.fn()}
-      onOpenTrash={vi.fn()}
-      skipped={[]}
+      onSeeCleanup={vi.fn()}
+      onShowInTrash={vi.fn()}
+      problems={[]}
+      report={MOVED_REPORT}
       {...props}
     />,
   );
@@ -49,11 +51,7 @@ const wave = (): Element | null => document.querySelector('[data-light-wave]');
 
 beforeEach(() => {
   fakeReducedMotion(false);
-  setCoreDictionary({
-    'test.skipped.gone': 'It was already gone.',
-    'test.skipped.in-use': 'An app is using it.',
-    'test.skipped.title': 'Example: {name}',
-  });
+  setCoreDictionary({ ...DEMO_DICTIONARY, ...CLEANUP_DICTIONARY, 'test.failed': 'macOS refused to move it.' });
 });
 
 afterEach(async () => {
@@ -64,12 +62,12 @@ afterEach(async () => {
 
 describe('ResultSummary', () => {
   describe('negative cases', () => {
-    it('the freed number does not count under reduced motion', async () => {
+    it('the number does not count under reduced motion', async () => {
       await setMotion('reduced');
       fakeFrames();
       renderSummary();
 
-      expect(counting()).toBe('2.3 GB');
+      expect(counting()).toBe('2.6 GB');
       expect(wave()).not.toBeInTheDocument();
     });
 
@@ -84,7 +82,7 @@ describe('ResultSummary', () => {
 
       expect(wave()).not.toBeInTheDocument();
 
-      rerender(<ResultSummary freed={FREED} method="trash" moved={13} onDone={vi.fn()} skipped={[]} />);
+      rerender(<ResultSummary onDone={vi.fn()} problems={[]} report={STOPPED_REPORT} />);
 
       expect(wave()).not.toBeInTheDocument();
     });
@@ -102,34 +100,52 @@ describe('ResultSummary', () => {
       expect(safe()).not.toHaveAttribute('data-shown');
     });
 
-    it('Open Trash is absent after a permanent delete', () => {
-      renderSummary({ method: 'permanent' });
+    it('a trash result never says freed for the trash', () => {
+      renderSummary();
 
-      expect(screen.queryByRole('button', { name: 'Open Trash' })).not.toBeInTheDocument();
-      expect(screen.getByText('Deleted 12 items permanently')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Moved to the Trash' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Freed' })).toBeNull();
+      expect(screen.getByText('Moved 3 items to the Trash')).toBeInTheDocument();
+      expect(screen.getByText('You get the space back when you empty the Trash.')).toBeInTheDocument();
+      expect(screen.getByText('Space freed on the disk now: about 100 MB (measured).')).toBeInTheDocument();
     });
 
-    it('Open Trash is absent when nothing opens it', () => {
-      render(<ResultSummary freed={FREED} method="trash" moved={1} onDone={vi.fn()} skipped={[]} />);
+    it('an unmeasured space says so', () => {
+      renderSummary({ report: UNMEASURED_REPORT });
 
-      expect(screen.queryByRole('button', { name: 'Open Trash' })).not.toBeInTheDocument();
+      expect(screen.getByText('The space freed on the disk now could not be measured.')).toBeInTheDocument();
+      expect(screen.queryByText(/about/u)).toBeNull();
+    });
+
+    it('a stopped cleanup says how many were untouched', () => {
+      renderSummary({ report: STOPPED_REPORT });
+
+      expect(screen.getByText('Stopped. 2 items were not touched.')).toBeInTheDocument();
       expect(screen.getByText('Moved 1 item to the Trash')).toBeInTheDocument();
     });
 
-    it('a skipped item always shows its reason', () => {
-      renderSummary({ skipped: SKIPPED });
+    it('a cleanup stopped by the history says the core’s text', () => {
+      renderSummary({ report: { ...STOPPED_REPORT, ended: 'stopped' } });
 
-      const list = screen.getByRole('list', { name: '2 items were skipped' });
-      const items = within(list).getAllByRole('listitem');
-
-      expect(items).toHaveLength(2);
-      expect(items[0]).toHaveTextContent('Example: editor-cache');
-      expect(items[0]).toHaveTextContent('An app is using it.');
-      expect(items[1]).toHaveTextContent('Example: installer.dmg');
-      expect(items[1]).toHaveTextContent('It was already gone.');
+      expect(screen.queryByText(/^Stopped\. 2/u)).toBeNull();
+      expect(screen.getByText(/could not be saved/u)).toBeInTheDocument();
     });
 
-    it('shows no skipped list when nothing was skipped', () => {
+    it('Show in the Trash is absent after a permanent delete and when nothing moved', () => {
+      const { rerender } = renderSummary({ report: DELETED_REPORT });
+
+      expect(screen.queryByRole('button', { name: 'Show in the Trash' })).toBeNull();
+      expect(screen.getByText('Deleted 3 items permanently')).toBeInTheDocument();
+      expect(screen.queryByText('You get the space back when you empty the Trash.')).toBeNull();
+
+      const nothingMoved: CleanupReport = { ...MOVED_REPORT, counts: { ...MOVED_REPORT.counts, moved: 0 } };
+      rerender(<ResultSummary onDone={vi.fn()} onShowInTrash={vi.fn()} problems={[]} report={nothingMoved} />);
+
+      expect(screen.queryByRole('button', { name: 'Show in the Trash' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'See this cleanup' })).toBeNull();
+    });
+
+    it('shows no list when every item was removed', () => {
       renderSummary();
 
       expect(screen.queryByRole('list')).not.toBeInTheDocument();
@@ -137,7 +153,7 @@ describe('ResultSummary', () => {
   });
 
   describe('positive cases', () => {
-    it('the freed size reaches its value', () => {
+    it('the size reaches its value', () => {
       const frames = fakeFrames();
       renderSummary();
 
@@ -147,44 +163,60 @@ describe('ResultSummary', () => {
       frames.advance(16);
       frames.advance(16 + DURATION.deliberate / 2);
 
-      expect(counting()).not.toBe('2.3 GB');
+      expect(counting()).not.toBe('2.6 GB');
 
       frames.advance(DURATION.deliberate);
 
-      expect(counting()).toBe('2.3 GB');
-      expect(screen.getByText('2.3 GB', { selector: '.u-visually-hidden' })).toBeInTheDocument();
+      expect(counting()).toBe('2.6 GB');
+      expect(screen.getByText('2.6 GB', { selector: '.u-visually-hidden' })).toBeInTheDocument();
     });
 
-    it('marks a partial freed size as a lower bound', async () => {
+    it('marks a partial size as a lower bound', async () => {
       await setMotion('off');
-      renderSummary({ freed: { ...FREED, completeness: 'partial' } });
+      renderSummary({ report: { ...MOVED_REPORT, moved: { ...MOVED_REPORT.moved, completeness: 'partial' } } });
 
-      expect(counting()).toBe('2.3 GB+');
+      expect(counting()).toBe('2.6 GB+');
     });
 
-    it('Done calls onDone', () => {
-      const onDone = vi.fn();
-      renderSummary({ onDone });
-
-      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-      expect(onDone).toHaveBeenCalledOnce();
-    });
-
-    it('Open Trash calls onOpenTrash after a move to the Trash', () => {
-      const onOpenTrash = vi.fn();
-      renderSummary({ onOpenTrash });
-
-      fireEvent.click(screen.getByRole('button', { name: 'Open Trash' }));
-
-      expect(onOpenTrash).toHaveBeenCalledOnce();
-      expect(screen.getByText('Moved 12 items to the Trash')).toBeInTheDocument();
-    });
-
-    it('is a region named by its title', () => {
-      renderSummary();
+    it('a permanent cleanup says freed, with the measured space next to the estimate', () => {
+      renderSummary({ report: DELETED_REPORT });
 
       expect(screen.getByRole('region', { name: 'Freed' })).toBeInTheDocument();
+      expect(screen.getByText('Measured on the disk: about 2.4 GB.')).toBeInTheDocument();
+    });
+
+    it('the result lists skipped items with their reasons', () => {
+      renderSummary({ problems: PROBLEMS });
+
+      const items = within(screen.getByRole('list', { name: '3 items were not removed' })).getAllByRole('listitem');
+
+      expect(items).toHaveLength(3);
+      expect(items[0]).toHaveTextContent('Example: editor-cache');
+      expect(items[0]).toHaveTextContent('An app is using it, so Fresher left it alone. Quit Safari and try again.');
+      expect(items[1]).toHaveTextContent('Example: installer.dmg');
+      expect(items[1]).toHaveTextContent('macOS refused to move it.');
+      expect(items[2]).toHaveTextContent('An item of this cleanup');
+      expect(items[2]).toHaveTextContent('It is no longer there.');
+    });
+
+    it('items a tool removed are counted apart', () => {
+      renderSummary({ report: reportOf(TOOL_PLAN, { outcomes: [{ kind: 'moved' }, { kind: 'tool-done' }] }) });
+
+      expect(screen.getByText('Moved 1 item to the Trash')).toBeInTheDocument();
+      expect(screen.getByText('1 item was removed by its own tool.')).toBeInTheDocument();
+    });
+
+    it('every way on calls its own handler', () => {
+      const [onDone, onSeeCleanup, onShowInTrash] = [vi.fn(), vi.fn(), vi.fn()];
+      renderSummary({ onDone, onSeeCleanup, onShowInTrash });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Show in the Trash' }));
+      fireEvent.click(screen.getByRole('button', { name: 'See this cleanup' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+      expect(onShowInTrash).toHaveBeenCalledOnce();
+      expect(onSeeCleanup).toHaveBeenCalledOnce();
+      expect(onDone).toHaveBeenCalledOnce();
     });
   });
 });

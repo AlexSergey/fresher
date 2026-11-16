@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import type { CategoryTotal, Dictionary, Overview, Sizes } from '../../ipc/bindings.generated';
 
 import { setCoreDictionary } from '../../i18n';
-import { DEMO_OVERVIEW } from '../../test/demo-scan';
+import { DEMO_OVERVIEW, FULL_COVERAGE } from '../../test/demo-scan';
 import { largeScan } from '../../test/large-scan';
 
 // The data of the product components' stories and tests: the demo scan's overview, a generated scan of twelve
@@ -56,7 +56,13 @@ export const DEMO_FINISHED: Overview = DEMO_OVERVIEW;
 export const DEMO_PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
   found: partial(DEMO_OVERVIEW.found),
-  lastScan: { finished: 1_735_689_600, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
+  lastScan: {
+    coverage: FULL_COVERAGE,
+    finished: 1_735_689_600,
+    kind: { kind: 'full' },
+    outcome: { kind: 'partial' },
+    scan: 1,
+  },
   totals: DEMO_OVERVIEW.totals.map((total, index) => (index === 0 ? { ...total, sizes: partial(total.sizes) } : total)),
 };
 

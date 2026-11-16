@@ -1,0 +1,121 @@
+{
+  "findings": [
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "key": {
+        "identity": "sandbox/fresher-trial-cache",
+        "module": "trial"
+      },
+      "reason": {
+        "args": {},
+        "key": "trial.rule.cache.reason"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "sandbox/fresher-trial-cache"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1050624,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "sandbox/fresher-trial-cache"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "fresher-trial-cache"
+          }
+        },
+        "key": "trial.rule.cache.title"
+      }
+    },
+    {
+      "category": "trial.kept",
+      "danger": "low",
+      "key": {
+        "identity": "sandbox/fresher-trial-kept",
+        "module": "trial"
+      },
+      "reason": {
+        "args": {},
+        "key": "trial.rule.kept.reason"
+      },
+      "removal": {
+        "kind": "empty-folder",
+        "value": "sandbox/fresher-trial-kept"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "sandbox/fresher-trial-kept"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "fresher-trial-kept"
+          }
+        },
+        "key": "trial.rule.kept.title"
+      }
+    },
+    {
+      "category": "trial.tool",
+      "danger": "medium",
+      "key": {
+        "identity": "trial-object",
+        "module": "trial"
+      },
+      "reason": {
+        "args": {},
+        "key": "trial.object.reason"
+      },
+      "removal": {
+        "kind": "tool-command",
+        "value": {
+          "args": [
+            "remove",
+            "trial-object"
+          ],
+          "tool": "fresher-trial-tool"
+        }
+      },
+      "sizes": {
+        "allocated": 1048576,
+        "completeness": "complete",
+        "logical": 1048576,
+        "reclaimable": 1048576
+      },
+      "subject": {
+        "kind": "external",
+        "value": {
+          "id": "trial-object",
+          "tool": "fresher-trial-tool"
+        }
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "trial-object"
+          }
+        },
+        "key": "trial.object.title"
+      }
+    }
+  ],
+  "outcome": {
+    "kind": "completed"
+  }
+}

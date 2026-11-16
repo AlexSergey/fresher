@@ -1,0 +1,27 @@
+# The trial module's rules: folders that only a developer makes, claimed only right next to the sandbox marker.
+
+[[rule]]
+id = "cache"
+category = "trial.caches"
+danger = "safe"
+removal = "trash"
+[rule.look]
+folder-name = "fresher-trial-cache"
+[rule.recognize]
+sibling = ".fresher-sandbox"
+# `fresher-trial-cache2`, `fresher-trial-cache.txt`: they only resemble it.
+[[rule.must-not-match]]
+name = "fresher-trial-cache?*"
+
+[[rule]]
+id = "kept"
+category = "trial.kept"
+danger = "low"
+removal = "empty-folder"
+[rule.look]
+folder-name = "fresher-trial-kept"
+[rule.recognize]
+sibling = ".fresher-sandbox"
+# `fresher-trial-kept2`, `fresher-trial-kept.txt`: they only resemble it.
+[[rule.must-not-match]]
+name = "fresher-trial-kept?*"

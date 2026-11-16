@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::{ModuleId, Sizes, Timestamp};
+use crate::{EntryFacts, ModuleId, Sizes, Timestamp};
 
 /// One thing a module wants the walk to report.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -156,6 +156,8 @@ pub struct Match {
     /// For a `Pattern::MarkerFile` interest named `CACHEDIR.TAG`, whether the tag holds the signature; `None` for
     /// every other interest.
     pub marker: Option<MarkerCheck>,
+    /// What the walk read about the entry, for its removability; the default when it could not tell.
+    pub facts: EntryFacts,
 }
 
 /// What the walk found in a marker file whose content it checks.

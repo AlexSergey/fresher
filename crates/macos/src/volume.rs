@@ -62,6 +62,13 @@ impl Volumes for MacVolumes {
             used: ByteSize::new(used),
         })
     }
+
+    /// The blocks free to the user (`f_bavail`, not counting the ones kept for the system) times the block size; a
+    /// link in `path` is followed.
+    fn available(&self, path: &Path) -> Result<ByteSize, ReadError> {
+        let stats = volume::statfs(path).map_err(|error| read_error(&error))?;
+        Ok(ByteSize::new(stats.f_bavail.saturating_mul(u64::from(stats.f_bsize))))
+    }
 }
 
 /// Whether `id` was made up for a volume with no UUID: such a volume keeps no journal position, so it is always
@@ -129,6 +136,7 @@ mod tests {
             let root = tempfile::tempdir().unwrap();
 
             assert_eq!(MacVolumes::new().identify(&root.path().join("missing")), Err(ReadError::Vanished));
+            assert_eq!(MacVolumes::new().available(&root.path().join("missing")), Err(ReadError::Vanished));
             assert_eq!(MacVolumes::new().identify(Path::new("bad\0path")), Err(ReadError::Failed));
         }
 
@@ -168,6 +176,17 @@ mod tests {
         use crate::MacVolumes;
         use crate::disk_image::{DiskImage, Format};
         use crate::volume::{VolumeAttributes, derived_id, is_derived};
+
+        #[test]
+        fn mac_volumes_answers_the_available_space() {
+            let root = tempfile::tempdir().unwrap();
+            let volumes = MacVolumes::new();
+
+            let available = volumes.available(root.path()).unwrap();
+
+            assert!(available.bytes() > 0);
+            assert!(available.bytes().is_multiple_of(512), "{available}");
+        }
 
         #[test]
         fn the_same_volume_has_the_same_id_for_two_paths() {

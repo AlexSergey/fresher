@@ -3,7 +3,7 @@
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{FindingId, Operation, SettingKey, Text, TextArg, TextKey};
+use crate::{BlockedReason, Capability, CleanupId, FindingId, Operation, SettingKey, Text, TextArg, TextKey};
 
 /// Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
 /// for logs.
@@ -38,14 +38,46 @@ pub enum CommandError {
     /// A node of an older state than the engine holds.
     #[error("the node is of an older scan")]
     StaleNode,
+    /// An action whose need is not granted.
+    #[error("the capability `{}` is missing", .capability.id())]
+    MissingCapability { capability: Capability },
+    /// A capability with no settings pane: a tool, or one this system lacks.
+    #[error("the capability `{}` has no settings pane", .capability.id())]
+    NoSettingsPane { capability: Capability },
     /// A bug: the operation stopped safely.
     #[error("an internal error stopped the operation")]
     Internal,
+    /// A selection names a category that is not in this session.
+    #[error("there is no category `{id}`")]
+    UnknownCategory { id: String },
+    /// A selection that picks nothing.
+    #[error("nothing is selected")]
+    NothingToClean,
+    /// A selection that expands to more items than a plan may hold.
+    #[error("the selection holds more than {limit} items")]
+    TooManyItems { limit: u32 },
+    /// A confirmation of a plan that is unknown, replaced, discarded or expired.
+    #[error("the plan is gone")]
+    PlanGone,
+    /// A confirmation whose summary differs from the plan's: the UI showed something else. The plan is gone.
+    #[error("the confirmation does not match the plan")]
+    PlanMismatch,
+    /// No cleanup can start now; nothing was removed.
+    #[error("cleaning is blocked: {reason:?}")]
+    CleaningBlocked { reason: BlockedReason },
+    #[error("there is no cleanup {id} in the journal")]
+    UnknownCleanup { id: CleanupId },
+    /// An item index the cleanup does not have.
+    #[error("the cleanup has no such item")]
+    UnknownCleanupItem,
+    /// An item that is no longer in the Trash.
+    #[error("the item is not in the Trash")]
+    NotInTrash,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 12] = [
+    pub const CODES: [&str; 23] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -57,7 +89,18 @@ impl CommandError {
         "storage",
         "no-scan",
         "stale-node",
+        "missing-capability",
+        "no-settings-pane",
         "internal",
+        "unknown-category",
+        "nothing-to-clean",
+        "too-many-items",
+        "plan-gone",
+        "plan-mismatch",
+        "cleaning-blocked",
+        "unknown-cleanup",
+        "unknown-cleanup-item",
+        "not-in-trash",
     ];
 
     /// The `code` the error is serialized with.
@@ -74,7 +117,18 @@ impl CommandError {
             Self::Storage => "storage",
             Self::NoScan => "no-scan",
             Self::StaleNode => "stale-node",
+            Self::MissingCapability { .. } => "missing-capability",
+            Self::NoSettingsPane { .. } => "no-settings-pane",
             Self::Internal => "internal",
+            Self::UnknownCategory { .. } => "unknown-category",
+            Self::NothingToClean => "nothing-to-clean",
+            Self::TooManyItems { .. } => "too-many-items",
+            Self::PlanGone => "plan-gone",
+            Self::PlanMismatch => "plan-mismatch",
+            Self::CleaningBlocked { .. } => "cleaning-blocked",
+            Self::UnknownCleanup { .. } => "unknown-cleanup",
+            Self::UnknownCleanupItem => "unknown-cleanup-item",
+            Self::NotInTrash => "not-in-trash",
         }
     }
 
@@ -84,16 +138,26 @@ impl CommandError {
         match self {
             Self::Busy { running } => text.with("running", TextArg::Text(running.as_str().into())),
             Self::UnknownFinding { id } => text.with("id", TextArg::Count(id.get().into())),
-            Self::UnknownModule { id } => text.with("id", TextArg::Text(id.clone())),
+            Self::UnknownModule { id } | Self::UnknownCategory { id } => text.with("id", TextArg::Text(id.clone())),
             Self::UnknownSetting { key } => text.with("key", TextArg::Text(key.clone())),
             Self::InvalidSettingValue { key } => text.with("key", TextArg::Text(key.as_str().into())),
             Self::UnknownLocale { locale } => text.with("locale", TextArg::Text(locale.clone())),
+            Self::TooManyItems { limit } => text.with("limit", TextArg::Count((*limit).into())),
+            Self::UnknownCleanup { id } => text.with("id", TextArg::Count(id.get().into())),
             Self::NotRunning
             | Self::SettingsReadOnly
             | Self::Storage
             | Self::NoScan
             | Self::StaleNode
-            | Self::Internal => text,
+            | Self::MissingCapability { .. }
+            | Self::NoSettingsPane { .. }
+            | Self::Internal
+            | Self::NothingToClean
+            | Self::PlanGone
+            | Self::PlanMismatch
+            | Self::CleaningBlocked { .. }
+            | Self::UnknownCleanupItem
+            | Self::NotInTrash => text,
         }
     }
 }
@@ -114,12 +178,12 @@ impl From<CommandError> for Refusal {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{CommandError, FindingId, Operation, SettingKey};
+pub(crate) mod tests {
+    use crate::{BlockedReason, Capability, CleanupId, CommandError, FindingId, Operation, SettingKey};
 
     /// One error of every variant. The `match` has no wildcard: a new variant fails to compile until it is added here,
     /// and then the tests below check its code.
-    fn one_of_each() -> Vec<CommandError> {
+    pub(crate) fn one_of_each() -> Vec<CommandError> {
         let sample = |error: CommandError| match error {
             CommandError::Busy { .. }
             | CommandError::NotRunning
@@ -132,7 +196,18 @@ mod tests {
             | CommandError::Storage
             | CommandError::NoScan
             | CommandError::StaleNode
-            | CommandError::Internal => error,
+            | CommandError::MissingCapability { .. }
+            | CommandError::NoSettingsPane { .. }
+            | CommandError::Internal
+            | CommandError::UnknownCategory { .. }
+            | CommandError::NothingToClean
+            | CommandError::TooManyItems { .. }
+            | CommandError::PlanGone
+            | CommandError::PlanMismatch
+            | CommandError::CleaningBlocked { .. }
+            | CommandError::UnknownCleanup { .. }
+            | CommandError::UnknownCleanupItem
+            | CommandError::NotInTrash => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -146,7 +221,18 @@ mod tests {
             sample(CommandError::Storage),
             sample(CommandError::NoScan),
             sample(CommandError::StaleNode),
+            sample(CommandError::MissingCapability { capability: Capability::AllFiles }),
+            sample(CommandError::NoSettingsPane { capability: Capability::OtherAppsData }),
             sample(CommandError::Internal),
+            sample(CommandError::UnknownCategory { id: "demo.gone".into() }),
+            sample(CommandError::NothingToClean),
+            sample(CommandError::TooManyItems { limit: 10_000 }),
+            sample(CommandError::PlanGone),
+            sample(CommandError::PlanMismatch),
+            sample(CommandError::CleaningBlocked { reason: BlockedReason::Journal }),
+            sample(CommandError::UnknownCleanup { id: CleanupId::new(4) }),
+            sample(CommandError::UnknownCleanupItem),
+            sample(CommandError::NotInTrash),
         ]
     }
 
@@ -233,6 +319,17 @@ mod tests {
                     vec![],
                     vec![],
                     vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec!["id"],
+                    vec![],
+                    vec!["limit"],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec!["id"],
                     vec![],
                     vec![],
                 ]

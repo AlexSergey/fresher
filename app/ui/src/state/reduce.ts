@@ -5,6 +5,7 @@ import type {
   Dictionary,
   EngineStatus,
   Event,
+  FindingId,
   ModuleId,
   ModuleOutcome,
   Overview,
@@ -14,10 +15,12 @@ import type {
   Sizes,
 } from '../ipc/bindings.generated';
 
+import { type CleanupAction, type CleanupState, NO_CLEANUP, reduceCleanup } from './cleanup';
 import { NOTHING_SELECTED, reduceSelection, type Selection, type SelectionAction } from './selection';
 
 // What happened to the UI itself: answers of commands and what the user picked, next to the core's events.
 export type CoreAction =
+  | CleanupAction
   | Event
   | SelectionAction
   | { readonly dictionary: Dictionary; readonly type: 'dictionary-loaded' }
@@ -25,13 +28,17 @@ export type CoreAction =
   | { readonly overview: Overview; readonly type: 'overview-loaded' }
   | { readonly settings: SettingsView; readonly type: 'settings-loaded' }
   | { readonly status: AccessStatus; readonly type: 'access-loaded' }
-  | { readonly type: 'overview-requested' };
+  | { readonly type: 'overview-requested' }
+  // The quit question was answered, either way.
+  | { readonly type: 'quit-answered' };
 
 // What the UI knows of the core: the scan whose events it follows, what they told, and the core's totals. No finding
 // is kept: the lists ask the core for pages (state/findings.ts), so the memory does not grow with the scan.
 export type CoreState = {
   // The permissions the app has, as `get_access_status` answered and `access-changed` events keep them.
   readonly access: AccessStatus | null;
+  // The cleanup from the review screen's button to its result (state/cleanup.ts).
+  readonly cleanup: CleanupState;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
   readonly modules: readonly { readonly module: ModuleId; readonly outcome: ModuleOutcome }[];
@@ -39,6 +46,10 @@ export type CoreState = {
   // The totals per category, everything found and the last scan, as `get_overview` answered them.
   readonly overview: null | Overview;
   readonly progress: null | { readonly bytes: ByteSize; readonly entries: number };
+  // The window was closed during a cleanup: the frame asks whether to stop after the item in hand and quit.
+  readonly quitAsked: boolean;
+  // The findings the last cleanup removed: the finding pages drop them (state/findings.ts).
+  readonly removed: null | readonly FindingId[];
   readonly scan: null | ScanId;
   // The modules the followed scan runs, as its `scan-started` listed them (a module switched off is not among them);
   // `null` until a `scan-started` arrived, as for a scan the UI learned of from an overview only.
@@ -60,12 +71,15 @@ type SeenScan = { readonly finished: boolean; readonly scan: ScanId };
 
 export const INITIAL_STATE: CoreState = {
   access: null,
+  cleanup: NO_CLEANUP,
   dictionary: null,
   failure: null,
   modules: [],
   outcome: null,
   overview: null,
   progress: null,
+  quitAsked: false,
+  removed: null,
   scan: null,
   scanModules: null,
   seen: null,
@@ -80,6 +94,9 @@ const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, rec
 // The overview no longer counts everything: unchanged when it already did not, so a batch renders nothing.
 const markStale = (state: CoreState): CoreState => (state.stale ? state : { ...state, stale: true });
 
+const withCleanup = (state: CoreState, cleanup: CleanupState): CoreState =>
+  cleanup === state.cleanup ? state : { ...state, cleanup };
+
 const reduceEvent = (state: CoreState, event: Event): CoreState => {
   // Every event of a scan belongs to one scan: one the UI does not follow is ignored.
   const follows = (scan: ScanId): boolean => scan === state.scan;
@@ -87,12 +104,29 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
   switch (event.type) {
     case 'access-changed':
       return { ...state, access: event.status };
+    case 'cleanup-finished': {
+      const cleanup = reduceCleanup(state.cleanup, event);
+
+      // The cleanup is over: what was picked for it is no longer picked.
+      return cleanup === state.cleanup ? state : { ...state, cleanup, quitAsked: false, selection: NOTHING_SELECTED };
+    }
+    case 'cleanup-items':
+    case 'cleanup-started':
+      return withCleanup(state, reduceCleanup(state.cleanup, event));
     case 'findings-added':
       return follows(event.scan) ? markStale(state) : state;
+    case 'findings-removed':
+      // The removed findings leave the lists and the totals: the overview is asked for again.
+      return { ...markStale(state), removed: event.findings };
     case 'module-finished':
       return follows(event.scan)
         ? markStale({ ...state, modules: [...state.modules, { module: event.module, outcome: event.outcome }] })
         : state;
+    case 'quit-requested':
+      return state.quitAsked ? state : { ...state, quitAsked: true };
+    case 'scan-coverage':
+      // The coverage of a scan has its notices in plan 006.
+      return state;
     case 'scan-finished':
       // The overview is always asked for once more at the end, so the last totals are the finished scan's.
       return follows(event.scan) ? markStale({ ...state, outcome: event.outcome, status: { state: 'idle' } }) : state;
@@ -161,11 +195,25 @@ const loadOverview = (state: CoreState, overview: Overview): CoreState => {
 export const reduce = (state: CoreState, action: CoreAction): CoreState => {
   switch (action.type) {
     case 'access-changed':
+    case 'cleanup-finished':
+    case 'cleanup-items':
+    case 'cleanup-started':
+    case 'findings-removed':
+    case 'quit-requested':
+    case 'scan-coverage':
     case 'setting-changed':
       return reduceEvent(state, action);
     case 'access-loaded':
       // An event told of the access before the answer came: the event is newer.
       return state.access === null ? { ...state, access: action.status } : state;
+    case 'cleanup-confirmed':
+    case 'cleanup-confirming':
+    case 'cleanup-dismissed':
+    case 'cleanup-prepared':
+    case 'cleanup-preparing':
+    case 'cleanup-refused':
+    case 'cleanup-stopping':
+      return withCleanup(state, reduceCleanup(state.cleanup, action));
     case 'clear':
     case 'toggle-category':
     case 'toggle-finding': {
@@ -191,6 +239,8 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     case 'overview-requested':
       // The request counts every event so far; an event after it marks the overview stale again.
       return state.stale ? { ...state, stale: false } : state;
+    case 'quit-answered':
+      return state.quitAsked ? { ...state, quitAsked: false } : state;
     case 'settings-loaded':
       // The settings are asked for once; the events since keep them, so a later answer is older than they are.
       return state.settings === null ? { ...state, settings: action.settings } : state;

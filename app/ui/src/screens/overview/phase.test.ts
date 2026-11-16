@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { LastScan, ScanOutcome } from '../../ipc/bindings.generated';
 
+import { FULL_COVERAGE } from '../../test/demo-scan';
 import { phaseOf, scanFailure } from './phase';
 
 const REASON = { args: {}, key: 'core.scan.outcome.failed' };
 
 const last = (outcome: ScanOutcome): LastScan => ({
+  coverage: FULL_COVERAGE,
   finished: 1_735_689_600,
   kind: { kind: 'full' },
   outcome,
@@ -36,7 +38,7 @@ describe('phaseOf', () => {
     });
 
     it('a cleaning engine shows how its last scan ended', () => {
-      expect(phaseOf({ state: 'cleaning' }, last({ kind: 'completed' }), null)).toBe('finished');
+      expect(phaseOf({ cleanup: 1, state: 'cleaning' }, last({ kind: 'completed' }), null)).toBe('finished');
     });
   });
 });

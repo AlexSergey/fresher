@@ -11,7 +11,8 @@ use crate::codec::CodecError;
 use crate::codec::varint::{Reader, write_u64};
 
 /// The version of the tree format this build writes and reads; another version is refused (the cache is rebuilt).
-pub(crate) const TREE_FORMAT: u16 = 1;
+/// 2: every node carries its access (plan 006/05/01).
+pub(crate) const TREE_FORMAT: u16 = 2;
 
 /// What a saved tree is of.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -152,16 +153,16 @@ pub(crate) mod testing {
 mod tests {
     mod negative {
         use crate::codec::CodecError;
-        use crate::codec::header::Header;
         use crate::codec::header::testing::header;
+        use crate::codec::header::{Header, TREE_FORMAT};
         use crate::codec::varint::Reader;
 
         #[test]
         fn another_tree_format_is_refused() {
             let mut out = Vec::new();
             header().write(&mut out);
-            out[0] = 2;
-            assert_eq!(Header::read(&mut Reader::new(&out)), Err(CodecError::OtherFormat { found: 2 }));
+            out[0] = u8::try_from(TREE_FORMAT + 1).unwrap();
+            assert_eq!(Header::read(&mut Reader::new(&out)), Err(CodecError::OtherFormat { found: TREE_FORMAT + 1 }));
         }
 
         #[test]

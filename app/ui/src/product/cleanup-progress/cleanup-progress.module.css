@@ -1,0 +1,41 @@
+/*
+ * A cleanup under way. Static by the safety rule: the bar's fill jumps to each value instead of gliding, and nothing
+ * else here moves.
+ */
+@layer components {
+  .progress {
+    display: grid;
+    padding: var(--space-6);
+    gap: var(--space-3);
+  }
+
+  .progress [role='progressbar'] > * {
+    transition: none;
+  }
+
+  .status {
+    color: var(--text-primary);
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .now {
+    overflow: hidden;
+    min-height: var(--type-body-line);
+    color: var(--text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .stopping {
+    color: var(--text-secondary);
+  }
+}

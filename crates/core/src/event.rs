@@ -3,7 +3,10 @@
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{AccessStatus, ByteSize, Finding, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp};
+use crate::{
+    AccessStatus, ByteSize, Capability, CleanupId, CleanupReport, Coverage, Finding, FindingId, ItemReport, Method,
+    ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp,
+};
 
 /// Something that happened; a discriminated union on `type` in TypeScript.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -28,6 +31,11 @@ pub enum Event {
         module: ModuleId,
         outcome: ModuleOutcome,
     },
+    /// What the scan saw and what it did not; sent right before `ScanFinished`.
+    ScanCoverage {
+        scan: ScanId,
+        coverage: Coverage,
+    },
     ScanFinished {
         scan: ScanId,
         outcome: ScanOutcome,
@@ -40,6 +48,29 @@ pub enum Event {
     AccessChanged {
         status: AccessStatus,
     },
+    /// A confirmed cleanup began: its `total` items are acted on one by one.
+    CleanupStarted {
+        cleanup: CleanupId,
+        method: Method,
+        total: u32,
+    },
+    /// The outcomes of the next items, in plan order; `done` items have ended so far.
+    CleanupItems {
+        cleanup: CleanupId,
+        done: u32,
+        items: Vec<ItemReport>,
+    },
+    CleanupFinished {
+        cleanup: CleanupId,
+        report: CleanupReport,
+    },
+    /// Findings of `scan` that a cleanup removed have left the results.
+    FindingsRemoved {
+        scan: ScanId,
+        findings: Vec<FindingId>,
+    },
+    /// The window is closing while a cleanup runs: the UI asks the user first.
+    QuitRequested,
 }
 
 /// How a scan read the disk.
@@ -68,12 +99,22 @@ pub enum ModuleOutcome {
         reason: Text,
     },
     Cancelled,
+    /// Not run: every category of the module needs a capability that is not allowed. The UI says so with
+    /// `core.module.unavailable` and the missing capabilities' texts.
+    Unavailable {
+        missing: Vec<Capability>,
+    },
 }
 
 impl ModuleOutcome {
     /// The module panicked: the engine caught it, and the module counts as failed with the core's own reason.
     pub fn panicked() -> Self {
         Self::Failed { reason: Text::new(TextKey::from_valid("core.module.panicked".into())) }
+    }
+
+    /// The key of the sentence the UI shows for `Unavailable`, before the missing capabilities.
+    pub fn unavailable_key() -> TextKey {
+        TextKey::from_valid("core.module.unavailable".into())
     }
 }
 
@@ -133,6 +174,16 @@ mod tests {
         }
 
         #[test]
+        fn an_unavailable_module_names_what_is_missing() {
+            let outcome = ModuleOutcome::Unavailable { missing: vec![crate::Capability::AllFiles] };
+
+            assert_eq!(
+                serde_json::to_value(outcome).unwrap(),
+                json!({ "kind": "unavailable", "missing": [{ "kind": "all-files" }] })
+            );
+        }
+
+        #[test]
         fn scan_finished_carries_the_scan_kind() {
             let rescan = Event::ScanFinished {
                 scan: ScanId::new(2),
@@ -149,6 +200,23 @@ mod tests {
         }
 
         #[test]
+        fn cleanup_events_name_their_cleanup() {
+            let started =
+                Event::CleanupStarted { cleanup: crate::CleanupId::new(4), method: crate::Method::Trash, total: 128 };
+            let removed = Event::FindingsRemoved { scan: ScanId::new(2), findings: vec![crate::FindingId::new(7)] };
+
+            assert_eq!(
+                serde_json::to_value(started).unwrap(),
+                json!({ "type": "cleanup-started", "cleanup": 4, "method": "trash", "total": 128 })
+            );
+            assert_eq!(
+                serde_json::to_value(removed).unwrap(),
+                json!({ "type": "findings-removed", "scan": 2, "findings": [7] })
+            );
+            assert_eq!(serde_json::to_value(Event::QuitRequested).unwrap(), json!({ "type": "quit-requested" }));
+        }
+
+        #[test]
         fn exports_the_event_union_to_typescript() {
             let declaration = Event::decl(&Config::new());
 
@@ -161,6 +229,11 @@ mod tests {
                 "scan-finished",
                 "setting-changed",
                 "access-changed",
+                "cleanup-started",
+                "cleanup-items",
+                "cleanup-finished",
+                "findings-removed",
+                "quit-requested",
             ] {
                 let variant = format!("{{ \"type\": \"{tag}\"");
                 assert!(declaration.contains(&variant), "{tag}: {declaration}");

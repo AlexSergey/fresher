@@ -2,14 +2,14 @@
 
 use std::cell::RefCell;
 use std::ffi::CString;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read as _};
+use std::fs::{self, File, Metadata, OpenOptions};
+use std::io::{self, Read as _, Seek as _};
 use std::os::fd::{AsFd as _, BorrowedFd};
 use std::os::unix::ffi::OsStrExt as _;
 use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _};
 use std::path::{Component, Path};
 
-use fresher_core::{FolderIdentity, FolderListing, FolderReader, ReadError};
+use fresher_core::{EntryAccess, FolderIdentity, FolderListing, FolderReader, ReadError};
 
 use super::parse::{self, COMMON, EXTENDED, FILE};
 use crate::errors::read_error;
@@ -77,6 +77,11 @@ impl FolderReader for MacFolderReader {
         identity(&open_folder(path)?)
     }
 
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+        let metadata = open_folder(path)?.metadata().map_err(|error| read_error(&error))?;
+        Ok(access_of(&metadata))
+    }
+
     /// Clears `out` first. A folder that is no longer `expected` (a link or another folder now stands at its path) is
     /// `Replaced`; a folder removed while it was read is `Vanished`.
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {
@@ -113,6 +118,17 @@ impl FolderReader for MacFolderReader {
             .map_err(|error| read_error(&error))?;
         Ok(head)
     }
+}
+
+/// Reads every entry of the open folder `folder` into `out` (cleared first), from its first entry: the folder is
+/// rewound before the read, so a folder already read is read again whole.
+pub(crate) fn read_held(folder: &File, out: &mut FolderListing) -> Result<(), ReadError> {
+    out.clear();
+    (&*folder).seek(io::SeekFrom::Start(0)).map_err(|error| read_error(&error))?;
+    BUFFER.with_borrow_mut(|buffer| {
+        buffer.resize(BUFFER_SIZE, 0);
+        read_all(folder.as_fd(), buffer, out)
+    })
 }
 
 fn read_all(folder: BorrowedFd<'_>, buffer: &mut [u8], out: &mut FolderListing) -> Result<(), ReadError> {
@@ -152,6 +168,13 @@ fn retrying<T>(mut call: impl FnMut() -> io::Result<T>) -> Result<T, ReadError> 
             result => return result.map_err(|error| read_error(&error)),
         }
     }
+}
+
+/// The access of an entry as `std` reads it, decoded as the bulk read's.
+fn access_of(metadata: &Metadata) -> EntryAccess {
+    use std::os::macos::fs::MetadataExt as _;
+
+    parse::access(Some(metadata.uid()), metadata.mode(), metadata.st_flags())
 }
 
 fn identity(folder: &File) -> Result<FolderIdentity, ReadError> {
@@ -197,6 +220,12 @@ mod tests {
     use fresher_core::{FolderListing, FolderReader, RawEntry, ReadError};
 
     use super::MacFolderReader;
+
+    /// Runs `chflags` with `flags` on `path`.
+    pub(super) fn chflags(flags: &str, path: &Path) {
+        let status = std::process::Command::new("/usr/bin/chflags").arg(flags).arg(path).status().unwrap();
+        assert!(status.success());
+    }
 
     pub(super) fn listing(reader: MacFolderReader, path: &Path) -> Result<BTreeMap<Vec<u8>, RawEntry>, ReadError> {
         let mut out = FolderListing::new();
@@ -315,6 +344,16 @@ mod tests {
         }
 
         #[test]
+        fn the_access_of_a_link_or_a_missing_folder_is_refused() {
+            let root = tempfile::tempdir().unwrap();
+            symlink(root.path(), root.path().join("link")).unwrap();
+            let reader = MacFolderReader::new();
+
+            assert_eq!(reader.access(&root.path().join("link")), Err(ReadError::Replaced));
+            assert_eq!(reader.access(&root.path().join("missing")), Err(ReadError::Vanished));
+        }
+
+        #[test]
         fn a_relative_path_past_path_max_is_refused() {
             let long = "a/".repeat(600);
 
@@ -387,6 +426,45 @@ mod tests {
         }
 
         #[test]
+        fn reads_the_owner_the_permission_bits_and_the_locks_like_std() {
+            use std::os::macos::fs::MetadataExt as _;
+            use std::os::unix::fs::PermissionsExt as _;
+
+            let root = tempfile::tempdir().unwrap();
+            let base = root.path();
+            fs::write(base.join("mine"), b"x").unwrap();
+            fs::write(base.join("read-only"), b"x").unwrap();
+            fs::set_permissions(base.join("read-only"), fs::Permissions::from_mode(0o444)).unwrap();
+            fs::write(base.join("locked"), b"x").unwrap();
+            super::chflags("uchg", &base.join("locked"));
+            fs::create_dir(base.join("closed")).unwrap();
+            fs::set_permissions(base.join("closed"), fs::Permissions::from_mode(0o555)).unwrap();
+            symlink("mine", base.join("link")).unwrap();
+            let reader = MacFolderReader::new();
+
+            let listed = listing(reader, base).unwrap();
+            let folder = reader.access(&base.join("closed"));
+            let std: Vec<_> = listed
+                .keys()
+                .map(|name| fs::symlink_metadata(base.join(std::ffi::OsStr::from_bytes(name))).unwrap())
+                .collect();
+            super::chflags("nouchg", &base.join("locked"));
+            fs::set_permissions(base.join("closed"), fs::Permissions::from_mode(0o755)).unwrap();
+
+            for ((name, entry), metadata) in listed.iter().zip(&std) {
+                let access = entry.access;
+                assert_eq!(access.owner, Some(metadata.uid()), "{name:?}");
+                assert_eq!(u32::from(access.mode), metadata.mode() & 0o7777, "{name:?}");
+                assert_eq!(access.user_immutable, metadata.st_flags() & libc::UF_IMMUTABLE != 0, "{name:?}");
+                assert!(!access.system_immutable && !access.restricted, "{name:?}");
+            }
+            assert!(listed[&b"locked"[..]].access.user_immutable);
+            assert_eq!(listed[&b"read-only"[..]].access.mode, 0o444);
+            assert_eq!(listed[&b"closed"[..]].access.mode, 0o555);
+            assert_eq!(folder, Ok(listed[&b"closed"[..]].access));
+        }
+
+        #[test]
         fn reads_a_large_folder_in_several_calls() {
             let root = tempfile::tempdir().unwrap();
             let folder = root.path().join("many");
@@ -422,6 +500,7 @@ mod tests {
                 clone: None,
                 modified: None,
                 cloud_only: false,
+                access: fresher_core::EntryAccess::default(),
                 error: None,
             }
         }

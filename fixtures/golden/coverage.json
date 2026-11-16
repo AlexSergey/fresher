@@ -1,0 +1,40 @@
+{
+  "coverage": {
+    "coverage": {
+      "notEntered": [
+        {
+          "access": "not-asked",
+          "capability": {
+            "kind": "folder",
+            "value": "desktop"
+          }
+        }
+      ],
+      "unreadable": []
+    },
+    "scan": 1,
+    "type": "scan-coverage"
+  },
+  "lastScan": {
+    "coverage": {
+      "notEntered": [
+        {
+          "access": "not-asked",
+          "capability": {
+            "kind": "folder",
+            "value": "desktop"
+          }
+        }
+      ],
+      "unreadable": []
+    },
+    "finished": 1763200000,
+    "kind": {
+      "kind": "full"
+    },
+    "outcome": {
+      "kind": "partial"
+    },
+    "scan": 1
+  }
+}

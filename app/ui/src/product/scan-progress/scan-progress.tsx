@@ -34,12 +34,14 @@ const STATE_WORDS = {
   completed: () => t('ui.scan-progress.module.done'),
   failed: () => t('ui.scan-progress.module.failed'),
   running: () => t('ui.scan-progress.module.running'),
+  unavailable: () => t('ui.scan-progress.module.unavailable'),
   waiting: () => t('ui.scan-progress.module.waiting'),
 } as const satisfies Record<ChipState['kind'], () => string>;
 
 const Mark = ({ state }: { readonly state: ChipState }): JSX.Element => {
   switch (state.kind) {
     case 'cancelled':
+    case 'unavailable':
       return <Icon icon={Minus} />;
     case 'completed':
       return <Icon icon={Check} />;

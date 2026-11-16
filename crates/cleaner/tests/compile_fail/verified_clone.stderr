@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `Verified: Clone` is not satisfied
+  --> tests/compile_fail/verified_clone.rs:10:10
+   |
+10 |     copy(verified)
+   |     ---- ^^^^^^^^ the trait `Clone` is not implemented for `Verified`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `copy`
+  --> tests/compile_fail/verified_clone.rs:5:12
+   |
+ 5 | fn copy<T: Clone>(item: &T) -> T {
+   |            ^^^^^ required by this bound in `copy`

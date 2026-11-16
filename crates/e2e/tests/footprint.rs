@@ -1,6 +1,8 @@
-//! The data folder after ten scans of a generated tree with changes between them (plan 004/08/03): within its budget,
-//! holding only the settings file and the cache's slot files. The scanner commits and saves as in the app; a scripted
-//! journal reports the changed folder, so the scans after the first are rescans that load the saved cache.
+//! The data folder after ten scans of a generated tree with changes between them (plan 004/08/03) and a hundred
+//! cleanups of a hundred items each through the real cleanup journal (plan 008/05/03): within its budget, holding only
+//! the settings file, the cache's slot files and the journal's two generations. The scanner commits and saves as in
+//! the app; a scripted change journal reports the changed folder, so the scans after the first are rescans that load
+//! the saved cache.
 
 #[cfg(test)]
 mod run {
@@ -10,15 +12,23 @@ mod run {
     use std::sync::Arc;
 
     use fresher_core::{
-        ByteSize, CancelToken, ChangeJournal, Changes, Claim, DiskWalk, Interest, InterestSet, JournalGap,
-        JournalPosition, ModuleId, Pattern, ScanKind, SettingsStore, StoredSettings, VolumeFacts, VolumeId, WalkMode,
+        ActionKind, BeginRecord, ByteSize, CancelToken, ChangeJournal, Changes, Claim, CleanupJournal, DangerLevel,
+        DiskWalk, EndRecord, Ended, EntryKind, Interest, InterestSet, ItemIdentity, ItemRecord, JournalGap,
+        JournalItem, JournalPosition, Method, ModuleId, Pattern, RecordedOutcome, ScanKind, SettingsStore, Sizes,
+        StoredSettings, Text, TextArg, TextKey, Timestamp, TrashedItem, VolumeFacts, VolumeId, VolumeSpace, WalkMode,
         WalkRequest,
     };
     use fresher_scanner::{Scanner, ScannerOptions, StdReader, home_anchor};
-    use fresher_store::{CachePolicy, DataFolder, FOOTPRINT_BUDGET, FileScanCache, FileSettingsStore, Footprint};
+    use fresher_store::{
+        CachePolicy, DataFolder, FOOTPRINT_BUDGET, FileCleanupJournal, FileScanCache, FileSettingsStore, Footprint,
+    };
     use fresher_testing::{FakeVolumes, LargeTree, TreeSpec};
 
     const SCANS: usize = 10;
+    const CLEANUPS: u32 = 100;
+    const ITEMS: u32 = 100;
+    /// The journal's share of the footprint budget (plan 008, section 8).
+    const JOURNAL_SHARE: u64 = 8 << 20;
 
     /// A journal that always stands at the same position and reports the folder of the changes as changed throughout.
     #[derive(Debug)]
@@ -72,6 +82,50 @@ mod run {
         }
     }
 
+    /// One item of a cleanup, with a path as long as a real cache's.
+    fn item(cleanup: u32, index: u32) -> JournalItem {
+        let reason = Text::new(TextKey::new("footprint.finding.reason").unwrap()).with("count", TextArg::Count(1));
+        JournalItem {
+            index,
+            path: Some(original(cleanup, index)),
+            identity: Some(ItemIdentity::new(1, u64::from(cleanup * ITEMS + index), EntryKind::Folder)),
+            action: ActionKind::Remove,
+            category: "footprint.caches".into(),
+            key: format!("com.example.application-{cleanup}/cache-{index}"),
+            reason,
+            danger: DangerLevel::Low,
+            sizes: Sizes::complete(ByteSize::new(1 << 20), ByteSize::new(1 << 20)),
+        }
+    }
+
+    fn original(cleanup: u32, index: u32) -> PathBuf {
+        PathBuf::from(format!("/Users/someone/Library/Caches/com.example.application-{cleanup}/cache-{index}"))
+    }
+
+    /// Records a cleanup of `ITEMS` items, each moved to the Trash, as the engine does.
+    fn clean(journal: &FileCleanupJournal, cleanup: u32) {
+        let space = vec![VolumeSpace { root: PathBuf::from("/Users/someone"), available: ByteSize::new(1 << 40) }];
+        let begin = BeginRecord {
+            at: Timestamp::from_secs(1_763_290_000 + u64::from(cleanup)),
+            method: Method::Trash,
+            roots: vec![PathBuf::from("/Users/someone")],
+            space: space.clone(),
+            items: (0..ITEMS).map(|index| item(cleanup, index)).collect(),
+        };
+        let id = journal.begin(&begin).unwrap();
+        for index in 0..ITEMS {
+            let trashed = TrashedItem {
+                original: original(cleanup, index),
+                landed: PathBuf::from(format!("/Users/someone/.Trash/cache-{index} {cleanup}")),
+                identity: ItemIdentity::new(1, u64::from(cleanup * ITEMS + index), EntryKind::Folder),
+            };
+            journal
+                .item(&ItemRecord { cleanup: id, index, outcome: RecordedOutcome::Moved, trashed: vec![trashed] })
+                .unwrap();
+        }
+        journal.end(&EndRecord { cleanup: id, at: begin.at, ended: Ended::Completed, space }).unwrap();
+    }
+
     /// What ten scans of `spec` left in the data folder.
     pub(super) struct Outcome {
         pub(super) footprints: Vec<Footprint>,
@@ -79,6 +133,12 @@ mod run {
         pub(super) names: Vec<String>,
         /// The length of the current cache file after each scan.
         pub(super) cache_files: Vec<u64>,
+        /// The footprint after every tenth cleanup, the scans' cache in place.
+        pub(super) after_cleanups: Vec<Footprint>,
+        /// How many cleanups the journal's history holds at the end.
+        pub(super) cleanups: u32,
+        /// What the journal's two files take at the end, in bytes.
+        pub(super) journal: u64,
     }
 
     pub(super) fn ten_scans(spec: &TreeSpec) -> Outcome {
@@ -107,8 +167,15 @@ mod run {
         );
         let (roots, interests) = ([root, changes.clone()], interests());
         let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Auto };
-        let mut outcome =
-            Outcome { footprints: Vec::new(), kinds: Vec::new(), names: Vec::new(), cache_files: Vec::new() };
+        let mut outcome = Outcome {
+            footprints: Vec::new(),
+            kinds: Vec::new(),
+            names: Vec::new(),
+            cache_files: Vec::new(),
+            after_cleanups: Vec::new(),
+            cleanups: 0,
+            journal: 0,
+        };
         for round in 0..SCANS {
             change(&changes, away.path(), round);
             let summary = scanner.walk(&request, &CancelToken::new(), &mut |_| {}, &mut |_| {}).unwrap();
@@ -124,6 +191,18 @@ mod run {
             outcome.footprints.push(folder.footprint().unwrap());
             outcome.cache_files.push(fs::metadata(data.path().join("scan-1.bin")).unwrap().len());
         }
+        let journal = FileCleanupJournal::open(&folder);
+        for cleanup in 1..=CLEANUPS {
+            clean(&journal, cleanup);
+            if cleanup % 10 == 0 {
+                outcome.after_cleanups.push(folder.footprint().unwrap());
+            }
+        }
+        outcome.cleanups = journal.cleanups(0, 0).unwrap().total;
+        outcome.journal = ["cleanups.jsonl", "cleanups.previous.jsonl"]
+            .iter()
+            .map(|name| fs::metadata(data.path().join(name)).unwrap().len())
+            .sum();
         let mut names: Vec<String> = fs::read_dir(data.path())
             .unwrap()
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into())
@@ -140,10 +219,15 @@ mod run {
             "every scan after the first loads the cache: {:?}",
             outcome.kinds
         );
-        for footprint in &outcome.footprints {
+        for footprint in outcome.footprints.iter().chain(&outcome.after_cleanups) {
             assert!(!footprint.over() && footprint.total <= FOOTPRINT_BUDGET, "{footprint:?}");
         }
-        assert_eq!(outcome.names, ["scan-1.bin", "scan-1.previous.bin", "settings.json"]);
+        assert_eq!(outcome.cleanups, CLEANUPS, "the two generations hold every cleanup");
+        assert!(outcome.journal <= JOURNAL_SHARE, "the journal takes {} bytes", outcome.journal);
+        assert_eq!(
+            outcome.names,
+            ["cleanups.jsonl", "cleanups.previous.jsonl", "scan-1.bin", "scan-1.previous.bin", "settings.json"]
+        );
     }
 }
 
@@ -167,6 +251,8 @@ mod positive {
         let totals: Vec<u64> = outcome.footprints.iter().map(|footprint| footprint.total.bytes()).collect();
         eprintln!("footprint after each scan (bytes): {totals:?}");
         eprintln!("cache file after each scan (bytes): {:?}", outcome.cache_files);
+        let cleanups: Vec<u64> = outcome.after_cleanups.iter().map(|footprint| footprint.total.bytes()).collect();
+        eprintln!("footprint after every tenth cleanup (bytes): {cleanups:?}; journal: {} bytes", outcome.journal);
         eprintln!("scans: {:?}; files: {:?}; in {:.1?}", outcome.kinds, outcome.names, started.elapsed());
         check(&outcome);
     }

@@ -1,0 +1,371 @@
+{
+  "events": [
+    {
+      "cleanup": 1,
+      "method": "trash",
+      "total": 3,
+      "type": "cleanup-started"
+    },
+    {
+      "cleanup": 1,
+      "done": 3,
+      "items": [
+        {
+          "finding": 5,
+          "index": 0,
+          "outcome": {
+            "kind": "skipped",
+            "reason": {
+              "kind": "replaced"
+            }
+          }
+        },
+        {
+          "finding": 6,
+          "index": 1,
+          "outcome": {
+            "kind": "emptied",
+            "moved": 2,
+            "skipped": 0
+          }
+        },
+        {
+          "finding": 3,
+          "index": 2,
+          "outcome": {
+            "kind": "moved"
+          }
+        }
+      ],
+      "type": "cleanup-items"
+    },
+    {
+      "findings": [
+        6,
+        3,
+        4
+      ],
+      "scan": 1,
+      "type": "findings-removed"
+    },
+    {
+      "cleanup": 1,
+      "report": {
+        "counts": {
+          "deleted": 0,
+          "emptied": 1,
+          "failed": 0,
+          "moved": 1,
+          "notReached": 0,
+          "skipped": 1,
+          "toolDone": 0,
+          "unknown": 0
+        },
+        "deleted": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "ended": "completed",
+        "measured": null,
+        "method": "trash",
+        "moved": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        }
+      },
+      "type": "cleanup-finished"
+    }
+  ],
+  "journal": [
+    {
+      "format": "cleanup-journal",
+      "version": 1
+    },
+    {
+      "at": 1763200000,
+      "cleanup": 1,
+      "items": [
+        {
+          "action": "remove",
+          "category": "trial.caches",
+          "danger": "safe",
+          "index": 0,
+          "key": "~/home/sandbox/fresher-trial-cache",
+          "path": "~/home/sandbox/fresher-trial-cache",
+          "reason": {
+            "args": {},
+            "key": "trial.rule.cache.reason"
+          },
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 1054720,
+            "reclaimable": 0
+          }
+        },
+        {
+          "action": "empty",
+          "category": "trial.kept",
+          "danger": "low",
+          "index": 1,
+          "key": "~/home/sandbox/fresher-trial-kept",
+          "path": "~/home/sandbox/fresher-trial-kept",
+          "reason": {
+            "args": {},
+            "key": "trial.rule.kept.reason"
+          },
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 8192,
+            "reclaimable": 0
+          }
+        },
+        {
+          "action": "remove",
+          "category": "build.folders",
+          "danger": "low",
+          "index": 2,
+          "key": "~/home/sandbox/fresher-e2e-build",
+          "path": "~/home/sandbox/fresher-e2e-build",
+          "reason": {
+            "args": {},
+            "key": "build.finding.reason"
+          },
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 0,
+            "reclaimable": 0
+          }
+        }
+      ],
+      "method": "trash",
+      "roots": [
+        "~/home"
+      ],
+      "space": [],
+      "type": "begin"
+    },
+    {
+      "cleanup": 1,
+      "index": 0,
+      "outcome": {
+        "kind": "skipped",
+        "reason": "replaced"
+      },
+      "trashed": [],
+      "type": "item"
+    },
+    {
+      "cleanup": 1,
+      "index": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 2,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/trash/0-entry.bin",
+          "original": "~/home/sandbox/fresher-trial-kept/entry.bin"
+        },
+        {
+          "landed": "~/trash/1-link-out",
+          "original": "~/home/sandbox/fresher-trial-kept/link-out"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "cleanup": 1,
+      "index": 2,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/trash/2-fresher-e2e-build",
+          "original": "~/home/sandbox/fresher-e2e-build"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "at": 1763200000,
+      "cleanup": 1,
+      "ended": "completed",
+      "space": [],
+      "type": "end"
+    }
+  ],
+  "tree": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/not-a-sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 64,
+        "path": "home/not-a-sandbox/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/not-a-sandbox/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/not-a-sandbox/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/shared.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/protected"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/protected/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/protected/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/protected/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/sandbox/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-cache-old"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/sandbox/fresher-trial-cache-old/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-cache-old/nested"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "home/sandbox/fresher-trial-cache-old/nested/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/sandbox/fresher-trial-cache-old/shared.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 29,
+        "path": "home/sandbox/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/sandbox/fresher-trial-kept"
+      },
+      {
+        "kind": "file",
+        "logical_size": 512,
+        "path": "home/sandbox/keep-me.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "outside"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "outside/target.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "trash/0-entry.bin"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "trash/1-link-out"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/2-fresher-e2e-build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "trash/2-fresher-e2e-build/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "trash/2-fresher-e2e-build/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "trash/2-fresher-e2e-build/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16384,
+        "path": "trash/2-fresher-e2e-build/object.o"
+      }
+    ],
+    "total_logical_size": 1098582
+  }
+}

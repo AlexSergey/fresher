@@ -6,19 +6,24 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    AccessProbe, AccessStatus, CancelToken, Clock, CommandError, CommandRunner, Dictionary, DiskState, DiskWalk,
-    EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, ModuleInfo, Overview, ScanId, SchemaError,
-    SettingUpdate, SettingsStore, SettingsView, WalkMode,
+    Access, AccessProbe, AccessStatus, CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal,
+    CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary,
+    DiskState, DiskWalk, EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, ModuleInfo, Operation,
+    Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingUpdate, SettingsStore, SettingsView, SystemUi,
+    SystemUiError, Volumes, WalkMode,
 };
 
+use crate::access::AccessView;
+use crate::cleanup::{self, Pending};
+use crate::coverage::{OPT_INS, opt_in_key};
 use crate::error::{EngineError, lock, lock_anyway};
 use crate::results::{Filter, Results};
 use crate::session::{self, Planned, ScanPlan};
-use crate::settings::Settings;
-use crate::state::{Machine, Running, ScanThread};
+use crate::settings::{self as settings_rules, Settings};
+use crate::state::{Machine, OperationThread, Running};
 use crate::{EventBus, Registry};
 
-/// How long `shutdown` waits for the cancelled scan's thread before it gives up on it.
+/// How long `shutdown` waits for the cancelled operation's thread before it gives up on it.
 const SHUTDOWN_DEADLINE: Duration = Duration::from_secs(5);
 
 /// The ports the engine uses, implemented outside the core and injected by the app.
@@ -28,11 +33,27 @@ pub struct Ports {
     pub clock: Arc<dyn Clock>,
     pub commands: Arc<dyn CommandRunner>,
     pub access: Arc<dyn AccessProbe>,
+    pub system_ui: Arc<dyn SystemUi>,
 }
 
 impl std::fmt::Debug for Ports {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.debug_struct("Ports").finish_non_exhaustive()
+    }
+}
+
+/// The ports a cleanup uses: the cleaner (the only code that removes), the journal of cleanups, and the volumes whose
+/// available space a cleanup measures.
+#[derive(Clone)]
+pub struct CleanupPorts {
+    pub cleaner: Arc<dyn Cleaner>,
+    pub journal: Arc<dyn CleanupJournal>,
+    pub volumes: Arc<dyn Volumes>,
+}
+
+impl std::fmt::Debug for CleanupPorts {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("CleanupPorts").finish_non_exhaustive()
     }
 }
 
@@ -60,13 +81,39 @@ pub(crate) struct Shared {
     pub(crate) machine: Mutex<Machine>,
     pub(crate) results: Mutex<Results>,
     pub(crate) settings: Mutex<Settings>,
+    pub(crate) access: AccessView,
+    /// `None`: the engine cannot clean, and refuses every cleanup (`CleaningBlocked`).
+    pub(crate) cleanup: Option<CleanupPorts>,
+    pub(crate) pending: Mutex<Pending>,
+}
+
+impl Shared {
+    /// Probes the system's permissions again; publishes `AccessChanged` and answers `true` when something changed.
+    pub(crate) fn refresh_access(&self) -> bool {
+        let changed = self.access.refresh();
+        if changed {
+            self.bus.publish(&Event::AccessChanged { status: self.access.status() });
+        }
+        changed
+    }
 }
 
 impl Engine {
-    /// An idle engine over the registered modules; the settings are loaded through the port here. It fails only if
-    /// the core's own settings repeat a key.
+    /// An idle engine over the registered modules that cannot clean: every cleanup is refused with
+    /// `CleaningBlocked`. The settings are loaded through the port here. It fails only if the core's own settings
+    /// repeat a key.
     pub fn new(registry: Registry, ports: Ports) -> Result<Self, SchemaError> {
+        Self::build(registry, ports, None)
+    }
+
+    /// An idle engine over the registered modules that cleans through `cleanup`.
+    pub fn with_cleanup(registry: Registry, ports: Ports, cleanup: CleanupPorts) -> Result<Self, SchemaError> {
+        Self::build(registry, ports, Some(cleanup))
+    }
+
+    fn build(registry: Registry, ports: Ports, cleanup: Option<CleanupPorts>) -> Result<Self, SchemaError> {
         let settings = Settings::load(registry.schema()?, &*ports.settings);
+        let access = AccessView::new(Arc::clone(&ports.access), Arc::clone(&ports.commands), registry.tool_checks());
         let shared = Shared {
             registry,
             ports,
@@ -74,6 +121,9 @@ impl Engine {
             machine: Mutex::new(Machine::new()),
             results: Mutex::new(Results::new()),
             settings: Mutex::new(settings),
+            access,
+            cleanup,
+            pending: Mutex::new(Pending::default()),
         };
         Ok(Self { shared: Arc::new(shared) })
     }
@@ -109,6 +159,8 @@ impl Engine {
         let mut machine = lock(&self.shared.machine)?;
         let scan = machine.next_scan()?;
         let plan = self.plan(mode)?;
+        // The findings a pending cleanup plan was made of are about to be replaced.
+        lock(&self.shared.pending)?.kill();
         let cancel = CancelToken::new();
         let shared = Arc::clone(&self.shared);
         let token = cancel.clone();
@@ -121,17 +173,18 @@ impl Engine {
                 session::run(&shared, scan, &token, &plan);
             })
             .map_err(|error| EngineError::Spawn { kind: error.kind() })?;
-        machine.start(Running { scan, cancel, thread: Some(ScanThread { handle, done: ended }) });
+        machine.start(scan, Running { cancel, thread: Some(OperationThread { handle, done: ended }) });
         Ok(scan)
     }
 
     /// Asks the running scan to stop; it still ends with `ScanFinished`, marked partial.
     pub fn cancel_scan(&self) -> Result<(), CommandError> {
-        lock(&self.shared.machine)?.cancel()
+        lock(&self.shared.machine)?.cancel(Operation::Scan)
     }
 
-    /// Cancels the running operation and waits for its thread, at most 5 s: the app calls this before it quits. A
-    /// thread still running past that is left behind (detached), and the app's exit ends it.
+    /// Cancels the running operation (a scan, or a cleanup after the item in flight) and waits for its thread, at most
+    /// 5 s: the app calls this before it quits. A thread still running past that is left behind (detached), and the
+    /// app's exit ends it.
     pub fn shutdown(&self) {
         self.shutdown_within(SHUTDOWN_DEADLINE);
     }
@@ -140,11 +193,11 @@ impl Engine {
         let Some(thread) = lock_anyway(&self.shared.machine).stop() else { return };
         match thread.done.recv_timeout(deadline) {
             Err(RecvTimeoutError::Timeout) => {
-                tracing::error!(?deadline, "the scan thread did not stop in time; it is left to the app's exit");
+                tracing::error!(?deadline, "the operation's thread did not stop in time; it is left to the app's exit");
             }
             Ok(()) | Err(RecvTimeoutError::Disconnected) => {
                 if thread.handle.join().is_err() {
-                    tracing::error!("the scan thread panicked");
+                    tracing::error!("the operation's thread panicked");
                 }
             }
         }
@@ -193,17 +246,23 @@ impl Engine {
     }
 
     /// Checks the value, saves it through the port, then publishes `SettingChanged`. A running scan keeps the
-    /// settings it started with.
+    /// settings it started with. A change of what is scanned (the roots, a module's switch) kills the pending
+    /// cleanup plan.
     pub fn update_setting(&self, update: SettingUpdate) -> Result<(), CommandError> {
         let mut settings = lock(&self.shared.settings)?;
         let changed = settings.update(update, &*self.shared.ports.settings)?;
+        if let Event::SettingChanged { key, .. } = &changed
+            && settings_rules::changes_what_is_scanned(key)
+        {
+            lock(&self.shared.pending)?.kill();
+        }
         self.shared.bus.publish(&changed);
         Ok(())
     }
 
-    /// The registered modules for the UI, in registration order.
+    /// The registered modules for the UI, in registration order, each category with its availability.
     pub fn modules(&self) -> Vec<ModuleInfo> {
-        self.shared.registry.modules()
+        self.shared.registry.modules(&self.shared.access.status())
     }
 
     /// The merged texts of the core and every module.
@@ -211,8 +270,104 @@ impl Engine {
         self.shared.registry.dictionary()
     }
 
+    /// What the app may see and do: the system's permissions as last probed, and the tools as last checked.
     pub fn access_status(&self) -> AccessStatus {
-        self.shared.ports.access.status()
+        self.shared.access.status()
+    }
+
+    /// Probes the system's permissions again (the tools are checked at the start of a scan); publishes
+    /// `AccessChanged` and answers `true` when something changed.
+    pub fn refresh_access(&self) -> bool {
+        self.shared.refresh_access()
+    }
+
+    /// Opens the system's settings at the pane that grants `capability`. Refused for a tool, for a capability this
+    /// system lacks, and when the system has no such pane.
+    pub fn open_access_settings(&self, capability: &Capability) -> Result<(), CommandError> {
+        let no_pane = || CommandError::NoSettingsPane { capability: *capability };
+        if matches!(capability, Capability::Tool(_)) || self.access_status().access(capability) == Access::NotApplicable
+        {
+            return Err(no_pane());
+        }
+        self.shared.ports.system_ui.open_access_settings(capability).map_err(|error| match error {
+            SystemUiError::Unsupported => no_pane(),
+            SystemUiError::Failed { .. } => {
+                tracing::warn!(%error, capability = capability.id(), "the settings could not be opened");
+                CommandError::Internal
+            }
+        })
+    }
+}
+
+/// Cleanups: the plan, its confirmation and the cleanup it starts. Nothing is removed but from a plan the user
+/// confirmed.
+impl Engine {
+    /// Turns `selection` (ids only) into a frozen plan, rehearsed with every check of the cleaner and nothing done,
+    /// and keeps it as the pending plan in place of any earlier one; answers it as the confirmation shows it.
+    /// Refused while an operation runs, before any scan, for an id the scan did not produce, a category nobody
+    /// registered, a selection that picks nothing or more than 10 000 items, and when cleaning is blocked.
+    pub fn prepare_cleanup(&self, selection: &CleanupSelection) -> Result<CleanupPlanView, CommandError> {
+        cleanup::prepare(&self.shared, selection)
+    }
+
+    /// Drops the pending plan `plan` (the confirmation's Cancel); any other id changes nothing.
+    pub fn discard_cleanup(&self, plan: PlanId) -> Result<(), CommandError> {
+        lock(&self.shared.pending)?.discard(plan);
+        Ok(())
+    }
+
+    /// Confirms the pending plan with the summary the user saw and starts its cleanup on its own thread; answers the
+    /// cleanup's id. It reports through the bus: `CleanupStarted`, `CleanupItems`, `FindingsRemoved`,
+    /// `CleanupFinished`. Refused while an operation runs, for a plan that is gone or expired, for a summary that
+    /// differs from the plan's (the plan dies: the user prepares again), and when cleaning is blocked; nothing is
+    /// acted on then.
+    pub fn confirm_cleanup(&self, echo: &Confirmation) -> Result<CleanupId, CommandError> {
+        cleanup::confirm(&self.shared, echo)
+    }
+
+    /// Asks the running cleanup to stop after the item in flight; it still ends with `CleanupFinished`, cancelled.
+    pub fn cancel_cleanup(&self) -> Result<(), CommandError> {
+        lock(&self.shared.machine)?.cancel(Operation::Clean)
+    }
+
+    /// The window is closing: while a cleanup runs, publishes `QuitRequested` (the UI asks the user) and answers
+    /// `true`, and the app holds the close; otherwise answers `false`.
+    pub fn request_quit(&self) -> bool {
+        let cleaning = matches!(lock_anyway(&self.shared.machine).status(), EngineStatus::Cleaning { .. });
+        if cleaning {
+            self.shared.bus.publish(&Event::QuitRequested);
+        }
+        cleaning
+    }
+
+    /// The user chose to quit during a cleanup: it stops after the item in flight, its journal is closed, and this
+    /// returns once its thread ended (like [`Engine::shutdown`]).
+    pub fn quit_after_cleanup(&self) {
+        self.shutdown();
+    }
+
+    /// A page of the history of cleanups, newest first, at most 100; each with how many of its items are still in
+    /// the Trash, and the size of those summed over the page. A journal that cannot be written says so; one that
+    /// cannot be read answers an empty page.
+    pub fn cleanups(&self, offset: u32, limit: u32) -> CleanupsPage {
+        cleanup::page(&self.shared, offset, limit)
+    }
+
+    /// One cleanup of the journal with every item: its outcome or skip reason, and where it is now.
+    pub fn cleanup(&self, id: CleanupId) -> Result<CleanupDetail, CommandError> {
+        cleanup::detail(&self.shared, id)
+    }
+
+    /// Puts `items` of cleanup `id` back from the Trash — every item still there when `None` — never replacing
+    /// anything; each attempt is journalled. Refused while a scan or a cleanup runs, and for an item the cleanup does
+    /// not have.
+    pub fn put_back(&self, id: CleanupId, items: Option<&[u32]>) -> Result<PutBackReport, CommandError> {
+        cleanup::put_back(&self.shared, id, items)
+    }
+
+    /// Shows item `item` of cleanup `id` in the Trash, selected; refused when it is not in the Trash now.
+    pub fn reveal_in_trash(&self, id: CleanupId, item: u32) -> Result<(), CommandError> {
+        cleanup::reveal(&self.shared, id, item)
     }
 }
 
@@ -228,7 +383,8 @@ impl Engine {
         let modules = modules
             .map(|module| Planned { module: Arc::clone(module), settings: settings.module(module.descriptor().id()) })
             .collect();
-        Ok(ScanPlan { roots: settings.scan_roots(), modules, mode })
+        let opt_ins = OPT_INS.into_iter().filter(|&capability| settings.core_switch(&opt_in_key(capability))).collect();
+        Ok(ScanPlan { roots: settings.scan_roots(), opt_ins, modules, mode })
     }
 }
 
@@ -382,9 +538,11 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{Access, AccessStatus, EngineStatus, Event, ScanId, ScanKind, ScanOutcome};
+        use fresher_core::{Access, Capability, EngineStatus, Event, ScanId, ScanKind, ScanOutcome};
 
-        use crate::testing::{ScriptedWalk, engine, wait_for_finish};
+        use fresher_testing::FakeAccess;
+
+        use crate::testing::{Fixture, ScriptedWalk, engine, wait_for_finish};
 
         #[test]
         fn a_scan_goes_idle_scanning_idle() {
@@ -478,9 +636,10 @@ mod tests {
 
         #[test]
         fn answers_the_access_status_of_its_port() {
-            let engine = engine(ScriptedWalk::new());
+            let access = FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)]);
+            let engine = Fixture::new(ScriptedWalk::new()).access(access).engine();
 
-            assert_eq!(engine.access_status(), AccessStatus { full_disk_access: Access::Unknown });
+            assert_eq!(engine.access_status().access(&Capability::AllFiles), Access::Unknown);
         }
 
         #[test]

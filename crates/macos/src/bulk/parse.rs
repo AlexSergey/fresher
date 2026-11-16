@@ -4,7 +4,7 @@
 //! group order (common, folder, file, extended), each group in bit order, packed on 4 bytes (8-byte values may be
 //! unaligned); `ATTR_CMN_ERROR` comes first when present. The next record starts `length` bytes after this one.
 
-use fresher_core::{ByteSize, EntryKind, RawEntry, ReadError, Sizes, Timestamp};
+use fresher_core::{ByteSize, EntryAccess, EntryKind, RawEntry, ReadError, Sizes, Timestamp};
 
 use crate::errors::from_errno;
 
@@ -12,6 +12,8 @@ const ATTR_CMN_NAME: u32 = 0x0000_0001;
 const ATTR_CMN_DEVID: u32 = 0x0000_0002;
 const ATTR_CMN_OBJTYPE: u32 = 0x0000_0008;
 const ATTR_CMN_MODTIME: u32 = 0x0000_0400;
+const ATTR_CMN_OWNERID: u32 = 0x0000_8000;
+const ATTR_CMN_ACCESSMASK: u32 = 0x0002_0000;
 const ATTR_CMN_FLAGS: u32 = 0x0004_0000;
 const ATTR_CMN_FILEID: u32 = 0x0200_0000;
 const ATTR_CMN_ERROR: u32 = 0x2000_0000;
@@ -28,6 +30,8 @@ pub(super) const COMMON: u32 = ATTR_CMN_RETURNED_ATTRS
     | ATTR_CMN_DEVID
     | ATTR_CMN_OBJTYPE
     | ATTR_CMN_MODTIME
+    | ATTR_CMN_OWNERID
+    | ATTR_CMN_ACCESSMASK
     | ATTR_CMN_FLAGS
     | ATTR_CMN_FILEID
     | ATTR_CMN_ERROR;
@@ -43,6 +47,18 @@ const VDIR: u32 = 2;
 const VLNK: u32 = 5;
 /// `SF_DATALESS` of `<sys/stat.h>`: the file's data is not on this Mac (a cloud file).
 const SF_DATALESS: u32 = 0x4000_0000;
+/// `UF_IMMUTABLE`, `SF_IMMUTABLE` and `SF_RESTRICTED` of `<sys/stat.h>`: locked by the user, locked by the system,
+/// guarded by the system's integrity protection.
+const UF_IMMUTABLE: u32 = 0x0000_0002;
+const SF_IMMUTABLE: u32 = 0x0002_0000;
+const SF_RESTRICTED: u32 = 0x0008_0000;
+/// `UF_APPEND`, `SF_APPEND` and `SF_NOUNLINK`: the item cannot be removed either, so they count as the user's or the
+/// system's lock (fail closed).
+const UF_APPEND: u32 = 0x0000_0004;
+const SF_APPEND: u32 = 0x0004_0000;
+const SF_NOUNLINK: u32 = 0x0010_0000;
+/// The permission bits of a mode.
+const PERMISSIONS: u32 = 0o7777;
 /// `EF_MAY_SHARE_BLOCKS` of `<sys/attr.h>`: the file may share its blocks with a clone.
 const EF_MAY_SHARE_BLOCKS: u64 = 0x1;
 
@@ -57,6 +73,8 @@ pub(super) struct Record<'a> {
     kind: Option<u32>,
     device: Option<i32>,
     modified: Option<i64>,
+    owner: Option<u32>,
+    mode: Option<u32>,
     flags: u32,
     file_id: Option<u64>,
     links: Option<u32>,
@@ -102,8 +120,20 @@ impl Record<'_> {
             clone: self.clone_id.filter(|_| self.may_share_blocks()),
             modified: self.modified.map(|secs| Timestamp::from_secs(u64::try_from(secs).unwrap_or(0))),
             cloud_only,
+            access: access(self.owner, self.mode.unwrap_or(0), self.flags),
             error: (self.error != 0).then(|| from_errno(i32::try_from(self.error).unwrap_or(i32::MAX))),
         }
+    }
+}
+
+/// The access of an entry owned by `owner`, of mode `mode` and with the flags `flags`; a mode not read allows nothing.
+pub(crate) fn access(owner: Option<u32>, mode: u32, flags: u32) -> EntryAccess {
+    EntryAccess {
+        owner,
+        mode: u16::try_from(mode & PERMISSIONS).unwrap_or(0),
+        user_immutable: flags & (UF_IMMUTABLE | UF_APPEND) != 0,
+        system_immutable: flags & (SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK) != 0,
+        restricted: flags & SF_RESTRICTED != 0,
     }
 }
 
@@ -175,6 +205,12 @@ fn parse(bytes: &[u8]) -> Result<Record<'_>, ReadError> {
     if common & ATTR_CMN_MODTIME != 0 {
         record.modified = Some(fields.i64()?);
         fields.i64()?;
+    }
+    if common & ATTR_CMN_OWNERID != 0 {
+        record.owner = Some(fields.u32()?);
+    }
+    if common & ATTR_CMN_ACCESSMASK != 0 {
+        record.mode = Some(fields.u32()?);
     }
     if common & ATTR_CMN_FLAGS != 0 {
         record.flags = fields.u32()?;
@@ -284,6 +320,8 @@ mod tests {
             fields.extend_from_slice(&1_u32.to_ne_bytes());
             fields.extend_from_slice(&1_700_000_000_i64.to_ne_bytes());
             fields.extend_from_slice(&0_i64.to_ne_bytes());
+            fields.extend_from_slice(&501_u32.to_ne_bytes());
+            fields.extend_from_slice(&0o100_644_u32.to_ne_bytes());
             fields.extend_from_slice(&0_u32.to_ne_bytes());
             fields.extend_from_slice(&42_u64.to_ne_bytes());
             fields.extend_from_slice(&2_u32.to_ne_bytes());
@@ -401,13 +439,31 @@ mod tests {
             assert_eq!(parsed[0].unwrap().name, b"locked");
             assert_eq!(entry.error, Some(ReadError::NoPermission));
         }
+
+        #[test]
+        fn a_record_without_its_owner_or_mode_is_owned_by_nobody_and_allows_nothing() {
+            let buffer = Packed::named(b"bare").bytes();
+
+            let entry = records(&buffer, 1).next().unwrap().unwrap().entry(None);
+
+            assert_eq!(entry.access, fresher_core::EntryAccess::default());
+            assert_eq!((entry.access.owner, entry.access.mode), (None, 0));
+        }
     }
 
     mod positive {
-        use fresher_core::{ByteSize, EntryKind, Sizes, Timestamp};
+        use std::ops::Range;
+
+        use fresher_core::{ByteSize, EntryAccess, EntryKind, Sizes, Timestamp};
 
         use super::Packed;
-        use crate::bulk::parse::{EF_MAY_SHARE_BLOCKS, SF_DATALESS, device_id, records};
+        use crate::bulk::parse::{
+            EF_MAY_SHARE_BLOCKS, SF_APPEND, SF_DATALESS, SF_IMMUTABLE, SF_NOUNLINK, SF_RESTRICTED, UF_APPEND,
+            UF_IMMUTABLE, device_id, records,
+        };
+
+        /// Where the flags lie in the fields of `Packed::file`.
+        const FLAGS: Range<usize> = 32..36;
 
         #[test]
         fn a_file_record_gives_every_attribute() {
@@ -423,6 +479,27 @@ mod tests {
             assert_eq!(entry.sizes, Sizes::complete(ByteSize::new(5_000), ByteSize::new(8_192)));
             assert_eq!(entry.modified, Some(Timestamp::from_secs(1_700_000_000)));
             assert_eq!((entry.clone, entry.cloud_only, entry.error), (None, false, None));
+            assert_eq!(entry.access, EntryAccess { owner: Some(501), mode: 0o644, ..EntryAccess::default() });
+        }
+
+        #[test]
+        fn the_flags_give_the_locks() {
+            for (flags, locks) in [
+                (UF_IMMUTABLE, (true, false, false)),
+                (SF_IMMUTABLE, (false, true, false)),
+                (SF_RESTRICTED, (false, false, true)),
+                (UF_APPEND, (true, false, false)),
+                (SF_APPEND, (false, true, false)),
+                (SF_NOUNLINK, (false, true, false)),
+                (UF_IMMUTABLE | SF_IMMUTABLE | SF_RESTRICTED | SF_DATALESS, (true, true, true)),
+            ] {
+                let mut packed = Packed::file(b"locked", 0);
+                packed.fields[FLAGS].copy_from_slice(&flags.to_ne_bytes());
+
+                let access = records(&packed.bytes(), 1).next().unwrap().unwrap().entry(None).access;
+
+                assert_eq!((access.user_immutable, access.system_immutable, access.restricted), locks, "{flags:#x}");
+            }
         }
 
         #[test]
@@ -440,7 +517,7 @@ mod tests {
         #[test]
         fn a_cloud_file_takes_no_allocated_space() {
             let mut packed = Packed::file(b"in-the-cloud", 0);
-            packed.fields[24..28].copy_from_slice(&SF_DATALESS.to_ne_bytes());
+            packed.fields[FLAGS].copy_from_slice(&SF_DATALESS.to_ne_bytes());
 
             let entry = records(&packed.bytes(), 1).next().unwrap().unwrap().entry(None);
 

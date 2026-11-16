@@ -1,0 +1,5 @@
+error: cannot construct `Verified` with struct literal syntax due to private fields
+ --> tests/compile_fail/verified_literal.rs:6:5
+  |
+6 |     Verified {}
+  |     ^^^^^^^^

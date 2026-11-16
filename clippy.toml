@@ -3,10 +3,13 @@ allow-print-in-tests = true
 allow-unwrap-in-tests = true
 avoid-breaking-exported-api = false
 
-# Scanning is read-only: only fresher-cleaner deletes, at its single deletion point, under
-# `#[expect(clippy::disallowed_methods, reason = "...")]` (docs/restrictions/deletion-safety.md).
+# Scanning is read-only: only fresher-cleaner deletes, at its single deletion point
+# (`crates/cleaner/src/remove/permanent.rs`), under `#[expect(clippy::disallowed_methods, reason = "...")]`
+# (docs/restrictions/deletion-safety.md); `crates/cleaner/tests/deletion_point.rs` checks it is the only one. Besides
+# `std::fs`'s, the one deleting function is `fresher-macos`'s `remove_at` (an entry of a held folder, `unlinkat`).
 disallowed-methods = [
-  { path = "std::fs::remove_file", reason = "only fresher-cleaner deletes (docs/restrictions/deletion-safety.md)" },
-  { path = "std::fs::remove_dir", reason = "only fresher-cleaner deletes (docs/restrictions/deletion-safety.md)" },
-  { path = "std::fs::remove_dir_all", reason = "only fresher-cleaner deletes (docs/restrictions/deletion-safety.md)" },
+  { path = "fresher_macos::beneath::remove_at", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
+  { path = "std::fs::remove_file", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
+  { path = "std::fs::remove_dir", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
+  { path = "std::fs::remove_dir_all", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
 ]

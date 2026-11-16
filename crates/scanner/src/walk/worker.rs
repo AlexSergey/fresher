@@ -29,6 +29,8 @@ pub(crate) struct Context<'a> {
     pub(crate) queue: &'a WorkQueue,
     pub(crate) cancel: &'a CancelToken,
     pub(crate) threshold: u64,
+    /// The user the entries' access is read for.
+    pub(crate) user: Option<u32>,
 }
 
 /// A subfolder of a listing, with what the walk decided about it; in listing order.
@@ -164,7 +166,7 @@ fn folder(context: Context<'_>, job: &Job, listing: &FolderListing) -> Body {
         children.push(Child { path, identity, state, decision, whole });
         hits.push(found);
     }
-    let mut batch = fold(job.node, listing, &facts, &hits, context.threshold);
+    let mut batch = fold(job.node, listing, &facts, &hits, context.threshold, context.user);
     batch.own_hits = own_hits;
     let child_siblings = (!facts.siblings().is_empty()).then(|| Arc::from(facts.siblings()));
     Body::Folder(FolderReport { batch, children, child_siblings, counted })

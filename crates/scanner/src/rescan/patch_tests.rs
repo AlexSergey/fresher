@@ -30,6 +30,31 @@ fn paths(rig: &Rig, relative: &[&str]) -> Vec<PathBuf> {
     relative.iter().map(|path| rig.path(path)).collect()
 }
 
+/// Sets the mode of `path`, and gives `0o755` back when dropped, so the fixture can be removed.
+struct Mode(PathBuf);
+
+impl Mode {
+    fn set(path: PathBuf, mode: u32) -> Self {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+        Self(path)
+    }
+}
+
+impl Drop for Mode {
+    fn drop(&mut self) {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let _ = std::fs::set_permissions(&self.0, std::fs::Permissions::from_mode(0o755));
+    }
+}
+
+/// The facts of the match at `path` among `matches`.
+fn facts_at(matches: &[fresher_core::Match], path: &std::path::Path) -> fresher_core::EntryFacts {
+    matches.iter().find(|found| found.path == path).unwrap().facts
+}
+
 mod negative {
     use std::sync::Arc;
 
@@ -37,10 +62,24 @@ mod negative {
         CancelToken, DiskWalk, FolderIdentity, FolderListing, FolderReader, ReadError, WalkError, WalkMode,
     };
 
-    use super::{home, paths};
+    use super::{Mode, facts_at, home, paths};
     use crate::rescan::testing::{assert_same, journal_of};
     use crate::walk::counting::CountingReader;
     use crate::walk::std_reader::StdReader;
+
+    #[test]
+    fn a_folder_made_read_only_takes_its_entries_removability_after_a_rescan() {
+        let rig = home();
+        let cache = rig.path("Library/Caches/com.x");
+        assert_eq!(facts_at(&rig.full().matches, &cache), fresher_core::EntryFacts::REMOVABLE);
+        let _mode = Mode::set(rig.path("Library/Caches"), 0o555);
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["Library/Caches"]), &[]));
+
+        let facts = facts_at(&rescan.matches, &cache);
+        assert_eq!(facts, fresher_core::EntryFacts { parent_writable: false, ..fresher_core::EntryFacts::REMOVABLE });
+        assert_same(&rescan, &rig.full());
+    }
 
     #[test]
     fn a_removed_subtree_leaves_no_node_and_no_bytes() {
@@ -98,6 +137,10 @@ mod negative {
             StdReader::new().identify(path)
         }
 
+        fn access(&self, path: &std::path::Path) -> Result<fresher_core::EntryAccess, ReadError> {
+            StdReader::new().access(path)
+        }
+
         fn read(
             &self,
             path: &std::path::Path,
@@ -136,7 +179,7 @@ mod positive {
 
     use fresher_core::{ScanCache, WalkMode};
 
-    use super::{home, paths};
+    use super::{Mode, facts_at, home, paths};
     use crate::codec::decode::decode;
     use crate::codec::fit::fully_collapsed;
     use crate::rescan::testing::{assert_same, journal_of};
@@ -201,6 +244,20 @@ mod positive {
         let tree = rescan.tree.as_ref().unwrap();
         assert!(tree.lookup(&rig.path("docs/old/deeper")).is_some());
         assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_restore_gives_every_match_the_facts_of_the_scan() {
+        let rig = home();
+        let _mode = Mode::set(rig.path("Library/Caches"), 0o555);
+        let scanned = rig.scan();
+
+        let restored =
+            rig.walk(&rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[]))), WalkMode::Restore);
+
+        assert_eq!(restored.matches, scanned.matches);
+        assert!(!facts_at(&restored.matches, &rig.path("Library/Caches/com.y")).parent_writable);
+        assert_eq!(facts_at(&restored.matches, &rig.path("app/package.json")), fresher_core::EntryFacts::REMOVABLE);
     }
 
     #[test]

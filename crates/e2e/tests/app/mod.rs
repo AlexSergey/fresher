@@ -7,16 +7,16 @@ use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, ChangeJournal, ChildOrder, Claim,
-    DangerLevel, Event, FindingOrder, FindingSink, FindingsQuery, FolderReader, Interest, Locales, Match, Module,
-    ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, Subject, Text, TextKey,
-    VolumeFacts, VolumeId,
+    Access, ByteSize, Capability, CategoryDescriptor, CategoryId, ChangeJournal, ChildOrder, Claim, DangerLevel, Event,
+    FindingOrder, FindingSink, FindingsQuery, FolderReader, Interest, Locales, Match, Module, ModuleContext,
+    ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, Subject, Text, TextKey, VolumeFacts,
+    VolumeId,
 };
 use fresher_engine::{Engine, Ports, Registry};
 use fresher_module_demo::DemoModule;
 use fresher_scanner::{Scanner, ScannerOptions, StdReader, home_anchor};
 use fresher_store::{DataFolder, FileScanCache, FileSettingsStore};
-use fresher_testing::{FakeClock, FakeCommandRunner, FakeVolumes, FixtureTree};
+use fresher_testing::{FakeAccess, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixtureTree};
 use serde_json::{Value, json};
 
 use crate::support::fixtures;
@@ -85,14 +85,6 @@ impl Module for Probe {
     }
 }
 
-struct UnknownAccess;
-
-impl AccessProbe for UnknownAccess {
-    fn status(&self) -> AccessStatus {
-        AccessStatus { full_disk_access: Access::Unknown }
-    }
-}
-
 /// A fixture home and the engine that scans it as `~`, with `Documents` avoided as the app's standing list does, its
 /// data folder (the settings and the scan cache) in a temporary folder.
 pub(crate) struct Home {
@@ -137,7 +129,8 @@ pub(crate) fn engine_on(
         settings: Arc::new(FileSettingsStore::new(DataFolder::open(data).unwrap())),
         clock,
         commands: Arc::new(FakeCommandRunner::default()),
-        access: Arc::new(UnknownAccess),
+        access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        system_ui: Arc::new(FakeSystemUi::default()),
     };
     Engine::new(registry, ports).unwrap()
 }

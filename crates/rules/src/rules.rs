@@ -86,10 +86,11 @@ impl Rule {
                 .map_err(|_| RuleError::InvalidId { rule: id.clone() })
         };
         let (title, reason) = (key("title")?, key("reason")?);
-        let category = *module
+        let category = module
             .categories()
             .iter()
             .find(|category| category.id().as_str() == spec.category)
+            .cloned()
             .ok_or_else(|| RuleError::UnknownCategory { rule: id.clone() })?;
         if spec.danger < category.danger() {
             return Err(RuleError::DangerBelowCategory { rule: id });

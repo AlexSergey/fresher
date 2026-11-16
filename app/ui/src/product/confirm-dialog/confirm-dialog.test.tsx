@@ -4,12 +4,24 @@ import path from 'node:path';
 import { type JSX, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { CleanupPlanView } from '../../ipc/bindings.generated';
+
 import { setCoreDictionary } from '../../i18n';
 import { fakeReducedMotion, setMotion } from '../../test/animation';
-import { confirmContentOf, LONG_CONTENT, SHORT_CONTENT } from '../../test/confirm-content';
+import {
+  ALL_LEFT_OUT_PLAN,
+  CLEANUP_DICTIONARY,
+  DEMO_PLAN,
+  HIGH_PLAN,
+  LEFT_OUT_PLAN,
+  LONG_PLAN,
+  ONE_ITEM_PLAN,
+  TOOL_ONLY_PLAN,
+  TOOL_PLAN,
+} from '../../test/cleanup-plan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
 import { fakeViewport } from '../../test/viewport';
-import { type ConfirmContent, ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog';
+import { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog';
 
 const here = import.meta.dirname;
 const sources = ['confirm-dialog.tsx', 'confirm-dialog.module.css'].map((file) =>
@@ -17,10 +29,10 @@ const sources = ['confirm-dialog.tsx', 'confirm-dialog.module.css'].map((file) =
 );
 const css = readFileSync(path.join(here, 'confirm-dialog.module.css'), 'utf8');
 
-type Owner = Partial<Pick<ConfirmDialogProps, 'onCancel' | 'onConfirm'>> & { readonly content?: ConfirmContent };
+type Owner = Partial<Pick<ConfirmDialogProps, 'onCancel' | 'onConfirm'>> & { readonly plan?: CleanupPlanView };
 
 // A screen that opens the confirmation from a button and closes it when asked, as the review screen would.
-const Screen = ({ content = SHORT_CONTENT, onCancel = vi.fn(), onConfirm = vi.fn() }: Owner): JSX.Element => {
+const Screen = ({ onCancel = vi.fn(), onConfirm = vi.fn(), plan = DEMO_PLAN }: Owner): JSX.Element => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -34,7 +46,6 @@ const Screen = ({ content = SHORT_CONTENT, onCancel = vi.fn(), onConfirm = vi.fn
         Review
       </button>
       <ConfirmDialog
-        content={content}
         onCancel={() => {
           onCancel();
           setOpen(false);
@@ -44,6 +55,7 @@ const Screen = ({ content = SHORT_CONTENT, onCancel = vi.fn(), onConfirm = vi.fn
           setOpen(false);
         }}
         open={open}
+        plan={plan}
       />
     </>
   );
@@ -63,7 +75,7 @@ const permanentChoice = (): HTMLElement =>
   screen.getByRole('checkbox', { name: 'Delete permanently instead — this cannot be undone' });
 
 beforeEach(async () => {
-  setCoreDictionary(FINDING_DICTIONARY);
+  setCoreDictionary({ ...FINDING_DICTIONARY, ...CLEANUP_DICTIONARY });
   fakeViewport(320);
   fakeReducedMotion(false);
   await setMotion('off');
@@ -123,7 +135,7 @@ describe('ConfirmDialog', () => {
     });
 
     it('the highest level is shown with its icon and word', () => {
-      const dialog = openDialog({ content: confirmContentOf('high') });
+      const dialog = openDialog({ plan: HIGH_PLAN });
 
       // eslint-disable-next-line testing-library/no-node-access -- the badge's icon is decoration beside its word
       const badge = dialog.querySelector('[data-size="large"][data-level="high"]');
@@ -132,6 +144,53 @@ describe('ConfirmDialog', () => {
       expect(badge).toHaveTextContent('May hold the only copy of your data. Removing it can lose work.');
       // eslint-disable-next-line testing-library/no-node-access -- the icon has no role
       expect(badge?.querySelector('svg')).not.toBeNull();
+    });
+
+    it('the dialog shows no sum of its own', () => {
+      // Groups that do not add up to the summary: the figures shown are the plan's, never a sum.
+      const uneven: CleanupPlanView = { ...DEMO_PLAN, groups: DEMO_PLAN.groups.slice(0, 1) };
+      const dialog = openDialog({ plan: uneven });
+
+      expect(dialog).toHaveAccessibleName('Move 3 items to the Trash?');
+      // eslint-disable-next-line testing-library/no-node-access -- the size is in the display type, it has no role
+      expect(dialog.querySelector('[data-size="display"]')).toHaveTextContent('2.6 GB');
+    });
+
+    it('left out items are listed and not counted', () => {
+      const dialog = openDialog({ plan: LEFT_OUT_PLAN });
+      const leftOut = screen.getByRole('region', { name: 'These will not be removed' });
+
+      expect(dialog).toHaveAccessibleName('Move 2 items to the Trash?');
+      expect(leftOut).toHaveTextContent('Example: browser-cache');
+      expect(leftOut).toHaveTextContent('An app is using it, so Fresher left it alone. Quit Safari and try again.');
+      for (const items of screen.getAllByRole('list', { name: /^The items of / })) {
+        expect(items).not.toHaveTextContent('browser-cache');
+      }
+      expect(screen.getByRole('list', { name: 'The items of Example caches' })).toHaveTextContent('editor-cache');
+    });
+
+    it('a plan whose items were all left out offers nothing to confirm', () => {
+      const onConfirm = vi.fn();
+      const dialog = openDialog({ onConfirm, plan: ALL_LEFT_OUT_PLAN });
+
+      expect(dialog).toHaveAccessibleName('Nothing here can be removed');
+      expect(screen.getAllByRole('button').map((button) => button.textContent)).not.toContainEqual(
+        expect.stringMatching(/Move|Delete|Remove/u),
+      );
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(screen.getByRole('region', { name: 'These will not be removed' })).toHaveTextContent(
+        'Quit Xcode and try again.',
+      );
+      expect(screen.getByRole('button', { name: 'Back to the review' })).toHaveFocus();
+    });
+
+    it('a plan of tool items only offers no permanent choice and no Trash', () => {
+      const dialog = openDialog({ plan: TOOL_ONLY_PLAN });
+
+      expect(dialog).toHaveAccessibleName('Remove 1 item?');
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(screen.queryByText('You get the space back when you empty the Trash.')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Remove' })).toHaveAttribute('data-variant', 'danger');
     });
 
     it('a short list is not virtualised', () => {
@@ -171,6 +230,28 @@ describe('ConfirmDialog', () => {
       expect(onConfirm).toHaveBeenCalledExactlyOnceWith('permanent');
     });
 
+    it('a tool group says it cannot be put back', () => {
+      openDialog({ plan: TOOL_PLAN });
+
+      const images = screen.getByRole('region', { name: 'Example images' });
+
+      expect(images).toHaveTextContent('Removed by its own tool, such as Docker. It cannot be put back.');
+      expect(screen.getByRole('region', { name: 'Example caches' })).toHaveTextContent('Goes to the Trash.');
+    });
+
+    it('the trash sentence is shown for the trash only', () => {
+      openDialog();
+      const sentence = 'You get the space back when you empty the Trash.';
+
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+
+      fireEvent.click(permanentChoice());
+
+      expect(screen.queryByText(sentence)).toBeNull();
+      expect(screen.getByRole('region', { name: 'Example caches' })).toHaveTextContent('Deleted permanently.');
+      expect(permanentChoice()).toHaveAccessibleDescription('Frees the space now. You cannot put these items back.');
+    });
+
     it('Escape and Cancel call onCancel and return the focus', () => {
       const onCancel = vi.fn();
       const dialog = openDialog({ onCancel });
@@ -196,7 +277,7 @@ describe('ConfirmDialog', () => {
     });
 
     it('one item reads in the singular', () => {
-      const dialog = openDialog({ content: confirmContentOf('safe') });
+      const dialog = openDialog({ plan: ONE_ITEM_PLAN });
 
       expect(dialog).toHaveAccessibleName('Move 1 item to the Trash?');
       expect(dialog).toHaveAccessibleDescription('1 item, 1.5 GB, danger level Safe.');
@@ -211,7 +292,7 @@ describe('ConfirmDialog', () => {
     });
 
     it('a long list is virtualised', () => {
-      openDialog({ content: LONG_CONTENT });
+      openDialog({ plan: LONG_PLAN });
 
       const items = screen.getByRole('list', { name: 'The items of Example caches' });
 

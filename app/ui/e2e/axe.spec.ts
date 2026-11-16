@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { type CoreScript, mockCore, SCRIPTS } from './core-mock';
+import { requestQuit } from './support/cleanup-mock';
 import { motionOff } from './support/motion';
 
 // The automated checker over every screen in each of its states and every story of the gallery: no violation of
@@ -73,6 +74,15 @@ const selectSome = async (page: Page): Promise<void> => {
   await expect(page.getByRole('region', { name: 'Selection' })).toContainText('2 items selected');
 };
 
+// Ticks both categories of the demo scan and opens the review.
+const reviewAll = async (page: Page, script: CoreScript): Promise<void> => {
+  await open(page, script);
+  await scan(page, '2.6 GB');
+  await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
+  await page.getByRole('checkbox', { name: 'Select Example downloads' }).check();
+  await go(page, /^Review/, 'Review');
+};
+
 test.beforeEach(async ({ page }) => {
   await motionOff(page);
 });
@@ -141,6 +151,50 @@ test.describe('positive cases', () => {
     test('the review with nothing selected', async ({ page }) => {
       await open(page, SCRIPTS.demo);
       await go(page, /^Review/, 'Review');
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the confirmation of a cleanup', async ({ page }) => {
+      await reviewAll(page, SCRIPTS.cleaningLeftOut);
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await expect(page.getByRole('dialog').getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('a cleanup under way, with the quit question', async ({ page }) => {
+      await reviewAll(page, SCRIPTS.cleaningHeld);
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+
+      await requestQuit(page);
+      await expect(page.getByRole('button', { name: 'Keep cleaning' })).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the result of a cleanup', async ({ page }) => {
+      await reviewAll(page, SCRIPTS.cleaning);
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the cleanups and one cleanup', async ({ page }) => {
+      await open(page, SCRIPTS.cleaning);
+      await go(page, 'Cleanups', 'Cleanups');
+      await expect(page.getByText('Waiting in the Trash from cleanups: 4.1 GB')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+
+      await page.getByRole('button', { name: /^Cleanup of Dec 31, 2024/ }).click();
+      await expect(page.getByText(/Items marked Unknown/)).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });

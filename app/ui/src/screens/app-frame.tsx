@@ -11,9 +11,12 @@ import { customViews } from '../modules/registry';
 import { type Screen, useNavigation, useScreen } from '../state/navigation';
 import { useCore } from '../state/store';
 import styles from './app-frame.module.css';
+import { CleanupScreen } from './cleanups/cleanup-screen';
+import { CleanupsScreen } from './cleanups/cleanups-screen';
 import { FrameSidebar } from './frame-sidebar';
 import { ModuleScreen } from './module/module-screen';
 import { OverviewScreen } from './overview/overview-screen';
+import { QuitQuestion } from './quit-question';
 import { ReviewScreen } from './review/review-screen';
 import { screenKey, ScreenStack } from './screen-stack';
 import { SettingsScreen } from './settings/settings-screen';
@@ -27,6 +30,10 @@ const contentOf = (
   modules: null | readonly ModuleInfo[],
 ): null | { readonly content: ReactNode; readonly label: string } => {
   switch (screen.kind) {
+    case 'cleanup':
+      return { content: <CleanupScreen cleanup={screen.cleanup} />, label: t('ui.screen.frame.nav.cleanups') };
+    case 'cleanups':
+      return { content: <CleanupsScreen />, label: t('ui.screen.frame.nav.cleanups') };
     case 'module': {
       const module = modules?.find((one) => one.id === screen.module);
 
@@ -98,6 +105,7 @@ export const AppFrame = (): JSX.Element => {
       ) : loaded ? (
         <ScreenStack render={renderScreen} screen={screen} />
       ) : null}
+      {loaded ? <QuitQuestion /> : null}
     </AppShell>
   );
 };

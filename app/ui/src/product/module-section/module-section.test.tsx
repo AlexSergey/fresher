@@ -69,5 +69,12 @@ describe('ModuleSection', () => {
 
       expect(screen.getByText('Stopped')).toBeInTheDocument();
     });
+
+    it('shows a module not run for what it lacks as not available', () => {
+      render(<ModuleSection {...section({ state: { kind: 'unavailable', missing: [{ kind: 'all-files' }] } })} />);
+
+      expect(screen.getByText('Not available')).toBeInTheDocument();
+      expect(screen.queryByText('This part of the scan could not finish')).not.toBeInTheDocument();
+    });
   });
 });

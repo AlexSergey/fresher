@@ -106,6 +106,28 @@ for (const zoom of [125, 150]) {
         await photograph(page, browserName, 'module-page');
       });
 
+      test('the cleanups cut no text, break no number and do not scroll sideways', async ({ browserName, page }) => {
+        await mockCore(page, SCRIPTS.cleaning);
+        await page.goto('/');
+        await page.getByRole('button', { name: 'Cleanups' }).click();
+        await expect(page.getByText('Waiting in the Trash from cleanups: 4.1 GB')).toBeVisible();
+
+        expect(await cutText(page)).toStrictEqual([]);
+        expect(await brokenNumbers(page)).toStrictEqual([]);
+        expect(await scrollsSideways(page)).toBe(false);
+        await photograph(page, browserName, 'cleanups');
+      });
+
+      test('the confirmation with an item left out cuts no text', async ({ browserName, page }) => {
+        await page.goto('/gallery.html#/ConfirmDialog/left-out');
+        const dialog = page.getByRole('dialog');
+        await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+        expect(await cutText(page)).toStrictEqual([]);
+        expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+        await photograph(page, browserName, 'confirmation-left-out');
+      });
+
       test('the confirmation cuts no text and does not scroll sideways', async ({ browserName, page }) => {
         await page.goto('/gallery.html#/ConfirmDialog/trash');
         const dialog = page.getByRole('dialog');

@@ -1,4 +1,4 @@
-use fresher_core::{ByteSize, EntryKind, FolderListing, RawEntry, Sizes};
+use fresher_core::{ByteSize, EntryAccess, EntryKind, FolderListing, RawEntry, Sizes};
 
 use crate::matcher::entry::FolderFacts;
 use crate::tree::arena::Tree;
@@ -18,6 +18,7 @@ fn entry(kind: EntryKind, allocated: u64) -> RawEntry {
         clone: None,
         modified: None,
         cloud_only: false,
+        access: EntryAccess::default(),
         error: None,
     }
 }
@@ -42,7 +43,7 @@ fn listing(entries: &[(&str, RawEntry)]) -> FolderListing {
 }
 
 fn batch(folder: NodeIndex, entries: &[(&str, RawEntry)]) -> FolderBatch {
-    fold(folder, &listing(entries), &FolderFacts::default(), &[], KEEP_THRESHOLD)
+    fold(folder, &listing(entries), &FolderFacts::default(), &[], KEEP_THRESHOLD, None)
 }
 
 /// Applies `batch` and returns the nodes it created.
@@ -172,7 +173,7 @@ mod positive {
         let entries = listing(&[("a.log", entry(EntryKind::File, 10)), ("package.json", entry(EntryKind::File, 10))]);
         let state = matcher.root_state(std::path::Path::new("/home"));
         let hits: Vec<_> = entries.iter().map(|(name, entry)| matcher.entry(state, name, entry.kind)).collect();
-        let folded = fold(root, &entries, &matcher.folder(&entries), &hits, KEEP_THRESHOLD);
+        let folded = fold(root, &entries, &matcher.folder(&entries), &hits, KEEP_THRESHOLD, None);
         assert_eq!(folded.kept.len(), 1);
         let created = apply(&mut tree, &folded);
         assert_eq!(tree.hits(created[0]), [Hit { interest: 0, marker: None, siblings: 0b1 }]);
@@ -282,7 +283,7 @@ mod property {
             let listed = listing(&named.iter().map(|(name, entry)| (name.as_str(), *entry)).collect::<Vec<_>>());
             let total = |threshold| {
                 let (mut tree, root) = rooted("/r");
-                let folded = fold(root, &listed, &FolderFacts::default(), &[], threshold);
+                let folded = fold(root, &listed, &FolderFacts::default(), &[], threshold, None);
                 apply(&mut tree, &folded);
                 tree.freeze();
                 tree.sums(root)

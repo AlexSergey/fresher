@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use fresher_core::{
     CategoryDescriptor, CategoryText, DangerLevel, DescriptorError, Dictionary, DictionaryError, Module,
-    ModuleDescriptor, ModuleOutcome, SettingKey, Text,
+    ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text,
 };
 
 use crate::ModuleRun;
@@ -42,6 +42,8 @@ pub enum ContractProblem {
     UnusedText { key: String },
     #[error("the text of `{key}` names the placeholder `{arg}`, which a finding does not give")]
     MissingArg { key: String, arg: String },
+    #[error("the removal of `{identity}` names a path no match reported, so the item can never be removed")]
+    UnmatchedRemoval { identity: String },
 }
 
 /// Every way `module` breaks the module contract: its descriptor validates; every category has its five texts and
@@ -110,6 +112,19 @@ pub fn assert_texts_used(module: &dyn Module, runs: &[ModuleRun]) {
     assert!(problems.is_empty(), "the texts of module `{}` are wrong:{}", module.descriptor().id(), listed(&problems));
 }
 
+/// Every finding of `runs` whose removal names a path that no match of its run reported. The engine takes an item's
+/// removability from the match its removal names; without one the item needs an administrator (fail closed), so
+/// the app could never remove it.
+pub fn check_removals_matched(runs: &[ModuleRun]) -> Vec<ContractProblem> {
+    let unmatched = runs.iter().flat_map(|run| {
+        run.findings.iter().filter(|finding| match finding.removal() {
+            Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => !run.matched.contains(path),
+            Removal::ToolCommand(_) => false,
+        })
+    });
+    unmatched.map(|finding| ContractProblem::UnmatchedRemoval { identity: finding.key().identity().into() }).collect()
+}
+
 /// The keys a descriptor implies: the five texts of every category, the label and description of every setting,
 /// the `<module>.enabled` switch the settings schema adds included.
 fn descriptor_keys(descriptor: &ModuleDescriptor) -> Vec<String> {
@@ -142,7 +157,7 @@ fn singular(key: &str) -> &str {
 fn run_texts(run: &ModuleRun) -> impl Iterator<Item = &Text> {
     let failure = match &run.outcome {
         ModuleOutcome::Failed { reason } => Some(reason),
-        ModuleOutcome::Completed | ModuleOutcome::Cancelled => None,
+        ModuleOutcome::Completed | ModuleOutcome::Cancelled | ModuleOutcome::Unavailable { .. } => None,
     };
     run.findings.iter().flat_map(|finding| [finding.title(), finding.reason()]).chain(failure)
 }
@@ -232,7 +247,20 @@ mod tests {
 
         use super::{catalogue_file, docs, runs};
         use crate::run_module::sample::CacheModule;
-        use crate::{Catalogue, ContractProblem, check_module_contract, check_texts_used};
+        use crate::{Catalogue, ContractProblem, check_module_contract, check_removals_matched, check_texts_used};
+
+        #[test]
+        fn a_path_removal_without_a_match_is_flagged() {
+            let module = CacheModule::new();
+            let mut run = runs(&module).remove(0);
+            run.matched.clear();
+
+            let problems = check_removals_matched(&[run]);
+
+            assert_eq!(problems.len(), 2);
+            assert!(problems.iter().all(|problem| matches!(problem, ContractProblem::UnmatchedRemoval { .. })));
+            assert!(problems[0].to_string().contains("can never be removed"), "{}", problems[0]);
+        }
 
         #[test]
         fn the_contract_fails_for_a_category_without_its_text() {
@@ -375,7 +403,7 @@ mod tests {
     mod positive {
         use super::{catalogue_file, docs, runs};
         use crate::run_module::sample::CacheModule;
-        use crate::{Catalogue, assert_module_contract, assert_texts_used, check_texts_used};
+        use crate::{Catalogue, assert_module_contract, assert_texts_used, check_removals_matched, check_texts_used};
 
         #[test]
         fn a_complete_module_keeps_its_contract() {
@@ -385,6 +413,7 @@ mod tests {
             assert_module_contract(&module, &Catalogue::Required(docs.root().join("categories")));
             assert_module_contract(&module, &Catalogue::DevOnly);
             assert_texts_used(&module, &runs(&module));
+            assert_eq!(check_removals_matched(&runs(&module)), []);
         }
 
         #[test]

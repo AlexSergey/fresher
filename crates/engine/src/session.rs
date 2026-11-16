@@ -1,18 +1,21 @@
 //! One scan: the shared walk for every enabled module, each match to the module that asked for it, then every
 //! module's `finish`. Runs on the scan's own thread and reports only through the bus.
 
+use std::collections::{BTreeSet, HashMap};
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use fresher_core::{
-    CancelToken, ClaimedPath, Event, Finding, FindingId, FindingSink, InterestSet, LastScan, Match, Module,
-    ModuleContext, ModuleError, ModuleId, ModuleOutcome, ModuleSettings, NewFinding, ScanId, ScanKind, ScanOutcome,
-    Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
+    FindingId, FindingSink, InterestSet, LastScan, Match, Module, ModuleContext, ModuleError, ModuleId, ModuleOutcome,
+    ModuleSettings, NewFinding, Removability, Removal, ScanId, ScanKind, ScanOutcome, Timestamp, WalkError, WalkMode,
+    WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
 use crate::claims;
+use crate::coverage;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
 use crate::throttle::Throttle;
@@ -20,6 +23,8 @@ use crate::throttle::Throttle;
 /// What a scan runs, fixed when it starts: later changes to the settings wait for the next scan.
 pub(crate) struct ScanPlan {
     pub(crate) roots: Vec<PathBuf>,
+    /// The guarded places the user opted into, by capability.
+    pub(crate) opt_ins: Vec<Capability>,
     pub(crate) modules: Vec<Planned>,
     /// How the walk reads the disk; `Restore` reads nothing.
     pub(crate) mode: WalkMode,
@@ -31,8 +36,11 @@ pub(crate) struct Planned {
     pub(crate) settings: ModuleSettings,
 }
 
-/// Runs `plan` to its end: `ScanStarted`, progress and findings, one `ModuleFinished` per module, the commit of the
-/// walk's state, `ScanFinished`.
+/// Runs `plan` to its end: `ScanStarted`, the tool checks (`AccessChanged` when a tool's state changed), the guarded
+/// places decided (a place not allowed and not opted into is never touched), progress and findings, one
+/// `ModuleFinished` per module, the commit of the walk's state, `ScanCoverage`, `ScanFinished`. A module whose every
+/// category is unavailable is not run; the totals of a limited category are partial; an incomplete coverage ends the
+/// scan partial.
 ///
 /// A module that panics is caught and counts as failed; any other panic still ends the scan `Partial` (see
 /// [`Output`]'s `Drop`), so the engine never stays `Scanning`. A cancelled or stopped walk is not committed: the
@@ -50,9 +58,10 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     }
     let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
     // The previous scan's findings are forgotten only now that this scan runs; `None` when the ids ran out.
-    let first_id = lock_anyway(&shared.results).begin();
+    let first_id = lock_anyway(&shared.results).begin(&plan.roots);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
+    let (access, unavailable) = decide_access(shared, plan);
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
     let contexts: Vec<ModuleContext<'_>> =
         plan.modules.iter().map(|planned| ModuleContext::new(clock, commands, &planned.settings, cancel)).collect();
@@ -65,8 +74,17 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         exhausted: false,
         ended: false,
         kind: ScanKind::Full,
+        coverage: Coverage::default(),
+        facts: HashMap::new(),
     };
 
+    for (index, missing) in unavailable.into_iter().enumerate() {
+        if let Some(missing) = missing {
+            outcomes[index] = Some(output.module_finished(ids[index], ModuleOutcome::Unavailable { missing }));
+        }
+    }
+
+    let entry = decide_places(shared, plan, &access);
     let mut throttle = Throttle::default();
     let publish_progress = |progress: WalkProgress| {
         shared.bus.publish(&Event::ScanProgress { scan, entries: progress.entries, bytes: progress.bytes });
@@ -74,11 +92,12 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let walked = {
         let mut on_match = |found: Match| {
             let Some((owner, local)) = interests.owner(found.interest) else { return };
-            // A module that is off is not in the plan: its match reaches no module.
+            // A module that is off is not in the plan, one not run for what it lacks has its outcome: no match.
             let Some(index) = ids.iter().position(|&id| id == owner) else { return };
             if outcomes[index].is_some() {
                 return;
             }
+            output.facts.insert(found.path.clone(), found.facts);
             let found = Match { interest: local, ..found };
             let module = &plan.modules[index].module;
             let called = isolated(|| module.on_match(&found, &contexts[index], &mut output));
@@ -95,22 +114,14 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
             matches.into_iter().for_each(&mut on_match);
             Ok(summary)
         } else {
-            // Until plan 006 the request avoids nothing: the app gives the scanner a standing avoid list (docs/hacks/).
-            let request = WalkRequest { roots: &plan.roots, interests: &interests, avoid: &[], mode: plan.mode };
+            let request =
+                WalkRequest { roots: &plan.roots, interests: &interests, avoid: &entry.avoid, mode: plan.mode };
             shared.ports.walk.walk(&request, cancel, &mut on_match, &mut on_progress)
         }
     };
-    if let Some(last) = throttle.take() {
-        publish_progress(last);
-    }
-    let summary = match walked {
-        Ok(summary) => Some(summary),
-        Err(WalkError::Cancelled) => None,
-        Err(error) => {
-            tracing::warn!(%error, "the walk stopped early");
-            None
-        }
-    };
+    throttle.take().into_iter().for_each(&publish_progress);
+    let summary = summary_of(walked);
+    output.coverage = coverage::after_walk(entry.not_entered, summary.as_ref());
     if let Some(summary) = &summary {
         output.kind = summary.kind;
         if let Some(reason) = summary.fallback {
@@ -136,10 +147,53 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         summary.is_some() && commit(shared, &claims)
     };
     let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
-    let every_module_completed = outcomes.iter().all(|outcome| outcome == &Some(ModuleOutcome::Completed));
-    let complete = walk_complete && committed && every_module_completed && !output.exhausted && !cancel.is_cancelled();
+    let complete = walk_complete
+        && output.coverage.is_complete()
+        && committed
+        && every_module_completed(&outcomes)
+        && !output.exhausted
+        && !cancel.is_cancelled();
     let outcome = if complete { ScanOutcome::Completed } else { ScanOutcome::Partial };
     output.end(outcome);
+}
+
+/// Checks the tools of the scan's modules (`AccessChanged` when a tool's state changed), then decides with the access
+/// what each module lacks to run at all (`None` when it can run) and which categories are limited.
+fn decide_access(shared: &Shared, plan: &ScanPlan) -> (AccessStatus, Vec<Option<Vec<Capability>>>) {
+    if shared.access.check_tools(plan.modules.iter().flat_map(|planned| planned.module.descriptor().tool_checks())) {
+        shared.bus.publish(&Event::AccessChanged { status: shared.access.status() });
+    }
+    let access = shared.access.status();
+    let unavailable = plan.modules.iter().map(|planned| unavailable(&*planned.module, &access)).collect();
+    lock_anyway(&shared.results).limit(limited(plan, &access));
+    (access, unavailable)
+}
+
+/// The guarded places decided before the walk; a restore reads no disk, so it tries none.
+fn decide_places(shared: &Shared, plan: &ScanPlan, access: &AccessStatus) -> coverage::Entry {
+    let probe = &*shared.ports.access;
+    if plan.mode == WalkMode::Restore {
+        coverage::before_restore(probe, access, &plan.roots)
+    } else {
+        coverage::before_walk(probe, access, &plan.roots, &plan.opt_ins)
+    }
+}
+
+/// Every module completed; a module not run for what it lacks says so itself, so it does not make the scan partial.
+fn every_module_completed(outcomes: &[Option<ModuleOutcome>]) -> bool {
+    outcomes.iter().all(|outcome| matches!(outcome, Some(ModuleOutcome::Completed | ModuleOutcome::Unavailable { .. })))
+}
+
+/// The walk's summary; `None` when it was cancelled or stopped early (logged).
+fn summary_of(walked: Result<WalkSummary, WalkError>) -> Option<WalkSummary> {
+    match walked {
+        Ok(summary) => Some(summary),
+        Err(WalkError::Cancelled) => None,
+        Err(error) => {
+            tracing::warn!(%error, "the walk stopped early");
+            None
+        }
+    }
 }
 
 /// The matches and the summary of a `Restore` walk, collected before the scan starts; `None` for any other walk. A
@@ -164,6 +218,32 @@ fn restore(
             Err(error)
         }
     }
+}
+
+/// What `module` lacks when every one of its categories is unavailable: their missing capabilities, once each. `None`
+/// when it can run (a module without categories always can).
+fn unavailable(module: &dyn Module, access: &AccessStatus) -> Option<Vec<Capability>> {
+    let categories = module.descriptor().categories();
+    let mut missing: Vec<Capability> = Vec::new();
+    for category in categories {
+        let Availability::Unavailable { missing: lacks } = Availability::of(category.needs(), access) else {
+            return None;
+        };
+        for capability in lacks {
+            if !missing.contains(&capability) {
+                missing.push(capability);
+            }
+        }
+    }
+    (!categories.is_empty()).then_some(missing)
+}
+
+/// The categories of the scan's modules that are limited by what the access lacks.
+fn limited(plan: &ScanPlan, access: &AccessStatus) -> BTreeSet<CategoryId> {
+    let categories = plan.modules.iter().flat_map(|planned| planned.module.descriptor().categories());
+    let limited = categories
+        .filter(|category| matches!(Availability::of(category.needs(), access), Availability::Limited { .. }));
+    limited.map(fresher_core::CategoryDescriptor::id).collect()
 }
 
 /// Resolves the claims of the scan's findings and keeps them for the category totals; gives the claimed paths.
@@ -212,21 +292,36 @@ struct Output<'a> {
     shared: &'a Shared,
     scan: ScanId,
     next_id: Option<u32>,
-    batcher: Batcher,
+    batcher: Batcher<Finding>,
     exhausted: bool,
     ended: bool,
     /// How the walk read the disk; `Full` until it says otherwise.
     kind: ScanKind,
+    /// What the scan saw; complete until the walk is decided.
+    coverage: Coverage,
+    /// What the walk read about each matched entry of this scan, by path: a finding's removability comes from the
+    /// entry its removal names, also for a finding made in `finish`.
+    facts: HashMap<PathBuf, EntryFacts>,
 }
 
 impl Output<'_> {
-    /// Records the last scan, publishes `ScanFinished` and lets the engine go `Idle`, all under the state's lock.
+    /// Records the last scan, publishes `ScanCoverage` then `ScanFinished` and lets the engine go `Idle`, all under the
+    /// state's lock.
     fn end(&mut self, outcome: ScanOutcome) {
         self.ended = true;
         let finished = Timestamp::from_system_time(self.shared.ports.clock.now());
         let mut machine = lock_anyway(&self.shared.machine);
-        let last = LastScan { scan: self.scan, finished, outcome: outcome.clone(), kind: self.kind };
+        let coverage = self.coverage.clone();
+        let last = LastScan {
+            scan: self.scan,
+            finished,
+            outcome: outcome.clone(),
+            kind: self.kind,
+            coverage,
+            changed_since: None,
+        };
         lock_anyway(&self.shared.results).finish(last, self.next_id);
+        self.shared.bus.publish(&Event::ScanCoverage { scan: self.scan, coverage: self.coverage.clone() });
         self.shared.bus.publish(&Event::ScanFinished { scan: self.scan, outcome, kind: self.kind });
         machine.finish(self.scan);
     }
@@ -241,6 +336,15 @@ impl Output<'_> {
         }
         self.shared.bus.publish(&Event::ModuleFinished { scan: self.scan, module, outcome: outcome.clone() });
         outcome
+    }
+
+    /// The facts of the matched entry `removal` names; `None` for a tool's removal or a path no match of this scan
+    /// reported.
+    fn removal_facts(&self, removal: &Removal) -> Option<&EntryFacts> {
+        match removal {
+            Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => self.facts.get(path),
+            Removal::ToolCommand(_) => None,
+        }
     }
 
     fn send(&self, batch: Vec<Finding>) {
@@ -266,7 +370,8 @@ impl FindingSink for Output<'_> {
         };
         self.next_id = id.checked_add(1);
         let now = self.shared.ports.clock.now();
-        if let Some(batch) = self.batcher.push(Finding::new(FindingId::new(id), finding), now) {
+        let removability = Removability::of_removal(finding.removal(), self.removal_facts(finding.removal()).copied());
+        if let Some(batch) = self.batcher.push(Finding::new(FindingId::new(id), finding, removability), now) {
             self.send(batch);
         }
     }
@@ -300,6 +405,11 @@ mod tests {
         FindingId::new(id)
     }
 
+    /// The removability of every published finding, in order.
+    fn removabilities(events: &[Event]) -> Vec<fresher_core::Removability> {
+        crate::testing::batches(events).iter().flatten().map(fresher_core::Finding::removability).collect()
+    }
+
     mod negative {
         use fresher_core::{
             CommandError, DangerLevel, EngineStatus, Event, FindingOrder, FindingsQuery, ModuleError, ModuleId,
@@ -307,7 +417,9 @@ mod tests {
         };
         use serde_json::json;
 
-        use super::{id, ids, module_outcomes, scan_outcome};
+        use fresher_core::{EntryFacts, Removability};
+
+        use super::{id, ids, module_outcomes, removabilities, scan_outcome};
         use crate::testing::{
             Fixture, MemorySettings, ScriptedWalk, TestModule, bytes, category, finding, panic_now, scan, text,
             wait_for_finish,
@@ -319,6 +431,34 @@ mod tests {
 
         fn beta() -> ModuleId {
             ModuleId::new("beta").unwrap()
+        }
+
+        #[test]
+        fn a_matched_item_of_another_user_needs_an_administrator() {
+            let theirs = EntryFacts { owned_by_user: false, ..EntryFacts::REMOVABLE };
+            let walk = ScriptedWalk::new().folder_with("Caches", "/home/Caches", bytes(1), theirs);
+            let module = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
+            let engine = Fixture::new(walk).module(module).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(removabilities(&events), [Removability::NeedsAdministrator]);
+        }
+
+        #[test]
+        fn a_path_finding_without_a_match_is_not_removable() {
+            let caches = category("alpha.caches", DangerLevel::Safe);
+            let module =
+                TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).on_finish(move |_, out| {
+                    out.push(finding(&caches, "/home/elsewhere", bytes(1)));
+                    Ok(())
+                });
+            let walk = ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(1));
+            let engine = Fixture::new(walk).module(module).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(removabilities(&events), [Removability::NeedsAdministrator]);
         }
 
         #[test]
@@ -645,14 +785,74 @@ mod tests {
         use std::time::Duration;
 
         use fresher_core::{
-            ByteSize, Completeness, DangerLevel, EngineStatus, Event, FindingOrder, FindingsQuery, LastScan, ScanId,
-            ScanKind, ScanOutcome, Sizes, Timestamp,
+            ByteSize, Completeness, Coverage, DangerLevel, EngineStatus, Event, FindingOrder, FindingsQuery, LastScan,
+            ScanId, ScanKind, ScanOutcome, Sizes, Timestamp,
         };
 
-        use super::{id, ids, scan_outcome};
+        use fresher_core::{EntryFacts, Removability, Removal, ToolCommand, ToolId};
+
+        use super::{id, ids, removabilities, scan_outcome};
         use crate::testing::{
             Fixture, MemorySettings, START, ScriptedWalk, TestModule, batches, bytes, category, finding, scan,
         };
+
+        #[test]
+        fn a_users_own_matched_item_is_removable() {
+            let walk = ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(1));
+            let module = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
+            let engine = Fixture::new(walk).module(module).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(removabilities(&events), [Removability::Removable]);
+            assert_eq!(engine.finding(id(1)).map(|found| found.removability()), Ok(Removability::Removable));
+        }
+
+        #[test]
+        fn a_finish_finding_takes_the_facts_of_its_match() {
+            let caches = category("alpha.caches", DangerLevel::Safe);
+            let module = TestModule::builder("alpha")
+                .category("alpha.caches", DangerLevel::Safe)
+                .folder("Versions")
+                .on_finish(move |_, out| {
+                    out.push(finding(&caches, "/home/Versions", bytes(1)));
+                    Ok(())
+                });
+            let locked = EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE };
+            let walk = ScriptedWalk::new().folder_with("Versions", "/home/Versions", bytes(1), locked);
+            let engine = Fixture::new(walk).module(module).engine();
+
+            let events = scan(&engine);
+
+            // The first finding is made on the match, the second in `finish`.
+            assert_eq!(removabilities(&events), [Removability::Locked, Removability::Locked]);
+        }
+
+        #[test]
+        fn a_tool_removal_is_removable() {
+            let images = category("alpha.images", DangerLevel::Low);
+            let module =
+                TestModule::builder("alpha").category("alpha.images", DangerLevel::Low).on_finish(move |_, out| {
+                    let mut item = finding(&images, "/home/unused", bytes(1));
+                    let tool = ToolCommand::new(ToolId::new("docker").unwrap(), vec!["rmi".into()]).unwrap();
+                    item = fresher_core::NewFinding::new(
+                        &images,
+                        "image",
+                        item.subject().clone(),
+                        item.sizes(),
+                        item.title().clone(),
+                        item.reason().clone(),
+                        Removal::ToolCommand(tool),
+                    );
+                    out.push(item);
+                    Ok(())
+                });
+            let engine = Fixture::new(ScriptedWalk::new()).module(module).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(removabilities(&events), [Removability::Removable]);
+        }
 
         #[test]
         fn sends_each_match_to_the_module_that_asked_for_it() {
@@ -806,8 +1006,8 @@ mod tests {
 
             assert_eq!(overview.status, EngineStatus::Idle);
             let finished = Timestamp::from_secs(START);
-            let last =
-                LastScan { scan: ScanId::new(1), finished, outcome: ScanOutcome::Completed, kind: ScanKind::Full };
+            let (outcome, kind, coverage) = (ScanOutcome::Completed, ScanKind::Full, Coverage::default());
+            let last = LastScan { scan: ScanId::new(1), finished, outcome, kind, coverage, changed_since: None };
             assert_eq!(overview.last_scan, Some(last));
             let totals: Vec<_> = overview
                 .totals

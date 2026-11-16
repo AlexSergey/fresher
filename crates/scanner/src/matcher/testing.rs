@@ -7,8 +7,8 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    CancelToken, Claim, DiskWalk, EntryKind, FolderListing, Interest, InterestSet, ModuleId, Pattern, RawEntry, Sizes,
-    WalkMode, WalkRequest,
+    CancelToken, Claim, DiskWalk, EntryAccess, EntryKind, FolderListing, Interest, InterestSet, ModuleId, Pattern,
+    RawEntry, Sizes, WalkMode, WalkRequest,
 };
 use fresher_testing::{FixtureTree, NaiveWalk};
 
@@ -53,6 +53,7 @@ pub(crate) const fn raw(kind: EntryKind) -> RawEntry {
         clone: None,
         modified: None,
         cloud_only: false,
+        access: EntryAccess { owner: None, mode: 0, user_immutable: false, system_immutable: false, restricted: false },
         error: None,
     }
 }

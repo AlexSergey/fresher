@@ -18,6 +18,8 @@ pub fn run() -> Result<(), tauri::Error> {
     let app = tauri::Builder::default()
         // First, so a second launch exits before it sets anything up.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| shell::on_second_launch(app)))
+        .menu(shell::menu)
+        .on_menu_event(|app, event| shell::on_menu_event(app, &event))
         .setup(|app| {
             let engine = compose::engine(app.path().app_data_dir()?, &app.path().home_dir()?)?;
             // The last result shows at once: the cached state is restored without reading the disk; the UI learns
@@ -41,6 +43,15 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::update_setting,
             commands::get_dictionary,
             commands::get_access_status,
+            commands::prepare_cleanup,
+            commands::discard_cleanup,
+            commands::confirm_cleanup,
+            commands::cancel_cleanup,
+            commands::get_cleanups,
+            commands::get_cleanup,
+            commands::put_back,
+            commands::reveal_in_trash,
+            commands::quit_after_cleanup,
         ])
         .build(tauri::generate_context!())?;
     app.run(|app, event| shell::on_run_event(app, &event));

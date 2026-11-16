@@ -1,0 +1,11 @@
+error[E0603]: module `remove` is private
+ --> tests/compile_fail/remove_without_act.rs:4:22
+  |
+4 | use fresher_cleaner::remove::to_trash;
+  |                      ^^^^^^ private module
+  |
+note: the module `remove` is defined here
+ --> src/lib.rs
+  |
+  | mod remove;
+  | ^^^^^^^^^^

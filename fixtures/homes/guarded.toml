@@ -1,0 +1,11 @@
+# A home folder whose Desktop the system guards: a scan that is not allowed in must leave it untouched.
+
+[[file]]
+path = "Desktop/notes.md"
+size = 4096
+modified = 1735689600
+
+[[file]]
+path = "Library/Caches/com.example.editor/Cache.db"
+size = 1048576
+modified = 1735689600

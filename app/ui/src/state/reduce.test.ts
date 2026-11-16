@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Event, Overview, ScanId, SettingsView, SettingValue } from '../ipc/bindings.generated';
+import type { Event, Overview, ScanId, SettingsView, SettingValue, Sizes } from '../ipc/bindings.generated';
 
-import { DEMO_DICTIONARY, DEMO_FINDINGS, DEMO_OVERVIEW, DEMO_SCAN, FIRST_BATCH, IDLE } from '../test/demo-scan';
+import {
+  allFiles,
+  DEMO_DICTIONARY,
+  DEMO_FINDINGS,
+  DEMO_OVERVIEW,
+  DEMO_SCAN,
+  FIRST_BATCH,
+  FULL_COVERAGE,
+  IDLE,
+} from '../test/demo-scan';
 import { type CoreAction, type CoreState, INITIAL_STATE, reduce } from './reduce';
 
 const run = (actions: readonly CoreAction[], from: CoreState = INITIAL_STATE): CoreState =>
@@ -15,6 +24,8 @@ const scanning = (scan: ScanId): Overview => ({ ...IDLE, status: { scan, state: 
 const requested: CoreAction = { type: 'overview-requested' };
 
 const loaded = (overview: Overview): CoreAction => ({ overview, type: 'overview-loaded' });
+
+const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
 
 const changed = (key: string, value: SettingValue): CoreAction => ({ key, type: 'setting-changed', value });
 
@@ -86,7 +97,13 @@ describe('reduce', () => {
         requested,
         loaded({
           ...DEMO_OVERVIEW,
-          lastScan: { finished: 1, kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1 },
+          lastScan: {
+            coverage: FULL_COVERAGE,
+            finished: 1,
+            kind: { kind: 'full' },
+            outcome: { kind: 'partial' },
+            scan: 1,
+          },
         }),
       ]);
 
@@ -128,19 +145,41 @@ describe('reduce', () => {
       expect(state.scan).toBe(5);
     });
 
-    it('leaves the state as it is for a setting changed before the settings arrived and a request of a fresh overview', () => {
-      const state = run([changed('demo.count', { kind: 'number', value: 3 }), requested]);
+    it('leaves the state as it is for a setting changed before the settings arrived, a coverage and a request of a fresh overview', () => {
+      const state = run([
+        changed('demo.count', { kind: 'number', value: 3 }),
+        { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
+        requested,
+      ]);
 
       expect(state).toBe(INITIAL_STATE);
     });
 
+    it.each<Event>([
+      { cleanup: 1, done: 1, items: [{ finding: 1, index: 0, outcome: { kind: 'moved' } }], type: 'cleanup-items' },
+      {
+        cleanup: 1,
+        report: {
+          counts: { deleted: 0, emptied: 0, failed: 0, moved: 1, notReached: 0, skipped: 0, toolDone: 0, unknown: 0 },
+          deleted: NOTHING,
+          ended: 'completed',
+          measured: null,
+          method: 'trash',
+          moved: NOTHING,
+        },
+        type: 'cleanup-finished',
+      },
+    ])('leaves the state as it is for a $type event of a cleanup it does not follow', (event) => {
+      expect(run([event])).toBe(INITIAL_STATE);
+    });
+
     it('an access status answered after an access-changed event does not undo it', () => {
       const state = run([
-        { status: { fullDiskAccess: 'granted' }, type: 'access-changed' },
-        { status: { fullDiskAccess: 'denied' }, type: 'access-loaded' },
+        { status: allFiles('granted'), type: 'access-changed' },
+        { status: allFiles('denied'), type: 'access-loaded' },
       ]);
 
-      expect(state.access).toEqual({ fullDiskAccess: 'granted' });
+      expect(state.access).toEqual(allFiles('granted'));
     });
 
     it('a settings view answered again does not undo the changes since the first', () => {
@@ -218,18 +257,18 @@ describe('reduce', () => {
       expect(state.dictionary).toBe(DEMO_DICTIONARY);
       expect(state.scan).toBe(4);
       expect(state.progress).toEqual({ bytes: 2048, entries: 10 });
-      const cleaning = run([loaded({ ...IDLE, status: { state: 'cleaning' } })]);
-      expect(cleaning.status).toEqual({ state: 'cleaning' });
+      const cleaning = run([loaded({ ...IDLE, status: { cleanup: 3, state: 'cleaning' } })]);
+      expect(cleaning.status).toEqual({ cleanup: 3, state: 'cleaning' });
     });
 
     it('keeps the settings view and the access status the core answered', () => {
       const state = run([
         { settings: SETTINGS, type: 'settings-loaded' },
-        { status: { fullDiskAccess: 'denied' }, type: 'access-loaded' },
+        { status: allFiles('denied'), type: 'access-loaded' },
       ]);
 
       expect(state.settings).toBe(SETTINGS);
-      expect(state.access).toEqual({ fullDiskAccess: 'denied' });
+      expect(state.access).toEqual(allFiles('denied'));
     });
 
     it('a setting-changed event replaces its value and clears its problem', () => {
@@ -245,11 +284,11 @@ describe('reduce', () => {
 
     it('an access-changed event replaces the access status', () => {
       const state = run([
-        { status: { fullDiskAccess: 'denied' }, type: 'access-loaded' },
-        { status: { fullDiskAccess: 'granted' }, type: 'access-changed' },
+        { status: allFiles('denied'), type: 'access-loaded' },
+        { status: allFiles('granted'), type: 'access-changed' },
       ]);
 
-      expect(state.access).toEqual({ fullDiskAccess: 'granted' });
+      expect(state.access).toEqual(allFiles('granted'));
     });
 
     it('follows the scan an overview reports after a reload during that scan', () => {

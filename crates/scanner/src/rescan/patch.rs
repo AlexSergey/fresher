@@ -19,6 +19,7 @@ use crate::matcher::entry::sibling_mask;
 use crate::rescan::change_set::{ChangeSet, ancestry};
 use crate::rescan::frozen::Frozen;
 use crate::tree::TreeError;
+use crate::tree::access::NodeAccess;
 use crate::tree::arena::Tree;
 use crate::tree::node::{Flag, Hit, NodeFlags, NodeIndex};
 use crate::walk::Walk;
@@ -147,6 +148,7 @@ impl Builder<'_> {
     fn build(&mut self) -> Result<(), TreeError> {
         for (old_root, root) in self.old.roots().iter().zip(self.walk.roots.iter()) {
             let new = self.new.add_root(&root.path, root.identity)?;
+            self.new.set_access(new, NodeAccess::of(root.access, self.walk.user))?;
             self.stack.push(Task {
                 old: old_root.node,
                 new,
@@ -179,6 +181,7 @@ impl Builder<'_> {
         self.new.add_hidden_folders(task.new, self.frozen.hidden(task.old))?;
         if task.fresh.is_none() {
             self.new.set_modified(task.new, node.modified())?;
+            self.keep_access(task)?;
         }
         self.old_hits(task)?;
         for &(kind, member) in self.frozen.members(task.old) {
@@ -355,9 +358,20 @@ impl Builder<'_> {
         if let Some(node) = self.old.node(task.old) {
             self.new.set_modified(task.new, node.modified())?;
         }
+        self.keep_access(task)?;
         let hits: Vec<Hit> =
             self.old.hits(task.old).iter().filter(|hit| !self.is_marker(hit.interest)).copied().collect();
         self.new.add_hits(task.new, &hits)
+    }
+
+    /// The access of a node whose parent's listing was not read again, kept from the cached tree; a root's was read
+    /// again with the roots.
+    fn keep_access(&mut self, task: &Task) -> Result<(), TreeError> {
+        if task.is_root {
+            return Ok(());
+        }
+        let access = self.old.node(task.old).map_or(NodeAccess::NONE, |node| node.access);
+        self.new.set_access(task.new, access)
     }
 
     fn is_marker(&self, interest: u32) -> bool {

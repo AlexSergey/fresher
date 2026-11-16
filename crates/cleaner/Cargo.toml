@@ -1,6 +1,6 @@
 [package]
 name = "fresher-cleaner"
-description = "The only code of Fresher that deletes: executes a confirmed clean plan, Trash first."
+description = "The only code of Fresher that removes anything: checks and acts on the items of a confirmed plan, Trash first."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,3 +11,14 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+fresher-core = { path = "../core" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+fresher-macos = { path = "../macos" }
+
+[dev-dependencies]
+fresher-testing = { path = "../testing" }
+proptest.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true

@@ -132,6 +132,7 @@ name = "Library"
             modified: Some(Timestamp::from_secs(NOW - 31 * 86_400)),
             siblings: vec!["Info.plist".into()],
             marker: None,
+            facts: fresher_core::EntryFacts::REMOVABLE,
         }
     }
 

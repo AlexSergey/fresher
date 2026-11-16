@@ -41,7 +41,7 @@
     justify-items: end;
   }
 
-  .later {
+  .checking {
     color: var(--text-secondary);
     font-size: var(--type-footnote-size);
     line-height: var(--type-footnote-line);

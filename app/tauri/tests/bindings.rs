@@ -11,12 +11,18 @@ mod support {
     use std::path::PathBuf;
 
     use fresher_core::{
-        Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, ChildOrder, CommandError,
-        Completeness, DangerLevel, Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder,
-        FindingsPage, FindingsQuery, LastScan, Locale, ModuleId, ModuleInfo, ModuleOutcome, NodeId, NodeInfo, NodeKind,
-        NodePage, NotScanned, Operation, Overview, Refusal, Removal, ScanId, ScanKind, ScanOutcome, SettingDescriptor,
-        SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes,
-        StateId, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit, Unreadable, UnreadablePlace,
+        Access, AccessStatus, ActionKind, Availability, BlockedReason, ByteSize, Capability, CapabilityState,
+        CategoryDescriptor, CategoryId, CategoryInfo, CategoryPick, CategoryTotal, ChildOrder, CleanupDetail,
+        CleanupId, CleanupItemRef, CleanupItemView, CleanupPlanView, CleanupReport, CleanupSelection, CleanupSummary,
+        CleanupsPage, CleanupsQuery, CommandError, Completeness, Confirmation, Coverage, DangerLevel, Dictionary,
+        Ended, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery,
+        GuardedFolder, ItemOutcome, ItemReport, LastScan, LeftOut, Locale, Method, ModuleId, ModuleInfo, ModuleOutcome,
+        Need, NeedKind, NodeId, NodeInfo, NodeKind, NodePage, NotEntered, NotScanned, Operation, OutcomeCounts,
+        Overview, PlanGroup, PlanId, PlanItemView, PlanSummary, PutBackItem, PutBackOutcome, PutBackReport,
+        PutBackRequest, RecordedOutcome, Refusal, Removability, Removal, ScanId, ScanKind, ScanOutcome,
+        SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue, SettingsFile,
+        SettingsView, Sizes, SkipCode, SkipReason, StateId, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand,
+        ToolId, TrashState, Unit, Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
     };
     use ts_rs::{Config, TS};
 
@@ -34,10 +40,10 @@ mod support {
     }
 
     /// Every type the IPC carries: the events, the commands' inputs and outputs, the refusal, and all they contain; the
-    /// disk state's types too, before a command returns them.
+    /// disk state's and the cleanups' types too, before a command returns them.
     pub(crate) fn declarations() -> Vec<Declaration> {
         let config = Config::new();
-        vec![
+        let mut declarations = vec![
             declaration::<Event>(&config),
             declaration::<Refusal>(&config),
             declaration::<CommandError>(&config),
@@ -45,8 +51,13 @@ mod support {
             declaration::<EngineStatus>(&config),
             declaration::<Operation>(&config),
             declaration::<LastScan>(&config),
+            declaration::<Coverage>(&config),
+            declaration::<NotEntered>(&config),
+            declaration::<UnreadableCount>(&config),
             declaration::<CategoryTotal>(&config),
             declaration::<ModuleInfo>(&config),
+            declaration::<CategoryInfo>(&config),
+            declaration::<Availability>(&config),
             declaration::<FindingsQuery>(&config),
             declaration::<FindingOrder>(&config),
             declaration::<FindingsPage>(&config),
@@ -54,6 +65,7 @@ mod support {
             declaration::<FindingId>(&config),
             declaration::<FindingKey>(&config),
             declaration::<Subject>(&config),
+            declaration::<Removability>(&config),
             declaration::<Removal>(&config),
             declaration::<ToolCommand>(&config),
             declaration::<ToolId>(&config),
@@ -84,7 +96,13 @@ mod support {
             declaration::<TextKey>(&config),
             declaration::<TextArg>(&config),
             declaration::<AccessStatus>(&config),
+            declaration::<CapabilityState>(&config),
+            declaration::<Capability>(&config),
+            declaration::<GuardedFolder>(&config),
+            declaration::<VolumeKind>(&config),
             declaration::<Access>(&config),
+            declaration::<Need>(&config),
+            declaration::<NeedKind>(&config),
             declaration::<NodeInfo>(&config),
             declaration::<NodeId>(&config),
             declaration::<StateId>(&config),
@@ -94,6 +112,46 @@ mod support {
             declaration::<ChildOrder>(&config),
             declaration::<NodePage>(&config),
             declaration::<UnreadablePlace>(&config),
+        ];
+        declarations.extend(cleanup_declarations(&config));
+        declarations
+    }
+
+    /// The types of the cleanup commands and events.
+    fn cleanup_declarations(config: &Config) -> Vec<Declaration> {
+        vec![
+            declaration::<CleanupSelection>(config),
+            declaration::<CategoryPick>(config),
+            declaration::<CleanupPlanView>(config),
+            declaration::<PlanId>(config),
+            declaration::<PlanSummary>(config),
+            declaration::<PlanGroup>(config),
+            declaration::<ActionKind>(config),
+            declaration::<PlanItemView>(config),
+            declaration::<LeftOut>(config),
+            declaration::<SkipReason>(config),
+            declaration::<Confirmation>(config),
+            declaration::<Method>(config),
+            declaration::<CleanupId>(config),
+            declaration::<ItemReport>(config),
+            declaration::<ItemOutcome>(config),
+            declaration::<CleanupReport>(config),
+            declaration::<Ended>(config),
+            declaration::<OutcomeCounts>(config),
+            declaration::<BlockedReason>(config),
+            declaration::<CleanupsQuery>(config),
+            declaration::<CleanupsPage>(config),
+            declaration::<CleanupSummary>(config),
+            declaration::<CleanupDetail>(config),
+            declaration::<CleanupItemView>(config),
+            declaration::<RecordedOutcome>(config),
+            declaration::<SkipCode>(config),
+            declaration::<TrashState>(config),
+            declaration::<PutBackRequest>(config),
+            declaration::<CleanupItemRef>(config),
+            declaration::<PutBackReport>(config),
+            declaration::<PutBackItem>(config),
+            declaration::<PutBackOutcome>(config),
         ]
     }
 

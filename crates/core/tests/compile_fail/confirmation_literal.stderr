@@ -1,0 +1,15 @@
+error[E0451]: fields `plan`, `count`, `allocated`, `highest` and `method` of struct `Confirmation` are private
+  --> tests/compile_fail/confirmation_literal.rs:7:9
+   |
+ 6 |     let _ = Confirmation {
+   |             ------------ in this type
+ 7 |         plan: PlanId::new(1),
+   |         ^^^^ private field
+ 8 |         count: 3,
+   |         ^^^^^ private field
+ 9 |         allocated: ByteSize::new(4096),
+   |         ^^^^^^^^^ private field
+10 |         highest: DangerLevel::Safe,
+   |         ^^^^^^^ private field
+11 |         method: Method::Permanent,
+   |         ^^^^^^ private field

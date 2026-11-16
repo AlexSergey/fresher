@@ -7,9 +7,9 @@ use ts_rs::TS;
 
 use crate::settings::schema::ENABLED;
 use crate::{
-    CategoryDescriptor, CategoryId, CommandError, DangerLevel, Finding, ModuleDescriptor, ModuleId, ResolvedSettings,
-    ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes,
-    Timestamp,
+    AccessStatus, Availability, CategoryDescriptor, CategoryId, CleanupId, CommandError, Coverage, DangerLevel,
+    Finding, ModuleDescriptor, ModuleId, ResolvedSettings, ScanId, ScanKind, ScanOutcome, SettingDescriptor,
+    SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
 };
 
 /// A long operation of the engine; only one runs at a time.
@@ -36,7 +36,7 @@ impl Operation {
 pub enum EngineStatus {
     Idle,
     Scanning { scan: ScanId },
-    Cleaning,
+    Cleaning { cleanup: CleanupId },
 }
 
 /// The answer of `get_overview`.
@@ -57,6 +57,11 @@ pub struct LastScan {
     pub finished: Timestamp,
     pub outcome: ScanOutcome,
     pub kind: ScanKind,
+    pub coverage: Coverage,
+    /// The cleanup that changed the disk since this scan, if one did: the scan's tree is out of date.
+    #[serde(rename = "changedSince", skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub changed_since: Option<CleanupId>,
 }
 
 /// The findings of one category in the last scan.
@@ -73,18 +78,30 @@ pub struct CategoryTotal {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 pub struct ModuleInfo {
     pub id: ModuleId,
-    pub categories: Vec<CategoryDescriptor>,
+    pub categories: Vec<CategoryInfo>,
     /// Its settings' keys, `<module>.enabled` first.
     pub settings: Vec<SettingKey>,
 }
 
-impl From<&ModuleDescriptor> for ModuleInfo {
-    fn from(descriptor: &ModuleDescriptor) -> Self {
+/// A category and what it can do with the current access.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+pub struct CategoryInfo {
+    pub descriptor: CategoryDescriptor,
+    pub availability: Availability,
+}
+
+impl ModuleInfo {
+    /// The module of `descriptor`, each category's availability worked out from `access`.
+    pub fn new(descriptor: &ModuleDescriptor, access: &AccessStatus) -> Self {
         let enabled = SettingKey::new(format!("{}.{ENABLED}", descriptor.id()));
         let own = descriptor.settings().iter().map(|setting| setting.key().clone());
+        let category = |category: &CategoryDescriptor| CategoryInfo {
+            descriptor: category.clone(),
+            availability: Availability::of(category.needs(), access),
+        };
         Self {
             id: descriptor.id(),
-            categories: descriptor.categories().to_vec(),
+            categories: descriptor.categories().iter().map(category).collect(),
             settings: enabled.into_iter().chain(own).collect(),
         }
     }
@@ -262,10 +279,11 @@ mod tests {
         use serde_json::json;
 
         use crate::{
-            Access, AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, DangerLevel, EngineStatus,
-            FindingOrder, FindingsQuery, LastScan, Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Operation,
-            Overview, ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingUpdate,
-            SettingValue, SettingsFile, SettingsSchema, SettingsView, Sizes, StoredSettings, Timestamp,
+            Access, AccessStatus, Availability, ByteSize, Capability, CapabilityState, CategoryDescriptor, CategoryId,
+            CategoryInfo, CategoryTotal, Coverage, DangerLevel, EngineStatus, FindingOrder, FindingsQuery, LastScan,
+            Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Need, Operation, Overview, ScanId, ScanKind,
+            ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingUpdate, SettingValue, SettingsFile,
+            SettingsSchema, SettingsView, Sizes, StoredSettings, Timestamp,
         };
 
         #[test]
@@ -275,7 +293,11 @@ mod tests {
                 finished: Timestamp::from_secs(200),
                 outcome: ScanOutcome::Completed,
                 kind: ScanKind::Restored { taken: Timestamp::from_secs(100) },
+                coverage: Coverage::default(),
+                changed_since: None,
             };
+            let changed = LastScan { changed_since: Some(crate::CleanupId::new(5)), ..last.clone() };
+            assert_eq!(serde_json::to_value(changed).unwrap()["changedSince"], 5);
 
             assert_eq!(
                 serde_json::to_value(last).unwrap(),
@@ -284,6 +306,7 @@ mod tests {
                     "finished": 200,
                     "outcome": { "kind": "completed" },
                     "kind": { "kind": "restored", "taken": 100 },
+                    "coverage": { "notEntered": [], "unreadable": [] },
                 })
             );
         }
@@ -325,11 +348,22 @@ mod tests {
                 sizes: Sizes::complete(ByteSize::new(1), ByteSize::new(1)),
                 highest_danger: DangerLevel::Low,
             };
-            let access = AccessStatus { full_disk_access: Access::Unknown };
+            let access =
+                AccessStatus { capabilities: vec![CapabilityState::new(Capability::AllFiles, Access::Unknown)] };
 
             assert_eq!(serde_json::to_value(overview).unwrap()["lastScan"], json!(null));
             assert_eq!(serde_json::to_value(total).unwrap()["highestDanger"], "low");
-            assert_eq!(serde_json::to_value(access).unwrap(), json!({ "fullDiskAccess": "unknown" }));
+            assert_eq!(
+                serde_json::to_value(access).unwrap()["capabilities"][0]["capability"],
+                json!({ "kind": "all-files" })
+            );
+        }
+
+        #[test]
+        fn cleaning_status_carries_its_cleanup() {
+            let cleaning = EngineStatus::Cleaning { cleanup: crate::CleanupId::new(3) };
+
+            assert_eq!(serde_json::to_value(cleaning).unwrap(), json!({ "state": "cleaning", "cleanup": 3 }));
         }
 
         #[test]
@@ -351,19 +385,47 @@ mod tests {
                 SettingValue::Switch(false),
             )
             .unwrap();
-            let descriptor = ModuleDescriptor::new(demo, vec![caches], vec![deep], Locales { en: "{}" }).unwrap();
+            let descriptor =
+                ModuleDescriptor::new(demo, vec![caches.clone()], vec![deep], Locales { en: "{}" }).unwrap();
 
-            let info = ModuleInfo::from(&descriptor);
+            let info = ModuleInfo::new(&descriptor, &AccessStatus::default());
 
             assert_eq!(info.id, demo);
-            assert_eq!(info.categories, [caches]);
+            assert_eq!(info.categories, [CategoryInfo { descriptor: caches, availability: Availability::Ready }]);
             assert_eq!(info.settings.iter().map(SettingKey::as_str).collect::<Vec<_>>(), ["demo.enabled", "demo.deep"]);
 
             let schema = SettingsSchema::new([&descriptor]).unwrap();
             let view = SettingsView::new(&schema, &schema.resolve(&StoredSettings::default()), SettingsFile::Loaded);
-            assert_eq!(view.settings.len(), 3);
-            assert_eq!(view.values.len(), 3);
+            // The scan roots, the four access opt-ins, and the module's two.
+            assert_eq!(view.settings.len(), 7);
+            assert_eq!(view.values.len(), 7);
             assert_eq!(view.problems, []);
+        }
+
+        #[test]
+        fn module_info_gives_each_category_its_availability() {
+            let demo = ModuleId::new("demo").unwrap();
+            let category = |id| CategoryDescriptor::new(CategoryId::new(demo, id).unwrap(), DangerLevel::Low);
+            let caches = category("demo.caches").with_needs(vec![Need::sees_more(Capability::AllFiles)]);
+            let logs = category("demo.logs");
+            let descriptor = ModuleDescriptor::new(demo, vec![caches, logs], vec![], Locales { en: "{}" }).unwrap();
+            let denied =
+                AccessStatus { capabilities: vec![CapabilityState::new(Capability::AllFiles, Access::Denied)] };
+
+            let info = ModuleInfo::new(&descriptor, &denied);
+
+            let availability: Vec<_> = info.categories.iter().map(|category| category.availability.clone()).collect();
+            assert_eq!(
+                availability,
+                [Availability::Limited { missing: vec![Capability::AllFiles] }, Availability::Ready]
+            );
+            assert_eq!(
+                serde_json::to_value(&info.categories[1]).unwrap(),
+                json!({
+                    "descriptor": { "id": "demo.logs", "danger": "low", "needs": [] },
+                    "availability": { "kind": "ready" },
+                })
+            );
         }
 
         #[test]

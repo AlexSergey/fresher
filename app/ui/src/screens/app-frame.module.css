@@ -13,6 +13,10 @@
     line-height: var(--type-title-3-line);
   }
 
+  .quitText {
+    color: var(--text-secondary);
+  }
+
   .stack {
     display: grid;
     min-height: 0;

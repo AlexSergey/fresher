@@ -203,7 +203,7 @@ mod tests {
 
         #[test]
         fn a_volume_without_a_journal_has_no_position() {
-            let Some(image) = DiskImage::mount(Format::Fat) else {
+            let Some(image) = DiskImage::mount(Format::Apfs) else {
                 return;
             };
             let volume = MacVolumes::new().identify(image.mount_point()).unwrap().id;

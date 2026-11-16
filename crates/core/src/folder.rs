@@ -9,6 +9,8 @@ use crate::{EntryKind, Sizes, Timestamp};
 pub trait FolderReader: Send + Sync {
     /// The identity of a root folder; never follows a link.
     fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError>;
+    /// Who owns the folder at `path`, its permission bits and its locks; never follows a link.
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError>;
     /// Every entry of the folder at `path`, which must still be `expected`; names go into `names`.
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError>;
     /// The first `limit` bytes of the regular file `name` in the folder; never follows a link.
@@ -36,8 +38,26 @@ pub struct RawEntry {
     pub modified: Option<Timestamp>,
     /// A cloud file whose data is not on this Mac: never read, it takes no allocated space.
     pub cloud_only: bool,
+    /// Who owns it, its permission bits and its locks: what its removability is worked out from.
+    pub access: EntryAccess,
     /// The error of this entry alone; the rest of the folder was read.
     pub error: Option<ReadError>,
+}
+
+/// Who owns an entry, its permission bits and its locks, as the reader saw them (never following a link). The
+/// default is what nothing is known of: owned by nobody, writable by nobody, with no lock.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct EntryAccess {
+    /// The user id of its owner; `None` when the reader could not tell.
+    pub owner: Option<u32>,
+    /// Its permission bits (`0o7777` of its mode).
+    pub mode: u16,
+    /// The user's immutable flag (locked in the file manager).
+    pub user_immutable: bool,
+    /// The system's immutable flag: only the system can clear it.
+    pub system_immutable: bool,
+    /// Restricted: the system's integrity protection guards it.
+    pub restricted: bool,
 }
 
 /// The entries of one folder, with every name in one shared byte buffer. Reused between folders: `clear` keeps the
@@ -110,7 +130,7 @@ pub enum ReadError {
 
 #[cfg(test)]
 mod tests {
-    use crate::{EntryKind, RawEntry, Sizes};
+    use crate::{EntryAccess, EntryKind, RawEntry, Sizes};
 
     fn entry() -> RawEntry {
         RawEntry {
@@ -122,6 +142,7 @@ mod tests {
             clone: None,
             modified: None,
             cloud_only: false,
+            access: EntryAccess::default(),
             error: None,
         }
     }

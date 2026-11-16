@@ -2,34 +2,42 @@ import type { JSX } from 'react';
 
 import { stories as storiesOf } from '../../gallery/story';
 import { setCoreDictionary } from '../../i18n';
-import { DEMO_DICTIONARY, DEMO_FINDINGS } from '../../test/demo-scan';
+import {
+  CLEANUP_DICTIONARY,
+  DELETED_REPORT,
+  DEMO_PLAN,
+  MOVED_REPORT,
+  SKIPPED_OUTCOMES,
+  SKIPPED_REPORT,
+  STOPPED_REPORT,
+  UNMEASURED_REPORT,
+} from '../../test/cleanup-plan';
+import { DEMO_DICTIONARY } from '../../test/demo-scan';
 import { ResultSummary, type ResultSummaryProps } from './result-summary';
 import styles from './result-summary.stories.module.css';
 
 const ignore = (): void => undefined;
 
-const DICTIONARY = {
-  ...DEMO_DICTIONARY,
-  'demo.skipped.gone': 'It was already gone when the cleanup reached it.',
-  'demo.skipped.in-use': 'An app is using it. Quit the app and clean again.',
-};
+const TITLES = DEMO_PLAN.groups.flatMap((group) => group.items.map((item) => item.title));
 
-const FREED = DEMO_FINDINGS.reduce((total, finding) => total + finding.sizes.allocated, 0);
+// The skipped items of `SKIPPED_REPORT`, with the titles the confirmation showed.
+const PROBLEMS: ResultSummaryProps['problems'] = SKIPPED_OUTCOMES.flatMap((outcome, index) =>
+  outcome.kind === 'skipped' ? [{ outcome, title: TITLES[index] ?? null }] : [],
+);
 
 const summary = (props: Partial<ResultSummaryProps>): (() => JSX.Element) =>
   function Story(): JSX.Element {
     // Each story reads the demo texts; set here, so a story shown alone has them whatever else the gallery loads.
-    setCoreDictionary(DICTIONARY);
+    setCoreDictionary({ ...DEMO_DICTIONARY, ...CLEANUP_DICTIONARY });
 
     return (
       <div className={styles.stage}>
         <ResultSummary
-          freed={{ allocated: FREED, completeness: 'complete', logical: FREED, reclaimable: FREED }}
-          method="trash"
-          moved={DEMO_FINDINGS.length}
           onDone={ignore}
-          onOpenTrash={ignore}
-          skipped={[]}
+          onSeeCleanup={ignore}
+          onShowInTrash={ignore}
+          problems={[]}
+          report={MOVED_REPORT}
           {...props}
         />
       </div>
@@ -37,20 +45,9 @@ const summary = (props: Partial<ResultSummaryProps>): (() => JSX.Element) =>
   };
 
 export const stories = storiesOf('ResultSummary', {
-  'all-moved': { render: summary({}), surface: 'raised', width: 560 },
-  permanent: { render: summary({ method: 'permanent' }), surface: 'raised', width: 560 },
-  'some-skipped': {
-    render: summary({
-      freed: { allocated: 1_500_000_000, completeness: 'complete', logical: 1_500_000_000, reclaimable: 1_500_000_000 },
-      moved: 1,
-      skipped: [
-        {
-          reason: { args: {}, key: 'demo.skipped.in-use' },
-          title: DEMO_FINDINGS[1]?.title ?? { args: {}, key: 'demo.finding.title' },
-        },
-      ],
-    }),
-    surface: 'raised',
-    width: 560,
-  },
+  deleted: { render: summary({ report: DELETED_REPORT }), surface: 'raised', width: 560 },
+  moved: { render: summary({}), surface: 'raised', width: 560 },
+  'not-measured': { render: summary({ report: UNMEASURED_REPORT }), surface: 'raised', width: 560 },
+  'some-skipped': { render: summary({ problems: PROBLEMS, report: SKIPPED_REPORT }), surface: 'raised', width: 560 },
+  stopped: { render: summary({ report: STOPPED_REPORT }), surface: 'raised', width: 560 },
 });
