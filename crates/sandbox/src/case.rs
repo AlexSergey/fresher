@@ -23,6 +23,7 @@ pub struct Case {
     kind: CaseKind,
     tree: TreeDescription,
     expect: Option<Expectation>,
+    map: Option<MapExpectation>,
 }
 
 /// A negative case is never offered and stays untouched; a positive case is offered and cleaned as it expects.
@@ -40,6 +41,21 @@ pub struct Expectation {
     category: CategoryId,
     danger: DangerLevel,
     after: AfterCleanup,
+}
+
+/// Where the storage map's by-place view must show a case's files: in which part, under which folder.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MapExpectation {
+    part: MapPartName,
+    at: PathBuf,
+}
+
+/// The part of the map a case's files are in: a positive's are explained, a negative's are the user's folders.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MapPartName {
+    Explained,
+    YourFolders,
 }
 
 /// What a cleanup of the item does.
@@ -62,12 +78,13 @@ struct RawCaseFile {
     cases: Vec<RawCase>,
 }
 
-// Its files are every key but these three, read as a `TreeDescription`, which refuses an unknown one.
+// Its files are every key but these four, read as a `TreeDescription`, which refuses an unknown one.
 #[derive(Deserialize)]
 struct RawCase {
     name: String,
     kind: CaseKind,
     expect: Option<RawExpectation>,
+    map: Option<RawMap>,
     #[serde(flatten)]
     files: toml::Table,
 }
@@ -80,6 +97,13 @@ struct RawExpectation {
     danger: DangerLevel,
     after_cleanup: RawAfterCleanup,
     reason: Option<SkipCode>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawMap {
+    part: MapPartName,
+    at: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, Deserialize)]
@@ -197,7 +221,8 @@ impl Case {
             (CaseKind::Negative, None) => None,
             (CaseKind::Positive, Some(raw)) => Some(PendingExpectation::from_raw(&name, &tree, raw)?),
         };
-        Ok((Self { name, kind: raw.kind, tree, expect: None }, expect))
+        let map = raw.map.map(|map| MapExpectation::from_raw(&name, raw.kind, &tree, map)).transpose()?;
+        Ok((Self { name, kind: raw.kind, tree, expect: None, map }, expect))
     }
 
     /// The case's name, unique in its file: a failure names the case by it.
@@ -218,6 +243,48 @@ impl Case {
     /// The expectation of a positive case; a negative case has none.
     pub const fn expect(&self) -> Option<&Expectation> {
         self.expect.as_ref()
+    }
+
+    /// Where the storage map must show the case's files, when the case says.
+    pub const fn map(&self) -> Option<&MapExpectation> {
+        self.map.as_ref()
+    }
+}
+
+impl MapExpectation {
+    /// Checks the part against the case's kind and resolves `at`: one of the case's paths or their folders, by
+    /// default the folder of its first file.
+    fn from_raw(case: &str, kind: CaseKind, tree: &TreeDescription, raw: RawMap) -> Result<Self, CaseError> {
+        match (kind, raw.part) {
+            (CaseKind::Negative, MapPartName::YourFolders) | (CaseKind::Positive, MapPartName::Explained) => {}
+            (_, part) => return Err(CaseError::MapOnTheWrongKind { case: case.into(), part }),
+        }
+        let at = match raw.at {
+            Some(at) => at,
+            None => tree
+                .files()
+                .chain(tree.paths())
+                .next()
+                .and_then(Path::parent)
+                .filter(|folder| !folder.as_os_str().is_empty())
+                .map(Path::to_path_buf)
+                .ok_or_else(|| CaseError::MapWithoutFolder { case: case.into() })?,
+        };
+        let own = tree.paths().chain(tree.markers()).any(|path| path.ancestors().any(|folder| folder == at));
+        if !is_plain(&at) || !own {
+            return Err(CaseError::MapAtOutsideTheCase { case: case.into(), at });
+        }
+        Ok(Self { part: raw.part, at })
+    }
+
+    /// The part of the map the case's files are in.
+    pub const fn part(&self) -> MapPartName {
+        self.part
+    }
+
+    /// The folder the by-place view shows the case's files under, relative to the sandbox folder.
+    pub fn at(&self) -> &Path {
+        &self.at
     }
 }
 
@@ -369,7 +436,7 @@ after-cleanup = "in-trash"
 
     mod negative {
         use super::{NEGATIVE, cache, file, positive, trial_categories};
-        use crate::{CaseError, CaseFile};
+        use crate::{CaseError, CaseFile, MapPartName};
 
         fn refused(text: &str) -> CaseError {
             CaseFile::parse(text).unwrap_err()
@@ -492,6 +559,56 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn explained_on_a_negative_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}[case.map]\npart = \"explained\"\n")]);
+
+            assert!(matches!(refused(&text), CaseError::MapOnTheWrongKind { case, part: MapPartName::Explained }
+                if case.starts_with("a trial folder")));
+        }
+
+        #[test]
+        fn your_folders_on_a_positive_is_refused() {
+            let text = file(&[&format!("{}[case.map]\npart = \"your-folders\"\n", cache("low"))]);
+
+            assert!(matches!(refused(&text), CaseError::MapOnTheWrongKind { case, part: MapPartName::YourFolders }
+                if case.contains("Trash")));
+        }
+
+        #[test]
+        fn a_map_at_outside_the_case_is_refused() {
+            for at in ["home/work", "home/bare/other", "home/bare/fresher-trial-cache/blob.bin/x", "", "/home/bare"] {
+                let text = file(&[&format!("{NEGATIVE}[case.map]\npart = \"your-folders\"\nat = \"{at}\"\n")]);
+
+                assert!(
+                    matches!(refused(&text), CaseError::MapAtOutsideTheCase { case, .. }
+                        if case.starts_with("a trial folder")),
+                    "{at:?}"
+                );
+            }
+        }
+
+        #[test]
+        fn a_map_of_a_case_whose_first_file_is_at_the_root_needs_an_at() {
+            let text = file(&[&format!(
+                "{}[case.map]\npart = \"your-folders\"\n",
+                NEGATIVE.replace("home/bare/fresher-trial-cache/blob.bin", "loose.bin")
+            )]);
+
+            assert!(
+                matches!(refused(&text), CaseError::MapWithoutFolder { case } if case.starts_with("a trial folder"))
+            );
+        }
+
+        #[test]
+        fn an_unknown_map_field_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}[case.map]\npart = \"your-folders\"\ncolour = \"red\"\n")]);
+            let unknown_part = file(&[&format!("{NEGATIVE}[case.map]\npart = \"free\"\n")]);
+
+            assert!(matches!(refused(&text), CaseError::Parse { .. }));
+            assert!(matches!(refused(&unknown_part), CaseError::Parse { .. }));
+        }
+
+        #[test]
         fn a_tree_error_names_its_case() {
             let text = file(&[&NEGATIVE.replace("size", "age = \"3w\"\nsize")]);
 
@@ -507,7 +624,7 @@ after-cleanup = "in-trash"
         use fresher_testing::FIXTURE_NOW;
 
         use super::{NEGATIVE, cache, file, trial_categories};
-        use crate::{AfterCleanup, Case, CaseFile, CaseKind};
+        use crate::{AfterCleanup, Case, CaseFile, CaseKind, MapPartName};
 
         #[test]
         fn a_case_file_parses_with_negatives_then_positives() {
@@ -524,6 +641,26 @@ after-cleanup = "in-trash"
             assert_eq!(expect.category().as_str(), "trial.caches");
             assert_eq!(expect.danger(), DangerLevel::Low);
             assert_eq!(expect.after(), AfterCleanup::InTrash);
+        }
+
+        #[test]
+        fn a_case_with_a_map_parses() {
+            let negative = format!("{NEGATIVE}[case.map]\npart = \"your-folders\"\nat = \"home/bare\"\n");
+            let positive = format!("{}[case.map]\npart = \"explained\"\n", cache("low"));
+
+            let plain = NEGATIVE.replace("bare", "plain").replace("a trial folder", "another folder");
+
+            let parsed = CaseFile::parse(&file(&[&negative, &plain, &positive])).unwrap();
+
+            let negative = parsed.cases()[0].map().unwrap();
+            assert_eq!((negative.part(), negative.at()), (MapPartName::YourFolders, Path::new("home/bare")));
+            assert!(parsed.cases()[1].map().is_none());
+            // By default, the folder of the case's first file.
+            let positive = parsed.cases()[2].map().unwrap();
+            assert_eq!(
+                (positive.part(), positive.at()),
+                (MapPartName::Explained, Path::new("home/work/fresher-trial-cache"))
+            );
         }
 
         #[test]

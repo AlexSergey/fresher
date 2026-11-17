@@ -35,3 +35,5 @@ Open questions:
   be read without a permission prompt.
 - Should the confirmation screen already say "the space comes back when you empty the Trash", or only the result
   screen?
+
+**Touched by [plan 012](../plans/012-storage-map/readme.md):** the Trash is a named place on the by-meaning view, never a cleanable one. **Still an idea:** the rest of this file, in particular the cleanup journal's share of the Trash.

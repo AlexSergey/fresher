@@ -26,7 +26,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" };
 
 /**
  * The answer of `get_overview`.
@@ -155,7 +155,11 @@ total: number, };
  * A finding the engine published, with the id the UI names it by in this session and whether the app can remove
  * it. It serializes flat: the id, the module and the removability next to the fields of the module's finding.
  */
-export type Finding = { id: FindingId, module: ModuleId, removability: Removability, key: FindingKey, category: CategoryId, subject: Subject, sizes: Sizes, danger: DangerLevel, title: Text, reason: Text, removal: Removal, };
+export type Finding = { id: FindingId, module: ModuleId, removability: Removability, key: FindingKey, category: CategoryId, subject: Subject, sizes: Sizes, danger: DangerLevel, title: Text, reason: Text, removal: Removal, 
+/**
+ * The app the finding belongs to, when the module knows it.
+ */
+app?: string, };
 
 /**
  * The id of a finding in one session, assigned by the engine: the UI's only handle on it.
@@ -466,6 +470,98 @@ export type UnreadablePlace = { node: NodeInfo, reason: NotScanned,
  * The folders under it that were not scanned with it.
  */
 hiddenFolders: number, };
+
+/**
+ * The answer of `get_storage_map`: one map per volume that holds a scan root, the home's volume first.
+ */
+export type StorageMap = { phase: MapPhase, volumes: Array<VolumeMap>, };
+
+/**
+ * Where the map's numbers come from.
+ */
+export type MapPhase = { "kind": "no-scan" } | { "kind": "scanning" } | { "kind": "complete", state: StateId, };
+
+/**
+ * The map of one volume, drawn over the space it shares. Built only by [`VolumeMap::new`], so its parts always add up
+ * to its capacity and come in the fixed order of [`PartKind`].
+ */
+export type VolumeMap = { name: string, kind: MountKind, capacity: ByteSize, parts: Array<MapPart>, purgeable: ByteSize | null, roots: Array<NodeId>, diskChanged: boolean, };
+
+/**
+ * How a volume is attached: it names the map ("Macintosh HD · internal") and says when purgeable space is not asked.
+ */
+export type MountKind = "internal" | "external" | "network";
+
+/**
+ * One part of a volume's map. The headline is `sizes.allocated`; `sizes.reclaimable` is "freed if removed".
+ */
+export type MapPart = { kind: PartKind, sizes: Sizes, };
+
+/**
+ * What a part of the map is, in the order the parts are drawn. Only `Explained` is ever offered for cleaning.
+ */
+export type PartKind = { "kind": "explained" } | { "kind": "your-folders" } | { "kind": "not-scanned-yet" } | { "kind": "remainder", outsideScan: boolean, reasons: Array<RemainderReason>, } | { "kind": "mac-os" } | { "kind": "swap-and-sleep" } | { "kind": "other-volume", name: string, } | { "kind": "disk-own" } | { "kind": "free" };
+
+/**
+ * Why some of a volume's used space was not measured: a plain line under the remainder, never a category.
+ */
+export type RemainderReason = { "kind": "unreadable", folders: number, needs: Capability | null, } | { "kind": "snapshots-and-bookkeeping" } | { "kind": "changed-during-scan" };
+
+/**
+ * One group of the by-meaning view, largest first within its kind.
+ */
+export type MeaningGroup = { "kind": "app", "value": { app: AppRef, sizes: Sizes, categories: Array<CategoryShare>, data: Array<PlaceShare>, } } | { "kind": "category", "value": CategoryShare } | { "kind": "place", "value": PlaceShare } | { "kind": "part", "value": MapPart };
+
+/**
+ * The app a group is about.
+ */
+export type AppRef = { id: string, name: string, 
+/**
+ * Whether the app is still installed: the data of a removed app stays behind.
+ */
+installed: boolean, };
+
+/**
+ * The bytes one category owns.
+ */
+export type CategoryShare = { category: CategoryId, sizes: Sizes, };
+
+/**
+ * The bytes of one folder no module claims.
+ */
+export type PlaceShare = { node: NodeId, name: PlaceName, sizes: Sizes, };
+
+/**
+ * What a place is called: its folder's own name, or a place the app names.
+ */
+export type PlaceName = { "kind": "folder", "value": string } | { "kind": "trash" };
+
+/**
+ * One page of the by-place view of a folder.
+ */
+export type PlaceView = { 
+/**
+ * The node opened and the folders the automatic descent went through, the outermost first.
+ */
+path: Array<NodeInfo>, rows: Array<PlaceRow>, offset: number, 
+/**
+ * How many rows the opened folder has in all.
+ */
+total: number, };
+
+/**
+ * One child of the opened folder.
+ */
+export type PlaceRow = { node: NodeInfo, 
+/**
+ * How much of the node the modules explain.
+ */
+explained: Sizes, };
+
+/**
+ * How a place opens: down through the folders that are almost all one child, or at the folder asked.
+ */
+export type Descent = "through" | "stay";
 
 /**
  * What the user picked for removal, as the UI sends it: ids only, never a path.

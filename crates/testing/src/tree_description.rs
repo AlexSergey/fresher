@@ -114,6 +114,11 @@ impl TreeDescription {
             .chain(self.hardlinks.iter().map(|spec| spec.path.as_path()))
     }
 
+    /// The files the tree writes, in the order written, relative to its root as written.
+    pub fn files(&self) -> impl Iterator<Item = &Path> {
+        self.files.iter().map(|spec| spec.path.as_path())
+    }
+
     /// The targets of the hard links, relative to the tree's root as written; a symlink's target is any path.
     pub fn hardlink_targets(&self) -> impl Iterator<Item = &Path> {
         self.hardlinks.iter().map(|spec| spec.target.as_path())

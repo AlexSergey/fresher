@@ -33,6 +33,7 @@ mod removal;
 mod scan_cache;
 mod settings;
 mod size;
+mod storage;
 mod store;
 mod subject;
 mod system;
@@ -94,6 +95,10 @@ pub use settings::{
     Unit,
 };
 pub use size::{ByteSize, Completeness, Sizes};
+pub use storage::{
+    AppRef, CategoryShare, Descent, MapPart, MapPhase, MeaningGroup, PartKind, PlaceName, PlaceRow, PlaceShare,
+    PlaceView, RemainderReason, StorageMap, StorageMapError, VolumeMap,
+};
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};
 pub use subject::Subject;
 pub use system::{
@@ -102,7 +107,7 @@ pub use system::{
 };
 pub use text::{Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;
-pub use volume::{VolumeFacts, VolumeId, Volumes};
+pub use volume::{DiskSpace, MountKind, Neighbour, NeighbourRole, VolumeFacts, VolumeId, Volumes};
 pub use walk::{
     ClaimedPath, DiskWalk, FullScanReason, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };

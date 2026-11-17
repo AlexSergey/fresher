@@ -6,6 +6,8 @@ import { ListRow, type ListRowProps } from '../list-row/list-row';
 import styles from './tree-row.module.css';
 
 export type TreeRowProps = ListRowProps & {
+  // The id of the element holding the row's children, when the caller renders them as a group.
+  readonly controls?: string;
   // Whether the row's children are shown; the caller renders them.
   readonly expanded: boolean;
   // The depth: 0 for a top row, each level indents one step.
@@ -17,6 +19,7 @@ export type TreeRowProps = ListRowProps & {
 
 // A list row with a disclosure before its leading slot: the chevron turns to point down when the row is expanded.
 export const TreeRow = ({
+  controls,
   disabled = false,
   expanded,
   leading,
@@ -31,6 +34,7 @@ export const TreeRow = ({
     leading={
       <span className={styles.indent} style={{ '--tree-level': level } as CSSProperties}>
         <button
+          aria-controls={controls}
           aria-expanded={expanded}
           aria-label={toggleLabel}
           className={styles.disclosure}

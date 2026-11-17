@@ -1,6 +1,16 @@
 import type { Page } from '@playwright/test';
 
-import type { Event, FindingsQuery, ModuleInfo, Overview, Refusal, SettingUpdate } from '../src/ipc/bindings.generated';
+import type {
+  Event,
+  FindingsQuery,
+  MeaningGroup,
+  ModuleInfo,
+  Overview,
+  PlaceView,
+  Refusal,
+  SettingUpdate,
+  StorageMap,
+} from '../src/ipc/bindings.generated';
 
 import { type CommandKey, COMMANDS } from '../src/ipc';
 import {
@@ -35,6 +45,17 @@ import {
 } from '../src/test/demo-scan';
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
+import {
+  DEMO_DESCENT,
+  DEMO_MAP_COMPLETE,
+  DEMO_MAP_NO_SCAN,
+  DEMO_MAP_SCANNING,
+  DEMO_MEANING_SCANNING,
+  DEMO_PLACE,
+  EMPTY_PLACE,
+  meaningFor,
+  STORAGE_DICTIONARY,
+} from '../src/test/storage-map';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
@@ -57,13 +78,37 @@ export type CoreScript = {
   readonly stop?: { readonly events: readonly Event[]; readonly overview: Overview };
 };
 
+// What the storage map's commands answer in one phase of the scan: the places by their node's index, any other
+// empty, unless the script answers them; a place is refused as busy while a scan runs (`null`), as the engine does.
+type StorageAnswers = {
+  readonly map: StorageMap;
+  readonly meaning: readonly MeaningGroup[];
+  readonly places: null | Readonly<Record<string, PlaceView>>;
+};
+
+// The demo volume's map while the scan runs and once it ended with `scanned` (its categories, as the core would list
+// them); before a scan the default answers hold.
+const storageOfScan = (scanned: null | Overview): ByCommand['storage'] => ({
+  scanned: {
+    map: DEMO_MAP_COMPLETE,
+    meaning: meaningFor(scanned?.totals ?? []),
+    places: { 0: DEMO_PLACE, 1: DEMO_DESCENT },
+  },
+  scanning: { map: DEMO_MAP_SCANNING, meaning: DEMO_MEANING_SCANNING, places: null },
+});
+
 type ByCommand = {
   readonly answers: Readonly<Record<string, unknown>>;
   readonly busy: Refusal;
   readonly cancelScan: string;
+  // What a place the scan has no answer for shows.
+  readonly emptyPlace: PlaceView;
   readonly eventAt: string;
   readonly getFindings: string;
   readonly getOverview: string;
+  readonly getStorageMap: string;
+  readonly getStorageMeaning: string;
+  readonly getStoragePlace: string;
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
   readonly interval: null | number;
@@ -78,6 +123,7 @@ type ByCommand = {
   readonly scanning: null | Overview;
   readonly startScan: string;
   readonly stop: NonNullable<CoreScript['stop']> | null;
+  readonly storage: { readonly scanned: StorageAnswers; readonly scanning: StorageAnswers };
   readonly subscribe: string;
   readonly updateSetting: string;
 };
@@ -111,9 +157,13 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     answers: byCommand(script.answers),
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
+    emptyPlace: EMPTY_PLACE,
     eventAt: EVENT_AT,
     getFindings: COMMANDS.getFindings,
     getOverview: COMMANDS.getOverview,
+    getStorageMap: COMMANDS.getStorageMap,
+    getStorageMeaning: COMMANDS.getStorageMeaning,
+    getStoragePlace: COMMANDS.getStoragePlace,
     hold: script.hold ?? null,
     hooks: CLEANUP_HOOKS,
     interval: script.interval ?? null,
@@ -127,6 +177,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     scanning: script.scanning ?? null,
     startScan: COMMANDS.startScan,
     stop: script.stop ?? null,
+    storage: storageOfScan(script.scanned ?? null),
     subscribe: COMMANDS.subscribe,
     updateSetting: COMMANDS.updateSetting,
   };
@@ -146,6 +197,8 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     let streamed = 0;
     let held: readonly Event[] = [];
     let running = false;
+    // The places of the last scan by their node's index; `null` while a scan runs, so they are refused as busy.
+    let places: StorageAnswers['places'] = {};
 
     const send = (events: readonly Event[]): void => {
       const deliver = channel === undefined ? undefined : callbacks.get(channel);
@@ -159,12 +212,20 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       }
     };
 
+    // The storage map's answers of a phase of the scan, as the engine's would change.
+    const storageOf = (storage: StorageAnswers): void => {
+      answers[core.getStorageMap] = storage.map;
+      answers[core.getStorageMeaning] = storage.meaning;
+      places = storage.places;
+    };
+
     const finish = (events: readonly Event[], overview: null | Overview): void => {
       held = [];
       running = false;
       if (overview !== null) {
         answers[core.getOverview] = overview;
       }
+      storageOf(core.storage.scanned);
       send(events);
     };
 
@@ -192,6 +253,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     };
 
     const startScan = (): void => {
+      storageOf(core.storage.scanning);
       if (core.interval !== null) {
         pace(core.interval);
 
@@ -224,6 +286,21 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       },
     });
 
+    // A place of the last scan by its node's index, unless the script answers it; refused as busy while a scan runs.
+    const placeOf = (args: Readonly<Record<string, unknown>>): Promise<unknown> => {
+      const { index } = args.node as { readonly index: number };
+
+      if (core.getStoragePlace in core.answers) {
+        return Promise.resolve(answers[core.getStoragePlace]);
+      }
+      if (places === null) {
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- the core rejects with a plain object
+        return Promise.reject(core.busy);
+      }
+
+      return Promise.resolve(places[String(index)] ?? core.emptyPlace);
+    };
+
     const invoke = (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> => {
       const cleanup = (
         globalThis as unknown as Record<
@@ -235,6 +312,9 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
 
       if (answered !== undefined) {
         return answered;
+      }
+      if (command === core.getStoragePlace && !(command in core.refusals)) {
+        return placeOf(args);
       }
       if (command === core.subscribe) {
         channel = (args.channel as { readonly id: number }).id;
@@ -317,10 +397,12 @@ const ANSWERS = {
   appInfo: { build: { kind: 'release' }, version: '0.0.1' },
   cancelScan: null,
   getAccessStatus: GRANTED,
-  getDictionary: SCRIPTS_DICTIONARY,
+  getDictionary: { ...SCRIPTS_DICTIONARY, ...STORAGE_DICTIONARY },
   getModules: DEMO_MODULES,
   getOverview: IDLE,
   getSettings: DEMO_SETTINGS,
+  getStorageMap: DEMO_MAP_NO_SCAN,
+  getStorageMeaning: DEMO_MEANING_SCANNING,
   startScan: 1,
   updateSetting: null,
 } as const;
@@ -328,7 +410,7 @@ const ANSWERS = {
 const LARGE = largeScan({ categories: 3, count: 1000 });
 
 // The demo scan's texts with the cleanup's.
-const CLEANING_ANSWERS = { ...ANSWERS, getDictionary: { ...SCRIPTS_DICTIONARY, ...CLEANUP_DICTIONARY } };
+const CLEANING_ANSWERS = { ...ANSWERS, getDictionary: { ...ANSWERS.getDictionary, ...CLEANUP_DICTIONARY } };
 
 // What the core answers once every demo finding was removed: nothing left, the scan's tree out of date.
 const CLEANED: Overview = {
@@ -384,7 +466,7 @@ export const SCRIPTS = {
   failed: { answers: ANSWERS, scan: DEMO_FAILED_SCAN, scanned: DEMO_FAILED },
   // A thousand findings in three categories, paged by the lists.
   large: {
-    answers: { ...ANSWERS, getDictionary: LARGE.dictionary, getModules: LARGE_MODULES },
+    answers: { ...ANSWERS, getDictionary: { ...LARGE.dictionary, ...STORAGE_DICTIONARY }, getModules: LARGE_MODULES },
     scan: LARGE.events,
     scanned: LARGE.overview,
   },

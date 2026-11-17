@@ -1,5 +1,6 @@
 //! The engine: the one object the app drives. Commands return at once; long work reports through the bus.
 
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -8,9 +9,9 @@ use std::time::Duration;
 use fresher_core::{
     Access, AccessProbe, AccessStatus, CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal,
     CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary,
-    DiskState, DiskWalk, EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, ModuleInfo, Operation,
-    Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate, SettingsStore,
-    SettingsView, SystemUi, SystemUiError, Volumes, WalkMode,
+    DiskState, DiskWalk, EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo,
+    Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate,
+    SettingsStore, SettingsView, SystemUi, SystemUiError, Volumes, WalkMode,
 };
 
 use crate::access::AccessView;
@@ -21,6 +22,7 @@ use crate::results::{Filter, Results};
 use crate::session::{self, Planned, ScanPlan};
 use crate::settings::{self as settings_rules, Settings};
 use crate::state::{Machine, OperationThread, Running};
+use crate::storage::roots::RootVolumes;
 use crate::{EventBus, Registry};
 
 /// How long `shutdown` waits for the cancelled operation's thread before it gives up on it.
@@ -97,6 +99,17 @@ impl Shared {
             self.bus.publish(&Event::AccessChanged { status: self.access.status() });
         }
         changed
+    }
+
+    /// The home folder, where `~` in a scan root leads, as the walk fills it in.
+    pub(crate) fn home(&self) -> Option<PathBuf> {
+        self.ports.system.known_folders.locate(KnownFolder::Home)
+    }
+
+    /// Reads the volumes of the absolute `roots` for the storage map, the home's first: through the volumes of the
+    /// cleanup ports, or without facts when the engine has none.
+    pub(crate) fn read_volumes(&self, roots: &[PathBuf]) -> RootVolumes {
+        RootVolumes::read(self.cleanup.as_ref().map(|ports| &*ports.volumes), self.home().as_deref(), roots)
     }
 }
 

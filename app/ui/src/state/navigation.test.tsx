@@ -8,6 +8,7 @@ import {
   createNavigation,
   type Navigation,
   NavigationContext,
+  placeTop,
   screenToShow,
   useNavigation,
   useScreen,
@@ -77,6 +78,28 @@ describe('navigation', () => {
   describe('positive cases', () => {
     it('starts on the overview', () => {
       expect(createNavigation().getScreen()).toEqual({ kind: 'overview' });
+    });
+
+    it('starts by meaning and keeps the chosen view of the overview across screens', () => {
+      const navigation = createNavigation();
+      expect(navigation.getOverviewView()).toEqual({ kind: 'meaning' });
+
+      navigation.showOverviewView(placeTop(0));
+      navigation.navigate({ kind: 'settings' });
+      navigation.navigate({ kind: 'overview' });
+
+      expect(navigation.getOverviewView()).toEqual(placeTop(0));
+    });
+
+    it('keeps the folder the place view has open across screens', () => {
+      const navigation = createNavigation();
+      const opened = { ...placeTop(0), descent: 'stay', node: { index: 4, state: 1 } } as const;
+
+      navigation.showOverviewView(opened);
+      navigation.navigate({ kind: 'settings' });
+      navigation.navigate({ kind: 'overview' });
+
+      expect(navigation.getOverviewView()).toStrictEqual(opened);
     });
 
     it('navigate changes the screen', () => {

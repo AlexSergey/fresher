@@ -18,3 +18,5 @@ Finder shows an app as 500 MB while its data elsewhere takes 20 GB. The real cos
 Open questions:
 
 - Last-used date: Spotlight metadata vs LaunchServices — which is reliable without extra permissions?
+
+**Partly taken by [plan 012](../plans/012-storage-map/readme.md):** the by-meaning view groups each installed app's bundle, data folders and findings into one row with one size. **Still an idea:** the last-used date and the growth between scans.

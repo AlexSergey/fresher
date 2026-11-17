@@ -5,9 +5,9 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, SystemTime};
 
 use fresher_core::{
-    ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandOutput, CommandRunError, CommandRunner, JournalGap,
-    JournalPosition, Landed, ReadError, ScanCache, ScopeKey, StoreError, Trash, TrashError, VolumeFacts, VolumeId,
-    Volumes,
+    ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandOutput, CommandRunError, CommandRunner, DiskSpace,
+    JournalGap, JournalPosition, Landed, MountKind, ReadError, ScanCache, ScopeKey, StoreError, Trash, TrashError,
+    VolumeFacts, VolumeId, Volumes,
 };
 
 /// Locks `mutex`; a test that panicked while holding it leaves the data as it was.
@@ -178,7 +178,9 @@ impl CommandRunner for FakeCommandRunner {
 #[derive(Debug, Default)]
 pub struct FakeVolumes {
     roots: Vec<(PathBuf, VolumeFacts)>,
+    spaces: Vec<(PathBuf, DiskSpace)>,
     available: Mutex<VecDeque<Result<ByteSize, ReadError>>>,
+    space_calls: Mutex<usize>,
 }
 
 impl FakeVolumes {
@@ -189,11 +191,37 @@ impl FakeVolumes {
         self
     }
 
+    /// Puts `root` and everything under it on a volume of `space`.
+    #[must_use]
+    pub fn with_space(mut self, root: impl Into<PathBuf>, space: DiskSpace) -> Self {
+        self.spaces.push((root.into(), space));
+        self
+    }
+
+    /// A plain internal volume: no neighbours, no purgeable space.
+    pub fn disk(name: &str, capacity: ByteSize, used: ByteSize, free: ByteSize) -> DiskSpace {
+        DiskSpace {
+            name: name.to_owned(),
+            mount_point: PathBuf::from("/"),
+            kind: MountKind::Internal,
+            capacity,
+            used,
+            free,
+            purgeable: None,
+            neighbours: Vec::new(),
+        }
+    }
+
     /// Adds the next answer of `available`; once the script runs out, it answers `ReadError::Failed`.
     #[must_use]
     pub fn answering_available(self, answer: Result<ByteSize, ReadError>) -> Self {
         lock(&self.available).push_back(answer);
         self
+    }
+
+    /// How many times `space` was asked.
+    pub fn space_calls(&self) -> usize {
+        *lock(&self.space_calls)
     }
 }
 
@@ -209,6 +237,16 @@ impl Volumes for FakeVolumes {
 
     fn available(&self, _path: &Path) -> Result<ByteSize, ReadError> {
         lock(&self.available).pop_front().unwrap_or(Err(ReadError::Failed))
+    }
+
+    fn space(&self, path: &Path) -> Result<DiskSpace, ReadError> {
+        *lock(&self.space_calls) += 1;
+        self.spaces
+            .iter()
+            .filter(|(root, _)| path.starts_with(root))
+            .max_by_key(|(root, _)| root.components().count())
+            .map(|(_, space)| space.clone())
+            .ok_or(ReadError::Vanished)
     }
 }
 
@@ -332,6 +370,25 @@ mod tests {
 
         use super::held;
         use crate::{FakeChangeJournal, FakeCommandRunner, FakeTrash, FakeVolumes, FixtureTree, MemoryScanCache};
+
+        #[test]
+        fn space_outside_every_root_is_vanished() {
+            let disk = FakeVolumes::disk("Data", ByteSize::new(100), ByteSize::new(40), ByteSize::new(60));
+            let volumes = FakeVolumes::default().with_space("/home", disk);
+
+            assert_eq!(volumes.space(Path::new("/elsewhere")), Err(ReadError::Vanished));
+            assert_eq!(FakeVolumes::default().space(Path::new("/home")), Err(ReadError::Vanished));
+        }
+
+        #[test]
+        fn the_deepest_root_answers_the_space() {
+            let outer = FakeVolumes::disk("Outer", ByteSize::new(100), ByteSize::new(40), ByteSize::new(60));
+            let inner = FakeVolumes::disk("Inner", ByteSize::new(10), ByteSize::new(4), ByteSize::new(6));
+            let volumes = FakeVolumes::default().with_space("/home/external", inner.clone()).with_space("/home", outer);
+
+            assert_eq!(volumes.space(Path::new("/home/external/a")), Ok(inner));
+            assert_eq!(volumes.space(Path::new("/home/a")).map(|space| space.name), Ok("Outer".to_owned()));
+        }
 
         #[test]
         fn the_trash_reports_a_missing_path() {
@@ -503,8 +560,8 @@ mod tests {
         use std::time::{Duration, SystemTime};
 
         use fresher_core::{
-            ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandRunner, JournalPosition, Landed, ScanCache,
-            ScopeKey, Trash, VolumeId, Volumes,
+            ByteSize, CancelToken, ChangeJournal, Changes, Clock, CommandRunner, JournalPosition, Landed, MountKind,
+            ScanCache, ScopeKey, Trash, VolumeId, Volumes,
         };
 
         use crate::{
@@ -537,6 +594,27 @@ mod tests {
             let _gap = journal.changes_since(&external, &now, &CancelToken::new());
 
             assert_eq!(journal.calls(), [(home, since), (external, now)]);
+        }
+
+        #[test]
+        fn with_space_answers_its_space() {
+            let disk = FakeVolumes::disk("Data", ByteSize::new(100), ByteSize::new(40), ByteSize::new(60));
+            let volumes = FakeVolumes::default().with_space("/home", disk.clone());
+
+            assert_eq!(volumes.space(Path::new("/home/a/b")), Ok(disk));
+        }
+
+        #[test]
+        fn disk_builds_a_plain_internal_volume() {
+            let disk = FakeVolumes::disk("Data", ByteSize::new(100), ByteSize::new(40), ByteSize::new(60));
+
+            assert_eq!(disk.kind, MountKind::Internal);
+            assert_eq!(
+                (disk.capacity, disk.used, disk.free),
+                (ByteSize::new(100), ByteSize::new(40), ByteSize::new(60))
+            );
+            assert_eq!(disk.purgeable, None);
+            assert_eq!(disk.neighbours.len(), 0);
         }
 
         #[test]

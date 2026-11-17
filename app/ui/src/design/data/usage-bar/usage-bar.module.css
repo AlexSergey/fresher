@@ -1,5 +1,5 @@
 /*
- * The usage bar: an 8 px track with rounded ends holding one segment per share, 2 px apart, in the levels' colours.
+ * The usage bar: an 8 px track with rounded ends holding one segment per share, 2 px apart, in the tones' colours.
  * A segment enters by scaleX from its left edge; its width is never animated. The legend wraps in a grid.
  */
 @layer components {
@@ -29,19 +29,41 @@
     border-radius: 0 var(--radius-full) var(--radius-full) 0;
   }
 
-  .segment[data-level='low'],
-  .dot[data-level='low'] {
+  .segment[data-tone='low'],
+  .dot[data-tone='low'] {
     background-color: var(--level-low-fg);
   }
 
-  .segment[data-level='medium'],
-  .dot[data-level='medium'] {
+  .segment[data-tone='medium'],
+  .dot[data-tone='medium'] {
     background-color: var(--level-medium-fg);
   }
 
-  .segment[data-level='high'],
-  .dot[data-level='high'] {
+  .segment[data-tone='high'],
+  .dot[data-tone='high'] {
     background-color: var(--level-high-fg);
+  }
+
+  .segment[data-tone='plain'],
+  .dot[data-tone='plain'] {
+    background-color: var(--tone-plain);
+  }
+
+  .segment[data-tone='system'],
+  .dot[data-tone='system'] {
+    background-color: var(--tone-system);
+  }
+
+  .segment[data-tone='free'],
+  .dot[data-tone='free'] {
+    border: 1px solid var(--tone-free-outline);
+    background-color: transparent;
+    box-sizing: border-box;
+  }
+
+  .segment[data-tone='unknown'],
+  .dot[data-tone='unknown'] {
+    background: var(--tone-unknown);
   }
 
   .legend {

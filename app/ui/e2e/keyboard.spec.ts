@@ -249,6 +249,28 @@ test.describe('positive cases', () => {
     await expect(remove).toBeFocused();
   });
 
+  test('the view by place opens a folder with Enter and goes back up by its breadcrumb', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await expect(page.getByRole('button', { name: /^Open Example caches/ })).toBeVisible();
+    await page.getByRole('radio', { name: 'By place' }).click();
+
+    await page
+      .getByRole('list', { name: 'Inside home' })
+      .getByRole('listitem', { name: /^Library,/ })
+      .focus();
+    await page.keyboard.press('Enter');
+    const back = page.getByRole('button', { name: 'Back to home' });
+    await expect(back).toBeVisible();
+    expect(await focusKept(page)).toBe(true);
+
+    await back.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('list', { name: 'Inside home' })).toBeVisible();
+    await expect(back).toHaveCount(0);
+  });
+
   // The stories are shared among this many tests, which run in parallel.
   const PARTS = 8;
 

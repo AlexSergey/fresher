@@ -1,6 +1,6 @@
 //! `TreeState`: the core's `DiskState` over a frozen tree and its claims.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use fresher_core::{
@@ -182,6 +182,21 @@ impl DiskState for TreeState {
 
     fn path(&self, id: NodeId) -> Option<PathBuf> {
         self.tree.path(self.index(id)?)
+    }
+
+    /// In arena order: a node is pushed after its parent, so an ancestor always comes first.
+    fn owned(&self) -> Vec<(NodeId, CategoryId)> {
+        (0..self.tree.len())
+            .filter_map(|position| {
+                let index = NodeIndex::new(position)?;
+                let owner = usize::try_from(self.tree.node(index)?.owner).ok()?;
+                Some((self.id_of(index)?, *self.owners.get(owner)?))
+            })
+            .collect()
+    }
+
+    fn find(&self, path: &Path) -> Option<NodeId> {
+        self.id_of(self.tree.lookup(path)?)
     }
 }
 

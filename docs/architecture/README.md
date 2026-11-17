@@ -116,7 +116,7 @@ Rules of the layout:
 | `DiskWalk`       | `fresher-scanner`'s `Scanner`, with the macOS reader in the app                                                 | `NaiveWalk` on a fixture tree                               |
 | `FolderReader`   | `fresher-macos`'s `MacFolderReader` (bulk read); `fresher-scanner`'s portable `StdReader`                       | `StdReader` on a fixture tree                               |
 | `ChangeJournal`  | `fresher-macos`'s `MacChangeJournal` (FSEvents)                                                                 | `FakeChangeJournal` (a script)                              |
-| `Volumes`        | `fresher-macos`'s `MacVolumes`: `identify`, and `available` (the space a cleanup measures; plan 009 extends it) | `FakeVolumes` (fixed facts per root, `answering_available`) |
+| `Volumes`        | `fresher-macos`'s `MacVolumes`: `identify`, `available` (what a cleanup measures), `space` (the map's volume)   | `FakeVolumes` (`with_space`, `answering_available`)         |
 | `ScanCache`      | `fresher-store`'s `FileScanCache`                                                                               | `MemoryScanCache`                                           |
 | `DiskState`      | `fresher-scanner`'s `TreeState`, returned by `DiskWalk::commit`                                                 | `FixedDiskState` (a tree from paths and sizes)              |
 | `SettingsStore`  | `fresher-store` (`FileSettingsStore`)                                                                           | in memory, in the engine's tests                            |
@@ -190,6 +190,16 @@ No database: the app keeps its own state in small plain files, with nothing to i
   copy of the names built by the first search) and `unreadable_places`, every limit capped at 500. A query reads the
   state's `Arc` outside the engine's lock, so it never blocks a scan; `NoScan` before any commit, `StaleNode` for an
   id of another state. The IPC commands come with the screens that use them (plans 003 and 012).
+- **The storage map** (the engine's `storage/`; the section "The storage map" below): `storage_map` in three phases
+  — before any scan the configured roots' volumes, all "Not scanned yet"; during a scan the findings so far (ignored
+  ones left out) as "Explained" on the volume of their root; after a commit the full map of the state — one map per
+  volume holding a root, the home's first. `storage_meaning` (one volume's by-meaning groups, ending with its parts)
+  and `storage_place` (a page of the by-place view, opened through the folders that are almost all one child, or at
+  the folder asked for a step of the breadcrumb: `Descent::{Through, Stay}`) read the last state; a place is refused
+  with `Busy` while a scan runs. The `Shares` of a state are built by the first query after a commit or a change of
+  the ignore lists and kept beside the state; the volumes (`Volumes::space`, through the cleanup ports) are read at a
+  scan's start and commit, or once before the first scan, never per query, and the committed volumes are kept beside
+  the committed state.
 - **The webview keeps nothing**: the window runs `incognito`.
 - **The cleanup journal** (`FileCleanupJournal`, behind the core's `CleanupJournal`): an append-only JSON-lines file,
   `cleanups.jsonl`, private to the user (`0600`). A header line `{"format":"cleanup-journal","version":1}`, then one
@@ -207,6 +217,45 @@ No database: the app keeps its own state in small plain files, with nothing to i
   8 MiB of the 50 MB budget (a hundred cleanups of a hundred items take 6.9 MB); the oldest generation drops off by
   that rename. History reads the previous generation, then the current one, line by line.
 - History points (plan 010) choose their files in their own plan, under the same policy.
+
+## The storage map
+
+Plan [012](../plans/012-storage-map/readme.md): where the space of a volume went, in parts that add up to its
+capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartKind`, `RemainderReason`, `MeaningGroup`,
+`PlaceView`, `DiskSpace`); the engine builds them; the UI draws them and decides nothing.
+
+- **The parts**, in this order, each with a core-given name, description and danger tone: Explained (the findings of
+  the modules; the only part offered for cleaning), Your folders (scanned, claimed by no module), Not scanned yet
+  (during a scan only), the remainder (used space the scan did not measure), the system's volumes, the virtual
+  memory volume, the user's other volumes by their own names, the disk's own space (capacity minus free minus every
+  mounted volume's used space), and Free. `VolumeMap::new` is the only way to build a map and refuses parts that do
+  not add up to the capacity or come out of order.
+- **The remainder always says why**: its reasons are folders the scan could not read (with the permission that would
+  show them), local snapshots and the file system's bookkeeping, and files that changed while the scan ran. It is
+  "Outside the scanned folders" when the roots do not cover the volume. A part with no reason is not drawn; there is
+  no catch-all part ([`../rules.md`](../rules.md), rule 3).
+- **The volume** (`Volumes::space`): capacity (the container's, `f_blocks`), this volume's own used space
+  (`getattrlist`, `ATTR_VOL_SPACEUSED`, the only `unsafe` for it, in `fresher-macos`'s `ffi`), free, purgeable
+  (shown beside Free, never counted in it), its kind, and the neighbours: the mounts of the same disk number with the
+  same `f_blocks`, each with its role (system, virtual memory, other).
+- **One claim per byte** (the engine's `shares.rs`, `attribution.rs`): every owned node of the state
+  (`DiskState::owned`, and `find` by path) is counted by the claims' rule on the tree's own sizes. The deepest owner owns
+  its subtree, an outer owner keeps its sizes minus the owners nearest inside it, a node inside a counted owner is wholly
+  explained, and an owner whose category or path is ignored is unclaimed: its bytes fall to the user's folders, never to
+  an outer owner.
+  Apps are found by bundle id (`NewFinding::for_app`: a module that knows the app names it, see
+  [`modules.md`](./modules.md)), so an app's data folders, its bundle and its findings are one group.
+- **By meaning** (`meaning.rs`, scoped to one volume's roots): the apps largest first, the categories no app names, the
+  named places (the Trash) and the largest of the user's folders, then Your folders; every byte of the roots is in
+  exactly one leaf, and the volume's other parts are appended at the end (`append_volume_parts`). **By place**
+  (`place.rs`): a folder's children largest first, each with its explained size.
+- **The three phases** (`query.rs`): no scan, scanning and complete (the phase is in the map, `MapPhase`); a query
+  takes what it needs under the results' lock and builds after letting it go, so none blocks a scan.
+- **Budget**: the shares of a scan of the `LARGE` tree take under 50 ms and 5 MB
+  (`crates/e2e/tests/storage_budget.rs`, run by hand; [`../testing.md`](../testing.md)).
+- The commands are `get_storage_map`, `get_storage_meaning(volume)` and `get_storage_place(node, descent, offset,
+  limit)` (`app/tauri/src/storage_commands.rs`). The storage map's sandbox case file (plan 012/05) is not built yet: it
+  waits for plan [007](../plans/007-safe-development/readme.md) to be merged into `main`.
 
 ## UI
 
@@ -246,6 +295,14 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   category and `Overview.found`), the settings, the access status, the dictionary, the last failure. A batch of
   findings only marks the overview stale; `state/refresh.ts` asks `get_overview` at most 4 times a second during a
   scan and once more at its end; progress reaches React at most 10 times a second.
+- **The storage map** (`state/storage.ts`, `state/navigation.ts`): the store keeps the core's `StorageMap`, asked with
+  the overview and again when a scan starts or ends; the by-meaning groups of a volume and the pages of a place are
+  asked of the core when shown and kept in a small cache (at most 10 pages of 100 rows), dropped when the map's phase
+  or state changes. The overview shows one view of the home volume at a time, kept for the session: by meaning
+  (`product/meaning-list/`, cards largest first) or by place (`product/place-list/`, a breadcrumb that goes back up
+  through the folders opened, and a roots list when a volume holds several roots). The bar (`product/storage-map/`)
+  draws every part with space in the core's order; the tone of Explained is the highest danger level among its
+  categories, from the core's groups (`explainedTone`).
 - **Lists are paged**: `state/findings.ts` keeps at most 10 pages of 100 findings per app, least recently used
   dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. The module page asks the core
   for `FindingsQuery.order: largest`.

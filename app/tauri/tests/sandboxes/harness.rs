@@ -4,6 +4,7 @@
 
 use std::fmt;
 use std::fs;
+use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
@@ -24,6 +25,8 @@ use fresher_testing::{
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
+use crate::map::{check_map, sandbox_disk};
+
 /// The longest a scan or a cleanup is waited for before the run fails instead of hanging.
 const WAIT: Duration = Duration::from_secs(60);
 
@@ -43,7 +46,7 @@ impl fmt::Display for Failure {
     }
 }
 
-fn failure(case: &str, problem: impl fmt::Display) -> Failure {
+pub(crate) fn failure(case: &str, problem: impl fmt::Display) -> Failure {
     Failure { case: case.to_owned(), problem: problem.to_string() }
 }
 
@@ -73,6 +76,7 @@ pub(crate) fn read_case_file(name: &str) -> String {
 /// The autotest of `fixtures/sandboxes/<name>.toml`: the run passes and its report equals
 /// `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1` rewrites the file instead).
 pub(crate) fn check_case_file(name: &str) {
+    assert_golden_volume();
     let report = run(name, &read_case_file(name)).map_err(|failure| format!("{name}.toml: {failure}")).unwrap();
     let golden = fixtures().join("golden").join(format!("sandbox-{name}.json"));
     let actual = serde_json::to_string_pretty(&report).unwrap() + "\n";
@@ -84,6 +88,23 @@ pub(crate) fn check_case_file(name: &str) {
     assert_eq!(actual, expected, "{name}.toml: the report differs from {}", golden.display());
 }
 
+/// The goldens hold allocated sizes as an APFS volume with 4 KiB blocks gives them (CI runs on macOS): a byte of data
+/// takes one 4 KiB block and a sparse file takes none. Fails with a clear message on a temporary folder that differs.
+fn assert_golden_volume() {
+    let folder = tempfile::tempdir().unwrap();
+    let (data, sparse) = (folder.path().join("data"), folder.path().join("sparse"));
+    fs::write(&data, b"x").unwrap();
+    fs::File::create(&sparse).unwrap().set_len(1024 * 1024).unwrap();
+    let allocated = |path: &Path| fs::metadata(path).unwrap().blocks() * 512;
+    let (one_byte, sparse) = (allocated(&data), allocated(&sparse));
+    assert!(
+        one_byte == 4096 && sparse == 0,
+        "the sandbox goldens assume the temporary folder is on an APFS volume with 4 KiB blocks; {} gives one byte \
+         {one_byte} bytes on disk and a sparse 1 MiB file {sparse}",
+        folder.path().display()
+    );
+}
+
 /// The ids of the modules the app registers, in its order.
 pub(crate) fn registered_modules() -> Vec<String> {
     let world = World::new("registry").unwrap();
@@ -91,7 +112,8 @@ pub(crate) fn registered_modules() -> Vec<String> {
     engine.modules().iter().map(|module| module.id.as_str().to_owned()).collect()
 }
 
-/// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation.
+/// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation. The storage map
+/// is checked after the scan and before the cleanup.
 pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let file = CaseFile::parse(text).map_err(|error| failure(name, format!("the case file is refused: {error}")))?;
     let world = World::new(name)?;
@@ -113,6 +135,7 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
             Some(expect) => positives.push(check_offered(case, expect, &sandbox, &findings)?),
         }
     }
+    let map = check_map(name, &file, &engine, &sandbox, &findings)?;
     let (view, detail) = clean(name, &engine, &positives)?;
     let (view, detail) = (view.as_ref(), detail.as_ref());
 
@@ -128,6 +151,7 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     }
     Ok(json!({
         "findings": findings.iter().map(|finding| finding_report(finding, &sandbox)).collect::<Vec<_>>(),
+        "map": map,
         "cleanup": cleanup_report(&sandbox, &findings, view, detail),
         "treeAfter": tree_report(&after),
     }))
@@ -162,7 +186,7 @@ impl World {
     }
 
     /// `files` generated into the sandbox, and the sandbox mode's engine on it with fakes for every port it keeps
-    /// real; only `module` registered when one is named.
+    /// real, the sandbox on a fake volume sized by its files; only `module` registered when one is named.
     fn engine(&self, files: &[CaseFile], module: Option<&str>) -> Result<Engine, Failure> {
         let name = &self.name;
         let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
@@ -174,7 +198,9 @@ impl World {
             None => mode,
             Some(id) => mode.only(fresher_core::ModuleId::new(leak(id)).map_err(|error| failure(name, error))?),
         };
-        let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), fakes())
+        let tree = TreeReport::of(generated.sandbox.path()).map_err(|error| failure(name, error))?;
+        let tree_size = sandbox_entries(&tree).iter().map(|entry| entry.logical_size).sum();
+        let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), fakes(tree_size))
             .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
         if let Some(id) = module
             && !engine.modules().iter().any(|info| info.id.as_str() == id)
@@ -197,12 +223,12 @@ fn leak(id: &str) -> &'static str {
 }
 
 /// Fakes for every port sandbox mode keeps real: no clock, volume, open file, running app, tool or permission of the
-/// machine.
-fn fakes() -> SandboxPorts {
+/// machine. The volume holds `tree_size` bytes of the sandbox's files.
+fn fakes(tree_size: u64) -> SandboxPorts {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
     SandboxPorts {
         clock: Arc::new(FakeClock::at(FIXTURE_NOW)),
-        volumes: Arc::new(FakeVolumes::default().with("/", facts)),
+        volumes: Arc::new(FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size))),
         open_files: Arc::new(FakeOpenFiles::default()),
         running: Arc::new(FakeRunningApps::default()),
         commands: Arc::new(FakeCommandRunner::default()),
@@ -231,7 +257,8 @@ fn until(name: &str, events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool)
     }
 }
 
-/// Every finding of the scan, of every registered module, by subject and category.
+/// Every finding of the scan, of every registered module, by subject and category, so the findings' ids never order
+/// the report.
 fn findings(name: &str, engine: &Engine) -> Result<Vec<Finding>, Failure> {
     let query = FindingsQuery::new(None, None, FindingOrder::Found, 0, 1000);
     let mut page = engine.findings(&query).map_err(|error| failure(name, format!("{error:?}")))?;
@@ -242,7 +269,7 @@ fn findings(name: &str, engine: &Engine) -> Result<Vec<Finding>, Failure> {
     Ok(page.findings)
 }
 
-fn path_of(finding: &Finding) -> Option<&Path> {
+pub(crate) fn path_of(finding: &Finding) -> Option<&Path> {
     match finding.finding().subject() {
         Subject::Path(path) => Some(path),
         Subject::External { .. } => None,
@@ -402,7 +429,7 @@ fn in_sandbox_trash(sandbox: &Path, item: &Path) -> bool {
 }
 
 /// `path` relative to the sandbox, with `/` separators; a path outside it as it is.
-fn relative(path: &Path, sandbox: &Path) -> String {
+pub(crate) fn relative(path: &Path, sandbox: &Path) -> String {
     path.strip_prefix(sandbox).unwrap_or(path).to_string_lossy().replace('\\', "/")
 }
 
@@ -428,7 +455,7 @@ fn cleanup_report(
     detail: Option<&CleanupDetail>,
 ) -> Value {
     let subject = |id| findings.iter().find(|finding| finding.id() == id).and_then(path_of);
-    let left_out: Vec<Value> = view
+    let mut left_out: Vec<Value> = view
         .into_iter()
         .flat_map(|view| &view.left_out)
         .map(|left| {
@@ -438,7 +465,7 @@ fn cleanup_report(
             })
         })
         .collect();
-    let items: Vec<Value> = detail
+    let mut items: Vec<Value> = detail
         .into_iter()
         .flat_map(|detail| &detail.items)
         .map(|item| {
@@ -452,13 +479,48 @@ fn cleanup_report(
             })
         })
         .collect();
+    // The engine orders items of one size by their findings' ids, which differ from run to run: the report does not.
+    let by_path = |entry: &Value| (entry["path"].to_string(), entry["category"].to_string());
+    left_out.sort_by_key(by_path);
+    items.sort_by_key(by_path);
     json!({ "leftOut": left_out, "items": items })
 }
 
-/// The sandbox after the cleanup, without what depends on where it was made: the app's data folder is left out, and
-/// the checklist (which names the sandbox's path) is kept without its size.
+/// The sandbox after the cleanup, without what depends on where it was made or on the order the cleanup took: an
+/// entry of the sandbox's Trash is named `<n>-<its name>` in the order of the moves, so its `<n>-` is left out.
 fn tree_report(after: &TreeReport) -> Value {
-    let entries: Vec<TreeEntry> = after
+    let mut entries: Vec<TreeEntry> = sandbox_entries(after)
+        .into_iter()
+        .map(|entry| TreeEntry { path: without_trash_order(&entry.path), ..entry })
+        .collect();
+    entries.sort_by(|left, right| {
+        (&left.path, left.logical_size, format!("{:?}", left.kind)).cmp(&(
+            &right.path,
+            right.logical_size,
+            format!("{:?}", right.kind),
+        ))
+    });
+    json!({
+        "entries": entries,
+        "totalLogicalSize": entries.iter().map(|entry| entry.logical_size).sum::<u64>(),
+    })
+}
+
+/// `path` with the `<n>-` of a Trash entry's name left out: `home/.Trash/0-cache/a` is `home/.Trash/cache/a`.
+fn without_trash_order(path: &str) -> String {
+    let Some(rest) = path.strip_prefix("home/.Trash/") else { return path.to_owned() };
+    match rest.split_once('-') {
+        Some((order, name)) if !order.is_empty() && order.bytes().all(|byte| byte.is_ascii_digit()) => {
+            format!("home/.Trash/{name}")
+        }
+        _ => path.to_owned(),
+    }
+}
+
+/// The sandbox's entries but what depends on where it was made: the app's data folder is left out, and the checklist
+/// (which names the sandbox's path) is kept without its size.
+fn sandbox_entries(report: &TreeReport) -> Vec<TreeEntry> {
+    report
         .entries
         .iter()
         .filter(|entry| !Path::new(&entry.path).starts_with(".fresher-data"))
@@ -466,9 +528,5 @@ fn tree_report(after: &TreeReport) -> Value {
             let sized = Path::new(&entry.path) != Path::new("EXPECTED.md");
             TreeEntry { logical_size: if sized { entry.logical_size } else { 0 }, ..entry.clone() }
         })
-        .collect();
-    json!({
-        "entries": entries,
-        "totalLogicalSize": entries.iter().map(|entry| entry.logical_size).sum::<u64>(),
-    })
+        .collect()
 }

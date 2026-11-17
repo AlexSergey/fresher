@@ -2,13 +2,14 @@
 
 mod positive {
     use fresher_core::{
-        Access, AccessStatus, Availability, ByteSize, Capability, CapabilityState, CategoryDescriptor, CategoryId,
-        CategoryInfo, CategoryTotal, CommandError, Completeness, DangerLevel, Dictionary, EngineStatus, Event, Finding,
-        FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery, GuardedFolder, LastScan, Locale, ModuleId,
-        ModuleInfo, ModuleOutcome, Need, NeedKind, NewFinding, Operation, Overview, Refusal, Removal, ScanId,
-        ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue,
-        SettingsFile, SettingsView, Sizes, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit,
-        VolumeKind,
+        Access, AccessStatus, AppRef, Availability, ByteSize, Capability, CapabilityState, CategoryDescriptor,
+        CategoryId, CategoryInfo, CategoryShare, CategoryTotal, CommandError, Completeness, DangerLevel, Descent,
+        Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery,
+        GuardedFolder, LastScan, Locale, MapPart, MapPhase, MeaningGroup, ModuleId, ModuleInfo, ModuleOutcome,
+        MountKind, Need, NeedKind, NewFinding, Operation, Overview, PartKind, PlaceName, PlaceRow, PlaceShare,
+        PlaceView, Refusal, RemainderReason, Removal, ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind,
+        SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes, StorageMap, Subject, Text,
+        TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit, VolumeKind, VolumeMap,
     };
     use ts_rs::{Config, TS};
 
@@ -80,5 +81,39 @@ mod positive {
             assert!(declaration.starts_with("type "), "{declaration}");
             assert!(!declaration.contains("bigint"), "a u64 must be a number: {declaration}");
         }
+    }
+
+    #[test]
+    fn the_typescript_declarations_are_written() {
+        let declarations = [
+            declaration::<StorageMap>(),
+            declaration::<MapPhase>(),
+            declaration::<VolumeMap>(),
+            declaration::<MapPart>(),
+            declaration::<PartKind>(),
+            declaration::<RemainderReason>(),
+            declaration::<MountKind>(),
+            declaration::<MeaningGroup>(),
+            declaration::<AppRef>(),
+            declaration::<CategoryShare>(),
+            declaration::<PlaceShare>(),
+            declaration::<PlaceName>(),
+            declaration::<PlaceView>(),
+            declaration::<PlaceRow>(),
+            declaration::<Descent>(),
+        ];
+
+        for declaration in &declarations {
+            assert!(declaration.starts_with("type "), "{declaration}");
+            assert!(!declaration.contains("bigint"), "a u64 must be a number: {declaration}");
+        }
+        assert!(declarations[2].contains("diskChanged"), "{}", declarations[2]);
+        assert!(declarations[4].contains("outsideScan"), "{}", declarations[4]);
+        assert!(declarations[8].contains("id: string"), "{}", declarations[8]);
+    }
+
+    #[test]
+    fn a_finding_may_name_its_app() {
+        assert!(declaration::<NewFinding>().contains("app?: string"), "{}", declaration::<NewFinding>());
     }
 }

@@ -215,6 +215,8 @@ pub(crate) struct ScriptedWalk {
     panics: bool,
     deaf: bool,
     hold: Option<Gate>,
+    /// Before the folder at each position, the walk waits for its gate.
+    pauses: Vec<(usize, Gate)>,
     roots: Arc<Mutex<Vec<PathBuf>>>,
     avoided: Arc<Mutex<Vec<Vec<PathBuf>>>>,
     commits: Arc<Mutex<Vec<Vec<ClaimedPath>>>>,
@@ -229,6 +231,11 @@ pub(crate) struct Gate(Arc<AtomicBool>);
 impl Gate {
     pub(crate) fn release(&self) {
         self.0.store(true, Ordering::Release);
+    }
+
+    /// Holds the next walks again, until the next release.
+    pub(crate) fn close(&self) {
+        self.0.store(false, Ordering::Release);
     }
 
     fn is_released(&self) -> bool {
@@ -251,6 +258,24 @@ impl ScriptedWalk {
         let gate = Gate::default();
         self.hold = Some(gate.clone());
         (self, gate)
+    }
+
+    /// The walk waits for the gate given back after the folders added so far, before those added next.
+    pub(crate) fn pause(mut self) -> (Self, Gate) {
+        let gate = Gate::default();
+        self.pauses.push((self.folders.len(), gate.clone()));
+        (self, gate)
+    }
+
+    /// Waits for `gate`; a cancel stops the wait unless the walk is deaf.
+    fn wait(&self, gate: &Gate, cancel: &CancelToken) -> Result<(), WalkError> {
+        while !gate.is_released() {
+            if cancel.is_cancelled() && !self.deaf {
+                return Err(WalkError::Cancelled);
+            }
+            thread::yield_now();
+        }
+        Ok(())
     }
 
     /// The walk finds a folder `name` at `path`, the user's own and removable.
@@ -355,7 +380,10 @@ impl DiskWalk for ScriptedWalk {
         self.roots.lock().unwrap().extend_from_slice(request.roots);
         self.avoided.lock().unwrap().push(request.avoid.to_vec());
         self.modes.lock().unwrap().push(request.mode);
-        for (name, path, sizes, facts) in &self.folders {
+        for (position, (name, path, sizes, facts)) in self.folders.iter().enumerate() {
+            for (_, gate) in self.pauses.iter().filter(|(at, _)| *at == position) {
+                self.wait(gate, cancel)?;
+            }
             for (interest, wanted) in request.interests.iter() {
                 if wanted.pattern() == &Pattern::FolderName(name.clone()) {
                     let (path, sizes) = (path.clone(), *sizes);
@@ -377,12 +405,7 @@ impl DiskWalk for ScriptedWalk {
             panic_now("the walk panics");
         }
         if let Some(gate) = &self.hold {
-            while !gate.is_released() {
-                if cancel.is_cancelled() && !self.deaf {
-                    return Err(WalkError::Cancelled);
-                }
-                thread::yield_now();
-            }
+            self.wait(gate, cancel)?;
         }
         if let Some(error) = &self.error {
             return Err(error.clone());

@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Access, Overview } from '../../ipc/bindings.generated';
+import type { Access, NodeId, Overview, PlaceView, StorageMap } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse } from '../../ipc/mock';
-import { createNavigation, type Navigation } from '../../state/navigation';
+import { DESCENT, HOME } from '../../product/place-list/story-data';
+import { createNavigation, type Navigation, placeTop } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import {
@@ -20,10 +21,19 @@ import {
   IDLE,
   SCAN_STARTED,
 } from '../../test/demo-scan';
+import {
+  DEMO_MAP_COMPLETE,
+  DEMO_MAP_NO_SCAN,
+  DEMO_MAP_SCANNING,
+  DEMO_MEANING,
+  EMPTY_PLACE,
+  STORAGE_DICTIONARY,
+} from '../../test/storage-map';
+import { fakeViewport } from '../../test/viewport';
 import { AppProviders } from '../app-providers';
 import { OverviewScreen } from './overview-screen';
 
-const DICTIONARY = { ...DEMO_DICTIONARY, 'demo.error.failed': 'The demo folder vanished.' };
+const DICTIONARY = { ...DEMO_DICTIONARY, ...STORAGE_DICTIONARY, 'demo.error.failed': 'The demo folder vanished.' };
 
 const PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
@@ -64,18 +74,36 @@ const core = (answers: Partial<CoreAnswers> = {}, access: Access = 'granted'): v
     getDictionary: () => DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,
+    getStorageMap: () => DEMO_MAP_NO_SCAN,
+    getStorageMeaning: () => DEMO_MEANING,
+    getStoragePlace: () => EMPTY_PLACE,
     ...answers,
   });
 };
 
-type Rendered = { readonly navigation: Navigation; readonly store: CoreStore };
+const GB = 1_000_000_000;
+
+// The scanning map with `gigabytes` more explained, taken from what is not scanned yet: the sum holds.
+const fill = (map: StorageMap, gigabytes: number): StorageMap => ({
+  ...map,
+  volumes: map.volumes.map((volume) => ({
+    ...volume,
+    parts: volume.parts.map((part) => {
+      const delta =
+        part.kind.kind === 'explained' ? gigabytes * GB : part.kind.kind === 'not-scanned-yet' ? -gigabytes * GB : 0;
+
+      return { ...part, sizes: { ...part.sizes, allocated: part.sizes.allocated + delta } };
+    }),
+  })),
+});
+
+type Rendered = { readonly navigation: Navigation; readonly store: CoreStore; readonly unmount: () => void };
 
 // The overview, once the core has answered its dictionary, its modules and its overview.
-const renderOverview = async (): Promise<Rendered> => {
-  const navigation = createNavigation();
+const renderOverview = async (navigation: Navigation = createNavigation()): Promise<Rendered> => {
   const store = createCoreStore();
 
-  render(
+  const { unmount } = render(
     <AppProviders navigation={navigation} store={store}>
       <OverviewScreen />
     </AppProviders>,
@@ -85,7 +113,7 @@ const renderOverview = async (): Promise<Rendered> => {
     expect(store.getState().dictionary).not.toBeNull();
   });
 
-  return { navigation, store };
+  return { navigation, store, unmount };
 };
 
 // The cards' visible names, in order; each card's accessible name reads its name as "Open …".
@@ -94,11 +122,37 @@ const cardNames = (): readonly string[] =>
     .getAllByRole('button', { name: /^Open/ })
     .map((button) => within(button).getAllByText(/./u, { selector: '[aria-hidden="true"]' })[0]?.textContent ?? '');
 
+// The places of the demo volume: its root is the place list's home, its Library the descent; a node of another
+// state is stale.
+const placeOf = (args: unknown): PlaceView => {
+  const { node } = args as { readonly node: NodeId };
+
+  if (node.state !== 1) {
+    throw new Error('stale');
+  }
+  const place = node.index === 1 ? DESCENT : HOME;
+
+  return { offset: 0, path: [...place.path], rows: [...place.rows], total: place.rows.length };
+};
+
+const STALE = {
+  error: { code: 'stale-node' },
+  text: { args: {}, key: 'core.error.stale-node' },
+} as const;
+
+// The breadcrumb's steps, as they read.
+const crumbs = (): readonly string[] =>
+  within(screen.getByRole('navigation', { name: 'Where you are' }))
+    .getAllByRole('listitem')
+    .map(({ textContent }) => textContent.replace('›', ''));
+
 beforeEach(async () => {
   await setMotion('off');
+  fakeViewport(440);
 });
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   await setMotion(null);
 });
 
@@ -122,6 +176,17 @@ describe('OverviewScreen', () => {
       expect(screen.getByText(/It changes nothing on your disk\./)).toBeInTheDocument();
       expect(screen.queryByRole('list', { name: 'Categories' })).toBeNull();
       expect(screen.queryByText(/\b0 B\b/)).toBeNull();
+    });
+
+    it('before a scan the map shows the volume only', async () => {
+      core();
+
+      await renderOverview();
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Macintosh HD · internal' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: /^Space on Macintosh HD: Not scanned yet 364 GB/u })).toBeInTheDocument();
+      expect(screen.queryByRole('radiogroup', { name: 'Show the space' })).toBeNull();
+      expect(screen.queryByRole('list', { name: 'Places' })).toBeNull();
     });
 
     it('a partial scan shows the notice', async () => {
@@ -176,6 +241,34 @@ describe('OverviewScreen', () => {
       expect(screen.queryByRole('list', { name: 'Categories' })).toBeNull();
     });
 
+    it('a stale place reopens the root', async () => {
+      const navigation = createNavigation();
+      navigation.showOverviewView({ ...placeTop(0), node: { index: 7, state: 0 }, trail: [...DESCENT.path] });
+      core({
+        getOverview: () => DEMO_OVERVIEW,
+        getStorageMap: () => DEMO_MAP_COMPLETE,
+        getStoragePlace: (args) =>
+          (args as { readonly node: NodeId }).node.state === 1 ? placeOf(args) : refuse(STALE)(),
+      });
+
+      await renderOverview(navigation);
+
+      await waitFor(() => {
+        expect(crumbs()).toStrictEqual(['home']);
+      });
+      expect(screen.getByRole('listitem', { name: /^Library,/u })).toBeInTheDocument();
+    });
+
+    it('while a scan runs, the place view says the core is busy', async () => {
+      core({ getOverview: () => SCANNING, getStorageMap: () => DEMO_MAP_COMPLETE, getStoragePlace: refuse(BUSY) });
+      const navigation = createNavigation();
+      navigation.showOverviewView(placeTop(0));
+
+      await renderOverview(navigation);
+
+      expect(await screen.findByText('The list by place could not be loaded')).toBeInTheDocument();
+    });
+
     it("a failed scan offers one way to scan again, the hero's Try again", async () => {
       const startScan = vi.fn(() => 2);
       core({ getOverview: () => FAILED, startScan });
@@ -201,6 +294,119 @@ describe('OverviewScreen', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Show in Settings' }));
 
       expect(navigation.getScreen()).toEqual({ kind: 'settings' });
+    });
+
+    it('the bar fills while scanning', async () => {
+      core({ getOverview: () => SCANNING, getStorageMap: () => DEMO_MAP_SCANNING });
+      const { store } = await renderOverview();
+      const bar = async (name: RegExp): Promise<HTMLElement> => screen.findByRole('img', { name });
+
+      expect(await bar(/^Space on Macintosh HD: Explained 2\.3 GB, Not scanned yet 361\.8 GB/u)).toBeInTheDocument();
+
+      act(() => {
+        store.dispatch({ storageMap: fill(DEMO_MAP_SCANNING, 120), type: 'storage-map-loaded' });
+      });
+      expect(await bar(/^Space on Macintosh HD: Explained 122\.3 GB, Not scanned yet 241\.8 GB/u)).toBeInTheDocument();
+
+      act(() => {
+        store.dispatch({ storageMap: fill(DEMO_MAP_SCANNING, 300), type: 'storage-map-loaded' });
+      });
+      expect(await bar(/^Space on Macintosh HD: Explained 302\.3 GB, Not scanned yet 61\.8 GB/u)).toBeInTheDocument();
+    });
+
+    it('two volumes show two bars, home first', async () => {
+      const home = DEMO_MAP_COMPLETE.volumes[0];
+      const archive = home === undefined ? [] : [{ ...home, kind: 'external' as const, name: 'Archive' }];
+      core({
+        getOverview: () => DEMO_OVERVIEW,
+        getStorageMap: () => ({ ...DEMO_MAP_COMPLETE, volumes: [...DEMO_MAP_COMPLETE.volumes, ...archive] }),
+      });
+
+      await renderOverview();
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('heading', { level: 2 }).map(({ textContent }) => textContent)).toStrictEqual([
+          'Macintosh HD · internal',
+          'Archive · external',
+        ]);
+      });
+      expect(screen.getByRole('img', { name: /^Space on Macintosh HD/u })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Archive · external' })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('after a scan the view by meaning lists the places, and a place opens the place view', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE });
+      const { navigation } = await renderOverview();
+
+      expect(screen.getByRole('radio', { name: 'By meaning' })).toBeChecked();
+      fireEvent.click(await screen.findByRole('button', { name: 'Look inside Movies' }));
+
+      expect(navigation.getOverviewView()).toStrictEqual({ ...placeTop(0), node: { index: 8, state: 1 } });
+      expect(screen.getByRole('radio', { name: 'By place' })).toBeChecked();
+      expect(screen.queryByRole('list', { name: 'Categories' })).toBeNull();
+    });
+
+    it('the chosen view is kept in the navigation state', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE });
+      const { navigation } = await renderOverview();
+
+      fireEvent.click(await screen.findByRole('radio', { name: 'By place' }));
+      expect(navigation.getOverviewView()).toStrictEqual(placeTop(0));
+
+      fireEvent.click(screen.getByRole('radio', { name: 'By meaning' }));
+      expect(navigation.getOverviewView()).toStrictEqual({ kind: 'meaning' });
+      expect(await screen.findByRole('list', { name: 'Categories' })).toBeInTheDocument();
+    });
+
+    it('switching views keeps the total', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE, getStoragePlace: placeOf });
+      await renderOverview();
+      await screen.findByRole('list', { name: 'Categories' });
+      const bar = screen.getByRole('img', { name: /^Space on Macintosh HD/u });
+      const total = bar.getAttribute('aria-label');
+
+      fireEvent.click(screen.getByRole('radio', { name: 'By place' }));
+      await screen.findByRole('listitem', { name: /^Library,/u });
+
+      expect(screen.getByRole('img', { name: /^Space on Macintosh HD/u })).toHaveAttribute('aria-label', total);
+    });
+
+    it('by place opens the home and a folder row opens it, the way down kept', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE, getStoragePlace: placeOf });
+      const { navigation } = await renderOverview();
+
+      fireEvent.click(await screen.findByRole('radio', { name: 'By place' }));
+      fireEvent.click(await screen.findByRole('listitem', { name: /^Library,/u }));
+
+      await waitFor(() => {
+        expect(crumbs()).toStrictEqual(['home', 'Library', 'Containers', 'com.example.app']);
+      });
+      expect(navigation.getOverviewView()).toMatchObject({ descent: 'through', node: { index: 1, state: 1 } });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Containers' }));
+      expect(navigation.getOverviewView()).toMatchObject({ descent: 'stay', node: { index: 11, state: 1 } });
+    });
+
+    it('the opened folder survives leaving the overview', async () => {
+      const getPlace = vi.fn(placeOf);
+      core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE, getStoragePlace: getPlace });
+      const { navigation, unmount } = await renderOverview();
+      fireEvent.click(await screen.findByRole('radio', { name: 'By place' }));
+      fireEvent.click(await screen.findByRole('listitem', { name: /^Library,/u }));
+      await waitFor(() => {
+        expect(crumbs()).toHaveLength(4);
+      });
+
+      unmount();
+      navigation.navigate({ kind: 'settings' });
+      navigation.navigate({ kind: 'overview' });
+      await renderOverview(navigation);
+
+      await waitFor(() => {
+        expect(crumbs()).toStrictEqual(['home', 'Library', 'Containers', 'com.example.app']);
+      });
+      expect(screen.getByRole('radio', { name: 'By place' })).toBeChecked();
+      expect(getPlace).toHaveBeenLastCalledWith(expect.objectContaining({ node: { index: 1, state: 1 } }));
     });
 
     it('Scan starts a scan and the hero shows scanning', async () => {

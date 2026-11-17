@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Access } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
 import { PermissionCard } from '../../product/permission-card/permission-card';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { allFiles, BUSY, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../../test/demo-scan';
@@ -18,6 +18,7 @@ const core = (answers: Partial<CoreAnswers>): void => {
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,
+    ...sampleStorageAnswers,
     ...answers,
   });
 };

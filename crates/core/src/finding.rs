@@ -4,8 +4,8 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::{
-    CategoryDescriptor, CategoryId, DangerLevel, FindingId, FindingKey, ModuleId, Removability, Removal, Sizes,
-    Subject, Text,
+    BundleId, CategoryDescriptor, CategoryId, DangerLevel, FindingId, FindingKey, ModuleId, Removability, Removal,
+    Sizes, Subject, Text,
 };
 
 /// A finding as a module produces it. It has no removability: only the engine sets that, from what the walk read, so a
@@ -20,6 +20,10 @@ pub struct NewFinding {
     title: Text,
     reason: Text,
     removal: Removal,
+    /// The app the finding belongs to, when the module knows it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, as = "Option<String>")]
+    app: Option<BundleId>,
 }
 
 impl NewFinding {
@@ -43,7 +47,14 @@ impl NewFinding {
             title,
             reason,
             removal,
+            app: None,
         }
+    }
+
+    /// The finding belongs to `app`: the storage map counts it in the app's line.
+    #[must_use]
+    pub fn for_app(self, app: BundleId) -> Self {
+        Self { app: Some(app), ..self }
     }
 
     /// Raises the danger level to `level`; a lower level changes nothing, so a finding is never less dangerous than
@@ -82,6 +93,11 @@ impl NewFinding {
 
     pub const fn removal(&self) -> &Removal {
         &self.removal
+    }
+
+    /// The app the finding belongs to; `None` when the module did not say.
+    pub const fn app(&self) -> Option<&BundleId> {
+        self.app.as_ref()
     }
 }
 
@@ -162,6 +178,16 @@ mod tests {
         }
 
         #[test]
+        fn a_finding_names_no_app_unless_told() {
+            let finding = sample::finding(&sample::caches(DangerLevel::Safe));
+
+            let json = serde_json::to_value(&finding).unwrap();
+
+            assert_eq!(finding.app(), None);
+            assert!(json.get("app").is_none(), "{json}");
+        }
+
+        #[test]
         fn never_lowers_the_category_danger_level() {
             let mut finding = sample::finding(&sample::caches(DangerLevel::Medium));
 
@@ -173,7 +199,7 @@ mod tests {
 
     mod positive {
         use crate::finding::sample;
-        use crate::{DangerLevel, Finding, FindingId, Removability, Removal, Sizes, Subject};
+        use crate::{BundleId, DangerLevel, Finding, FindingId, Removability, Removal, Sizes, Subject};
 
         #[test]
         fn starts_at_the_category_danger_level() {
@@ -189,6 +215,16 @@ mod tests {
             assert_eq!(finding.title().key().as_str(), "demo.finding.title");
             assert_eq!(finding.reason().key().as_str(), "demo.finding.reason");
             assert_eq!(finding.removal(), &Removal::MoveToTrash("/home/Library/Caches/a".into()));
+        }
+
+        #[test]
+        fn a_finding_for_an_app_names_it() {
+            let app = BundleId::new("com.example.App").unwrap();
+
+            let finding = sample::finding(&sample::caches(DangerLevel::Safe)).for_app(app.clone());
+
+            assert_eq!(finding.app(), Some(&app));
+            assert_eq!(serde_json::to_value(&finding).unwrap()["app"], "com.example.App");
         }
 
         #[test]

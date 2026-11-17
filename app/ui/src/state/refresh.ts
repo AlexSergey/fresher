@@ -1,10 +1,10 @@
 import type { Clock } from './clock';
 import type { CoreStore } from './store';
 
-import { failureOf, getOverview } from '../ipc';
+import { failureOf, getOverview, getStorageMap } from '../ipc';
 
-// Keeps the store's overview current: when the state turns stale it asks `get_overview` at most once per `interval`
-// (4 times a second at 250 ms), never two requests at once. `scan-finished` marks the state stale, so one more request
+// Keeps the store's overview and storage map current: when the state turns stale it asks `get_overview` and
+// `get_storage_map` together, at most once per `interval` (4 times a second at 250 ms), never two requests at once. `scan-finished` marks the state stale, so one more request
 // always follows the end of a scan. Returns the function that stops it.
 export const createOverviewRefresher = (
   store: CoreStore,
@@ -20,19 +20,22 @@ export const createOverviewRefresher = (
     pending = true;
     askedAt = clock.now();
     store.dispatch({ type: 'overview-requested' });
-    void getOverview()
-      .then(
-        (overview) => {
-          store.dispatch({ overview, type: 'overview-loaded' });
-        },
-        (error: unknown) => {
-          store.dispatch({ failure: failureOf(error), type: 'command-failed' });
-        },
-      )
-      .finally(() => {
-        pending = false;
-        check();
-      });
+    // Each answer is its own: a failure of one never stops the other.
+    const failed = (error: unknown): void => {
+      store.dispatch({ failure: failureOf(error), type: 'command-failed' });
+    };
+
+    void Promise.all([
+      getOverview().then((overview) => {
+        store.dispatch({ overview, type: 'overview-loaded' });
+      }, failed),
+      getStorageMap().then((storageMap) => {
+        store.dispatch({ storageMap, type: 'storage-map-loaded' });
+      }, failed),
+    ]).finally(() => {
+      pending = false;
+      check();
+    });
   };
 
   function check(): void {

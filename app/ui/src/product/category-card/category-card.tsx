@@ -1,6 +1,6 @@
 import type { CSSProperties, JSX, ReactNode } from 'react';
 
-import type { CategoryTotal, DangerLevel } from '../../ipc/bindings.generated';
+import type { CategoryTotal, DangerLevel, Sizes } from '../../ipc/bindings.generated';
 
 import { DangerBadge } from '../../design/data/danger-badge/danger-badge';
 import { SizeText } from '../../design/data/size-text/size-text';
@@ -24,6 +24,9 @@ export type CategoryCardProps = {
   // The category's part of everything found, 0 to 1.
   readonly share: number;
   readonly total: CategoryTotal;
+  // The part of the category the by-meaning view lists under apps, which the card's size leaves out; the selection
+  // still takes the whole category, so the card says how much more it holds.
+  readonly underApps?: Sizes | undefined;
 };
 
 // The icons escalate in shape with the level, as the danger badge's do.
@@ -40,7 +43,15 @@ const clamp = (share: number): number => Math.min(Math.max(share, 0), 1);
 
 // One category the scan found: its level's icon, its name and what it is, its level, size and count, and a bar of its
 // share along the bottom. The card opens the category; the checkbox in its corner selects it whole.
-export const CategoryCard = ({ actions, onOpen, onToggle, selected, share, total }: CategoryCardProps): JSX.Element => {
+export const CategoryCard = ({
+  actions,
+  onOpen,
+  onToggle,
+  selected,
+  share,
+  total,
+  underApps,
+}: CategoryCardProps): JSX.Element => {
   const spotlight = useSpotlightProps();
   const { category, count, highestDanger: level, sizes } = total;
   const name = textOf(`${category}.name`);
@@ -80,6 +91,11 @@ export const CategoryCard = ({ actions, onOpen, onToggle, selected, share, total
                 </span>
               </span>
             </span>
+            {underApps === undefined ? null : (
+              <span className={styles.under}>
+                {t('ui.category-card.under-apps', { size: { kind: 'size', value: underApps.allocated } })}
+              </span>
+            )}
           </span>
         </button>
         <span className={styles.check}>

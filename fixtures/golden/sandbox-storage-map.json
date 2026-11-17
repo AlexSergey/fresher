@@ -1,0 +1,385 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/nest/fresher-trial-cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/project/fresher-trial-cache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 8388608,
+      "module": "trial",
+      "subject": "home/nest/fresher-trial-cache"
+    },
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 12582912,
+      "module": "trial",
+      "subject": "home/project/fresher-trial-cache"
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/footage",
+        "case": "a folder no module claims is your folder, never explained",
+        "path": [
+          "home/footage"
+        ],
+        "rows": [
+          {
+            "allocated": 41943040,
+            "explained": 0,
+            "logical": 41943040,
+            "path": "home/footage/holiday.mov"
+          }
+        ]
+      },
+      {
+        "at": "home/project/fresher-trial-cache2",
+        "case": "a look-alike of a trial cache is your folder",
+        "path": [
+          "home/project/fresher-trial-cache2"
+        ],
+        "rows": [
+          {
+            "allocated": 4194304,
+            "explained": 0,
+            "logical": 4194304,
+            "path": "home/project/fresher-trial-cache2/look-alike.bin"
+          }
+        ]
+      },
+      {
+        "at": "home/linked-twice",
+        "case": "a hard-linked file is counted once",
+        "path": [
+          "home/linked-twice",
+          "home/linked-twice/a"
+        ],
+        "rows": [
+          {
+            "allocated": 16777216,
+            "explained": 0,
+            "logical": 16777216,
+            "path": "home/linked-twice/a/movie.bin"
+          }
+        ]
+      },
+      {
+        "at": "home/Library",
+        "case": "a folder that is almost one child opens through it",
+        "path": [
+          "home/Library",
+          "home/Library/Developer",
+          "home/Library/Developer/com.example.big",
+          "home/Library/Developer/com.example.big/Data"
+        ],
+        "rows": [
+          {
+            "allocated": 50331648,
+            "explained": 0,
+            "logical": 50331648,
+            "path": "home/Library/Developer/com.example.big/Data/blob.bin"
+          }
+        ]
+      },
+      {
+        "at": "home/.Trash",
+        "case": "the Trash is your folder, never explained",
+        "path": [
+          "home/.Trash"
+        ],
+        "rows": [
+          {
+            "allocated": 4194304,
+            "explained": 0,
+            "logical": 4194304,
+            "path": "home/.Trash/thrown-away.bin"
+          }
+        ]
+      },
+      {
+        "at": "home/project/fresher-trial-cache",
+        "case": "a trial cache next to a marker is explained",
+        "path": [
+          "home/project/fresher-trial-cache"
+        ],
+        "rows": [
+          {
+            "allocated": 12582912,
+            "explained": 12582912,
+            "logical": 12582912,
+            "path": "home/project/fresher-trial-cache"
+          }
+        ]
+      },
+      {
+        "at": "home/nest/fresher-trial-cache",
+        "case": "a trial cache inside a trial cache counts once",
+        "path": [
+          "home/nest/fresher-trial-cache"
+        ],
+        "rows": [
+          {
+            "allocated": 8388608,
+            "explained": 8388608,
+            "logical": 8388608,
+            "path": "home/nest/fresher-trial-cache"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 20971520,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 118497280,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 83878166,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 581959402,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 112,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/fresher-trial-cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/fresher-trial-cache/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/.Trash/fresher-trial-cache/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/.Trash/thrown-away.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/com.example.big"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/com.example.big/Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 50331648,
+        "path": "home/Library/Developer/com.example.big/Data/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/beside.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/footage"
+      },
+      {
+        "kind": "file",
+        "logical_size": 41943040,
+        "path": "home/footage/holiday.mov"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/linked-twice"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/linked-twice/a"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16777216,
+        "path": "home/linked-twice/a/movie.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/linked-twice/b"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16777216,
+        "path": "home/linked-twice/b/movie.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/nest"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/nest/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/project"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/project/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/project/fresher-trial-cache2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/project/fresher-trial-cache2/look-alike.bin"
+      }
+    ],
+    "totalLogicalSize": 156238102
+  }
+}

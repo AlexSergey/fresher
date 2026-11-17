@@ -111,6 +111,15 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the overview by place', async ({ page }) => {
+      await open(page, SCRIPTS.demo);
+      await scan(page, '2.6 GB');
+      await page.getByRole('radio', { name: 'By place' }).click();
+      await expect(page.getByRole('list', { name: 'Inside home' }).getByRole('listitem')).toHaveCount(6);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the overview after a partial scan', async ({ page }) => {
       await open(page, SCRIPTS.partial);
       await scan(page, '2.6 GB');

@@ -38,7 +38,9 @@ small `thiserror` error of its own: no panicking path.
   `.if-removed`, `.comes-back`.
 - A setting key is `<id>.<name>`, with `<id>.<name>.label` and `.description`. The settings schema adds the switch
   `<id>.enabled` for every module; the module ships its label and description too.
-- `NewFinding::new(&category, …)` starts at the category's danger level; `raise_danger` only goes up.
+- `NewFinding::new(&category, …)` starts at the category's danger level; `raise_danger` only goes up. A module that
+  knows which app a finding belongs to says so with `for_app(bundle_id)`: the storage map counts the finding in that
+  app's line (an id no installed app has is shown as an app no longer installed).
 - The ports a module may use come in `ModuleContext`: the clock, the command runner (an external tool, with a fixed
   argument list; pass `cx.cancel()`, so a cancelled scan stops the tool), the system's facts (`cx.system()`, below),
   its settings, the cancel token. A long `finish` checks `cx.cancel()` and returns `ModuleError::Cancelled`.
@@ -60,6 +62,10 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 | `projects()`                 | the projects the walk found (root, kinds, artifact folders, last activity); `None` during the walk |
 
 - An app is identified by its bundle id and team id only (`BundleId` compares ignoring case), never by a loose name.
+  `BundleId::names(name)` tells whether a folder's or a file's name is named after the id: the whole name, or the id
+  followed by a dot (`com.example.App.savedState`), never `com.example.Appx`.
+- At the commit the engine lists the installed apps too (once per scan, even when no module asked), to attribute each
+  app's data folders and its bundle in the storage map.
 - The projects are known in `finish`, not in `on_match`. A project's last activity is its folder's own modification
   time for now ([deferred](../deferred/project-last-activity.md)).
 - An item a running app owns is skipped by the cleaner anyway; a module may raise a finding's danger or say "quit the

@@ -32,3 +32,5 @@ For each part: what it is, who created it, what it is for, whether it can be rem
 - **No "not classified" bucket** ([`../rules.md`](../rules.md), rule 3): a remainder is named for what it is — unreadable
   without Full Disk Access, owned by root, or the real folders that hold it.
 - Extends [`system-data-analyzer.md`](./system-data-analyzer.md) from System Data to the whole disk.
+
+**Taken by [plan 012](../plans/012-storage-map/readme.md):** the overview's storage map: parts that add up to the volume's capacity, each with a description and a danger tone, a remainder that says why it was not measured, and no byte counted twice. **Still an idea:** the per-part confidence figure and a snapshot listing.

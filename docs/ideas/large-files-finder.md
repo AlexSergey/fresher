@@ -23,3 +23,5 @@ Open questions:
 
 - Minimum size to list (default 100 MB? configurable in [`user-settings.md`](./user-settings.md)).
 - Use "last opened" (Spotlight's `kMDItemLastUsedDate`) where available?
+
+**Touched by [plan 012](../plans/012-storage-map/readme.md):** the by-place view lists a folder's children largest first, with how much of each the modules explain. **Still an idea:** the ranked list of files and archives, the filters, and the chart (a treemap or sunburst).

@@ -12,6 +12,7 @@ import { COMMANDS } from '../src/ipc';
 import { GRANTED, IDLE } from '../src/test/demo-scan';
 import { largeScan } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
+import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
 import { mockCore, SCRIPTS } from './core-mock';
 
 // The mocked core pages through a scan's findings as the engine does, so the e2e tests of the lists page for real.
@@ -24,6 +25,7 @@ const answers = {
   getDictionary: SCAN.dictionary,
   getModules: [],
   getOverview: IDLE,
+  getStorageMap: DEMO_MAP_NO_SCAN,
   startScan: 1,
 } as const;
 

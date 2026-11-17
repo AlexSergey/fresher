@@ -1,11 +1,11 @@
 //! The read-only tree of the last committed scan: what the storage screens and the search read.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{CategoryId, Sizes, Timestamp, Unreadable};
+use crate::{CategoryId, Sizes, TextKey, Timestamp, Unreadable};
 
 /// The tree of one committed scan. Never changes: a new scan commits a new state with a new id.
 pub trait DiskState: Send + Sync {
@@ -27,6 +27,10 @@ pub trait DiskState: Send + Sync {
     fn unreadable(&self, limit: u32) -> Vec<UnreadablePlace>;
     /// The full path of `id`; `None` for an id of another state or no node.
     fn path(&self, id: NodeId) -> Option<PathBuf>;
+    /// Every node a category claimed, with its owner; an ancestor always before its descendants.
+    fn owned(&self) -> Vec<(NodeId, CategoryId)>;
+    /// The node at `path`, compared by components; `None` outside every root or for no node.
+    fn find(&self, path: &Path) -> Option<NodeId>;
 }
 
 /// The id of one committed state in a session.
@@ -122,6 +126,30 @@ pub enum NotScanned {
     OtherVolume,
 }
 
+impl NotScanned {
+    /// Every reason, in the order of the enum.
+    pub const ALL: [Self; 5] = [
+        Self::Unreadable(Unreadable::NoPermission),
+        Self::Unreadable(Unreadable::Guarded),
+        Self::Unreadable(Unreadable::Failed),
+        Self::Avoided,
+        Self::OtherVolume,
+    ];
+
+    /// Why, in plain words, as the place view says it under the folder:
+    /// `core.storage.not-scanned.<kind>`, an unreadable folder's with its reason (`unreadable.guarded`).
+    pub fn text_key(self) -> TextKey {
+        let segment = match self {
+            Self::Unreadable(Unreadable::NoPermission) => "unreadable.no-permission",
+            Self::Unreadable(Unreadable::Guarded) => "unreadable.guarded",
+            Self::Unreadable(Unreadable::Failed) => "unreadable.failed",
+            Self::Avoided => "avoided",
+            Self::OtherVolume => "other-volume",
+        };
+        TextKey::from_valid(format!("core.storage.not-scanned.{segment}"))
+    }
+}
+
 /// One page of the children of a node.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 pub struct NodePage {
@@ -191,6 +219,17 @@ mod tests {
 
             assert_eq!(json["reason"], json!({ "kind": "avoided" }));
             assert_eq!(json["hiddenFolders"], 4);
+        }
+
+        #[test]
+        fn each_reason_not_scanned_has_its_own_text() {
+            let keys: std::collections::BTreeSet<_> = NotScanned::ALL.map(NotScanned::text_key).into_iter().collect();
+
+            assert_eq!(keys.len(), NotScanned::ALL.len());
+            assert_eq!(
+                NotScanned::Unreadable(Unreadable::Guarded).text_key().as_str(),
+                "core.storage.not-scanned.unreadable.guarded"
+            );
         }
 
         #[test]

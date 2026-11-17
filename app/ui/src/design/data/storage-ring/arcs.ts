@@ -1,13 +1,12 @@
-import type { Level } from '../danger-badge/danger-badge';
-import type { Segment } from '../segment';
+import type { Segment, Tone } from '../segment';
 
 // One segment's arc on the ring, in degrees clockwise from the top: where it starts and how far it is drawn. A gap
 // of GAP follows every arc, except an arc that is the whole circle.
 export type Arc = {
   readonly key: string;
-  readonly level: Level;
   readonly start: number;
   readonly sweep: number;
+  readonly tone: Tone;
 };
 
 // The gap between two arcs.
@@ -45,14 +44,14 @@ export const arcsOf = (segments: readonly Segment[], total: number): readonly Ar
   const [only] = drawn;
 
   if (drawn.length === 1 && only !== undefined && only.value >= total) {
-    return [{ key: only.key, level: only.level, start: 0, sweep: FULL }];
+    return [{ key: only.key, start: 0, sweep: FULL, tone: only.tone }];
   }
 
   const slots = slotsOf(drawn.map(({ value }) => (value / total) * FULL));
   const arcs: Arc[] = [];
   let start = 0;
 
-  for (const [index, { key, level }] of drawn.entries()) {
+  for (const [index, { key, tone }] of drawn.entries()) {
     const slot = slots[index] ?? 0;
 
     // Only with more segments than the circle holds at their least.
@@ -60,7 +59,7 @@ export const arcsOf = (segments: readonly Segment[], total: number): readonly Ar
       break;
     }
 
-    arcs.push({ key, level, start, sweep: slot - GAP });
+    arcs.push({ key, start, sweep: slot - GAP, tone });
     start += slot;
   }
 

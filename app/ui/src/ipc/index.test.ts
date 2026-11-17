@@ -18,6 +18,9 @@ import {
   getOverview,
   getOwnData,
   getSettings,
+  getStorageMap,
+  getStorageMeaning,
+  getStoragePlace,
   ignore,
   pickFolder,
   prepareCleanup,
@@ -32,7 +35,8 @@ import {
 } from '.';
 import { DEMO_PLAN, HISTORY, MOVED_DETAIL } from '../test/cleanup-plan';
 import { BUSY, DEMO_SCAN, IDLE } from '../test/demo-scan';
-import { mockCore, pushEvents, refuse } from './mock';
+import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
+import { mockCore, pushEvents, refuse, sampleStorageAnswers } from './mock';
 
 // Answers that record the arguments each command was given, in order.
 const recorder = (): {
@@ -85,6 +89,21 @@ describe('the IPC module', () => {
       const error: unknown = await subscribe(vi.fn()).catch((failure: unknown) => failure);
 
       expect(failureOf(error)).toEqual({ kind: 'unreachable' });
+    });
+
+    it('a refusal of get_storage_place becomes a failure', async () => {
+      const stale = {
+        error: { code: 'stale-node' },
+        text: { args: {}, key: 'core.error.stale-node' },
+      } as unknown as Refusal;
+      mockCore({ getStoragePlace: refuse(stale) });
+
+      const error: unknown = await getStoragePlace({ index: 0, state: 1 }, 'through', 0, 10).catch(
+        (failure: unknown) => failure,
+      );
+
+      expect(error).toBeInstanceOf(CommandFailed);
+      expect(failureOf(error)).toEqual({ kind: 'refused', refusal: stale });
     });
 
     it('cannot push events before anything subscribed', () => {
@@ -142,6 +161,25 @@ describe('the IPC module', () => {
       expect(seen).toContainEqual({ target: { category: 'demo.caches', kind: 'category' } });
       expect(seen).toContainEqual({ entry: { kind: 'path', path: '/a' } });
       expect(seen).toContainEqual({ locale: 'en' });
+    });
+
+    it('get_storage_map calls its command', async () => {
+      mockCore(sampleStorageAnswers);
+
+      await expect(getStorageMap()).resolves.toEqual(SAMPLE_STORAGE_MAP);
+    });
+
+    it('passes the storage commands their arguments by name', async () => {
+      const { answer, seen } = recorder();
+      mockCore({ getStorageMeaning: answer([]), getStoragePlace: answer({ offset: 0, path: [], rows: [], total: 0 }) });
+
+      await expect(getStorageMeaning(1)).resolves.toEqual([]);
+      await getStoragePlace({ index: 4, state: 2 }, 'stay', 50, 25);
+
+      expect(seen).toStrictEqual([
+        { volume: 1 },
+        { descent: 'stay', limit: 25, node: { index: 4, state: 2 }, offset: 50 },
+      ]);
     });
 
     it('passes every cleanup command its arguments by name', async () => {

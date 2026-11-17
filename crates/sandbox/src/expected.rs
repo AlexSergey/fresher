@@ -3,10 +3,10 @@ use std::path::Path;
 
 use fresher_core::{DangerLevel, SkipCode};
 
-use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation};
+use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, MapExpectation, MapPartName};
 
-/// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence; then the
-/// command that opens the app on the sandbox at `sandbox`.
+/// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
+/// where the storage map shows it; then the command that opens the app on the sandbox at `sandbox`.
 pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path) -> String {
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
@@ -18,6 +18,9 @@ pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path) -> String {
             .flat_map(|kind| file.cases().iter().filter(move |case| case.kind() == kind));
         for case in ordered {
             let _ = writeln!(text, "- [ ] **{}**: {}.", case.name(), sentence(case));
+            if let Some(map) = case.map() {
+                let _ = writeln!(text, "  - {}.", map_sentence(map));
+            }
         }
     }
     let _ = write!(text, "\n## Open the app on it\n\n```sh\nnpm run dev:sandbox -- {}\n```\n", sandbox.display());
@@ -35,6 +38,17 @@ fn sentence(case: &Case) -> String {
             expect.item().display(),
             after(expect)
         ),
+    }
+}
+
+/// Where the overview's by-place view shows the case's files.
+fn map_sentence(map: &MapExpectation) -> String {
+    let at = map.at().display();
+    match map.part() {
+        MapPartName::YourFolders => {
+            format!("on the overview, by place: `{at}` is in *Your folders*, nothing of it explained")
+        }
+        MapPartName::Explained => format!("on the overview, by place: `{at}` is explained"),
     }
 }
 
@@ -192,6 +206,33 @@ reason = "in-use"
         use super::CASES;
         use crate::CaseFile;
         use crate::expected::checklist;
+
+        #[test]
+        fn the_checklist_says_where_the_map_shows_it() {
+            let cases = CASES
+                .replace(
+                    "path = \"home/other.bin\"\n",
+                    "path = \"home/other.bin\"\n[case.map]\npart = \"your-folders\"\nat = \"home/work\"\n",
+                )
+                .replace(
+                    "after-cleanup = \"in-trash\"\n",
+                    "after-cleanup = \"in-trash\"\n[case.map]\npart = \"explained\"\n",
+                );
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"));
+
+            let lines: Vec<&str> =
+                text.lines().filter(|line| line.starts_with("- [ ] ") || line.starts_with("  - ")).collect();
+            assert_eq!(lines.len(), 5, "{text}");
+            assert!(lines[0].starts_with("- [ ] **a look-alike is never offered**"));
+            assert_eq!(
+                lines[1],
+                "  - on the overview, by place: `home/work` is in *Your folders*, nothing of it explained."
+            );
+            assert!(lines[2].starts_with("- [ ] **a cache goes to the Trash**"));
+            assert_eq!(lines[3], "  - on the overview, by place: `home/work/fresher-trial-cache` is explained.");
+            assert!(lines[4].starts_with("- [ ] **a busy cache is skipped**"));
+        }
 
         #[test]
         fn the_checklist_lists_every_case_negatives_first() {

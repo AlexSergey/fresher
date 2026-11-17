@@ -11,6 +11,9 @@
 #[cfg(test)]
 #[path = "sandboxes/harness.rs"]
 mod harness;
+#[cfg(test)]
+#[path = "sandboxes/map.rs"]
+mod map;
 
 /// One `#[test]` per case file: `test_name => "file name without .toml"`, sorted by file name.
 macro_rules! case_files {
@@ -102,6 +105,53 @@ mod negative {
         assert!(failure.problem.contains("changed by the cleanup"), "{failure}");
     }
 
+    /// The negative's folder is inside the positive's cache: never offered itself, but explained by the cache's claim.
+    #[test]
+    fn a_your_folders_expectation_that_is_explained_fails_with_its_case_name() {
+        let negative = "[[case]]\nname = \"a folder inside the cache\"\nkind = \"negative\"\n[[case.file]]\n\
+                        path = \"home/work/fresher-trial-cache/inner/keep.bin\"\nsize = 4096\n\
+                        [case.map]\npart = \"your-folders\"\n";
+        let text = format!(
+            "feature = \"trial\"\nmodule = \"trial\"\n{negative}{}",
+            trial_positive("the cache", CACHE_IN_TRASH)
+        );
+
+        let failure = run("explained", &text).unwrap_err();
+
+        assert_eq!(failure.case, "a folder inside the cache", "{failure}");
+        assert!(failure.problem.contains("is explained: home/work/fresher-trial-cache is offered"), "{failure}");
+    }
+
+    /// The sandbox does not scan `home/Documents`, a place that prompts: the map has no node there.
+    #[test]
+    fn a_map_expectation_where_the_scan_does_not_go_fails() {
+        let text = "feature = \"trial\"\nmodule = \"trial\"\n[[case]]\nname = \"a private note\"\nkind = \"negative\"\n\
+                    [[case.file]]\npath = \"home/Documents/private/note.txt\"\nsize = 4096\n\
+                    [case.map]\npart = \"your-folders\"\n";
+
+        let failure = run("unscanned", text).unwrap_err();
+
+        assert_eq!(failure.case, "a private note", "{failure}");
+        assert!(failure.problem.contains("the scan has no node at"), "{failure}");
+        assert!(failure.problem.contains("home/Documents/private"), "{failure}");
+    }
+
+    /// The case's own unclaimed file sits beside its cache, under the `at` it names as explained.
+    #[test]
+    fn an_explained_expectation_not_explained_in_full_fails() {
+        let expect = format!("{CACHE_IN_TRASH}[case.map]\npart = \"explained\"\nat = \"home/work\"\n");
+        let case = trial_positive("a cache and a note", &expect).replace(
+            "[case.expect]",
+            "[[case.file]]\npath = \"home/work/note.bin\"\nsize = 1048576\nfill = \"data\"\n[case.expect]",
+        );
+        let text = format!("feature = \"trial\"\nmodule = \"trial\"\n{case}");
+
+        let failure = run("partly", &text).unwrap_err();
+
+        assert_eq!(failure.case, "a cache and a note", "{failure}");
+        assert!(failure.problem.contains("expected Explained"), "{failure}");
+    }
+
     #[test]
     fn a_refused_case_file_names_the_file() {
         let failure = run("unreadable", "feature = 1\n").unwrap_err();
@@ -114,11 +164,13 @@ mod positive {
     use std::collections::BTreeSet;
 
     use fresher_sandbox::CaseFile;
+    use serde_json::json;
 
     use crate::harness::{case_file_names, read_case_file, registered_modules, run};
 
     case_files! {
         cleanup_guards => "cleanup-guards",
+        storage_map => "storage-map",
         trial => "trial",
     }
 
@@ -159,6 +211,10 @@ kind = "negative"
 [[case.file]]
 path = "home/bare/fresher-trial-cache/blob.bin"
 size = 4096
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/bare"
 
 [[case]]
 name = "a trial cache next to a marker goes to the Trash"
@@ -174,6 +230,8 @@ item = "home/work/fresher-trial-cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
+[case.map]
+part = "explained"
 
 [[case]]
 name = "a trial kept folder next to a marker is emptied"
@@ -192,6 +250,15 @@ after-cleanup = "emptied"
 
         let report = run("holds", text).unwrap();
 
+        let places = report["map"]["places"].as_array().unwrap();
+        let (bare, cache) = (&places[0], &places[1]);
+        // `home/bare` is all one folder, which the view opens through as the overview opens a folder row; the small
+        // file is folded into its folder, so the place is checked by its own row.
+        assert_eq!(bare["path"], json!(["home/bare", "home/bare/fresher-trial-cache"]));
+        assert_eq!(bare["rows"], json!([{ "path": "home/bare", "logical": 4096, "allocated": 4096, "explained": 0 }]));
+        // The scan does not go into the claimed cache: it is shown by its own row, explained in full.
+        assert_eq!(cache["path"], json!(["home/work/fresher-trial-cache"]));
+        assert_eq!(cache["rows"][0]["explained"], cache["rows"][0]["allocated"]);
         let subjects: Vec<&str> =
             report["findings"].as_array().unwrap().iter().map(|finding| finding["subject"].as_str().unwrap()).collect();
         assert_eq!(subjects, ["home/keep/fresher-trial-kept", "home/work/fresher-trial-cache"]);

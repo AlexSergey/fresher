@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Finding, FindingsQuery, Overview } from '../../ipc/bindings.generated';
 import type { CommandKey } from '../../ipc/index';
 
-import { type CoreAnswers, mockCore, refuse } from '../../ipc/mock';
+import { type CoreAnswers, mockCore, refuse, sampleStorageAnswers } from '../../ipc/mock';
 import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { summarize } from '../../state/selection-summary';
@@ -75,6 +75,7 @@ const renderReview = async (
       return answer(args);
     };
   mockCore({
+    ...sampleStorageAnswers,
     ...Object.fromEntries(Object.entries(cleanup).map(([key, answer]) => [key, recorded(key as CommandKey, answer)])),
     getDictionary: recorded('getDictionary', () => ({ ...FINDING_DICTIONARY, ...CLEANUP_DICTIONARY })),
     getFindings: recorded('getFindings', (args) => pageOf(FINDINGS, (args as { query: FindingsQuery }).query)),

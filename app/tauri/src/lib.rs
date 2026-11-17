@@ -11,6 +11,7 @@ mod identity;
 mod sandbox;
 mod settings_commands;
 mod shell;
+mod storage_commands;
 #[cfg(test)]
 mod testing;
 
@@ -67,6 +68,9 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::restore_ignored,
             settings_commands::pick_folder,
             settings_commands::get_own_data,
+            storage_commands::get_storage_map,
+            storage_commands::get_storage_meaning,
+            storage_commands::get_storage_place,
             commands::get_dictionary,
             commands::get_access_status,
             commands::prepare_cleanup,

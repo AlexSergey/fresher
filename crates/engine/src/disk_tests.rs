@@ -1,10 +1,11 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use fresher_core::{
-    ByteSize, ChildOrder, DiskState, NodeId, NodeInfo, NodeKind, NodePage, Sizes, StateId, Timestamp, UnreadablePlace,
+    ByteSize, CategoryId, ChildOrder, DiskState, NodeId, NodeInfo, NodeKind, NodePage, Sizes, StateId, Timestamp,
+    UnreadablePlace,
 };
 use fresher_testing::FixedDiskState;
 
@@ -95,6 +96,14 @@ impl DiskState for SlowState {
 
     fn path(&self, id: NodeId) -> Option<PathBuf> {
         self.inner.path(id)
+    }
+
+    fn owned(&self) -> Vec<(NodeId, CategoryId)> {
+        self.inner.owned()
+    }
+
+    fn find(&self, path: &Path) -> Option<NodeId> {
+        self.inner.find(path)
     }
 }
 

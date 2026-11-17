@@ -9,6 +9,8 @@
 
 mod access;
 mod batch;
+#[doc(hidden)]
+pub mod bench;
 mod bus;
 mod claims;
 mod cleanup;
@@ -25,6 +27,7 @@ mod results;
 mod session;
 mod settings;
 mod state;
+mod storage;
 #[cfg(test)]
 mod testing;
 mod throttle;

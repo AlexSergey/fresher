@@ -2,16 +2,6 @@
   "cleanup": {
     "items": [
       {
-        "action": "remove",
-        "category": "trial.caches",
-        "danger": "safe",
-        "outcome": {
-          "kind": "moved"
-        },
-        "path": "home/work/fresher-trial-cache",
-        "trash": "in-trash"
-      },
-      {
         "action": "empty",
         "category": "trial.kept",
         "danger": "low",
@@ -21,6 +11,16 @@
           "skipped": 0
         },
         "path": "home/keep/fresher-trial-kept",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/work/fresher-trial-cache",
         "trash": "in-trash"
       }
     ],
@@ -42,6 +42,68 @@
       "subject": "home/work/fresher-trial-cache"
     }
   ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 52432896,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 20480,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 72340489,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 680512503,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
   "treeAfter": {
     "entries": [
       {
@@ -80,29 +142,29 @@
         "path": "home/.Trash"
       },
       {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/entry.bin"
+      },
+      {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/0-fresher-trial-cache"
+        "path": "home/.Trash/fresher-trial-cache"
       },
       {
         "kind": "file",
         "logical_size": 52428800,
-        "path": "home/.Trash/0-fresher-trial-cache/blob.bin"
+        "path": "home/.Trash/fresher-trial-cache/blob.bin"
       },
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/0-fresher-trial-cache/nested"
+        "path": "home/.Trash/fresher-trial-cache/nested"
       },
       {
         "kind": "file",
         "logical_size": 2048,
-        "path": "home/.Trash/0-fresher-trial-cache/nested/blob.bin"
-      },
-      {
-        "kind": "file",
-        "logical_size": 8192,
-        "path": "home/.Trash/1-entry.bin"
+        "path": "home/.Trash/fresher-trial-cache/nested/blob.bin"
       },
       {
         "kind": "dir",

@@ -192,6 +192,11 @@ measured on `SMALL`. What can be checked deterministically is held by tests in `
 per folder (`CountingReader`), the folders a rescan reads, the tree's heap bytes per node (≤ 96 B,
 `heap_bytes_per_node_stays_under_96`), the cache's bytes per node (≤ 32 B) and its cap.
 
+The storage map's `Shares` (budget 50 ms and 5 MB, plan 012) are built over a state the real scanner commits on
+`LARGE`, with the dependency trees and cache folders claimed, by a test ignored in the hooks and run by hand in
+release; it prints the time and the heap (the hash tables' bucket count, not their capacity):
+`cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture shares_of_the_large_tree`.
+
 **The footprint test** (`crates/e2e/tests/footprint.rs`): ten scans of a generated tree through the real scanner and
 `FileScanCache` on a temporary data folder, with a scripted journal and changes between the scans; the data folder
 stays within `FOOTPRINT_BUDGET` and holds only the settings file and the cache's slot files. On `SMALL` it runs in the
@@ -277,6 +282,11 @@ The case files:
   file hard-linked into a trial cache keeps its content under its own name; the scan keeps out of `Documents` (a place
   that may prompt); an item inside the hard-blocked `Library/Caches` goes on its own; a trial cache inside the Trash is
   offered but left out as protected.
+- `storage-map.toml`: the storage map, on the `trial` module, every case with a `[case.map]`. A folder no module
+  claims, a look-alike of a trial cache, a hard-linked file (its two names take its blocks once) and the Trash are the
+  user's own folders, never explained; a folder that is almost one child opens through it (`home/Library` down to
+  `Data`); a trial cache is explained, and a trial cache inside one counts once, with the outer one. Its files are
+  filled with data, so the map's numbers are blocks on disk.
 
 A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox.
 
@@ -286,10 +296,16 @@ temporary too), run through the app's own sandbox composition (`sandbox_engine`)
 open files, running apps, commands and access, and only the case file's `module` registered. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
-`after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. The report (findings,
-cleanup, the tree after) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1` rewrites it). A failure names
-its case. Guards: every case file has a test, and every module the app registers (but `demo`, whose findings are made
-up) has a case file naming it.
+`after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. After the scan and before
+the cleanup, the storage map is read: the sandbox sits on a fake volume of 1 GiB with the tree's size plus 64 MiB used
+and 256 MiB free, so every part is the same on every Mac; the parts add up to the capacity, the by-meaning groups and
+the by-place roots (with the parts that are no file of the scan) to the same total, and every `[case.map]` holds. The
+report (findings, the map, cleanup, the tree after) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
+rewrites it); its lists are sorted by path, then category, and the Trash's entries lose the `<n>-` of the order they
+were moved in, so the findings' ids, which differ from run to run, never show in it. The map's sizes are the space taken on disk, so the goldens assume the temporary folder is on an APFS
+volume with 4 KiB blocks, as on every Mac and in CI (macOS): a byte of data takes one block and a sparse file none. A
+golden check fails with that message on a volume that differs. A failure names its case. Guards: every case file has
+a test, and every module the app registers (but `demo`, whose findings are made up) has a case file naming it.
 
 ### The case file
 
@@ -320,6 +336,9 @@ item = "home/work/fresher-trial-cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"   # in-trash | emptied | skipped (with `reason`, a SkipCode as serialized)
+[case.map]                   # optional, on any case
+part = "explained"           # explained (a positive) | your-folders (a negative)
+at = "home/work/fresher-trial-cache"   # optional: by default the folder of the case's first file
 ```
 
 A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
@@ -329,7 +348,14 @@ its paths, nor at a folder above them that only it writes into, and its paths un
 the autotest alike: unique names, every negative before every positive, plain relative paths inside the sandbox, no
 two cases writing a path, and `category` and `danger` that exist in the module's descriptor (the danger not below the
 category's). `EXPECTED.md` in the generated sandbox is the same cases as a checklist, negatives first, one plain
-sentence each.
+sentence each, and one more under a case with a `[case.map]`.
+
+`[case.map]` says where the overview's by-place view shows the case's files. `at` is one of the case's paths or their
+folders, and is required when the case's first file is at the sandbox's root; the autotest opens it as the overview opens a folder row (`storage_place` with `Descent::Through`) and checks
+the rows that hold the case's files: `explained` in full, or for `your-folders` nothing explained and no finding at,
+below or above `at`. A place that opens with no rows — a folder the scan does not go into, such as a claimed one, a
+folder whose small files the scan folds into it, or a file — is checked by its own row in its folder's view. The
+golden report holds the map's parts and, for every `at`, the folders the view went through and its rows.
 
 The sandbox's home, `home/`, stands for the user's home: its own places that prompt (`Documents`, `Desktop`, …) are not
 scanned, as on the real Mac before access is granted (plan 006). A case file therefore puts its positive cases under

@@ -25,6 +25,10 @@ mod support {
         SkipCode, SkipReason, StateId, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashState,
         Unit, Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
     };
+    use fresher_core::{
+        AppRef, CategoryShare, Descent, MapPart, MapPhase, MeaningGroup, MountKind, PartKind, PlaceName, PlaceRow,
+        PlaceShare, PlaceView, RemainderReason, StorageMap, VolumeMap,
+    };
     use ts_rs::{Config, TS};
 
     /// One exported type: its TypeScript name, its declaration and the names of the types it refers to.
@@ -122,8 +126,30 @@ mod support {
             declaration::<NodePage>(&config),
             declaration::<UnreadablePlace>(&config),
         ];
+        declarations.extend(storage_declarations(&config));
         declarations.extend(cleanup_declarations(&config));
         declarations
+    }
+
+    /// The types of the storage map's commands.
+    fn storage_declarations(config: &Config) -> Vec<Declaration> {
+        vec![
+            declaration::<StorageMap>(config),
+            declaration::<MapPhase>(config),
+            declaration::<VolumeMap>(config),
+            declaration::<MountKind>(config),
+            declaration::<MapPart>(config),
+            declaration::<PartKind>(config),
+            declaration::<RemainderReason>(config),
+            declaration::<MeaningGroup>(config),
+            declaration::<AppRef>(config),
+            declaration::<CategoryShare>(config),
+            declaration::<PlaceShare>(config),
+            declaration::<PlaceName>(config),
+            declaration::<PlaceView>(config),
+            declaration::<PlaceRow>(config),
+            declaration::<Descent>(config),
+        ]
     }
 
     /// The types of the cleanup commands and events.

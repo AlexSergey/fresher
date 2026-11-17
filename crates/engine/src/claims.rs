@@ -82,7 +82,7 @@ fn nearest_owner_above<'a>(owners: &'a BTreeMap<PathBuf, Finding>, path: &Path) 
 }
 
 /// `total` less `part`, each size stopping at zero; `total`'s completeness stays.
-fn minus(total: Sizes, part: Sizes) -> Sizes {
+pub(crate) fn minus(total: Sizes, part: Sizes) -> Sizes {
     let less = |a: ByteSize, b: ByteSize| ByteSize::new(a.bytes().saturating_sub(b.bytes()));
     Sizes {
         logical: less(total.logical, part.logical),

@@ -11,15 +11,19 @@ import type {
   CleanupsPage,
   CleanupsQuery,
   Confirmation,
+  Descent,
   Dictionary,
   Event,
   FindingsPage,
   FindingsQuery,
   IgnoredEntry,
   IgnoreTarget,
+  MeaningGroup,
   ModuleInfo,
+  NodeId,
   Overview,
   OwnData,
+  PlaceView,
   PlanId,
   PutBackReport,
   PutBackRequest,
@@ -27,6 +31,7 @@ import type {
   ScanId,
   SettingsView,
   SettingUpdate,
+  StorageMap,
 } from './bindings.generated';
 
 export { inApp } from './runtime';
@@ -49,6 +54,9 @@ export const COMMANDS = {
   getOverview: 'get_overview',
   getOwnData: 'get_own_data',
   getSettings: 'get_settings',
+  getStorageMap: 'get_storage_map',
+  getStorageMeaning: 'get_storage_meaning',
+  getStoragePlace: 'get_storage_place',
   ignore: 'ignore',
   pickFolder: 'pick_folder',
   prepareCleanup: 'prepare_cleanup',
@@ -142,6 +150,17 @@ export const pickFolder = (): Promise<null | string> => call('pickFolder');
 
 // What Fresher's own data takes on disk, against its budget.
 export const getOwnData = (): Promise<OwnData> => call('getOwnData');
+
+// The map of every volume that holds a scan root: parts that add up to each volume's capacity.
+export const getStorageMap = (): Promise<StorageMap> => call('getStorageMap');
+
+// The by-meaning groups of the volume at index `volume` of the map.
+export const getStorageMeaning = (volume: number): Promise<readonly MeaningGroup[]> =>
+  call('getStorageMeaning', { volume });
+
+// One page of a place of the last scan, largest first: opened through its single-child folders, or at the node asked.
+export const getStoragePlace = (node: NodeId, descent: Descent, offset: number, limit: number): Promise<PlaceView> =>
+  call('getStoragePlace', { descent, limit, node, offset });
 
 export const getDictionary = (locale: string): Promise<Dictionary> => call('getDictionary', { locale });
 

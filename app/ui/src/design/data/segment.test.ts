@@ -5,8 +5,8 @@ import { chartLabel, type Segment } from './segment';
 const segment = (key: string, value: number, size: string): Segment => ({
   key,
   label: key,
-  level: 'safe',
   size,
+  tone: 'safe',
   value,
 });
 

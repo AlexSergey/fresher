@@ -61,6 +61,13 @@
     --level-high-border: var(--red-400-a32);
     --level-high-glow: var(--red-400-a40);
 
+    /* The neutral tones of a part of a whole (a map's bar and ring): graphite, no light. `free` is an outline only. */
+    --tone-plain: var(--gray-500);
+    --tone-system: var(--gray-600);
+    --tone-free-outline: var(--gray-500);
+    --tone-unknown-stroke: var(--gray-600);
+    --tone-unknown: repeating-linear-gradient(135deg, var(--gray-600) 0 2px, var(--gray-700) 2px 4px);
+
     /* Type: system fonts on a 13 px root; each step is a size, a line height, a weight and a tracking. */
     --font-sans: system-ui, -apple-system, 'Helvetica Neue', sans-serif;
     --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;

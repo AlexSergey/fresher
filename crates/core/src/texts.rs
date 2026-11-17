@@ -13,9 +13,9 @@ mod tests {
     use std::collections::BTreeSet;
 
     use crate::{
-        Access, BlockedReason, Capability, CapabilityState, CapabilityText, CommandError, Completeness, DangerLevel,
-        Ended, ModuleOutcome, Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextKey, ToolId,
-        TrashState,
+        Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CommandError, Completeness,
+        DangerLevel, Ended, MapPart, ModuleOutcome, MountKind, NotScanned, PartKind, PlaceName, RemainderReason,
+        Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextKey, ToolId, TrashState, VolumeMap,
     };
 
     use crate::cleanup::outcome_sample;
@@ -84,6 +84,7 @@ mod tests {
         let recorded = outcome_sample::recorded_outcomes().into_iter().map(|outcome| outcome.text().key().clone());
         let failures = outcome_sample::failures().into_iter().map(|failure| failure.text().key().clone());
         let put_backs = outcome_sample::put_back_outcomes().into_iter().map(|outcome| outcome.text().key().clone());
+        let storage = storage_keys();
         let cleanup_states = Ended::ALL
             .map(|ended| ended.text().key().clone())
             .into_iter()
@@ -105,16 +106,52 @@ mod tests {
             .chain(failures)
             .chain(put_backs)
             .chain(cleanup_states)
+            .chain(storage)
             .chain(settings)
             .collect()
     }
 
-    /// The texts the core builds with arguments: the errors, the tool notes, the skips' instructions, the failures.
+    /// The storage map's keys: every part's name and description, the remainder's names, its reasons, the named
+    /// places, the volume kinds, the volume's notes and why a folder of the place view was not scanned.
+    fn storage_keys() -> Vec<TextKey> {
+        let remainders = [true, false].map(|outside_scan| PartKind::Remainder { outside_scan, reasons: vec![] });
+        let parts = crate::storage::every_kind()
+            .into_iter()
+            .chain(remainders)
+            .flat_map(|kind| [kind.name_key(), kind.description_key()]);
+        let reasons = crate::storage::every_reason().into_iter().map(RemainderReason::text_key);
+        let trash = [PlaceName::Trash.name_key(), PlaceName::Trash.description_key()].into_iter().flatten();
+        let kinds = [MountKind::Internal, MountKind::External, MountKind::Network].map(MountKind::text_key);
+        let notes = volume_notes().changed_note().into_iter().chain(purgeable_note().map(|note| note.key().clone()));
+        let not_scanned = NotScanned::ALL.map(NotScanned::text_key);
+        parts.chain(reasons).chain(trash).chain(kinds).chain(notes).chain(not_scanned).collect()
+    }
+
+    fn volume_notes() -> VolumeMap {
+        let free = MapPart { kind: PartKind::Free, sizes: crate::Sizes::ZERO };
+        VolumeMap::new(
+            "Disk".into(),
+            MountKind::Internal,
+            ByteSize::ZERO,
+            vec![free],
+            Some(ByteSize::new(1)),
+            vec![],
+            true,
+        )
+        .unwrap()
+    }
+
+    fn purgeable_note() -> Option<Text> {
+        volume_notes().purgeable_note()
+    }
+
+    /// The texts the core builds with arguments: the errors, the tool notes, the skips' instructions, the failures,
+    /// the purgeable note.
     fn texts_with_args() -> Vec<Text> {
         let errors = one_error_of_each().iter().map(CommandError::text).collect::<Vec<_>>();
         let skips = outcome_sample::skip_reasons().iter().filter_map(SkipReason::how).collect::<Vec<_>>();
         let failures = outcome_sample::failures().iter().map(crate::Failure::text).collect::<Vec<_>>();
-        errors.into_iter().chain(tool_notes()).chain(skips).chain(failures).collect()
+        errors.into_iter().chain(tool_notes()).chain(skips).chain(failures).chain(purgeable_note()).collect()
     }
 
     /// The notes of a tool's state, with the arguments the core passes.
@@ -130,7 +167,7 @@ mod tests {
         use std::collections::BTreeSet;
 
         use super::{core_keys, texts_with_args};
-        use crate::{Capability, CapabilityText, TextKey, core_dictionary};
+        use crate::{Capability, CapabilityText, PartKind, TextKey, core_dictionary};
 
         #[test]
         fn every_skip_reason_has_its_text() {
@@ -140,6 +177,30 @@ mod tests {
                 assert!(texts.get(reason.text().key().as_str()).is_some(), "{reason:?}");
                 if let Some(how) = reason.how() {
                     assert!(texts.get(how.key().as_str()).is_some(), "{reason:?}");
+                }
+            }
+        }
+
+        #[test]
+        fn every_part_kind_has_a_name_and_a_description() {
+            let texts = core_dictionary().unwrap();
+            let remainders = [true, false].map(|outside_scan| PartKind::Remainder { outside_scan, reasons: vec![] });
+
+            for kind in crate::storage::every_kind().into_iter().chain(remainders) {
+                for key in [kind.name_key(), kind.description_key()] {
+                    assert!(texts.get(key.as_str()).is_some_and(|text| !text.is_empty()), "{key}");
+                }
+            }
+        }
+
+        #[test]
+        fn no_text_says_other() {
+            let texts = core_dictionary().unwrap();
+
+            for key in texts.keys().filter(|key| key.as_str().starts_with("core.storage.")) {
+                let text = texts.get(key.as_str()).unwrap();
+                for word in ["Other", "Miscellaneous", "System Data"] {
+                    assert!(!text.contains(word), "{key}: {text}");
                 }
             }
         }

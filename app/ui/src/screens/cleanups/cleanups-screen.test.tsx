@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CleanupDetail, CleanupId, CleanupsPage, CleanupsQuery } from '../../ipc/bindings.generated';
 
-import { type CoreAnswers, mockCore, refuse } from '../../ipc/mock';
+import { type CoreAnswers, mockCore, refuse, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -46,6 +46,7 @@ const renderScreen = (content: React.JSX.Element, answers: Partial<CoreAnswers>)
     getDictionary: () => DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,
+    ...sampleStorageAnswers,
     ...recorded,
   });
   const navigation = createNavigation();

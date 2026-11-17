@@ -1,10 +1,10 @@
 //! The settings in memory: loaded once through the `SettingsStore` port, resolved against the schema, changed one
 //! value at a time and saved through the port before the change counts.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_PATHS, IgnoredEntry, ModuleId, ModuleSettings,
+    CategoryId, CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_PATHS, IgnoredEntry, ModuleId, ModuleSettings,
     ResolvedSettings, SCAN_ROOTS, SettingDescriptor, SettingEffect, SettingKey, SettingUpdate, SettingValue,
     SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings, Subject,
 };
@@ -203,11 +203,20 @@ impl Ignored {
     /// Whether `finding` is left out: its category is ignored, or its path is at or below an ignored path.
     pub(crate) fn hides(&self, finding: &Finding) -> bool {
         let new = finding.finding();
-        self.categories.iter().any(|category| category == new.category().as_str())
-            || match new.subject() {
-                Subject::Path(path) => self.paths.iter().any(|ignored| path.starts_with(ignored)),
-                Subject::External { .. } => false,
-            }
+        match new.subject() {
+            Subject::Path(path) => self.hides_place(new.category(), path),
+            Subject::External { .. } => self.hides_category(new.category()),
+        }
+    }
+
+    /// Whether a claim of `path` by `category` is left out: the category is ignored, or `path` is at or below an
+    /// ignored path (compared by components).
+    pub(crate) fn hides_place(&self, category: CategoryId, path: &Path) -> bool {
+        self.hides_category(category) || self.paths.iter().any(|ignored| path.starts_with(ignored))
+    }
+
+    fn hides_category(&self, category: CategoryId) -> bool {
+        self.categories.iter().any(|ignored| ignored == category.as_str())
     }
 }
 

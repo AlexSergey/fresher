@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use fresher_core::{DangerLevel, IdError};
 use fresher_testing::FixtureError;
 
+use crate::MapPartName;
+
 /// Why a case file was refused; every error about one case names it.
 #[derive(Debug, thiserror::Error)]
 pub enum CaseError {
@@ -51,6 +53,19 @@ pub enum CaseError {
     /// The expected danger is below the category's level.
     #[error("case \"{case}\": the danger {danger:?} is below the category's {floor:?}")]
     DangerBelowCategory { case: String, danger: DangerLevel, floor: DangerLevel },
+    /// `[case.map]` names `explained` on a negative case, or `your-folders` on a positive one.
+    #[error(
+        "case \"{case}\": a negative case's files are in `your-folders`, a positive's are `explained`, not {part:?}"
+    )]
+    MapOnTheWrongKind { case: String, part: MapPartName },
+    /// `[case.map]` has no `at` and the case's first file is at the sandbox's root, which has no folder to show.
+    #[error(
+        "case \"{case}\": the case's first file is at the sandbox's root; give `[case.map]` an `at`, a folder of the case"
+    )]
+    MapWithoutFolder { case: String },
+    /// `[case.map]`'s `at` is not one of the case's paths or their folders.
+    #[error("case \"{case}\": the map's `at` {at} is not one of the case's paths or their folders")]
+    MapAtOutsideTheCase { case: String, at: PathBuf },
     /// The cases together break a check of the tree, such as the fill cap of a sandbox.
     #[error("the cases do not make one sandbox: {source}")]
     Sandbox { source: FixtureError },

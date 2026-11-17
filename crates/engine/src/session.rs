@@ -19,6 +19,8 @@ use crate::coverage;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
 use crate::projects::{self, ProjectCollector};
+use crate::storage::attribution::AppPlaces;
+use crate::storage::roots::expand_home;
 use crate::throttle::Throttle;
 
 /// What a scan runs, fixed when it starts: later changes to the settings wait for the next scan.
@@ -53,8 +55,11 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let ids: Vec<ModuleId> = plan.modules.iter().map(|planned| planned.module.descriptor().id()).collect();
     let interests = all_interests(shared);
     let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
-    // The previous scan's findings are forgotten only now that this scan runs; `None` when the ids ran out.
-    let first_id = lock_anyway(&shared.results).begin(&plan.roots);
+    // The roots' volumes are read before the lock, so a map query never sees this scan's findings with the last
+    // scan's volumes. The previous scan's findings are forgotten only now that this scan runs; `None` when the ids
+    // ran out.
+    let volumes = shared.read_volumes(&expand_home(&plan.roots, shared.home().as_deref()));
+    let first_id = lock_anyway(&shared.results).begin(&plan.roots, volumes);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
     let (access, unavailable) = decide_access(shared, plan, cancel);
@@ -140,7 +145,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
 
     let committed = !cancel.is_cancelled() && {
         let claims = resolve_claims(shared);
-        summary.is_some() && commit(shared, &claims)
+        summary.is_some() && commit(shared, &claims, &system)
     };
     let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
     let complete = walk_complete
@@ -290,11 +295,15 @@ fn resolve_claims(shared: &Shared) -> Vec<ClaimedPath> {
     paths
 }
 
-/// Commits the walk's state with the scan's claims and keeps it; `false` when the commit failed (logged).
-fn commit(shared: &Shared, claims: &[ClaimedPath]) -> bool {
+/// Commits the walk's state with the scan's claims and keeps it with the owners of its places, found with the scan's
+/// `system`; `false` when the commit failed (logged).
+fn commit(shared: &Shared, claims: &[ClaimedPath], system: &SystemFacts) -> bool {
     match shared.ports.walk.commit(claims) {
         Ok(state) => {
-            lock_anyway(&shared.results).keep_state(state);
+            let places = AppPlaces::of(&*state, system);
+            let roots: Vec<PathBuf> = state.roots().into_iter().filter_map(|root| state.path(root)).collect();
+            let volumes = shared.read_volumes(&roots);
+            lock_anyway(&shared.results).keep_state(state, places, volumes);
             true
         }
         Err(error) => {
@@ -700,6 +709,40 @@ mod tests {
             assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
             assert!(commits.lock().unwrap().is_empty());
             assert!(engine.disk_state().unwrap().is_none());
+        }
+
+        #[test]
+        fn a_cancelled_scan_keeps_the_previous_places() {
+            use std::path::{Path, PathBuf};
+            use std::sync::Arc;
+
+            use fresher_core::{DiskState, NodeKind, StateId, Timestamp};
+            use fresher_testing::FixedDiskState;
+
+            let nodes = ["/home", "/home/.Trash"].map(|path| (PathBuf::from(path), NodeKind::Folder, bytes(1)));
+            let state = FixedDiskState::new(StateId::new(7), Timestamp::from_secs(0), nodes);
+            let trash = state.find(Path::new("/home/.Trash"));
+            // A second commit would replace the places with those of a state without a Trash.
+            let next = FixedDiskState::new(
+                StateId::new(8),
+                Timestamp::from_secs(0),
+                [(PathBuf::from("/home"), NodeKind::Folder, bytes(1))],
+            );
+            let (walk, gate) = ScriptedWalk::new().committing(vec![Arc::new(state), Arc::new(next)]).hold();
+            gate.release();
+            let engine = Fixture::new(walk).engine();
+            scan(&engine);
+            let places = || crate::error::lock_anyway(&engine.shared.results).committed().unwrap().places.trash();
+            assert_eq!(places(), trash);
+            gate.close();
+            let events = engine.subscribe();
+            engine.start_scan(crate::ScanMode::Auto).unwrap();
+
+            engine.cancel_scan().unwrap();
+
+            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
+            assert_eq!(places(), trash);
+            assert_eq!(engine.disk_state().unwrap().unwrap().id(), StateId::new(7));
         }
 
         #[test]

@@ -47,7 +47,7 @@ const ArcCircle = ({ arc, geometry }: { readonly arc: Arc; readonly geometry: Ge
       cx={centre}
       cy={centre}
       data-cap={round ? 'round' : 'square'}
-      data-level={arc.level}
+      data-tone={arc.tone}
       r={radius}
       style={{
         strokeDasharray: `${circumference} ${circumference}`,
@@ -60,7 +60,7 @@ const ArcCircle = ({ arc, geometry }: { readonly arc: Arc; readonly geometry: Ge
 
 const isFinished = (state: StorageRingState): boolean => state === 'done' || state === 'partial';
 
-// The storage ring: a faint track with one arc per segment in its level's colour, over a blurred copy of the arcs as
+// The storage ring: a faint track with one arc per segment in its tone's colour, over a blurred copy of the arcs as
 // their glow. Arcs grow by stroke-dashoffset; a scan's sweep circles the band; a finished scan plays one sheen. The
 // centre is an HTML layer over the ring.
 export const StorageRing = ({ children, label, segments, size = 232, state, total }: StorageRingProps): JSX.Element => {

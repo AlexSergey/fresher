@@ -4,11 +4,11 @@ import type { Segment } from '../segment';
 
 import { arcsOf, GAP, MIN_SWEEP } from './arcs';
 
-const segment = (key: string, value: number, level: Segment['level'] = 'safe'): Segment => ({
+const segment = (key: string, value: number, tone: Segment['tone'] = 'safe'): Segment => ({
   key,
   label: key,
-  level,
   size: `${value} GB`,
+  tone,
   value,
 });
 
@@ -66,13 +66,13 @@ describe('arcsOf', () => {
     });
 
     it('one segment that is the whole total is the whole circle', () => {
-      expect(arcsOf([segment('a', 100)], 100)).toStrictEqual([{ key: 'a', level: 'safe', start: 0, sweep: 360 }]);
+      expect(arcsOf([segment('a', 100)], 100)).toStrictEqual([{ key: 'a', start: 0, sweep: 360, tone: 'safe' }]);
     });
 
-    it('keeps the order and the levels of the segments', () => {
+    it('keeps the order and the tones of the segments', () => {
       const arcs = arcsOf([segment('a', 10, 'high'), segment('b', 30, 'safe'), segment('c', 20, 'medium')], 100);
 
-      expect(arcs.map(({ key, level }) => [key, level])).toStrictEqual([
+      expect(arcs.map(({ key, tone }) => [key, tone])).toStrictEqual([
         ['a', 'high'],
         ['b', 'safe'],
         ['c', 'medium'],

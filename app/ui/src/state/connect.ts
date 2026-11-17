@@ -1,7 +1,16 @@
 import type { CoreStore } from './store';
 
 import { setCoreDictionary } from '../i18n';
-import { failureOf, getAccessStatus, getDictionary, getOverview, getSettings, startScan, subscribe } from '../ipc';
+import {
+  failureOf,
+  getAccessStatus,
+  getDictionary,
+  getOverview,
+  getSettings,
+  getStorageMap,
+  startScan,
+  subscribe,
+} from '../ipc';
 import { systemClock } from './clock';
 import { throttleProgress } from './progress';
 import { createOverviewRefresher } from './refresh';
@@ -33,12 +42,20 @@ export const connectCore = (store: CoreStore): void => {
     })
     .catch(failed(store));
   createOverviewRefresher(store, { clock: systemClock, interval: OVERVIEW_INTERVAL_MS });
-  // The overview is asked for once the events flow, so no change of the engine falls between the two.
-  subscribe(throttleProgress(store.dispatch, { clock: systemClock, interval: PROGRESS_INTERVAL_MS }))
-    .catch(failed(store))
+  // The overview and the storage map are asked for once the events flow, so no change of the engine falls between.
+  const events = subscribe(
+    throttleProgress(store.dispatch, { clock: systemClock, interval: PROGRESS_INTERVAL_MS }),
+  ).catch(failed(store));
+  events
     .then(getOverview)
     .then((overview) => {
       store.dispatch({ overview, type: 'overview-loaded' });
+    })
+    .catch(failed(store));
+  events
+    .then(getStorageMap)
+    .then((storageMap) => {
+      store.dispatch({ storageMap, type: 'storage-map-loaded' });
     })
     .catch(failed(store));
 };

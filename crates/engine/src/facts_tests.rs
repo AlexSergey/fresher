@@ -25,7 +25,7 @@ mod negative {
     use crate::testing::{Fixture, ScriptedWalk, TestModule, bytes, scan};
 
     #[test]
-    fn a_scan_whose_modules_never_ask_gathers_nothing() {
+    fn a_scan_whose_modules_never_ask_runs_nothing_and_lists_the_apps_once_for_the_map() {
         let (apps, running) = (Arc::new(FakeInstalledApps::default()), Arc::new(FakeRunningApps::default()));
         let module = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
         let walk = ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(1));
@@ -34,7 +34,7 @@ mod negative {
         scan(&engine);
         scan(&engine);
 
-        assert_eq!((apps.calls(), running.calls()), (0, 0));
+        assert_eq!((apps.calls(), running.calls()), (2, 0), "each commit lists the apps once");
     }
 }
 

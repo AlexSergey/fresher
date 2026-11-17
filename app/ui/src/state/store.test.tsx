@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CoreAction } from './reduce';
 
-import { mockCore, pushEvents } from '../ipc/mock';
+import { mockCore, pushEvents, sampleStorageAnswers } from '../ipc/mock';
 import { DEMO_DICTIONARY, IDLE, SCAN_STARTED } from '../test/demo-scan';
+import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { connectCore } from './connect';
 import { CoreContext, createCoreStore, useCore } from './store';
 
@@ -81,6 +82,7 @@ describe('the core store', () => {
 
           return IDLE;
         },
+        ...sampleStorageAnswers,
       });
       const store = createCoreStore();
       const actions: CoreAction['type'][] = [];
@@ -96,12 +98,27 @@ describe('the core store', () => {
         expect(actions).toContain('overview-loaded');
       });
 
-      expect(actions.filter((type) => type !== 'dictionary-loaded')).toEqual(['scan-started', 'overview-loaded']);
+      expect(actions.filter((type) => type !== 'dictionary-loaded' && type !== 'storage-map-loaded')).toEqual([
+        'scan-started',
+        'overview-loaded',
+      ]);
       expect(store.getState().status).toEqual({ scan: 1, state: 'scanning' });
     });
   });
 
   describe('positive cases', () => {
+    it('asks the storage map with the first overview, before anything is stale', async () => {
+      mockCore({ getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE, ...sampleStorageAnswers });
+      const store = createCoreStore();
+
+      connectCore(store);
+
+      await vi.waitFor(() => {
+        expect(store.getState().storageMap).toStrictEqual(SAMPLE_STORAGE_MAP);
+      });
+      expect(store.getState().failure).toBeNull();
+    });
+
     it('renders again when the state changes', () => {
       const store = createCoreStore();
       render(

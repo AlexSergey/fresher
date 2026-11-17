@@ -4,6 +4,8 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+use serde::{Serialize, Serializer};
+
 /// The longest bundle id taken.
 const MAX_BUNDLE_ID: usize = 255;
 /// The length of a team id.
@@ -52,6 +54,13 @@ impl BundleId {
     pub fn folded(&self) -> &str {
         &self.folded
     }
+
+    /// Whether `name` (a folder's or a file's) is named after this id: the id as the whole name, or followed by a dot
+    /// and more (`com.example.App.savedState`), case ignored. `com.example.Appx` is not named after `com.example.App`.
+    pub fn names(&self, name: &str) -> bool {
+        let Some((head, rest)) = name.split_at_checked(self.folded.len()) else { return false };
+        head.eq_ignore_ascii_case(&self.folded) && (rest.is_empty() || rest.starts_with('.'))
+    }
 }
 
 impl PartialEq for BundleId {
@@ -77,6 +86,13 @@ impl PartialOrd for BundleId {
 impl Ord for BundleId {
     fn cmp(&self, other: &Self) -> Ordering {
         self.folded.cmp(&other.folded)
+    }
+}
+
+/// Serialized as the id the app writes.
+impl Serialize for BundleId {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.id)
     }
 }
 
@@ -130,6 +146,17 @@ mod tests {
         }
 
         #[test]
+        fn a_name_that_only_starts_like_the_id_is_not_named_after_it() {
+            let id = BundleId::new("com.example.App").unwrap();
+
+            for name in
+                ["com.example.Appx", "com.example.Ap", "x.com.example.App", "com.example", "", "com.exämple.App"]
+            {
+                assert!(!id.names(name), "{name}");
+            }
+        }
+
+        #[test]
         fn different_bundle_ids_differ() {
             assert_ne!(BundleId::new("com.example.App").unwrap(), BundleId::new("com.example.Appx").unwrap());
         }
@@ -152,6 +179,15 @@ mod tests {
             assert_eq!(written.as_str(), "com.Example.App-2_b");
             assert_eq!(written.folded(), "com.example.app-2_b");
             assert_eq!(written.to_string(), "com.Example.App-2_b");
+        }
+
+        #[test]
+        fn a_name_is_named_after_the_id_whole_or_followed_by_a_dot() {
+            let id = BundleId::new("com.example.App").unwrap();
+
+            for name in ["com.example.App", "COM.EXAMPLE.APP", "com.example.App.plist", "com.example.app.savedState"] {
+                assert!(id.names(name), "{name}");
+            }
         }
 
         #[test]

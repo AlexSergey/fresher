@@ -4,7 +4,7 @@ use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use fresher_core::{
     ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness, DiskState, Finding,
@@ -13,11 +13,15 @@ use fresher_core::{
 
 use crate::claims::Claims;
 use crate::settings::Ignored;
+use crate::storage::attribution::AppPlaces;
+use crate::storage::roots::RootVolumes;
+use crate::storage::shares::Shares;
 
 /// The findings of one scan, in id order. Ids keep increasing across scans, so an id from an earlier scan is unknown.
-/// Also the disk state of the last committed scan, kept until another scan commits one, and the categories the scan's
-/// access limited, and the roots the scan walked. The findings the user ignores are kept but left out of every
-/// answer, so a restore shows them again at once.
+/// Also the disk state of the last committed scan, kept until another scan commits one, with the owners of its places
+/// (the apps' folders and the Trash), its shares, its roots' volumes and the findings of its scan that name an app, and
+/// the categories the scan's access limited, and the roots the scan walked with their volumes. The findings the user
+/// ignores are kept but left out of every answer, so a restore shows them again at once.
 pub(crate) struct Results {
     findings: Vec<Finding>,
     ignored: Ignored,
@@ -26,6 +30,19 @@ pub(crate) struct Results {
     next_id: Option<u32>,
     last: Option<LastScan>,
     state: Option<Arc<dyn DiskState>>,
+    /// The apps' places and the Trash of `state`, replaced with it.
+    places: Option<Arc<AppPlaces>>,
+    /// The shares of `state` under `ignored`: built on the first map query, a new one with each state or ignore lists.
+    shares: Arc<OnceLock<Shares>>,
+    /// The volumes of `state`'s roots, read at its commit.
+    state_volumes: RootVolumes,
+    /// The findings of the scan that committed `state` that name their app: the map's apps are of that scan, never of
+    /// a later one that did not commit.
+    state_findings: Arc<[Finding]>,
+    /// The volumes of the running scan's roots, read at its start, or of the configured roots before any scan.
+    volumes: RootVolumes,
+    /// A scan began and has not finished.
+    scanning: bool,
     /// The claims of the findings once the scan resolved them; until then every finding counts its own sizes.
     claims: Option<Claims>,
 }
@@ -41,6 +58,12 @@ impl fmt::Debug for Results {
             .field("next_id", &self.next_id)
             .field("last", &self.last)
             .field("state", &self.state.as_ref().map(|state| state.id()))
+            .field("places", &self.places.is_some())
+            .field("shares", &self.shares.get().is_some())
+            .field("state_volumes", &self.state_volumes)
+            .field("state_findings", &self.state_findings.len())
+            .field("volumes", &self.volumes)
+            .field("scanning", &self.scanning)
             .field("claims", &self.claims.is_some())
             .finish()
     }
@@ -57,7 +80,7 @@ pub(crate) struct Filter<'a> {
 }
 
 impl Results {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             findings: Vec::new(),
             ignored: Ignored { categories: Vec::new(), paths: Vec::new() },
@@ -66,17 +89,25 @@ impl Results {
             next_id: Some(1),
             last: None,
             state: None,
+            places: None,
+            shares: Arc::new(OnceLock::new()),
+            state_volumes: RootVolumes::default(),
+            state_findings: Arc::from([]),
+            volumes: RootVolumes::default(),
+            scanning: false,
             claims: None,
         }
     }
 
-    /// Forgets the previous scan's findings for those of a scan of `roots`; gives the first id of the new scan
-    /// (`None` when the ids ran out).
-    pub(crate) fn begin(&mut self, roots: &[PathBuf]) -> Option<u32> {
+    /// Forgets the previous scan's findings for those of a scan of `roots`, whose volumes are `volumes`; gives the
+    /// first id of the new scan (`None` when the ids ran out).
+    pub(crate) fn begin(&mut self, roots: &[PathBuf], volumes: RootVolumes) -> Option<u32> {
         self.findings.clear();
         roots.clone_into(&mut self.roots);
+        self.volumes = volumes;
         self.limited.clear();
         self.claims = None;
+        self.scanning = true;
         self.next_id
     }
 
@@ -93,6 +124,7 @@ impl Results {
     pub(crate) fn finish(&mut self, last: LastScan, next_id: Option<u32>) {
         self.last = Some(last);
         self.next_id = next_id;
+        self.scanning = false;
     }
 
     /// The findings of the current scan, in id order, the ignored ones too.
@@ -107,6 +139,9 @@ impl Results {
 
     /// From now on, `ignored` hides findings from every answer.
     pub(crate) fn set_ignored(&mut self, ignored: Ignored) {
+        if self.ignored != ignored {
+            self.shares = Arc::new(OnceLock::new());
+        }
         self.ignored = ignored;
     }
 
@@ -175,13 +210,64 @@ impl Results {
         self.last.clone()
     }
 
-    /// Keeps `state`, the disk state a scan committed, in place of the previous one.
-    pub(crate) fn keep_state(&mut self, state: Arc<dyn DiskState>) {
+    /// Keeps `state`, the disk state a scan committed, and the owners of its places, in place of the previous ones.
+    /// Its roots' `volumes` and the current findings that name their app are kept with it.
+    pub(crate) fn keep_state(&mut self, state: Arc<dyn DiskState>, places: AppPlaces, volumes: RootVolumes) {
         self.state = Some(state);
+        self.places = Some(Arc::new(places));
+        self.shares = Arc::new(OnceLock::new());
+        self.state_volumes = volumes;
+        self.state_findings =
+            self.findings.iter().filter(|finding| finding.finding().app().is_some()).cloned().collect();
     }
 
     pub(crate) fn state(&self) -> Option<Arc<dyn DiskState>> {
         self.state.clone()
+    }
+
+    /// The kept state with what the map reads of it; `None` before any commit.
+    pub(crate) fn committed(&self) -> Option<Committed> {
+        Some(Committed {
+            state: self.state.clone()?,
+            places: self.places.clone()?,
+            shares: Arc::clone(&self.shares),
+            ignored: self.ignored.clone(),
+            volumes: self.state_volumes.clone(),
+            findings: Arc::clone(&self.state_findings),
+        })
+    }
+
+    /// A scan began and has not finished.
+    pub(crate) const fn is_scanning(&self) -> bool {
+        self.scanning
+    }
+
+    pub(crate) fn volumes(&self) -> &RootVolumes {
+        &self.volumes
+    }
+
+    pub(crate) fn keep_volumes(&mut self, volumes: RootVolumes) {
+        self.volumes = volumes;
+    }
+
+    /// What the findings the user sees explain under each of `roots` (absolute): each finding about a path adds its
+    /// counted size to the deepest root that holds it; a finding under no root, or about a tool's object, adds
+    /// nothing.
+    pub(crate) fn explained_under(&self, roots: &[PathBuf]) -> Vec<Sizes> {
+        let mut explained = vec![Sizes::ZERO; roots.len()];
+        for finding in self.shown() {
+            let Some(path) = path(finding) else { continue };
+            let holder = roots
+                .iter()
+                .enumerate()
+                .filter(|(_, root)| path.starts_with(root))
+                .max_by_key(|(_, root)| root.components().count());
+            let Some(total) = holder.and_then(|(position, _)| explained.get_mut(position)) else { continue };
+            let sizes =
+                self.claims.as_ref().map_or_else(|| finding.finding().sizes(), |claims| claims.counted(finding));
+            *total = add(*total, sizes);
+        }
+        explained
     }
 
     pub(crate) fn finding(&self, id: FindingId) -> Result<Finding, CommandError> {
@@ -247,6 +333,32 @@ impl Results {
     }
 }
 
+/// The last committed state and what the map reads of it, taken under the results' lock and read outside it.
+#[derive(Clone)]
+pub(crate) struct Committed {
+    pub(crate) state: Arc<dyn DiskState>,
+    pub(crate) places: Arc<AppPlaces>,
+    /// The volumes of the state's roots, read at its commit.
+    pub(crate) volumes: RootVolumes,
+    /// The findings of the scan that committed the state that name their app, the ignored ones too.
+    pub(crate) findings: Arc<[Finding]>,
+    shares: Arc<OnceLock<Shares>>,
+    ignored: Ignored,
+}
+
+impl Committed {
+    /// The state's shares under the ignore lists taken with it, built by the first caller and kept in the results.
+    pub(crate) fn shares(&self) -> &Shares {
+        self.shares.get_or_init(|| Shares::of(&*self.state, &self.ignored))
+    }
+}
+
+impl fmt::Debug for Committed {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.debug_struct("Committed").field("state", &self.state.id()).finish_non_exhaustive()
+    }
+}
+
 /// The path a finding is about; `None` for a tool's object.
 fn path(finding: &Finding) -> Option<&Path> {
     match finding.finding().subject() {
@@ -256,7 +368,7 @@ fn path(finding: &Finding) -> Option<&Path> {
 }
 
 /// Sums two sizes; a sum past `u64::MAX` bytes stays at the maximum. The weakest completeness wins.
-fn add(total: Sizes, more: Sizes) -> Sizes {
+pub(crate) fn add(total: Sizes, more: Sizes) -> Sizes {
     let sum = |a: ByteSize, b: ByteSize| ByteSize::new(a.bytes().saturating_add(b.bytes()));
     Sizes {
         logical: sum(total.logical, more.logical),

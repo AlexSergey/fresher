@@ -23,3 +23,5 @@ explain ([`../goal.md`](../goal.md), section 1).
 Open questions:
 
 - Which numbers can be read without root, and how exact is the purgeable figure (volume capacity APIs)?
+
+**Partly taken by [plan 012](../plans/012-storage-map/readme.md):** the system's volumes, the virtual memory volume, purgeable space beside Free and the reasons of the remainder (unreadable folders, snapshots and bookkeeping) are on the map as information, never as files to delete. **Still an idea:** listing local snapshots with their dates and sizes, and thinning them through `tmutil`.

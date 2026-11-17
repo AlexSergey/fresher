@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Event, Overview } from '../ipc/bindings.generated';
 
-import { mockCore, refuse } from '../ipc/mock';
+import { mockCore, refuse, sampleStorageAnswers } from '../ipc/mock';
 import { BUSY, DEMO_OVERVIEW, FIRST_BATCH, SCAN_STARTED } from '../test/demo-scan';
 import { createFakeClock, type FakeClock } from '../test/fake-clock';
+import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { createOverviewRefresher } from './refresh';
 import { type CoreStore, createCoreStore } from './store';
 
@@ -24,6 +25,7 @@ const coreAnsweringByHand = (): Core => {
   const waiting: ((overview: Overview) => void)[] = [];
   let requests = 0;
   mockCore({
+    ...sampleStorageAnswers,
     getOverview: () =>
       new Promise<Overview>((resolve) => {
         requests += 1;
@@ -94,7 +96,7 @@ describe('the overview refresher', () => {
     });
 
     it('keeps a refused overview as the failure and asks no more', async () => {
-      mockCore({ getOverview: refuse(BUSY) });
+      mockCore({ ...sampleStorageAnswers, getOverview: refuse(BUSY) });
       const { clock, store } = refreshed();
       store.dispatch(SCAN_STARTED);
 
@@ -105,6 +107,43 @@ describe('the overview refresher', () => {
       clock.advance(1000);
 
       expect(store.getState().stale).toBe(false);
+    });
+
+    it('a failed map does not stop the overview', async () => {
+      mockCore({ ...sampleStorageAnswers, getOverview: () => SCANNING, getStorageMap: refuse(BUSY) });
+      const { store } = refreshed();
+      store.dispatch(SCAN_STARTED);
+
+      store.dispatch(FIRST_BATCH);
+      await vi.waitFor(() => {
+        expect(store.getState().failure).toEqual({ kind: 'refused', refusal: BUSY });
+      });
+
+      expect(store.getState().overview).toBe(SCANNING);
+      expect(store.getState().storageMap).toBeNull();
+    });
+
+    it('no second request while one is pending, the map included', async () => {
+      let maps = 0;
+      mockCore({
+        ...sampleStorageAnswers,
+        getOverview: () => SCANNING,
+        getStorageMap: () =>
+          new Promise(() => {
+            maps += 1;
+          }),
+      });
+      const { clock, store } = refreshed();
+      store.dispatch(SCAN_STARTED);
+
+      store.dispatch(FIRST_BATCH);
+      store.dispatch(MORE);
+      clock.advance(1000);
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+
+      expect(maps).toBe(1);
     });
 
     it('asks nothing once stopped', async () => {
@@ -156,6 +195,43 @@ describe('the overview refresher', () => {
 
       expect(core.requests()).toBe(2);
       expect(store.getState().overview).toBe(DEMO_OVERVIEW);
+    });
+
+    it('the map is asked with the overview', async () => {
+      const core = coreAnsweringByHand();
+      const { store } = refreshed();
+      store.dispatch(SCAN_STARTED);
+
+      store.dispatch(FIRST_BATCH);
+      await core.answer(SCANNING);
+
+      expect(store.getState().storageMap).toEqual(SAMPLE_STORAGE_MAP);
+    });
+
+    it('the end of a scan asks once more', async () => {
+      let maps = 0;
+      mockCore({
+        ...sampleStorageAnswers,
+        getOverview: () => SCANNING,
+        getStorageMap: () => {
+          maps += 1;
+
+          return SAMPLE_STORAGE_MAP;
+        },
+      });
+      const { clock, store } = refreshed();
+      store.dispatch(SCAN_STARTED);
+      store.dispatch(FIRST_BATCH);
+      await vi.waitFor(() => {
+        expect(maps).toBe(1);
+      });
+
+      store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+      clock.advance(250);
+
+      await vi.waitFor(() => {
+        expect(maps).toBe(2);
+      });
     });
   });
 });

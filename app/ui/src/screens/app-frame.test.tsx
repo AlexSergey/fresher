@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModuleInfo } from '../ipc/bindings.generated';
 import type { CoreAnswers } from '../ipc/mock';
 
-import { mockCore, pushEvents, refuse } from '../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../ipc/mock';
 import { requestScan } from '../state/connect';
 import { createNavigation, type Navigation } from '../state/navigation';
 import { type CoreStore, createCoreStore } from '../state/store';
@@ -19,6 +19,7 @@ const core = (answers: Partial<CoreAnswers> = {}): void => {
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,
+    ...sampleStorageAnswers,
     ...answers,
   });
 };

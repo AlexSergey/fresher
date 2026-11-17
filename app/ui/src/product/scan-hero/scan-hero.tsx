@@ -149,8 +149,8 @@ export const ScanHero = ({ failure, onScan, onStop, overview, phase, progress }:
   const segments = totals.map(({ category, highestDanger, sizes }) => ({
     key: category,
     label: nameOf(category),
-    level: highestDanger,
     size: sizeLabel(sizes),
+    tone: highestDanger,
     value: sizes.allocated,
   }));
   const start = usePresence<HTMLDivElement>(idle, { duration: DURATION.fast, exit: FADE_OUT });

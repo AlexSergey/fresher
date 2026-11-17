@@ -76,11 +76,14 @@ pub enum CommandError {
     /// A finding without a path of its own (a tool's object): it cannot be ignored yet.
     #[error("the finding cannot be ignored")]
     CannotIgnore,
+    /// A volume index past the storage map's list.
+    #[error("the storage map has no such volume")]
+    UnknownVolume,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 24] = [
+    pub const CODES: [&str; 25] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -105,6 +108,7 @@ impl CommandError {
         "unknown-cleanup-item",
         "not-in-trash",
         "cannot-ignore",
+        "unknown-volume",
     ];
 
     /// The `code` the error is serialized with.
@@ -134,6 +138,7 @@ impl CommandError {
             Self::UnknownCleanupItem => "unknown-cleanup-item",
             Self::NotInTrash => "not-in-trash",
             Self::CannotIgnore => "cannot-ignore",
+            Self::UnknownVolume => "unknown-volume",
         }
     }
 
@@ -163,7 +168,8 @@ impl CommandError {
             | Self::CleaningBlocked { .. }
             | Self::UnknownCleanupItem
             | Self::NotInTrash
-            | Self::CannotIgnore => text,
+            | Self::CannotIgnore
+            | Self::UnknownVolume => text,
         }
     }
 }
@@ -214,7 +220,8 @@ pub(crate) mod tests {
             | CommandError::UnknownCleanup { .. }
             | CommandError::UnknownCleanupItem
             | CommandError::NotInTrash
-            | CommandError::CannotIgnore => error,
+            | CommandError::CannotIgnore
+            | CommandError::UnknownVolume => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -241,6 +248,7 @@ pub(crate) mod tests {
             sample(CommandError::UnknownCleanupItem),
             sample(CommandError::NotInTrash),
             sample(CommandError::CannotIgnore),
+            sample(CommandError::UnknownVolume),
         ]
     }
 
@@ -338,6 +346,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
                     vec![],
                     vec![],
                     vec![],

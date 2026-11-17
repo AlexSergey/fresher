@@ -1,0 +1,108 @@
+# The storage map, on the trial module: only what a module claims is explained, everything else is the user's own
+# folders, a hard-linked file is counted once, a folder that is almost one child opens through it, and the Trash is
+# never explained. Files are filled with data so they take blocks on disk and the map's numbers are real.
+feature = "storage-map"
+module = "trial"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "a folder no module claims is your folder, never explained"
+kind = "negative"
+[[case.file]]
+path = "home/footage/holiday.mov"
+size = 41943040
+fill = "data"
+[case.map]
+part = "your-folders"
+
+[[case]]
+name = "a look-alike of a trial cache is your folder"
+kind = "negative"
+[[case.file]]
+path = "home/project/fresher-trial-cache2/look-alike.bin"
+size = 4194304
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/project/fresher-trial-cache2"
+
+# Two names of one file take its blocks once.
+[[case]]
+name = "a hard-linked file is counted once"
+kind = "negative"
+[[case.file]]
+path = "home/linked-twice/a/movie.bin"
+size = 16777216
+fill = "data"
+[[case.hardlink]]
+path = "home/linked-twice/b/movie.bin"
+target = "home/linked-twice/a/movie.bin"
+[case.map]
+part = "your-folders"
+at = "home/linked-twice"
+
+# The view opens at `home/Library` and goes down through `Developer` and `com.example.big` to `Data`.
+[[case]]
+name = "a folder that is almost one child opens through it"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/com.example.big/Data/blob.bin"
+size = 50331648
+fill = "data"
+[[case.file]]
+path = "home/Library/beside.bin"
+size = 1048576
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/Library"
+
+[[case]]
+name = "the Trash is your folder, never explained"
+kind = "negative"
+[[case.file]]
+path = "home/.Trash/thrown-away.bin"
+size = 4194304
+fill = "data"
+[case.map]
+part = "your-folders"
+
+[[case]]
+name = "a trial cache next to a marker is explained"
+kind = "positive"
+[[case.marker]]
+path = "home/project"
+[[case.file]]
+path = "home/project/fresher-trial-cache/blob.bin"
+size = 12582912
+fill = "data"
+[case.expect]
+item = "home/project/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+
+# The outer cache is claimed and the scan does not go into it: the inner one is part of it, not a second finding. The
+# map is read at the outer cache: `home/nest` also holds the marker, which is the user's own.
+[[case]]
+name = "a trial cache inside a trial cache counts once"
+kind = "positive"
+[[case.marker]]
+path = "home/nest"
+[[case.file]]
+path = "home/nest/fresher-trial-cache/blob.bin"
+size = 4194304
+fill = "data"
+[[case.file]]
+path = "home/nest/fresher-trial-cache/fresher-trial-cache/blob.bin"
+size = 4194304
+fill = "data"
+[case.expect]
+item = "home/nest/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"

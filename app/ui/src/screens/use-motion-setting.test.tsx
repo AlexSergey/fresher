@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SettingsView } from '../ipc/bindings.generated';
 
-import { mockCore, pushEvents } from '../ipc/mock';
+import { mockCore, pushEvents, sampleStorageAnswers } from '../ipc/mock';
 import { connectCore } from '../state/connect';
 import { CoreContext, type CoreStore, createCoreStore } from '../state/store';
 import { DEMO_DICTIONARY, IDLE } from '../test/demo-scan';
@@ -29,7 +29,7 @@ afterEach(() => {
 describe('useMotionSetting', () => {
   describe('negative cases', () => {
     it('leaves the page to the system when the core does not answer or the setting follows the system', async () => {
-      mockCore({ getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE });
+      mockCore({ getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE, ...sampleStorageAnswers });
       const store = createCoreStore();
 
       mount(store);
@@ -42,7 +42,12 @@ describe('useMotionSetting', () => {
 
   describe('positive cases', () => {
     it('reduces motion on the page, and gives it back to the system when the setting changes', async () => {
-      mockCore({ getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE, getSettings: () => view('reduced') });
+      mockCore({
+        getDictionary: () => DEMO_DICTIONARY,
+        getOverview: () => IDLE,
+        getSettings: () => view('reduced'),
+        ...sampleStorageAnswers,
+      });
       const store = createCoreStore();
       connectCore(store);
 

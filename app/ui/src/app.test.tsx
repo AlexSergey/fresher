@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { App } from './app';
-import { mockCore } from './ipc/mock';
+import { mockCore, sampleStorageAnswers } from './ipc/mock';
 import { createCoreStore } from './state/store';
 import { DEMO_DICTIONARY, DEMO_MODULES, GRANTED, IDLE } from './test/demo-scan';
 
@@ -29,6 +29,7 @@ describe('App', () => {
         getDictionary: () => DEMO_DICTIONARY,
         getModules: () => DEMO_MODULES,
         getOverview: () => IDLE,
+        ...sampleStorageAnswers,
       });
 
       render(<App store={createCoreStore()} />);

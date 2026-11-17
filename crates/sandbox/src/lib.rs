@@ -14,7 +14,7 @@ mod expected;
 mod generate;
 mod layout;
 
-pub use case::{AfterCleanup, Case, CaseFile, CaseKind, Expectation};
+pub use case::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, MapExpectation, MapPartName};
 pub use error::{CaseError, SandboxError};
 pub use generate::{Generated, generate};
 pub use layout::Sandbox;

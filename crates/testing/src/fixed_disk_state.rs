@@ -200,15 +200,37 @@ impl DiskState for FixedDiskState {
     fn path(&self, id: NodeId) -> Option<PathBuf> {
         self.position(id).map(|position| self.nodes[position].path.clone())
     }
+
+    /// Depth first from the roots, each folder's children in the order given.
+    fn owned(&self) -> Vec<(NodeId, CategoryId)> {
+        let mut owned = Vec::new();
+        let mut stack: Vec<usize> = self.roots().iter().rev().filter_map(|&root| self.position(root)).collect();
+        while let Some(position) = stack.pop() {
+            let node = &self.nodes[position];
+            if let Some(owner) = node.owner {
+                owned.push((self.id_of(position), owner));
+            }
+            stack.extend(node.children.iter().rev());
+        }
+        owned
+    }
+
+    fn find(&self, path: &Path) -> Option<NodeId> {
+        self.nodes.iter().position(|node| node.path == path).map(|position| self.id_of(position))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use fresher_core::{ByteSize, NodeKind, Sizes, StateId, Timestamp};
+    use fresher_core::{ByteSize, CategoryId, ModuleId, NodeKind, Sizes, StateId, Timestamp};
 
     use crate::FixedDiskState;
+
+    fn category(id: &'static str) -> CategoryId {
+        CategoryId::new(ModuleId::new("demo").unwrap(), id).unwrap()
+    }
 
     fn bytes(size: u64) -> Sizes {
         Sizes::complete(ByteSize::new(size), ByteSize::new(size))
@@ -268,14 +290,40 @@ mod tests {
         fn a_search_with_no_hit_finds_nothing() {
             assert_eq!(state().search("nothing-like-it", 10), Vec::new());
         }
+
+        #[test]
+        fn a_state_without_claims_owns_nothing() {
+            assert_eq!(state().owned(), Vec::new());
+        }
+
+        #[test]
+        fn a_claim_on_no_node_is_not_owned() {
+            let state = state().with_owner(Path::new("/home/missing"), super::category("demo.caches"));
+
+            assert_eq!(state.owned(), Vec::new());
+        }
+
+        #[test]
+        fn find_outside_every_root_is_none() {
+            let state = state();
+
+            assert_eq!(state.find(Path::new("/elsewhere/Library")), None);
+            assert_eq!(state.find(Path::new("/home/Library/missing")), None);
+        }
+
+        #[test]
+        fn find_does_not_match_a_prefix_of_a_name() {
+            assert_eq!(state().find(Path::new("/home/Lib")), None);
+            assert_eq!(state().find(Path::new("/home/Library/CachesX")), None);
+        }
     }
 
     mod positive {
         use std::path::{Path, PathBuf};
 
-        use fresher_core::{CategoryId, ChildOrder, DiskState, ModuleId, NodeKind, Timestamp};
+        use fresher_core::{ChildOrder, DiskState, NodeKind, Timestamp};
 
-        use super::state;
+        use super::{category, state};
 
         #[test]
         fn the_roots_and_their_children_page_by_size_or_name() {
@@ -316,12 +364,50 @@ mod tests {
 
         #[test]
         fn the_owner_is_recorded_on_its_node() {
-            let category = CategoryId::new(ModuleId::new("demo").unwrap(), "demo.caches").unwrap();
+            let category = category("demo.caches");
             let state = state().with_owner(Path::new("/home/Library/Caches"), category);
 
             let found = state.search("caches", 1);
 
             assert_eq!(found[0].owner, Some(category));
+        }
+
+        #[test]
+        fn owned_lists_every_claimed_node_ancestors_first() {
+            let (caches, files) = (category("demo.caches"), category("demo.files"));
+            let state = state()
+                .with_owner(Path::new("/home/Library/big.cache"), files)
+                .with_owner(Path::new("/home/Library/Caches"), caches)
+                .with_owner(Path::new("/home/Library"), caches)
+                .with_owner(Path::new("/home/locked/inner"), files);
+
+            let owned: Vec<_> = state.owned().into_iter().map(|(id, owner)| (state.path(id).unwrap(), owner)).collect();
+
+            assert_eq!(
+                owned,
+                [
+                    (PathBuf::from("/home/Library"), caches),
+                    (PathBuf::from("/home/Library/Caches"), caches),
+                    (PathBuf::from("/home/Library/big.cache"), files),
+                    (PathBuf::from("/home/locked/inner"), files),
+                ]
+            );
+        }
+
+        #[test]
+        fn find_answers_the_node_of_every_path() {
+            let state = state();
+            let mut every = state.roots();
+            let mut position = 0;
+            while let Some(&id) = every.get(position) {
+                every.extend(state.children(id, ChildOrder::ByName, 0, u32::MAX).unwrap().nodes.iter().map(|n| n.id));
+                position += 1;
+            }
+
+            assert_eq!(every.len(), 7);
+            for id in every {
+                assert_eq!(state.find(&state.path(id).unwrap()), Some(id));
+            }
         }
     }
 }

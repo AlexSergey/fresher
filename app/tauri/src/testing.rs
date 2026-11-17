@@ -10,10 +10,10 @@ use std::time::{Duration, Instant};
 
 use fresher_cleaner::CleanerPorts;
 use fresher_core::{
-    CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock, CommandRunner,
-    Confirmation, ConfirmedPlan, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match, PlanItem, PutBackOutcome,
-    Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Timestamp, TrashState, TrashedItem, WalkError,
-    WalkProgress, WalkRequest, WalkSummary,
+    ByteSize, CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock,
+    CommandRunner, Confirmation, ConfirmedPlan, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match, PlanItem,
+    PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Timestamp, TrashState,
+    TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports};
 use fresher_store::{DataFolder, FileSettingsStore};
@@ -154,7 +154,10 @@ impl Shell {
             commands: Arc::clone(&commands),
             clock: Arc::clone(&clock),
         };
-        let mut cleanup = cleanup(&home, &data, cleaner, Arc::new(FakeVolumes::default())).unwrap();
+        // The engine reads the volumes of the scan roots from the cleanup's volumes: the home sits on a 1 000-byte disk.
+        let disk = FakeVolumes::disk("Test disk", ByteSize::new(1_000), ByteSize::new(400), ByteSize::new(600));
+        let volumes = Arc::new(FakeVolumes::default().with_space(&home, disk));
+        let mut cleanup = cleanup(&home, &data, cleaner, volumes).unwrap();
         if held {
             cleanup = CleanupPorts { cleaner: Arc::new(HeldCleaner(cleanup.cleaner)), ..cleanup };
         }

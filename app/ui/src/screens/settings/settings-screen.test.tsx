@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ModuleInfo, Refusal, SettingsFile, SettingsView, SettingUpdate } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { DEMO_DICTIONARY, DEMO_MODULES, DEMO_OVERVIEW, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
@@ -68,6 +68,7 @@ const core = (answers: Partial<CoreAnswers> = {}): void => {
     getModules: () => MODULES,
     getOverview: () => IDLE,
     getSettings: () => SETTINGS,
+    ...sampleStorageAnswers,
     ...answers,
   });
 };

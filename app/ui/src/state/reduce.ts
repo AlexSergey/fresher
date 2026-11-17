@@ -13,6 +13,7 @@ import type {
   ScanOutcome,
   SettingsView,
   Sizes,
+  StorageMap,
 } from '../ipc/bindings.generated';
 
 import { type CleanupAction, type CleanupState, NO_CLEANUP, reduceCleanup } from './cleanup';
@@ -28,6 +29,7 @@ export type CoreAction =
   | { readonly overview: Overview; readonly type: 'overview-loaded' }
   | { readonly settings: SettingsView; readonly type: 'settings-loaded' }
   | { readonly status: AccessStatus; readonly type: 'access-loaded' }
+  | { readonly storageMap: StorageMap; readonly type: 'storage-map-loaded' }
   | { readonly type: 'overview-requested' }
   // The quit question was answered, either way.
   | { readonly type: 'quit-answered' };
@@ -63,6 +65,9 @@ export type CoreState = {
   // The events told of changes the overview does not count yet: the refresher (state/refresh.ts) asks for a new one.
   readonly stale: boolean;
   readonly status: EngineStatus;
+  // The storage map as `get_storage_map` last answered: totals per volume, never rows. A new scan keeps it until the
+  // first answer of that scan replaces it.
+  readonly storageMap: null | StorageMap;
 };
 
 type ScanEvent = Extract<Event, { readonly scan: ScanId }>;
@@ -87,6 +92,7 @@ export const INITIAL_STATE: CoreState = {
   settings: null,
   stale: false,
   status: { state: 'idle' },
+  storageMap: null,
 };
 
 const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
@@ -248,5 +254,10 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     case 'settings-loaded':
       // The settings are asked for once; the events since keep them, so a later answer is older than they are.
       return state.settings === null ? { ...state, settings: action.settings } : state;
+    case 'storage-map-loaded':
+      // The map is polled with the overview: an answer equal to the map held changes nothing, so nothing renders.
+      return JSON.stringify(state.storageMap) === JSON.stringify(action.storageMap)
+        ? state
+        : { ...state, storageMap: action.storageMap };
   }
 };

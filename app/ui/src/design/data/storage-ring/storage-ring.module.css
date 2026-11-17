@@ -1,5 +1,5 @@
 /*
- * The storage ring: the track (white 6 %, dashed when partial) and the arcs in their levels' colours with round caps,
+ * The storage ring: the track (white 6 %, dashed when partial) and the arcs in their tones' colours with round caps,
  * over a blurred copy of the arcs at 45 % as their glow (an arc shorter than its caps is square-ended). An arc grows by stroke-dashoffset (the design's named
  * exception) and turns to its start by transform. The sheen is a soft white comet masked to the band, played once.
  */
@@ -51,16 +51,32 @@
     stroke-linecap: butt;
   }
 
-  .arc[data-level='low'] {
+  .arc[data-tone='low'] {
     stroke: var(--level-low-fg);
   }
 
-  .arc[data-level='medium'] {
+  .arc[data-tone='medium'] {
     stroke: var(--level-medium-fg);
   }
 
-  .arc[data-level='high'] {
+  .arc[data-tone='high'] {
     stroke: var(--level-high-fg);
+  }
+
+  .arc[data-tone='plain'] {
+    stroke: var(--tone-plain);
+  }
+
+  .arc[data-tone='system'] {
+    stroke: var(--tone-system);
+  }
+
+  .arc[data-tone='free'] {
+    stroke: var(--tone-free-outline);
+  }
+
+  .arc[data-tone='unknown'] {
+    stroke: var(--tone-unknown-stroke);
   }
 
   .sheen {

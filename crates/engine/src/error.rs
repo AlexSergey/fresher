@@ -3,7 +3,7 @@
 use std::io;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use fresher_core::{CommandError, JournalError, PlanError, SystemUiError};
+use fresher_core::{CommandError, JournalError, PlanError, StorageMapError, SystemUiError};
 
 /// A failure inside the engine. It is a bug or a broken host, never the user's input: the UI sees `Internal`.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -24,6 +24,8 @@ pub(crate) enum EngineError {
     Journal(JournalError),
     #[error("the system could not show the item: {0}")]
     SystemUi(SystemUiError),
+    #[error("the storage map could not be drawn: {0}")]
+    StorageMap(StorageMapError),
 }
 
 impl From<EngineError> for CommandError {
@@ -63,6 +65,7 @@ mod tests {
                 EngineError::Rehearsal { items: 2, answers: 1 },
                 EngineError::Journal(fresher_core::JournalError::ReadOnly),
                 EngineError::SystemUi(fresher_core::SystemUiError::Unsupported),
+                EngineError::StorageMap(fresher_core::StorageMapError::Overflow),
             ];
 
             for error in errors {

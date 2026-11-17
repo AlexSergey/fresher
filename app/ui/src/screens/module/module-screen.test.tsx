@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CategoryId, FindingsQuery, ModuleInfo, Overview } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore } from '../../ipc/mock';
+import { mockCore, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -59,6 +59,7 @@ const core = (answers: Partial<CoreAnswers> = {}): void => {
     },
     getModules: () => DEMO_MODULES,
     getOverview: () => DEMO_OVERVIEW,
+    ...sampleStorageAnswers,
     ...answers,
   });
 };

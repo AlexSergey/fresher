@@ -1,0 +1,138 @@
+/*
+ * A volume's map: its name, the bar with its legend, then one line per part — the name, the size and a quiet
+ * "Show details" — with the part's details under it when opened.
+ */
+@layer components {
+  .map {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .title {
+    margin: 0;
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .body {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .body[hidden] {
+    display: none;
+  }
+
+  .lines {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .line {
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .name {
+    overflow: hidden;
+    min-width: 0;
+    flex: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .size {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .note,
+  .details {
+    margin: var(--space-1) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .details[hidden] {
+    display: none;
+  }
+
+  .details p {
+    margin: 0 0 var(--space-1);
+  }
+
+  .reasons {
+    padding-left: var(--space-4);
+    margin: 0;
+  }
+
+  .toggle,
+  .volume {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    padding: var(--space-0-5) var(--space-1);
+    border: 0;
+    border-radius: var(--radius-xs);
+    background-color: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    gap: var(--space-1);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .toggle {
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .volume {
+    color: var(--text-primary);
+  }
+
+  .toggle:hover,
+  .volume:hover {
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .toggle:focus-visible,
+  .volume:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+
+  .chevron {
+    display: inline-flex;
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .toggle[aria-expanded='true'] .chevron,
+  .volume[aria-expanded='true'] .chevron {
+    transform: rotate(90deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .chevron {
+      transition: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .chevron {
+    transition: none;
+  }
+}

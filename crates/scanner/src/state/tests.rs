@@ -92,6 +92,48 @@ mod negative {
         assert_eq!(a.owner, None);
         assert_eq!(state.path(a.id), Some(root.join("a")));
     }
+
+    #[test]
+    fn a_state_without_claims_owns_nothing() {
+        let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a/f\"\n").unwrap();
+
+        let (_, state) = committed(&tree, &[], &[]);
+
+        assert_eq!(state.owned(), Vec::new());
+    }
+
+    #[test]
+    fn a_claim_on_no_node_is_not_owned() {
+        let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a/f\"\n").unwrap();
+
+        let (_, state) = committed(&tree, &[], &[("missing", "demo.caches"), ("a/missing", "demo.caches")]);
+
+        assert_eq!(state.owned(), Vec::new());
+    }
+
+    #[test]
+    fn find_outside_every_root_is_none() {
+        let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a/f\"\n").unwrap();
+
+        let (root, state) = committed(&tree, &[], &[]);
+
+        assert_eq!(state.find(std::path::Path::new("/nowhere/a/f")), None);
+        assert_eq!(state.find(&root.join("a/missing")), None);
+        assert_eq!(state.find(root.parent().unwrap()), None);
+    }
+
+    #[test]
+    fn find_does_not_match_a_prefix_of_a_name() {
+        let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a/b/f\"\n").unwrap();
+
+        let (root, state) = committed(&tree, &[], &[]);
+
+        assert_eq!(state.find(&root.join("a/bc")), None);
+        assert_eq!(state.find(&root.join("a/b/f2")), None);
+        let mut sibling = root.clone().into_os_string();
+        sibling.push("x");
+        assert_eq!(state.find(std::path::Path::new(&sibling)), None);
+    }
 }
 
 mod positive {
@@ -133,6 +175,52 @@ mod positive {
         assert_eq!(find(&*state, Path::new("Library/Caches/app")).owner, Some(category_id("demo.caches")));
         assert_eq!(find(&*state, Path::new("Logs")).owner, Some(category_id("demo.logs")));
         assert_eq!(find(&*state, Path::new("Library")).owner, None);
+    }
+
+    #[test]
+    fn owned_lists_every_claimed_node_ancestors_first() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/homes/scan-nested-claims.toml");
+        let tree = FixtureTree::from_toml(&fixture).unwrap();
+        let claims = [
+            ("Library/Caches/other", "demo.other"),
+            ("Downloads", "demo.installers"),
+            ("Library/Caches/app", "demo.app"),
+            ("Library/Caches", "demo.caches"),
+        ];
+
+        let (root, state) = committed(&tree, &[], &claims);
+
+        let owned: Vec<_> = state
+            .owned()
+            .into_iter()
+            .map(|(id, owner)| (state.path(id).unwrap().strip_prefix(&root).unwrap().to_path_buf(), owner))
+            .collect();
+        assert_eq!(owned.len(), claims.len());
+        for (path, category) in claims {
+            assert!(owned.contains(&(Path::new(path).to_path_buf(), category_id(category))), "{path} is owned");
+        }
+        let at = |wanted: &str| owned.iter().position(|(path, _)| path == Path::new(wanted)).unwrap();
+        assert!(at("Library/Caches") < at("Library/Caches/app"));
+        assert!(at("Library/Caches") < at("Library/Caches/other"));
+    }
+
+    #[test]
+    fn find_answers_the_node_of_every_path() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/homes/scan-nested-claims.toml");
+        let tree = FixtureTree::from_toml(&fixture).unwrap();
+        let (_, state) = committed(&tree, &[], &[]);
+        let mut every = state.roots();
+        let mut position = 0;
+        while let Some(&id) = every.get(position) {
+            let page = state.children(id, ChildOrder::ByName, 0, u32::MAX).unwrap();
+            every.extend(page.nodes.iter().map(|node| node.id));
+            position += 1;
+        }
+
+        assert!(every.len() > 5, "the root, its folders and the kept file");
+        for id in every {
+            assert_eq!(state.find(&state.path(id).unwrap()), Some(id));
+        }
     }
 
     #[test]

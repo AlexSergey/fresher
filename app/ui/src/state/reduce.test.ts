@@ -12,6 +12,7 @@ import {
   FULL_COVERAGE,
   IDLE,
 } from '../test/demo-scan';
+import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { type CoreAction, type CoreState, INITIAL_STATE, reduce } from './reduce';
 
 const run = (actions: readonly CoreAction[], from: CoreState = INITIAL_STATE): CoreState =>
@@ -319,6 +320,24 @@ describe('reduce', () => {
       expect(state.stale).toBe(true);
       expect(state.status).toEqual({ state: 'idle' });
       expect(state.outcome).toEqual({ kind: 'completed' });
+    });
+
+    it('a loaded map is kept', () => {
+      const state = run([{ storageMap: SAMPLE_STORAGE_MAP, type: 'storage-map-loaded' }]);
+
+      expect(state.storageMap).toBe(SAMPLE_STORAGE_MAP);
+      expect(reduce(state, { storageMap: { ...SAMPLE_STORAGE_MAP }, type: 'storage-map-loaded' })).toBe(state);
+    });
+
+    it('a new scan keeps the last map until its first answer', () => {
+      const loadedMap: CoreAction = { storageMap: SAMPLE_STORAGE_MAP, type: 'storage-map-loaded' };
+      const scanningMap = { ...SAMPLE_STORAGE_MAP, phase: { kind: 'scanning' } } as const;
+
+      const afterStart = run([loadedMap, started]);
+      const afterAnswer = reduce(afterStart, { storageMap: scanningMap, type: 'storage-map-loaded' });
+
+      expect(afterStart.storageMap).toBe(SAMPLE_STORAGE_MAP);
+      expect(afterAnswer.storageMap).toBe(scanningMap);
     });
   });
 });

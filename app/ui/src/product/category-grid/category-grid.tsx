@@ -17,6 +17,8 @@ export type CategoryGridProps = {
   readonly scanning: boolean;
   readonly selected: (category: CategoryId) => 'mixed' | boolean;
   readonly totals: readonly CategoryTotal[];
+  // What of each category the by-meaning view lists under apps, outside the card's size; absent for the rest.
+  readonly underApps?: ReadonlyMap<CategoryId, Sizes>;
 };
 
 // The categories largest first; ties keep the core's order.
@@ -32,6 +34,7 @@ export const CategoryGrid = ({
   scanning,
   selected,
   totals,
+  underApps,
 }: CategoryGridProps): JSX.Element => {
   const order = useCoalescedOrder(largestFirst(totals), scanning);
   const flip = useFlipList(order);
@@ -55,6 +58,7 @@ export const CategoryGrid = ({
                 selected={selected(category)}
                 share={found.allocated > 0 ? total.sizes.allocated / found.allocated : 0}
                 total={total}
+                underApps={underApps?.get(category)}
               />
             </li>
           );

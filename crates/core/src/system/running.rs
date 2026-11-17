@@ -37,17 +37,12 @@ impl RunningSet {
     /// The name of a running app that owns `path`: one of the path's names is one of the app's bundle ids, or starts
     /// with it and a dot (`com.example.App.savedState`), ignoring case. Too wide errs on the side of keeping.
     pub fn owner_of(&self, path: &Path) -> Option<&str> {
-        let names: Vec<String> = path.iter().filter_map(|name| name.to_str()).map(str::to_ascii_lowercase).collect();
+        let names: Vec<&str> = path.iter().filter_map(|name| name.to_str()).collect();
         self.apps
             .iter()
-            .find(|app| app.bundle_ids.iter().any(|id| names.iter().any(|name| named_after(name, id.folded()))))
+            .find(|app| app.bundle_ids.iter().any(|id| names.iter().any(|name| id.names(name))))
             .map(|app| app.name.as_str())
     }
-}
-
-/// Whether a lower-case `name` is `id` or `id` followed by a dot and more.
-fn named_after(name: &str, id: &str) -> bool {
-    name.strip_prefix(id).is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
 }
 
 #[cfg(test)]

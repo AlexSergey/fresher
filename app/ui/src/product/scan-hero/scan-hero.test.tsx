@@ -42,7 +42,7 @@ const running = (allocated: number): Overview => ({
 
 // The ring's drawing has no roles: its arcs and the sweep are found by their markers.
 /* eslint-disable testing-library/no-node-access -- the ring's layers are decoration, without roles */
-const arcs = (): readonly Element[] => [...document.querySelectorAll('[data-ring="arcs"] [data-level]')];
+const arcs = (): readonly Element[] => [...document.querySelectorAll('[data-ring="arcs"] [data-tone]')];
 const sweep = (): Element | null => document.querySelector('[data-sweep]');
 /* eslint-enable testing-library/no-node-access */
 
@@ -172,7 +172,7 @@ describe('ScanHero', () => {
     it('segments follow the totals in the core order and their highest levels', () => {
       mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
 
-      expect(arcs().map((arc) => arc.getAttribute('data-level'))).toStrictEqual(['safe', 'low']);
+      expect(arcs().map((arc) => arc.getAttribute('data-tone'))).toStrictEqual(['safe', 'low']);
       expect(
         screen.getByRole('img', { name: 'Space found: Example caches 1.8 GB, Example downloads 750 MB' }),
       ).toBeInTheDocument();
