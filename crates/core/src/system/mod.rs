@@ -7,7 +7,7 @@ mod ids;
 mod projects;
 mod running;
 
-pub use apps::{InstalledApp, InstalledApps};
+pub use apps::{InstalledApp, InstalledApps, InstalledList};
 pub use facts::{SystemFacts, SystemPorts};
 pub use ids::{AppIdError, BundleId, TeamId};
 pub use projects::{Project, ProjectKind};

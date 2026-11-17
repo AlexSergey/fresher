@@ -1,0 +1,30 @@
+# A home for the jetbrains module with the folders of IDEs that are not installed, one of each changed recently:
+# PhpStorm 2024.2's settings 40 days before `FIXTURE_NOW` and 2025.1's 5 days before; the Community edition of PyCharm,
+# changed 5 days before, while the tests install the full edition. Nothing may be offered.
+
+[[file]]
+path = "Library/Application Support/JetBrains/PhpStorm2024.2/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[dir]]
+path = "Library/Application Support/JetBrains/PhpStorm2024.2"
+age = "40d"
+
+[[file]]
+path = "Library/Application Support/JetBrains/PhpStorm2025.1/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[dir]]
+path = "Library/Application Support/JetBrains/PhpStorm2025.1"
+age = "5d"
+
+[[file]]
+path = "Library/Caches/JetBrains/PyCharmCE2024.1/index/data.bin"
+size = 524288
+modified = 1762000000
+
+[[dir]]
+path = "Library/Caches/JetBrains/PyCharmCE2024.1"
+age = "5d"

@@ -1,0 +1,22 @@
+# The jetbrains module while an app of the vendor that its products table does not know is open: it may be an IDE the
+# table does not know yet, reading any IDE's folders, so every folder is kept. A file of its own, since the open app
+# keeps the folders of every case beside it (`jetbrains.toml`).
+feature = "jetbrains-unknown-app-open"
+module = "jetbrains"
+
+[[case]]
+name = "a removed IDE keeps its data while an unknown app of the vendor runs"
+kind = "negative"
+[[case.running]]
+name = "Gateway"
+bundle-ids = ["com.jetbrains.gateway"]
+[[case.file]]
+path = "home/Library/Caches/JetBrains/RustRover2024.2/index/data.bin"
+size = 1048576
+[[case.dir]]
+path = "home/Library/Caches/JetBrains/RustRover2024.2"
+age = "40d"
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.vendor-app-open"
+items = 1

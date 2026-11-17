@@ -1,0 +1,715 @@
+{
+  "current": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "jetbrains.settings",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.logs",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "running": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "jetbrains.settings",
+        "reason": "jetbrains.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.settings",
+        "reason": "jetbrains.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 524288,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "similar-names": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "stale": {
+    "findings": [
+      {
+        "app": "com.jetbrains.intellij-EAP",
+        "category": "jetbrains.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "caches/IntelliJIdea2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "current": {
+              "kind": "text",
+              "value": "2025.3"
+            },
+            "product": {
+              "kind": "text",
+              "value": "IntelliJ IDEA"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/JetBrains/IntelliJIdea2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2097152,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/JetBrains/IntelliJIdea2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "IntelliJ IDEA"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.title"
+        }
+      },
+      {
+        "app": "com.jetbrains.WebStorm",
+        "category": "jetbrains.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "caches/WebStorm2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "current": {
+              "kind": "text",
+              "value": "2025.3"
+            },
+            "product": {
+              "kind": "text",
+              "value": "WebStorm"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/JetBrains/WebStorm2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/JetBrains/WebStorm2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "WebStorm"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.title"
+        }
+      },
+      {
+        "app": "com.jetbrains.intellij-EAP",
+        "category": "jetbrains.logs",
+        "danger": "safe",
+        "key": {
+          "identity": "logs/IntelliJIdea2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "current": {
+              "kind": "text",
+              "value": "2025.3"
+            },
+            "product": {
+              "kind": "text",
+              "value": "IntelliJ IDEA"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Logs/JetBrains/IntelliJIdea2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Logs/JetBrains/IntelliJIdea2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "IntelliJ IDEA"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.title"
+        }
+      },
+      {
+        "app": "com.jetbrains.WebStorm",
+        "category": "jetbrains.logs",
+        "danger": "safe",
+        "key": {
+          "identity": "logs/WebStorm2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "current": {
+              "kind": "text",
+              "value": "2025.3"
+            },
+            "product": {
+              "kind": "text",
+              "value": "WebStorm"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Logs/JetBrains/WebStorm2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Logs/JetBrains/WebStorm2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "WebStorm"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.title"
+        }
+      },
+      {
+        "app": "com.jetbrains.intellij-EAP",
+        "category": "jetbrains.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "settings/IntelliJIdea2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "current": {
+              "kind": "text",
+              "value": "2025.3"
+            },
+            "product": {
+              "kind": "text",
+              "value": "IntelliJ IDEA"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Application Support/JetBrains/IntelliJIdea2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/JetBrains/IntelliJIdea2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "IntelliJ IDEA"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.title"
+        }
+      },
+      {
+        "app": "com.jetbrains.WebStorm",
+        "category": "jetbrains.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "settings/WebStorm2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "current": {
+              "kind": "text",
+              "value": "2025.3"
+            },
+            "product": {
+              "kind": "text",
+              "value": "WebStorm"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Application Support/JetBrains/WebStorm2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 264192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/JetBrains/WebStorm2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "WebStorm"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.title"
+        }
+      }
+    ],
+    "leftOut": [
+      {
+        "category": "jetbrains.settings",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.settings",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.settings",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.newer",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 524288,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.caches",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.logs",
+        "reason": "jetbrains.left-out.current",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "uninstalled": {
+    "findings": [
+      {
+        "app": "com.jetbrains.datagrip",
+        "category": "jetbrains.uninstalled",
+        "danger": "medium",
+        "key": {
+          "identity": "caches/DataGrip2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            },
+            "product": {
+              "kind": "text",
+              "value": "DataGrip"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.uninstalled-reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/JetBrains/DataGrip2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/JetBrains/DataGrip2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "DataGrip"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.uninstalled-caches"
+        }
+      },
+      {
+        "app": "com.jetbrains.datagrip",
+        "category": "jetbrains.uninstalled",
+        "danger": "medium",
+        "key": {
+          "identity": "logs/DataGrip2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            },
+            "product": {
+              "kind": "text",
+              "value": "DataGrip"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.uninstalled-reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Logs/JetBrains/DataGrip2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Logs/JetBrains/DataGrip2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "DataGrip"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.uninstalled-logs"
+        }
+      },
+      {
+        "app": "com.jetbrains.datagrip",
+        "category": "jetbrains.uninstalled",
+        "danger": "medium",
+        "key": {
+          "identity": "settings/DataGrip2024.3",
+          "module": "jetbrains"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            },
+            "product": {
+              "kind": "text",
+              "value": "DataGrip"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.uninstalled-reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Application Support/JetBrains/DataGrip2024.3"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 133120,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/JetBrains/DataGrip2024.3"
+        },
+        "title": {
+          "args": {
+            "product": {
+              "kind": "text",
+              "value": "DataGrip"
+            },
+            "version": {
+              "kind": "text",
+              "value": "2024.3"
+            }
+          },
+          "key": "jetbrains.finding.uninstalled-settings"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "uninstalled-fresh": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "jetbrains.uninstalled",
+        "reason": "jetbrains.left-out.used-recently",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.uninstalled",
+        "reason": "jetbrains.left-out.used-recently",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "jetbrains.uninstalled",
+        "reason": "jetbrains.left-out.used-recently",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 524288,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

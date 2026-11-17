@@ -53,8 +53,11 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 
 ## Catalogue
 
-| Category | Danger level | Rule | File |
-| -------- | ------------ | ---- | ---- |
+| Category             | Danger level | Rule                                          | File                                               |
+| -------------------- | ------------ | --------------------------------------------- | -------------------------------------------------- |
+| `jetbrains.caches`   | Safe         | none (the module's code, `modules/jetbrains`) | [`jetbrains-caches.md`](./jetbrains-caches.md)     |
+| `jetbrains.logs`     | Safe         | none (the module's code, `modules/jetbrains`) | [`jetbrains-logs.md`](./jetbrains-logs.md)         |
+| `jetbrains.settings` | Medium       | none (the module's code, `modules/jetbrains`) | [`jetbrains-settings.md`](./jetbrains-settings.md) |
+| `jetbrains.uninstalled` | Medium    | none (the module's code, `modules/jetbrains`) | [`jetbrains-uninstalled.md`](./jetbrains-uninstalled.md) |
 
-No category is documented yet. The first ones (JetBrains stale versions, developer caches, `node_modules`, Docker) come
-with the plans that implement their rules.
+The next ones (developer caches, `node_modules`, Docker) come with the plans that implement their rules.

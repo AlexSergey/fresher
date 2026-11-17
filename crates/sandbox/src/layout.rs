@@ -10,6 +10,8 @@ use crate::SandboxError;
 pub(crate) const DATA_FOLDER: &str = ".fresher-data";
 /// The checklist of a run by hand, at the sandbox's top.
 pub(crate) const CHECKLIST: &str = "EXPECTED.md";
+/// The world of the case files (the moment of the generation and the apps that are open), at the sandbox's top.
+pub(crate) const WORLD: &str = "world.toml";
 /// The folders of a sandbox, relative to it: the fake home, its Trash, the apps folders and the app's data folder.
 pub(crate) const PARTS: [&str; 5] = ["home", "home/.Trash", "Applications", "System/Applications", DATA_FOLDER];
 
@@ -70,6 +72,11 @@ impl Sandbox {
     /// The checklist of a run by hand.
     pub fn checklist(&self) -> PathBuf {
         self.path.join(CHECKLIST)
+    }
+
+    /// The world of the case files: the moment of the generation and the apps that are open in sandbox mode.
+    pub fn world(&self) -> PathBuf {
+        self.path.join(WORLD)
     }
 
     /// The known folders of the sandbox: the user's under `home/`, the apps folders at `Applications/` and

@@ -164,6 +164,7 @@ export const DEMO_DICTIONARY: Dictionary = {
   'demo.caches.what': 'Example data: made-up cache folders of made-up apps, shown by the demo module.',
   'demo.downloads.name': 'Example downloads',
   'demo.downloads.what': 'Example data: made-up installers and archives in a made-up Downloads folder.',
+  'demo.enabled.description': 'Shows made-up example findings, so the app can be tried without touching your disk.',
   'demo.enabled.label': 'Demo module',
   'demo.finding.reason': 'Example data from the demo module: it does not exist on your disk.',
   'demo.finding.title': 'Example: {name}',
@@ -335,6 +336,5 @@ export const SCRIPTS_DICTIONARY: Dictionary = {
   'demo.downloads.comes-back': 'No: a removed download stays removed until you download it again.',
   'demo.downloads.if-removed': 'The installers are gone; download them again if you need them.',
   'demo.downloads.made-by': 'You, by downloading the made-up installers.',
-  'demo.enabled.description': 'Shows made-up example findings, so the app can be tried without touching your disk.',
   'demo.error.failed': 'The demo module stopped with an error, as it was told to.',
 };

@@ -20,6 +20,12 @@ impl CancelToken {
     pub fn is_cancelled(&self) -> bool {
         self.0.load(Ordering::Acquire)
     }
+
+    /// Whether `other` is a clone of this token: the same operation. A module that keeps something between its calls
+    /// of one scan tells by it a new scan from the one it kept it for.
+    pub fn is_same(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
 }
 
 #[cfg(test)]
@@ -31,10 +37,22 @@ mod tests {
         fn a_new_token_is_not_cancelled() {
             assert!(!CancelToken::new().is_cancelled());
         }
+
+        #[test]
+        fn two_new_tokens_are_not_the_same() {
+            assert!(!CancelToken::new().is_same(&CancelToken::new()));
+        }
     }
 
     mod positive {
         use crate::CancelToken;
+
+        #[test]
+        fn a_clone_is_the_same_token() {
+            let token = CancelToken::new();
+
+            assert!(token.is_same(&token.clone()));
+        }
 
         #[test]
         fn cancel_token_is_seen_by_every_clone() {

@@ -1,0 +1,78 @@
+# A home for the jetbrains module with older versions to offer. WebStorm: 2024.3 (older) and 2025.3 (in use) in the
+# three places. IntelliJ IDEA, installed side by side as the release 2025.2 and the early access build 2025.3: 2024.3
+# (older than both) and both versions in use in the settings and the caches, and 2026.1 (newer) in the caches.
+
+[[file]]
+path = "Library/Application Support/JetBrains/WebStorm2024.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/WebStorm2024.3/plugins/plugin.jar"
+size = 262144
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Logs/JetBrains/WebStorm2024.3/idea.log"
+size = 8192
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/IntelliJIdea2024.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/IntelliJIdea2024.3/index/data.bin"
+size = 2097152
+modified = 1762000000
+
+[[file]]
+path = "Library/Logs/JetBrains/IntelliJIdea2024.3/idea.log"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/IntelliJIdea2025.2/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/IntelliJIdea2025.2/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/IntelliJIdea2025.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/IntelliJIdea2025.3/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/IntelliJIdea2026.1/index/data.bin"
+size = 524288
+modified = 1762000000

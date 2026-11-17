@@ -26,6 +26,7 @@
   },
   "findings": [
     {
+      "app": null,
       "category": "trial.caches",
       "danger": "safe",
       "logical": 8388608,
@@ -33,6 +34,7 @@
       "subject": "home/nest/fresher-trial-cache"
     },
     {
+      "app": null,
       "category": "trial.caches",
       "danger": "safe",
       "logical": 12582912,
@@ -170,7 +172,7 @@
             }
           },
           {
-            "allocated": 83878166,
+            "allocated": 83878321,
             "part": {
               "kind": "remainder",
               "outsideScan": true,
@@ -197,7 +199,7 @@
             }
           },
           {
-            "allocated": 581959402,
+            "allocated": 581959247,
             "part": {
               "kind": "disk-own"
             }
@@ -378,8 +380,13 @@
         "kind": "file",
         "logical_size": 4194304,
         "path": "home/project/fresher-trial-cache2/look-alike.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 156238102
+    "totalLogicalSize": 156238257
   }
 }

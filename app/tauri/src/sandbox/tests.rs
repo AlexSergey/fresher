@@ -88,7 +88,7 @@ impl World {
     /// Sandbox mode on `path` on a Mac whose real home is `real_home`.
     fn start_with_home(&self, path: &Path, real_home: &Path) -> Result<Engine, ComposeError> {
         let mode = SandboxMode::new(path, SandboxTrash::Sandbox);
-        compose(&mode, real_home, &self.real_data(), fakes()).map(|(engine, _)| engine)
+        compose(&mode, real_home, &self.real_data(), |_| Ok(fakes())).map(|(engine, _)| engine)
     }
 
     fn start(&self) -> Engine {
@@ -289,6 +289,43 @@ mod negative {
         assert!(matches!(error.refusal(), Some(SandboxRefusal::Folder(_))), "{error:?}");
     }
 
+    /// The Mac running the test has apps open; sandbox mode's ports list none of them, only the sandbox's (none here).
+    #[test]
+    fn the_real_ports_never_take_the_macs_running_apps() {
+        let world = World::new();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        assert_eq!(fresher_sandbox::World::read(&world.sandbox()).unwrap().running(), []);
+        assert_eq!(ports.running.list(), Ok(Vec::new()));
+    }
+
+    /// A sandbox with no generation moment (no `world.toml`, or one written before it held one) runs on the system's
+    /// clock.
+    #[test]
+    fn the_real_ports_without_a_world_moment_take_the_systems_clock() {
+        let world = World::new();
+        fs::write(world.sandbox().world(), "").unwrap();
+        let before = std::time::SystemTime::now();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        assert!(ports.clock.now() >= before);
+    }
+
+    #[test]
+    fn a_world_that_is_not_valid_does_not_start() {
+        let world = World::new();
+        fs::write(world.sandbox().world(), "[[running]]\nname = \"CLion\"\nbundle-ids = [\"not an id\"]\n").unwrap();
+        let mode = SandboxMode::new(world.folder.path(), crate::sandbox::SandboxTrash::Sandbox);
+
+        let result =
+            crate::sandbox::compose(&mode, &world.real_home(), &world.real_data(), crate::sandbox::SandboxPorts::real);
+
+        let refusal = refused(result.map(|(engine, _)| engine));
+        assert!(matches!(refusal, Some(SandboxRefusal::World(fresher_sandbox::SandboxError::World { .. }))));
+    }
+
     /// A scan root outside the sandbox is scanned, but nothing in it can be removed.
     #[test]
     fn an_item_outside_the_sandbox_is_left_out() {
@@ -319,6 +356,31 @@ mod positive {
 
     use super::{SANDBOX_MARKER, World, clean, env, found, prepare, scan};
     use crate::sandbox::{SandboxMode, SandboxTrash};
+
+    #[test]
+    fn the_real_ports_take_the_sandboxs_declared_running_apps() {
+        let world = World::new();
+        let declared = "[[running]]\nname = \"CLion\"\nbundle-ids = [\"com.jetbrains.CLion\"]\n";
+        fs::write(world.sandbox().world(), declared).unwrap();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        let running = ports.running.list().unwrap();
+        assert_eq!(running.len(), 1);
+        assert_eq!((running[0].name.as_str(), running[0].bundle_ids[0].as_str()), ("CLion", "com.jetbrains.CLion"));
+    }
+
+    #[test]
+    fn the_real_ports_clock_starts_at_the_moment_the_sandbox_was_generated() {
+        let world = World::new();
+        fs::write(world.sandbox().world(), format!("now = {}\n", fresher_testing::FIXTURE_NOW)).unwrap();
+        let start = std::time::UNIX_EPOCH + std::time::Duration::from_secs(fresher_testing::FIXTURE_NOW);
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        let now = ports.clock.now();
+        assert!(now >= start && now < start + std::time::Duration::from_secs(60), "{now:?}");
+    }
 
     #[test]
     fn no_variable_is_the_normal_build() {
@@ -358,7 +420,7 @@ mod positive {
         let sandbox = world.sandbox();
         assert_eq!((start.data_folder, start.home), (sandbox.data_folder(), sandbox.home()));
         let canonical = fs::canonicalize(world.folder.path()).unwrap();
-        assert_eq!(start.build, fresher_core::Build::Sandbox { path: canonical });
+        assert_eq!(start.build, fresher_core::Build::Sandbox { path: canonical, simulated_running: true });
         assert!(!world.real_data().exists());
     }
 

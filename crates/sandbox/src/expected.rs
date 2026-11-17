@@ -2,8 +2,9 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use fresher_core::{DangerLevel, SkipCode};
+use fresher_testing::AppBundle;
 
-use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, MapExpectation, MapPartName};
+use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// where the storage map shows it; then the command that opens the app on the sandbox at `sandbox`.
@@ -18,6 +19,16 @@ pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path) -> String {
             .flat_map(|kind| file.cases().iter().filter(move |case| case.kind() == kind));
         for case in ordered {
             let _ = writeln!(text, "- [ ] **{}**: {}.", case.name(), sentence(case));
+            for app in case.tree().apps() {
+                let open = case.running_apps().any(|running| running.path == app.path);
+                let _ = writeln!(text, "  - {}{}.", installed(app), if open { " (open)" } else { "" });
+            }
+            for app in case.running_elsewhere() {
+                let _ = writeln!(text, "  - Open, not installed: {}.", app.name);
+            }
+            for left_out in case.left_out() {
+                let _ = writeln!(text, "  - {}.", left_out_sentence(left_out));
+            }
             if let Some(map) = case.map() {
                 let _ = writeln!(text, "  - {}.", map_sentence(map));
             }
@@ -39,6 +50,20 @@ fn sentence(case: &Case) -> String {
             after(expect)
         ),
     }
+}
+
+/// An app the case installs: `Installed: <name> <version>`, followed by ` (open)` when it runs.
+fn installed(app: &AppBundle) -> String {
+    match &app.version {
+        Some(version) => format!("Installed: {} {version}", app.name),
+        None => format!("Installed: {}", app.name),
+    }
+}
+
+/// What the case's left-out expectation says: the category and the reason are named by their ids, which the sandbox
+/// crate has no dictionary to turn into the module's texts.
+fn left_out_sentence(left_out: &LeftOutExpectation) -> String {
+    format!("Under '{}', {} left out: {}", left_out.category().as_str(), left_out.items(), left_out.reason().as_str())
 }
 
 /// Where the overview's by-place view shows the case's files.
@@ -232,6 +257,43 @@ reason = "in-use"
             assert!(lines[2].starts_with("- [ ] **a cache goes to the Trash**"));
             assert_eq!(lines[3], "  - on the overview, by place: `home/work/fresher-trial-cache` is explained.");
             assert!(lines[4].starts_with("- [ ] **a busy cache is skipped**"));
+        }
+
+        #[test]
+        fn the_checklist_lists_a_cases_apps() {
+            let cases = CASES.replace(
+                "path = \"home/other.bin\"\n",
+                "path = \"home/other.bin\"\n[[case.app]]\npath = \"Applications/WebStorm.app\"\n\
+                 bundle-id = \"com.jetbrains.WebStorm\"\nname = \"WebStorm\"\nversion = \"2025.3.1\"\n\
+                 running = true\n[[case.app]]\npath = \"Applications/Plain.app\"\nbundle-id = \"com.example.Plain\"\n\
+                 name = \"Plain\"\n[[case.running]]\nname = \"CLion\"\nbundle-ids = [\"com.jetbrains.CLion\"]\n",
+            );
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"));
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - Installed: WebStorm 2025.3.1 (open).",
+                    "  - Installed: Plain.",
+                    "  - Open, not installed: CLion."
+                ]
+            );
+        }
+
+        #[test]
+        fn the_checklist_says_what_is_left_out() {
+            let cases = CASES.replace(
+                "path = \"home/other.bin\"\n",
+                "path = \"home/other.bin\"\n[[case.left-out]]\ncategory = \"trial.caches\"\n\
+                 reason = \"trial.error.failed\"\nitems = 2\n",
+            );
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"));
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(lines, ["  - Under 'trial.caches', 2 left out: trial.error.failed."]);
         }
 
         #[test]

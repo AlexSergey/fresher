@@ -15,8 +15,8 @@ mod process;
 mod running;
 mod signature;
 
-pub use apps::MacInstalledApps;
-pub use clock::SystemClock;
+pub use apps::{AppSearch, MacInstalledApps};
+pub use clock::{StartedClock, SystemClock};
 pub use known_folders::MacKnownFolders;
 pub use process::{COMMAND_TIMEOUT, ProcessCommandRunner};
 pub use running::MacRunningApps;

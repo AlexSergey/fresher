@@ -38,6 +38,14 @@ pub enum FixtureError {
     FillOverCap { path: PathBuf },
     #[error("the fixture path {path} passes through a link")]
     PathThroughLink { path: PathBuf },
+    #[error("the app {path} must end in `.app`")]
+    AppNotABundle { path: PathBuf },
+    #[error("the app {path} has `{id}`, which is not a bundle id")]
+    InvalidBundleId { path: PathBuf, id: String },
+    #[error("the app {path} has a control character in its name, version or build")]
+    AppTextControl { path: PathBuf },
+    #[error("the fixture path {path} is inside the app {app}, which writes its own bundle")]
+    InsideApp { path: PathBuf, app: PathBuf },
 }
 
 impl FixtureTree {

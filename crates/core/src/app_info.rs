@@ -14,14 +14,15 @@ pub struct AppInfo {
 
 /// The kind of build. Only a development build can run in a sandbox; a release build never reports one.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
+#[serde(tag = "kind", rename_all = "kebab-case", rename_all_fields = "camelCase")]
 pub enum Build {
     /// The app as users run it.
     Release,
     /// A development build on the real home folder; it removes nothing outside a sandbox.
     Development,
-    /// A development build living inside the sandbox folder `path`.
-    Sandbox { path: PathBuf },
+    /// A development build living inside the sandbox folder `path`; `simulated_running` when the apps it sees open
+    /// are the sandbox's declared ones, not the Mac's.
+    Sandbox { path: PathBuf, simulated_running: bool },
 }
 
 #[cfg(test)]
@@ -43,9 +44,13 @@ mod tests {
 
         #[test]
         fn a_sandbox_build_serializes_with_its_folder() {
-            let info = AppInfo { version: "0.1.0".into(), build: Build::Sandbox { path: "/tmp/box".into() } };
+            let build = Build::Sandbox { path: "/tmp/box".into(), simulated_running: true };
+            let info = AppInfo { version: "0.1.0".into(), build };
             let json = serde_json::to_string(&info).unwrap();
-            assert_eq!(json, r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box"}}"#);
+            assert_eq!(
+                json,
+                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulatedRunning":true}}"#
+            );
         }
 
         #[test]

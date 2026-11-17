@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::{BundleId, SystemError, TeamId};
+use crate::{BundleId, CancelToken, SystemError, TeamId};
 
 /// An installed app, as its own bundle says.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,11 +29,38 @@ impl InstalledApp {
     }
 }
 
+/// The apps a listing found, and what it could not read.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InstalledList {
+    /// Every app read, by path.
+    pub apps: Vec<InstalledApp>,
+    /// The apps folders, the folders in them and the app bundles that could not be read, by path: an app may be
+    /// installed there that the list does not hold.
+    pub unread: Vec<PathBuf>,
+}
+
+impl InstalledList {
+    /// A list with nothing left unread.
+    pub const fn complete(apps: Vec<InstalledApp>) -> Self {
+        Self { apps, unread: Vec::new() }
+    }
+
+    /// Whether every folder and bundle was read: no installed app can be missing from `apps`.
+    pub fn is_complete(&self) -> bool {
+        self.unread.is_empty()
+    }
+}
+
 /// The apps installed on the system, read from the apps folders.
 pub trait InstalledApps: Send + Sync {
-    /// Every installed app, by path. A bundle that cannot be read is left out; only a failure to read every apps
-    /// folder is an error.
-    fn list(&self) -> Result<Vec<InstalledApp>, SystemError>;
+    /// Every installed app, by path, and what could not be read: a bundle or a folder that cannot be read is named in
+    /// `unread`, never silently left out; only a failure to read every apps folder is an error.
+    fn list(&self) -> Result<InstalledList, SystemError>;
+
+    /// The bundles with one of `ids` anywhere the system's index knows, beyond the apps folders (an IDE on another
+    /// drive, in a download folder): for a module that must not take an app installed elsewhere for one that is not
+    /// installed. An error when the index could not be asked; then nothing is known.
+    fn find(&self, ids: &[BundleId], cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError>;
 }
 
 #[cfg(test)]
@@ -53,16 +80,29 @@ mod tests {
     }
 
     mod negative {
-        use crate::BundleId;
+        use crate::{BundleId, InstalledList};
 
         #[test]
         fn an_app_does_not_own_another_id() {
             assert!(!super::app().owns(&BundleId::new("com.example.Other").unwrap()));
         }
+
+        #[test]
+        fn a_list_with_something_unread_is_not_complete() {
+            let list = InstalledList { apps: vec![super::app()], unread: vec!["/Applications/Broken.app".into()] };
+
+            assert!(!list.is_complete());
+        }
     }
 
     mod positive {
-        use crate::BundleId;
+        use crate::{BundleId, InstalledList};
+
+        #[test]
+        fn a_list_with_nothing_unread_is_complete() {
+            assert!(InstalledList::complete(vec![super::app()]).is_complete());
+            assert!(InstalledList::default().is_complete());
+        }
 
         #[test]
         fn an_app_owns_its_id_and_its_helpers() {

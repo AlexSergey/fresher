@@ -9,8 +9,8 @@ use fresher_core::{Protection, SANDBOX_MARKER, SANDBOX_SIGNATURE};
 use fresher_testing::{FixtureError, TreeDescription};
 
 use crate::expected::checklist;
-use crate::layout::{CHECKLIST, DATA_FOLDER, PARTS, canonical_folder, holds_marker};
-use crate::{CaseFile, Sandbox, SandboxError};
+use crate::layout::{CHECKLIST, DATA_FOLDER, PARTS, WORLD, canonical_folder, holds_marker};
+use crate::{CaseFile, Sandbox, SandboxError, World};
 
 /// What a run of the generator made: the sandbox and the entries in it the generator did not make.
 #[derive(Debug)]
@@ -22,7 +22,8 @@ pub struct Generated {
 }
 
 /// Writes the case files `files` into the sandbox folder `into`: the marker (the signature, then a line naming the
-/// case files), the layout, every case's tree (its ages counted back from `now`) and `EXPECTED.md`.
+/// case files), the layout, every case's tree (its ages counted back from `now`), `EXPECTED.md` and `world.toml` (`now`
+/// and the running apps the cases declare).
 ///
 /// Refuses a folder that `real_protection` (the real Mac's list) refuses, that is a link or reached through one inside
 /// the sandbox, or that is not empty and holds no valid marker of `user`. On a sandbox it made before it tops up:
@@ -49,6 +50,7 @@ pub fn generate(
         source => SandboxError::Tree { source },
     })?;
     write_plain(&sandbox.checklist(), &checklist(files, sandbox.path()))?;
+    write_plain(&sandbox.world(), &World::of(files, now).text()?)?;
     let strangers = strangers(sandbox.path(), &own)?;
     Ok(Generated { sandbox, strangers })
 }
@@ -167,9 +169,10 @@ fn make_folder(root: &Path, relative: &Path) -> Result<(), SandboxError> {
 /// What the generator writes, relative to the sandbox, with every folder above it.
 fn own_paths(tree: &TreeDescription) -> HashSet<PathBuf> {
     let markers = tree.markers().map(|folder| folder.join(SANDBOX_MARKER));
-    let written = PARTS.iter().map(PathBuf::from).chain([SANDBOX_MARKER, CHECKLIST].map(PathBuf::from));
+    let bundles = tree.apps().iter().flat_map(fresher_testing::AppBundle::written);
+    let written = PARTS.iter().map(PathBuf::from).chain([SANDBOX_MARKER, CHECKLIST, WORLD].map(PathBuf::from));
     let mut own = HashSet::new();
-    for path in written.chain(tree.paths().map(Path::to_path_buf)).chain(markers) {
+    for path in written.chain(tree.paths().map(Path::to_path_buf)).chain(markers).chain(bundles) {
         own.extend(path.ancestors().filter(|path| !path.as_os_str().is_empty()).map(Path::to_path_buf));
     }
     own
@@ -243,6 +246,29 @@ after-cleanup = "in-trash"
 
     fn trial() -> CaseFile {
         CaseFile::parse(TRIAL).unwrap()
+    }
+
+    /// A case file that installs two apps.
+    fn apps() -> CaseFile {
+        CaseFile::parse(
+            r#"
+feature = "apps"
+
+[[case]]
+name = "installed apps"
+kind = "negative"
+[[case.app]]
+path = "Applications/Tool.app"
+bundle-id = "com.example.Tool"
+name = "Tool"
+version = "1.0"
+[[case.app]]
+path = "home/Applications/Mine.app"
+bundle-id = "com.example.Mine"
+name = "Mine"
+"#,
+        )
+        .unwrap()
     }
 
     fn user(folder: &Path) -> u32 {
@@ -328,7 +354,7 @@ after-cleanup = "in-trash"
 
         #[test]
         fn a_file_with_a_hard_link_from_outside_is_never_rewritten() {
-            for own in ["home/work/fresher-trial-cache/blob.bin", "EXPECTED.md", ".fresher-sandbox"] {
+            for own in ["home/work/fresher-trial-cache/blob.bin", "EXPECTED.md", ".fresher-sandbox", "world.toml"] {
                 let folder = tempfile::tempdir().unwrap();
                 let outside = tempfile::tempdir().unwrap();
                 run(&[trial()], folder.path()).unwrap();
@@ -410,7 +436,7 @@ after-cleanup = "in-trash"
         use fresher_core::{KnownFolder, KnownFolders, SANDBOX_MARKER, SANDBOX_SIGNATURE};
         use fresher_testing::{EntryKind, TreeReport};
 
-        use super::{run, trial, user};
+        use super::{apps, run, trial, user};
         use crate::Sandbox;
 
         #[test]
@@ -440,6 +466,7 @@ after-cleanup = "in-trash"
                     ("home/work/.fresher-sandbox", EntryKind::File),
                     ("home/work/fresher-trial-cache", EntryKind::Dir),
                     ("home/work/fresher-trial-cache/blob.bin", EntryKind::File),
+                    ("world.toml", EntryKind::File),
                 ]
             );
             let marker = fs::read_to_string(folder.path().join("sandbox/trial").join(SANDBOX_MARKER)).unwrap();
@@ -450,6 +477,22 @@ after-cleanup = "in-trash"
                 fs::metadata(&blob).unwrap().modified().unwrap(),
                 super::now() - std::time::Duration::from_hours(30 * 24)
             );
+        }
+
+        #[test]
+        fn apps_are_written_as_bundles_and_rewritten_on_a_second_run() {
+            let folder = tempfile::tempdir().unwrap();
+            run(&[apps()], folder.path()).unwrap();
+            let plist = folder.path().join("Applications/Tool.app/Contents/Info.plist");
+            let first = fs::read_to_string(&plist).unwrap();
+            fs::write(&plist, "changed").unwrap();
+
+            let strangers = run(&[apps()], folder.path()).unwrap();
+
+            assert_eq!(strangers, Vec::<std::path::PathBuf>::new());
+            assert_eq!(fs::read_to_string(&plist).unwrap(), first);
+            assert!(first.contains("<string>com.example.Tool</string>"));
+            assert!(folder.path().join("home/Applications/Mine.app/Contents/MacOS").is_dir());
         }
 
         #[test]

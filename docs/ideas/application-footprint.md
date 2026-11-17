@@ -20,3 +20,5 @@ Open questions:
 - Last-used date: Spotlight metadata vs LaunchServices — which is reliable without extra permissions?
 
 **Partly taken by [plan 012](../plans/012-storage-map/readme.md):** the by-meaning view groups each installed app's bundle, data folders and findings into one row with one size. **Still an idea:** the last-used date and the growth between scans.
+
+**Partly taken by [plan 016](../plans/016-jetbrains/readme.md):** a JetBrains IDE's older versions' data is counted in its line of the storage map. **Still an idea:** the last-used date and the growth between scans (see plan 012's note above).

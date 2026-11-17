@@ -106,12 +106,16 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
     let walk = NaiveWalk::new(tree.root()).with_known_folders(known_folders);
     let walked = walk.walk(&request, &ports.cancel, &mut on_match, &mut |_| {});
-    match walked {
-        Ok(_) => {}
-        Err(WalkError::Cancelled) => failure = failure.or(Some(ModuleError::Cancelled)),
+    let walk_complete = match walked {
+        Ok(summary) => summary.is_complete(),
+        Err(WalkError::Cancelled) => {
+            failure = failure.or(Some(ModuleError::Cancelled));
+            false
+        }
         Err(error) => return Err(error.into()),
-    }
+    };
     if failure.is_none() {
+        let cx = if walk_complete { cx.complete_walk() } else { cx };
         failure = module.finish(&cx, &mut sink).err();
     }
     let outcome = match failure {

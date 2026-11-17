@@ -1,0 +1,24 @@
+# The jetbrains module while an app of the vendor that its products table does not know is installed: it may use a
+# removed IDE's data, so that data is kept. A file of its own, since the installed app keeps the data of every removed
+# IDE beside it (`jetbrains.toml`).
+feature = "jetbrains-unknown-app-installed"
+module = "jetbrains"
+
+[[case]]
+name = "an unknown app of the vendor installed keeps a removed IDE's data"
+kind = "negative"
+[[case.app]]
+path = "Applications/NewIde.app"
+bundle-id = "com.jetbrains.newide"
+name = "NewIde"
+version = "2026.1"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/Aqua2024.3/options/editor.xml"
+size = 4096
+[[case.dir]]
+path = "home/Library/Application Support/JetBrains/Aqua2024.3"
+age = "40d"
+[[case.left-out]]
+category = "jetbrains.uninstalled"
+reason = "jetbrains.left-out.unknown-ide"
+items = 1

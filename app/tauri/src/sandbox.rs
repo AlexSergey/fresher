@@ -10,9 +10,9 @@ use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{AccessProbe, Clock, CommandRunner, ModuleId, OpenFiles, RunningApps, Trash, Volumes};
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection};
-use fresher_sandbox::Sandbox;
+use fresher_sandbox::{Sandbox, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
-use fresher_system::{COMMAND_TIMEOUT, MacRunningApps, ProcessCommandRunner, SystemClock};
+use fresher_system::{AppSearch, COMMAND_TIMEOUT, ProcessCommandRunner, StartedClock, SystemClock};
 use fresher_testing::FakeTrash;
 
 use crate::adapters::UnknownAccess;
@@ -58,6 +58,9 @@ pub enum SandboxRefusal {
     /// A part of the sandbox's layout, such as `home/`, is missing.
     #[error(transparent)]
     Layout(#[from] fresher_sandbox::SandboxError),
+    /// The sandbox's `world.toml` cannot be read or is not valid.
+    #[error("the sandbox's world: {0}")]
+    World(fresher_sandbox::SandboxError),
 }
 
 /// Why the sandbox's engine could not be made.
@@ -119,7 +122,9 @@ impl SandboxMode {
     }
 }
 
-/// What sandbox mode keeps real in the app, and the autotests replace by fakes: all of it is only read.
+/// What sandbox mode keeps real in the app, and the autotests replace by fakes: all of it is only read. The running
+/// apps are never the Mac's and the clock starts at the sandbox's own moment: the app takes both from the sandbox's
+/// world.toml.
 #[derive(Clone)]
 pub struct SandboxPorts {
     pub clock: Arc<dyn Clock>,
@@ -137,16 +142,24 @@ impl std::fmt::Debug for SandboxPorts {
 }
 
 impl SandboxPorts {
-    /// The app's real ports, as a normal development build has them.
-    pub(crate) fn real() -> Self {
-        Self {
-            clock: Arc::new(SystemClock),
+    /// The app's real ports, as a normal development build has them, but the running apps and the clock: the
+    /// sandbox's declared running apps (none without a `world.toml`), so an app open on the Mac never changes what a
+    /// sandbox shows, and a clock that starts at the moment the sandbox was generated (the system's without one), so
+    /// its ages are the case files' however long ago it was generated.
+    pub(crate) fn real(sandbox: &Sandbox) -> Result<Self, SandboxRefusal> {
+        let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
+        let clock: Arc<dyn Clock> = match world.now() {
+            Some(start) => Arc::new(StartedClock::at(start)),
+            None => Arc::new(SystemClock),
+        };
+        Ok(Self {
+            clock,
             volumes: Arc::new(MacVolumes::new()),
             open_files: Arc::new(MacOpenFiles::new()),
-            running: Arc::new(MacRunningApps::new()),
+            running: Arc::new(world.running_apps()),
             commands: Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT)),
             access: Arc::new(UnknownAccess),
-        }
+        })
     }
 }
 
@@ -162,20 +175,21 @@ pub fn sandbox_engine(
     real_data_folder: &Path,
     ports: SandboxPorts,
 ) -> Result<Engine, SandboxEngineError> {
-    Ok(compose(sandbox, real_home, real_data_folder, ports)?.0)
+    Ok(compose(sandbox, real_home, real_data_folder, |_| Ok(ports))?.0)
 }
 
-/// The sandbox's engine and its checked layout.
+/// The sandbox's engine and its checked layout, its ports made by `ports` once the sandbox is checked.
 pub(crate) fn compose(
     mode: &SandboxMode,
     real_home: &Path,
     real_data_folder: &Path,
-    ports: SandboxPorts,
+    ports: impl FnOnce(&Sandbox) -> Result<SandboxPorts, SandboxRefusal>,
 ) -> Result<(Engine, Sandbox), ComposeError> {
     let user = current_user();
     let real = real_protection(real_home, real_data_folder)?;
     let folder = SandboxFolder::new(mode.path(), user, &real).map_err(SandboxRefusal::from)?;
     let sandbox = Sandbox::open(folder.path(), user).map_err(SandboxRefusal::from)?;
+    let ports = ports(&sandbox)?;
     let home = sandbox.home();
     let data = DataFolder::open(sandbox.data_folder())?;
     // Each list keeps its own carve-outs: the real Mac stays safe whatever a bug does, and the sandbox behaves like a
@@ -213,6 +227,8 @@ pub(crate) fn compose(
         access: ports.access,
         cleanup,
         only: mode.only,
+        // The sandbox's apps are its declared ones: Spotlight would answer the real Mac's.
+        app_search: AppSearch::Listed,
     })?;
     Ok((engine, sandbox))
 }

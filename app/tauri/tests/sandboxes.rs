@@ -12,6 +12,9 @@
 #[path = "sandboxes/harness.rs"]
 mod harness;
 #[cfg(test)]
+#[path = "sandboxes/left_out.rs"]
+mod left_out;
+#[cfg(test)]
 #[path = "sandboxes/map.rs"]
 mod map;
 
@@ -105,6 +108,64 @@ mod negative {
         assert!(failure.problem.contains("changed by the cleanup"), "{failure}");
     }
 
+    /// A `demo` case file (the demo module leaves one made-up cache out on every scan) with `left_out` on its case.
+    fn demo_file(left_out: &str) -> String {
+        format!(
+            "feature = \"demo\"\nmodule = \"demo\"\n[[case]]\nname = \"a plain file\"\nkind = \"negative\"\n\
+             [[case.file]]\npath = \"home/plain/note.txt\"\nsize = 4096\n{left_out}"
+        )
+    }
+
+    fn demo_left_out(reason: &str, items: u32) -> String {
+        format!("[[case.left-out]]\ncategory = \"demo.caches\"\nreason = \"{reason}\"\nitems = {items}\n")
+    }
+
+    #[test]
+    fn a_left_out_no_case_expects_fails_naming_it() {
+        let failure = run("unexpected", &demo_file("")).unwrap_err();
+
+        assert_eq!(failure.case, "unexpected", "{failure}");
+        assert!(failure.problem.contains("`demo.caches` left out for `demo.left-out.open`: 1 items"), "{failure}");
+    }
+
+    #[test]
+    fn an_expected_left_out_the_module_does_not_report_fails() {
+        let text =
+            demo_file(&demo_left_out("demo.left-out.open", 1)).replace("module = \"demo\"", "module = \"trial\"");
+        let text = text.replace("demo.caches", "trial.caches").replace("demo.left-out.open", "trial.error.failed");
+
+        let failure = run("missing", &text).unwrap_err();
+
+        assert!(
+            failure.problem.contains("`trial.caches` left out for `trial.error.failed`: expected 1 items, none"),
+            "{failure}"
+        );
+    }
+
+    #[test]
+    fn a_left_out_count_that_differs_fails_with_both_numbers() {
+        let failure = run("differs", &demo_file(&demo_left_out("demo.left-out.open", 2))).unwrap_err();
+
+        assert!(failure.problem.contains("expected 2 items, got 1"), "{failure}");
+    }
+
+    #[test]
+    fn a_left_out_reason_the_module_does_not_declare_is_refused() {
+        let failure = run("undeclared", &demo_file(&demo_left_out("demo.left-out.closed", 1))).unwrap_err();
+
+        assert!(failure.problem.contains("does not fit the modules"), "{failure}");
+        assert!(failure.problem.contains("demo.left-out.closed"), "{failure}");
+    }
+
+    #[test]
+    fn a_left_out_of_a_category_the_modules_lack_is_refused() {
+        let text = demo_file(&demo_left_out("demo.left-out.open", 1)).replace("demo.caches", "demo.nothing");
+
+        let failure = run("unknown", &text).unwrap_err();
+
+        assert!(failure.problem.contains("demo.nothing"), "{failure}");
+    }
+
     /// The negative's folder is inside the positive's cache: never offered itself, but explained by the cache's claim.
     #[test]
     fn a_your_folders_expectation_that_is_explained_fails_with_its_case_name() {
@@ -170,6 +231,9 @@ mod positive {
 
     case_files! {
         cleanup_guards => "cleanup-guards",
+        jetbrains => "jetbrains",
+        jetbrains_unknown_app_installed => "jetbrains-unknown-app-installed",
+        jetbrains_unknown_app_open => "jetbrains-unknown-app-open",
         storage_map => "storage-map",
         trial => "trial",
     }
@@ -196,6 +260,21 @@ mod positive {
             .collect();
 
         assert!(missing.is_empty(), "registered modules without a case file in fixtures/sandboxes/: {missing:?}");
+    }
+
+    /// A module's left-out the case file expects passes, and the report names it; the demo module leaves one out.
+    #[test]
+    fn an_expected_left_out_passes_and_is_reported() {
+        let text = "feature = \"demo\"\nmodule = \"demo\"\n[[case]]\nname = \"a plain file\"\nkind = \"negative\"\n\
+                    [[case.file]]\npath = \"home/plain/note.txt\"\nsize = 4096\n[[case.left-out]]\n\
+                    category = \"demo.caches\"\nreason = \"demo.left-out.open\"\nitems = 1\n";
+
+        let report = run("left-out", text).unwrap();
+
+        let left_out = report["leftOut"].as_array().unwrap();
+        assert_eq!(left_out.len(), 1);
+        assert_eq!(left_out[0]["category"], "demo.caches");
+        assert_eq!(left_out[0]["items"], 1);
     }
 
     /// The harness's own run of a passing case file, apart from the files of `fixtures/sandboxes/`.
@@ -250,6 +329,7 @@ after-cleanup = "emptied"
 
         let report = run("holds", text).unwrap();
 
+        assert!(report.get("leftOut").is_none());
         let places = report["map"]["places"].as_array().unwrap();
         let (bare, cache) = (&places[0], &places[1]);
         // `home/bare` is all one folder, which the view opens through as the overview opens a folder row; the small

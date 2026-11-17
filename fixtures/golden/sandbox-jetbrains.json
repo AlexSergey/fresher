@@ -1,0 +1,1225 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "jetbrains.uninstalled",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Application Support/JetBrains/DataGrip2024.3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.settings",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Application Support/JetBrains/WebStorm2024.3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.uninstalled",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/JetBrains/DataGrip2024.3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2024.3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/JetBrains/Rider2025.1",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/JetBrains/WebStorm2024.3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.uninstalled",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Logs/JetBrains/DataGrip2024.3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "jetbrains.logs",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Logs/JetBrains/WebStorm2024.3",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.jetbrains.datagrip",
+      "category": "jetbrains.uninstalled",
+      "danger": "medium",
+      "logical": 532480,
+      "module": "jetbrains",
+      "subject": "home/Library/Application Support/JetBrains/DataGrip2024.3"
+    },
+    {
+      "app": "com.jetbrains.WebStorm",
+      "category": "jetbrains.settings",
+      "danger": "medium",
+      "logical": 1056768,
+      "module": "jetbrains",
+      "subject": "home/Library/Application Support/JetBrains/WebStorm2024.3"
+    },
+    {
+      "app": "com.jetbrains.datagrip",
+      "category": "jetbrains.uninstalled",
+      "danger": "medium",
+      "logical": 2097152,
+      "module": "jetbrains",
+      "subject": "home/Library/Caches/JetBrains/DataGrip2024.3"
+    },
+    {
+      "app": "com.jetbrains.intellij-EAP",
+      "category": "jetbrains.caches",
+      "danger": "safe",
+      "logical": 2097152,
+      "module": "jetbrains",
+      "subject": "home/Library/Caches/JetBrains/IntelliJIdea2024.3"
+    },
+    {
+      "app": "com.jetbrains.rider",
+      "category": "jetbrains.caches",
+      "danger": "safe",
+      "logical": 1048576,
+      "module": "jetbrains",
+      "subject": "home/Library/Caches/JetBrains/Rider2025.1"
+    },
+    {
+      "app": "com.jetbrains.WebStorm",
+      "category": "jetbrains.caches",
+      "danger": "safe",
+      "logical": 5242880,
+      "module": "jetbrains",
+      "subject": "home/Library/Caches/JetBrains/WebStorm2024.3"
+    },
+    {
+      "app": "com.jetbrains.datagrip",
+      "category": "jetbrains.uninstalled",
+      "danger": "medium",
+      "logical": 65536,
+      "module": "jetbrains",
+      "subject": "home/Library/Logs/JetBrains/DataGrip2024.3"
+    },
+    {
+      "app": "com.jetbrains.WebStorm",
+      "category": "jetbrains.logs",
+      "danger": "safe",
+      "logical": 65536,
+      "module": "jetbrains",
+      "subject": "home/Library/Logs/JetBrains/WebStorm2024.3"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "jetbrains.caches",
+      "items": 3,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.current"
+      },
+      "sizes": {
+        "allocated": 2097152,
+        "completeness": "complete",
+        "logical": 4194304,
+        "reclaimable": 2097152
+      }
+    },
+    {
+      "category": "jetbrains.caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.newer"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1048576,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "jetbrains.caches",
+      "items": 3,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.running"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 3145728,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "jetbrains.caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.unknown-version"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1048576,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "jetbrains.logs",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.current"
+      },
+      "sizes": {
+        "allocated": 8192,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 8192
+      }
+    },
+    {
+      "category": "jetbrains.settings",
+      "items": 5,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.current"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 20480,
+        "reclaimable": 4096
+      }
+    },
+    {
+      "category": "jetbrains.settings",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.running"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "jetbrains.uninstalled",
+      "items": 3,
+      "reason": {
+        "args": {},
+        "key": "jetbrains.left-out.used-recently"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1056768,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Caches/JetBrains/WebStorm2025.3",
+        "case": "the version you use is never offered",
+        "path": [
+          "home/Library/Caches/JetBrains/WebStorm2025.3"
+        ],
+        "rows": [
+          {
+            "allocated": 2097152,
+            "explained": 0,
+            "logical": 2097152,
+            "path": "home/Library/Caches/JetBrains/WebStorm2025.3"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Caches/JetBrains/WebStorm2024.3.bak",
+        "case": "names that only look like versions are never claimed",
+        "path": [
+          "home/Library/Caches/JetBrains/WebStorm2024.3.bak"
+        ],
+        "rows": [
+          {
+            "allocated": 1048576,
+            "explained": 0,
+            "logical": 1048576,
+            "path": "home/Library/Caches/JetBrains/WebStorm2024.3.bak"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Caches/JetBrains/WebStorm2024.3",
+        "case": "caches of an older version go to the Trash",
+        "path": [
+          "home/Library/Caches/JetBrains/WebStorm2024.3"
+        ],
+        "rows": [
+          {
+            "allocated": 5242880,
+            "explained": 5242880,
+            "logical": 5242880,
+            "path": "home/Library/Caches/JetBrains/WebStorm2024.3"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Application Support/JetBrains/WebStorm2024.3",
+        "case": "settings and plugins of an older version go to the Trash",
+        "path": [
+          "home/Library/Application Support/JetBrains/WebStorm2024.3"
+        ],
+        "rows": [
+          {
+            "allocated": 1056768,
+            "explained": 1056768,
+            "logical": 1056768,
+            "path": "home/Library/Application Support/JetBrains/WebStorm2024.3"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 12206080,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 7364608,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 77635853,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 708099827,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 110,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/GoLand.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/GoLand.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 429,
+        "path": "Applications/GoLand.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/GoLand.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/IntelliJ IDEA EAP.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/IntelliJ IDEA EAP.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 448,
+        "path": "Applications/IntelliJ IDEA EAP.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/IntelliJ IDEA EAP.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/IntelliJ IDEA.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/IntelliJ IDEA.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 438,
+        "path": "Applications/IntelliJ IDEA.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/IntelliJ IDEA.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/PyCharm.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/PyCharm.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 431,
+        "path": "Applications/PyCharm.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/PyCharm.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/RubyMine.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/RubyMine.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 367,
+        "path": "Applications/RubyMine.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/RubyMine.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/WebStorm.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/WebStorm.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 496,
+        "path": "Applications/WebStorm.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/WebStorm.app/Contents/MacOS"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "Applications/Writerside.app"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/DataGrip2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/DataGrip2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/DataGrip2024.3"
+      },
+      {
+        "kind": "file",
+        "logical_size": 65536,
+        "path": "home/.Trash/DataGrip2024.3/idea.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/DataGrip2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2097152,
+        "path": "home/.Trash/DataGrip2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/DataGrip2024.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/DataGrip2024.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/DataGrip2024.3/plugins"
+      },
+      {
+        "kind": "file",
+        "logical_size": 524288,
+        "path": "home/.Trash/DataGrip2024.3/plugins/plugin.jar"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/IntelliJIdea2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/IntelliJIdea2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2097152,
+        "path": "home/.Trash/IntelliJIdea2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Rider2025.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Rider2025.1/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/.Trash/Rider2025.1/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3/compile-server"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/.Trash/WebStorm2024.3/compile-server/state.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 65536,
+        "path": "home/.Trash/WebStorm2024.3/idea.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/.Trash/WebStorm2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/WebStorm2024.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/WebStorm2024.3/plugins"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/.Trash/WebStorm2024.3/plugins/plugin.jar"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains Toolbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains Toolbox/DataSpell.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains Toolbox/DataSpell.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 435,
+        "path": "home/Applications/JetBrains Toolbox/DataSpell.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains Toolbox/DataSpell.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains/Writerside.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains/Writerside.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 435,
+        "path": "home/Applications/JetBrains/Writerside.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/JetBrains/Writerside.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/Rider.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/Rider.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 425,
+        "path": "home/Applications/Rider.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/Rider.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/DataSpell2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/DataSpell2025.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/DataSpell2025.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/FooStorm2024.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/FooStorm2024.1/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/FooStorm2024.1/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/GoLand2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/GoLand2024.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/GoLand2024.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/GoLand2025.2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/GoLand2025.2/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/GoLand2025.2/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/IntelliJIdea2025.2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/IntelliJIdea2025.2/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/IntelliJIdea2025.2/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/IntelliJIdea2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/IntelliJIdea2025.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/IntelliJIdea2025.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/JetBrainsClient2025.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/JetBrainsClient2025.1/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/JetBrainsClient2025.1/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/PhpStorm2024.2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/PhpStorm2024.2/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/PhpStorm2024.2/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/PhpStorm2025.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/PhpStorm2025.1/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/PhpStorm2025.1/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/Toolbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/Toolbox/state.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/Writerside2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/Writerside2025.3/options"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/JetBrains/Writerside2025.3/options/editor.xml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/JetBrains/consentOptions"
+      },
+      {
+        "kind": "file",
+        "logical_size": 64,
+        "path": "home/Library/Application Support/JetBrains/consentOptions/accepted"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/CLion2024.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/CLion2024.1/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/CLion2024.1/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/GoLand2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/GoLand2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/GoLand2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/GoLand2025.2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/GoLand2025.2/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/GoLand2025.2/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2025.2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2025.2/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2025.2/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2025.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/IntelliJIdea2025.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/PyCharmCE2024.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/PyCharmCE2024.1/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/PyCharmCE2024.1/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/RubyMine2024.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/RubyMine2024.1/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/RubyMine2024.1/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm-2024.1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/WebStorm-2024.1/data.bin"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2023.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2024"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2024.3.1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/WebStorm2024.3.1/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2024.3.bak"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/WebStorm2024.3.bak/data.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/WebStorm2024/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2025.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2097152,
+        "path": "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2026.1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/WebStorm2026.1/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/WebStorm2026.1/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrains/webstorm2024.2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrains/webstorm2024.2/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrainsX"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/JetBrainsX/WebStorm2023.1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/JetBrainsX/WebStorm2023.1/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/WebStorm2023.1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Caches/WebStorm2023.1/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/JetBrains"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/JetBrains/WebStorm2023.2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+      },
+      {
+        "kind": "file",
+        "logical_size": 287,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 30097677
+  }
+}

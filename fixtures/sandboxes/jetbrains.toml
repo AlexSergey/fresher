@@ -1,0 +1,441 @@
+# The jetbrains module: the settings, caches and logs of older JetBrains IDE versions, and the data of an IDE that is
+# no longer installed. Every case lives under `home/Library/{Application Support,Caches,Logs}/JetBrains/` or the apps
+# folders. The installed and open apps are the sandbox's own, shared by every case of this file: WebStorm 2025.3.1,
+# installed by the first case, is the version the WebStorm positives are older than. An unknown app of the vendor,
+# installed or open, keeps every removed IDE's data, so those two cases have files of their own
+# (`jetbrains-unknown-app-installed.toml`, `jetbrains-unknown-app-open.toml`).
+#
+# Folder ages count back from `world.toml`'s `now`. Positives' files are filled with data, so the map's numbers are
+# blocks.
+feature = "jetbrains"
+module = "jetbrains"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "the version you use is never offered"
+kind = "negative"
+[[case.app]]
+path = "Applications/WebStorm.app"
+bundle-id = "com.jetbrains.WebStorm"
+name = "WebStorm"
+version = "2025.3.1"
+build = "WS-253.28294.334"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 2097152
+fill = "data"
+[[case.file]]
+path = "home/Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+size = 8192
+fill = "data"
+[[case.left-out]]
+category = "jetbrains.settings"
+reason = "jetbrains.left-out.current"
+items = 1
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.current"
+items = 1
+[[case.left-out]]
+category = "jetbrains.logs"
+reason = "jetbrains.left-out.current"
+items = 1
+[case.map]
+part = "your-folders"
+at = "home/Library/Caches/JetBrains/WebStorm2025.3"
+
+[[case]]
+name = "two versions installed side by side are both kept"
+kind = "negative"
+[[case.app]]
+path = "Applications/IntelliJ IDEA.app"
+bundle-id = "com.jetbrains.intellij"
+name = "IntelliJ IDEA"
+version = "2025.2.4"
+[[case.app]]
+path = "Applications/IntelliJ IDEA EAP.app"
+bundle-id = "com.jetbrains.intellij-EAP"
+name = "IntelliJ IDEA EAP"
+version = "2025.3 EAP"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/IntelliJIdea2025.2/options/editor.xml"
+size = 4096
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/IntelliJIdea2025.3/options/editor.xml"
+size = 4096
+[[case.file]]
+path = "home/Library/Caches/JetBrains/IntelliJIdea2025.2/index/data.bin"
+size = 1048576
+[[case.file]]
+path = "home/Library/Caches/JetBrains/IntelliJIdea2025.3/index/data.bin"
+size = 1048576
+[[case.left-out]]
+category = "jetbrains.settings"
+reason = "jetbrains.left-out.current"
+items = 2
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.current"
+items = 2
+
+[[case]]
+name = "a newer version than the installed one is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2026.1/index/data.bin"
+size = 1048576
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.newer"
+items = 1
+
+[[case]]
+name = "an open IDE keeps every version"
+kind = "negative"
+[[case.app]]
+path = "Applications/GoLand.app"
+bundle-id = "com.jetbrains.goland"
+name = "GoLand"
+version = "2025.2.1"
+running = true
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/GoLand2024.3/options/editor.xml"
+size = 4096
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/GoLand2025.2/options/editor.xml"
+size = 4096
+[[case.file]]
+path = "home/Library/Caches/JetBrains/GoLand2024.3/index/data.bin"
+size = 1048576
+[[case.file]]
+path = "home/Library/Caches/JetBrains/GoLand2025.2/index/data.bin"
+size = 1048576
+[[case.left-out]]
+category = "jetbrains.settings"
+reason = "jetbrains.left-out.running"
+items = 2
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.running"
+items = 2
+
+[[case]]
+name = "an open IDE outside the apps folders keeps every version"
+kind = "negative"
+[[case.running]]
+name = "CLion"
+bundle-ids = ["com.jetbrains.CLion"]
+[[case.file]]
+path = "home/Library/Caches/JetBrains/CLion2024.1/index/data.bin"
+size = 1048576
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.running"
+items = 1
+
+[[case]]
+name = "a removed IDE whose data changed recently keeps every version"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/PhpStorm2024.2/options/editor.xml"
+size = 4096
+[[case.dir]]
+path = "home/Library/Application Support/JetBrains/PhpStorm2024.2"
+age = "40d"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/PhpStorm2025.1/options/editor.xml"
+size = 4096
+[[case.dir]]
+path = "home/Library/Application Support/JetBrains/PhpStorm2025.1"
+age = "5d"
+[[case.left-out]]
+category = "jetbrains.uninstalled"
+reason = "jetbrains.left-out.used-recently"
+items = 2
+
+[[case]]
+name = "an IDE installed by the Toolbox app is not taken for a removed one"
+kind = "negative"
+[[case.app]]
+path = "home/Applications/JetBrains Toolbox/DataSpell.app"
+bundle-id = "com.jetbrains.dataspell"
+name = "DataSpell"
+version = "2025.3.2"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/DataSpell2025.3/options/editor.xml"
+size = 4096
+[[case.dir]]
+path = "home/Library/Application Support/JetBrains/DataSpell2025.3"
+age = "40d"
+[[case.left-out]]
+category = "jetbrains.settings"
+reason = "jetbrains.left-out.current"
+items = 1
+
+# An app linked into an apps folder keeps the list of apps whole, so nothing turns `no-system`. The bundle the link
+# names is in an apps folder too (a case declares apps only there), so the case cannot show the reader reading through
+# the link: `fresher-system`'s unit tests of the installed-apps reader cover that.
+[[case]]
+name = "an IDE linked into the apps folder keeps the list of apps whole"
+kind = "negative"
+[[case.app]]
+path = "home/Applications/JetBrains/Writerside.app"
+bundle-id = "com.jetbrains.writerside"
+name = "Writerside"
+version = "2025.3"
+[[case.symlink]]
+path = "Applications/Writerside.app"
+target = "../home/Applications/JetBrains/Writerside.app"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/Writerside2025.3/options/editor.xml"
+size = 4096
+[[case.dir]]
+path = "home/Library/Application Support/JetBrains/Writerside2025.3"
+age = "40d"
+[[case.left-out]]
+category = "jetbrains.settings"
+reason = "jetbrains.left-out.current"
+items = 1
+
+[[case]]
+name = "the Community edition is not the full edition"
+kind = "negative"
+[[case.app]]
+path = "Applications/PyCharm.app"
+bundle-id = "com.jetbrains.pycharm"
+name = "PyCharm"
+version = "2025.2.3"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/PyCharmCE2024.1/index/data.bin"
+size = 1048576
+[[case.dir]]
+path = "home/Library/Caches/JetBrains/PyCharmCE2024.1"
+age = "5d"
+[[case.left-out]]
+category = "jetbrains.uninstalled"
+reason = "jetbrains.left-out.used-recently"
+items = 1
+
+[[case]]
+name = "an app with no version string keeps every version"
+kind = "negative"
+[[case.app]]
+path = "Applications/RubyMine.app"
+bundle-id = "com.jetbrains.rubymine"
+name = "RubyMine"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/RubyMine2024.1/index/data.bin"
+size = 1048576
+[[case.left-out]]
+category = "jetbrains.caches"
+reason = "jetbrains.left-out.unknown-version"
+items = 1
+
+[[case]]
+name = "names that only look like versions are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024/data.bin"
+size = 1048576
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3.1/data.bin"
+size = 1048576
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3.bak/data.bin"
+size = 1048576
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/webstorm2024.2/data.bin"
+size = 1048576
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm-2024.1/data.bin"
+size = 1048576
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/Library/Caches/JetBrains/WebStorm2024.3.bak"
+
+[[case]]
+name = "unknown products and the vendor's other folders are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/FooStorm2024.1/options/editor.xml"
+size = 4096
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/JetBrainsClient2025.1/options/editor.xml"
+size = 4096
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/Toolbox/state.json"
+size = 4096
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/consentOptions/accepted"
+size = 64
+
+[[case]]
+name = "a version folder outside the vendor folder is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/WebStorm2023.1/data.bin"
+size = 1048576
+[[case.file]]
+path = "home/Library/Caches/JetBrainsX/WebStorm2023.1/data.bin"
+size = 1048576
+
+[[case]]
+name = "a file named like a version folder is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/JetBrains/WebStorm2023.2"
+size = 4096
+
+[[case]]
+name = "a link named like a version folder is never followed"
+kind = "negative"
+[[case.symlink]]
+path = "home/Library/Caches/JetBrains/WebStorm2023.3"
+target = "/Library"
+
+# Positive cases: WebStorm 2025.3.1 is installed by the first negative case.
+[[case]]
+name = "caches of an older version go to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+size = 4194304
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/compile-server/state.bin"
+size = 1048576
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/JetBrains/WebStorm2024.3"
+category = "jetbrains.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Caches/JetBrains/WebStorm2024.3"
+
+[[case]]
+name = "logs of an older version go to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Logs/JetBrains/WebStorm2024.3/idea.log"
+size = 65536
+fill = "data"
+[case.expect]
+item = "home/Library/Logs/JetBrains/WebStorm2024.3"
+category = "jetbrains.logs"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "settings and plugins of an older version go to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2024.3/options/editor.xml"
+size = 8192
+fill = "data"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2024.3/plugins/plugin.jar"
+size = 1048576
+fill = "data"
+[case.expect]
+item = "home/Library/Application Support/JetBrains/WebStorm2024.3"
+category = "jetbrains.settings"
+danger = "medium"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Application Support/JetBrains/WebStorm2024.3"
+
+[[case]]
+name = "an older version than both side-by-side installs is offered"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/IntelliJIdea2024.3/index/data.bin"
+size = 2097152
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/JetBrains/IntelliJIdea2024.3"
+category = "jetbrains.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an IDE installed in the user's own apps folder counts"
+kind = "positive"
+[[case.app]]
+path = "home/Applications/Rider.app"
+bundle-id = "com.jetbrains.rider"
+name = "Rider"
+version = "2025.3"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/Rider2025.1/index/data.bin"
+size = 1048576
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/JetBrains/Rider2025.1"
+category = "jetbrains.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+
+# The data of DataGrip, which no apps folder holds: every folder of it 40 days old, offered one item per folder.
+[[case]]
+name = "the settings of a removed IDE go to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/DataGrip2024.3/options/editor.xml"
+size = 8192
+fill = "data"
+[[case.file]]
+path = "home/Library/Application Support/JetBrains/DataGrip2024.3/plugins/plugin.jar"
+size = 524288
+fill = "data"
+[[case.dir]]
+path = "home/Library/Application Support/JetBrains/DataGrip2024.3"
+age = "40d"
+[case.expect]
+item = "home/Library/Application Support/JetBrains/DataGrip2024.3"
+category = "jetbrains.uninstalled"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "the caches of a removed IDE go to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/JetBrains/DataGrip2024.3/index/data.bin"
+size = 2097152
+fill = "data"
+[[case.dir]]
+path = "home/Library/Caches/JetBrains/DataGrip2024.3"
+age = "40d"
+[case.expect]
+item = "home/Library/Caches/JetBrains/DataGrip2024.3"
+category = "jetbrains.uninstalled"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "the logs of a removed IDE go to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Logs/JetBrains/DataGrip2024.3/idea.log"
+size = 65536
+fill = "data"
+[[case.dir]]
+path = "home/Library/Logs/JetBrains/DataGrip2024.3"
+age = "40d"
+[case.expect]
+item = "home/Library/Logs/JetBrains/DataGrip2024.3"
+category = "jetbrains.uninstalled"
+danger = "medium"
+after-cleanup = "in-trash"

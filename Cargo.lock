@@ -1233,6 +1233,7 @@ dependencies = [
  "fresher-engine",
  "fresher-macos",
  "fresher-module-demo",
+ "fresher-module-jetbrains",
  "fresher-module-trial",
  "fresher-sandbox",
  "fresher-scanner",
@@ -1284,6 +1285,7 @@ dependencies = [
  "fresher-core",
  "fresher-engine",
  "fresher-module-demo",
+ "fresher-module-jetbrains",
  "fresher-module-trial",
  "fresher-scanner",
  "fresher-store",
@@ -1327,6 +1329,19 @@ dependencies = [
  "fresher-testing",
  "serde_json",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "fresher-module-jetbrains"
+version = "0.1.0"
+dependencies = [
+ "fresher-core",
+ "fresher-testing",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]

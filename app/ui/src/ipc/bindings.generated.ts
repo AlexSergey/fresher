@@ -9,7 +9,7 @@ export type AppInfo = { version: string, build: Build, };
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
  */
-export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, };
+export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulatedRunning: boolean, };
 
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.

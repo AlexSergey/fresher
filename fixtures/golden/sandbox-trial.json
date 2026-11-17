@@ -28,6 +28,7 @@
   },
   "findings": [
     {
+      "app": null,
       "category": "trial.kept",
       "danger": "low",
       "logical": 8192,
@@ -35,6 +36,7 @@
       "subject": "home/keep/fresher-trial-kept"
     },
     {
+      "app": null,
       "category": "trial.caches",
       "danger": "safe",
       "logical": 52430848,
@@ -62,7 +64,7 @@
             }
           },
           {
-            "allocated": 72340489,
+            "allocated": 72340644,
             "part": {
               "kind": "remainder",
               "outsideScan": true,
@@ -89,7 +91,7 @@
             }
           },
           {
-            "allocated": 680512503,
+            "allocated": 680512348,
             "part": {
               "kind": "disk-own"
             }
@@ -255,8 +257,13 @@
         "kind": "file",
         "logical_size": 83,
         "path": "home/work/.fresher-sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 57685001
+    "totalLogicalSize": 57685156
   }
 }

@@ -19,6 +19,13 @@ import {
   SCAN_STARTED,
 } from '../../test/demo-scan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
+import {
+  JETBRAINS_DICTIONARY,
+  JETBRAINS_FINDINGS,
+  JETBRAINS_LEFT_OUT,
+  JETBRAINS_MODULES,
+  JETBRAINS_OVERVIEW,
+} from '../../test/jetbrains-scan';
 import { pageOf } from '../../test/page-of';
 import { fakeViewport } from '../../test/viewport';
 import { AppProviders } from '../app-providers';
@@ -342,6 +349,23 @@ describe('ModuleScreen', () => {
       });
     });
 
+    it("the page's subtitle is the module's description; the ignore button's tooltip says what ignoring does", async () => {
+      core();
+      await renderPage();
+
+      expect(
+        await screen.findByText('Shows made-up example findings, so the app can be tried without touching your disk.'),
+      ).toBeVisible();
+      const ignore = await screen.findByRole('button', { name: 'Ignore this module' });
+
+      fireEvent.focus(ignore);
+
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'Hides everything this module finds and never cleans it.',
+      );
+      expect(ignore).toHaveAccessibleDescription('Hides everything this module finds and never cleans it.');
+    });
+
     it('Ignore this module asks the core to ignore the module', async () => {
       const ignored: unknown[] = [];
       core({
@@ -481,6 +505,92 @@ describe('ModuleScreen', () => {
       expect(disclosure('Example caches')).toHaveAttribute('aria-expanded', 'true');
       expect(disclosure('Example downloads')).toHaveAttribute('aria-expanded', 'false');
       expect(scrolled.mock.contexts[0]).toBe(section('Example caches'));
+    });
+  });
+});
+
+const CACHES = 'Caches of older JetBrains IDE versions';
+const SETTINGS = 'Settings and plugins of older JetBrains IDE versions';
+const UNINSTALLED = 'Data of JetBrains IDEs that are no longer installed';
+
+// The page of the JetBrains module, on its scan: the generic page, nothing of the module's own.
+const renderJetbrains = async (): Promise<CoreStore> => {
+  const [jetbrains] = JETBRAINS_MODULES as readonly [ModuleInfo];
+  const store = createCoreStore();
+
+  mockCore({
+    getDictionary: () => JETBRAINS_DICTIONARY,
+    getFindings: (args) => pageOf(JETBRAINS_FINDINGS, (args as { readonly query: FindingsQuery }).query),
+    getModules: () => JETBRAINS_MODULES,
+    getOverview: () => IDLE,
+    ...sampleStorageAnswers,
+  });
+  render(
+    <AppProviders navigation={createNavigation()} store={store}>
+      <ModuleScreen module={jetbrains} />
+    </AppProviders>,
+  );
+  await screen.findByRole('heading', { level: 1, name: 'JetBrains IDEs' });
+  act(() => {
+    store.dispatch({ modules: ['jetbrains'], scan: 1, type: 'scan-started' });
+    store.dispatch({
+      leftOut: [...JETBRAINS_LEFT_OUT],
+      module: 'jetbrains',
+      outcome: { kind: 'completed' },
+      scan: 1,
+      type: 'module-finished',
+    });
+    store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+    store.dispatch({ overview: JETBRAINS_OVERVIEW, type: 'overview-loaded' });
+  });
+
+  return store;
+};
+
+describe('ModuleScreen on the JetBrains scan', () => {
+  describe('negative cases', () => {
+    it('the settings category has no Safe badge and the caches no Medium one', async () => {
+      await renderJetbrains();
+
+      expect(within(section(SETTINGS)).queryByText('Safe')).toBeNull();
+      expect(within(section(CACHES)).queryByText('Medium')).toBeNull();
+    });
+
+    it('a category that lost nothing shows no left-out line', async () => {
+      await renderJetbrains();
+
+      expect(within(section(UNINSTALLED)).queryByRole('list', { name: 'Left out of this list' })).toBeNull();
+    });
+  });
+
+  describe('positive cases', () => {
+    it('has a section for each of the four categories, largest first', async () => {
+      await renderJetbrains();
+
+      expect(
+        screen
+          .getAllByRole('region')
+          .map((region) => region.getAttribute('aria-label'))
+          .filter((name) => name?.includes(' of older ') === true || name === UNINSTALLED),
+      ).toStrictEqual([CACHES, UNINSTALLED, SETTINGS, 'Logs of older JetBrains IDE versions']);
+    });
+
+    it('shows the Medium badge on the settings and on the removed IDEs’ data', async () => {
+      await renderJetbrains();
+
+      expect(within(section(SETTINGS)).getByText('Medium')).toBeVisible();
+      expect(within(section(UNINSTALLED)).getByText('Medium')).toBeVisible();
+    });
+
+    it('shows the left-out lines with the module’s own reasons', async () => {
+      await renderJetbrains();
+
+      expect(within(section(CACHES)).getByRole('list', { name: 'Left out of this list' })).toHaveTextContent(
+        `3 items left out (1.4 GB): ${JETBRAINS_DICTIONARY['jetbrains.left-out.current'] ?? ''}`,
+      );
+      expect(within(section(SETTINGS)).getByRole('list', { name: 'Left out of this list' })).toHaveTextContent(
+        `2 items left out (600 MB): ${JETBRAINS_DICTIONARY['jetbrains.left-out.running'] ?? ''}`,
+      );
     });
   });
 });

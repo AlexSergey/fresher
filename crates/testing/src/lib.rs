@@ -1,4 +1,4 @@
-//! Test helpers of Fresher: fixture trees, fake known folders, installed and running apps, fake clock, fake Trash, fake external commands, fake volumes and change
+//! Test helpers of Fresher: fixture trees and app bundles, fake known folders, installed and running apps, fake clock, fake Trash, fake external commands, fake volumes and change
 //! journal, an in-memory scan cache, fake open files, an in-memory cleanup journal, a fake cleaner, a fixed disk state,
 //! fake access and system interface, the reference walk, a folder swapped for a link in a race, and the module
 //! harness and contract checks.
@@ -9,6 +9,7 @@
 
 #![forbid(unsafe_code)]
 
+mod app_bundle;
 mod cleanup_fakes;
 mod contract;
 mod entry_facts;
@@ -25,6 +26,7 @@ mod system_fakes;
 mod tree_description;
 mod tree_report;
 
+pub use app_bundle::AppBundle;
 pub use cleanup_fakes::{ExecutedPlan, FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
 pub use contract::{
     Catalogue, ContractProblem, assert_module_contract, assert_texts_used, check_module_contract,

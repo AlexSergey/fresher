@@ -83,6 +83,35 @@ const reviewAll = async (page: Page, script: CoreScript): Promise<void> => {
   await go(page, /^Review/, 'Review');
 };
 
+// The JetBrains scan, on the module's page; with `review`, WebStorm's three categories ticked and the review open.
+const jetbrainsPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.jetbrains);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^JetBrains IDEs/ });
+  await expect(nav).toContainText('1.7 GB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'JetBrains IDEs' })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Caches of older JetBrains IDE versions' })).toContainText(
+    '3 items left out (1.4 GB)',
+  );
+};
+
+// WebStorm's three categories ticked, the review open and the confirmation (it names Medium) asked for.
+const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
+  await jetbrainsPage(page);
+  for (const name of ['Caches', 'Logs', 'Settings and plugins']) {
+    await page.getByRole('checkbox', { name: new RegExp(`^Select ${name} of older`) }).check();
+  }
+  await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Review' })).toBeFocused();
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  return dialog;
+};
+
 test.beforeEach(async ({ page }) => {
   await motionOff(page);
 });
@@ -159,6 +188,18 @@ test.describe('positive cases', () => {
 
     test('the module page with a selection', async ({ page }) => {
       await selectSome(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the module page of JetBrains IDEs, with its left-out lines', async ({ page }) => {
+      await jetbrainsPage(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the confirmation of a cleanup that names Medium', async ({ page }) => {
+      await jetbrainsConfirmation(page);
 
       expect(await violations(page)).toStrictEqual([]);
     });

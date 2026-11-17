@@ -21,7 +21,7 @@ use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
 use fresher_system::{
-    COMMAND_TIMEOUT, MacInstalledApps, MacKnownFolders, MacRunningApps, ProcessCommandRunner, SystemClock,
+    AppSearch, COMMAND_TIMEOUT, MacInstalledApps, MacKnownFolders, MacRunningApps, ProcessCommandRunner, SystemClock,
 };
 
 use crate::adapters::{NoSystemUi, UnknownAccess};
@@ -43,6 +43,8 @@ pub(crate) enum ComposeError {
     Executable(#[source] std::io::Error),
     #[error("the protected places cannot be listed: {0}")]
     Protection(#[from] ProtectionError),
+    #[error("the jetbrains module cannot be built: {0}")]
+    JetBrains(#[from] fresher_module_jetbrains::JetBrainsError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -95,13 +97,14 @@ pub(crate) fn start(
     #[cfg(debug_assertions)]
     if let Some(mode) = crate::sandbox::SandboxMode::from_env(var)? {
         apply(&MACOS_POLICY)?;
+        // The running apps come from the sandbox's world, never the Mac's: an app open on the Mac changes nothing.
         let (engine, sandbox) =
-            crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real())?;
+            crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
         return Ok(Start {
             engine,
             data_folder: sandbox.data_folder(),
             home: sandbox.home(),
-            build: Build::Sandbox { path: sandbox.path().to_path_buf() },
+            build: Build::Sandbox { path: sandbox.path().to_path_buf(), simulated_running: true },
         });
     }
     let engine = engine(&data_folder, &home)?;
@@ -143,6 +146,7 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         volumes,
         clock,
         running,
+        app_search: AppSearch::Spotlight(Arc::clone(&commands)),
         commands,
         access: Arc::new(UnknownAccess),
         cleanup,
@@ -173,11 +177,14 @@ pub(crate) struct Shared {
     pub(crate) access: Arc<dyn AccessProbe>,
     pub(crate) cleanup: CleanupPorts,
     pub(crate) only: Option<ModuleId>,
+    /// Where an app is looked for beyond the apps folders: Spotlight on a Mac, the listed apps only in a sandbox.
+    pub(crate) app_search: AppSearch,
 }
 
 /// The engine both paths share: the real walk of the disk over `shared`, the app's modules and its settings file.
 pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
-    let Shared { folder, avoid, known_folders, volumes, clock, running, commands, access, cleanup, only } = shared;
+    let Shared { folder, avoid, known_folders, volumes, clock, running, commands, access, cleanup, only, app_search } =
+        shared;
     let options = ScannerOptions {
         standing_avoid: avoid,
         cache_body_limit: CachePolicy::DEFAULT.body_limit,
@@ -201,7 +208,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         system_ui: Arc::new(NoSystemUi),
         system: SystemPorts {
             known_folders: Arc::clone(&known_folders),
-            apps: Arc::new(MacInstalledApps::new(known_folders)),
+            apps: Arc::new(MacInstalledApps::new(known_folders, app_search)),
             running,
         },
     };
@@ -264,13 +271,9 @@ fn registry_of(only: Option<ModuleId>) -> Result<Registry, ComposeError> {
     Ok(registry)
 }
 
-/// Every module of the app, in a fixed order.
-#[cfg_attr(
-    not(debug_assertions),
-    expect(clippy::unnecessary_wraps, reason = "only the dev-only modules of a debug build can fail to build")
-)]
+/// Every module of the app, in a fixed order: the feature modules of every build, then the dev-only ones.
 fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
-    let modules: Vec<Box<dyn Module>> = Vec::new();
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(fresher_module_jetbrains::JetBrainsModule::new()?)];
     #[cfg(debug_assertions)]
     let modules = {
         let mut modules = modules;
@@ -364,16 +367,17 @@ mod tests {
             );
         }
 
-        /// `cargo test --release` builds without `debug_assertions`: there neither dev-only module is registered.
+        /// `cargo test --release` builds without `debug_assertions`: there only the feature modules are registered.
         #[test]
-        fn the_engine_runs_the_dev_only_modules_in_debug_builds_only() {
+        fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-            let dev_only: &[&str] = if cfg!(debug_assertions) { &["demo", "trial"] } else { &[] };
+            let expected: &[&str] =
+                if cfg!(debug_assertions) { &["jetbrains", "demo", "trial"] } else { &["jetbrains"] };
 
             let engine = engine(folder.path(), home.path()).unwrap();
 
             let ids: Vec<&str> = engine.modules().iter().map(|module| module.id.as_str()).collect();
-            assert_eq!(ids, dev_only);
+            assert_eq!(ids, expected);
         }
 
         #[test]

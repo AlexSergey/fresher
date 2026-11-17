@@ -4,6 +4,7 @@
 
 use std::fmt;
 use std::fs;
+use std::io::Write as _;
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -13,22 +14,23 @@ use std::time::{Duration, SystemTime};
 use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, sandbox_engine};
 use fresher_core::{
     Access, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, Confirmation, Event, Finding,
-    FindingOrder, FindingsQuery, RecordedOutcome, SANDBOX_MARKER, Subject, TrashState, VolumeFacts, VolumeId,
+    FindingOrder, FindingsQuery, LeftOutCount, RecordedOutcome, SANDBOX_MARKER, Subject, TrashState, VolumeFacts,
+    VolumeId,
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_macos::{current_user, protection};
 use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, generate};
 use fresher_testing::{
-    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeRunningApps, FakeVolumes, TreeEntry,
-    TreeReport,
+    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport,
 };
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
+use crate::left_out::{check_left_outs, sorted};
 use crate::map::{check_map, sandbox_disk};
 
 /// The longest a scan or a cleanup is waited for before the run fails instead of hanging.
-const WAIT: Duration = Duration::from_secs(60);
+const WAIT: Duration = Duration::from_secs(180);
 
 /// The name of the sandbox inside the run's temporary folder.
 const SANDBOX: &str = "sandbox";
@@ -93,7 +95,9 @@ pub(crate) fn check_case_file(name: &str) {
 fn assert_golden_volume() {
     let folder = tempfile::tempdir().unwrap();
     let (data, sparse) = (folder.path().join("data"), folder.path().join("sparse"));
-    fs::write(&data, b"x").unwrap();
+    let mut one = fs::File::create(&data).unwrap();
+    one.write_all(b"x").unwrap();
+    one.sync_all().unwrap();
     fs::File::create(&sparse).unwrap().set_len(1024 * 1024).unwrap();
     let allocated = |path: &Path| fs::metadata(path).unwrap().blocks() * 512;
     let (one_byte, sparse) = (allocated(&data), allocated(&sparse));
@@ -120,13 +124,14 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let engine = world.engine(std::slice::from_ref(&file), file.module().map(fresher_core::ModuleId::as_str))?;
     let categories: Vec<_> =
         engine.modules().into_iter().flat_map(|module| module.categories).map(|info| info.descriptor).collect();
-    file.check(&categories)
+    file.check(&categories, &engine.problems())
         .map_err(|error| failure(name, format!("the case file does not fit the modules: {error}")))?;
     let sandbox = world.sandbox();
     let around = world.around(name)?;
     let before = report_of(name, &sandbox)?;
 
-    scan(name, &engine)?;
+    let left_out = sorted(&scan(name, &engine)?);
+    check_left_outs(name, &file, &left_out)?;
     let findings = findings(name, &engine)?;
     let mut positives = Vec::new();
     for case in file.cases() {
@@ -149,12 +154,16 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     if world.around(name)? != around {
         return Err(failure(name, "the folder that holds the sandbox changed"));
     }
-    Ok(json!({
+    let mut report = json!({
         "findings": findings.iter().map(|finding| finding_report(finding, &sandbox)).collect::<Vec<_>>(),
         "map": map,
         "cleanup": cleanup_report(&sandbox, &findings, view, detail),
         "treeAfter": tree_report(&after),
-    }))
+    });
+    if let Some(left_out) = crate::left_out::report(&left_out) {
+        report["leftOut"] = left_out;
+    }
+    Ok(report)
 }
 
 /// A temporary folder holding the sandbox and a stand-in for the real Mac: its home, and the development build's data
@@ -200,7 +209,9 @@ impl World {
         };
         let tree = TreeReport::of(generated.sandbox.path()).map_err(|error| failure(name, error))?;
         let tree_size = sandbox_entries(&tree).iter().map(|entry| entry.logical_size).sum();
-        let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), fakes(tree_size))
+        let world = fresher_sandbox::World::read(&generated.sandbox).map_err(|error| failure(name, error))?;
+        let ports = fakes(tree_size, &world).ok_or_else(|| failure(name, "the sandbox's world.toml holds no `now`"))?;
+        let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), ports)
             .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
         if let Some(id) = module
             && !engine.modules().iter().any(|info| info.id.as_str() == id)
@@ -222,38 +233,52 @@ fn leak(id: &str) -> &'static str {
     Box::leak(id.to_owned().into_boxed_str())
 }
 
-/// Fakes for every port sandbox mode keeps real: no clock, volume, open file, running app, tool or permission of the
-/// machine. The volume holds `tree_size` bytes of the sandbox's files.
-fn fakes(tree_size: u64) -> SandboxPorts {
+/// Fakes for every port sandbox mode keeps real: no clock, volume, open file, tool or permission of the machine, and
+/// the running apps and the moment of the sandbox's `world`, as sandbox mode takes them: the clock stands at the
+/// moment the sandbox was generated. The volume holds `tree_size` bytes of the sandbox's files. `None` when the world
+/// holds no moment.
+fn fakes(tree_size: u64, world: &fresher_sandbox::World) -> Option<SandboxPorts> {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
-    SandboxPorts {
-        clock: Arc::new(FakeClock::at(FIXTURE_NOW)),
+    let now = world.now()?.duration_since(SystemTime::UNIX_EPOCH).ok()?;
+    Some(SandboxPorts {
+        clock: Arc::new(FakeClock::at(now.as_secs())),
         volumes: Arc::new(FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size))),
         open_files: Arc::new(FakeOpenFiles::default()),
-        running: Arc::new(FakeRunningApps::default()),
+        running: Arc::new(world.running_apps()),
         commands: Arc::new(FakeCommandRunner::default()),
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
-    }
+    })
 }
 
 fn report_of(name: &str, sandbox: &Path) -> Result<TreeReport, Failure> {
     TreeReport::of(sandbox).map_err(|error| failure(name, error))
 }
 
-/// A full scan, waited for.
-fn scan(name: &str, engine: &Engine) -> Result<(), Failure> {
+/// A full scan, waited for: what its modules left out, as each reported it.
+fn scan(name: &str, engine: &Engine) -> Result<Vec<LeftOutCount>, Failure> {
     let events = engine.subscribe();
     engine.start_scan(ScanMode::Full).map_err(|error| failure(name, format!("the scan does not start: {error:?}")))?;
-    until(name, &events, |event| matches!(event, Event::ScanFinished { .. }))
+    let mut left_out = Vec::new();
+    until(name, &events, |event| {
+        if let Event::ModuleFinished { left_out: counts, .. } = event {
+            left_out.extend(counts.iter().cloned());
+        }
+        matches!(event, Event::ScanFinished { .. })
+    })?;
+    Ok(left_out)
 }
 
-/// Waits for the first event that `is_last`.
-fn until(name: &str, events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool) -> Result<(), Failure> {
+/// Waits for the first event that `is_last`; on a timeout, the failure names the last event seen.
+fn until(name: &str, events: &Receiver<Event>, mut is_last: impl FnMut(&Event) -> bool) -> Result<(), Failure> {
+    let mut last: Option<Event> = None;
     loop {
-        let event = events.recv_timeout(WAIT).map_err(|error| failure(name, format!("no end in sight: {error}")))?;
+        let event = events.recv_timeout(WAIT).map_err(|error| {
+            failure(name, format!("no end in sight after {} s ({error}); the last event: {last:?}", WAIT.as_secs()))
+        })?;
         if is_last(&event) {
             return Ok(());
         }
+        last = Some(event);
     }
 }
 
@@ -445,6 +470,7 @@ fn finding_report(finding: &Finding, sandbox: &Path) -> Value {
         "category": inner.category(),
         "danger": inner.danger(),
         "logical": inner.sizes().logical,
+        "app": inner.app(),
     })
 }
 

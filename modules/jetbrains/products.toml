@@ -1,0 +1,88 @@
+# The JetBrains IDEs whose older versions' folders the module recognizes (plan 016, design section 2).
+# `folder`: what each version's folder name starts with (`WebStorm2025.3`), plain letters, compared exactly.
+# `name`: the product as the app shows it. `bundle-ids`: the release's and the early access build's.
+# `other-apps`: the vendor's apps that are not IDEs and keep no version folders; one of them running keeps nothing.
+# A running app whose bundle id starts `com.jetbrains.` and is listed nowhere here keeps every product's folders.
+# Every bundle id is checked by hand with `mdls` on a real Mac in 016/04/02.
+
+other-apps = ["com.jetbrains.toolbox"]
+
+[[product]]
+folder = "IntelliJIdea"
+name = "IntelliJ IDEA"
+bundle-ids = ["com.jetbrains.intellij", "com.jetbrains.intellij-EAP"]
+
+[[product]]
+folder = "IdeaIC"
+name = "IntelliJ IDEA Community Edition"
+bundle-ids = ["com.jetbrains.intellij.ce", "com.jetbrains.intellij.ce-EAP"]
+
+[[product]]
+folder = "WebStorm"
+name = "WebStorm"
+bundle-ids = ["com.jetbrains.WebStorm", "com.jetbrains.WebStorm-EAP"]
+
+[[product]]
+folder = "PyCharm"
+name = "PyCharm"
+bundle-ids = ["com.jetbrains.pycharm", "com.jetbrains.pycharm-EAP"]
+
+[[product]]
+folder = "PyCharmCE"
+name = "PyCharm Community Edition"
+bundle-ids = ["com.jetbrains.pycharm.ce", "com.jetbrains.pycharm.ce-EAP"]
+
+[[product]]
+folder = "PhpStorm"
+name = "PhpStorm"
+bundle-ids = ["com.jetbrains.PhpStorm", "com.jetbrains.PhpStorm-EAP"]
+
+[[product]]
+folder = "GoLand"
+name = "GoLand"
+bundle-ids = ["com.jetbrains.goland", "com.jetbrains.goland-EAP"]
+
+[[product]]
+folder = "CLion"
+name = "CLion"
+bundle-ids = ["com.jetbrains.CLion", "com.jetbrains.CLion-EAP"]
+
+[[product]]
+folder = "RubyMine"
+name = "RubyMine"
+bundle-ids = ["com.jetbrains.rubymine", "com.jetbrains.rubymine-EAP"]
+
+[[product]]
+folder = "Rider"
+name = "Rider"
+bundle-ids = ["com.jetbrains.rider", "com.jetbrains.rider-EAP"]
+
+[[product]]
+folder = "DataGrip"
+name = "DataGrip"
+bundle-ids = ["com.jetbrains.datagrip", "com.jetbrains.datagrip-EAP"]
+
+[[product]]
+folder = "DataSpell"
+name = "DataSpell"
+bundle-ids = ["com.jetbrains.dataspell", "com.jetbrains.dataspell-EAP"]
+
+[[product]]
+folder = "RustRover"
+name = "RustRover"
+bundle-ids = ["com.jetbrains.rustrover", "com.jetbrains.rustrover-EAP"]
+
+[[product]]
+folder = "AppCode"
+name = "AppCode"
+bundle-ids = ["com.jetbrains.AppCode", "com.jetbrains.AppCode-EAP"]
+
+[[product]]
+folder = "Aqua"
+name = "Aqua"
+bundle-ids = ["com.jetbrains.aqua", "com.jetbrains.aqua-EAP"]
+
+[[product]]
+folder = "Writerside"
+name = "Writerside"
+bundle-ids = ["com.jetbrains.writerside", "com.jetbrains.writerside-EAP"]

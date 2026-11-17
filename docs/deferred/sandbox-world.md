@@ -1,25 +1,31 @@
 # The world outside the disk in a sandbox
 
-**Agreed:** 2026-11-16, by the user (plan 007, decision 5) · **Due at:** when the first module that reads installed
-apps, running apps, open files, an external tool's answers, permissions or the clock is planned
+**Agreed:** 2026-11-16, by the user (plan 007, decision 5) · **Due at:** when the first module that reads open files,
+an external tool's answers, permissions or the clock is planned
+
+**Partly taken by plan [016](../plans/016-jetbrains/readme.md)** (2026-11-17), the first module that reads installed and
+running apps: its plan 01 builds installed apps as bundles (`[[case.app]]`, item 1 below), the declared running apps
+(`running = true`, `[[case.running]]`, `world.toml` at the sandbox's root; the running part of item 2), sandbox mode
+taking its running apps from the sandbox, never the real Mac (part of item 3), and the left-out expectation
+(`[[case.left-out]]`, from plan 011). Everything else below stays deferred.
 
 ## What is postponed
 
 Plan [007](../plans/007-safe-development/readme.md)'s former plan 06: a case file of `fixtures/sandboxes/` also
 declares what is not files, and sandbox mode and the sandbox autotests serve it through the fakes plans 008 and 009
 built. The design is in plan 007's [`00-design.md`](../plans/007-safe-development/00-design.md), section 10. Until
-then, sandbox mode keeps volumes, open files, running apps, commands, the clock and access real and read-only, and the
-autotests use empty fakes.
+then, sandbox mode keeps volumes, open files, commands and access real and read-only, and the autotests use empty
+fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016).
 
 ## What doing it needs
 
-1. **Installed apps on disk**: `[[app]]` in the tree vocabulary (`path` ending in `.app`, `bundle-id`, `name`,
+1. ~~**Installed apps on disk**~~ (plan 016): `[[app]]` in the tree vocabulary (`path` ending in `.app`, `bundle-id`, `name`,
    `version`, `build`, `helpers`) writes a bundle with its `Contents/Info.plist` as an XML property list, so plan 009's
    real `MacInstalledApps` reads the sandbox's `Applications/` as it reads a Mac's; the team id, which needs a signed
    executable, comes from the fake. The sandbox's protection list protects its own `Applications/` and
    `System/Applications/`. Checks: a bundle id that is not reverse-DNS and an app outside an apps folder are refused;
    `MacInstalledApps` over a generated sandbox lists exactly the declared apps.
-2. **The declared world** (`crates/sandbox/src/world.rs`): `[world]` with `now`, `running` (names and bundle ids),
+2. **The declared world** (`crates/sandbox/src/world.rs`, made by plan 016 for the running apps): `[world]` with `now`,
    `open-files` (sandbox paths), `access` (each capability's state), `[[world.tool]]` (a program, its exact arguments,
    its exit code, its output from a file next to the case file) and `[[world.step]]` (later changes played between two
    scans: "advance 7 days", "quit an app", "grow a file"). `World::ports()` gives `FakeClock`, `FakeRunningApps`,

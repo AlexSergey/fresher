@@ -8,6 +8,8 @@ import { Spinner } from '../spinner/spinner';
 import styles from './button.module.css';
 
 export type ButtonProps = Forced & {
+  // The id of a text that says more than the label, such as a tooltip's.
+  readonly 'aria-describedby'?: string | undefined;
   // Work it started is under way: a spinner takes the icon's place, the label stays, clicks are ignored.
   readonly busy?: boolean;
   // The label, and the accessible name.
@@ -32,6 +34,7 @@ type ButtonVariant = 'danger' | 'ghost' | 'primary' | 'secondary';
 
 // A real button with its label, in one of four variants and three sizes.
 export const Button = ({
+  'aria-describedby': describedBy,
   busy = false,
   children,
   disabled = false,
@@ -49,6 +52,7 @@ export const Button = ({
     <button
       {...forced}
       aria-busy={busy || undefined}
+      aria-describedby={describedBy}
       aria-disabled={busy || undefined}
       className={styles.button}
       data-size={size}

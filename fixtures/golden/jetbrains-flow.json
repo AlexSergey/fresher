@@ -1,0 +1,1686 @@
+{
+  "cleanAndPutBack": {
+    "events": [
+      {
+        "cleanup": 1,
+        "method": "trash",
+        "total": 6,
+        "type": "cleanup-started"
+      },
+      {
+        "cleanup": 1,
+        "done": 6,
+        "items": [
+          {
+            "outcome": {
+              "kind": "moved"
+            }
+          },
+          {
+            "outcome": {
+              "kind": "moved"
+            }
+          },
+          {
+            "outcome": {
+              "kind": "moved"
+            }
+          },
+          {
+            "outcome": {
+              "kind": "moved"
+            }
+          },
+          {
+            "outcome": {
+              "kind": "moved"
+            }
+          },
+          {
+            "outcome": {
+              "kind": "moved"
+            }
+          }
+        ],
+        "type": "cleanup-items"
+      },
+      {
+        "scan": 1,
+        "type": "findings-removed"
+      },
+      {
+        "cleanup": 1,
+        "report": {
+          "counts": {
+            "deleted": 0,
+            "emptied": 0,
+            "failed": 0,
+            "moved": 6,
+            "notReached": 0,
+            "skipped": 0,
+            "toolDone": 0,
+            "unknown": 0
+          },
+          "deleted": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 0,
+            "reclaimable": 0
+          },
+          "ended": "completed",
+          "measured": null,
+          "method": "trash",
+          "moved": {
+            "allocated": 204800,
+            "completeness": "complete",
+            "logical": 200704,
+            "reclaimable": 204800
+          }
+        },
+        "type": "cleanup-finished"
+      }
+    ],
+    "journal": [
+      {
+        "format": "cleanup-journal",
+        "version": 1
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "items": [
+          {
+            "action": "remove",
+            "category": "jetbrains.settings",
+            "danger": "medium",
+            "key": "settings/GoLand2024.3",
+            "path": "~/home/Library/Application Support/JetBrains/GoLand2024.3",
+            "reason": {
+              "args": {
+                "current": {
+                  "kind": "text",
+                  "value": "2025.2"
+                },
+                "product": {
+                  "kind": "text",
+                  "value": "GoLand"
+                },
+                "version": {
+                  "kind": "text",
+                  "value": "2024.3"
+                }
+              },
+              "key": "jetbrains.finding.reason"
+            },
+            "sizes": {
+              "allocated": 20480,
+              "completeness": "complete",
+              "logical": 18432,
+              "reclaimable": 20480
+            }
+          },
+          {
+            "action": "remove",
+            "category": "jetbrains.settings",
+            "danger": "medium",
+            "key": "settings/WebStorm2024.3",
+            "path": "~/home/Library/Application Support/JetBrains/WebStorm2024.3",
+            "reason": {
+              "args": {
+                "current": {
+                  "kind": "text",
+                  "value": "2025.3"
+                },
+                "product": {
+                  "kind": "text",
+                  "value": "WebStorm"
+                },
+                "version": {
+                  "kind": "text",
+                  "value": "2024.3"
+                }
+              },
+              "key": "jetbrains.finding.reason"
+            },
+            "sizes": {
+              "allocated": 20480,
+              "completeness": "complete",
+              "logical": 18432,
+              "reclaimable": 20480
+            }
+          },
+          {
+            "action": "remove",
+            "category": "jetbrains.caches",
+            "danger": "safe",
+            "key": "caches/GoLand2024.3",
+            "path": "~/home/Library/Caches/JetBrains/GoLand2024.3",
+            "reason": {
+              "args": {
+                "current": {
+                  "kind": "text",
+                  "value": "2025.2"
+                },
+                "product": {
+                  "kind": "text",
+                  "value": "GoLand"
+                },
+                "version": {
+                  "kind": "text",
+                  "value": "2024.3"
+                }
+              },
+              "key": "jetbrains.finding.reason"
+            },
+            "sizes": {
+              "allocated": 69632,
+              "completeness": "complete",
+              "logical": 69632,
+              "reclaimable": 69632
+            }
+          },
+          {
+            "action": "remove",
+            "category": "jetbrains.caches",
+            "danger": "safe",
+            "key": "caches/WebStorm2024.3",
+            "path": "~/home/Library/Caches/JetBrains/WebStorm2024.3",
+            "reason": {
+              "args": {
+                "current": {
+                  "kind": "text",
+                  "value": "2025.3"
+                },
+                "product": {
+                  "kind": "text",
+                  "value": "WebStorm"
+                },
+                "version": {
+                  "kind": "text",
+                  "value": "2024.3"
+                }
+              },
+              "key": "jetbrains.finding.reason"
+            },
+            "sizes": {
+              "allocated": 69632,
+              "completeness": "complete",
+              "logical": 69632,
+              "reclaimable": 69632
+            }
+          },
+          {
+            "action": "remove",
+            "category": "jetbrains.logs",
+            "danger": "safe",
+            "key": "logs/GoLand2024.3",
+            "path": "~/home/Library/Logs/JetBrains/GoLand2024.3",
+            "reason": {
+              "args": {
+                "current": {
+                  "kind": "text",
+                  "value": "2025.2"
+                },
+                "product": {
+                  "kind": "text",
+                  "value": "GoLand"
+                },
+                "version": {
+                  "kind": "text",
+                  "value": "2024.3"
+                }
+              },
+              "key": "jetbrains.finding.reason"
+            },
+            "sizes": {
+              "allocated": 12288,
+              "completeness": "complete",
+              "logical": 12288,
+              "reclaimable": 12288
+            }
+          },
+          {
+            "action": "remove",
+            "category": "jetbrains.logs",
+            "danger": "safe",
+            "key": "logs/WebStorm2024.3",
+            "path": "~/home/Library/Logs/JetBrains/WebStorm2024.3",
+            "reason": {
+              "args": {
+                "current": {
+                  "kind": "text",
+                  "value": "2025.3"
+                },
+                "product": {
+                  "kind": "text",
+                  "value": "WebStorm"
+                },
+                "version": {
+                  "kind": "text",
+                  "value": "2024.3"
+                }
+              },
+              "key": "jetbrains.finding.reason"
+            },
+            "sizes": {
+              "allocated": 12288,
+              "completeness": "complete",
+              "logical": 12288,
+              "reclaimable": 12288
+            }
+          }
+        ],
+        "method": "trash",
+        "roots": [
+          "~"
+        ],
+        "space": [],
+        "type": "begin"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/trash/GoLand2024.3",
+            "original": "~/home/Library/Application Support/JetBrains/GoLand2024.3"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/trash/WebStorm2024.3",
+            "original": "~/home/Library/Application Support/JetBrains/WebStorm2024.3"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/trash/GoLand2024.3",
+            "original": "~/home/Library/Caches/JetBrains/GoLand2024.3"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/trash/WebStorm2024.3",
+            "original": "~/home/Library/Caches/JetBrains/WebStorm2024.3"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/trash/GoLand2024.3",
+            "original": "~/home/Library/Logs/JetBrains/GoLand2024.3"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/trash/WebStorm2024.3",
+            "original": "~/home/Library/Logs/JetBrains/WebStorm2024.3"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "ended": "completed",
+        "space": [],
+        "type": "end"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      }
+    ],
+    "plan": {
+      "groups": [
+        {
+          "action": "remove",
+          "category": "jetbrains.caches",
+          "items": [
+            {
+              "danger": "safe",
+              "path": "~/home/Library/Caches/JetBrains/GoLand2024.3",
+              "reason": {
+                "args": {
+                  "current": {
+                    "kind": "text",
+                    "value": "2025.2"
+                  },
+                  "product": {
+                    "kind": "text",
+                    "value": "GoLand"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.reason"
+              },
+              "sizes": {
+                "allocated": 69632,
+                "completeness": "complete",
+                "logical": 69632,
+                "reclaimable": 69632
+              },
+              "title": {
+                "args": {
+                  "product": {
+                    "kind": "text",
+                    "value": "GoLand"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.title"
+              }
+            },
+            {
+              "danger": "safe",
+              "path": "~/home/Library/Caches/JetBrains/WebStorm2024.3",
+              "reason": {
+                "args": {
+                  "current": {
+                    "kind": "text",
+                    "value": "2025.3"
+                  },
+                  "product": {
+                    "kind": "text",
+                    "value": "WebStorm"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.reason"
+              },
+              "sizes": {
+                "allocated": 69632,
+                "completeness": "complete",
+                "logical": 69632,
+                "reclaimable": 69632
+              },
+              "title": {
+                "args": {
+                  "product": {
+                    "kind": "text",
+                    "value": "WebStorm"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.title"
+              }
+            }
+          ],
+          "summary": {
+            "count": 2,
+            "highest": "safe",
+            "irreversible": 0,
+            "sizes": {
+              "allocated": 139264,
+              "completeness": "complete",
+              "logical": 139264,
+              "reclaimable": 139264
+            }
+          }
+        },
+        {
+          "action": "remove",
+          "category": "jetbrains.logs",
+          "items": [
+            {
+              "danger": "safe",
+              "path": "~/home/Library/Logs/JetBrains/GoLand2024.3",
+              "reason": {
+                "args": {
+                  "current": {
+                    "kind": "text",
+                    "value": "2025.2"
+                  },
+                  "product": {
+                    "kind": "text",
+                    "value": "GoLand"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.reason"
+              },
+              "sizes": {
+                "allocated": 12288,
+                "completeness": "complete",
+                "logical": 12288,
+                "reclaimable": 12288
+              },
+              "title": {
+                "args": {
+                  "product": {
+                    "kind": "text",
+                    "value": "GoLand"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.title"
+              }
+            },
+            {
+              "danger": "safe",
+              "path": "~/home/Library/Logs/JetBrains/WebStorm2024.3",
+              "reason": {
+                "args": {
+                  "current": {
+                    "kind": "text",
+                    "value": "2025.3"
+                  },
+                  "product": {
+                    "kind": "text",
+                    "value": "WebStorm"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.reason"
+              },
+              "sizes": {
+                "allocated": 12288,
+                "completeness": "complete",
+                "logical": 12288,
+                "reclaimable": 12288
+              },
+              "title": {
+                "args": {
+                  "product": {
+                    "kind": "text",
+                    "value": "WebStorm"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.title"
+              }
+            }
+          ],
+          "summary": {
+            "count": 2,
+            "highest": "safe",
+            "irreversible": 0,
+            "sizes": {
+              "allocated": 24576,
+              "completeness": "complete",
+              "logical": 24576,
+              "reclaimable": 24576
+            }
+          }
+        },
+        {
+          "action": "remove",
+          "category": "jetbrains.settings",
+          "items": [
+            {
+              "danger": "medium",
+              "path": "~/home/Library/Application Support/JetBrains/GoLand2024.3",
+              "reason": {
+                "args": {
+                  "current": {
+                    "kind": "text",
+                    "value": "2025.2"
+                  },
+                  "product": {
+                    "kind": "text",
+                    "value": "GoLand"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.reason"
+              },
+              "sizes": {
+                "allocated": 20480,
+                "completeness": "complete",
+                "logical": 18432,
+                "reclaimable": 20480
+              },
+              "title": {
+                "args": {
+                  "product": {
+                    "kind": "text",
+                    "value": "GoLand"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.title"
+              }
+            },
+            {
+              "danger": "medium",
+              "path": "~/home/Library/Application Support/JetBrains/WebStorm2024.3",
+              "reason": {
+                "args": {
+                  "current": {
+                    "kind": "text",
+                    "value": "2025.3"
+                  },
+                  "product": {
+                    "kind": "text",
+                    "value": "WebStorm"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.reason"
+              },
+              "sizes": {
+                "allocated": 20480,
+                "completeness": "complete",
+                "logical": 18432,
+                "reclaimable": 20480
+              },
+              "title": {
+                "args": {
+                  "product": {
+                    "kind": "text",
+                    "value": "WebStorm"
+                  },
+                  "version": {
+                    "kind": "text",
+                    "value": "2024.3"
+                  }
+                },
+                "key": "jetbrains.finding.title"
+              }
+            }
+          ],
+          "summary": {
+            "count": 2,
+            "highest": "medium",
+            "irreversible": 0,
+            "sizes": {
+              "allocated": 40960,
+              "completeness": "complete",
+              "logical": 36864,
+              "reclaimable": 40960
+            }
+          }
+        }
+      ],
+      "leftOut": [],
+      "permanentAvailable": true,
+      "plan": 1,
+      "summary": {
+        "count": 6,
+        "highest": "medium",
+        "irreversible": 0,
+        "sizes": {
+          "allocated": 204800,
+          "completeness": "complete",
+          "logical": 200704,
+          "reclaimable": 204800
+        }
+      }
+    },
+    "putBack": {
+      "items": [
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        }
+      ]
+    },
+    "treeAfterCleanup": {
+      "entries": [
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home"
+        },
+        {
+          "kind": "file",
+          "logical_size": 83,
+          "path": "home/.fresher-sandbox"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "trash/GoLand2024.3/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "trash/GoLand2024.3/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "trash/GoLand2024.3/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "trash/GoLand2024.3/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "trash/GoLand2024.3/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/GoLand2024.3/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "trash/GoLand2024.3/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "trash/WebStorm2024.3/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "trash/WebStorm2024.3/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "trash/WebStorm2024.3/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "trash/WebStorm2024.3/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "trash/WebStorm2024.3/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash/WebStorm2024.3/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "trash/WebStorm2024.3/plugins/plugin.jar"
+        }
+      ],
+      "total_logical_size": 401491
+    },
+    "treeAfterPutBack": {
+      "entries": [
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home"
+        },
+        {
+          "kind": "file",
+          "logical_size": 83,
+          "path": "home/.fresher-sandbox"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2024.3/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "home/Library/Application Support/JetBrains/GoLand2024.3/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2024.3/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "home/Library/Application Support/JetBrains/GoLand2024.3/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "home/Library/Application Support/JetBrains/GoLand2025.2/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2024.3/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2024.3/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2024.3/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2024.3/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/options"
+        },
+        {
+          "kind": "file",
+          "logical_size": 2048,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/plugins"
+        },
+        {
+          "kind": "file",
+          "logical_size": 16384,
+          "path": "home/Library/Application Support/JetBrains/WebStorm2025.3/plugins/plugin.jar"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2024.3/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "home/Library/Caches/JetBrains/GoLand2024.3/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2024.3/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Caches/JetBrains/GoLand2024.3/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Caches/JetBrains/GoLand2025.2/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2024.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2024.3/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "home/Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2024.3/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Caches/JetBrains/WebStorm2024.3/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/index"
+        },
+        {
+          "kind": "file",
+          "logical_size": 65536,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/log"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Caches/JetBrains/WebStorm2025.3/log/trace.bin"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/GoLand2024.3"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "home/Library/Logs/JetBrains/GoLand2024.3/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/GoLand2024.3/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Logs/JetBrains/GoLand2024.3/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Logs/JetBrains/GoLand2025.2/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/WebStorm2024.3"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "home/Library/Logs/JetBrains/WebStorm2024.3/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/WebStorm2024.3/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Logs/JetBrains/WebStorm2024.3/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3"
+        },
+        {
+          "kind": "file",
+          "logical_size": 8192,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3/old"
+        },
+        {
+          "kind": "file",
+          "logical_size": 4096,
+          "path": "home/Library/Logs/JetBrains/WebStorm2025.3/old/idea.1.log"
+        },
+        {
+          "kind": "dir",
+          "logical_size": 0,
+          "path": "trash"
+        }
+      ],
+      "total_logical_size": 401491
+    }
+  },
+  "failingSystem": {
+    "findings": [],
+    "leftOut": [
+      [
+        "jetbrains.caches",
+        "jetbrains.left-out.no-system",
+        4
+      ],
+      [
+        "jetbrains.logs",
+        "jetbrains.left-out.no-system",
+        4
+      ],
+      [
+        "jetbrains.settings",
+        "jetbrains.left-out.no-system",
+        4
+      ]
+    ]
+  },
+  "ignoring": {
+    "findings": [
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/WebStorm2024.3"
+      ]
+    ]
+  },
+  "installedElsewhere": {
+    "findings": [],
+    "leftOut": [
+      [
+        "jetbrains.uninstalled",
+        "jetbrains.left-out.installed-elsewhere",
+        3
+      ]
+    ]
+  },
+  "openIde": {
+    "findings": [
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/WebStorm2024.3"
+      ]
+    ],
+    "leftOut": [
+      [
+        "jetbrains.caches",
+        "jetbrains.left-out.current",
+        1
+      ],
+      [
+        "jetbrains.caches",
+        "jetbrains.left-out.running",
+        2
+      ],
+      [
+        "jetbrains.logs",
+        "jetbrains.left-out.current",
+        1
+      ],
+      [
+        "jetbrains.logs",
+        "jetbrains.left-out.running",
+        2
+      ],
+      [
+        "jetbrains.settings",
+        "jetbrains.left-out.current",
+        1
+      ],
+      [
+        "jetbrains.settings",
+        "jetbrains.left-out.running",
+        2
+      ]
+    ]
+  },
+  "quitAndRescan": {
+    "findings": [
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/WebStorm2024.3"
+      ]
+    ],
+    "leftOut": [
+      [
+        "jetbrains.caches",
+        "jetbrains.left-out.current",
+        2
+      ],
+      [
+        "jetbrains.logs",
+        "jetbrains.left-out.current",
+        2
+      ],
+      [
+        "jetbrains.settings",
+        "jetbrains.left-out.current",
+        2
+      ]
+    ]
+  },
+  "restoredScan": {
+    "findings": [],
+    "leftOut": [
+      [
+        "jetbrains.uninstalled",
+        "jetbrains.left-out.used-recently",
+        3
+      ]
+    ]
+  },
+  "storageMap": {
+    "webstormLine": [
+      [
+        "jetbrains.caches",
+        69632
+      ],
+      [
+        "jetbrains.logs",
+        12288
+      ],
+      [
+        "jetbrains.settings",
+        18432
+      ]
+    ]
+  },
+  "updateBetweenScans": {
+    "findings": [
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.caches",
+        "home/Library/Caches/JetBrains/WebStorm2025.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.logs",
+        "home/Library/Logs/JetBrains/WebStorm2025.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/GoLand2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/WebStorm2024.3"
+      ],
+      [
+        "jetbrains.settings",
+        "home/Library/Application Support/JetBrains/WebStorm2025.3"
+      ]
+    ],
+    "leftOut": [
+      [
+        "jetbrains.caches",
+        "jetbrains.left-out.current",
+        1
+      ],
+      [
+        "jetbrains.logs",
+        "jetbrains.left-out.current",
+        1
+      ],
+      [
+        "jetbrains.settings",
+        "jetbrains.left-out.current",
+        1
+      ]
+    ]
+  }
+}

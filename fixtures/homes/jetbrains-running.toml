@@ -1,0 +1,27 @@
+# A home for the jetbrains module where every IDE with folders is open: GoLand 2025.2 is installed and open, with an
+# older and its current version's folders; CLion is open from no apps folder. Nothing may be offered.
+
+[[file]]
+path = "Library/Application Support/JetBrains/GoLand2024.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/GoLand2025.2/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/GoLand2024.3/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/GoLand2025.2/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/CLion2024.1/index/data.bin"
+size = 524288
+modified = 1762000000

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use fresher_core::{
     AccessStatus, CategoryDescriptor, DescriptorError, Dictionary, DictionaryError, Module, ModuleDescriptor,
-    ModuleGroup, ModuleId, ModuleInfo, SchemaError, SettingsSchema, ToolCommand, core_dictionary,
+    ModuleGroup, ModuleId, ModuleInfo, SchemaError, SettingsSchema, TextKey, ToolCommand, core_dictionary,
 };
 
 /// Every module of the app, with the settings schema and the dictionary they make together.
@@ -71,6 +71,11 @@ impl Registry {
     /// Every category of every module, in registration order.
     pub fn categories(&self) -> impl Iterator<Item = &CategoryDescriptor> {
         self.descriptors().flat_map(ModuleDescriptor::categories)
+    }
+
+    /// Every problem every module declares (`ModuleDescriptor::with_problems`), in registration order.
+    pub fn problems(&self) -> impl Iterator<Item = &TextKey> {
+        self.descriptors().flat_map(ModuleDescriptor::problems)
     }
 
     /// The settings of the core and of every module. Registration already checked them, so this fails only if the
@@ -239,6 +244,19 @@ mod tests {
             assert!(dictionary.get("core.error.busy").is_some());
             assert_eq!(dictionary.get("alpha.caches.name"), Some("Alpha caches"));
             assert_eq!(dictionary.get("beta.images.name"), Some("Beta images"));
+        }
+
+        #[test]
+        fn lists_the_problems_of_every_module_in_registration_order() {
+            let mut registry = Registry::new().unwrap();
+            registry.register(TestModule::builder("beta").problems(&["beta.left-out.open"]).boxed()).unwrap();
+            registry
+                .register(TestModule::builder("alpha").problems(&["alpha.error.a", "alpha.error.b"]).boxed())
+                .unwrap();
+
+            let problems: Vec<_> = registry.problems().map(fresher_core::TextKey::as_str).collect();
+
+            assert_eq!(problems, ["beta.left-out.open", "alpha.error.a", "alpha.error.b"]);
         }
 
         #[test]

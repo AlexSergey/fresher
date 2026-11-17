@@ -229,6 +229,8 @@ pub struct ModuleContext<'a> {
     system: &'a SystemFacts,
     settings: &'a ModuleSettings,
     cancel: &'a CancelToken,
+    restored: bool,
+    walk_complete: bool,
 }
 
 impl<'a> ModuleContext<'a> {
@@ -239,7 +241,32 @@ impl<'a> ModuleContext<'a> {
         settings: &'a ModuleSettings,
         cancel: &'a CancelToken,
     ) -> Self {
-        Self { clock, commands, system, settings, cancel }
+        Self { clock, commands, system, settings, cancel, restored: false, walk_complete: false }
+    }
+
+    /// The same context for a restored scan: its matches come from the last scan's cache, not from the disk, so their
+    /// times are as old as that scan.
+    #[must_use]
+    pub const fn restored(self) -> Self {
+        Self { restored: true, ..self }
+    }
+
+    /// Whether the scan is restored from the cache rather than walked: a module that judges by age must not then.
+    pub const fn is_restored(&self) -> bool {
+        self.restored
+    }
+
+    /// The same context for `finish` after a walk that read every folder.
+    #[must_use]
+    pub const fn complete_walk(self) -> Self {
+        Self { walk_complete: true, ..self }
+    }
+
+    /// Whether the walk read every folder: known only in `finish`, so `false` during the walk, and after one that
+    /// could not read a folder or stopped early. A module that decides from every match together (a folder it did
+    /// not see may be the one that changed) must not offer then.
+    pub const fn is_walk_complete(&self) -> bool {
+        self.walk_complete
     }
 
     pub fn clock(&self) -> &'a dyn Clock {
@@ -272,6 +299,8 @@ impl std::fmt::Debug for ModuleContext<'_> {
             .debug_struct("ModuleContext")
             .field("settings", self.settings)
             .field("cancel", self.cancel)
+            .field("restored", &self.restored)
+            .field("walk_complete", &self.walk_complete)
             .finish_non_exhaustive()
     }
 }
@@ -580,6 +609,10 @@ mod tests {
             assert_eq!(module.descriptor().locales().en, "{}");
             assert_eq!(module.descriptor().settings(), []);
             assert_eq!(cx.settings().module(), demo());
+            assert!(!cx.is_restored());
+            assert!(cx.restored().is_restored());
+            assert!(!cx.is_walk_complete());
+            assert!(cx.complete_walk().is_walk_complete());
         }
 
         #[test]

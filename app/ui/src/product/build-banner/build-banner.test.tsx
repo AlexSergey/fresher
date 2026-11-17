@@ -10,13 +10,19 @@ describe('BuildBanner', () => {
 
       expect(container).toBeEmptyDOMElement();
     });
+
+    it('a_sandbox_whose_open_apps_are_real_does_not_say_they_are_simulated', () => {
+      render(<BuildBanner build={{ kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: false }} />);
+
+      expect(screen.getByRole('note')).toHaveTextContent(/^Sandbox · \/Users\/dev\/box$/);
+    });
   });
 
   describe('positive cases', () => {
-    it('the_sandbox_banner_names_its_folder', () => {
-      render(<BuildBanner build={{ kind: 'sandbox', path: '/Users/dev/box' }} />);
+    it('the_sandbox_banner_names_its_folder_and_says_its_open_apps_are_simulated', () => {
+      render(<BuildBanner build={{ kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: true }} />);
 
-      expect(screen.getByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box');
+      expect(screen.getByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box · Open apps are simulated.');
     });
 
     it('the_development_banner_says_nothing_can_be_removed', () => {

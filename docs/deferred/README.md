@@ -19,7 +19,7 @@ needs. When it is done, its row and file are removed in the same change.
 | [Clearing the app's own data](./own-data-clearing.md)            | 2026-11-16 | before the first release | clear the scan cache and stale temporary files without breaking the deletion rule |
 | [A setting for the default removal](./default-removal-setting.md) | 2026-11-16 | when the user asks       | pre-select a permanent delete in the confirmation (rule 2 says no today)        |
 | [Ignore on a single item](./ignore-an-item-button.md)            | 2026-11-16 | with the row's actions   | the Ignore button on one finding; the core already ignores and protects an item |
-| [The world outside the disk in a sandbox](./sandbox-world.md) | 2026-11-16 | the first module that reads apps, processes, tools or the clock | plan 007's former plan 06: installed apps, running apps, open files, tools, access and the clock per case file |
+| [The world outside the disk in a sandbox](./sandbox-world.md) | 2026-11-16 | the first module that reads open files, tools, access or the clock | plan 007's former plan 06: open files, tools, access and the clock per case file (apps and running apps: plan 016) |
 | [The debug panel and the developer command line](./dev-debug-panel.md) | 2026-11-17 | when the deferred world is built | the panel's knobs need the world's fakes; the command line beyond the generator |
 | [A root's explained line in the by-place roots list](./roots-explained-line.md) | 2026-11-17 | when several roots are common | the explained size of each root in the by-place roots list; needs a core change |
 | [A way up from a folder opened from the by-meaning view](./way-up-from-meaning.md) | 2026-11-17 | with the next change to the overview | a breadcrumb that goes above the folder the by-meaning view opened |
@@ -27,3 +27,6 @@ needs. When it is done, its row and file are removed in the same change.
 | [The bug-report file](./bug-report-file.md)                      | 2026-11-17 | before the first release | a report the user saves and sends, and the notice after an unexpected exit      |
 | [Why an item matched](./match-explanations.md)                   | 2026-11-17 | the first rule-based module that needs more than its reason | "Why this?" on a finding, and a rule's own left-out reasons |
 | [The diagnostics corner](./diagnostics-screen.md)                | 2026-11-17 | before the first release | versions, permissions, scan statistics, recent problems; left-outs after a restore |
+| [A removed app's name in the storage map](./removed-app-name-in-map.md) | 2026-11-17 | the uninstalled app leftovers module | the product's display name, not its bundle id, on a removed app's line in the map |
+| [A module names its app's data folders](./module-names-app-data.md) | 2026-11-17 | the next change to the map's app lines | the version in use's folders in the IDE's line of the map, not in the user's folders |
+| [A folder's age from its direct children](./folder-age-from-children.md) | 2026-11-17 | plan 016's run by hand (04/02) | a removed IDE's age from the newest of its folders and their direct children |

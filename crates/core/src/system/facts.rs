@@ -4,7 +4,10 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use crate::{InstalledApp, InstalledApps, KnownFolder, KnownFolders, Project, RunningApps, RunningSet, SystemError};
+use crate::{
+    BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, Project, RunningApps,
+    RunningSet, SystemError,
+};
 
 /// The ports of the system's facts, composed by the app (the macOS adapters) or a test (the fakes).
 #[derive(Clone)]
@@ -25,7 +28,7 @@ impl fmt::Debug for SystemPorts {
 /// Nothing is written anywhere.
 pub struct SystemFacts {
     ports: SystemPorts,
-    apps: OnceLock<Result<Vec<InstalledApp>, SystemError>>,
+    apps: OnceLock<Result<InstalledList, SystemError>>,
     running: OnceLock<Result<RunningSet, SystemError>>,
     projects: OnceLock<Vec<Project>>,
 }
@@ -40,10 +43,34 @@ impl SystemFacts {
         self.ports.known_folders.locate(folder)
     }
 
-    /// The installed apps, listed on the first ask.
+    /// The installed apps, listed on the first ask; what the listing could not read is left out.
     pub fn installed_apps(&self) -> Result<&[InstalledApp], SystemError> {
+        self.installed().map(|list| list.apps.as_slice())
+    }
+
+    /// The installed apps only when the listing read every apps folder and bundle: a partial list is an error, for a
+    /// module that must not take an app it could not read for one that is not installed.
+    pub fn installed_apps_complete(&self) -> Result<&[InstalledApp], SystemError> {
+        let list = self.installed()?;
+        if list.is_complete() {
+            return Ok(&list.apps);
+        }
+        let reason = match list.unread.len() {
+            1 => "an app or a folder could not be read".to_owned(),
+            count => format!("{count} apps or folders could not be read"),
+        };
+        Err(SystemError { reason })
+    }
+
+    /// The bundles with one of `ids` anywhere the system's index knows them, asked anew at every call (a module asks
+    /// it only for what it is about to offer).
+    pub fn find_apps(&self, ids: &[BundleId], cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
+        self.ports.apps.find(ids, cancel)
+    }
+
+    fn installed(&self) -> Result<&InstalledList, SystemError> {
         match self.apps.get_or_init(|| self.ports.apps.list()) {
-            Ok(apps) => Ok(apps),
+            Ok(list) => Ok(list),
             Err(error) => Err(error.clone()),
         }
     }
@@ -72,7 +99,7 @@ impl fmt::Debug for SystemFacts {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("SystemFacts")
-            .field("apps", &self.apps.get().map(|apps| apps.as_ref().map(Vec::len)))
+            .field("apps", &self.apps.get().map(|list| list.as_ref().map(|list| list.apps.len())))
             .field("projects", &self.projects.get().map(Vec::len))
             .finish_non_exhaustive()
     }
@@ -91,7 +118,11 @@ pub(crate) fn nothing_known() -> SystemFacts {
     }
 
     impl InstalledApps for Nothing {
-        fn list(&self) -> Result<Vec<InstalledApp>, SystemError> {
+        fn list(&self) -> Result<InstalledList, SystemError> {
+            Ok(InstalledList::default())
+        }
+
+        fn find(&self, _ids: &[BundleId], _cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
             Ok(Vec::new())
         }
     }
@@ -116,15 +147,16 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use crate::{
-        BundleId, InstalledApp, InstalledApps, KnownFolder, KnownFolders, RunningApp, RunningApps, SystemError,
-        SystemPorts,
+        BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, RunningApp,
+        RunningApps, SystemError, SystemPorts,
     };
 
-    /// Counts the asks; answers one app and one running app, or an error.
+    /// Counts the asks; answers one app and one running app, or an error; with `partial`, a bundle left unread.
     #[derive(Debug, Default)]
     struct Counting {
         asked: AtomicUsize,
         fails: bool,
+        partial: bool,
     }
 
     impl Counting {
@@ -141,7 +173,7 @@ mod tests {
     }
 
     impl InstalledApps for Counting {
-        fn list(&self) -> Result<Vec<InstalledApp>, SystemError> {
+        fn list(&self) -> Result<InstalledList, SystemError> {
             let app = InstalledApp {
                 bundle_id: BundleId::new("com.example.App").unwrap(),
                 team_id: None,
@@ -151,7 +183,13 @@ mod tests {
                 path: "/Applications/App.app".into(),
                 helpers: Vec::new(),
             };
-            self.answer(vec![app])
+            let unread = if self.partial { vec![PathBuf::from("/Applications/Broken.app")] } else { Vec::new() };
+            self.answer(InstalledList { apps: vec![app], unread })
+        }
+
+        fn find(&self, ids: &[BundleId], _cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
+            let found = ids.iter().map(|id| PathBuf::from(format!("/Volumes/Drive/{id}.app"))).collect();
+            self.answer(found)
         }
     }
 
@@ -200,9 +238,21 @@ mod tests {
 
             for _ in 0..3 {
                 assert_eq!(facts.installed_apps(), Err(refused.clone()));
+                assert_eq!(facts.installed_apps_complete(), Err(refused.clone()));
                 assert_eq!(facts.running_apps().map(|set| set.owner_of(Path::new("/"))), Err(refused.clone()));
             }
             assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
+        }
+
+        #[test]
+        fn a_partial_list_is_an_error_only_when_asked_complete() {
+            let counting = Arc::new(Counting { partial: true, ..Counting::default() });
+            let facts = SystemFacts::new(&ports(&counting));
+
+            assert_eq!(facts.installed_apps().unwrap().len(), 1);
+            let error = facts.installed_apps_complete().unwrap_err();
+            assert_eq!(error.reason, "an app or a folder could not be read");
+            assert_eq!(counting.asked.load(Ordering::SeqCst), 1);
         }
 
         #[test]
@@ -223,7 +273,22 @@ mod tests {
         use std::sync::atomic::Ordering;
 
         use super::{Counting, ports};
-        use crate::{KnownFolder, SystemFacts};
+        use crate::{BundleId, CancelToken, KnownFolder, SystemFacts};
+
+        #[test]
+        fn finding_apps_asks_the_port_at_every_call() {
+            let counting = Arc::new(Counting::default());
+            let facts = SystemFacts::new(&ports(&counting));
+            let ids = [BundleId::new("com.example.App").unwrap()];
+
+            for _ in 0..2 {
+                assert_eq!(
+                    facts.find_apps(&ids, &CancelToken::new()),
+                    Ok(vec![PathBuf::from("/Volumes/Drive/com.example.App.app")])
+                );
+            }
+            assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
+        }
 
         #[test]
         fn two_asks_in_one_scan_ask_once_and_a_new_scan_asks_again() {
@@ -233,6 +298,7 @@ mod tests {
 
             for _ in 0..2 {
                 assert_eq!(facts.installed_apps().unwrap().len(), 1);
+                assert_eq!(facts.installed_apps_complete().unwrap().len(), 1);
                 assert_eq!(facts.running_apps().unwrap().owner_of(Path::new("/c/com.example.App")), Some("App"));
             }
             assert_eq!(counting.asked.load(Ordering::SeqCst), 2);

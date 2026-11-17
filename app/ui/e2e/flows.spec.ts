@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
+import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
 import { releaseCleanup, requestQuit } from './support/cleanup-mock';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
@@ -54,6 +55,38 @@ const openIgnoring = async (page: Page): Promise<void> => {
 
 const openSettings = (page: Page): Promise<void> => page.getByRole('button', { exact: true, name: 'Settings' }).click();
 
+const JB = {
+  caches: 'Caches of older JetBrains IDE versions',
+  logs: 'Logs of older JetBrains IDE versions',
+  settings: 'Settings and plugins of older JetBrains IDE versions',
+  uninstalled: 'Data of JetBrains IDEs that are no longer installed',
+} as const;
+
+// The module's own texts, as its locale file has them.
+const jb = (key: string): string => JETBRAINS_DICTIONARY[`jetbrains.${key}`] ?? '';
+
+const jetbrainsModule = (page: Page): Locator => page.getByRole('button', { name: /^JetBrains IDEs/ });
+
+// Scans the JetBrains script and opens the module's page.
+const openJetbrains = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.jetbrains);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(jetbrainsModule(page)).toContainText('1.7 GB');
+  await jetbrainsModule(page).click();
+  await expect(heading(page, 'JetBrains IDEs')).toBeFocused();
+};
+
+// Ticks WebStorm's three categories on the module's page and opens the review.
+const reviewWebStorm = async (page: Page): Promise<void> => {
+  await openJetbrains(page);
+  for (const name of [JB.caches, JB.logs, JB.settings]) {
+    await page.getByRole('checkbox', { name: `Select ${name}` }).check();
+  }
+  await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
+  await expect(heading(page, 'Review')).toBeFocused();
+};
+
 test.beforeEach(async ({ page }) => {
   await failOnCspViolation(page);
 });
@@ -104,6 +137,28 @@ test.describe('negative cases', () => {
       await expect(page.getByRole('list', { name: 'The items of Example caches' })).toBeVisible();
     });
   }
+
+  test('the folders of an open IDE are not offered as items, only counted on a line', async ({ page }) => {
+    await openJetbrains(page);
+
+    const settings = page.getByRole('region', { name: JB.settings });
+    await expect(settings).toContainText('1 item');
+    await expect(settings).toContainText(`2 items left out (600 MB): ${jb('left-out.running')}`);
+  });
+
+  test('caches and logs alone are confirmed as Safe, with no Medium and no settings warning', async ({ page }) => {
+    await openJetbrains(page);
+    await page.getByRole('checkbox', { name: `Select ${JB.caches}` }).check();
+    await page.getByRole('checkbox', { name: `Select ${JB.logs}` }).check();
+    await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
+
+    await removeButton(page).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await expect(dialog).toContainText('Safe');
+    await expect(dialog).not.toContainText('Medium');
+    await expect(dialog).not.toContainText('custom keymaps');
+  });
 
   test('closing the window during a cleanup asks, and Keep cleaning changes nothing', async ({ page }) => {
     await mockCore(page, SCRIPTS.cleaningHeld);
@@ -447,5 +502,142 @@ test.describe('positive cases', () => {
 
     await expect(page.getByText('You ignore this module.')).toBeVisible();
     await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
+  });
+
+  test('the sidebar lists JetBrains IDEs under Development and its page names each category with its level', async ({
+    page,
+  }) => {
+    await openJetbrains(page);
+
+    await expect(page.getByRole('navigation').getByText('Development', { exact: true })).toBeVisible();
+    for (const [name, level] of [
+      [JB.caches, 'Safe'],
+      [JB.logs, 'Safe'],
+      [JB.settings, 'Medium'],
+      [JB.uninstalled, 'Medium'],
+    ] as const) {
+      await expect(page.getByRole('region', { name })).toContainText(level);
+    }
+    const caches = page.getByRole('region', { name: JB.caches });
+    await caches.getByText('About this category').click();
+    await expect(caches).toContainText(jb('caches.what'));
+    await expect(caches).toContainText(jb('caches.if-removed'));
+  });
+
+  test('the items left out are lines under their category, with their reason', async ({ page }) => {
+    await openJetbrains(page);
+
+    await expect(page.getByRole('region', { name: JB.caches })).toContainText(
+      `3 items left out (1.4 GB): ${jb('left-out.current')}`,
+    );
+    await expect(page.getByRole('region', { name: JB.settings })).toContainText(
+      `2 items left out (600 MB): ${jb('left-out.running')}`,
+    );
+  });
+
+  test('the data of an IDE that is no longer installed is its own Medium category with the findings named', async ({
+    page,
+  }) => {
+    await openJetbrains(page);
+
+    const removed = page.getByRole('region', { name: JB.uninstalled });
+    await expect(removed).toContainText('Medium');
+    await expect(removed).toContainText('2 items');
+    await removed.getByText('About this category').click();
+    await expect(removed).toContainText(jb('uninstalled.what'));
+    await expect(removed).toContainText(jb('uninstalled.if-removed'));
+    await removed.getByRole('button', { name: `Show the items of ${JB.uninstalled}` }).click();
+    await expect(removed).toContainText('DataGrip 2024.3 caches');
+    await expect(removed).toContainText('DataGrip 2024.3 settings and plugins');
+  });
+
+  test('WebStorm’s findings go from the review to the Trash, and the cleanup is put back from the Cleanups', async ({
+    page,
+  }) => {
+    await reviewWebStorm(page);
+    await expect(page.getByRole('list', { name: `The items of ${JB.settings}` })).toContainText('WebStorm 2024.3');
+
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await expect(dialog).toContainText('Medium');
+    await expect(dialog).toContainText(jb('settings.if-removed'));
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 3 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const caches = items.getByRole('listitem').filter({ hasText: 'WebStorm2024.3' }).first();
+    await caches.getByRole('button', { name: 'Put back' }).click();
+    await expect(caches).toContainText('Put back where it was.');
+  });
+
+  test('ignoring the module from its page hides its totals, Settings lists it and turning it off restores it', async ({
+    page,
+  }) => {
+    await openJetbrains(page);
+
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await expect(jetbrainsModule(page)).toContainText('Ignored');
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(0);
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    const ignored = page.getByRole('switch', { name: 'Ignore JetBrains IDEs' });
+    await expect(ignored).toBeChecked();
+    await ignored.click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(4);
+    await expect(jetbrainsModule(page)).not.toContainText('Ignored');
+  });
+
+  test('ignoring the group Development hides JetBrains IDEs and restoring the group brings it back', async ({
+    page,
+  }) => {
+    await mockCore(page, SCRIPTS.jetbrains);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await expect(cards(page)).toHaveCount(4);
+    await openSettings(page);
+
+    await page.getByRole('switch', { name: 'Ignore Development' }).click();
+
+    await expect(page.getByRole('navigation').getByText('Development · Ignored')).toBeVisible();
+    await jetbrainsModule(page).click();
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await page.getByRole('button', { name: 'Restore the group' }).click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(4);
+    await expect(page.getByRole('navigation').getByText('Development · Ignored')).toHaveCount(0);
+  });
+
+  test('the module’s days setting is in Settings with its text', async ({ page }) => {
+    await mockCore(page, SCRIPTS.jetbrains);
+    await page.goto('/');
+    await openSettings(page);
+
+    const days = page.getByRole('spinbutton', { name: jb('uninstalled-after-days.label') });
+    await expect(days).toHaveValue('30');
+    await expect(page.getByText(jb('uninstalled-after-days.description'))).toBeVisible();
+    await expect(page.getByRole('switch', { name: jb('enabled.label') })).toBeChecked();
+  });
+
+  test('the by-meaning view puts WebStorm’s findings under its app line, not DataGrip’s', async ({ page }) => {
+    await mockCore(page, SCRIPTS.jetbrains);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await expect(cards(page)).toHaveCount(4);
+
+    await page.getByRole('radio', { name: 'By meaning' }).click();
+
+    const app = page.getByRole('list', { name: 'WebStorm' });
+    await expect(app).toContainText('1.3 GB');
+    await page.getByRole('button', { name: 'Show what WebStorm keeps' }).click();
+    const kept = page.getByRole('group', { name: 'What WebStorm keeps' });
+    await expect(kept).toContainText(JB.caches);
+    await expect(kept).not.toContainText(JB.uninstalled);
+    await expect(page.getByRole('list', { name: 'DataGrip' })).toContainText('not installed');
   });
 });

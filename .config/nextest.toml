@@ -10,3 +10,11 @@ retries = 0
 
 [profile.ci.junit]
 path = "junit.xml"
+
+# The sandbox autotests build real file trees and walk them: one at a time, so a slow disk never starves a scan.
+[test-groups]
+sandboxes = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'binary(sandboxes)'
+test-group = 'sandboxes'

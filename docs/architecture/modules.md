@@ -4,7 +4,8 @@ Every feature of the app is a module: one crate under `modules/<id>/`, named `fr
 `fresher-core` and, when it has rules, on `fresher-rules` — never on another module. A module never walks the disk and
 never deletes: it says what it wants to see during the one shared walk, turns what the walk matched into findings, and
 describes each removal as data. This page is the pattern every module plan follows; the `demo` module
-(`modules/demo/`) is the smallest working example. Set up by plan
+(`modules/demo/`) is the smallest working example, and `jetbrains` (`modules/jetbrains/`, plan
+[016](../plans/016-jetbrains/readme.md)) the first real one. Set up by plan
 [002/06](../plans/002-base-architecture/06-module-kit/readme.md).
 
 ## The crate
@@ -53,6 +54,10 @@ small `thiserror` error of its own: no panicking path.
 - The ports a module may use come in `ModuleContext`: the clock, the command runner (an external tool, with a fixed
   argument list; pass `cx.cancel()`, so a cancelled scan stops the tool), the system's facts (`cx.system()`, below),
   its settings, the cancel token. A long `finish` checks `cx.cancel()` and returns `ModuleError::Cancelled`.
+  `cx.is_restored()` says the scan is restored from the last one's cache, not walked: a module that judges by the
+  entries' times must not then (plan 016). In `finish`, `cx.is_walk_complete()` says the walk read every folder
+  (`false` during the walk, and after a walk that could not read a folder or stopped early): a module that decides
+  from every match together must not offer when a folder it did not see may change the answer (plan 016).
 - **A module never writes an OS path** (the user's decision of 2026-11-15): a place is a known folder and a relative
   path, `Pattern::Under(KnownFolder::AppCaches, "JetBrains/*")` (in rules, `under = { folder = "app-caches", path =
   "JetBrains/*" }`); `KnownFolder::Home` is the home folder itself. The walk resolves the folder through the
@@ -67,12 +72,16 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 | ---------------------------- | ------------------------------------------------------------------------------------------------- |
 | `locate(KnownFolder)`        | where this system keeps the folder                                                                |
 | `installed_apps()`           | every installed app: bundle id, team id, name, version, build, path, its helpers' bundle ids      |
+| `find_apps(ids, cancel)`    | the bundles with one of the ids anywhere Spotlight knows them (a sandbox: its own apps); asked anew each call |
+| `installed_apps_complete()`  | the same, but an error when the listing could not read an apps folder, a folder in one or a bundle (`InstalledList::unread`) |
 | `running_apps()`             | the running apps (`RunningSet`); `owner_of(path)` names the running app a path is named after     |
 | `projects()`                 | the projects the walk found (root, kinds, artifact folders, last activity); `None` during the walk |
 
 - An app is identified by its bundle id and team id only (`BundleId` compares ignoring case), never by a loose name.
   `BundleId::names(name)` tells whether a folder's or a file's name is named after the id: the whole name, or the id
   followed by a dot (`com.example.App.savedState`), never `com.example.Appx`.
+- A module that keeps something because its app is installed asks `installed_apps_complete()`: an app the listing
+  could not read must not count as not installed (plan 016).
 - At the commit the engine lists the installed apps too (once per scan, even when no module asked), to attribute each
   app's data folders and its bundle in the storage map.
 - The projects are known in `finish`, not in `on_match`. A project's last activity is its folder's own modification
@@ -111,6 +120,13 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
   A rule's texts are `<id>.rule.<rule id>.title` (with `{name}`) and `.reason`.
 - **Code** when the answer is not in a name and a path: an external tool's list (Docker images), file contents, a
   question to another port. Code that can be a rule is a rule.
+
+**`jetbrains` is code, not rules**: whether an older IDE version's folder is offered depends on which apps are
+installed and which are running, across three places (settings, caches, logs), and on the other folders of the same
+product; a rule sees a name and a path only. Its products are data (`products.toml`), the decision a pure function
+(`decide.rs`, a table of eight rows checked in order), and every folder it recognizes and does not offer is a
+`left_out` with its reason (the version in use, a newer one, an IDE that is open, an app of unknown version, a list
+of apps that could not be read, a removed IDE's data that changed lately): the user sees why, never a silent skip.
 
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.

@@ -6,7 +6,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use fresher_core::{
-    AppIdError, BundleId, InstalledApp, InstalledApps, RunningApp, RunningApps, SystemError, SystemPorts, TeamId,
+    AppIdError, BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, RunningApp, RunningApps,
+    SystemError, SystemPorts, TeamId,
 };
 
 use crate::FakeKnownFolders;
@@ -45,22 +46,46 @@ pub fn running_app(name: &str, bundle_ids: &[&str]) -> Result<RunningApp, AppIdE
     Ok(RunningApp { name: name.into(), bundle_ids })
 }
 
-/// The installed apps a test sets, or an error; counts how often it is asked.
+/// The installed apps a test sets, or an error; counts how often they are listed. Its search finds the listed apps and
+/// the apps a test installs elsewhere, by bundle id, or answers the error a test sets.
 #[derive(Debug)]
 pub struct FakeInstalledApps {
-    answer: Result<Vec<InstalledApp>, SystemError>,
+    answer: Result<InstalledList, SystemError>,
+    elsewhere: Result<Vec<InstalledApp>, SystemError>,
     calls: AtomicUsize,
 }
 
 impl FakeInstalledApps {
     /// Answers `apps`.
     pub fn new(apps: Vec<InstalledApp>) -> Self {
-        Self { answer: Ok(apps), calls: AtomicUsize::new(0) }
+        Self::answering(Ok(InstalledList::complete(apps)))
+    }
+
+    fn answering(answer: Result<InstalledList, SystemError>) -> Self {
+        Self { answer, elsewhere: Ok(Vec::new()), calls: AtomicUsize::new(0) }
+    }
+
+    /// The same apps, and `apps` installed outside the apps folders: only the search finds them.
+    #[must_use]
+    pub fn with_elsewhere(self, apps: Vec<InstalledApp>) -> Self {
+        Self { elsewhere: Ok(apps), ..self }
+    }
+
+    /// The same apps, and a search that answers an error.
+    #[must_use]
+    pub fn failing_search(self, reason: &str) -> Self {
+        Self { elsewhere: Err(SystemError { reason: reason.into() }), ..self }
+    }
+
+    /// Answers `apps` and says that the bundles or folders `unread` could not be read: a partial list.
+    pub fn partial(apps: Vec<InstalledApp>, unread: &[&str]) -> Self {
+        let unread = unread.iter().map(PathBuf::from).collect();
+        Self::answering(Ok(InstalledList { apps, unread }))
     }
 
     /// Answers an error.
     pub fn failing(reason: &str) -> Self {
-        Self { answer: Err(SystemError { reason: reason.into() }), calls: AtomicUsize::new(0) }
+        Self::answering(Err(SystemError { reason: reason.into() }))
     }
 
     /// How many times the apps were listed.
@@ -77,9 +102,20 @@ impl Default for FakeInstalledApps {
 }
 
 impl InstalledApps for FakeInstalledApps {
-    fn list(&self) -> Result<Vec<InstalledApp>, SystemError> {
+    fn list(&self) -> Result<InstalledList, SystemError> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         self.answer.clone()
+    }
+
+    fn find(&self, ids: &[BundleId], _cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
+        let elsewhere = self.elsewhere.as_ref().map_err(Clone::clone)?;
+        let listed = self.answer.as_ref().map(|list| list.apps.as_slice()).unwrap_or_default();
+        Ok(listed
+            .iter()
+            .chain(elsewhere)
+            .filter(|app| ids.contains(&app.bundle_id))
+            .map(|app| app.path.clone())
+            .collect())
     }
 }
 
@@ -137,7 +173,7 @@ impl RunningApps for FakeRunningApps {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{InstalledApps, RunningApps, SystemError};
+        use fresher_core::{InstalledApps, InstalledList, RunningApps, SystemError};
 
         use crate::{FakeInstalledApps, FakeRunningApps};
 
@@ -163,13 +199,33 @@ mod tests {
 
         #[test]
         fn the_default_fakes_know_nothing() {
-            assert_eq!(FakeInstalledApps::default().list(), Ok(Vec::new()));
+            assert_eq!(FakeInstalledApps::default().list(), Ok(InstalledList::default()));
             assert_eq!(FakeRunningApps::default().list(), Ok(Vec::new()));
+        }
+
+        #[test]
+        fn a_failing_search_answers_its_error() {
+            let apps = FakeInstalledApps::default().failing_search("no index");
+
+            assert_eq!(
+                apps.find(&[fresher_core::BundleId::new("a.b").unwrap()], &fresher_core::CancelToken::new()),
+                Err(SystemError { reason: "no index".into() })
+            );
+        }
+
+        #[test]
+        fn a_partial_fake_names_what_it_could_not_read() {
+            let app = crate::installed_app("com.example.App", "App", "1").unwrap();
+
+            let list = FakeInstalledApps::partial(vec![app.clone()], &["/Applications/Broken.app"]).list().unwrap();
+
+            assert_eq!(list.apps, [app]);
+            assert!(!list.is_complete());
         }
     }
 
     mod positive {
-        use fresher_core::{InstalledApps, RunningApps};
+        use fresher_core::{InstalledApps, InstalledList, RunningApps};
 
         use crate::{FakeInstalledApps, FakeRunningApps, installed_app, running_app, signed_by};
 
@@ -178,7 +234,7 @@ mod tests {
             let system = crate::fake_system(std::path::Path::new("/home"));
 
             assert_eq!(system.known_folders.locate(fresher_core::KnownFolder::Logs), Some("/home/Library/Logs".into()));
-            assert_eq!(system.apps.list(), Ok(Vec::new()));
+            assert_eq!(system.apps.list(), Ok(InstalledList::default()));
             assert_eq!(system.running.list(), Ok(Vec::new()));
         }
 
@@ -188,10 +244,24 @@ mod tests {
                 signed_by(installed_app("com.example.Editor", "Editor", "2026.3").unwrap(), "ABCDE12345").unwrap();
             let apps = FakeInstalledApps::new(vec![app.clone()]);
 
-            assert_eq!(apps.list(), Ok(vec![app.clone()]));
+            assert_eq!(apps.list(), Ok(InstalledList::complete(vec![app.clone()])));
             assert_eq!(app.path.to_str(), Some("/Applications/Editor.app"));
             assert_eq!(app.team_id.map(|team| team.to_string()), Some("ABCDE12345".into()));
             assert_eq!(apps.calls(), 1);
+        }
+
+        #[test]
+        fn the_search_finds_the_listed_apps_and_those_elsewhere_by_id() {
+            let listed = installed_app("com.example.Editor", "Editor", "1").unwrap();
+            let mut far = installed_app("com.example.Far", "Far", "1").unwrap();
+            far.path = "/Volumes/Drive/Far.app".into();
+            let apps = FakeInstalledApps::new(vec![listed]).with_elsewhere(vec![far]);
+            let ids = |ids: &[&str]| ids.iter().map(|id| fresher_core::BundleId::new(*id).unwrap()).collect::<Vec<_>>();
+
+            let found = apps.find(&ids(&["com.example.Far", "com.example.Editor"]), &fresher_core::CancelToken::new());
+
+            assert_eq!(found, Ok(vec!["/Applications/Editor.app".into(), "/Volumes/Drive/Far.app".into()]));
+            assert_eq!(apps.find(&ids(&["com.example.None"]), &fresher_core::CancelToken::new()), Ok(vec![]));
         }
 
         #[test]

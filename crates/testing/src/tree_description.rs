@@ -7,6 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use serde::Deserialize;
 
+use crate::app_bundle::AppBundle;
 use crate::fixture_tree::{FixtureError, write_marker};
 
 /// The "now" of a fixture home, in seconds since the Unix epoch: an `age` is counted back from it, so a built tree
@@ -17,7 +18,7 @@ const MAX_FILLED_FILE: u64 = 64 * 1024 * 1024;
 const MAX_FILLED_TREE: u64 = 512 * 1024 * 1024;
 const FILL_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 
-/// A tree of files, folders, links and sandbox markers as plain data (the format: docs/testing.md, "Fixture homes").
+/// A tree of files, folders, links, sandbox markers and app bundles as plain data (the format: docs/testing.md, "Fixture homes").
 ///
 /// It is checked when parsed or merged and built with [`TreeDescription::build_at`] into any existing folder.
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -33,12 +34,19 @@ pub struct TreeDescription {
     hardlinks: Vec<HardlinkSpec>,
     #[serde(default, rename = "marker")]
     markers: Vec<MarkerSpec>,
+    #[serde(default, rename = "app")]
+    apps: Vec<AppBundle>,
 }
 
+/// A folder; its time, when given, is set once everything inside it is written.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct DirSpec {
     path: PathBuf,
+    /// Seconds since the Unix epoch.
+    modified: Option<u64>,
+    /// `"<n>d"` or `"<n>h"` before the "now" of the build; never together with `modified`.
+    age: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -102,16 +110,23 @@ impl TreeDescription {
         self.symlinks.extend(other.symlinks);
         self.hardlinks.extend(other.hardlinks);
         self.markers.extend(other.markers);
+        self.apps.extend(other.apps);
         self.check()?;
         Ok(self)
     }
 
-    /// The paths the tree writes (its folders, files and links), relative to its root as written.
+    /// The paths the tree writes (its folders, files, links and app bundles), relative to its root as written.
     pub fn paths(&self) -> impl Iterator<Item = &Path> {
         (self.dirs.iter().map(|spec| spec.path.as_path()))
             .chain(self.files.iter().map(|spec| spec.path.as_path()))
             .chain(self.symlinks.iter().map(|spec| spec.path.as_path()))
             .chain(self.hardlinks.iter().map(|spec| spec.path.as_path()))
+            .chain(self.apps.iter().map(|app| app.path.as_path()))
+    }
+
+    /// The app bundles the tree writes, in the order written.
+    pub fn apps(&self) -> &[AppBundle] {
+        &self.apps
     }
 
     /// The files the tree writes, in the order written, relative to its root as written.
@@ -167,6 +182,25 @@ impl TreeDescription {
             fs::create_dir_all(&path).map_err(|source| FixtureError::Create { path: path.clone(), source })?;
             write_marker(&path)?;
         }
+        for app in &self.apps {
+            app.write_at(folder)?;
+        }
+        self.set_folder_times(folder, now)
+    }
+
+    /// Sets the time of every folder that names one, the deepest first: writing inside a folder changes its time, so
+    /// this comes last.
+    fn set_folder_times(&self, folder: &Path, now: SystemTime) -> Result<(), FixtureError> {
+        let mut dated: Vec<&DirSpec> =
+            self.dirs.iter().filter(|dir| dir.age.is_some() || dir.modified.is_some()).collect();
+        dated.sort_by_key(|dir| std::cmp::Reverse(dir.path.components().count()));
+        for dir in dated {
+            let path = resolve(folder, &dir.path)?;
+            let create_error = |source| FixtureError::Create { path: path.clone(), source };
+            if let Some(time) = time_of(&dir.path, dir.age.as_deref(), dir.modified, now)? {
+                File::open(&path).and_then(|opened| opened.set_modified(time)).map_err(create_error)?;
+            }
+        }
         Ok(())
     }
 
@@ -177,14 +211,26 @@ impl TreeDescription {
                 return Err(FixtureError::DuplicatePath { path: path.to_path_buf() });
             }
         }
+        for app in &self.apps {
+            app.check()?;
+        }
+        let entries = (self.dirs.iter().map(|spec| &spec.path))
+            .chain(self.files.iter().map(|spec| &spec.path))
+            .chain(self.symlinks.iter().map(|spec| &spec.path))
+            .chain(self.hardlinks.iter().map(|spec| &spec.path))
+            .chain(self.markers.iter().map(|spec| &spec.path));
+        for path in entries {
+            // The bundle rewrites what it holds, so an entry inside it would be overwritten or never read.
+            if let Some(app) = self.apps.iter().find(|app| path.starts_with(&app.path)) {
+                return Err(FixtureError::InsideApp { path: path.clone(), app: app.path.clone() });
+            }
+        }
+        for dir in &self.dirs {
+            check_time(&dir.path, dir.age.as_deref(), dir.modified)?;
+        }
         let mut filled = 0u64;
         for file in &self.files {
-            if file.age.is_some() && file.modified.is_some() {
-                return Err(FixtureError::AgeWithModified { path: file.path.clone() });
-            }
-            if let Some(age) = &file.age {
-                parse_age(age).ok_or_else(|| FixtureError::InvalidAge { path: file.path.clone() })?;
-            }
+            check_time(&file.path, file.age.as_deref(), file.modified)?;
             if file.fill == Fill::Data {
                 filled = filled.saturating_add(file.size);
                 if file.size > MAX_FILLED_FILE || filled > MAX_FILLED_TREE {
@@ -207,23 +253,45 @@ fn parse_age(text: &str) -> Option<Duration> {
     Some(Duration::from_hours(hours))
 }
 
-fn create_file(folder: &Path, spec: &FileSpec, now: SystemTime) -> Result<(), FixtureError> {
-    let path = resolve(folder, &spec.path)?;
-    let modified = match (&spec.age, spec.modified) {
+/// Refuses an `age` together with `modified`, and an age not of the form `"<n>d"` or `"<n>h"`.
+fn check_time(path: &Path, age: Option<&str>, modified: Option<u64>) -> Result<(), FixtureError> {
+    if age.is_some() && modified.is_some() {
+        return Err(FixtureError::AgeWithModified { path: path.to_path_buf() });
+    }
+    if let Some(age) = age {
+        parse_age(age).ok_or_else(|| FixtureError::InvalidAge { path: path.to_path_buf() })?;
+    }
+    Ok(())
+}
+
+/// The time an entry is given: its age counted back from `now`, or its `modified` seconds; `None` for neither.
+fn time_of(
+    path: &Path,
+    age: Option<&str>,
+    modified: Option<u64>,
+    now: SystemTime,
+) -> Result<Option<SystemTime>, FixtureError> {
+    Ok(match (age, modified) {
         (Some(age), _) => Some(
             parse_age(age)
                 .and_then(|age| now.checked_sub(age))
-                .ok_or_else(|| FixtureError::InvalidAge { path: spec.path.clone() })?,
+                .ok_or_else(|| FixtureError::InvalidAge { path: path.to_path_buf() })?,
         ),
         (None, Some(seconds)) => Some(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)),
         (None, None) => None,
-    };
+    })
+}
+
+fn create_file(folder: &Path, spec: &FileSpec, now: SystemTime) -> Result<(), FixtureError> {
+    let path = resolve(folder, &spec.path)?;
+    let modified = time_of(&spec.path, spec.age.as_deref(), spec.modified, now)?;
     create_parent(&path)?;
     let create_error = |source| FixtureError::Create { path: path.clone(), source };
     let mut file = File::create(&path).map_err(create_error)?;
     match spec.fill {
         Fill::Sparse => file.set_len(spec.size).map_err(create_error)?,
-        Fill::Data => write_pattern(&mut file, spec.size).map_err(create_error)?,
+        // Synced, so the blocks are allocated before a walk reads the file's size on disk.
+        Fill::Data => write_pattern(&mut file, spec.size).and_then(|()| file.sync_all()).map_err(create_error)?,
     }
     if let Some(time) = modified {
         file.set_modified(time).map_err(create_error)?;
@@ -306,10 +374,35 @@ mod tests {
         #[test]
         fn an_age_without_a_known_unit_is_refused() {
             for age in ["30", "d", "-1d", "3w", "", "5д", "d5"] {
-                let error = parse(&format!("[[file]]\npath = \"a\"\nage = \"{age}\"\n")).unwrap_err();
+                for kind in ["file", "dir"] {
+                    let error = parse(&format!("[[{kind}]]\npath = \"a\"\nage = \"{age}\"\n")).unwrap_err();
 
-                assert!(matches!(error, FixtureError::InvalidAge { .. }), "{age}");
+                    assert!(matches!(error, FixtureError::InvalidAge { .. }), "{kind} {age}");
+                }
             }
+        }
+
+        #[test]
+        fn a_folders_age_and_modified_together_are_refused() {
+            let error = parse("[[dir]]\npath = \"a\"\nage = \"1d\"\nmodified = 5\n").unwrap_err();
+
+            assert!(matches!(error, FixtureError::AgeWithModified { .. }));
+        }
+
+        #[test]
+        fn an_entry_inside_a_declared_app_is_refused() {
+            let app = "[[app]]\npath = \"Applications/Tool.app\"\nbundle-id = \"com.example.Tool\"\nname = \"Tool\"\n";
+            for entry in [
+                "[[file]]\npath = \"Applications/Tool.app/Contents/Info.plist\"\n",
+                "[[dir]]\npath = \"Applications/Tool.app/Contents/Resources\"\n",
+                "[[marker]]\npath = \"Applications/Tool.app/Contents\"\n",
+            ] {
+                let error = TreeDescription::from_toml_str(&format!("{app}{entry}")).unwrap_err();
+
+                assert!(matches!(error, FixtureError::InsideApp { .. }), "{entry}: {error}");
+            }
+            let beside = format!("{app}[[file]]\npath = \"Applications/Tool.app.bak\"\n");
+            assert!(TreeDescription::from_toml_str(&beside).is_ok());
         }
 
         #[test]
@@ -349,6 +442,32 @@ mod tests {
             let error = first.merge(second).unwrap_err();
 
             assert!(matches!(error, FixtureError::DuplicatePath { .. }));
+        }
+
+        #[test]
+        fn an_app_that_is_not_a_bundle_is_refused() {
+            let app =
+                |path: &str, id: &str| format!("[[app]]\npath = \"{path}\"\nbundle-id = \"{id}\"\nname = \"T\"\n");
+
+            assert!(matches!(parse(&app("Applications/T", "com.example.T")), Err(FixtureError::AppNotABundle { .. })));
+            assert!(matches!(parse(&app("Applications/../T.app", "a.b")), Err(FixtureError::PathOutsideRoot { .. })));
+            assert!(matches!(
+                parse(&app("Applications/T.app", "not an id")),
+                Err(FixtureError::InvalidBundleId { .. })
+            ));
+            assert!(matches!(
+                parse(&format!("{}colour = 1\n", app("A/T.app", "a.b"))),
+                Err(FixtureError::Parse { .. })
+            ));
+        }
+
+        #[test]
+        fn an_app_and_a_file_at_one_path_are_refused() {
+            let first = parse("[[app]]\npath = \"A/T.app\"\nbundle-id = \"a.b\"\nname = \"T\"\n").unwrap();
+            let second = parse("[[dir]]\npath = \"A/T.app\"\n").unwrap();
+
+            assert!(matches!(first.clone().merge(first.clone()), Err(FixtureError::DuplicatePath { .. })));
+            assert!(matches!(first.merge(second), Err(FixtureError::DuplicatePath { .. })));
         }
 
         #[test]
@@ -420,6 +539,20 @@ mod tests {
         }
 
         #[test]
+        fn a_folders_age_is_its_time_after_everything_inside_is_written() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[dir]]\npath = \"a\"\nage = \"40d\"\n[[dir]]\npath = \"a/b\"\nmodified = 1700000000\n\
+                        [[file]]\npath = \"a/b/c\"\nage = \"1d\"\n[[file]]\npath = \"a/d\"\n";
+
+            TreeDescription::from_toml_str(text).unwrap().build_at(folder.path(), now()).unwrap();
+
+            let modified = |name: &str| std::fs::metadata(folder.path().join(name)).unwrap().modified().unwrap();
+            assert_eq!(modified("a"), now() - Duration::from_hours(40 * 24));
+            assert_eq!(modified("a/b"), SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000));
+            assert_eq!(modified("a/b/c"), now() - Duration::from_hours(24));
+        }
+
+        #[test]
         fn filled_files_take_their_blocks() {
             let folder = tempfile::tempdir().unwrap();
             let text = "[[file]]\npath = \"a\"\nsize = 1000000\nfill = \"data\"\n";
@@ -471,6 +604,21 @@ mod tests {
             assert_eq!(TreeReport::of(folder.path()).unwrap(), first);
             let modified = std::fs::metadata(folder.path().join("a/c")).unwrap().modified().unwrap();
             assert_eq!(modified, now() - Duration::from_hours(24));
+        }
+
+        #[test]
+        fn an_app_is_built_as_a_bundle() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[app]]\npath = \"Applications/Tool.app\"\nbundle-id = \"com.example.Tool\"\nname = \"Tool\"\n\
+                        version = \"1.2\"\nbuild = \"12\"\n";
+
+            TreeDescription::from_toml_str(text).unwrap().build_at(folder.path(), now()).unwrap();
+
+            let contents = folder.path().join("Applications/Tool.app/Contents");
+            let plist = std::fs::read_to_string(contents.join("Info.plist")).unwrap();
+            assert!(plist.contains("<key>CFBundleIdentifier</key>\n\t<string>com.example.Tool</string>"), "{plist}");
+            assert!(plist.contains("<key>CFBundleVersion</key>\n\t<string>12</string>"), "{plist}");
+            assert_eq!(std::fs::read_dir(contents.join("MacOS")).unwrap().count(), 0);
         }
 
         #[test]

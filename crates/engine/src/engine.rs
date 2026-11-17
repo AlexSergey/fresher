@@ -11,7 +11,7 @@ use fresher_core::{
     CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary,
     DiskState, DiskWalk, EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo,
     Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate,
-    SettingsStore, SettingsView, SystemUi, SystemUiError, Volumes, WalkMode,
+    SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, Volumes, WalkMode,
 };
 
 use crate::access::AccessView;
@@ -302,6 +302,11 @@ impl Engine {
     /// The registered modules for the UI, in registration order, each category with its availability.
     pub fn modules(&self) -> Vec<ModuleInfo> {
         self.shared.registry.modules(&self.shared.access.status())
+    }
+
+    /// Every problem the registered modules declare: the reasons a module may give for leaving an item out.
+    pub fn problems(&self) -> Vec<TextKey> {
+        self.shared.registry.problems().cloned().collect()
     }
 
     /// The merged texts of the core and every module.
@@ -607,6 +612,68 @@ mod tests {
                 Some(&Event::ScanFinished { scan, outcome: ScanOutcome::Completed, kind: ScanKind::Full })
             );
             assert_eq!(engine.status(), Ok(EngineStatus::Idle));
+        }
+
+        #[test]
+        fn a_module_knows_a_restore_from_a_walk() {
+            use std::sync::{Arc, Mutex};
+
+            use fresher_core::{DangerLevel, Timestamp};
+
+            use crate::testing::{Fixture, TestModule, bytes};
+
+            let seen = Arc::new(Mutex::new(Vec::new()));
+            let record = Arc::clone(&seen);
+            let module = TestModule::builder("alpha")
+                .category("alpha.caches", DangerLevel::Safe)
+                .folder("Caches")
+                .on_finish(move |cx, _| {
+                    record.lock().unwrap().push(cx.is_restored());
+                    Ok(())
+                });
+            let walk = ScriptedWalk::new()
+                .folder("Caches", "/home/Caches", bytes(5))
+                .kind(ScanKind::Restored { taken: Timestamp::from_secs(7) });
+            let engine = Fixture::new(walk).module(module).engine();
+            let events = engine.subscribe();
+
+            engine.restore().unwrap();
+            wait_for_finish(&events);
+            engine.start_scan(crate::ScanMode::Full).unwrap();
+            wait_for_finish(&events);
+
+            assert_eq!(*seen.lock().unwrap(), [true, false]);
+        }
+
+        #[test]
+        fn a_module_knows_in_finish_whether_the_walk_read_every_folder() {
+            use std::sync::{Arc, Mutex};
+
+            use fresher_core::DangerLevel;
+
+            use crate::testing::{Fixture, TestModule, bytes};
+
+            for (walk, expected) in [
+                (ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(5)), [true]),
+                (ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(5)).unreadable(1), [false]),
+            ] {
+                let seen = Arc::new(Mutex::new(Vec::new()));
+                let record = Arc::clone(&seen);
+                let module = TestModule::builder("alpha")
+                    .category("alpha.caches", DangerLevel::Safe)
+                    .folder("Caches")
+                    .on_finish(move |cx, _| {
+                        record.lock().unwrap().push(cx.is_walk_complete());
+                        Ok(())
+                    });
+                let engine = Fixture::new(walk).module(module).engine();
+                let events = engine.subscribe();
+
+                engine.start_scan(crate::ScanMode::Full).unwrap();
+                wait_for_finish(&events);
+
+                assert_eq!(*seen.lock().unwrap(), expected);
+            }
         }
 
         #[test]

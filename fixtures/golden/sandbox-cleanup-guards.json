@@ -31,6 +31,7 @@
   },
   "findings": [
     {
+      "app": null,
       "category": "trial.caches",
       "danger": "safe",
       "logical": 8192,
@@ -38,6 +39,7 @@
       "subject": "home/.Trash/old/fresher-trial-cache"
     },
     {
+      "app": null,
       "category": "trial.caches",
       "danger": "safe",
       "logical": 8192,
@@ -45,6 +47,7 @@
       "subject": "home/Library/Caches/fresher-trial-cache"
     },
     {
+      "app": null,
       "category": "trial.caches",
       "danger": "safe",
       "logical": 12288,
@@ -72,7 +75,7 @@
             }
           },
           {
-            "allocated": 67113490,
+            "allocated": 67113645,
             "part": {
               "kind": "remainder",
               "outsideScan": true,
@@ -106,7 +109,7 @@
             }
           },
           {
-            "allocated": 738156014,
+            "allocated": 738155859,
             "part": {
               "kind": "disk-own"
             }
@@ -282,8 +285,13 @@
         "kind": "file",
         "logical_size": 4096,
         "path": "home/shared/keep.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 41490
+    "totalLogicalSize": 41645
   }
 }

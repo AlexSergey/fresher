@@ -25,3 +25,5 @@ category with its danger level:
 Open questions:
 
 - Detect tools that are installed but not used for months and point at their whole footprint?
+
+**Partly taken by [plan 016](../plans/016-jetbrains/readme.md):** the IDEs line for JetBrains: older versions' settings, caches and logs, and the data of an IDE that is no longer installed, in the module `jetbrains`. **Still an idea:** VS Code extension caches and every other tool above.

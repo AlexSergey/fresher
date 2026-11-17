@@ -222,6 +222,12 @@ modified = 1735689600
 [[dir]]
 path = "Library/Logs"
 
+# A folder with its own time: `age` (or `modified`) is set once everything inside it is written, the deepest folder
+# first, so the folder keeps it whatever the tree writes into it.
+[[dir]]
+path = "Library/Caches/JetBrains/DataGrip2024.3"
+age = "40d"
+
 # A symlink: listed, never followed. The target may point outside the root.
 [[symlink]]
 path = "Library/Caches/system"
@@ -245,6 +251,18 @@ fill = "data"
 # A sandbox marker written into that folder (the folder is created if missing).
 [[marker]]
 path = "work"
+
+# An installed app, written as a real bundle: `Contents/Info.plist` (an XML property list with CFBundleIdentifier,
+# CFBundleName, CFBundlePackageType APPL and, when given, CFBundleShortVersionString and CFBundleVersion; text
+# escaped) and an empty `Contents/MacOS/`. Unsigned: its team id reads as none. The path ends in `.app`; the bundle id
+# must be one the app reads (`BundleId::new`). `version` and `build` are optional. No text holds a control character,
+# and no other entry of the tree lies inside the bundle: the bundle writes its own contents.
+[[app]]
+path = "Applications/WebStorm.app"
+bundle-id = "com.jetbrains.WebStorm"
+name = "WebStorm"
+version = "2025.3.1"
+build = "WS-253.1"
 ```
 
 `FixtureTree::from_toml(path)` builds it in a temporary folder that is removed when the tree is dropped;
@@ -262,15 +280,17 @@ one (rule 8). `npm run sandbox -- <feature|all> [--into
 <dir>]` (the binary of `fresher-sandbox`) writes it into a sandbox folder, `sandbox/<feature>/` at the repository's root
 by default (gitignored): the marker `.fresher-sandbox` at its top (the signature, then a line naming the case files),
 the fake home `home/` with its Trash `home/.Trash/`, `Applications/`, `System/Applications/`, the app's data folder
-`.fresher-data/`, every case's files and `EXPECTED.md`, the checklist of a run by hand (one checkbox per case,
-negatives first). `all` writes every case file into one sandbox and refuses a path two of them write.
+`.fresher-data/`, every case's files, `EXPECTED.md`, the checklist of a run by hand (one checkbox per case,
+negatives first), and `world.toml`: `now`, the moment of the generation every age counts back from, and the apps the
+cases declare open. Sandbox mode's clock starts at that `now`, and the autotest's clock stands at it. `all` writes every case file into one sandbox, joins their worlds, and refuses a path two of them
+write.
 
 - It refuses a folder that is not empty and holds no valid marker, and a folder the real Mac's protection list
   refuses (the home itself, a protected place or an ancestor of one).
 - Links: it refuses a target folder that is itself a link, and any link inside the sandbox on a path it writes (a
-  layout folder, a case's file or folder, the marker, `EXPECTED.md`). Links above the target are resolved: the
-  protection check runs on the real path, and a missing target is made there. A `.` or `..` in the part of the path
-  that does not exist yet is refused.
+  layout folder, a case's file or folder, the marker, `EXPECTED.md`, `world.toml`). Links above the target are
+  resolved: the protection check runs on the real path, and a missing target is made there. A `.` or `..` in the part
+  of the path that does not exist yet is refused.
 - It never rewrites a file of its own that has a hard link it did not make (which may lie outside the sandbox): such
   a sandbox is refused before anything is written.
 - It removes nothing: on a sandbox it made before it writes what is missing, resets its own files, and lists every
@@ -291,28 +311,45 @@ The case files:
   user's own folders, never explained; a folder that is almost one child opens through it (`home/Library` down to
   `Data`); a trial cache is explained, and a trial cache inside one counts once, with the outer one. Its files are
   filled with data, so the map's numbers are blocks on disk.
+- `jetbrains.toml`: the `jetbrains` module, with the sandbox's installed and open apps. The version in use, two versions
+  installed side by side, a newer version, an open IDE (installed, or open from no apps folder), an app with no version,
+  a removed IDE whose data changed recently, an IDE installed by the Toolbox app, an IDE linked into the apps folder (the list of apps stays whole), the
+  Community edition beside the full one, names that only look like versions, the vendor's other folders, a version
+  folder outside the vendor folder, and a file or a link named like one are never offered, each left out with its
+  reason where the module recognizes it; older WebStorm, IntelliJ IDEA and Rider folders go to the Trash in their
+  place's category, and a removed DataGrip's three folders, 40 days old, as the data of a removed IDE.
+- `jetbrains-unknown-app-open.toml` and `jetbrains-unknown-app-installed.toml`: an app of the vendor that the module
+  does not know, open (every folder kept) or installed (every removed IDE's data kept). Files of their own, since the
+  app keeps the folders of every case beside it; in `npm run sandbox -- all` it keeps those of `jetbrains.toml` too
+  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
 
 A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox.
 
 `npm run sandbox:test` (`app/tauri/tests/sandboxes.rs`) is the autotest of every case file, one `#[test]` each, listed
-in its `case_files!`: the case file is generated into a temporary folder (the "real" home and data folder are
-temporary too), run through the app's own sandbox composition (`sandbox_engine`) with fakes for the clock, volumes,
-open files, running apps, commands and access, and only the case file's `module` registered. Every negative must not
+in its `case_files!`, run one at a time (the nextest test group `sandboxes`, `.config/nextest.toml`); a scan or a
+cleanup not over within 180 s fails, naming the last event seen. The case file is generated into a temporary folder (the "real" home and data folder are
+temporary too), run through the app's own sandbox composition (`sandbox_engine`) with fakes for the clock (standing at
+the generated sandbox's `now`), volumes, open files, commands and access, the running apps of the generated sandbox's
+`world.toml` (as sandbox mode takes them), and only the case file's `module` registered. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
 `after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. After the scan and before
 the cleanup, the storage map is read: the sandbox sits on a fake volume of 1 GiB with the tree's size plus 64 MiB used
 and 256 MiB free, so every part is the same on every Mac; the parts add up to the capacity, the by-meaning groups and
 the by-place roots (with the parts that are no file of the scan) to the same total, and every `[case.map]` holds. The
-report (findings, the map, cleanup, the tree after) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
+report (findings with their app, the map, cleanup, the tree after) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
 rewrites it); its lists are sorted by path, then category, and the Trash's entries lose the `<n>-` of the order they
 were moved in, so the findings' ids, which differ from run to run, never show in it. The map's sizes are the space taken on disk, so the goldens assume the temporary folder is on an APFS
 volume with 4 KiB blocks, as on every Mac and in CI (macOS): a byte of data takes one block and a sparse file none. A
 golden check fails with that message on a volume that differs. A failure names its case. Guards: every case file has
 a test, and every module the app registers (but `demo`, whose findings are made up) has a case file naming it.
 
-A case file does not check left-outs yet: no sandbox module reports one. The first module that does adds the
-expectation to the case format (agent's call 6 of plan [011](./plans/011-diagnostics/00-design.md)).
+A case file checks left-outs exactly: the scan's `ModuleFinished.left_out` of every registered module, summed per
+category and reason, must equal the sum of the file's `[[case.left-out]]` expectations in items. A pair a module
+reports that no case expects fails, naming it, and so does an expected pair that is not reported or differs in its
+count (agent's call 6 of plan [011](./plans/011-diagnostics/00-design.md)). The report holds a `leftOut` list (the
+engine's counts: category, reason, items, sizes) only when something was left out, so a case file that leaves nothing out
+keeps its report.
 
 ### The case file
 
@@ -343,18 +380,30 @@ item = "home/work/fresher-trial-cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"   # in-trash | emptied | skipped (with `reason`, a SkipCode as serialized)
+[[case.left-out]]            # optional, on any case: what the module recognizes and does not offer
+category = "trial.caches"    # a category of the module's descriptor
+reason = "trial.error.failed"   # one of the module's declared problems (`with_problems`)
+items = 1                    # at least 1; the file's expectations of one category and reason add up
 [case.map]                   # optional, on any case
 part = "explained"           # explained (a positive) | your-folders (a negative)
 at = "home/work/fresher-trial-cache"   # optional: by default the folder of the case's first file
 ```
 
 A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
-`[[case.hardlink]]`, `[[case.marker]]`, with `age` and `fill`). A negative expects nothing to be offered at or below
-its paths, nor at a folder above them that only it writes into, and its paths untouched after the cleanup; it has no
+`[[case.hardlink]]`, `[[case.marker]]`, with `age` and `fill`, and `[[case.app]]`). A `[[case.app]]` is an installed
+app the real installed-apps reader sees: it lies in `Applications/`, `System/Applications/` or `home/Applications/`,
+directly or one folder below, and takes `running = true` when the app is open (`false` by default); a case writes
+nothing but apps into `home/Applications/`, and nothing inside a declared app. A `[[case.running]]` (`name`,
+`bundle-ids`: at least one, each a valid bundle id) is an app open from no apps folder of the sandbox. `EXPECTED.md`
+lists a case's apps under it ("Installed: WebStorm 2025.3.1 (open)", "Open, not installed: CLion") and its left-outs
+("Under 'trial.caches', 2 left out: trial.error.failed"; the generator has no dictionary, so the category and the reason
+are named by their ids). A negative
+expects nothing to be offered at or below its paths, nor at a folder above them that only it writes into, and its paths untouched after the cleanup; it has no
 `[case.expect]`. A positive's `item` is one of its own paths or their folders. Checked when read, by the generator and
 the autotest alike: unique names, every negative before every positive, plain relative paths inside the sandbox, no
 two cases writing a path, and `category` and `danger` that exist in the module's descriptor (the danger not below the
-category's). `EXPECTED.md` in the generated sandbox is the same cases as a checklist, negatives first, one plain
+category's); a `[[case.left-out]]` has `items` of at least 1, a category of the descriptor and a reason the category's module
+declares. `EXPECTED.md` in the generated sandbox is the same cases as a checklist, negatives first, one plain
 sentence each, and one more under a case with a `[case.map]`.
 
 `[case.map]` says where the overview's by-place view shows the case's files. `at` is one of the case's paths or their

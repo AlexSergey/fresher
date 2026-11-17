@@ -1,0 +1,139 @@
+# The home of the jetbrains module's core end-to-end flows (crates/e2e/tests/jetbrains.rs). The scan root is `home/`,
+# a sandbox itself; the fake Trash is a folder of its own outside the tree. WebStorm 2024.3 (older) and 2025.3 (in use)
+# and GoLand 2024.3 (older) and 2025.2 (in use) have folders in the three places; the files of the older WebStorm and
+# GoLand hold data, so a put back is compared byte for byte.
+
+[[marker]]
+path = "home"
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2024.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2024.3/plugins/plugin.jar"
+size = 16384
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+size = 65536
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/log/trace.bin"
+size = 4096
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/JetBrains/WebStorm2024.3/idea.log"
+size = 8192
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/JetBrains/WebStorm2024.3/old/idea.1.log"
+size = 4096
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/WebStorm2025.3/plugins/plugin.jar"
+size = 16384
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 65536
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2025.3/log/trace.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+size = 8192
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Logs/JetBrains/WebStorm2025.3/old/idea.1.log"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/GoLand2024.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/GoLand2024.3/plugins/plugin.jar"
+size = 16384
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/GoLand2024.3/index/data.bin"
+size = 65536
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/GoLand2024.3/log/trace.bin"
+size = 4096
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/JetBrains/GoLand2024.3/idea.log"
+size = 8192
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/JetBrains/GoLand2024.3/old/idea.1.log"
+size = 4096
+modified = 1762000000
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/GoLand2025.2/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Application Support/JetBrains/GoLand2025.2/plugins/plugin.jar"
+size = 16384
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Caches/JetBrains/GoLand2025.2/index/data.bin"
+size = 65536
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Caches/JetBrains/GoLand2025.2/log/trace.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Logs/JetBrains/GoLand2025.2/idea.log"
+size = 8192
+modified = 1762000000
+
+[[file]]
+path = "home/Library/Logs/JetBrains/GoLand2025.2/old/idea.1.log"
+size = 4096
+modified = 1762000000

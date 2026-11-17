@@ -310,6 +310,12 @@ const movedItems = (plan: CleanupPlanView): CleanupItemView[] =>
     )
     .map((item, index) => ({ ...item, index }));
 
+// A cleanup that moved every item of `plan` to the Trash, all still there.
+export const movedDetailOf = (plan: CleanupPlanView, cleanup: CleanupId, started: number): CleanupDetail => ({
+  items: movedItems(plan),
+  summary: cleanupSummaryOf(cleanup, reportOf(plan, { measured: 100_000_000 }), { started }),
+});
+
 // Cleanup 3: the demo plan moved to the Trash, every item still there.
 export const MOVED_DETAIL: CleanupDetail = {
   items: movedItems(DEMO_PLAN),

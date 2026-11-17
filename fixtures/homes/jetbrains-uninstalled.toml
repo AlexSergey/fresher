@@ -1,0 +1,35 @@
+# A home for the jetbrains module with the data of an IDE that is no longer installed: DataGrip 2024.3 in the three
+# places, each folder changed 40 days before `FIXTURE_NOW`. With no DataGrip installed and nothing of the vendor open,
+# the three folders are offered as the data of a removed IDE.
+
+[[file]]
+path = "Library/Application Support/JetBrains/DataGrip2024.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/DataGrip2024.3/plugins/plugin.jar"
+size = 131072
+modified = 1762000000
+
+[[dir]]
+path = "Library/Application Support/JetBrains/DataGrip2024.3"
+age = "40d"
+
+[[file]]
+path = "Library/Caches/JetBrains/DataGrip2024.3/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[dir]]
+path = "Library/Caches/JetBrains/DataGrip2024.3"
+age = "40d"
+
+[[file]]
+path = "Library/Logs/JetBrains/DataGrip2024.3/idea.log"
+size = 8192
+modified = 1762000000
+
+[[dir]]
+path = "Library/Logs/JetBrains/DataGrip2024.3"
+age = "40d"

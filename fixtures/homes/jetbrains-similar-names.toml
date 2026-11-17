@@ -1,0 +1,92 @@
+# A home for the jetbrains module where nothing may be claimed or left out: names that only look like version folders,
+# version folders outside the vendor folder, a file and a link named like one, and the vendor's other folders. The
+# tests install WebStorm 2025.3.1.
+
+# Names that are not `<Product><Year>.<N>` of a known product, under `JetBrains/`.
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2024/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2024.3.1/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2024.3.bak/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2024.3 copy/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm-2024.3/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm.2024.3/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2024.03/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm1999.1/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/webstorm2024.1/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/FooStorm2024.1/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/JetBrainsClient2025.1/data.bin"
+size = 4096
+modified = 1762000000
+
+# The vendor's other folders.
+[[file]]
+path = "Library/Application Support/JetBrains/Toolbox/state.json"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Application Support/JetBrains/consentOptions/accepted"
+size = 64
+modified = 1762000000
+
+# Version folders outside the vendor folder.
+[[file]]
+path = "Library/Caches/WebStorm2023.1/data.bin"
+size = 4096
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrainsX/WebStorm2023.1/data.bin"
+size = 4096
+modified = 1762000000
+
+# A file named like a version folder.
+[[file]]
+path = "Library/Logs/JetBrains/WebStorm2023.2"
+size = 4096
+modified = 1762000000
+
+# A link named like a version folder, to a folder outside the root: listed, never followed.
+[[symlink]]
+path = "Library/Caches/JetBrains/WebStorm2023.3"
+target = "/Library"

@@ -19,6 +19,8 @@ import {
   HISTORY,
   INTERRUPTED_DETAIL,
   MOVED_DETAIL,
+  movedDetailOf,
+  planOf,
 } from '../src/test/cleanup-plan';
 import {
   BUSY,
@@ -43,6 +45,15 @@ import {
   SETTINGS_OF_EVERY_KIND,
   SETTINGS_READ_ONLY,
 } from '../src/test/demo-scan';
+import {
+  JETBRAINS_DICTIONARY,
+  JETBRAINS_FINDINGS,
+  JETBRAINS_MEANING,
+  JETBRAINS_MODULES,
+  JETBRAINS_OVERVIEW,
+  JETBRAINS_SCAN,
+  JETBRAINS_SETTINGS,
+} from '../src/test/jetbrains-scan';
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
 import {
@@ -72,6 +83,8 @@ export type CoreScript = {
   // The scan streams one event every `interval` ms, as the engine does, each asked of Node as JSON and parsed in the
   // page as the channel does (the page never holds the whole scan); meanwhile `get_overview` answers the totals of the findings streamed so far, and `scanned` from the last event on.
   readonly interval?: number;
+  // The by-meaning groups once the scan ended, in place of the demo volume's; the volume's own lines follow them.
+  readonly meaning?: readonly MeaningGroup[];
   readonly refusals?: Partial<Readonly<Record<CommandKey, Refusal>>>;
   readonly scan?: readonly Event[];
   readonly scanned?: Overview;
@@ -91,10 +104,13 @@ type StorageAnswers = {
 
 // The demo volume's map while the scan runs and once it ended with `scanned` (its categories, as the core would list
 // them); before a scan the default answers hold.
-const storageOfScan = (scanned: null | Overview): ByCommand['storage'] => ({
+const storageOfScan = (scanned: null | Overview, meaning?: readonly MeaningGroup[]): ByCommand['storage'] => ({
   scanned: {
     map: DEMO_MAP_COMPLETE,
-    meaning: meaningFor(scanned?.totals ?? []),
+    meaning:
+      meaning === undefined
+        ? meaningFor(scanned?.totals ?? [])
+        : [...meaning, ...meaningFor([]).filter(({ kind }) => kind !== 'app')],
     places: { 0: DEMO_PLACE, 1: DEMO_DESCENT },
   },
   scanning: { map: DEMO_MAP_SCANNING, meaning: DEMO_MEANING_SCANNING, places: null },
@@ -182,7 +198,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     scanning: script.scanning ?? null,
     startScan: COMMANDS.startScan,
     stop: script.stop ?? null,
-    storage: storageOfScan(script.scanned ?? null),
+    storage: storageOfScan(script.scanned ?? null, script.meaning),
     subscribe: COMMANDS.subscribe,
     updateSetting: COMMANDS.updateSetting,
   };
@@ -459,6 +475,29 @@ const IGNORING_DICTIONARY = {
   'core.ignore.groups.description': 'Hides everything the modules of a group find and never cleans it.',
 } as const;
 
+// The cleanup of WebStorm's three findings (the mock makes the core's plan): what is left is DataGrip's data, and the
+// history holds that one cleanup.
+const WEBSTORM_CLEANUP = movedDetailOf(planOf(JETBRAINS_FINDINGS.slice(0, 3)), 3, 1_735_819_200);
+
+const JETBRAINS_CLEANUP: CleanupScript = {
+  after: {
+    ...JETBRAINS_OVERVIEW,
+    found: { allocated: 420_000_000, completeness: 'complete', logical: 420_000_000, reclaimable: 420_000_000 },
+    totals: JETBRAINS_OVERVIEW.totals.filter(({ category }) => category === 'jetbrains.uninstalled'),
+  },
+  details: [WEBSTORM_CLEANUP],
+  history: { blocked: null, cleanups: [WEBSTORM_CLEANUP.summary], offset: 0, total: 1, waiting: 1_325_000_000 },
+};
+
+// What the JetBrains scripts answer before a scan: the module, its texts and settings, the ignore tabs' texts.
+const JETBRAINS_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...JETBRAINS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY, ...IGNORING_DICTIONARY },
+  getModules: JETBRAINS_MODULES,
+  getSettings: JETBRAINS_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // The scripts the flows and the screenshots play.
 export const SCRIPTS = {
   // The demo scan, then a cleanup of what is picked: the core's plan, the cleanup streamed at once, a history.
@@ -498,6 +537,15 @@ export const SCRIPTS = {
     scan: DEMO_SCAN,
     scanned: DEMO_OVERVIEW,
   },
+  // The JetBrains module's scan, streamed at once, with cleanup, ignoring modules and groups, and its storage meaning.
+  jetbrains: {
+    answers: JETBRAINS_ANSWERS,
+    cleanup: JETBRAINS_CLEANUP,
+    ignoring: true,
+    meaning: JETBRAINS_MEANING,
+    scan: JETBRAINS_SCAN,
+    scanned: JETBRAINS_OVERVIEW,
+  },
   // A thousand findings in three categories, paged by the lists.
   large: {
     answers: { ...ANSWERS, getDictionary: { ...LARGE.dictionary, ...STORAGE_DICTIONARY }, getModules: LARGE_MODULES },
@@ -519,11 +567,14 @@ export const SCRIPTS = {
   readOnly: { answers: { ...ANSWERS, getSettings: SETTINGS_READ_ONLY } },
   // The core refuses every scan as busy.
   refused: { answers: ANSWERS, refusals: { startScan: BUSY } },
-  // A development build in a sandbox: the banner names its folder.
+  // A development build in a sandbox: the banner names its folder and says its open apps are simulated.
   sandboxed: {
     answers: {
       ...ANSWERS,
-      appInfo: { build: { kind: 'sandbox', path: '/Users/dev/sandboxes/trial' }, version: '0.1.0' },
+      appInfo: {
+        build: { kind: 'sandbox', path: '/Users/dev/sandboxes/trial', simulatedRunning: true },
+        version: '0.1.0',
+      },
     },
   },
   // Settings of every kind.

@@ -16,6 +16,7 @@ import { CircleCheck, Search } from '../../design/icons/icons';
 import { PageHeader } from '../../design/layout/page-header/page-header';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { Button } from '../../design/primitives/button/button';
+import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { t, tText } from '../../i18n';
 import { ModuleSection } from '../../product/module-section/module-section';
 import { SelectionBar } from '../../product/selection-bar/selection-bar';
@@ -137,19 +138,24 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
         {...(hidden === undefined
           ? {
               actions: (
-                <Button
-                  onClick={() => {
-                    commands.ignore({ kind: 'module', module: module.id });
-                  }}
-                  size="small"
-                  variant="secondary"
-                >
-                  {t('ui.screen.module.ignore-module')}
-                </Button>
+                <Tooltip content={tText({ args: {}, key: 'core.ignore.modules.description' })}>
+                  {(describedBy) => (
+                    <Button
+                      aria-describedby={describedBy}
+                      onClick={() => {
+                        commands.ignore({ kind: 'module', module: module.id });
+                      }}
+                      size="small"
+                      variant="secondary"
+                    >
+                      {t('ui.screen.module.ignore-module')}
+                    </Button>
+                  )}
+                </Tooltip>
               ),
-              subtitle: tText({ args: {}, key: 'core.ignore.modules.description' }),
             }
           : {})}
+        subtitle={tText({ args: {}, key: `${module.id}.enabled.description` })}
         title={tText({ args: {}, key: `${module.id}.enabled.label` })}
       />
       <div className={styles.content}>

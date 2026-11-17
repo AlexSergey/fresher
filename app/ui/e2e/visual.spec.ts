@@ -52,6 +52,35 @@ const looksTheSame = async (page: Page, name: string): Promise<void> => {
   await expect(page).toHaveScreenshot(name);
 };
 
+// The JetBrains scan, on the module's page; with `review`, WebStorm's three categories ticked and the review open.
+const jetbrainsPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.jetbrains);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^JetBrains IDEs/ });
+  await expect(nav).toContainText('1.7 GB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'JetBrains IDEs' })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Caches of older JetBrains IDE versions' })).toContainText(
+    '3 items left out (1.4 GB)',
+  );
+};
+
+// WebStorm's three categories ticked, the review open and the confirmation (it names Medium) asked for.
+const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
+  await jetbrainsPage(page);
+  for (const name of ['Caches', 'Logs', 'Settings and plugins']) {
+    await page.getByRole('checkbox', { name: new RegExp(`^Select ${name} of older`) }).check();
+  }
+  await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Review' })).toBeFocused();
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  return dialog;
+};
+
 test.beforeEach(async ({ page }) => {
   await motionOff(page);
   await failOnCspViolation(page);
@@ -113,7 +142,9 @@ test.describe('positive cases', () => {
 
     test('the sandbox banner', async ({ page }) => {
       await open(page, SCRIPTS.sandboxed);
-      await expect(page.getByRole('note')).toContainText('Sandbox · /Users/dev/sandboxes/trial');
+      await expect(page.getByRole('note')).toContainText(
+        'Sandbox · /Users/dev/sandboxes/trial · Open apps are simulated.',
+      );
 
       await looksTheSame(page, 'banner-sandbox.png');
     });
@@ -154,6 +185,15 @@ test.describe('positive cases', () => {
       await expect(caches).toContainText('1 item left out (157.3 MB): The app that made it is open.');
 
       await looksTheSame(page, 'module-page-left-out.png');
+    });
+
+    test('the page of a module with its left-out lines and a Medium category', async ({ page }) => {
+      await jetbrainsPage(page);
+      await expect(
+        page.getByRole('region', { name: 'Settings and plugins of older JetBrains IDE versions' }),
+      ).toContainText('2 items left out (600 MB)');
+
+      await looksTheSame(page, 'module-page-jetbrains.png');
     });
   });
 
@@ -207,6 +247,13 @@ test.describe('positive cases', () => {
       await expect(leftOut).toContainText('Quit Safari and try again.');
 
       await looksTheSame(page, 'cleanup-confirm-left-out.png');
+    });
+
+    test('the confirmation that names Medium', async ({ page }) => {
+      const dialog = await jetbrainsConfirmation(page);
+      await expect(dialog).toContainText('Medium');
+
+      await looksTheSame(page, 'cleanup-confirm-medium.png');
     });
 
     test('a refused confirmation', async ({ page }) => {

@@ -70,10 +70,14 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
     // One scan's facts of the system, shared by every module and gathered only when one asks.
     let system = SystemFacts::new(&shared.ports.system);
+    let is_restore = restored.is_some();
     let contexts: Vec<ModuleContext<'_>> = plan
         .modules
         .iter()
-        .map(|planned| ModuleContext::new(clock, commands, &system, &planned.settings, cancel))
+        .map(|planned| {
+            let cx = ModuleContext::new(clock, commands, &system, &planned.settings, cancel);
+            if is_restore { cx.restored() } else { cx }
+        })
         .collect();
     let mut outcomes: Vec<Option<ModuleOutcome>> = vec![None; plan.modules.len()];
     let mut output = Output {
@@ -147,13 +151,13 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         }
     }
 
-    finish_modules(plan, &contexts, &mut outcomes, &mut output, cancel);
+    let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
+    finish_modules(plan, &contexts, walk_complete, &mut outcomes, &mut output, cancel);
 
     let committed = !cancel.is_cancelled() && {
         let claims = resolve_claims(shared);
         summary.is_some() && commit(shared, &claims, &system)
     };
-    let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
     let complete = walk_complete
         && output.coverage.is_complete()
         && committed
@@ -176,10 +180,12 @@ fn all_interests(shared: &Shared) -> InterestSet {
     interests
 }
 
-/// Calls `finish` of every module that has no outcome yet, in order; after a cancel, each is `Cancelled` instead.
+/// Calls `finish` of every module that has no outcome yet, in order, each told whether the walk read every folder;
+/// after a cancel, each is `Cancelled` instead.
 fn finish_modules(
     plan: &ScanPlan,
     contexts: &[ModuleContext<'_>],
+    walk_complete: bool,
     outcomes: &mut [Option<ModuleOutcome>],
     output: &mut Output<'_>,
     cancel: &CancelToken,
@@ -191,7 +197,8 @@ fn finish_modules(
         let finished = if cancel.is_cancelled() {
             ModuleOutcome::Cancelled
         } else {
-            let finished = isolated(|| planned.module.finish(cx, &mut output.sink(index)));
+            let cx = if walk_complete { cx.complete_walk() } else { *cx };
+            let finished = isolated(|| planned.module.finish(&cx, &mut output.sink(index)));
             finished.map_or_else(|outcome| outcome, |()| ModuleOutcome::Completed)
         };
         *outcome = Some(output.module_finished(index, planned.module.descriptor().id(), finished));

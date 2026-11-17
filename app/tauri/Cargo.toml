@@ -18,6 +18,7 @@ fresher-cleaner = { path = "../../crates/cleaner" }
 fresher-core = { path = "../../crates/core" }
 fresher-engine = { path = "../../crates/engine" }
 fresher-macos = { path = "../../crates/macos" }
+fresher-module-jetbrains = { path = "../../modules/jetbrains" }
 # Registered in debug builds only (`src/compose.rs`); Cargo cannot make a dependency depend on `debug_assertions`.
 fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-trial = { path = "../../modules/trial" }

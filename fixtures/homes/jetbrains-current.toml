@@ -1,0 +1,17 @@
+# A home for the jetbrains module where only the version in use has folders: WebStorm 2025.3 in the three places. The
+# tests install WebStorm 2025.3.1; nothing may be offered.
+
+[[file]]
+path = "Library/Application Support/JetBrains/WebStorm2025.3/options/editor.xml"
+size = 2048
+modified = 1762000000
+
+[[file]]
+path = "Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 1048576
+modified = 1762000000
+
+[[file]]
+path = "Library/Logs/JetBrains/WebStorm2025.3/idea.log"
+size = 4096
+modified = 1762000000

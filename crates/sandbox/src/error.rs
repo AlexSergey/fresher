@@ -38,6 +38,21 @@ pub enum CaseError {
     /// A path, marker or hard link target that is not relative, plain and inside the sandbox.
     #[error("case \"{case}\": the path {path} must be relative, plain and inside the sandbox")]
     PathOutsideSandbox { case: String, path: PathBuf },
+    /// An app is not in `Applications/`, `System/Applications/` or `home/Applications/`, or one folder below one.
+    #[error(
+        "case \"{case}\": the app {path} must be in Applications/, System/Applications/ or home/Applications/, \
+         or one folder below one"
+    )]
+    AppOutsideAppsFolders { case: String, path: PathBuf },
+    /// The case writes something other than an app into the fake home's apps folder.
+    #[error("case \"{case}\": {path} is in home/Applications/, which holds apps only; declare it as a `[[case.app]]`")]
+    NotAnAppInHomeApps { case: String, path: PathBuf },
+    /// A `[[case.running]]` without a bundle id: nothing could tell it is open.
+    #[error("case \"{case}\": the running app \"{name}\" needs at least one bundle id in `bundle-ids`")]
+    RunningWithoutBundleId { case: String, name: String },
+    /// A `[[case.running]]` bundle id the app would not read.
+    #[error("case \"{case}\": `{id}` of a running app is not a bundle id")]
+    RunningBundleId { case: String, id: String },
     /// Two cases write one path.
     #[error("case \"{case}\": the path {path} is also written by case \"{other}\"")]
     PathWrittenTwice { case: String, other: String, path: PathBuf },
@@ -50,6 +65,15 @@ pub enum CaseError {
     /// The `category` is not among the module's categories.
     #[error("case \"{case}\": the category `{category}` is not in the module's descriptor")]
     UnknownCategory { case: String, category: String },
+    /// A `[[case.left-out]]` reason that is not a text key.
+    #[error("case \"{case}\": `{reason}` is not a text key")]
+    LeftOutReason { case: String, reason: String },
+    /// A `[[case.left-out]]` with `items = 0`: it expects nothing.
+    #[error("case \"{case}\": a left-out of `{category}` needs `items` of at least 1")]
+    LeftOutWithoutItems { case: String, category: String },
+    /// A `[[case.left-out]]` reason that is not one of the problems its category's module declares.
+    #[error("case \"{case}\": `{reason}` is not a problem the module of `{category}` declares")]
+    UndeclaredReason { case: String, category: String, reason: String },
     /// The expected danger is below the category's level.
     #[error("case \"{case}\": the danger {danger:?} is below the category's {floor:?}")]
     DangerBelowCategory { case: String, danger: DangerLevel, floor: DangerLevel },
@@ -107,6 +131,9 @@ pub enum SandboxError {
     /// The cases' files could not be written.
     #[error("cannot write the cases: {source}")]
     Tree { source: FixtureError },
+    /// The sandbox's `world.toml` is not of the world's format or names an app the app would not read.
+    #[error("{path} is not a valid world: {reason}")]
+    World { path: PathBuf, reason: String },
     /// A file system call failed.
     #[error("{path}: {source}")]
     Io { path: PathBuf, source: std::io::Error },

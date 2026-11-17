@@ -166,10 +166,15 @@ describe('AppFrame', () => {
 
   describe('positive cases', () => {
     it('a sandbox build shows the sandbox banner above the window', async () => {
-      core({ appInfo: () => ({ build: { kind: 'sandbox', path: '/Users/dev/box' }, version: '0.1.0' }) });
+      core({
+        appInfo: () => ({
+          build: { kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: true },
+          version: '0.1.0',
+        }),
+      });
       await renderFrame();
 
-      expect(await screen.findByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box');
+      expect(await screen.findByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box · Open apps are simulated.');
     });
 
     it('stop and quit asks the core', async () => {

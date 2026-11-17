@@ -106,8 +106,8 @@ pub use storage::{
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};
 pub use subject::Subject;
 pub use system::{
-    AppIdError, BundleId, InstalledApp, InstalledApps, Project, ProjectKind, RunningApp, RunningApps, RunningSet,
-    SystemError, SystemFacts, SystemPorts, TeamId,
+    AppIdError, BundleId, InstalledApp, InstalledApps, InstalledList, Project, ProjectKind, RunningApp, RunningApps,
+    RunningSet, SystemError, SystemFacts, SystemPorts, TeamId,
 };
 pub use text::{DETAIL_ARG, Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;

@@ -49,11 +49,11 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-macos`       | `crates/macos`   | the only crate with `unsafe` (in `mod ffi`): the bulk read, volumes, the change journal, the IO policy, the Trash call, open files, the protection list, the calls beneath held folders | core          |
 | `fresher-scanner`     | `crates/scanner` | the walk, the tree, the matcher, the cache codec, the rescan and the queries behind `DiskWalk`/`DiskState`                                                                              | core, macos   |
 | `fresher-rules`       | `crates/rules`   | the shared matcher for declarative rule data (TOML); holds no rules, each module owns its own                                                                                           | core          |
-| `fresher-system`      | `crates/system`  | the safe adapters of system knowledge (plan 009): `MacKnownFolders`, `MacInstalledApps` with its own `Info.plist` and code-signature readers, `MacRunningApps`, `SystemClock`, `ProcessCommandRunner` | core, macos   |
+| `fresher-system`      | `crates/system`  | the safe adapters of system knowledge (plan 009): `MacKnownFolders`, `MacInstalledApps` with its own `Info.plist` and code-signature readers, `MacRunningApps`, `SystemClock`, `StartedClock`, `ProcessCommandRunner` | core, macos   |
 | `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
 | `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
-| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `demo` and `trial` are dev-only (debug builds)                                                                                           | core, rules   |
+| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
 | `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos |
 | `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
@@ -86,10 +86,13 @@ Rules of the layout:
   made: its `home/` is `~` and the known folders, `.fresher-data/` the data folder, `home/.Trash` the Trash, the
   cleaner is `Reach::SandboxFolder`, and the protection is the real Mac's list joined with the sandbox's
   (`Protection::joined`). The scanner's avoid list is the places that prompt of both homes, so no scan raises a
-  system prompt. The clock, volumes, open files, running apps, commands and access stay real, read-only; the process's
-  IO policy is set only by the app's start, never by `sandbox_engine`, so the autotests run the same composition on
-  fakes. The window shows a banner naming the sandbox (a development build outside one: "nothing can be removed
-  outside a sandbox"; nothing in a release build). A release build has no such branch.
+  system prompt. Volumes, open files, commands and access stay real, read-only; the running apps are never the Mac's
+  but the sandbox's declared ones (`world.toml`, none without it: plan 016), and the clock starts at the moment the
+  generator wrote into `world.toml` and runs from there (`StartedClock`; the system's without one), so the case files'
+  ages hold however long ago the sandbox was generated (plan 016); the process's IO policy is set
+  only by the app's start, never by `sandbox_engine`, so the autotests run the same composition on fakes. The window
+  shows a banner naming the sandbox and saying "Open apps are simulated." (a development build outside one: "nothing
+  can be removed outside a sandbox"; nothing in a release build). A release build has no such branch.
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
 - **The system's facts** (plan [009](../plans/009-system-knowledge/readme.md)): the engine's `Ports.system`
   (`SystemPorts`: known folders, installed apps, running apps) becomes one lazy `SystemFacts` per scan, handed to
@@ -106,12 +109,12 @@ Rules of the layout:
 
 | Port             | Implemented by                                                                                                  | Fake for tests                                              |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `Clock`          | `fresher-system`'s `SystemClock`                                                                                | `FakeClock`                                                 |
+| `Clock`          | `fresher-system`'s `SystemClock`; in sandbox mode its `StartedClock`, from the moment in `world.toml`           | `FakeClock`                                                 |
 | `Trash`          | `fresher-macos`'s `MacTrash` (the system's Trash call; put back by `renamex_np`)                                | `FakeTrash` (a Trash folder inside the fixture)             |
 | `OpenFiles`      | `fresher-macos`'s `MacOpenFiles` (the user's own processes, `libproc`)                                          | `FakeOpenFiles`                                             |
 | `CommandRunner`  | `fresher-system`'s `ProcessCommandRunner` (`std::process`, no shell; a 60 s timeout; the caller's cancel token kills it) | `FakeCommandRunner`                                         |
 | `KnownFolders`   | `fresher-system`'s `MacKnownFolders` (the macOS layout of a home folder; opens nothing)                         | `FakeKnownFolders` (`home_layout` of a fixture root)        |
-| `InstalledApps`  | `fresher-system`'s `MacInstalledApps` (the apps folders and one below; `Info.plist`, code signature)            | `FakeInstalledApps`, `installed_app`                        |
+| `InstalledApps`  | `fresher-system`'s `MacInstalledApps` (the apps folders and one below, the older JetBrains Toolbox's folder four below; an app link read where it points; `Info.plist`, code signature; what it cannot read in `unread`; `find` by bundle id through Spotlight, `mdfind`, or the listed apps in a sandbox) | `FakeInstalledApps` (`partial`), `installed_app`            |
 | `RunningApps`    | `fresher-system`'s `MacRunningApps` (`fresher-macos`'s process table, each executable's bundles)                | `FakeRunningApps` (a script), `running_app`                 |
 | `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
 | `CleanupJournal` | `fresher-store`'s `FileCleanupJournal`                                                                          | `MemoryCleanupJournal`                                      |

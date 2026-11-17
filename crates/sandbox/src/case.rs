@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 
-use fresher_core::{CategoryDescriptor, CategoryId, DangerLevel, IdError, ModuleId, SkipCode};
-use fresher_testing::TreeDescription;
+use fresher_core::{
+    BundleId, CategoryDescriptor, CategoryId, DangerLevel, IdError, ModuleId, RunningApp, SkipCode, TextKey,
+};
+use fresher_testing::{AppBundle, TreeDescription};
 use serde::Deserialize;
 
 use crate::CaseError;
@@ -16,14 +18,25 @@ pub struct CaseFile {
     cases: Vec<Case>,
 }
 
+/// The folders an app of a case may be in, relative to the sandbox: directly or one folder below, as on a Mac.
+const APPS_FOLDERS: [&str; 3] = ["Applications", "System/Applications", "home/Applications"];
+
+/// The apps folder in the fake home: a case writes nothing there but apps.
+const HOME_APPS_FOLDER: &str = "home/Applications";
+
 /// One case: the files it writes and, for a positive case, what the app must do with them.
 #[derive(Clone, Debug)]
 pub struct Case {
     name: String,
     kind: CaseKind,
     tree: TreeDescription,
+    /// The paths of the case's apps declared `running`.
+    running: Vec<PathBuf>,
+    /// The apps of `[[case.running]]`: open, from no apps folder of the sandbox.
+    running_elsewhere: Vec<RunningApp>,
     expect: Option<Expectation>,
     map: Option<MapExpectation>,
+    left_out: Vec<LeftOutExpectation>,
 }
 
 /// A negative case is never offered and stays untouched; a positive case is offered and cleaned as it expects.
@@ -41,6 +54,15 @@ pub struct Expectation {
     category: CategoryId,
     danger: DangerLevel,
     after: AfterCleanup,
+}
+
+/// What a case expects the module to leave out: `items` items of `category`, left out for `reason`, one of the
+/// module's declared problems. The harness adds up every case's expectations and compares them exactly.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LeftOutExpectation {
+    category: CategoryId,
+    reason: TextKey,
+    items: u32,
 }
 
 /// Where the storage map's by-place view must show a case's files: in which part, under which folder.
@@ -78,13 +100,16 @@ struct RawCaseFile {
     cases: Vec<RawCase>,
 }
 
-// Its files are every key but these four, read as a `TreeDescription`, which refuses an unknown one.
+// Its files are every key but `name`, `kind`, `expect`, `map`, `left-out` and `running` (`[[case.running]]`, taken out
+// first), read as a `TreeDescription`, which refuses an unknown one; each `[[case.app]]` loses its `running` first.
 #[derive(Deserialize)]
 struct RawCase {
     name: String,
     kind: CaseKind,
     expect: Option<RawExpectation>,
     map: Option<RawMap>,
+    #[serde(default, rename = "left-out")]
+    left_out: Vec<RawLeftOut>,
     #[serde(flatten)]
     files: toml::Table,
 }
@@ -104,6 +129,23 @@ struct RawExpectation {
 struct RawMap {
     part: MapPartName,
     at: Option<PathBuf>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawLeftOut {
+    category: String,
+    reason: String,
+    items: u32,
+}
+
+/// A `[[case.running]]`: an app that runs from no apps folder; its bundle ids are checked once read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+struct RawRunning {
+    name: String,
+    #[serde(default)]
+    bundle_ids: Vec<String>,
 }
 
 #[derive(Clone, Copy, Deserialize)]
@@ -153,17 +195,41 @@ impl CaseFile {
         let cases = cases
             .into_iter()
             .map(|(mut case, pending)| {
-                case.expect = pending.map(|pending| pending.into_expectation(&case.name)).transpose()?;
+                case.expect = pending.expect.map(|pending| pending.into_expectation(&case.name)).transpose()?;
+                case.left_out = pending
+                    .left_out
+                    .into_iter()
+                    .map(|pending| pending.into_expectation(&case.name))
+                    .collect::<Result<_, _>>()?;
                 Ok(case)
             })
             .collect::<Result<_, CaseError>>()?;
         Ok(Self { feature: raw.feature, module, cases })
     }
 
-    /// Checks every expectation against the categories of the module: the category exists and the danger is not
-    /// below its level.
-    pub fn check(&self, categories: &[CategoryDescriptor]) -> Result<(), CaseError> {
+    /// Checks every expectation against the categories and the declared problems of the modules: the category
+    /// exists and the danger is not below its level; a left-out's category exists and its reason is a problem of
+    /// that category's module.
+    pub fn check(&self, categories: &[CategoryDescriptor], problems: &[TextKey]) -> Result<(), CaseError> {
         for case in &self.cases {
+            for left_out in &case.left_out {
+                if !categories.iter().any(|descriptor| descriptor.id() == left_out.category) {
+                    return Err(CaseError::UnknownCategory {
+                        case: case.name.clone(),
+                        category: left_out.category.to_string(),
+                    });
+                }
+                let declared = |problem: &&TextKey| {
+                    **problem == left_out.reason && problem.namespace() == module_of(left_out.category.as_str())
+                };
+                if !problems.iter().any(|problem| declared(&problem)) {
+                    return Err(CaseError::UndeclaredReason {
+                        case: case.name.clone(),
+                        category: left_out.category.to_string(),
+                        reason: left_out.reason.to_string(),
+                    });
+                }
+            }
             let Some(expect) = &case.expect else { continue };
             let descriptor =
                 categories.iter().find(|descriptor| descriptor.id() == expect.category).ok_or_else(|| {
@@ -178,6 +244,19 @@ impl CaseFile {
             }
         }
         Ok(())
+    }
+
+    /// What the file's cases expect to be left out, added up per category and reason, sorted by both.
+    pub fn left_outs(&self) -> Vec<LeftOutExpectation> {
+        let mut sums: Vec<LeftOutExpectation> = Vec::new();
+        for expected in self.cases.iter().flat_map(|case| &case.left_out) {
+            match sums.iter_mut().find(|sum| (sum.category, &sum.reason) == (expected.category, &expected.reason)) {
+                Some(sum) => sum.items = sum.items.saturating_add(expected.items),
+                None => sums.push(expected.clone()),
+            }
+        }
+        sums.sort_by(|a, b| (a.category.as_str(), a.reason.as_str()).cmp(&(b.category.as_str(), b.reason.as_str())));
+        sums
     }
 
     /// Every case's files as one tree.
@@ -203,8 +282,11 @@ impl CaseFile {
 
 impl Case {
     /// The case without its expectation, which is kept apart until the whole file is accepted.
-    fn from_raw(raw: RawCase) -> Result<(Self, Option<PendingExpectation>), CaseError> {
+    fn from_raw(mut raw: RawCase) -> Result<(Self, Pending), CaseError> {
         let name = raw.name;
+        let running = take_running(&mut raw.files)
+            .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
+        let running_elsewhere = take_running_elsewhere(&name, &mut raw.files)?;
         let tree: TreeDescription = toml::Value::Table(raw.files)
             .try_into()
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
@@ -215,6 +297,9 @@ impl Case {
         if let Some(path) = outside {
             return Err(CaseError::PathOutsideSandbox { case: name, path: path.to_path_buf() });
         }
+        check_apps(&name, &tree)?;
+        let running = tree.apps().iter().zip(running).filter(|(_, running)| *running).map(|(app, _)| app.path.clone());
+        let running = running.collect();
         let expect = match (raw.kind, raw.expect) {
             (CaseKind::Negative, Some(_)) => return Err(CaseError::NegativeWithExpect { case: name }),
             (CaseKind::Positive, None) => return Err(CaseError::PositiveWithoutExpect { case: name }),
@@ -222,7 +307,10 @@ impl Case {
             (CaseKind::Positive, Some(raw)) => Some(PendingExpectation::from_raw(&name, &tree, raw)?),
         };
         let map = raw.map.map(|map| MapExpectation::from_raw(&name, raw.kind, &tree, map)).transpose()?;
-        Ok((Self { name, kind: raw.kind, tree, expect: None, map }, expect))
+        let left_out =
+            raw.left_out.into_iter().map(|raw| PendingLeftOut::from_raw(&name, raw)).collect::<Result<_, _>>()?;
+        let case = Self { name, kind: raw.kind, tree, running, running_elsewhere, expect: None, map, left_out: vec![] };
+        Ok((case, Pending { expect, left_out }))
     }
 
     /// The case's name, unique in its file: a failure names the case by it.
@@ -240,9 +328,24 @@ impl Case {
         &self.tree
     }
 
+    /// The case's apps declared `running`: open while the app scans.
+    pub fn running_apps(&self) -> impl Iterator<Item = &AppBundle> {
+        self.tree.apps().iter().filter(|app| self.running.contains(&app.path))
+    }
+
+    /// The case's `[[case.running]]`: apps open while the app scans that are installed in no apps folder.
+    pub fn running_elsewhere(&self) -> &[RunningApp] {
+        &self.running_elsewhere
+    }
+
     /// The expectation of a positive case; a negative case has none.
     pub const fn expect(&self) -> Option<&Expectation> {
         self.expect.as_ref()
+    }
+
+    /// What the case expects the module to leave out.
+    pub fn left_out(&self) -> &[LeftOutExpectation] {
+        &self.left_out
     }
 
     /// Where the storage map must show the case's files, when the case says.
@@ -285,6 +388,61 @@ impl MapExpectation {
     /// The folder the by-place view shows the case's files under, relative to the sandbox folder.
     pub fn at(&self) -> &Path {
         &self.at
+    }
+}
+
+/// What a case holds that is kept apart until the whole file is accepted.
+struct Pending {
+    expect: Option<PendingExpectation>,
+    left_out: Vec<PendingLeftOut>,
+}
+
+/// A checked left-out expectation whose category id is not kept yet.
+struct PendingLeftOut {
+    category: String,
+    reason: TextKey,
+    items: u32,
+}
+
+impl PendingLeftOut {
+    fn from_raw(case: &str, raw: RawLeftOut) -> Result<Self, CaseError> {
+        if raw.items == 0 {
+            return Err(CaseError::LeftOutWithoutItems { case: case.into(), category: raw.category });
+        }
+        check_category(&raw.category).map_err(|source| CaseError::CategoryId {
+            case: case.into(),
+            category: raw.category.clone(),
+            source,
+        })?;
+        let reason = TextKey::new(raw.reason.as_str())
+            .map_err(|_| CaseError::LeftOutReason { case: case.into(), reason: raw.reason })?;
+        Ok(Self { category: raw.category, reason, items: raw.items })
+    }
+
+    fn into_expectation(self, case: &str) -> Result<LeftOutExpectation, CaseError> {
+        let category = category_id(leak(self.category.clone())).map_err(|source| CaseError::CategoryId {
+            case: case.into(),
+            category: self.category,
+            source,
+        })?;
+        Ok(LeftOutExpectation { category, reason: self.reason, items: self.items })
+    }
+}
+
+impl LeftOutExpectation {
+    /// The category whose items are left out.
+    pub const fn category(&self) -> CategoryId {
+        self.category
+    }
+
+    /// Why: one of the module's declared problems.
+    pub const fn reason(&self) -> &TextKey {
+        &self.reason
+    }
+
+    /// How many items.
+    pub const fn items(&self) -> u32 {
+        self.items
     }
 }
 
@@ -348,6 +506,60 @@ impl Expectation {
     }
 }
 
+/// Removes `running` from every `[[case.app]]` of the case's files and returns it, in order, `false` when absent.
+fn take_running(files: &mut toml::Table) -> Result<Vec<bool>, toml::de::Error> {
+    let Some(toml::Value::Array(apps)) = files.get_mut("app") else { return Ok(Vec::new()) };
+    apps.iter_mut()
+        .map(|app| match app.as_table_mut().and_then(|table| table.remove("running")) {
+            Some(running) => running.try_into(),
+            None => Ok(false),
+        })
+        .collect()
+}
+
+/// Removes `[[case.running]]` from the case's files and checks each: a name and at least one bundle id, every id one
+/// the app would read.
+fn take_running_elsewhere(case: &str, files: &mut toml::Table) -> Result<Vec<RunningApp>, CaseError> {
+    let Some(entries) = files.remove("running") else { return Ok(Vec::new()) };
+    let entries: Vec<RawRunning> =
+        entries.try_into().map_err(|source| CaseError::Files { case: case.into(), source: Box::new(source) })?;
+    entries
+        .into_iter()
+        .map(|entry| {
+            if entry.bundle_ids.is_empty() {
+                return Err(CaseError::RunningWithoutBundleId { case: case.into(), name: entry.name });
+            }
+            let bundle_ids = entry
+                .bundle_ids
+                .into_iter()
+                .map(|id| BundleId::new(id.as_str()).map_err(|_| CaseError::RunningBundleId { case: case.into(), id }))
+                .collect::<Result<_, _>>()?;
+            Ok(RunningApp { name: entry.name, bundle_ids })
+        })
+        .collect()
+}
+
+/// Refuses an app outside the apps folders (or more than one folder below one), and anything but an app the case
+/// writes into the fake home's apps folder.
+fn check_apps(case: &str, tree: &TreeDescription) -> Result<(), CaseError> {
+    for app in tree.apps() {
+        let in_apps_folder = APPS_FOLDERS.iter().any(|folder| {
+            app.path.strip_prefix(folder).is_ok_and(|inside| (1..=2).contains(&inside.components().count()))
+        });
+        if !in_apps_folder {
+            return Err(CaseError::AppOutsideAppsFolders { case: case.into(), path: app.path.clone() });
+        }
+    }
+    let not_an_app = tree.paths().chain(tree.markers()).find(|path| {
+        path.strip_prefix(HOME_APPS_FOLDER).is_ok_and(|inside| !inside.as_os_str().is_empty())
+            && !tree.apps().iter().any(|app| path.starts_with(&app.path))
+    });
+    match not_an_app {
+        Some(path) => Err(CaseError::NotAnAppInHomeApps { case: case.into(), path: path.to_path_buf() }),
+        None => Ok(()),
+    }
+}
+
 /// `true` for a non-empty relative path of plain names only: no root, `.`, `..` or prefix.
 fn is_plain(path: &Path) -> bool {
     !path.as_os_str().is_empty() && path.components().all(|component| matches!(component, Component::Normal(_)))
@@ -384,7 +596,7 @@ fn leak(text: String) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use fresher_core::{CategoryDescriptor, CategoryId, DangerLevel, ModuleId};
+    use fresher_core::{CategoryDescriptor, CategoryId, DangerLevel, ModuleId, TextKey};
 
     fn trial_categories() -> Vec<CategoryDescriptor> {
         let trial = ModuleId::new("trial").unwrap();
@@ -421,6 +633,14 @@ after-cleanup = "in-trash"
         )
     }
 
+    /// A negative case that installs an app at `path`, with `extra` lines in its `[[case.app]]`.
+    fn with_app(path: &str, extra: &str) -> String {
+        format!(
+            "[[case]]\nname = \"an app\"\nkind = \"negative\"\n[[case.app]]\npath = \"{path}\"\n\
+             bundle-id = \"com.example.Tool\"\nname = \"Tool\"\n{extra}"
+        )
+    }
+
     fn file(cases: &[&str]) -> String {
         format!("feature = \"trial\"\nmodule = \"trial\"\n{}", cases.concat())
     }
@@ -434,8 +654,16 @@ after-cleanup = "in-trash"
         )
     }
 
+    fn left_out(category: &str, reason: &str, items: u32) -> String {
+        format!("[[case.left-out]]\ncategory = \"{category}\"\nreason = \"{reason}\"\nitems = {items}\n")
+    }
+
+    fn trial_problems() -> Vec<TextKey> {
+        vec![TextKey::new("trial.error.failed").unwrap()]
+    }
+
     mod negative {
-        use super::{NEGATIVE, cache, file, positive, trial_categories};
+        use super::{NEGATIVE, cache, file, left_out, positive, trial_categories, trial_problems, with_app};
         use crate::{CaseError, CaseFile, MapPartName};
 
         fn refused(text: &str) -> CaseError {
@@ -497,7 +725,7 @@ after-cleanup = "in-trash"
         fn an_unknown_category_is_refused() {
             let parsed = CaseFile::parse(&file(&[&cache("low").replace("trial.caches", "trial.logs")])).unwrap();
 
-            let error = parsed.check(&trial_categories()).unwrap_err();
+            let error = parsed.check(&trial_categories(), &[]).unwrap_err();
 
             assert!(matches!(error, CaseError::UnknownCategory { category, .. } if category == "trial.logs"));
         }
@@ -513,7 +741,7 @@ after-cleanup = "in-trash"
         fn a_danger_below_the_categorys_is_refused() {
             let parsed = CaseFile::parse(&file(&[&cache("safe")])).unwrap();
 
-            let error = parsed.check(&trial_categories()).unwrap_err();
+            let error = parsed.check(&trial_categories(), &[]).unwrap_err();
 
             assert!(matches!(error, CaseError::DangerBelowCategory { case, .. } if case.contains("Trash")));
         }
@@ -609,6 +837,181 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn an_app_outside_the_apps_folders_is_refused() {
+            for path in ["home/Tool.app", "Applications/A/B/Tool.app", "System/Tool.app", "home/Library/Tool.app"] {
+                let error = refused(&file(&[&with_app(path, "")]));
+
+                assert!(
+                    matches!(&error, CaseError::AppOutsideAppsFolders { case, .. } if case == "an app"),
+                    "{path}: {error}"
+                );
+            }
+        }
+
+        #[test]
+        fn an_app_that_is_not_a_bundle_or_not_plain_is_refused() {
+            for path in ["Applications/Tool", "Applications/../Tool.app", "/Applications/Tool.app"] {
+                let error = refused(&file(&[&with_app(path, "")]));
+
+                assert!(matches!(&error, CaseError::Tree { case, .. } if case == "an app"), "{path}: {error}");
+            }
+            let bad_id = with_app("Applications/Tool.app", "").replace("com.example.Tool", "not an id");
+            assert!(matches!(refused(&file(&[&bad_id])), CaseError::Tree { .. }));
+        }
+
+        #[test]
+        fn two_apps_at_one_path_are_refused() {
+            let twice = format!(
+                "{}{}",
+                with_app("Applications/Tool.app", ""),
+                "[[case.app]]\npath = \"Applications/Tool.app\"\nbundle-id = \"a.b\"\nname = \"B\"\n"
+            );
+            let other = with_app("Applications/Tool.app", "").replace("an app", "another app");
+
+            assert!(matches!(refused(&file(&[&twice])), CaseError::Tree { .. }));
+            assert!(matches!(
+                refused(&file(&[&with_app("Applications/Tool.app", ""), &other])),
+                CaseError::PathWrittenTwice { .. }
+            ));
+        }
+
+        #[test]
+        fn a_file_in_the_home_apps_folder_that_is_no_app_is_refused() {
+            let loose = format!(
+                "{}[[case.file]]\npath = \"home/Applications/notes.txt\"\n",
+                with_app("home/Applications/Tool.app", "")
+            );
+
+            let error = refused(&file(&[&loose]));
+
+            assert!(matches!(error, CaseError::NotAnAppInHomeApps { path, .. } if path.ends_with("notes.txt")));
+        }
+
+        #[test]
+        fn a_file_inside_a_declared_app_is_refused() {
+            for app in ["Applications/Tool.app", "home/Applications/Tool.app"] {
+                let inside = format!("{}[[case.file]]\npath = \"{app}/Contents/Info.plist\"\n", with_app(app, ""));
+
+                let error = refused(&file(&[&inside]));
+
+                assert!(
+                    matches!(error, CaseError::Tree { source: fresher_testing::FixtureError::InsideApp { .. }, .. }),
+                    "{error}"
+                );
+            }
+        }
+
+        #[test]
+        fn an_app_with_a_control_character_in_its_name_is_refused() {
+            let named = "[[case]]\nname = \"an app\"\nkind = \"negative\"\n[[case.app]]\n\
+                         path = \"Applications/Tool.app\"\nbundle-id = \"com.example.Tool\"\nname = \"Tool\\u0007\"\n";
+
+            let error = refused(&file(&[named]));
+
+            assert!(
+                matches!(error, CaseError::Tree { source: fresher_testing::FixtureError::AppTextControl { .. }, .. }),
+                "{error}"
+            );
+        }
+
+        #[test]
+        fn an_app_with_an_unknown_field_or_a_running_that_is_no_bool_is_refused() {
+            for extra in ["colour = \"red\"\n", "running = \"yes\"\n"] {
+                let error = refused(&file(&[&with_app("Applications/Tool.app", extra)]));
+
+                assert!(matches!(error, CaseError::Files { .. }), "{extra}");
+            }
+        }
+
+        #[test]
+        fn a_running_entry_without_a_bundle_id_is_refused() {
+            for ids in ["", "bundle-ids = []\n"] {
+                let text = file(&[&format!("{NEGATIVE}[[case.running]]\nname = \"CLion\"\n{ids}")]);
+
+                assert!(
+                    matches!(refused(&text), CaseError::RunningWithoutBundleId { name, .. } if name == "CLion"),
+                    "{ids:?}"
+                );
+            }
+        }
+
+        #[test]
+        fn a_running_entry_with_an_invalid_bundle_id_is_refused() {
+            let text = file(&[&format!(
+                "{NEGATIVE}[[case.running]]\nname = \"CLion\"\nbundle-ids = [\"a.b\", \"not an id\"]\n"
+            )]);
+
+            assert!(matches!(refused(&text), CaseError::RunningBundleId { id, .. } if id == "not an id"));
+        }
+
+        #[test]
+        fn a_running_entry_with_an_unknown_field_is_refused() {
+            let text = file(&[&format!(
+                "{NEGATIVE}[[case.running]]\nname = \"CLion\"\nbundle-ids = [\"a.b\"]\ncolour = \"red\"\n"
+            )]);
+
+            assert!(matches!(refused(&text), CaseError::Files { .. }));
+        }
+
+        #[test]
+        fn a_left_out_with_no_items_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", "trial.error.failed", 0))]);
+
+            assert!(
+                matches!(refused(&text), CaseError::LeftOutWithoutItems { category, .. } if category == "trial.caches")
+            );
+        }
+
+        #[test]
+        fn a_left_out_with_a_malformed_category_or_reason_is_refused() {
+            let category = file(&[&format!("{NEGATIVE}{}", left_out("Trial", "trial.error.failed", 1))]);
+            let reason = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", "Failed", 1))]);
+
+            assert!(matches!(refused(&category), CaseError::CategoryId { .. }));
+            assert!(matches!(refused(&reason), CaseError::LeftOutReason { reason, .. } if reason == "Failed"));
+        }
+
+        #[test]
+        fn a_left_out_with_an_unknown_field_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}{}colour = 1\n", left_out("trial.caches", "trial.error.failed", 1))]);
+
+            assert!(matches!(refused(&text), CaseError::Parse { .. }));
+        }
+
+        #[test]
+        fn a_left_out_of_an_unknown_category_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.logs", "trial.error.failed", 1))]);
+
+            let error = CaseFile::parse(&text).unwrap().check(&trial_categories(), &trial_problems()).unwrap_err();
+
+            assert!(matches!(error, CaseError::UnknownCategory { category, .. } if category == "trial.logs"));
+        }
+
+        #[test]
+        fn an_undeclared_left_out_reason_is_refused() {
+            for reason in ["trial.error.other", "demo.error.failed"] {
+                let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", reason, 1))]);
+
+                let error = CaseFile::parse(&text).unwrap().check(&trial_categories(), &trial_problems()).unwrap_err();
+
+                assert!(
+                    matches!(error, CaseError::UndeclaredReason { reason: found, .. } if found == reason),
+                    "{reason}"
+                );
+            }
+        }
+
+        #[test]
+        fn a_problem_of_another_module_is_not_declared_for_the_category() {
+            let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", "demo.error.failed", 1))]);
+            let problems = vec![fresher_core::TextKey::new("demo.error.failed").unwrap()];
+
+            let error = CaseFile::parse(&text).unwrap().check(&trial_categories(), &problems).unwrap_err();
+
+            assert!(matches!(error, CaseError::UndeclaredReason { .. }));
+        }
+
+        #[test]
         fn a_tree_error_names_its_case() {
             let text = file(&[&NEGATIVE.replace("size", "age = \"3w\"\nsize")]);
 
@@ -623,14 +1026,48 @@ after-cleanup = "in-trash"
         use fresher_core::{DangerLevel, ModuleId, SkipCode};
         use fresher_testing::FIXTURE_NOW;
 
-        use super::{NEGATIVE, cache, file, trial_categories};
+        use super::{NEGATIVE, cache, file, left_out, trial_categories, trial_problems, with_app};
         use crate::{AfterCleanup, Case, CaseFile, CaseKind, MapPartName};
+
+        #[test]
+        fn left_out_expectations_add_up_per_category_and_reason() {
+            let other = NEGATIVE.replace("bare", "other").replace("a trial folder", "another folder");
+            let first = format!(
+                "{NEGATIVE}{}{}",
+                left_out("trial.caches", "trial.error.failed", 2),
+                left_out("trial.kept", "trial.error.failed", 1)
+            );
+            let second = format!("{other}{}", left_out("trial.caches", "trial.error.failed", 3));
+            let parsed = CaseFile::parse(&file(&[&first, &second])).unwrap();
+
+            let all = parsed.left_outs();
+            let sums: Vec<_> =
+                all.iter().map(|sum| (sum.category().as_str(), sum.reason().as_str(), sum.items())).collect();
+
+            assert_eq!(sums, [("trial.caches", "trial.error.failed", 5), ("trial.kept", "trial.error.failed", 1)]);
+            assert_eq!(parsed.cases()[0].left_out().len(), 2);
+        }
+
+        #[test]
+        fn a_declared_left_out_passes_the_check() {
+            let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", "trial.error.failed", 1))]);
+
+            CaseFile::parse(&text).unwrap().check(&trial_categories(), &trial_problems()).unwrap();
+        }
+
+        #[test]
+        fn a_file_with_no_left_out_has_none() {
+            let parsed = CaseFile::parse(&file(&[NEGATIVE, &cache("low")])).unwrap();
+
+            assert_eq!(parsed.left_outs(), []);
+            assert!(parsed.cases().iter().all(|case| case.left_out().is_empty()));
+        }
 
         #[test]
         fn a_case_file_parses_with_negatives_then_positives() {
             let parsed = CaseFile::parse(&file(&[NEGATIVE, &cache("low")])).unwrap();
 
-            parsed.check(&trial_categories()).unwrap();
+            parsed.check(&trial_categories(), &[]).unwrap();
             assert_eq!(parsed.feature(), "trial");
             assert_eq!(parsed.module().map(ModuleId::as_str), Some("trial"));
             let kinds: Vec<_> = parsed.cases().iter().map(Case::kind).collect();
@@ -683,10 +1120,43 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn apps_parse_in_every_apps_folder_with_their_running() {
+            let extra = "[[case.app]]\npath = \"System/Applications/Utilities/Clock.app\"\nbundle-id = \"a.clock\"\n\
+                         name = \"Clock\"\nrunning = false\n[[case.app]]\npath = \"home/Applications/Mine.app\"\n\
+                         bundle-id = \"a.mine\"\nname = \"Mine\"\nversion = \"1\"\nbuild = \"2\"\n";
+            let text = file(&[&with_app("Applications/Tool.app", &format!("running = true\n{extra}"))]);
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            let case = &parsed.cases()[0];
+            let apps: Vec<&str> = case.tree().apps().iter().map(|app| app.name.as_str()).collect();
+            assert_eq!(apps, ["Tool", "Clock", "Mine"]);
+            let running: Vec<&str> = case.running_apps().map(|app| app.name.as_str()).collect();
+            assert_eq!(running, ["Tool"]);
+            assert_eq!(case.tree().apps()[2].version.as_deref(), Some("1"));
+        }
+
+        #[test]
+        fn running_entries_parse_with_their_bundle_ids() {
+            let text = file(&[&format!(
+                "{NEGATIVE}[[case.running]]\nname = \"CLion\"\nbundle-ids = [\"com.jetbrains.CLion\", \"a.helper\"]\n"
+            )]);
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            let running = parsed.cases()[0].running_elsewhere();
+            assert_eq!(running.len(), 1);
+            assert_eq!(running[0].name, "CLion");
+            let ids: Vec<&str> = running[0].bundle_ids.iter().map(fresher_core::BundleId::as_str).collect();
+            assert_eq!(ids, ["com.jetbrains.CLion", "a.helper"]);
+            assert_eq!(parsed.cases()[0].running_apps().count(), 0);
+        }
+
+        #[test]
         fn a_raised_danger_is_accepted() {
             let parsed = CaseFile::parse(&file(&[&cache("high")])).unwrap();
 
-            parsed.check(&trial_categories()).unwrap();
+            parsed.check(&trial_categories(), &[]).unwrap();
             assert_eq!(parsed.cases()[0].expect().unwrap().danger(), DangerLevel::High);
         }
 
