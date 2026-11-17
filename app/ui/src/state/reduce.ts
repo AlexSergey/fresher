@@ -169,7 +169,10 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
       // A change may hide or show findings (the ignore lists) or mark the last scan: the overview is asked for again.
       const settings = state.settings === null ? null : changeSetting(state.settings, event);
 
-      return markStale({ ...state, settings });
+      // The core drops the pending plan when an ignore list changes, so the selection goes with it.
+      const selection = event.key.startsWith('core.ignore.') ? NOTHING_SELECTED : state.selection;
+
+      return markStale({ ...state, selection, settings });
     }
   }
 };

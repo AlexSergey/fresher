@@ -66,7 +66,14 @@ mod app {
             Interest::new(fresher_core::Pattern::FolderName("src".into()), fresher_core::Claim::Item, Vec::new())
                 .unwrap();
         let recorder = Recorder {
-            descriptor: ModuleDescriptor::new(id, vec![], vec![], Locales { en: "{}" }).unwrap(),
+            descriptor: ModuleDescriptor::new(
+                id,
+                fresher_core::ModuleGroup::Development,
+                vec![],
+                vec![],
+                Locales { en: "{}" },
+            )
+            .unwrap(),
             interests: vec![interest],
             seen: Arc::clone(&seen),
         };

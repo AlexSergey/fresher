@@ -130,7 +130,7 @@ impl Engine {
         let settings = Settings::load(registry.schema()?, &*ports.settings);
         let access = AccessView::new(Arc::clone(&ports.access), Arc::clone(&ports.commands), registry.tool_checks());
         let mut results = Results::new();
-        results.set_ignored(settings.ignored());
+        results.set_ignored(settings.ignored(&registry));
         let shared = Shared {
             registry,
             ports,
@@ -226,7 +226,8 @@ impl Engine {
         let results = lock(&self.shared.results)?;
         let (totals, found) = results.totals(self.shared.registry.categories());
         let ignored = results.ignored_count();
-        Ok(Overview { status, last_scan: results.last(), totals, found, ignored })
+        let hidden_modules = results.hidden_modules(self.shared.registry.module_groups());
+        Ok(Overview { status, last_scan: results.last(), totals, found, ignored, hidden_modules })
     }
 
     /// A page of the current findings, by module and category. An unknown module is refused; a category nobody
@@ -284,7 +285,7 @@ impl Engine {
             .collect();
         {
             let mut results = lock(&self.shared.results)?;
-            results.set_ignored(settings.ignored());
+            results.set_ignored(settings.ignored(&self.shared.registry));
             if keys.iter().any(|key| settings.effect(key.as_str()) == Some(SettingEffect::NextScan)) {
                 results.mark_settings_changed();
             }
@@ -422,7 +423,13 @@ impl Engine {
             .map(|module| Planned { module: Arc::clone(module), settings: settings.module(module.descriptor().id()) })
             .collect();
         let opt_ins = OPT_INS.into_iter().filter(|&capability| settings.core_switch(&opt_in_key(capability))).collect();
-        Ok(ScanPlan { roots: settings.scan_roots(), opt_ins, modules, mode, ignored: settings.ignored() })
+        Ok(ScanPlan {
+            roots: settings.scan_roots(),
+            opt_ins,
+            modules,
+            mode,
+            ignored: settings.ignored(&self.shared.registry),
+        })
     }
 }
 

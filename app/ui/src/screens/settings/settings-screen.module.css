@@ -19,6 +19,14 @@
     line-height: var(--type-title-3-line);
   }
 
+  /* A module's name inside its group's section: one step under the group's heading. */
+  .moduleHeading {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-footnote-line);
+  }
+
   /* A row pads itself top and bottom: the panel adds what makes its edges as wide as its sides. */
   .rows {
     padding: var(--space-2) var(--space-5);
@@ -50,6 +58,22 @@
   }
 
   .lineText {
+    display: grid;
     min-width: 0;
+  }
+
+  /* A second line under a row's name: its description, or why its switch is locked. */
+  .note {
+    display: block;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .lineActions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-3);
   }
 }

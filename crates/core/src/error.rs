@@ -79,11 +79,14 @@ pub enum CommandError {
     /// A volume index past the storage map's list.
     #[error("the storage map has no such volume")]
     UnknownVolume,
+    /// A group no registered module belongs to.
+    #[error("no module of group `{id}` is registered")]
+    UnknownGroup { id: String },
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 25] = [
+    pub const CODES: [&str; 26] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -109,6 +112,7 @@ impl CommandError {
         "not-in-trash",
         "cannot-ignore",
         "unknown-volume",
+        "unknown-group",
     ];
 
     /// The `code` the error is serialized with.
@@ -139,6 +143,7 @@ impl CommandError {
             Self::NotInTrash => "not-in-trash",
             Self::CannotIgnore => "cannot-ignore",
             Self::UnknownVolume => "unknown-volume",
+            Self::UnknownGroup { .. } => "unknown-group",
         }
     }
 
@@ -148,7 +153,9 @@ impl CommandError {
         match self {
             Self::Busy { running } => text.with("running", TextArg::Text(running.as_str().into())),
             Self::UnknownFinding { id } => text.with("id", TextArg::Count(id.get().into())),
-            Self::UnknownModule { id } | Self::UnknownCategory { id } => text.with("id", TextArg::Text(id.clone())),
+            Self::UnknownModule { id } | Self::UnknownCategory { id } | Self::UnknownGroup { id } => {
+                text.with("id", TextArg::Text(id.clone()))
+            }
             Self::UnknownSetting { key } => text.with("key", TextArg::Text(key.clone())),
             Self::InvalidSettingValue { key } => text.with("key", TextArg::Text(key.as_str().into())),
             Self::UnknownLocale { locale } => text.with("locale", TextArg::Text(locale.clone())),
@@ -221,7 +228,8 @@ pub(crate) mod tests {
             | CommandError::UnknownCleanupItem
             | CommandError::NotInTrash
             | CommandError::CannotIgnore
-            | CommandError::UnknownVolume => error,
+            | CommandError::UnknownVolume
+            | CommandError::UnknownGroup { .. } => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -249,6 +257,7 @@ pub(crate) mod tests {
             sample(CommandError::NotInTrash),
             sample(CommandError::CannotIgnore),
             sample(CommandError::UnknownVolume),
+            sample(CommandError::UnknownGroup { id: "debug".into() }),
         ]
     }
 
@@ -359,6 +368,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec![],
+                    vec!["id"],
                 ]
             );
         }

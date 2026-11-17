@@ -62,7 +62,8 @@ const FAILED: Overview = {
 // The overview during scan 1, with only the downloads counted so far.
 const SCANNING: Overview = {
   found: { allocated: 750_000_000, completeness: 'complete', logical: 750_000_000, reclaimable: 750_000_000 },
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: DEMO_OVERVIEW.totals.filter(({ category }) => category === 'demo.downloads'),
@@ -286,14 +287,20 @@ describe('OverviewScreen', () => {
   describe('positive cases', () => {
     it('counts what is ignored and opens the settings to show it', async () => {
       const lastScan = DEMO_OVERVIEW.lastScan === null ? null : { ...DEMO_OVERVIEW.lastScan, settingsChanged: true };
-      core({ getOverview: () => ({ ...DEMO_OVERVIEW, ignored: { categories: 1, paths: 1 }, lastScan }) });
+      core({
+        getOverview: () => ({
+          ...DEMO_OVERVIEW,
+          ignored: { categories: 1, groups: 1, modules: 2, paths: 1 },
+          lastScan,
+        }),
+      });
       const { navigation } = await renderOverview();
 
-      expect(await screen.findByText('2 things you ignored are left out of these results.')).toBeInTheDocument();
+      expect(await screen.findByText('5 things you ignored are left out of these results.')).toBeInTheDocument();
       expect(screen.getByText('Rescan to apply')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Show in Settings' }));
 
-      expect(navigation.getScreen()).toEqual({ kind: 'settings' });
+      expect(navigation.getScreen()).toEqual({ kind: 'settings', tab: 'groups' });
     });
 
     it('the bar fills while scanning', async () => {
@@ -423,7 +430,7 @@ describe('OverviewScreen', () => {
       });
 
       expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
-      expect(screen.getByRole('list', { name: 'Parts of the scan' })).toHaveTextContent('Demo module');
+      expect(screen.getByRole('group', { name: 'Parts of the scan' })).toHaveTextContent('Demo module');
       expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
     });
 

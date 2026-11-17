@@ -221,7 +221,14 @@ pub(crate) mod sample {
         pub(crate) fn with_settings(en: &'static str, settings: Vec<SettingDescriptor>) -> Self {
             let id = ModuleId::new("sample").unwrap();
             let category = CategoryDescriptor::new(CategoryId::new(id, "sample.caches").unwrap(), DangerLevel::Low);
-            let descriptor = ModuleDescriptor::new(id, vec![category], settings, Locales { en }).unwrap();
+            let descriptor = ModuleDescriptor::new(
+                id,
+                fresher_core::ModuleGroup::Development,
+                vec![category],
+                settings,
+                Locales { en },
+            )
+            .unwrap();
             let interest = Interest::new(Pattern::FolderName("Caches".into()), Claim::Whole, vec![]).unwrap();
             Self {
                 descriptor,

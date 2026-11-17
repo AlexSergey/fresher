@@ -6,11 +6,14 @@ import type {
   CategoryTotal,
   LeftOutCount,
   ModuleOutcome,
+  SettingValue,
 } from '../../ipc/bindings.generated';
 import type { ModuleViewProps } from '../../modules/registry';
 
 import { EmptyState } from '../../design/feedback/empty-state/empty-state';
+import { Notice } from '../../design/feedback/notice/notice';
 import { CircleCheck, Search } from '../../design/icons/icons';
+import { PageHeader } from '../../design/layout/page-header/page-header';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
@@ -19,6 +22,8 @@ import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { useNavigation } from '../../state/navigation';
 import { summarize } from '../../state/selection-summary';
 import { useCore, useCoreStore } from '../../state/store';
+import { useIgnoreCommands } from '../settings/use-ignore-commands';
+import { hiddenBy } from '../use-ignored';
 import { moduleFound } from '../use-modules';
 import { useScanActions } from '../use-scan-actions';
 import { CategorySection } from './category-section';
@@ -33,6 +38,10 @@ const NO_LEFT_OUT: readonly LeftOutCount[] = [];
 const NONE_IGNORED: readonly string[] = [];
 
 const COMPLETED: ModuleOutcome = { kind: 'completed' };
+
+// The ids an ignore list holds; none until the settings are loaded.
+const idsOf = (value: SettingValue | undefined): readonly string[] =>
+  value?.kind === 'ids' ? value.value : NONE_IGNORED;
 
 // What a category with nothing found shows when something was left out of it.
 const nothingFound = ({ danger, id }: CategoryDescriptor): CategoryTotal => ({
@@ -77,8 +86,9 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
   const outcome = finished?.outcome;
   const selection = useCore((state) => state.selection);
   // The settings are asked for by the app's frame at start; `setting-changed` events keep them current.
-  const ignoreList = useCore((state) => state.settings?.values['core.ignore.categories']);
-  const ignored = ignoreList?.kind === 'ids' ? ignoreList.value : NONE_IGNORED;
+  const ignoredCategories = useCore((state) => state.settings?.values['core.ignore.categories']);
+  const hidden = hiddenBy(overview, module.id);
+  const commands = useIgnoreCommands();
   // The user's own choices; a category not in it is expanded when it is the largest or the one the page opened at.
   const [choices, setChoices] = useState<ReadonlyMap<CategoryId, boolean>>(() => new Map());
   const [openedAt, setOpenedAt] = useState(category);
@@ -95,12 +105,9 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
   const leftOut = finished?.leftOut ?? NO_LEFT_OUT;
   const found = moduleFound(module, overview);
   const totals = overview?.totals ?? [];
-  const shown = shownOf(
-    module.categories.map(({ descriptor }) => descriptor),
-    totals,
-    leftOut,
-    ignored,
-  );
+  const categories = module.categories.map(({ descriptor }) => descriptor);
+  // The core hides a module's findings, so an ignored module shows none of its categories or left-outs.
+  const shown = hidden === undefined ? shownOf(categories, totals, leftOut, idsOf(ignoredCategories)) : [];
   const largest = shown.find((one) => one.total.count > 0)?.category.id;
   const present = category !== undefined && shown.some((one) => one.category.id === category);
 
@@ -125,17 +132,52 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
             </Button>
           )
         }
-        title={<h1 className={styles.title}>{tText({ args: {}, key: `${module.id}.enabled.label` })}</h1>}
+      />
+      <PageHeader
+        {...(hidden === undefined
+          ? {
+              actions: (
+                <Button
+                  onClick={() => {
+                    commands.ignore({ kind: 'module', module: module.id });
+                  }}
+                  size="small"
+                  variant="secondary"
+                >
+                  {t('ui.screen.module.ignore-module')}
+                </Button>
+              ),
+              subtitle: tText({ args: {}, key: 'core.ignore.modules.description' }),
+            }
+          : {})}
+        title={tText({ args: {}, key: `${module.id}.enabled.label` })}
       />
       <div className={styles.content}>
-        {found === null ? (
+        {hidden !== undefined ? (
+          <Notice
+            action={{
+              label: t(
+                hidden === 'group' ? 'ui.screen.module.ignored.restore-group' : 'ui.screen.module.ignored.restore',
+              ),
+              onClick: () => {
+                commands.restore(
+                  hidden === 'group' ? { group: module.group, kind: 'group' } : { kind: 'module', module: module.id },
+                );
+              },
+            }}
+            title={t('ui.screen.module.ignored.title')}
+            tone="info"
+          >
+            {t('ui.screen.module.ignored.text')}
+          </Notice>
+        ) : found === null ? (
           <EmptyState
             icon={Search}
             text={t('ui.screen.module.not-scanned.text')}
             title={t('ui.screen.module.not-scanned.title')}
           />
         ) : (
-          <ModuleSection found={found} module={module.id} state={outcome ?? (scanning ? SCANNING : COMPLETED)}>
+          <ModuleSection found={found} module={module.id} nameless state={outcome ?? (scanning ? SCANNING : COMPLETED)}>
             {shown.length === 0 ? (
               <EmptyState
                 icon={CircleCheck}

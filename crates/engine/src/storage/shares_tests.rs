@@ -23,6 +23,7 @@ fn ignoring(categories: &[&str], paths: &[&str]) -> Ignored {
     Ignored {
         categories: categories.iter().map(|&category| category.to_owned()).collect(),
         paths: paths.iter().map(PathBuf::from).collect(),
+        ..Ignored::default()
     }
 }
 
@@ -33,7 +34,7 @@ fn node(state: &FixedDiskState, path: &str) -> NodeId {
 mod negative {
     use std::path::Path;
 
-    use fresher_core::{ByteSize, Sizes};
+    use fresher_core::{ByteSize, CategoryId, ModuleId, Sizes};
 
     use super::{category, ignoring, node, sizes, state};
     use crate::settings::Ignored;
@@ -54,6 +55,23 @@ mod negative {
             shares.roots(),
             [RootShare { root: node(&state, "/home"), explained: Sizes::ZERO, unclaimed: sizes(100) }]
         );
+    }
+
+    #[test]
+    fn an_owner_of_a_hidden_module_is_unclaimed() {
+        let caches = category("demo.caches");
+        let other = CategoryId::new(ModuleId::new("other").unwrap(), "other.caches").unwrap();
+        let state = state(&[("/home", sizes(100)), ("/home/Caches", sizes(40)), ("/home/Other", sizes(25))])
+            .with_owner(Path::new("/home/Caches"), caches)
+            .with_owner(Path::new("/home/Other"), other);
+        let hidden = Ignored { hidden_modules: vec![ModuleId::new("demo").unwrap()], ..Ignored::default() };
+
+        let shares = Shares::of(&state, &hidden);
+
+        assert_eq!(shares.category(caches), Sizes::ZERO);
+        assert_eq!(shares.category(other), sizes(25), "only the hidden module's owners leave");
+        assert_eq!(shares.explained(&state, node(&state, "/home/Caches")), Sizes::ZERO);
+        assert_eq!(shares.roots()[0].unclaimed, sizes(75));
     }
 
     #[test]
@@ -364,6 +382,7 @@ mod property {
             let ignored = Ignored {
                 categories: CATEGORIES.iter().zip(&ignored_categories).filter(|&(_, &on)| on).map(|(id, _)| (*id).to_owned()).collect(),
                 paths: forest.paths.iter().zip(&ignored_paths).filter(|&(_, &on)| on).map(|(path, _)| path.clone()).collect(),
+                ..Ignored::default()
             };
 
             let shares = Shares::of(&state, &ignored);

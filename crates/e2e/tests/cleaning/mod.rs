@@ -57,7 +57,14 @@ impl BuildModule {
         let category = CategoryDescriptor::new(CategoryId::new(id, "build.folders").unwrap(), DangerLevel::Low);
         let interest = Interest::new(Pattern::FolderName("fresher-e2e-build".into()), Claim::Item, Vec::new()).unwrap();
         Self {
-            descriptor: ModuleDescriptor::new(id, vec![category], vec![], Locales { en: TEXTS }).unwrap(),
+            descriptor: ModuleDescriptor::new(
+                id,
+                fresher_core::ModuleGroup::Development,
+                vec![category],
+                vec![],
+                Locales { en: TEXTS },
+            )
+            .unwrap(),
             interests: vec![interest],
         }
     }
@@ -121,12 +128,18 @@ pub(crate) struct Home {
     pub(crate) fixture: PathBuf,
     pub(crate) engine: Engine,
     pub(crate) clock: Arc<FakeClock>,
-    pub(crate) data: tempfile::TempDir,
+    pub(crate) data: Arc<tempfile::TempDir>,
     /// Sends once the cleaner ended its first item, when the setup pauses there.
     pub(crate) paused: Option<Receiver<()>>,
 }
 
 pub(crate) fn home(setup: Setup) -> Home {
+    home_sharing(setup, Arc::new(tempfile::tempdir().unwrap()))
+}
+
+/// The fixture home with an engine whose settings and journal are in `data`: another engine's, as when the app starts
+/// again.
+pub(crate) fn home_sharing(setup: Setup, data: Arc<tempfile::TempDir>) -> Home {
     let tree = FixtureTree::from_toml(&fixtures().join("homes").join("cleanup.toml")).unwrap();
     for folder in MARKED {
         if setup.marked {
@@ -137,7 +150,6 @@ pub(crate) fn home(setup: Setup) -> Home {
     }
     let fixture = fs::canonicalize(tree.root()).unwrap();
     let root = fixture.join("home");
-    let data = tempfile::tempdir().unwrap();
     let folder = DataFolder::open(data.path()).unwrap();
     let clock = Arc::new(FakeClock::at(1_763_200_000));
     let commands = Arc::new(

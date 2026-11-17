@@ -4,13 +4,19 @@
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    CategoryId, CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_PATHS, IgnoredEntry, ModuleId, ModuleSettings,
-    ResolvedSettings, SCAN_ROOTS, SettingDescriptor, SettingEffect, SettingKey, SettingUpdate, SettingValue,
-    SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings, Subject,
+    CategoryId, CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS,
+    IgnoredEntry, ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SettingDescriptor,
+    SettingEffect, SettingKey, SettingUpdate, SettingValue, SettingsFile, SettingsSchema, SettingsStore, SettingsView,
+    StoreError, StoredSettings, Subject,
 };
+
+use crate::Registry;
 
 /// The switch the schema adds for every module: `<module>.enabled`.
 const ENABLED: &str = "enabled";
+
+/// The ignore lists: a reset keeps them, and a change of one kills the pending cleanup plan.
+const IGNORE_LISTS: [&str; 4] = [IGNORE_MODULES, IGNORE_GROUPS, IGNORE_CATEGORIES, IGNORE_PATHS];
 
 /// The schema, the stored values as read, and the values in use.
 #[derive(Debug)]
@@ -69,7 +75,7 @@ impl Settings {
         if self.file.is_read_only() {
             return Err(CommandError::SettingsReadOnly);
         }
-        let kept = |key: &str| key == IGNORE_CATEGORIES || key == IGNORE_PATHS;
+        let kept = |key: &str| IGNORE_LISTS.contains(&key);
         let changed: Vec<(SettingKey, SettingValue)> = self
             .schema
             .descriptors()
@@ -94,17 +100,40 @@ impl Settings {
             .collect())
     }
 
-    /// The ignore lists in use.
-    pub(crate) fn ignored(&self) -> Ignored {
-        let categories = match self.resolved.get(IGNORE_CATEGORIES) {
-            Some(SettingValue::Ids(ids)) => ids.clone(),
-            _ => Vec::new(),
-        };
-        let paths = match self.resolved.get(IGNORE_PATHS) {
+    /// The ignore lists in use; the modules they hide are resolved through `registry`: the ignored modules it has,
+    /// and every module of an ignored group.
+    pub(crate) fn ignored(&self, registry: &Registry) -> Ignored {
+        let modules = self.ids(IGNORE_MODULES);
+        let groups: Vec<ModuleGroup> =
+            self.ids(IGNORE_GROUPS).iter().filter_map(|name| ModuleGroup::parse(name)).collect();
+        let named = modules.iter().filter_map(|module| registry.module_id(module));
+        let grouped = groups.iter().flat_map(|&group| registry.modules_of(group));
+        let mut hidden_modules: Vec<ModuleId> = named.chain(grouped).collect();
+        hidden_modules.sort_unstable();
+        hidden_modules.dedup();
+        Ignored {
+            categories: self.ids(IGNORE_CATEGORIES),
+            paths: self.ignored_paths(),
+            modules,
+            groups,
+            hidden_modules,
+        }
+    }
+
+    /// The ignored paths in use.
+    pub(crate) fn ignored_paths(&self) -> Vec<PathBuf> {
+        match self.resolved.get(IGNORE_PATHS) {
             Some(SettingValue::Paths(paths)) => paths.clone(),
             _ => Vec::new(),
-        };
-        Ignored { categories, paths }
+        }
+    }
+
+    /// The ids of the list `key` in use.
+    fn ids(&self, key: &str) -> Vec<String> {
+        match self.resolved.get(key) {
+            Some(SettingValue::Ids(ids)) => ids.clone(),
+            _ => Vec::new(),
+        }
     }
 
     /// Adds `entry` to its ignore list (`true`) or takes it out (`false`), through `update`; `None` when the list
@@ -115,21 +144,24 @@ impl Settings {
         ignored: bool,
         store: &dyn SettingsStore,
     ) -> Result<Option<Event>, CommandError> {
-        let Ignored { mut categories, mut paths } = self.ignored();
-        let (key, value) = match entry {
-            IgnoredEntry::Category { category } => {
-                if !change_list(&mut categories, category, ignored) {
-                    return Ok(None);
-                }
-                (IGNORE_CATEGORIES, SettingValue::Ids(categories))
-            }
+        let (key, id) = match entry {
             IgnoredEntry::Path { path } => {
+                let mut paths = self.ignored_paths();
                 if !change_list(&mut paths, path, ignored) {
                     return Ok(None);
                 }
-                (IGNORE_PATHS, SettingValue::Paths(paths))
+                let update = SettingUpdate { key: IGNORE_PATHS.into(), value: SettingValue::Paths(paths) };
+                return self.update(update, store).map(Some);
             }
+            IgnoredEntry::Category { category } => (IGNORE_CATEGORIES, category.clone()),
+            IgnoredEntry::Module { module } => (IGNORE_MODULES, module.clone()),
+            IgnoredEntry::Group { group } => (IGNORE_GROUPS, group.as_str().to_owned()),
         };
+        let mut ids = self.ids(key);
+        if !change_list(&mut ids, &id, ignored) {
+            return Ok(None);
+        }
+        let value = SettingValue::Ids(ids);
         self.update(SettingUpdate { key: key.into(), value }, store).map(Some)
     }
 
@@ -189,18 +221,24 @@ pub(crate) fn changes_what_is_scanned(key: &SettingKey) -> bool {
 
 /// Whether `key` is one of the ignore lists: a change of one kills the pending cleanup plan.
 pub(crate) fn is_ignore_list(key: &SettingKey) -> bool {
-    key.as_str() == IGNORE_CATEGORIES || key.as_str() == IGNORE_PATHS
+    IGNORE_LISTS.contains(&key.as_str())
 }
 
-/// The ignore lists: categories by id, items by path.
+/// The ignore lists: categories by id, items by path, modules by id, groups; and the modules they hide.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Ignored {
     pub(crate) categories: Vec<String>,
     pub(crate) paths: Vec<PathBuf>,
+    pub(crate) modules: Vec<String>,
+    pub(crate) groups: Vec<ModuleGroup>,
+    /// The registered modules the lists hide: each ignored one, and every module of an ignored group. A module
+    /// restored on its own stays here while its group is ignored.
+    pub(crate) hidden_modules: Vec<ModuleId>,
 }
 
 impl Ignored {
-    /// Whether `finding` is left out: its category is ignored, or its path is at or below an ignored path.
+    /// Whether `finding` is left out: its category or its module is ignored, or its path is at or below an ignored
+    /// path.
     pub(crate) fn hides(&self, finding: &Finding) -> bool {
         let new = finding.finding();
         match new.subject() {
@@ -209,15 +247,16 @@ impl Ignored {
         }
     }
 
-    /// Whether a claim of `path` by `category` is left out: the category is ignored, or `path` is at or below an
-    /// ignored path (compared by components).
+    /// Whether a claim of `path` by `category` is left out: the category or its module is ignored, or `path` is at
+    /// or below an ignored path (compared by components).
     pub(crate) fn hides_place(&self, category: CategoryId, path: &Path) -> bool {
         self.hides_category(category) || self.paths.iter().any(|ignored| path.starts_with(ignored))
     }
 
-    /// Whether `category` is ignored.
+    /// Whether `category` is ignored, on its own or with its module (or its module's group).
     pub(crate) fn hides_category(&self, category: CategoryId) -> bool {
-        self.categories.iter().any(|ignored| ignored == category.as_str())
+        self.hidden_modules.contains(&category.module())
+            || self.categories.iter().any(|ignored| ignored == category.as_str())
     }
 }
 

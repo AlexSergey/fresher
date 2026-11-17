@@ -175,7 +175,8 @@ pub(crate) mod sample {
         let category = |name, danger| CategoryDescriptor::new(CategoryId::new(id, name).unwrap(), danger);
         let categories =
             vec![category("example.caches", DangerLevel::Low), category("example.settings", DangerLevel::Medium)];
-        ModuleDescriptor::new(id, categories, vec![], Locales { en: "{}" }).unwrap()
+        ModuleDescriptor::new(id, fresher_core::ModuleGroup::Development, categories, vec![], Locales { en: "{}" })
+            .unwrap()
     }
 
     /// A complete rule; `extra` is appended inside its `[[rule]]` table, before `must-not-match`.

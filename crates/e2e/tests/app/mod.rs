@@ -45,7 +45,14 @@ impl Probe {
             Interest::new(pattern, claim, siblings.iter().map(|&name| name.into()).collect()).unwrap()
         };
         Self {
-            descriptor: ModuleDescriptor::new(id, vec![category], vec![], Locales { en: TEXTS }).unwrap(),
+            descriptor: ModuleDescriptor::new(
+                id,
+                fresher_core::ModuleGroup::Development,
+                vec![category],
+                vec![],
+                Locales { en: TEXTS },
+            )
+            .unwrap(),
             interests: vec![
                 interest(Pattern::FolderName("Caches".into()), Claim::Item, &[]),
                 interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Whole, &[]),

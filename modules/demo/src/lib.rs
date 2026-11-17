@@ -10,8 +10,9 @@ mod settings;
 
 use fresher_core::{
     ByteSize, CategoryDescriptor, CategoryId, Completeness, DangerLevel, DescriptorError, FindingSink, IdError,
-    Interest, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding,
-    Removal, RemovalError, SettingError, Sizes, Subject, Text, TextArg, TextKey, TextKeyError, ToolCommand, ToolId,
+    Interest, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
+    NewFinding, Removal, RemovalError, SettingError, Sizes, Subject, Text, TextArg, TextKey, TextKeyError, ToolCommand,
+    ToolId,
 };
 
 /// The made-up root every example path is under.
@@ -106,7 +107,7 @@ impl DemoModule {
         let settings = vec![settings::count_setting(id)?];
         let locales = Locales { en: include_str!("../locales/en.json") };
         let (failed, left_out) = (TextKey::new("demo.error.failed")?, TextKey::new("demo.left-out.open")?);
-        let descriptor = ModuleDescriptor::new(id, categories, settings, locales)?
+        let descriptor = ModuleDescriptor::new(id, ModuleGroup::Debug, categories, settings, locales)?
             .with_problems(vec![failed.clone(), left_out.clone()])?;
         Ok(Self {
             descriptor,

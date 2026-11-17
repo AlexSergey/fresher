@@ -61,6 +61,7 @@ pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<
     let mut problems = Vec::new();
     let revalidated = ModuleDescriptor::new(
         descriptor.id(),
+        descriptor.group(),
         descriptor.categories().to_vec(),
         descriptor.settings().to_vec(),
         descriptor.locales(),

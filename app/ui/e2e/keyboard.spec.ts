@@ -271,6 +271,35 @@ test.describe('positive cases', () => {
     await expect(back).toHaveCount(0);
   });
 
+  test('the Ignored tabs are one tab stop, the arrow keys move between them and Space turns a switch', async ({
+    page,
+  }) => {
+    await mockCore(page, SCRIPTS.ignoring);
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('button', { name: 'Settings' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(heading(page, 'Settings')).toBeFocused();
+    const groups = page.getByRole('tab', { name: /^Ignored groups/ });
+    const modules = page.getByRole('tab', { name: /^Ignored modules/ });
+    await groups.focus();
+
+    await page.keyboard.press('ArrowRight');
+    await expect(modules).toBeFocused();
+    await expect(modules).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(groups).toBeFocused();
+    await expect(groups).toHaveAttribute('aria-selected', 'true');
+    await expect(modules).toHaveAttribute('tabindex', '-1');
+
+    const ignoreGroup = page.getByRole('switch', { name: 'Ignore Debug' });
+    await ignoreGroup.focus();
+    await page.keyboard.press('Space');
+    await expect(ignoreGroup).toBeChecked();
+    await expect(page.getByRole('tab', { name: 'Ignored groups · 1' })).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(ignoreGroup).not.toBeChecked();
+  });
+
   // The stories are shared among this many tests, which run in parallel.
   const PARTS = 8;
 

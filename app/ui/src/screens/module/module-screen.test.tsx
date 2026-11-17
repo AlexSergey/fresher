@@ -262,6 +262,33 @@ describe('ModuleScreen', () => {
       expect(screen.queryByRole('region', { name: 'Example downloads' })).toBeNull();
       expect(sectionNames()).toStrictEqual(['Example caches']);
     });
+
+    it('a visible module shows no note and offers its selection', async () => {
+      core();
+      await renderPage();
+
+      expect(screen.queryByText('You ignore this module. Its findings are not shown or cleaned.')).toBeNull();
+      expect(await screen.findByRole('button', { name: 'Ignore this module' })).toBeVisible();
+      expect(await screen.findByRole('region', { name: 'Example caches' })).toBeVisible();
+    });
+
+    it.each([['module'], ['group']] as const)(
+      'a module the core hides by its %s shows no category, no left-out and no selection',
+      async (by) => {
+        core({ getOverview: () => IDLE });
+        const { store } = await renderPage();
+        scanned(store, [{ ...DEMO_LEFT_OUT, category: 'demo.downloads' }], {
+          ...DEMO_OVERVIEW,
+          hiddenModules: [{ by, module: 'demo' }],
+          totals: [],
+        });
+
+        expect(await screen.findByText('You ignore this module. Its findings are not shown or cleaned.')).toBeVisible();
+        expect(screen.queryByRole('region', { name: 'Example downloads' })).toBeNull();
+        expect(screen.queryByRole('checkbox')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Ignore this module' })).toBeNull();
+      },
+    );
   });
 
   describe('positive cases', () => {
@@ -290,6 +317,47 @@ describe('ModuleScreen', () => {
 
       expect(within(section('Example downloads')).getByRole('list', { name: 'Left out of this list' })).toBeVisible();
       expect(screen.queryByText('No findings in this module')).toBeNull();
+    });
+
+    it.each([
+      ['module', 'Restore', { kind: 'module', module: 'demo' }],
+      ['group', 'Restore the group', { group: 'debug', kind: 'group' }],
+    ] as const)('a module hidden by its %s offers %s', async (by, label, entry) => {
+      const restored: unknown[] = [];
+      core({
+        getOverview: () => ({ ...DEMO_OVERVIEW, hiddenModules: [{ by, module: 'demo' }] }),
+        restoreIgnored: (args) => {
+          restored.push((args as { readonly entry: unknown }).entry);
+
+          return null;
+        },
+      });
+      const { store } = await renderPage();
+      scanned(store, [], { ...DEMO_OVERVIEW, hiddenModules: [{ by, module: 'demo' }] });
+
+      fireEvent.click(await screen.findByRole('button', { name: label }));
+
+      await vi.waitFor(() => {
+        expect(restored).toEqual([entry]);
+      });
+    });
+
+    it('Ignore this module asks the core to ignore the module', async () => {
+      const ignored: unknown[] = [];
+      core({
+        ignore: (args) => {
+          ignored.push((args as { readonly target: unknown }).target);
+
+          return null;
+        },
+      });
+      await renderPage();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Ignore this module' }));
+
+      await vi.waitFor(() => {
+        expect(ignored).toEqual([{ kind: 'module', module: 'demo' }]);
+      });
     });
 
     it('Ignore on a category asks the core to ignore it', async () => {

@@ -12,10 +12,10 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub use core_schema::{IGNORE_CATEGORIES, IGNORE_PATHS, SCAN_ROOTS};
+pub use core_schema::{IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, SCAN_ROOTS};
 pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
 
-use crate::TextKey;
+use crate::{ModuleGroup, ModuleId, TextKey};
 
 /// The key of a setting: `core.<name>` or `<module>.<name>`, dot-separated kebab-case segments (`core.scan.roots`).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, TS)]
@@ -78,10 +78,35 @@ pub enum SettingKind {
         options: Vec<&'static str>,
     },
     Folders,
-    /// Category ids: two or more dot-separated kebab-case segments each.
-    Ids,
+    /// Ids of one kind, each checked as an id of that kind.
+    Ids {
+        of: IdOf,
+    },
     /// Absolute paths of plain names, anywhere.
     Paths,
+}
+
+/// What the ids of an `Ids` setting name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum IdOf {
+    /// Category ids: two or more dot-separated kebab-case segments each.
+    Category,
+    /// Module ids: one kebab-case segment each.
+    Module,
+    /// Group names, as a `ModuleGroup` is serialized.
+    Group,
+}
+
+impl IdOf {
+    /// Whether `id` is an id of this kind. Only its form is checked: whether a module registered it is the engine's.
+    pub fn accepts(self, id: &str) -> bool {
+        match self {
+            Self::Category => TextKey::new(id).is_ok(),
+            Self::Module => ModuleId::check(id).is_ok(),
+            Self::Group => ModuleGroup::parse(id).is_some(),
+        }
+    }
 }
 
 /// The unit a number is shown in.
@@ -185,7 +210,7 @@ pub enum SettingProblem {
         key: SettingKey,
         folder: PathBuf,
     },
-    /// An id that is not two or more dot-separated kebab-case segments.
+    /// An id that is not of the kind the list holds (`IdOf`).
     RefusedId {
         key: SettingKey,
         id: String,
@@ -259,12 +284,10 @@ impl SettingDescriptor {
             (SettingKind::Switch, SettingValue::Switch(_)) => Ok(()),
             (SettingKind::Folders, SettingValue::Folders(folders)) => refused_path(folders::is_allowed, folders),
             (SettingKind::Paths, SettingValue::Paths(paths)) => refused_path(folders::is_plain_absolute, paths),
-            (SettingKind::Ids, SettingValue::Ids(ids)) => {
-                match ids.iter().find(|id| TextKey::new(id.as_str()).is_err()) {
-                    None => Ok(()),
-                    Some(id) => Err(SettingProblem::RefusedId { key: self.key.clone(), id: id.clone() }),
-                }
-            }
+            (&SettingKind::Ids { of }, SettingValue::Ids(ids)) => match ids.iter().find(|id| !of.accepts(id)) {
+                None => Ok(()),
+                Some(id) => Err(SettingProblem::RefusedId { key: self.key.clone(), id: id.clone() }),
+            },
             (&SettingKind::Number { min, max, .. }, &SettingValue::Number(number)) => {
                 if (min..=max).contains(&number) {
                     Ok(())
@@ -295,7 +318,7 @@ impl SettingDescriptor {
             }
             (SettingKind::Folders, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Folders),
             (SettingKind::Paths, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Paths),
-            (SettingKind::Ids, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Ids),
+            (SettingKind::Ids { .. }, serde_json::Value::Array(items)) => strings(items).map(SettingValue::Ids),
             _ => None,
         };
         let value = value.ok_or_else(|| SettingProblem::WrongType { key: self.key.clone() })?;
@@ -386,12 +409,34 @@ mod tests {
         #[test]
         fn rejects_an_id_that_is_not_a_category_id() {
             let key = SettingKey::new("demo.ids").unwrap();
-            let ids = list("demo.ids", SettingKind::Ids, SettingValue::Ids(vec![]));
+            let ids = list("demo.ids", SettingKind::Ids { of: crate::IdOf::Category }, SettingValue::Ids(vec![]));
 
             for id in ["", "demo", "Demo.caches", "demo..caches", "demo.caches."] {
                 let problem = SettingProblem::RefusedId { key: key.clone(), id: id.into() };
                 assert_eq!(ids.read(&json!(["demo.caches", id])), Err(problem.clone()), "{id:?}");
                 assert_eq!(problem.key(), "demo.ids");
+            }
+        }
+
+        #[test]
+        fn rejects_an_id_that_is_not_a_module_id() {
+            let key = SettingKey::new("demo.modules").unwrap();
+            let modules = list("demo.modules", SettingKind::Ids { of: crate::IdOf::Module }, SettingValue::Ids(vec![]));
+
+            for id in ["", "Demo", "demo.caches", "demo_x", "core"] {
+                let problem = SettingProblem::RefusedId { key: key.clone(), id: id.into() };
+                assert_eq!(modules.read(&json!(["demo", id])), Err(problem), "{id:?}");
+            }
+        }
+
+        #[test]
+        fn rejects_a_name_that_is_not_a_group() {
+            let key = SettingKey::new("demo.groups").unwrap();
+            let groups = list("demo.groups", SettingKind::Ids { of: crate::IdOf::Group }, SettingValue::Ids(vec![]));
+
+            for id in ["", "apps", "Debug", "development.tools"] {
+                let problem = SettingProblem::RefusedId { key: key.clone(), id: id.into() };
+                assert_eq!(groups.read(&json!(["debug", id])), Err(problem), "{id:?}");
             }
         }
 
@@ -408,7 +453,7 @@ mod tests {
 
         #[test]
         fn rejects_a_stored_list_that_is_not_strings() {
-            let ids = list("demo.ids", SettingKind::Ids, SettingValue::Ids(vec![]));
+            let ids = list("demo.ids", SettingKind::Ids { of: crate::IdOf::Category }, SettingValue::Ids(vec![]));
             let paths = list("demo.paths", SettingKind::Paths, SettingValue::Paths(vec![]));
 
             assert_eq!(
@@ -478,7 +523,7 @@ mod tests {
         fn reads_ids_and_paths_from_plain_json_and_stores_them_back() {
             let ids = SettingDescriptor::new(
                 SettingKey::new("demo.ids").unwrap(),
-                SettingKind::Ids,
+                SettingKind::Ids { of: crate::IdOf::Category },
                 SettingValue::Ids(vec![]),
             )
             .unwrap();
@@ -496,6 +541,30 @@ mod tests {
             assert_eq!(read_paths, SettingValue::Paths(vec!["/System/Library".into(), "/Users/ann/keep".into()]));
             assert_eq!(read_ids.to_json(), json!(["alpha.caches", "beta.deps"]));
             assert_eq!(read_paths.to_json(), json!(["/System/Library", "/Users/ann/keep"]));
+        }
+
+        #[test]
+        fn reads_module_ids_and_group_names_and_serializes_what_the_list_holds() {
+            let list = |key: &str, of| {
+                SettingDescriptor::new(
+                    SettingKey::new(key).unwrap(),
+                    SettingKind::Ids { of },
+                    SettingValue::Ids(vec![]),
+                )
+                .unwrap()
+            };
+            let modules = list("demo.modules", crate::IdOf::Module);
+            let groups = list("demo.groups", crate::IdOf::Group);
+
+            assert_eq!(
+                modules.read(&json!(["demo", "jet-brains"])),
+                Ok(SettingValue::Ids(vec!["demo".into(), "jet-brains".into()]))
+            );
+            assert_eq!(
+                groups.read(&json!(["development", "debug"])),
+                Ok(SettingValue::Ids(vec!["development".into(), "debug".into()]))
+            );
+            assert_eq!(serde_json::to_value(groups.kind()).unwrap(), json!({ "kind": "ids", "of": "group" }));
         }
 
         #[test]

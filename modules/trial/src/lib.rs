@@ -11,8 +11,8 @@ mod tool;
 
 use fresher_core::{
     Capability, CategoryDescriptor, CategoryId, DangerLevel, DescriptorError, FindingSink, IdError, Interest, Locales,
-    Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, Need, RemovalError, Text, TextKey,
-    TextKeyError, ToolCommand, ToolId,
+    Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need, RemovalError, Text,
+    TextKey, TextKeyError, ToolCommand, ToolId,
 };
 use fresher_rules::{RuleError, RuleSet};
 
@@ -61,7 +61,7 @@ impl TrialModule {
         ];
         let locales = Locales { en: include_str!("../locales/en.json") };
         let failed = TextKey::new("trial.error.failed")?;
-        let descriptor = ModuleDescriptor::new(id, categories, vec![], locales)?
+        let descriptor = ModuleDescriptor::new(id, ModuleGroup::Debug, categories, vec![], locales)?
             .with_tool_check(ToolCommand::new(tool, tool::check_args())?)?
             .with_problems(vec![failed.clone()])?;
         let rules = RuleSet::parse(&descriptor, include_str!("../rules.toml"))?;

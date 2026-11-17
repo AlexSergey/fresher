@@ -1,4 +1,4 @@
-import { type JSX, useId } from 'react';
+import { type JSX, type ReactNode, useId } from 'react';
 
 import type { SettingsView } from '../../ipc/bindings.generated';
 import type { Settings } from './use-settings';
@@ -8,6 +8,7 @@ import { Surface } from '../../design/layout/surface/surface';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { t, tText } from '../../i18n';
 import { SettingsRow } from '../../product/settings-row/settings-row';
+import { useNavigation } from '../../state/navigation';
 import { useAppInfo } from '../use-app-info';
 import { useModules } from '../use-modules';
 import { FileNotice, isReadOnly } from './file-notice';
@@ -18,11 +19,13 @@ import { type SettingsGroup, settingsGroups } from './settings-groups';
 import styles from './settings-screen.module.css';
 import { useSettings } from './use-settings';
 
-// "What can I change?": the groups in order (General, Scan, each module, Ignored, Permissions, Fresher's own data,
-// About); why the settings file cannot be changed, when it cannot; "Rescan to apply" when a change waits for a scan.
+// "What can I change?": the groups in order (General, Scan, each module group with its modules, Ignored, Permissions,
+// Fresher's own data, About); why the settings file cannot be changed, when it cannot; "Rescan to apply" when a change waits for a scan.
 export const SettingsScreen = (): JSX.Element => {
   const settings = useSettings();
   const modules = useModules();
+  // Read once: the Ignored tab to open on is only the starting tab, so the screen needs no subscription.
+  const screen = useNavigation().getScreen();
   const { view } = settings;
   const ignoredId = useId();
   const ownDataId = useId();
@@ -31,6 +34,12 @@ export const SettingsScreen = (): JSX.Element => {
   const rows = (group: SettingsGroup, inView: SettingsView): JSX.Element => (
     <Group group={group} key={group.kind === 'core' ? group.group : group.module} settings={settings} view={inView} />
   );
+  const moduleGroups = (inView: SettingsView): readonly JSX.Element[] =>
+    (groups?.modules ?? []).map(({ group, items }) => (
+      <ModuleGroupRows group={group} key={group}>
+        {items.map((item) => rows(item, inView))}
+      </ModuleGroupRows>
+    ));
 
   return (
     <>
@@ -42,7 +51,14 @@ export const SettingsScreen = (): JSX.Element => {
         {view === null || groups === null ? null : (
           <>
             {groups.before.map((group) => rows(group, view))}
-            <IgnoredGroup headingId={ignoredId} readOnly={readOnly} view={view} />
+            {moduleGroups(view)}
+            <IgnoredGroup
+              headingId={ignoredId}
+              modules={modules ?? []}
+              readOnly={readOnly}
+              view={view}
+              {...(screen.kind === 'settings' && screen.tab !== undefined ? { opensOn: screen.tab } : {})}
+            />
             {groups.after.map((group) => rows(group, view))}
           </>
         )}
@@ -60,6 +76,26 @@ const GROUP_HEADINGS = {
   scan: 'ui.screen.settings.group.scan',
 } as const;
 
+// A module group's modules under the group's name.
+const ModuleGroupRows = ({
+  children,
+  group,
+}: {
+  readonly children: ReactNode;
+  readonly group: string;
+}): JSX.Element => {
+  const headingId = useId();
+
+  return (
+    <section aria-labelledby={headingId} className={styles.group}>
+      <h2 className={styles.heading} id={headingId}>
+        {tText({ args: {}, key: `core.group.${group}.name` })}
+      </h2>
+      {children}
+    </section>
+  );
+};
+
 type GroupProps = {
   readonly group: SettingsGroup;
   readonly settings: Settings;
@@ -73,11 +109,15 @@ const Group = ({ group, settings, view }: GroupProps): JSX.Element => {
 
   return (
     <section aria-labelledby={headingId} className={styles.group}>
-      <h2 className={styles.heading} id={headingId}>
-        {group.kind === 'core'
-          ? t(GROUP_HEADINGS[group.group])
-          : tText({ args: {}, key: `${group.module}.enabled.label` })}
-      </h2>
+      {group.kind === 'core' ? (
+        <h2 className={styles.heading} id={headingId}>
+          {t(GROUP_HEADINGS[group.group])}
+        </h2>
+      ) : (
+        <h3 className={styles.moduleHeading} id={headingId}>
+          {tText({ args: {}, key: `${group.module}.enabled.label` })}
+        </h3>
+      )}
       <Surface elevation={1} padding="none">
         <div className={styles.rows}>
           {group.descriptors.map((descriptor) => {

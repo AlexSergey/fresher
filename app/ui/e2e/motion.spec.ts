@@ -63,7 +63,7 @@ const scanning = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.live);
   await page.goto('/');
   await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(page.getByRole('list', { name: 'Parts of the scan' })).toContainText('scanning');
+  await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
   await expect(page.locator('[data-sweep]')).toBeAttached();
 };
 

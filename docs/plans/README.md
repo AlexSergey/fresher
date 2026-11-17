@@ -63,3 +63,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 012 | [The storage map](./012-storage-map/readme.md)                       | 🔨 in progress | 0.1.0   | core, macos, scanner, engine, testing, sandbox, app, app/ui |
 | 013 | [Release and distribution](./013-release/readme.md)                  | 📝 draft       | 1.0.0   | repo, ci, app                                     |
 | 014 | [Onboarding and the first scan](./014-onboarding/readme.md)          | 📝 draft       | 0.5.0   | engine, store, app/ui                             |
+| 015 | [Module groups and ignoring a module](./015-module-groups/readme.md) | 🔨 in progress | 0.1.0 | core, engine, modules, testing, app, app/ui |

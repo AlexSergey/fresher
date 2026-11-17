@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use fresher_core::{
-    AccessStatus, CategoryDescriptor, DescriptorError, Dictionary, DictionaryError, Module, ModuleDescriptor, ModuleId,
-    ModuleInfo, SchemaError, SettingsSchema, ToolCommand, core_dictionary,
+    AccessStatus, CategoryDescriptor, DescriptorError, Dictionary, DictionaryError, Module, ModuleDescriptor,
+    ModuleGroup, ModuleId, ModuleInfo, SchemaError, SettingsSchema, ToolCommand, core_dictionary,
 };
 
 /// Every module of the app, with the settings schema and the dictionary they make together.
@@ -27,6 +27,8 @@ pub enum RegistryError {
     Settings { id: String, source: SchemaError },
     #[error("the descriptor of module `{id}` is refused: {source}")]
     Descriptor { id: String, source: DescriptorError },
+    #[error("module `{id}` is of the group Debug, which only a development build runs")]
+    DebugModule { id: String },
 }
 
 impl Registry {
@@ -43,6 +45,7 @@ impl Registry {
         if self.modules.iter().any(|known| known.descriptor().id() == id) {
             return Err(RegistryError::DuplicateModule { id: id.as_str().into() });
         }
+        check_group(descriptor, cfg!(debug_assertions))?;
         descriptor.check_tools().map_err(|source| RegistryError::Descriptor { id: id.as_str().into(), source })?;
         let refused = |source| RegistryError::Dictionary { id: id.as_str().into(), source };
         let dictionary = Dictionary::parse(id.as_str(), descriptor.locales().en).map_err(refused)?;
@@ -93,8 +96,28 @@ impl Registry {
         self.descriptors().map(ModuleDescriptor::id).find(|known| known.as_str() == id)
     }
 
+    /// Every registered module with its group, in registration order.
+    pub(crate) fn module_groups(&self) -> impl Iterator<Item = (ModuleId, ModuleGroup)> {
+        self.descriptors().map(|descriptor| (descriptor.id(), descriptor.group()))
+    }
+
+    /// The registered modules of `group`, in registration order.
+    pub(crate) fn modules_of(&self, group: ModuleGroup) -> impl Iterator<Item = ModuleId> {
+        self.descriptors().filter(move |descriptor| descriptor.group() == group).map(ModuleDescriptor::id)
+    }
+
     fn descriptors(&self) -> impl Iterator<Item = &ModuleDescriptor> {
         self.modules.iter().map(|module| module.descriptor())
+    }
+}
+
+/// Refuses a module of the group `Debug` unless `development_build`: that group never ships.
+fn check_group(descriptor: &ModuleDescriptor, development_build: bool) -> Result<(), RegistryError> {
+    match descriptor.group() {
+        ModuleGroup::Debug if !development_build => {
+            Err(RegistryError::DebugModule { id: descriptor.id().as_str().into() })
+        }
+        ModuleGroup::Development | ModuleGroup::Debug => Ok(()),
     }
 }
 
@@ -112,6 +135,15 @@ mod tests {
 
         use crate::testing::TestModule;
         use crate::{Registry, RegistryError};
+
+        #[test]
+        fn a_release_build_refuses_a_debug_module() {
+            let module = TestModule::builder("alpha").group(fresher_core::ModuleGroup::Debug).build();
+
+            let error = super::super::check_group(fresher_core::Module::descriptor(&module), false);
+
+            assert_eq!(error, Err(RegistryError::DebugModule { id: "alpha".into() }));
+        }
 
         #[test]
         fn refuses_a_second_module_with_the_same_id() {
@@ -188,7 +220,7 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{AccessStatus, CategoryId, DangerLevel, ModuleId, core_dictionary};
+        use fresher_core::{AccessStatus, CategoryId, DangerLevel, ModuleGroup, ModuleId, core_dictionary};
 
         use crate::Registry;
         use crate::testing::TestModule;
@@ -216,10 +248,25 @@ mod tests {
                 registry.register(TestModule::builder(id).boxed()).unwrap();
             }
 
-            let ids: Vec<_> =
-                registry.modules(&AccessStatus::default()).iter().map(|module| module.id.as_str()).collect();
+            let modules: Vec<_> = registry
+                .modules(&AccessStatus::default())
+                .iter()
+                .map(|module| (module.id.as_str(), module.group))
+                .collect();
 
-            assert_eq!(ids, ["gamma", "alpha", "beta"]);
+            let development = ModuleGroup::Development;
+            assert_eq!(modules, [("gamma", development), ("alpha", development), ("beta", development)]);
+        }
+
+        #[test]
+        fn a_development_build_takes_a_module_of_any_group() {
+            for group in ModuleGroup::ALL {
+                let module = TestModule::builder("alpha").group(group).build();
+
+                assert_eq!(super::super::check_group(fresher_core::Module::descriptor(&module), true), Ok(()));
+            }
+            let release = TestModule::builder("alpha").group(ModuleGroup::Development).build();
+            assert_eq!(super::super::check_group(fresher_core::Module::descriptor(&release), false), Ok(()));
         }
 
         #[test]
@@ -248,7 +295,7 @@ mod tests {
             let schema = registry.schema().unwrap();
 
             assert!(schema.descriptors().iter().all(|setting| setting.key().namespace() == "core"));
-            assert_eq!(schema.descriptors().len(), 8);
+            assert_eq!(schema.descriptors().len(), 10);
             assert_eq!(registry.dictionary().len(), core_dictionary().unwrap().len());
             assert_eq!(format!("{registry:?}"), "Registry { modules: [], .. }");
         }

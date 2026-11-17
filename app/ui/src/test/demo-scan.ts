@@ -54,6 +54,7 @@ export const DEMO_FINDINGS: readonly Finding[] = [
 export const DEMO_MODULES: readonly ModuleInfo[] = [
   {
     categories: [readyCategory('demo.caches', 'safe'), readyCategory('demo.downloads', 'low')],
+    group: 'debug',
     id: 'demo',
     settings: ['demo.enabled'],
   },
@@ -106,7 +107,8 @@ export const DEMO_SETTINGS: SettingsView = {
 
 export const IDLE: Overview = {
   found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: null,
   status: { state: 'idle' },
   totals: [],
@@ -129,7 +131,8 @@ const partial = (bytes: number): Overview['found'] => ({
 // What `get_overview` answers once the demo scan finished: its totals, as the engine sums them.
 export const DEMO_OVERVIEW: Overview = {
   found: complete(2_570_000_000),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
@@ -149,6 +152,9 @@ export const DEMO_DICTIONARY: Dictionary = {
   'core.danger.low.name': 'Low',
   'core.danger.safe.name': 'Safe',
   'core.error.busy': 'The app is already running a {running}. Wait for it to finish, or cancel it.',
+  'core.group.debug.name': 'Debug',
+  'core.group.development.name': 'Development',
+  'core.ignore.modules.description': 'Hides everything this module finds and never cleans it.',
   'core.left-out.summary.one': '{count} item left out ({size}):',
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'core.scan.outcome.completed': 'The scan is complete.',
@@ -189,7 +195,8 @@ const FIRST_TOTALS: Overview['totals'] = [
 // What `get_overview` answers while the live scan is held after its first batch.
 export const DEMO_SCANNING: Overview = {
   found: complete(2_250_000_000),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: FIRST_TOTALS,
@@ -203,7 +210,8 @@ export const DEMO_STOP: readonly Event[] = [
 
 export const DEMO_STOPPED: Overview = {
   found: complete(2_250_000_000),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
@@ -224,7 +232,8 @@ export const DEMO_PARTIAL_SCAN: readonly Event[] = [
 
 export const DEMO_PARTIAL: Overview = {
   found: partial(2_570_000_000),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
@@ -252,7 +261,8 @@ export const DEMO_FAILED_SCAN: readonly Event[] = [
 
 export const DEMO_FAILED: Overview = {
   found: complete(2_250_000_000),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,

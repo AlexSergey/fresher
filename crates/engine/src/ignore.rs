@@ -6,9 +6,10 @@ use crate::Engine;
 use crate::error::lock;
 
 impl Engine {
-    /// Adds a category, or the path of a finding, to the ignore lists; its findings leave every answer at once.
-    /// Refused for a category nobody registered, a finding of another scan or an ignored one (`UnknownFinding`), and
-    /// a finding without a path of its own (`CannotIgnore`). Ignoring what is ignored already changes nothing.
+    /// Adds a category, the path of a finding, a module or a group to the ignore lists; their findings leave every
+    /// answer at once. Refused for a category, a module or a group nobody registered (`UnknownCategory`,
+    /// `UnknownModule`, `UnknownGroup`), a finding of another scan or an ignored one (`UnknownFinding`), and a finding
+    /// without a path of its own (`CannotIgnore`). Ignoring what is ignored already changes nothing.
     pub fn ignore(&self, target: &IgnoreTarget) -> Result<(), CommandError> {
         let entry = match target {
             IgnoreTarget::Category { category } => {
@@ -24,12 +25,22 @@ impl Engine {
                     Subject::External { .. } => return Err(CommandError::CannotIgnore),
                 }
             }
+            IgnoreTarget::Module { module } => match self.shared.registry.module_id(module) {
+                Some(id) => IgnoredEntry::Module { module: id.as_str().into() },
+                None => return Err(CommandError::UnknownModule { id: module.clone() }),
+            },
+            IgnoreTarget::Group { group } => {
+                if self.shared.registry.modules_of(*group).next().is_none() {
+                    return Err(CommandError::UnknownGroup { id: group.as_str().into() });
+                }
+                IgnoredEntry::Group { group: *group }
+            }
         };
         self.set_ignored(&entry, true)
     }
 
-    /// Takes an entry out of the ignore lists; its findings of the last scan come back at once. Restoring what is not
-    /// ignored changes nothing.
+    /// Takes an entry out of the ignore lists; its findings of the last scan come back at once, unless another entry
+    /// still hides them (a module of an ignored group stays hidden). Restoring what is not ignored changes nothing.
     pub fn restore_ignored(&self, entry: &IgnoredEntry) -> Result<(), CommandError> {
         self.set_ignored(entry, false)
     }
@@ -200,7 +211,12 @@ mod tests {
 
         #[test]
         fn reset_keeps_the_ignore_lists_and_a_reset_of_defaults_publishes_nothing() {
-            let stored = [("core.ignore.categories", json!(["beta.logs"])), ("core.ignore.paths", json!(["/home/a"]))];
+            let stored = [
+                ("core.ignore.categories", json!(["beta.logs"])),
+                ("core.ignore.paths", json!(["/home/a"])),
+                ("core.ignore.modules", json!(["alpha"])),
+                ("core.ignore.groups", json!(["development"])),
+            ];
             let (engine, settings) = scanned(MemorySettings::with(&stored));
             let events = engine.subscribe();
 
@@ -208,7 +224,8 @@ mod tests {
 
             assert_eq!(settings.saves(), 0);
             assert_eq!(events.try_iter().count(), 0);
-            assert_eq!(overview(&engine).ignored, fresher_core::IgnoredCount { categories: 1, paths: 1 });
+            let four = fresher_core::IgnoredCount { categories: 1, paths: 1, modules: 1, groups: 1 };
+            assert_eq!(overview(&engine).ignored, four);
         }
 
         #[test]
@@ -245,7 +262,7 @@ mod tests {
                     value: SettingValue::Paths(vec!["/home/b/Caches".into()]),
                 })
             );
-            assert_eq!(overview(&engine).ignored, IgnoredCount { categories: 1, paths: 1 });
+            assert_eq!(overview(&engine).ignored, IgnoredCount { categories: 1, paths: 1, ..IgnoredCount::default() });
             assert_eq!(overview(&engine).totals.len(), 1);
         }
 

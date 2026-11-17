@@ -9,8 +9,8 @@ use ts_rs::TS;
 use crate::settings::schema::ENABLED;
 use crate::{
     AccessStatus, Availability, ByteSize, CategoryDescriptor, CategoryId, CleanupId, CommandError, Coverage,
-    DangerLevel, Finding, FindingId, ModuleDescriptor, ModuleId, ResolvedSettings, ScanId, ScanKind, ScanOutcome,
-    SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
+    DangerLevel, Finding, FindingId, ModuleDescriptor, ModuleGroup, ModuleId, ResolvedSettings, ScanId, ScanKind,
+    ScanOutcome, SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
 };
 
 /// A long operation of the engine; only one runs at a time.
@@ -52,6 +52,23 @@ pub struct Overview {
     pub found: Sizes,
     /// How many entries the ignore lists hold.
     pub ignored: IgnoredCount,
+    /// The registered modules the ignore lists hide, each with the reason, in registration order.
+    pub hidden_modules: Vec<HiddenModule>,
+}
+
+/// A module whose findings the ignore lists hide.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+pub struct HiddenModule {
+    pub module: ModuleId,
+    pub by: HiddenBy,
+}
+
+/// Why a module is hidden: its own entry, or its group's (which wins when both hold).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum HiddenBy {
+    Module,
+    Group,
 }
 
 /// The sizes of the ignore lists, for the overview's quiet note.
@@ -59,6 +76,8 @@ pub struct Overview {
 pub struct IgnoredCount {
     pub categories: u32,
     pub paths: u32,
+    pub modules: u32,
+    pub groups: u32,
 }
 
 /// The answer of `get_own_data`: what the app's own data folder takes on disk, against its budget.
@@ -68,12 +87,14 @@ pub struct OwnData {
     pub budget: ByteSize,
 }
 
-/// What the user asks to ignore: a category, or one finding by its path.
+/// What the user asks to ignore: a category, one finding by its path, a module, or a group of modules.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, TS)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum IgnoreTarget {
     Category { category: String },
     Finding { finding: FindingId },
+    Module { module: String },
+    Group { group: ModuleGroup },
 }
 
 /// An entry of the ignore lists, as the settings hold it.
@@ -82,6 +103,8 @@ pub enum IgnoreTarget {
 pub enum IgnoredEntry {
     Category { category: String },
     Path { path: PathBuf },
+    Module { module: String },
+    Group { group: ModuleGroup },
 }
 
 /// The scan whose findings the engine holds.
@@ -115,6 +138,7 @@ pub struct CategoryTotal {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 pub struct ModuleInfo {
     pub id: ModuleId,
+    pub group: ModuleGroup,
     pub categories: Vec<CategoryInfo>,
     /// Its settings' keys, `<module>.enabled` first.
     pub settings: Vec<SettingKey>,
@@ -138,6 +162,7 @@ impl ModuleInfo {
         };
         Self {
             id: descriptor.id(),
+            group: descriptor.group(),
             categories: descriptor.categories().iter().map(category).collect(),
             settings: enabled.into_iter().chain(own).collect(),
         }
@@ -318,9 +343,9 @@ mod tests {
         use crate::{
             Access, AccessStatus, Availability, ByteSize, Capability, CapabilityState, CategoryDescriptor, CategoryId,
             CategoryInfo, CategoryTotal, Coverage, DangerLevel, EngineStatus, FindingOrder, FindingsQuery, LastScan,
-            Locale, Locales, ModuleDescriptor, ModuleId, ModuleInfo, Need, Operation, Overview, ScanId, ScanKind,
-            ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingUpdate, SettingValue, SettingsFile,
-            SettingsSchema, SettingsView, Sizes, StoredSettings, Timestamp,
+            Locale, Locales, ModuleDescriptor, ModuleGroup, ModuleId, ModuleInfo, Need, Operation, Overview, ScanId,
+            ScanKind, ScanOutcome, SettingDescriptor, SettingKey, SettingKind, SettingUpdate, SettingValue,
+            SettingsFile, SettingsSchema, SettingsView, Sizes, StoredSettings, Timestamp,
         };
 
         #[test]
@@ -384,6 +409,7 @@ mod tests {
                 totals: Vec::new(),
                 found: Sizes::ZERO,
                 ignored: crate::IgnoredCount::default(),
+                hidden_modules: Vec::new(),
             };
             let demo = ModuleId::new("demo").unwrap();
             let total = CategoryTotal {
@@ -408,6 +434,28 @@ mod tests {
             assert_eq!(
                 serde_json::to_value(access).unwrap()["capabilities"][0]["capability"],
                 json!({ "kind": "all-files" })
+            );
+        }
+
+        #[test]
+        fn the_ignore_kinds_of_a_module_and_a_group_round_trip() {
+            let module = json!({ "kind": "module", "module": "demo" });
+            let group = json!({ "kind": "group", "group": "debug" });
+
+            assert_eq!(
+                serde_json::from_value::<crate::IgnoreTarget>(module.clone()).unwrap(),
+                crate::IgnoreTarget::Module { module: "demo".into() }
+            );
+            assert_eq!(
+                serde_json::from_value::<crate::IgnoreTarget>(group.clone()).unwrap(),
+                crate::IgnoreTarget::Group { group: ModuleGroup::Debug }
+            );
+            for entry in [module, group] {
+                let read = serde_json::from_value::<crate::IgnoredEntry>(entry.clone()).unwrap();
+                assert_eq!(serde_json::to_value(read).unwrap(), entry);
+            }
+            assert!(
+                serde_json::from_value::<crate::IgnoreTarget>(json!({ "kind": "group", "group": "apps" })).is_err()
             );
         }
 
@@ -437,20 +485,28 @@ mod tests {
                 SettingValue::Switch(false),
             )
             .unwrap();
-            let descriptor =
-                ModuleDescriptor::new(demo, vec![caches.clone()], vec![deep], Locales { en: "{}" }).unwrap();
+            let descriptor = ModuleDescriptor::new(
+                demo,
+                ModuleGroup::Development,
+                vec![caches.clone()],
+                vec![deep],
+                Locales { en: "{}" },
+            )
+            .unwrap();
 
             let info = ModuleInfo::new(&descriptor, &AccessStatus::default());
 
             assert_eq!(info.id, demo);
+            assert_eq!(info.group, ModuleGroup::Development);
+            assert_eq!(serde_json::to_value(&info).unwrap()["group"], "development");
             assert_eq!(info.categories, [CategoryInfo { descriptor: caches, availability: Availability::Ready }]);
             assert_eq!(info.settings.iter().map(SettingKey::as_str).collect::<Vec<_>>(), ["demo.enabled", "demo.deep"]);
 
             let schema = SettingsSchema::new([&descriptor]).unwrap();
             let view = SettingsView::new(&schema, &schema.resolve(&StoredSettings::default()), SettingsFile::Loaded);
-            // Motion, the scan roots, the four access opt-ins, the two ignore lists, and the module's two.
-            assert_eq!(view.settings.len(), 10);
-            assert_eq!(view.values.len(), 10);
+            // Motion, the scan roots, the four access opt-ins, the four ignore lists, and the module's two.
+            assert_eq!(view.settings.len(), 12);
+            assert_eq!(view.values.len(), 12);
             assert_eq!(view.problems, []);
         }
 
@@ -460,7 +516,9 @@ mod tests {
             let category = |id| CategoryDescriptor::new(CategoryId::new(demo, id).unwrap(), DangerLevel::Low);
             let caches = category("demo.caches").with_needs(vec![Need::sees_more(Capability::AllFiles)]);
             let logs = category("demo.logs");
-            let descriptor = ModuleDescriptor::new(demo, vec![caches, logs], vec![], Locales { en: "{}" }).unwrap();
+            let descriptor =
+                ModuleDescriptor::new(demo, ModuleGroup::Debug, vec![caches, logs], vec![], Locales { en: "{}" })
+                    .unwrap();
             let denied =
                 AccessStatus { capabilities: vec![CapabilityState::new(Capability::AllFiles, Access::Denied)] };
 

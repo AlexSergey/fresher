@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use super::{SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingValue};
+use super::{IdOf, SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingValue};
 
 /// How much the interface moves: `system` follows macOS's "Reduce motion", `reduced` keeps only fades.
 pub(crate) const MOTION: &str = "core.motion";
@@ -14,6 +14,12 @@ pub const SCAN_ROOTS: &str = "core.scan.roots";
 /// once. Off by default.
 pub(crate) const ACCESS_OPT_INS: [&str; 4] =
     ["core.access.desktop", "core.access.documents", "core.access.downloads", "core.access.other-apps-data"];
+
+/// The modules the user ignores, by id: their findings are left out of the results.
+pub const IGNORE_MODULES: &str = "core.ignore.modules";
+
+/// The groups the user ignores, by name: the findings of every module of one are left out of the results.
+pub const IGNORE_GROUPS: &str = "core.ignore.groups";
 
 /// The categories the user ignores, by id: their findings are left out of the results.
 pub const IGNORE_CATEGORIES: &str = "core.ignore.categories";
@@ -51,13 +57,9 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
             SettingEffect::NextScan,
         )
     };
-    let categories = setting(
-        IGNORE_CATEGORIES,
-        SettingKind::Ids,
-        SettingValue::Ids(vec![]),
-        SettingGroup::Ignored,
-        SettingEffect::Now,
-    );
+    let ids = |key: &str, of| {
+        setting(key, SettingKind::Ids { of }, SettingValue::Ids(vec![]), SettingGroup::Ignored, SettingEffect::Now)
+    };
     let paths = setting(
         IGNORE_PATHS,
         SettingKind::Paths,
@@ -65,7 +67,9 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
         SettingGroup::Ignored,
         SettingEffect::Now,
     );
-    [motion, roots].into_iter().chain(ACCESS_OPT_INS.map(opt_in)).chain([categories, paths]).collect()
+    let ignored =
+        [ids(IGNORE_MODULES, IdOf::Module), ids(IGNORE_GROUPS, IdOf::Group), ids(IGNORE_CATEGORIES, IdOf::Category)];
+    [motion, roots].into_iter().chain(ACCESS_OPT_INS.map(opt_in)).chain(ignored).chain([paths]).collect()
 }
 
 #[cfg(test)]
@@ -149,6 +153,8 @@ mod tests {
                     at("core.access.documents", SettingGroup::Permissions, SettingEffect::NextScan),
                     at("core.access.downloads", SettingGroup::Permissions, SettingEffect::NextScan),
                     at("core.access.other-apps-data", SettingGroup::Permissions, SettingEffect::NextScan),
+                    at("core.ignore.modules", SettingGroup::Ignored, SettingEffect::Now),
+                    at("core.ignore.groups", SettingGroup::Ignored, SettingEffect::Now),
                     at("core.ignore.categories", SettingGroup::Ignored, SettingEffect::Now),
                     at("core.ignore.paths", SettingGroup::Ignored, SettingEffect::Now),
                 ]
@@ -163,6 +169,8 @@ mod tests {
             };
 
             assert_eq!(default("core.motion"), Some(&SettingValue::Choice("system".into())));
+            assert_eq!(default("core.ignore.modules"), Some(&SettingValue::Ids(vec![])));
+            assert_eq!(default("core.ignore.groups"), Some(&SettingValue::Ids(vec![])));
             assert_eq!(default("core.ignore.categories"), Some(&SettingValue::Ids(vec![])));
             assert_eq!(default("core.ignore.paths"), Some(&SettingValue::Paths(vec![])));
         }

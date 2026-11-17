@@ -24,7 +24,7 @@ impl Context {
     pub(crate) fn now(shared: &Shared) -> Result<Self, CommandError> {
         let (roots, ignored) = {
             let settings = lock(&shared.settings)?;
-            (settings.scan_roots(), settings.ignored().paths)
+            (settings.scan_roots(), settings.ignored_paths())
         };
         let protection = Protection::default().with_ignored(&ignored).map_err(|error| {
             tracing::warn!(%error, "the ignored paths cannot protect anything");

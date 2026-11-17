@@ -14,9 +14,9 @@ mod tests {
 
     use crate::{
         Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CommandError, Completeness,
-        DangerLevel, Ended, MapPart, ModuleOutcome, MountKind, NotScanned, PartKind, PlaceName, RemainderReason,
-        Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey, ToolId, TrashState,
-        VolumeMap,
+        DangerLevel, Ended, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotScanned, PartKind, PlaceName,
+        RemainderReason, Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey,
+        ToolId, TrashState, VolumeMap,
     };
 
     use crate::cleanup::outcome_sample;
@@ -49,6 +49,7 @@ mod tests {
             let level = kebab_name(level);
             [key(format!("core.danger.{level}.name")), key(format!("core.danger.{level}.meaning"))]
         });
+        let groups = ModuleGroup::ALL.into_iter().flat_map(|group| [group.name_key(), group.description_key()]);
         let completeness = [Completeness::Complete, Completeness::Partial, Completeness::Unknown]
             .map(|completeness| key(format!("core.completeness.{}", completeness_segment(completeness))));
         let errors = CommandError::CODES.map(|code| key(format!("core.error.{code}")));
@@ -95,6 +96,7 @@ mod tests {
             .chain(BlockedReason::ALL.map(|reason| reason.text().key().clone()));
 
         danger
+            .chain(groups)
             .chain(completeness)
             .chain(errors)
             .chain(outcomes)
@@ -268,6 +270,17 @@ mod tests {
 
             for code in crate::CommandError::CODES {
                 assert!(texts.get(&format!("core.error.{code}")).is_some(), "{code}");
+            }
+        }
+
+        #[test]
+        fn every_group_has_a_name_and_a_description() {
+            let texts = core_dictionary().unwrap();
+
+            for group in crate::ModuleGroup::ALL {
+                for key in [group.name_key(), group.description_key()] {
+                    assert!(texts.get(key.as_str()).is_some_and(|text| !text.is_empty()), "{key}");
+                }
             }
         }
 

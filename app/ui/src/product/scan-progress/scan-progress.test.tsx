@@ -6,15 +6,19 @@ import { STORY_DICTIONARY } from '../scan-hero/story-data';
 import { type ModuleProgress, ScanProgress } from './scan-progress';
 
 const MODULES: readonly ModuleProgress[] = [
-  { module: 'demo', state: { kind: 'completed' } },
-  { module: 'docker', state: { kind: 'failed', reason: { args: {}, key: 'docker.error.unreachable' } } },
-  { module: 'xcode', state: { kind: 'running' } },
-  { module: 'node', state: { kind: 'waiting' } },
-  { module: 'logs', state: { kind: 'cancelled' } },
+  { group: 'debug', module: 'demo', state: { kind: 'completed' } },
+  {
+    group: 'development',
+    module: 'docker',
+    state: { kind: 'failed', reason: { args: {}, key: 'docker.error.unreachable' } },
+  },
+  { group: 'development', module: 'xcode', state: { kind: 'running' } },
+  { group: 'development', module: 'node', state: { kind: 'waiting' } },
+  { group: 'development', module: 'logs', state: { kind: 'cancelled' } },
 ];
 
 const chips = (): readonly HTMLElement[] =>
-  within(screen.getByRole('list', { name: 'Parts of the scan' })).getAllByRole('listitem');
+  within(screen.getByRole('group', { name: 'Parts of the scan' })).getAllByRole('listitem');
 
 // The chip inside a list item: the element that carries its state and takes the focus.
 // eslint-disable-next-line testing-library/no-node-access -- a chip is a styled span without a role of its own
@@ -36,11 +40,11 @@ describe('ScanProgress', () => {
       render(<ScanProgress entries={0} modules={MODULES} onStop={vi.fn()} />);
 
       expect(chips().map((chip) => chip.textContent)).toStrictEqual([
-        'Demo module, done',
         'Docker, failed',
         'Xcode, scanning',
         'Node modules, waiting',
         'Logs, stopped',
+        'Demo module, done',
       ]);
     });
 
@@ -57,12 +61,23 @@ describe('ScanProgress', () => {
   describe('positive cases', () => {
     it('a module not run for what it lacks shows as not available', () => {
       const unavailable: ModuleProgress = {
+        group: 'debug',
         module: 'demo',
         state: { kind: 'unavailable', missing: [{ kind: 'all-files' }] },
       };
       render(<ScanProgress entries={0} modules={[unavailable]} onStop={vi.fn()} />);
 
       expect(chips().map((chip) => chip.textContent)).toStrictEqual(['Demo module, not available']);
+    });
+
+    it('names each group once, before its chips, Development first', () => {
+      render(<ScanProgress entries={0} modules={MODULES} onStop={vi.fn()} />);
+
+      expect(
+        within(screen.getByRole('group', { name: 'Parts of the scan' }))
+          .getAllByRole('list')
+          .map((list) => list.getAttribute('aria-label')),
+      ).toStrictEqual(['Development', 'Debug']);
     });
 
     it('Stop calls onStop', () => {
@@ -85,7 +100,7 @@ describe('ScanProgress', () => {
 
     it('module chips show done and failed with the reason', () => {
       render(<ScanProgress entries={0} modules={MODULES} onStop={vi.fn()} />);
-      const [done, failed] = chips().map(chipOf);
+      const [failed, , , , done] = chips().map(chipOf);
 
       // eslint-disable-next-line testing-library/no-node-access -- the mark is a decorative icon, without a role
       expect(done?.querySelector('svg')).not.toBeNull();

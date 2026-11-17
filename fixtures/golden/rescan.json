@@ -618,8 +618,11 @@
         "logical": 9121205532,
         "reclaimable": 9054244044
       },
+      "hiddenModules": [],
       "ignored": {
         "categories": 0,
+        "groups": 0,
+        "modules": 0,
         "paths": 0
       },
       "lastScan": {
@@ -1056,8 +1059,11 @@
         "logical": 66961488,
         "reclaimable": 0
       },
+      "hiddenModules": [],
       "ignored": {
         "categories": 0,
+        "groups": 0,
+        "modules": 0,
         "paths": 0
       },
       "lastScan": {

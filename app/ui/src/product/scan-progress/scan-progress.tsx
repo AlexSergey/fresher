@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import type { ModuleId, ModuleOutcome } from '../../ipc/bindings.generated';
+import type { ModuleGroup, ModuleId, ModuleOutcome } from '../../ipc/bindings.generated';
 
 import { AnimatedNumber } from '../../design/data/animated-number/animated-number';
 import { Icon } from '../../design/icons/icon';
@@ -10,11 +10,13 @@ import { ProgressBar } from '../../design/primitives/progress-bar/progress-bar';
 import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { VisuallyHidden } from '../../design/primitives/visually-hidden/visually-hidden';
 import { t, tText } from '../../i18n';
+import { type InGroup, inGroups } from '../module-groups';
 import { formatCount } from '../sizes';
 import styles from './scan-progress.module.css';
 
 // One module's part of a scan: not started, running, or how it ended.
 export type ModuleProgress = {
+  readonly group: ModuleGroup;
   readonly module: ModuleId;
   readonly state: ModuleOutcome | { readonly kind: 'running' } | { readonly kind: 'waiting' };
 };
@@ -53,7 +55,7 @@ const Mark = ({ state }: { readonly state: ChipState }): JSX.Element => {
   }
 };
 
-const Chip = ({ module, state }: ModuleProgress): JSX.Element => {
+const Chip = ({ module, state }: Omit<ModuleProgress, 'group'>): JSX.Element => {
   const chip = (describedBy?: string): JSX.Element => (
     <span
       aria-describedby={describedBy}
@@ -75,8 +77,25 @@ const Chip = ({ module, state }: ModuleProgress): JSX.Element => {
   );
 };
 
+const GroupChips = ({ group, items }: InGroup<ModuleProgress>): JSX.Element => {
+  const name = tText({ args: {}, key: `core.group.${group}.name` });
+
+  return (
+    <div className={styles.group}>
+      <p aria-hidden="true" className={styles.groupName}>
+        {name}
+      </p>
+      <ul aria-label={name} className={styles.chips}>
+        {items.map(({ module, state }) => (
+          <Chip key={module} module={module} state={state} />
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 // A running scan: how many items it looked at, a bar that shows it is alive (the core reports no total), one chip
-// per module of the scan, and Stop.
+// per module of the scan under its group's name, and Stop.
 export const ScanProgress = ({ entries, modules, onStop }: ScanProgressProps): JSX.Element => (
   <div className={styles.progress}>
     <div className={styles.head}>
@@ -89,10 +108,10 @@ export const ScanProgress = ({ entries, modules, onStop }: ScanProgressProps): J
       </Button>
     </div>
     <ProgressBar label={t('ui.scan-progress.label')} value={null} />
-    <ul aria-label={t('ui.scan-progress.modules')} className={styles.chips}>
-      {modules.map((each) => (
-        <Chip key={each.module} {...each} />
+    <div aria-label={t('ui.scan-progress.modules')} className={styles.groups} role="group">
+      {inGroups(modules, ({ group }) => group).map(({ group, items }) => (
+        <GroupChips group={group} items={items} key={group} />
       ))}
-    </ul>
+    </div>
   </div>
 );

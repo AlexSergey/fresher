@@ -8,7 +8,8 @@ use std::sync::{Arc, OnceLock};
 
 use fresher_core::{
     ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness, DiskState, Finding,
-    FindingId, FindingOrder, FindingsPage, IgnoredCount, LastScan, ModuleId, Sizes, Subject,
+    FindingId, FindingOrder, FindingsPage, HiddenBy, HiddenModule, IgnoredCount, LastScan, ModuleGroup, ModuleId,
+    Sizes, Subject,
 };
 
 use crate::claims::Claims;
@@ -83,7 +84,7 @@ impl Results {
     pub(crate) fn new() -> Self {
         Self {
             findings: Vec::new(),
-            ignored: Ignored { categories: Vec::new(), paths: Vec::new() },
+            ignored: Ignored::default(),
             roots: Vec::new(),
             limited: BTreeSet::new(),
             next_id: Some(1),
@@ -148,7 +149,24 @@ impl Results {
     /// How many entries the ignore lists hold.
     pub(crate) fn ignored_count(&self) -> IgnoredCount {
         let count = |len: usize| u32::try_from(len).unwrap_or(u32::MAX);
-        IgnoredCount { categories: count(self.ignored.categories.len()), paths: count(self.ignored.paths.len()) }
+        IgnoredCount {
+            categories: count(self.ignored.categories.len()),
+            paths: count(self.ignored.paths.len()),
+            modules: count(self.ignored.modules.len()),
+            groups: count(self.ignored.groups.len()),
+        }
+    }
+
+    /// The modules the ignore lists hide, from `modules` (each with its group): by its group when that is ignored,
+    /// else by its own entry.
+    pub(crate) fn hidden_modules(&self, modules: impl Iterator<Item = (ModuleId, ModuleGroup)>) -> Vec<HiddenModule> {
+        modules
+            .filter(|(module, _)| self.ignored.hidden_modules.contains(module))
+            .map(|(module, group)| HiddenModule {
+                module,
+                by: if self.ignored.groups.contains(&group) { HiddenBy::Group } else { HiddenBy::Module },
+            })
+            .collect()
     }
 
     fn shown(&self) -> impl Iterator<Item = &Finding> + Clone {

@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use crate::settings::schema::ENABLED;
 use crate::{
-    CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, LeftOutItem, Match, ModuleId,
-    ModuleSettings, NewFinding, SettingDescriptor, SystemFacts, Text, TextKey, ToolCommand, ToolId,
+    CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, LeftOutItem, Match, ModuleGroup,
+    ModuleId, ModuleSettings, NewFinding, SettingDescriptor, SystemFacts, Text, TextKey, ToolCommand, ToolId,
 };
 
 /// A feature of the app (Docker, `node_modules`, duplicates): it states what it wants to see during the walk and
@@ -23,11 +23,12 @@ pub trait Module: Send + Sync {
     fn finish(&self, cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError>;
 }
 
-/// Who a module is: its id, its categories, its settings, its texts, the checks of the tools it needs and the problems
-/// it may report.
+/// Who a module is: its id, its group, its categories, its settings, its texts, the checks of the tools it needs and
+/// the problems it may report.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleDescriptor {
     id: ModuleId,
+    group: ModuleGroup,
     categories: Vec<CategoryDescriptor>,
     settings: Vec<SettingDescriptor>,
     locales: Locales,
@@ -71,6 +72,7 @@ impl ModuleDescriptor {
     /// include `<module>.enabled`: the schema adds it.
     pub fn new(
         id: ModuleId,
+        group: ModuleGroup,
         categories: Vec<CategoryDescriptor>,
         settings: Vec<SettingDescriptor>,
         locales: Locales,
@@ -88,7 +90,7 @@ impl ModuleDescriptor {
             }
         }
         check_settings(id, &settings)?;
-        Ok(Self { id, categories, settings, locales, tool_checks: Vec::new(), problems: Vec::new() })
+        Ok(Self { id, group, categories, settings, locales, tool_checks: Vec::new(), problems: Vec::new() })
     }
 
     /// This descriptor with the command that tells whether a tool it needs is ready: success means ready. Refused
@@ -135,6 +137,11 @@ impl ModuleDescriptor {
 
     pub const fn id(&self) -> ModuleId {
         self.id
+    }
+
+    /// The group the screens show the module under.
+    pub const fn group(&self) -> ModuleGroup {
+        self.group
     }
 
     pub fn categories(&self) -> &[CategoryDescriptor] {
@@ -318,7 +325,14 @@ mod tests {
 
     impl EchoModule {
         fn new() -> Self {
-            let descriptor = ModuleDescriptor::new(demo(), vec![category("demo.caches")], vec![], LOCALES).unwrap();
+            let descriptor = ModuleDescriptor::new(
+                demo(),
+                crate::ModuleGroup::Debug,
+                vec![category("demo.caches")],
+                vec![],
+                LOCALES,
+            )
+            .unwrap();
             let interest = Interest::new(Pattern::FolderName("Caches".into()), Claim::Whole, vec![]).unwrap();
             Self { descriptor, interests: vec![interest] }
         }
@@ -381,7 +395,7 @@ mod tests {
         fn rejects_a_descriptor_with_duplicate_category_ids() {
             let categories = vec![category("demo.caches"), category("demo.logs"), category("demo.caches")];
 
-            let error = ModuleDescriptor::new(demo(), categories, vec![], LOCALES);
+            let error = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, categories, vec![], LOCALES);
 
             assert_eq!(error, Err(DescriptorError::DuplicateCategory { id: "demo.caches".into() }));
         }
@@ -391,7 +405,13 @@ mod tests {
             let docker = ModuleId::new("docker").unwrap();
             let image = CategoryDescriptor::new(CategoryId::new(docker, "docker.images").unwrap(), DangerLevel::Low);
 
-            let error = ModuleDescriptor::new(demo(), vec![category("demo.caches"), image], vec![], LOCALES);
+            let error = ModuleDescriptor::new(
+                demo(),
+                crate::ModuleGroup::Debug,
+                vec![category("demo.caches"), image],
+                vec![],
+                LOCALES,
+            );
 
             assert_eq!(
                 error,
@@ -406,7 +426,13 @@ mod tests {
 
         #[test]
         fn rejects_a_module_setting_outside_its_namespace() {
-            let error = ModuleDescriptor::new(demo(), vec![], vec![setting("core.scan.deep")], LOCALES);
+            let error = ModuleDescriptor::new(
+                demo(),
+                crate::ModuleGroup::Debug,
+                vec![],
+                vec![setting("core.scan.deep")],
+                LOCALES,
+            );
 
             assert_eq!(
                 error,
@@ -416,9 +442,20 @@ mod tests {
 
         #[test]
         fn rejects_the_enabled_switch_and_a_duplicate_setting() {
-            let reserved = ModuleDescriptor::new(demo(), vec![], vec![setting("demo.enabled")], LOCALES);
-            let twice =
-                ModuleDescriptor::new(demo(), vec![], vec![setting("demo.deep"), setting("demo.deep")], LOCALES);
+            let reserved = ModuleDescriptor::new(
+                demo(),
+                crate::ModuleGroup::Debug,
+                vec![],
+                vec![setting("demo.enabled")],
+                LOCALES,
+            );
+            let twice = ModuleDescriptor::new(
+                demo(),
+                crate::ModuleGroup::Debug,
+                vec![],
+                vec![setting("demo.deep"), setting("demo.deep")],
+                LOCALES,
+            );
 
             assert_eq!(reserved, Err(DescriptorError::ReservedSetting { key: "demo.enabled".into() }));
             assert_eq!(twice, Err(DescriptorError::DuplicateSetting { key: "demo.deep".into() }));
@@ -436,14 +473,23 @@ mod tests {
 
         #[test]
         fn a_tool_need_without_its_check_is_refused() {
-            let descriptor = ModuleDescriptor::new(demo(), vec![needing_docker()], vec![], LOCALES).unwrap();
+            let descriptor =
+                ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![needing_docker()], vec![], LOCALES)
+                    .unwrap();
 
             assert_eq!(descriptor.check_tools(), Err(DescriptorError::MissingToolCheck { tool: "docker".into() }));
         }
 
         #[test]
         fn a_tool_check_without_a_need_is_refused() {
-            let descriptor = ModuleDescriptor::new(demo(), vec![category("demo.caches")], vec![], LOCALES).unwrap();
+            let descriptor = ModuleDescriptor::new(
+                demo(),
+                crate::ModuleGroup::Debug,
+                vec![category("demo.caches")],
+                vec![],
+                LOCALES,
+            )
+            .unwrap();
 
             let error = descriptor.with_tool_check(docker_check());
 
@@ -452,7 +498,9 @@ mod tests {
 
         #[test]
         fn a_second_check_of_the_same_tool_is_refused() {
-            let descriptor = ModuleDescriptor::new(demo(), vec![needing_docker()], vec![], LOCALES).unwrap();
+            let descriptor =
+                ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![needing_docker()], vec![], LOCALES)
+                    .unwrap();
 
             let error = descriptor.with_tool_check(docker_check()).unwrap().with_tool_check(docker_check());
 
@@ -465,7 +513,7 @@ mod tests {
 
         #[test]
         fn a_problem_outside_the_module_is_refused() {
-            let descriptor = ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap();
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES).unwrap();
 
             let error = descriptor.with_problems(vec![key("demo.error.broken"), key("core.error.internal")]);
 
@@ -477,7 +525,7 @@ mod tests {
 
         #[test]
         fn a_problem_listed_twice_is_refused() {
-            let descriptor = ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap();
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES).unwrap();
 
             let error = descriptor.with_problems(vec![key("demo.left-out.open"), key("demo.left-out.open")]);
 
@@ -518,7 +566,7 @@ mod tests {
 
         #[test]
         fn a_module_without_interests_is_valid() {
-            let descriptor = ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap();
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES).unwrap();
             let module = EchoModule { descriptor, interests: vec![] };
             let cancel = CancelToken::new();
             let settings = crate::ModuleSettings::empty(demo());
@@ -562,8 +610,9 @@ mod tests {
             let images = super::category("demo.images").with_needs(vec![need]);
             let check = crate::ToolCommand::new(docker, vec!["info".into()]).unwrap();
 
-            let descriptor =
-                ModuleDescriptor::new(demo(), vec![images], vec![], LOCALES).unwrap().with_tool_check(check.clone());
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![images], vec![], LOCALES)
+                .unwrap()
+                .with_tool_check(check.clone());
 
             let descriptor = descriptor.unwrap();
             assert_eq!(descriptor.check_tools(), Ok(()));
@@ -574,11 +623,16 @@ mod tests {
         fn a_descriptor_keeps_its_problems_in_order() {
             let keys = ["demo.left-out.open", "demo.error.broken"].map(|key| TextKey::new(key).unwrap());
 
-            let descriptor =
-                ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap().with_problems(keys.to_vec()).unwrap();
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES)
+                .unwrap()
+                .with_problems(keys.to_vec())
+                .unwrap();
 
             assert_eq!(descriptor.problems(), keys);
-            assert_eq!(ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap().problems(), []);
+            assert_eq!(
+                ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES).unwrap().problems(),
+                []
+            );
         }
 
         #[test]

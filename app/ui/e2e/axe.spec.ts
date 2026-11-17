@@ -98,7 +98,7 @@ test.describe('positive cases', () => {
     test('the overview during a scan', async ({ page }) => {
       await open(page, SCRIPTS.live);
       await scan(page, '2.3 GB');
-      await expect(page.getByRole('list', { name: 'Parts of the scan' })).toContainText('scanning');
+      await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -229,6 +229,28 @@ test.describe('positive cases', () => {
 
       expect(await violations(page)).toStrictEqual([]);
     });
+
+    test('the page of an ignored module', async ({ page }) => {
+      await open(page, SCRIPTS.ignoring);
+      await scan(page, '2.6 GB');
+      await go(page, /^Demo module/, 'Demo module');
+      await page.getByRole('button', { name: 'Ignore this module' }).click();
+      await expect(page.getByText('You ignore this module.')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    for (const tab of ['Ignored groups', 'Ignored modules', 'Ignored items']) {
+      test(`the Ignored section of Settings, ${tab}`, async ({ page }) => {
+        await open(page, SCRIPTS.ignoring);
+        await go(page, 'Settings', 'Settings');
+        await page.getByRole('switch', { name: 'Ignore Debug' }).click();
+        await page.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
+        await expect(page.getByRole('tab', { name: new RegExp(`^${tab}`) })).toHaveAttribute('aria-selected', 'true');
+
+        expect(await violations(page)).toStrictEqual([]);
+      });
+    }
 
     test('the settings a newer version saved', async ({ page }) => {
       await open(page, SCRIPTS.readOnly);

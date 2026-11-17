@@ -15,6 +15,7 @@ import {
 } from '../test/demo-scan';
 import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { type CoreAction, type CoreState, INITIAL_STATE, reduce } from './reduce';
+import { NOTHING_SELECTED } from './selection';
 
 const run = (actions: readonly CoreAction[], from: CoreState = INITIAL_STATE): CoreState =>
   actions.reduce(reduce, from);
@@ -36,6 +37,8 @@ const requested: CoreAction = { type: 'overview-requested' };
 const loaded = (overview: Overview): CoreAction => ({ overview, type: 'overview-loaded' });
 
 const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
+
+const PICKED: CoreAction = { category: 'demo.caches', type: 'toggle-category' };
 
 const changed = (key: string, value: SettingValue): CoreAction => ({ key, type: 'setting-changed', value });
 
@@ -66,6 +69,12 @@ const SETTINGS: SettingsView = {
 
 describe('reduce', () => {
   describe('negative cases', () => {
+    it('a setting-changed event for another key keeps the selection', () => {
+      const state = run([PICKED, changed('demo.count', { kind: 'number', value: 3 })]);
+
+      expect(state.selection).not.toBe(NOTHING_SELECTED);
+    });
+
     it('a new scan clears the left-outs', () => {
       const state = run([started, moduleDone, { modules: ['demo'], scan: 2, type: 'scan-started' }]);
 
@@ -322,6 +331,12 @@ describe('reduce', () => {
       expect(state.settings?.values['demo.count']).toEqual({ kind: 'number', value: 3 });
       expect(state.settings?.values['demo.enabled']).toEqual({ kind: 'switch', value: true });
       expect(state.settings?.problems).toEqual([{ key: 'demo.enabled', kind: 'wrong-type' }]);
+    });
+
+    it('a setting-changed event of an ignore list drops the selection', () => {
+      const state = run([PICKED, changed('core.ignore.modules', { kind: 'ids', value: ['demo'] })]);
+
+      expect(state.selection).toBe(NOTHING_SELECTED);
     });
 
     it('a setting-changed event asks for the overview again, even before the settings arrived', () => {

@@ -5,6 +5,7 @@ import type { ModuleInfo, Refusal, SettingsFile, SettingsView, SettingUpdate } f
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { DEMO_DICTIONARY, DEMO_MODULES, DEMO_OVERVIEW, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
@@ -74,11 +75,11 @@ const core = (answers: Partial<CoreAnswers> = {}): void => {
 };
 
 // The screen once the dictionary has arrived, as the frame shows it.
-const renderScreen = async (): Promise<CoreStore> => {
+const renderScreen = async (navigation: Navigation = createNavigation()): Promise<CoreStore> => {
   const store = createCoreStore();
 
   render(
-    <AppProviders store={store}>
+    <AppProviders navigation={navigation} store={store}>
       <SettingsScreen />
     </AppProviders>,
   );
@@ -135,6 +136,7 @@ describe('SettingsScreen', () => {
 
       await demoSwitch();
       expect(screen.queryByRole('button', { name: 'Reset' })).toBeNull();
+      fireEvent.click(screen.getByRole('tab', { name: 'Ignored items' }));
       expect(screen.getByText('Nothing is ignored.')).toBeInTheDocument();
     });
 
@@ -296,6 +298,15 @@ describe('SettingsScreen', () => {
         expect(startScan).toHaveBeenCalledOnce();
       });
     });
+    it('opens the Ignored section on the tab the navigation names', async () => {
+      core();
+      const navigation = createNavigation();
+      navigation.navigate({ kind: 'settings', tab: 'items' });
+      await renderScreen(navigation);
+
+      expect(await screen.findByRole('tab', { name: 'Ignored items' })).toHaveAttribute('aria-selected', 'true');
+    });
+
     it('every setting of the demo module has a row', async () => {
       core();
       await renderScreen();
@@ -303,7 +314,7 @@ describe('SettingsScreen', () => {
       await demoSwitch();
       expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
         'Scan',
-        'Demo module',
+        'Debug',
         'Ignored',
         "Fresher's own data",
         'About',

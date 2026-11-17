@@ -102,6 +102,25 @@ describe('AppFrame', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Overview');
     });
 
+    it('a module the core does not hide shows its size, not Ignored', async () => {
+      core();
+      const { store } = await renderFrame();
+
+      act(() => {
+        store.dispatch({ overview: DEMO_OVERVIEW, type: 'overview-loaded' });
+      });
+
+      expect(demoItem()).not.toHaveTextContent('Ignored');
+      expect(screen.queryByRole('region', { name: 'Debug · Ignored' })).toBeNull();
+    });
+
+    it('a module the core does not hide is not dimmed', async () => {
+      core();
+      await renderFrame();
+
+      expect(demoItem()).not.toHaveAttribute('data-dimmed');
+    });
+
     it('a module shows a dash, not a zero, before a scan', async () => {
       core();
 
@@ -167,17 +186,59 @@ describe('AppFrame', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    it('the nav items follow getModules in order', async () => {
-      const second: ModuleInfo = { categories: [], id: 'logs', settings: ['logs.enabled'] };
+    it('the nav items sit under their group, Development before Debug, whatever the registration order', async () => {
+      const second: ModuleInfo = { categories: [], group: 'development', id: 'logs', settings: ['logs.enabled'] };
       core({
         getDictionary: () => ({ ...DEMO_DICTIONARY, 'logs.enabled.label': 'Logs' }),
-        getModules: () => [second, ...DEMO_MODULES],
+        getModules: () => [...DEMO_MODULES, second],
       });
       await renderFrame();
 
-      const modules = within(screen.getByRole('region', { name: 'Modules' })).getAllByRole('button');
+      const items = (group: string): readonly (null | string)[] =>
+        within(screen.getByRole('region', { name: group }))
+          .getAllByRole('button')
+          .map((item) => item.textContent);
 
-      expect(modules.map((item) => item.textContent)).toStrictEqual(['Logs—', 'Demo module—']);
+      expect(items('Development')).toStrictEqual(['Logs—']);
+      expect(items('Debug')).toStrictEqual(['Demo module—']);
+      expect(screen.queryByRole('region', { name: 'Modules' })).toBeNull();
+      expect(
+        screen
+          .getAllByRole('heading', { level: 2 })
+          .slice(0, 2)
+          .map((heading) => heading.textContent),
+      ).toStrictEqual(['Development', 'Debug']);
+    });
+
+    it('a module hidden on its own is dimmed and says Ignored in place of its size', async () => {
+      core();
+      const { store } = await renderFrame();
+
+      act(() => {
+        store.dispatch({
+          overview: { ...DEMO_OVERVIEW, hiddenModules: [{ by: 'module', module: 'demo' }] },
+          type: 'overview-loaded',
+        });
+      });
+
+      expect(demoItem()).toHaveTextContent('Demo moduleIgnored');
+      expect(demoItem()).toHaveAttribute('data-dimmed');
+      expect(screen.getByRole('region', { name: 'Debug' })).toBeVisible();
+    });
+
+    it('a module hidden by its group is dimmed under a heading that says Ignored', async () => {
+      core();
+      const { store } = await renderFrame();
+
+      act(() => {
+        store.dispatch({
+          overview: { ...DEMO_OVERVIEW, hiddenModules: [{ by: 'group', module: 'demo' }] },
+          type: 'overview-loaded',
+        });
+      });
+
+      expect(demoItem()).toHaveTextContent('Demo moduleIgnored');
+      expect(screen.getByRole('region', { name: 'Debug · Ignored' })).toBeVisible();
     });
 
     it("a module's size updates when the overview does", async () => {

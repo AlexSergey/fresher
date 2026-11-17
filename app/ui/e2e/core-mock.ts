@@ -57,6 +57,7 @@ import {
   STORAGE_DICTIONARY,
 } from '../src/test/storage-map';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
+import { IGNORE_HOOK, mockIgnore } from './support/ignore-mock';
 
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
@@ -66,6 +67,8 @@ export type CoreScript = {
   readonly cleanup?: CleanupScript;
   // The scan streams this many events, then waits for `releaseScan` (or Stop): the live states can be looked at.
   readonly hold?: number;
+  // The ignore commands of modules and groups, kept in the tab's session storage (support/ignore-mock.ts).
+  readonly ignoring?: boolean;
   // The scan streams one event every `interval` ms, as the engine does, each asked of Node as JSON and parsed in the
   // page as the channel does (the page never holds the whole scan); meanwhile `get_overview` answers the totals of the findings streamed so far, and `scanned` from the last event on.
   readonly interval?: number;
@@ -111,6 +114,7 @@ type ByCommand = {
   readonly getStoragePlace: string;
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
+  readonly ignoreHook: string;
   readonly interval: null | number;
   readonly overviewOf: string;
   // How many events a scan paced by `interval` streams.
@@ -166,6 +170,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     getStoragePlace: COMMANDS.getStoragePlace,
     hold: script.hold ?? null,
     hooks: CLEANUP_HOOKS,
+    ignoreHook: IGNORE_HOOK,
     interval: script.interval ?? null,
     overviewOf: OVERVIEW_OF,
     paced: script.interval === undefined ? 0 : (script.scan ?? []).length,
@@ -308,7 +313,15 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
           ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
         >
       )[core.hooks.invoke];
-      const answered = command in core.refusals ? undefined : cleanup?.(command, args);
+      const ignoring = (
+        globalThis as unknown as Record<
+          string,
+          | ((command: string, args: unknown, answers: Record<string, unknown>) => Promise<unknown> | undefined)
+          | undefined
+        >
+      )[core.ignoreHook];
+      const answered =
+        command in core.refusals ? undefined : (cleanup?.(command, args) ?? ignoring?.(command, args, answers));
 
       if (answered !== undefined) {
         return answered;
@@ -380,6 +393,9 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       },
     });
   }, setup);
+  if (script.ignoring === true) {
+    await mockIgnore(page);
+  }
   if (script.cleanup !== undefined) {
     await mockCleanup(page, findings, script.cleanup);
   }
@@ -431,10 +447,17 @@ const CLEANUP = {
 const LARGE_MODULES: readonly ModuleInfo[] = [
   {
     categories: LARGE.overview.totals.map(({ category }) => readyCategory(category, 'safe')),
+    group: 'debug',
     id: 'demo',
     settings: ['demo.enabled'],
   },
 ];
+
+// The texts of the Ignored tabs the demo's own dictionary does not have.
+const IGNORING_DICTIONARY = {
+  'core.group.debug.description': 'The demo module and whatever else exists only to try the app.',
+  'core.ignore.groups.description': 'Hides everything the modules of a group find and never cleans it.',
+} as const;
 
 // The scripts the flows and the screenshots play.
 export const SCRIPTS = {
@@ -464,6 +487,17 @@ export const SCRIPTS = {
   development: { answers: { ...ANSWERS, appInfo: { build: { kind: 'development' }, version: '0.1.0' } } },
   // The demo module fails after its first batch, and the scan with it.
   failed: { answers: ANSWERS, scan: DEMO_FAILED_SCAN, scanned: DEMO_FAILED },
+  // The demo scan, streamed at once, with modules and groups that can be ignored and restored.
+  ignoring: {
+    answers: {
+      ...ANSWERS,
+      getDictionary: { ...ANSWERS.getDictionary, ...IGNORING_DICTIONARY },
+      updateSetting: null,
+    },
+    ignoring: true,
+    scan: DEMO_SCAN,
+    scanned: DEMO_OVERVIEW,
+  },
   // A thousand findings in three categories, paged by the lists.
   large: {
     answers: { ...ANSWERS, getDictionary: { ...LARGE.dictionary, ...STORAGE_DICTIONARY }, getModules: LARGE_MODULES },

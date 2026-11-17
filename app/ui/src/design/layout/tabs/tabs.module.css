@@ -1,0 +1,43 @@
+/* A row of tabs on a hairline; the selected tab carries an Iris underline. The panel sits below with a gap. */
+@layer components {
+  .list {
+    display: flex;
+    border-bottom: 1px solid var(--border-subtle);
+    gap: var(--space-5);
+  }
+
+  .tab {
+    padding: var(--space-2) 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--text-secondary);
+    cursor: default;
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-line);
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+    white-space: nowrap;
+  }
+
+  .tab:hover,
+  .tab[data-hover],
+  .tab[aria-selected='true'] {
+    color: var(--text-primary);
+  }
+
+  .tab[aria-selected='true'] {
+    border-bottom-color: var(--accent-text);
+  }
+
+  .tab:focus-visible,
+  .tab[data-focus] {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--focus-ring);
+  }
+
+  .panel {
+    padding-top: var(--space-4);
+  }
+}

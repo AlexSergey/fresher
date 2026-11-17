@@ -69,7 +69,7 @@ test.describe('positive cases', () => {
     test('scanning, paused mid-stream', async ({ page }) => {
       await open(page, SCRIPTS.live);
       await scan(page, '2.3 GB');
-      await expect(page.getByRole('list', { name: 'Parts of the scan' })).toContainText('scanning');
+      await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
       await expect(page.getByText('18,432').first()).toBeVisible();
       await expect(page.getByRole('button', { name: /^Open / })).toHaveCount(2);
 
@@ -300,6 +300,34 @@ test.describe('positive cases', () => {
 
       await looksTheSame(page, 'settings.png');
     });
+
+    test('the page of an ignored module', async ({ page }) => {
+      await open(page, SCRIPTS.ignoring);
+      await scan(page, '2.6 GB');
+      await go(page, /^Demo module/, 'Demo module');
+      await page.getByRole('button', { name: 'Ignore this module' }).click();
+      await expect(page.getByText('You ignore this module.')).toBeVisible();
+
+      await looksTheSame(page, 'module-ignored.png');
+    });
+
+    for (const [tab, file] of [
+      ['Ignored groups', 'settings-ignored-groups.png'],
+      ['Ignored modules', 'settings-ignored-modules.png'],
+      ['Ignored items', 'settings-ignored-items.png'],
+    ] as const) {
+      test(`the Ignored section of Settings, ${tab}`, async ({ page }) => {
+        await open(page, SCRIPTS.ignoring);
+        await go(page, 'Settings', 'Settings');
+        await page.getByRole('switch', { name: 'Ignore Debug' }).click();
+        const section = page.getByRole('region', { exact: true, name: 'Ignored' });
+        await section.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
+        await section.scrollIntoViewIfNeeded();
+
+        await expectNoCspViolation(page);
+        await expect(section).toHaveScreenshot(file);
+      });
+    }
 
     test('a settings file only a newer version can change', async ({ page }) => {
       await open(page, SCRIPTS.readOnly);

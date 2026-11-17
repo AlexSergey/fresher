@@ -167,7 +167,7 @@ mod negative {
         let state = state(&[("/home", 100), ("/home/Developer", 80), ("/home/Developer/cache", 50)])
             .with_owner(Path::new("/home/Developer/cache"), caches().id());
         let cache = found(1, &caches(), "/home/Developer/cache", Some("com.example.App"));
-        let ignored = Ignored { categories: vec!["alpha.caches".into()], paths: Vec::new() };
+        let ignored = Ignored { categories: vec!["alpha.caches".into()], ..Ignored::default() };
 
         let groups = groups(&state, vec![app("com.example.App", "App")], &[cache], &ignored);
 
@@ -175,6 +175,33 @@ mod negative {
             groups.lines(),
             ["app com.example.App App 50", "  data cache 50", "place Developer 30", "part YourFolders 20"]
         );
+    }
+
+    #[test]
+    fn a_hidden_modules_finding_of_an_app_is_its_data() {
+        let state = state(&[("/home", 100), ("/home/Developer", 80), ("/home/Developer/cache", 50)])
+            .with_owner(Path::new("/home/Developer/cache"), caches().id());
+        let cache = found(1, &caches(), "/home/Developer/cache", Some("com.example.App"));
+        let hidden = Ignored { hidden_modules: vec![caches().id().module()], ..Ignored::default() };
+
+        let groups = groups(&state, vec![app("com.example.App", "App")], &[cache], &hidden);
+
+        assert_eq!(
+            groups.lines(),
+            ["app com.example.App App 50", "  data cache 50", "place Developer 30", "part YourFolders 20"]
+        );
+    }
+
+    #[test]
+    fn a_hidden_modules_finding_of_no_app_is_your_folders() {
+        let state = state(&[("/home", 100), ("/home/Developer", 80), ("/home/Developer/cache", 50)])
+            .with_owner(Path::new("/home/Developer/cache"), caches().id());
+        let cache = found(1, &caches(), "/home/Developer/cache", None);
+        let hidden = Ignored { hidden_modules: vec![caches().id().module()], ..Ignored::default() };
+
+        let groups = groups(&state, Vec::new(), &[cache], &hidden);
+
+        assert_eq!(groups.lines(), ["place Developer 80", "part YourFolders 20"], "the cache's 50 stay in Developer");
     }
 
     #[test]
@@ -188,7 +215,7 @@ mod negative {
         ])
         .with_owner(Path::new("/home/Library/Containers/com.example.A/b-cache"), caches().id());
         let cache = found(1, &caches(), "/home/Library/Containers/com.example.A/b-cache", Some("com.example.B"));
-        let ignored = Ignored { categories: vec!["alpha.caches".into()], paths: Vec::new() };
+        let ignored = Ignored { categories: vec!["alpha.caches".into()], ..Ignored::default() };
         let apps = vec![app("com.example.A", "A"), app("com.example.B", "B")];
 
         let groups = groups(&state, apps, &[cache], &ignored);
@@ -513,6 +540,7 @@ mod property {
             let ignored = Ignored {
                 categories: CATEGORIES.iter().zip(&ignored_categories).filter(|&(_, &on)| on).map(|(id, _)| (*id).to_owned()).collect(),
                 paths: paths.iter().zip(&ignored_paths).filter(|&(_, &on)| on).map(|(path, _)| path.clone()).collect(),
+                ..Ignored::default()
             };
             let places = AppPlaces::of(&state, &facts);
             let shares = Shares::of(&state, &ignored);

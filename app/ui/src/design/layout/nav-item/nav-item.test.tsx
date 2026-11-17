@@ -22,6 +22,14 @@ describe('NavItem', () => {
   });
 
   describe('positive cases', () => {
+    it('a dimmed nav item is marked, an ordinary one is not', () => {
+      render(<NavItem dimmed icon={LayoutGrid} label="Muted" onClick={vi.fn()} />);
+      render(<NavItem icon={LayoutGrid} label="Plain" onClick={vi.fn()} />);
+
+      expect(screen.getByRole('button', { name: 'Muted' })).toHaveAttribute('data-dimmed');
+      expect(screen.getByRole('button', { name: 'Plain' })).not.toHaveAttribute('data-dimmed');
+    });
+
     it('the active nav item has aria-current page', () => {
       render(<NavItem active icon={LayoutGrid} label="Overview" onClick={vi.fn()} />);
 

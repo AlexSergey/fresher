@@ -21,6 +21,7 @@ mod error;
 mod event;
 mod finding;
 mod folder;
+mod group;
 mod hash;
 mod ids;
 mod interest;
@@ -63,9 +64,9 @@ pub use cleanup::{
     TrashedItem, VolumeSpace,
 };
 pub use command::{
-    CategoryInfo, CategoryTotal, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, IgnoreTarget, IgnoredCount,
-    IgnoredEntry, LastScan, Locale, ModuleInfo, Operation, Overview, OwnData, SettingUpdate, SettingsFile,
-    SettingsView,
+    CategoryInfo, CategoryTotal, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, HiddenBy, HiddenModule,
+    IgnoreTarget, IgnoredCount, IgnoredEntry, LastScan, Locale, ModuleInfo, Operation, Overview, OwnData,
+    SettingUpdate, SettingsFile, SettingsView,
 };
 pub use coverage::{Coverage, NotEntered, UnreadableCount};
 pub use danger::DangerLevel;
@@ -77,6 +78,7 @@ pub use error::{CommandError, Refusal};
 pub use event::{Event, ModuleOutcome, ScanKind, ScanOutcome};
 pub use finding::{Finding, NewFinding};
 pub use folder::{EntryAccess, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError};
+pub use group::ModuleGroup;
 pub use hash::stable_hash;
 pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Timestamp, ToolId};
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
@@ -92,9 +94,9 @@ pub use removability::{EntryFacts, Removability};
 pub use removal::{Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
-    IGNORE_CATEGORIES, IGNORE_PATHS, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SchemaError, SettingDescriptor,
-    SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema,
-    Unit,
+    IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, ModuleSettings, ResolvedSettings, SCAN_ROOTS,
+    SchemaError, SettingDescriptor, SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind, SettingProblem,
+    SettingValue, SettingsSchema, Unit,
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{

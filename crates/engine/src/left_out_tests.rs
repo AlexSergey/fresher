@@ -30,7 +30,7 @@ fn line(count: &LeftOutCount) -> (&str, &str, u32, u64) {
 }
 
 mod negative {
-    use fresher_core::{DangerLevel, Event, ModuleError, ModuleOutcome};
+    use fresher_core::{DangerLevel, Event, ModuleError, ModuleGroup, ModuleOutcome};
 
     use serde_json::json;
 
@@ -179,6 +179,33 @@ mod negative {
         let events = scan(&engine);
 
         assert_eq!(lines(&left_outs(&events, "alpha")), [("alpha.logs", "alpha.left-out.open", 1, 2)]);
+    }
+
+    #[test]
+    fn a_left_out_of_an_ignored_module_or_group_is_not_counted() {
+        let module = |id: &'static str, category: &'static str, reason: &'static str| {
+            TestModule::builder(id).category(category, DangerLevel::Safe).problems(&[reason]).on_finish(
+                move |_, out| {
+                    out.left_out(item(category, reason, 1));
+                    Ok(())
+                },
+            )
+        };
+        let ignoring = |key: &str, value| {
+            let settings = MemorySettings::with(&[(key, value)]);
+            let alpha = module("alpha", "alpha.caches", "alpha.left-out.open");
+            let modules = [alpha, module("beta", "beta.logs", "beta.left-out.open").group(ModuleGroup::Debug)];
+            let fixture = modules.into_iter().fold(Fixture::new(ScriptedWalk::new()), Fixture::module);
+            scan(&fixture.settings(settings).engine())
+        };
+
+        let by_module = ignoring("core.ignore.modules", json!(["alpha"]));
+        let by_group = ignoring("core.ignore.groups", json!(["debug"]));
+
+        assert_eq!(lines(&left_outs(&by_module, "alpha")), []);
+        assert_eq!(lines(&left_outs(&by_module, "beta")), [("beta.logs", "beta.left-out.open", 1, 1)]);
+        assert_eq!(lines(&left_outs(&by_group, "alpha")), [("alpha.caches", "alpha.left-out.open", 1, 1)]);
+        assert_eq!(lines(&left_outs(&by_group, "beta")), []);
     }
 
     #[test]

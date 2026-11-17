@@ -17,6 +17,7 @@ import { checkedOf } from '../../state/selection';
 import { useStorageMeaning } from '../../state/storage';
 import { useCore, useCoreStore } from '../../state/store';
 import { useAccess } from '../permission/use-access';
+import { countsOf, firstWithEntry } from '../settings/ignored-tab';
 import { RescanNotice } from '../settings/rescan-notice';
 import { useModules } from '../use-modules';
 import { useScanActions } from '../use-scan-actions';
@@ -51,7 +52,9 @@ export const OverviewScreen = (): JSX.Element => {
   const phase = phaseOf(status, lastScan, outcome);
   const scanning = phase === 'scanning';
   const totals = overview?.totals ?? [];
-  const ignoredCount = (overview?.ignored.categories ?? 0) + (overview?.ignored.paths ?? 0);
+  const ignored = overview?.ignored;
+  const ignoredCount =
+    ignored === undefined ? 0 : ignored.groups + ignored.modules + ignored.categories + ignored.paths;
   const volumes = storageMap?.volumes ?? [];
   const views = phase === 'scanning' || phase === 'finished' || phase === 'partial';
   // Asked in both views: the bar's tone of Explained comes from it, so switching the view changes nothing above it.
@@ -144,7 +147,10 @@ export const OverviewScreen = (): JSX.Element => {
             <span>{t('ui.screen.overview.ignored', { count: { kind: 'count', value: ignoredCount } })}</span>
             <Button
               onClick={() => {
-                navigation.navigate({ kind: 'settings' });
+                navigation.navigate({
+                  kind: 'settings',
+                  tab: ignored === undefined ? 'groups' : firstWithEntry(countsOf(ignored)),
+                });
               }}
               size="small"
               variant="ghost"

@@ -22,6 +22,8 @@ export const STORY_DICTIONARY: Dictionary = {
   ...TWELVE_CATEGORIES.dictionary,
   ...whatOfLargeGroups,
   'core.completeness.partial': 'Some files could not be read, so the real size is a little bigger.',
+  'core.group.debug.name': 'Debug',
+  'core.group.development.name': 'Development',
   'core.left-out.summary.one': '{count} item left out ({size}):',
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'demo.caches.what': 'Example data: made-up cache folders of made-up apps, shown by the demo module.',
@@ -59,7 +61,8 @@ export const DEMO_FINISHED: Overview = DEMO_OVERVIEW;
 export const DEMO_PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
   found: partial(DEMO_OVERVIEW.found),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
@@ -81,7 +84,8 @@ const complete = (bytes: number): Sizes => ({
 // The demo scan's overview half way: its first batch counted.
 export const DEMO_RUNNING: Overview = {
   found: complete(2_250_000_000),
-  ignored: { categories: 0, paths: 0 },
+  hiddenModules: [],
+  ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: null,
   status: { scan: 1, state: 'scanning' },
   totals: [

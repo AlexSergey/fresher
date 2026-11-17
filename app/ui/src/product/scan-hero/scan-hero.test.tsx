@@ -160,7 +160,7 @@ describe('ScanHero', () => {
         onStop,
         overview: DEMO_RUNNING,
         phase: 'scanning',
-        progress: { entries: 10, modules: [{ module: 'demo', state: { kind: 'running' } }] },
+        progress: { entries: 10, modules: [{ group: 'debug', module: 'demo', state: { kind: 'running' } }] },
       });
 
       fireEvent.click(screen.getByRole('button', { name: 'Stop' }));

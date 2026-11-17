@@ -45,8 +45,8 @@ export const stories = storiesOf('ScanHero', {
       progress: {
         entries: 48_213,
         modules: [
-          { module: 'demo', state: { kind: 'running' } },
-          { module: 'xcode', state: { kind: 'completed' } },
+          { group: 'debug', module: 'demo', state: { kind: 'running' } },
+          { group: 'development', module: 'xcode', state: { kind: 'completed' } },
         ],
       },
     }),

@@ -9,7 +9,8 @@ IDEs. Their data is regenerable, but not all of it is equally cheap to regenerat
 
 ## Direction
 
-One section per tool, each category with its danger level:
+One section per tool, all in the group Development ([plan 015](../plans/015-module-groups/readme.md)), each
+category with its danger level:
 
 - **Xcode**: DerivedData (**Safe**), Archives (**High** — they hold shipped builds' symbols), device support files of
   old iOS versions (**Low**), old simulators and their runtimes (**Medium**, through `xcrun simctl`), previews cache.

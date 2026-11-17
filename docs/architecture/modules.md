@@ -29,11 +29,14 @@ small `thiserror` error of its own: no panicking path.
 
 | Method            | What the module does there                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------- |
-| `descriptor()`    | its id, categories (each with its danger level), settings and dictionary (`locales/en.json`)        |
+| `descriptor()`    | its id, group, categories (each with its danger level), settings and dictionary (`locales/en.json`) |
 | `interests()`     | what the walk should report to it: a folder name, a path under a known folder, a marker file or an extension |
 | `on_match(…)`     | one match of one of its interests (`matched.interest` is the index in its own list) → findings     |
 | `finish(…)`       | the end of the walk: work that needs every match (the newest version), or that reads no disk (a tool) |
 
+- A module names its group: `ModuleDescriptor::new(id, group, categories, settings, locales)`, a `ModuleGroup` of the
+  core (`Development`; `Debug` for the dev-only `demo` and `trial`, which the registry refuses in a release build). The
+  screens show modules under their group's name (`core.group.<group>.name`, `.description`).
 - A module's problems are declared: `ModuleDescriptor::with_problems(keys)` lists every key it may report. A failed
   part returns `ModuleError::Failed { reason }` with a declared `Text` (a technical detail goes under `DETAIL_ARG`,
   never named in the sentence). An item the module recognized and does not offer is `out.left_out(LeftOutItem { … })`:
@@ -140,6 +143,8 @@ Through `fresher-testing` ([`../testing.md`](../testing.md)):
 
 A module ships only when every box is ticked:
 
+- [ ] The module names its group (`ModuleGroup`); a `Debug` module never ships (the registry refuses it in a
+      release build, `RegistryError::DebugModule`).
 - [ ] Every category is documented in [`../categories/`](../categories/README.md) as `<id>-<name>.md`, with the same
       danger level as its descriptor, and listed in the catalogue table.
 - [ ] Every category has its five texts; every setting, `<id>.enabled` included, its label and description.

@@ -113,8 +113,11 @@ cleanups of a hundred items through the real journal.
   unreadable file is read-only, an older one is migrated line by line, rotation by rename.
 - `crates/e2e` — the core's end-to-end and golden tests (a crate with tests only). `tests/ignore.rs` scans a fixture
   home with the real settings file: ignored categories and items leave every answer, Restore brings them back
-  without a rescan (`fixtures/golden/ignore.json`).
+  without a rescan (`fixtures/golden/ignore.json`); the flows of ignoring a module and a group (an unknown module
+  refused, the findings, totals, storage map and `hiddenModules` follow, restore without a rescan, a new engine on
+  the same data folder keeps the lists, a cleanup plan over an ignored module drops its items).
 - `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
+  `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
   level or the removal.
 - `app/tauri/tests/bindings.rs` — the IPC types: every type the commands and events carry is rendered by `ts-rs` and
@@ -141,7 +144,8 @@ cleanups of a hundred items through the real journal.
   the scripts the flows and screenshots play (`cleaning`, `cleaningHeld`, `cleaningLeftOut`, `cleanupsEmpty` for the
   cleanup); `flows.spec.ts` walks select → review → confirm to the Trash → progress → result → Cleanups → put back,
   the permanent path, Stop mid-cleanup, the items left out, a refused plan and the quit question;
-  `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
+  its ignore part (`e2e/support/ignore-mock.ts`, `SCRIPTS.ignoring`) answers `ignore` and `restore_ignored` for
+  modules, groups and items and keeps the lists for the session; `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
   reference engine (the app runs in WebKit on macOS); Chromium runs too. The suite runs on `npm run build:e2e` (the
   app and the gallery in `dist-e2e/`), served with the app's production CSP; every spec checks that the policy
   refused nothing.

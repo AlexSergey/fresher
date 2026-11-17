@@ -517,8 +517,11 @@
       "logical": 3017663212,
       "reclaimable": 2951531724
     },
+    "hiddenModules": [],
     "ignored": {
       "categories": 1,
+      "groups": 0,
+      "modules": 0,
       "paths": 0
     },
     "lastScan": {

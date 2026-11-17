@@ -11,8 +11,8 @@ use std::time::Duration;
 use fresher_core::{
     ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan,
     DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
-    ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, Need,
-    NewFinding, Pattern, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId,
+    ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
+    Need, NewFinding, Pattern, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId,
     StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem,
     Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
@@ -50,6 +50,7 @@ enum OnMatch {
 /// Builds a [`TestModule`].
 pub(crate) struct TestModuleBuilder {
     id: ModuleId,
+    group: ModuleGroup,
     categories: Vec<CategoryDescriptor>,
     tool_checks: Vec<ToolCommand>,
     problems: Vec<TextKey>,
@@ -63,10 +64,11 @@ pub(crate) struct TestModuleBuilder {
 }
 
 impl TestModule {
-    /// A module `id` without categories, settings, texts or interests, that finds nothing.
+    /// A module `id` of the group Development without categories, settings, texts or interests, that finds nothing.
     pub(crate) fn builder(id: &'static str) -> TestModuleBuilder {
         TestModuleBuilder {
             id: ModuleId::new(id).unwrap(),
+            group: ModuleGroup::Development,
             categories: Vec::new(),
             tool_checks: Vec::new(),
             problems: Vec::new(),
@@ -81,6 +83,11 @@ impl TestModule {
 }
 
 impl TestModuleBuilder {
+    pub(crate) const fn group(mut self, group: ModuleGroup) -> Self {
+        self.group = group;
+        self
+    }
+
     pub(crate) fn category(mut self, id: &'static str, danger: DangerLevel) -> Self {
         self.categories.push(CategoryDescriptor::new(CategoryId::new(self.id, id).unwrap(), danger));
         self
@@ -147,7 +154,7 @@ impl TestModuleBuilder {
 
     pub(crate) fn build(self) -> TestModule {
         let locales = Locales { en: self.locales };
-        let mut descriptor = ModuleDescriptor::new(self.id, self.categories, vec![], locales).unwrap();
+        let mut descriptor = ModuleDescriptor::new(self.id, self.group, self.categories, vec![], locales).unwrap();
         for check in self.tool_checks {
             descriptor = descriptor.with_tool_check(check).unwrap();
         }

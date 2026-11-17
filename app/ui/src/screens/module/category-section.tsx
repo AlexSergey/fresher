@@ -15,7 +15,6 @@ import { TreeRow } from '../../design/data/tree-row/tree-row';
 import { Button } from '../../design/primitives/button/button';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
 import { t, tText } from '../../i18n';
-import { failureOf, ignore } from '../../ipc';
 import { FindingList } from '../../product/finding-list/finding-list';
 import { levelName } from '../../product/finding-row/texts';
 import { LeftOutLines } from '../../product/left-out-lines/left-out-lines';
@@ -23,6 +22,7 @@ import { honestSize } from '../../product/sizes';
 import { checkedOf } from '../../state/selection';
 import { useCore, useCoreStore } from '../../state/store';
 import { useFindings } from '../../state/use-findings';
+import { useIgnoreCommands } from '../settings/use-ignore-commands';
 import styles from './module-screen.module.css';
 
 export type CategorySectionProps = {
@@ -105,6 +105,7 @@ export const CategorySection = ({
   total,
 }: CategorySectionProps): JSX.Element => {
   const store = useCoreStore();
+  const commands = useIgnoreCommands();
   const checked = useCore((state) => checkedOf(state.selection, category.id));
   const name = textOf(`${category.id}.name`);
   const named = { name: { kind: 'text', value: name } } as const;
@@ -147,9 +148,7 @@ export const CategorySection = ({
       <div className={styles.ignore}>
         <Button
           onClick={() => {
-            ignore({ category: category.id, kind: 'category' }).catch((error: unknown) => {
-              store.dispatch({ failure: failureOf(error), type: 'command-failed' });
-            });
+            commands.ignore({ category: category.id, kind: 'category' });
           }}
           size="small"
           variant="ghost"

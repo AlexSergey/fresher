@@ -51,6 +51,7 @@ const LARGE = largeScan({ categories: 12, count: 50_000 });
 const modulesOf = (totals: readonly CategoryTotal[]): readonly ModuleInfo[] => [
   {
     categories: totals.map(({ category }) => readyCategory(category, 'safe')),
+    group: 'debug',
     id: 'demo',
     settings: ['demo.enabled'],
   },

@@ -17,6 +17,8 @@ export type ModuleSectionProps = {
   // What the module found in this scan.
   readonly found: Sizes;
   readonly module: ModuleId;
+  // The page already has the module's name as its heading: the section is named for screen readers only.
+  readonly nameless?: boolean;
   // Still scanning, or how its part of the scan ended.
   readonly state: ModuleOutcome | { readonly kind: 'scanning' };
 };
@@ -65,15 +67,28 @@ const Status = ({ state }: { readonly state: SectionState }): JSX.Element => {
 
 // A module's part of a page: its name, what it found and how its scan went above its content; a module that failed
 // says why, in the core's words.
-export const ModuleSection = ({ children, found, module, state }: ModuleSectionProps): JSX.Element => {
+export const ModuleSection = ({
+  children,
+  found,
+  module,
+  nameless = false,
+  state,
+}: ModuleSectionProps): JSX.Element => {
   const headingId = useId();
 
   return (
-    <section aria-labelledby={headingId} className={styles.section}>
+    <section
+      {...(nameless
+        ? { 'aria-label': tText({ args: {}, key: `${module}.enabled.label` }) }
+        : { 'aria-labelledby': headingId })}
+      className={styles.section}
+    >
       <header className={styles.header}>
-        <h2 className={styles.name} id={headingId}>
-          {tText({ args: {}, key: `${module}.enabled.label` })}
-        </h2>
+        {nameless ? null : (
+          <h2 className={styles.name} id={headingId}>
+            {tText({ args: {}, key: `${module}.enabled.label` })}
+          </h2>
+        )}
         <SizeText {...honestSize(found)} size="callout" />
         <Status state={state} />
       </header>

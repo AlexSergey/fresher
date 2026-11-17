@@ -180,7 +180,7 @@ mod tests {
                 SettingValue::Choice("fast".into()),
             ),
         ];
-        ModuleDescriptor::new(demo(), vec![], settings, Locales { en: "{}" }).unwrap()
+        ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], settings, Locales { en: "{}" }).unwrap()
     }
 
     fn schema() -> SettingsSchema {
@@ -279,6 +279,8 @@ mod tests {
                     "core.access.documents",
                     "core.access.downloads",
                     "core.access.other-apps-data",
+                    "core.ignore.modules",
+                    "core.ignore.groups",
                     "core.ignore.categories",
                     "core.ignore.paths",
                     "demo.enabled",
@@ -320,9 +322,14 @@ mod tests {
                 SettingValue::Folders(vec![PathBuf::from("/x")]),
             )
             .unwrap();
-            let module =
-                crate::ModuleDescriptor::new(super::demo(), vec![], vec![folders], crate::Locales { en: "{}" })
-                    .unwrap();
+            let module = crate::ModuleDescriptor::new(
+                super::demo(),
+                crate::ModuleGroup::Debug,
+                vec![],
+                vec![folders],
+                crate::Locales { en: "{}" },
+            )
+            .unwrap();
             let settings = SettingsSchema::new([&module]).unwrap().resolve(&stored(json!({}))).module(super::demo());
 
             assert_eq!(settings.folders("extra"), Some([PathBuf::from("/x")].as_slice()));

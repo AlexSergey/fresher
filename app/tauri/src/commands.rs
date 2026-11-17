@@ -461,7 +461,7 @@ mod tests {
             assert!(
                 !get_settings(shell.engine()).unwrap().values.values().any(|value| *value == SettingValue::Number(3))
             );
-            assert_eq!(ignored, fresher_core::IgnoredCount { categories: 1, paths: 0 });
+            assert_eq!(ignored, fresher_core::IgnoredCount { categories: 1, ..fresher_core::IgnoredCount::default() });
             assert_eq!(get_overview(shell.engine()).unwrap().ignored, fresher_core::IgnoredCount::default());
         }
 

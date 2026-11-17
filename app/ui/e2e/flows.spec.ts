@@ -42,6 +42,18 @@ const reviewAll = async (page: Page): Promise<void> => {
   await expect(heading(page, 'Review')).toBeFocused();
 };
 
+const demoModule = (page: Page): Locator => page.getByRole('button', { name: /^Demo module/ });
+
+// Scans the demo, then opens Settings (the Ignored tabs).
+const openIgnoring = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.ignoring);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(cards(page)).toHaveCount(2);
+};
+
+const openSettings = (page: Page): Promise<void> => page.getByRole('button', { exact: true, name: 'Settings' }).click();
+
 test.beforeEach(async ({ page }) => {
   await failOnCspViolation(page);
 });
@@ -51,6 +63,15 @@ test.afterEach(async ({ page }) => {
 });
 
 test.describe('negative cases', () => {
+  test('nothing ignored shows no ignored line on the overview and no note on the module page', async ({ page }) => {
+    await openIgnoring(page);
+
+    await expect(page.getByText(/you ignored is left out/)).toHaveCount(0);
+    await demoModule(page).click();
+    await expect(page.getByText('You ignore this module.')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ignore this module' })).toBeVisible();
+  });
+
   test('a second Scan while the core runs one shows its refusal', async ({ page }) => {
     await mockCore(page, SCRIPTS.unannounced);
     await page.goto('/');
@@ -141,7 +162,7 @@ test.describe('positive cases', () => {
     await page.goto('/');
 
     await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(page.getByRole('list', { name: 'Parts of the scan' })).toContainText('scanning');
+    await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
 
     await page.getByRole('button', { name: 'Stop' }).click();
 
@@ -172,7 +193,7 @@ test.describe('positive cases', () => {
   test('switching the demo module off in the settings', async ({ page }) => {
     await mockCore(page, SCRIPTS.settings);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { exact: true, name: 'Settings' }).click();
     const enabled = page.getByRole('switch', { name: 'Demo module' });
     await expect(enabled).toBeChecked();
 
@@ -184,7 +205,7 @@ test.describe('positive cases', () => {
   test('adding a scan folder with the picker, then resetting the list', async ({ page }) => {
     await mockCore(page, SCRIPTS.settings);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { exact: true, name: 'Settings' }).click();
     const folders = page.getByRole('group', { name: 'Folders to scan' });
 
     await folders.getByRole('button', { name: 'Add folder…' }).click();
@@ -197,7 +218,7 @@ test.describe('positive cases', () => {
   test('Reset all settings asks first and shows the size of Fresher’s own data', async ({ page }) => {
     await mockCore(page, SCRIPTS.settings);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { exact: true, name: 'Settings' }).click();
 
     await expect(page.getByText(/take 2 MB of the 50 MB/u)).toBeVisible();
     await page.getByRole('button', { name: 'Reset all settings…' }).click();
@@ -320,5 +341,111 @@ test.describe('positive cases', () => {
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(removeButton(page)).toBeFocused();
+  });
+
+  test('ignoring the group Debug from Settings hides its totals and turning it off brings them back', async ({
+    page,
+  }) => {
+    await openIgnoring(page);
+    await openSettings(page);
+
+    await page.getByRole('switch', { name: 'Ignore Debug' }).click();
+
+    await expect(page.getByRole('navigation').getByText('Debug · Ignored')).toBeVisible();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
+    await openSettings(page);
+    await page.getByRole('switch', { name: 'Ignore Debug' }).click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(2);
+    await expect(page.getByText(/you ignored is left out/)).toHaveCount(0);
+  });
+
+  test('ignoring the module from Settings dims it in the sidebar and Restore on its page brings it back', async ({
+    page,
+  }) => {
+    await openIgnoring(page);
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+
+    await page.getByRole('switch', { name: 'Ignore Demo module' }).click();
+
+    await expect(demoModule(page)).toContainText('Ignored');
+    await demoModule(page).click();
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await page.getByRole('button', { exact: true, name: 'Restore' }).click();
+    await expect(page.getByText('You ignore this module.')).toHaveCount(0);
+    await expect(demoModule(page)).not.toContainText('Ignored');
+  });
+
+  test('a module of an ignored group is locked with its note and the group’s Restore frees it', async ({ page }) => {
+    await openIgnoring(page);
+    await openSettings(page);
+    await page.getByRole('switch', { name: 'Ignore Debug' }).click();
+    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+
+    const locked = page.getByRole('switch', { name: 'Ignore Demo module' });
+    await expect(locked).toBeDisabled();
+    await expect(page.getByText('Ignored with its group: Debug')).toBeVisible();
+    await demoModule(page).click();
+    await page.getByRole('button', { name: 'Restore the group' }).click();
+    await expect(page.getByText('You ignore this module.')).toHaveCount(0);
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeEnabled();
+  });
+
+  test('ignored modules and groups stay ignored after a reload', async ({ page }) => {
+    await openIgnoring(page);
+    await demoModule(page).click();
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+
+    await page.reload();
+
+    await expect(demoModule(page)).toContainText('Ignored');
+    await openSettings(page);
+    await expect(page.getByRole('tab', { name: /^Ignored modules/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
+  });
+
+  test('the ignored line on the overview opens Settings on the tab with an entry', async ({ page }) => {
+    await openIgnoring(page);
+    await demoModule(page).click();
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+
+    await page.getByRole('button', { name: 'Show in Settings' }).click();
+
+    await expect(page.getByRole('tab', { name: /^Ignored modules/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
+  });
+
+  test('Ignore this module on the module page moves it to the Ignored modules tab', async ({ page }) => {
+    await openIgnoring(page);
+    await demoModule(page).click();
+
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await openSettings(page);
+    await expect(page.getByRole('tab', { name: 'Ignored modules · 1' })).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
+  });
+
+  test('ignoring a module drops what was ticked from the selection', async ({ page }) => {
+    await openIgnoring(page);
+    await demoModule(page).click();
+    await page
+      .getByRole('checkbox', { name: /^Select / })
+      .first()
+      .check();
+    await expect(page.getByRole('button', { name: /^Review \d+ items? selected/ })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
   });
 });

@@ -141,11 +141,16 @@ No database: the app keeps its own state in small plain files, with nothing to i
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,
   `ignored`, `permissions`, or `module` for every module's) and its **effect** (`now`, or `next-scan`: a change marks
   the last scan, and the UI offers "Rescan to apply"; the app never rescans on its own). The kinds are `switch`,
-  `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder), `ids` and `paths`
-  (the ignore lists). `reset_settings` puts every setting but the ignore lists back to its default in one save.
-- **The ignore list** (`core.ignore.categories`, `core.ignore.paths`): the engine keeps a scan's ignored findings in
-  memory but leaves them out of every answer and plan, so a restore shows them again without a rescan; the cleaner
-  gets the ignored paths as protection. `ignore` and `restore_ignored` change the lists through the same check and
+  `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder), `ids` (of
+  categories, modules or groups, checked by what they hold: `IdOf`) and `paths` (the ignore lists). `reset_settings` puts every setting but the ignore lists back to its default in one save.
+- **The ignore list** (`core.ignore.modules`, `core.ignore.groups`, `core.ignore.categories`, `core.ignore.paths`):
+  the engine keeps a scan's ignored findings in memory but leaves them out of every answer and plan, so a restore
+  shows them again without a rescan; the cleaner gets the ignored paths as protection. An ignored group hides every
+  registered module of it (resolved through the registry when the lists are taken), whatever the module's own entry
+  says; `ignore` refuses a module or a group nobody registered. Ignoring a module is not `<module>.enabled`: the
+  module still runs, and its findings are only hidden. The overview says which modules are hidden and why
+  (`Overview.hiddenModules`, each `{ module, by }`, `by` the module's own entry or its group), so the UI never
+  works it out. `ModuleInfo.group` carries each module's group; the engine's `hidden_modules` resolves the lists. `ignore` and `restore_ignored` change the lists through the same check and
   save as `update_setting`. The app's own commands beside the engine: `pick_folder` (the system's folder picker,
   `tauri-plugin-dialog`, called from Rust only) and `get_own_data` (the footprint below).
 - **Atomic writes**: a temporary file in the same folder, `fsync`, then a rename.
@@ -300,8 +305,8 @@ per (category, reason) into `LeftOutCount` (saturating, the weakest completeness
 and sends them with `ModuleFinished.left_out`, sorted by category, then by reason key, for every outcome (completed,
 failed, cancelled, panicked). A left-out whose category is not the module's own is dropped and logged once as a
 warning, and the contract refuses it (`ForeignLeftOutCategory`); an undeclared reason is counted and logged once.
-A left-out of a category in the scan's ignore list is not counted, and the module page drops a left-out-only category
-once it is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
+A left-out of a category in the scan's ignore list, or of an ignored module or a module of an ignored group, is not
+counted, and the module page drops a left-out-only category once it, its module or its group is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
 UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports none yet.
 
 ### A failed start
@@ -384,6 +389,13 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   Quit (⌘Q, an item of the app's own in `app/tauri/src/shell.rs`) publishes `quit-requested`, and the UI asks; **Stop
   and quit** stops after the item in flight. The Dock's Quit cannot be held
   ([`../known-issues/app-quit-during-cleanup.md`](../known-issues/app-quit-during-cleanup.md)).
+- **Modules by group**: the sidebar, the scan's chips and Settings list modules under their group
+  (`product/module-groups.ts`, texts `core.group.<group>.name`); a hidden module stays in the sidebar, dimmed with
+  "Ignored", and its page says why with Restore.
+- **Settings → Ignored** (`screens/settings/ignored-group.tsx`) has three tabs, "Ignored groups", "Ignored
+  modules" and "Ignored items" (plan 005's categories and paths), each with its count; the tabs are the design
+  system's `Tabs` (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). The overview's "N ignored"
+  link opens the first tab that has an entry (`Screen.settings.tab`).
 - **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`overview`, `module`, `review`,
   `cleanups`, `cleanup`, `settings`); no router. When the focused element leaves the screen, the focus goes to the
   screen's heading (`screens/keep-focus.ts`).

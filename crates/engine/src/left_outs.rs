@@ -89,10 +89,16 @@ mod tests {
     fn descriptor() -> ModuleDescriptor {
         let categories =
             ["alpha.caches", "alpha.logs"].map(|id| CategoryDescriptor::new(category(id), DangerLevel::Safe)).to_vec();
-        ModuleDescriptor::new(ModuleId::new("alpha").unwrap(), categories, vec![], Locales { en: "{}" })
-            .unwrap()
-            .with_problems(vec![key("alpha.left-out.open")])
-            .unwrap()
+        ModuleDescriptor::new(
+            ModuleId::new("alpha").unwrap(),
+            fresher_core::ModuleGroup::Development,
+            categories,
+            vec![],
+            Locales { en: "{}" },
+        )
+        .unwrap()
+        .with_problems(vec![key("alpha.left-out.open")])
+        .unwrap()
     }
 
     fn item(category_id: &'static str, reason: &str, bytes: u64) -> LeftOutItem {

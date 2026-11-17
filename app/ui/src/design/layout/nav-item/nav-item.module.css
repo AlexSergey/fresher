@@ -35,6 +35,10 @@
     color: var(--text-primary);
   }
 
+  .item[data-dimmed]:not([aria-current='page']) {
+    color: var(--text-tertiary);
+  }
+
   .item:focus-visible,
   .item[data-focus] {
     box-shadow: var(--focus-ring);

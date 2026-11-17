@@ -32,16 +32,19 @@ export const placeTop = (volume: number): PlaceAt => ({
   volume,
 });
 
+// The tabs of Settings' Ignored section.
+export type IgnoredTab = 'groups' | 'items' | 'modules';
+
 // The screen the app shows; no router: the app frame renders the one that is current. A module's page may be opened
 // at one of its categories (from the overview's cards): the page scrolls to it and expands it. `cleanups` is the
-// history of cleanups, `cleanup` one of them.
+// history of cleanups, `cleanup` one of them. Settings may be opened on a tab of its Ignored section.
 export type Screen =
   | { readonly category?: CategoryId; readonly kind: 'module'; readonly module: ModuleId }
   | { readonly cleanup: CleanupId; readonly kind: 'cleanup' }
   | { readonly kind: 'cleanups' }
   | { readonly kind: 'overview' }
   | { readonly kind: 'review' }
-  | { readonly kind: 'settings' };
+  | { readonly kind: 'settings'; readonly tab?: IgnoredTab };
 
 const OVERVIEW: Screen = { kind: 'overview' };
 

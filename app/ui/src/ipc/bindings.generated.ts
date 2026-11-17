@@ -31,7 +31,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, };
 
 /**
  * The answer of `get_overview`.
@@ -45,7 +45,11 @@ found: Sizes,
 /**
  * How many entries the ignore lists hold.
  */
-ignored: IgnoredCount, };
+ignored: IgnoredCount, 
+/**
+ * The registered modules the ignore lists hide, each with the reason, in registration order.
+ */
+hiddenModules: Array<HiddenModule>, };
 
 /**
  * What the engine is doing.
@@ -73,17 +77,27 @@ settingsChanged: boolean, };
 /**
  * The sizes of the ignore lists, for the overview's quiet note.
  */
-export type IgnoredCount = { categories: number, paths: number, };
+export type IgnoredCount = { categories: number, paths: number, modules: number, groups: number, };
 
 /**
- * What the user asks to ignore: a category, or one finding by its path.
+ * A module whose findings the ignore lists hide.
  */
-export type IgnoreTarget = { "kind": "category", category: string, } | { "kind": "finding", finding: FindingId, };
+export type HiddenModule = { module: ModuleId, by: HiddenBy, };
+
+/**
+ * Why a module is hidden: its own entry, or its group's (which wins when both hold).
+ */
+export type HiddenBy = "module" | "group";
+
+/**
+ * What the user asks to ignore: a category, one finding by its path, a module, or a group of modules.
+ */
+export type IgnoreTarget = { "kind": "category", category: string, } | { "kind": "finding", finding: FindingId, } | { "kind": "module", module: string, } | { "kind": "group", group: ModuleGroup, };
 
 /**
  * An entry of the ignore lists, as the settings hold it.
  */
-export type IgnoredEntry = { "kind": "category", category: string, } | { "kind": "path", path: string, };
+export type IgnoredEntry = { "kind": "category", category: string, } | { "kind": "path", path: string, } | { "kind": "module", module: string, } | { "kind": "group", group: ModuleGroup, };
 
 /**
  * The answer of `get_own_data`: what the app's own data folder takes on disk, against its budget.
@@ -119,9 +133,15 @@ export type UnreadableCount = { reason: Unreadable, folders: number, unlockedBy:
 export type CategoryTotal = { category: CategoryId, count: number, sizes: Sizes, highestDanger: DangerLevel, };
 
 /**
+ * The named group a module belongs to; the sidebar and the overview show modules under it. The order of the variants
+ * is the screen's order, `Debug` last.
+ */
+export type ModuleGroup = "development" | "debug";
+
+/**
  * A module as the UI sees it: what the generic module page renders.
  */
-export type ModuleInfo = { id: ModuleId, categories: Array<CategoryInfo>, 
+export type ModuleInfo = { id: ModuleId, group: ModuleGroup, categories: Array<CategoryInfo>, 
 /**
  * Its settings' keys, `<module>.enabled` first.
  */
@@ -304,7 +324,12 @@ export type SettingKey = string;
 /**
  * What kind of value a setting holds, and its limits.
  */
-export type SettingKind = { "kind": "switch" } | { "kind": "number", min: number, max: number, unit: Unit | null, } | { "kind": "choice", options: Array<string>, } | { "kind": "folders" } | { "kind": "ids" } | { "kind": "paths" };
+export type SettingKind = { "kind": "switch" } | { "kind": "number", min: number, max: number, unit: Unit | null, } | { "kind": "choice", options: Array<string>, } | { "kind": "folders" } | { "kind": "ids", of: IdOf, } | { "kind": "paths" };
+
+/**
+ * What the ids of an `Ids` setting name.
+ */
+export type IdOf = "category" | "module" | "group";
 
 /**
  * Where the settings screen shows a setting. Only the core's settings are in the core's groups; a module's are in

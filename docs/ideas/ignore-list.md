@@ -7,6 +7,11 @@ path; ignored things leave every answer and are never removed; the settings list
 ignore holds while the path is the same. The Ignore button on a single item is
 [deferred](../deferred/ignore-an-item-button.md).
 
+**Taken by plan [015](../plans/015-module-groups/readme.md)** (2026-11-17): a whole module and a whole group of
+modules can be ignored, from the module's page and from Settings (three tabs: groups, modules, items); an ignored
+module stays in the sidebar, dimmed, and is restored without a rescan. The Ignore button on a single item stays
+[deferred](../deferred/ignore-an-item-button.md).
+
 ## Problem
 
 Some suggestions are right in general and wrong for a particular person. Example: the Docker section offers to remove
