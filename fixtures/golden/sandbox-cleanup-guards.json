@@ -1,0 +1,220 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/hard-linked/fresher-trial-cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/fresher-trial-cache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": [
+      {
+        "path": "home/.Trash/old/fresher-trial-cache",
+        "reason": "protected"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 8192,
+      "module": "trial",
+      "subject": "home/.Trash/old/fresher-trial-cache"
+    },
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 8192,
+      "module": "trial",
+      "subject": "home/Library/Caches/fresher-trial-cache"
+    },
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 12288,
+      "module": "trial",
+      "subject": "home/hard-linked/fresher-trial-cache"
+    }
+  ],
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 115,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/0-fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/0-fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/0-fresher-trial-cache/keep.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/1-fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/1-fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/old"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/.Trash/old/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/old/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/old/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents/work"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/Documents/work/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents/work/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/Documents/work/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/Library/Caches/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/hard-linked"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/hard-linked/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/linked"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/linked/.fresher-sandbox"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/linked/elsewhere"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/linked/fresher-trial-cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/shared"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/shared/keep.bin"
+      }
+    ],
+    "totalLogicalSize": 41490
+  }
+}

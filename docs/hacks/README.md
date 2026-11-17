@@ -63,7 +63,8 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
   every walk request's own `avoid` (the engine's request carries only the guarded places the access probe names: none
   until plan 006/03); each place is reported as not scanned.
 - **Where:** `crates/macos/src/places.rs` (`places_that_prompt`), `app/tauri/src/compose.rs`
-  (`ScannerOptions::standing_avoid`).
+  (`ScannerOptions::standing_avoid`); in sandbox mode (`app/tauri/src/sandbox.rs`) the places of both the sandbox's
+  home and the real home, so a scan root outside the sandbox raises no prompt either.
 - **Why:** a first scan must not raise a wall of system prompts; which places to open is decided by plan 006 with the
   capability state, which then feeds the request's `avoid` and the standing list goes.
 - **If cleaned up:** removing the list before plan 006 makes the first scan raise a prompt for each protected folder.
@@ -102,6 +103,11 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
   `fresher-trial-kept`) right next to it, make the folder a scan root (in `settings.json` until plan 005 lets the
   interface edit the roots) and scan ([`../architecture/removal.md`](../architecture/removal.md), "Reach and the
   sandbox").
+- **Sandbox mode:** a debug build started with `FRESHER_SANDBOX=<sandbox folder>` gets `Reach::SandboxFolder`
+  instead: it removes only strictly inside that folder, while it holds its marker, with the real Mac's protection list
+  joined with the sandbox home's, and moves items into the sandbox's `home/.Trash` (the system's Trash only with
+  `FRESHER_SANDBOX_TRASH=real`); its home, known folders and data folder are the sandbox's too
+  (`app/tauri/src/sandbox.rs`, [`../architecture/removal.md`](../architecture/removal.md)).
 - **If cleaned up:** giving a debug build or a test the real disk lets a bug in a rule, the plan builder or the UI
   remove the developer's own files.
 
@@ -116,9 +122,11 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 
 - **What:** `fresher-module-demo` and `fresher-module-trial` (plan 008/06/05) are normal dependencies of the app, but
   they are registered only under `cfg(debug_assertions)`; the composition test checks that a build without it
-  registers neither.
-- **Where:** `app/tauri/Cargo.toml`, `app/tauri/src/compose.rs`.
-- **Why:** Cargo does not support `cfg(debug_assertions)` in a target-specific dependency table; plan 007's dev-tools
-  feature takes the modules over.
+  registers neither. `fresher-sandbox` and `fresher-testing` (sandbox mode, plan 007/02/02) are normal dependencies
+  too, used only by `src/sandbox.rs`, which is compiled under `cfg(debug_assertions)` only; a test run by
+  `cargo test --release` checks that a release build ignores `FRESHER_SANDBOX`.
+- **Where:** `app/tauri/Cargo.toml`, `app/tauri/src/compose.rs`, `app/tauri/src/sandbox.rs`.
+- **Why:** Cargo does not support `cfg(debug_assertions)` in a target-specific dependency table, and plan 007 keeps
+  `cfg(debug_assertions)` rather than a cargo feature for dev code (its decision 6).
 - **If cleaned up:** removing the `cfg` registers made-up findings and the trial folders in the shipped app; removing
   the dependencies breaks debug builds.

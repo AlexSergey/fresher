@@ -29,7 +29,7 @@ use fresher_core::{
 use crate::pipeline::Cleaning;
 
 pub use guard::Verified;
-pub use reach::{Reach, RealDiskToken};
+pub use reach::{Reach, RealDiskToken, SandboxError, SandboxFolder};
 
 /// The ports the cleaner acts through. The app gives the system's Trash to the cleaner and to nothing else.
 pub struct CleanerPorts {
@@ -61,7 +61,9 @@ pub struct DiskCleaner {
 impl DiskCleaner {
     /// A cleaner acting as `user` (the uid the app runs as) within `reach`. `home` is the user's home folder, against
     /// which a root written `~` or `~/…` is read. `protection` is the system's list of protected places: it is always
-    /// checked besides the context's own, and it decides where a sandbox marker counts.
+    /// checked besides the context's own, and it decides where a sandbox marker counts. In sandbox mode
+    /// ([`Reach::SandboxFolder`]) it is the real Mac's list joined with the sandbox home's
+    /// (`Protection::joined`), so both apply.
     pub const fn new(reach: Reach, user: u32, home: PathBuf, protection: Protection, ports: CleanerPorts) -> Self {
         Self { reach, user, home, protection, ports }
     }

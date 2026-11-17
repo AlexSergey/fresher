@@ -37,6 +37,10 @@ pub(crate) fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
 
 /// A second launch of the app: the open window comes forward, and the second process exits (the plugin ends it).
 pub(crate) fn on_second_launch<R: Runtime>(app: &AppHandle<R>) {
+    if cfg!(debug_assertions) {
+        // `npm run dev` and `npm run dev:sandbox` share the development identifier: the running window keeps its mode.
+        tracing::warn!("a second launch went to the running development window, which keeps its own sandbox mode");
+    }
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
         // A window that cannot be brought forward stays where it is; there is nothing else to do.
         let _ = window.unminimize();

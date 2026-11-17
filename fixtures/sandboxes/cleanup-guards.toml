@@ -1,0 +1,85 @@
+# The cleaner's guards in a sandbox, on the trial module: links are never followed, a hard link never takes another
+# name's content along, an item inside a hard-blocked folder goes one by one, and the Trash is never cleaned.
+feature = "cleanup-guards"
+module = "trial"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "links out of the sandbox next to a marker are never followed nor offered"
+kind = "negative"
+[[case.marker]]
+path = "home/linked"
+[[case.symlink]]
+path = "home/linked/fresher-trial-cache"
+target = "/"
+[[case.symlink]]
+path = "home/linked/elsewhere"
+target = "/"
+
+[[case]]
+name = "a file hard-linked into a trial cache keeps its content under its own name"
+kind = "negative"
+[[case.file]]
+path = "home/shared/keep.bin"
+size = 4096
+fill = "data"
+
+# `Documents` is one of the places whose opening may raise a system prompt: the scan never enters it.
+[[case]]
+name = "a trial cache next to a marker inside Documents is never offered"
+kind = "negative"
+[[case.marker]]
+path = "home/Documents/work"
+[[case.file]]
+path = "home/Documents/work/fresher-trial-cache/blob.bin"
+size = 8192
+
+[[case]]
+name = "a trial cache holding a hard link goes to the Trash"
+kind = "positive"
+[[case.marker]]
+path = "home/hard-linked"
+[[case.file]]
+path = "home/hard-linked/fresher-trial-cache/blob.bin"
+size = 8192
+fill = "data"
+[[case.hardlink]]
+path = "home/hard-linked/fresher-trial-cache/keep.bin"
+target = "home/shared/keep.bin"
+[case.expect]
+item = "home/hard-linked/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+
+# `Library/Caches` is never removed as a whole: an item inside it is removed on its own.
+[[case]]
+name = "a trial cache inside the hard-blocked Library/Caches goes to the Trash on its own"
+kind = "positive"
+[[case.marker]]
+path = "home/Library/Caches"
+[[case.file]]
+path = "home/Library/Caches/fresher-trial-cache/blob.bin"
+size = 8192
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+
+# The scan offers it today; the cleanup leaves it out as protected.
+[[case]]
+name = "a trial cache next to a marker inside the Trash is never removed"
+kind = "positive"
+[[case.marker]]
+path = "home/.Trash/old"
+[[case.file]]
+path = "home/.Trash/old/fresher-trial-cache/blob.bin"
+size = 8192
+[case.expect]
+item = "home/.Trash/old/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "skipped"
+reason = "protected"

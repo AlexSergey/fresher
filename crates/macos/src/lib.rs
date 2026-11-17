@@ -1,9 +1,9 @@
 //! The macOS adapters of Fresher: the only crate with unsafe code.
 //!
 //! It implements the core's OS ports for macOS, sets the process's IO policy, and gives the cleaner the calls that act
-//! beneath a held folder ([`beneath`]). Every FFI call lives in the module
-//! `ffi`, one unsafe operation per block, each with a `// SAFETY:` comment; everything else here is safe Rust. On any
-//! other OS the crate is empty.
+//! beneath a held folder ([`beneath`]) and the one reader of the sandbox marker ([`sandbox_marker`]). Every FFI call
+//! lives in the module `ffi`, one unsafe operation per block, each with a `// SAFETY:` comment; everything else here
+//! is safe Rust. On any other OS the crate is empty.
 
 #![cfg(target_os = "macos")]
 
@@ -22,6 +22,7 @@ mod open_files;
 mod places;
 mod process;
 mod protection;
+pub mod sandbox_marker;
 mod trash;
 mod volume;
 

@@ -34,13 +34,19 @@ pub struct ModuleId(&'static str);
 
 impl ModuleId {
     pub fn new(id: &'static str) -> Result<Self, IdError> {
+        Self::check(id)?;
+        Ok(Self(id))
+    }
+
+    /// Checks `id` as [`Self::new`] does, without making an id: for an id read at run time, before it is kept.
+    pub fn check(id: &str) -> Result<(), IdError> {
         if !is_kebab_case(id) {
             return Err(IdError::NotKebabCase { id: id.into() });
         }
         if id == CORE_NAMESPACE {
             return Err(IdError::Reserved { id: id.into() });
         }
-        Ok(Self(id))
+        Ok(())
     }
 
     pub const fn as_str(self) -> &'static str {
@@ -67,15 +73,22 @@ pub struct CategoryId(&'static str);
 impl CategoryId {
     /// A category of `module`; `id` must be `<module>.<name>`.
     pub fn new(module: ModuleId, id: &'static str) -> Result<Self, IdError> {
-        let outside = || IdError::OutsideModule { id: id.into(), module: module.as_str().into() };
+        Self::check(module.as_str(), id)?;
+        Ok(Self(id))
+    }
+
+    /// Checks `id` as a category of the module named `module`, as [`Self::new`] does, without making an id: for an
+    /// id read at run time, before it is kept. The module's own name is checked by [`ModuleId::check`].
+    pub fn check(module: &str, id: &str) -> Result<(), IdError> {
+        let outside = || IdError::OutsideModule { id: id.into(), module: module.into() };
         let (namespace, name) = id.split_once('.').ok_or_else(outside)?;
-        if namespace != module.as_str() {
+        if namespace != module {
             return Err(outside());
         }
         if !is_kebab_case(name) {
             return Err(IdError::NotKebabCase { id: id.into() });
         }
-        Ok(Self(id))
+        Ok(())
     }
 
     pub const fn as_str(self) -> &'static str {
@@ -218,6 +231,14 @@ mod tests {
         }
 
         #[test]
+        fn check_refuses_what_new_refuses() {
+            assert_eq!(ModuleId::check("Demo"), Err(IdError::NotKebabCase { id: "Demo".into() }));
+            assert_eq!(ModuleId::check("core"), Err(IdError::Reserved { id: "core".into() }));
+            assert!(matches!(CategoryId::check("demo", "docker.images"), Err(IdError::OutsideModule { .. })));
+            assert!(matches!(CategoryId::check("demo", "demo.Caches"), Err(IdError::NotKebabCase { .. })));
+        }
+
+        #[test]
         fn rejects_a_tool_id_that_is_not_kebab_case() {
             assert!(ToolId::new("Docker").is_err());
         }
@@ -245,6 +266,12 @@ mod tests {
             assert_eq!(category.as_str(), "node-modules.stale-2");
             assert_eq!(category.module(), module);
             assert_eq!(ToolId::new("docker").unwrap().as_str(), "docker");
+        }
+
+        #[test]
+        fn check_accepts_what_new_accepts() {
+            assert_eq!(ModuleId::check("node-modules"), Ok(()));
+            assert_eq!(CategoryId::check("node-modules", "node-modules.stale-2"), Ok(()));
         }
 
         #[test]

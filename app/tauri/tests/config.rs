@@ -40,6 +40,11 @@ mod support {
         serde_json::from_str(&read("tauri.conf.json")).unwrap()
     }
 
+    /// `tauri.dev.conf.json`, the development builds' overrides.
+    pub(crate) fn dev_config() -> Value {
+        serde_json::from_str(&read("tauri.dev.conf.json")).unwrap()
+    }
+
     /// The directives of a CSP, in order, each with its sources.
     pub(crate) fn directives(csp: &str) -> Vec<(&str, Vec<&str>)> {
         csp.split(';')
@@ -74,7 +79,7 @@ mod support {
 
 mod negative {
     use crate::support::{
-        DRAG_REGION, beyond_drag_region, capability_permissions, config, directives, handler_commands,
+        DRAG_REGION, beyond_drag_region, capability_permissions, config, dev_config, directives, handler_commands,
     };
 
     #[test]
@@ -134,6 +139,22 @@ mod negative {
     }
 
     #[test]
+    fn the_dev_windows_are_the_release_windows_but_for_the_title() {
+        // Tauri's merge replaces an array, so the dev config repeats the window; it must not drift.
+        let release = config();
+        let dev = dev_config();
+        let mut release_windows = release["app"]["windows"].as_array().unwrap().clone();
+        let mut dev_windows = dev["app"]["windows"].as_array().unwrap().clone();
+
+        assert_eq!(dev_windows.len(), release_windows.len());
+        for window in release_windows.iter_mut().chain(dev_windows.iter_mut()) {
+            window.as_object_mut().unwrap().remove("title");
+        }
+        assert_eq!(dev_windows, release_windows);
+        assert_ne!(dev["app"]["windows"][0]["title"], release["app"]["windows"][0]["title"]);
+    }
+
+    #[test]
     fn the_capability_allows_no_core_permission_beyond_dragging() {
         // The UI calls only the app's commands and the drag region's two. A `Channel` needs no permission: its JS
         // side is a callback, and the core's `plugin:__TAURI_CHANNEL__|fetch` is exempt from the ACL. Closing the
@@ -147,7 +168,9 @@ mod negative {
 }
 
 mod positive {
-    use crate::support::{DRAG_REGION, capability_permissions, config, handler_commands, manifest_commands};
+    use crate::support::{
+        DRAG_REGION, capability_permissions, config, dev_config, handler_commands, manifest_commands,
+    };
 
     #[test]
     fn the_main_window_is_incognito() {
@@ -157,6 +180,13 @@ mod positive {
         assert_eq!(windows.len(), 1);
         assert_eq!(windows[0]["label"], "main");
         assert_eq!(windows[0]["incognito"], true);
+    }
+
+    #[test]
+    fn the_dev_identifier_is_the_release_one_plus_dev() {
+        let release = config()["identifier"].as_str().unwrap().to_owned();
+
+        assert_eq!(dev_config()["identifier"], format!("{release}.dev"));
     }
 
     #[test]

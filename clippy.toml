@@ -12,4 +12,6 @@ disallowed-methods = [
   { path = "std::fs::remove_file", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
   { path = "std::fs::remove_dir", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
   { path = "std::fs::remove_dir_all", reason = "only the deletion point deletes: crates/cleaner/src/remove/permanent.rs (docs/architecture/removal.md)" },
+  { path = "std::env::home_dir", reason = "the home folder is looked up once, in the app's setup; everything else gets its roots injected" },
+  { path = "tauri::path::PathResolver::home_dir", reason = "the home folder is looked up once, in the app's setup; everything else gets its roots injected" },
 ]

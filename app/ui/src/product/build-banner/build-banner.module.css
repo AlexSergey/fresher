@@ -1,0 +1,21 @@
+/*
+ * The build banner: one quiet line above the window that tells a development build from the release. The path of a
+ * sandbox is cut in the middle of the line rather than wrapped, so the strip stays one line high.
+ */
+@layer components {
+  .banner {
+    overflow: hidden;
+    padding: var(--space-1) var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    margin: 0;
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    font-size: var(--type-caption-size);
+    font-weight: var(--type-caption-weight);
+    letter-spacing: var(--type-caption-tracking);
+    line-height: var(--type-caption-line);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

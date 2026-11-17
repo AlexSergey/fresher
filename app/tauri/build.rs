@@ -2,7 +2,7 @@
 
 /// Every command in `tauri::generate_handler!` (`src/lib.rs`), in the same order.
 const COMMANDS: &[&str] = &[
-    "app_version",
+    "app_info",
     "subscribe",
     "start_scan",
     "cancel_scan",

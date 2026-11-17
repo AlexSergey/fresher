@@ -45,6 +45,12 @@ What the Rust lints enforce:
 - **File system hygiene**: `std::fs::remove_dir_all`, `remove_dir`, `remove_file` and `fresher-macos`'s `remove_at`
   are disallowed by `clippy.toml` (`disallowed-methods`) everywhere except the cleaner's single deletion point, so
   nothing else can delete (`crates/cleaner/tests/deletion_point.rs`).
+- **The home folder is looked up once**: `std::env::home_dir` and Tauri's `PathResolver::home_dir` are disallowed by
+  `clippy.toml`; the app's setup (`app/tauri/src/lib.rs`) and the sandbox generator's binary
+  (`crates/sandbox/src/main.rs`) each carry one `#[expect]`, so a test or a module cannot reach the real home. They are
+  the only exception to the single deletion point's guard (`HOME_LOOKUPS` in `crates/cleaner/tests/deletion_point.rs`):
+  the expectation must give a reason starting "the home folder is looked up once" and sit right above a
+  `let home = ...home_dir()...;` statement.
 - **Release profile**: thin LTO, one codegen unit, stripped symbols.
 
 ### TypeScript (the UI)
@@ -86,7 +92,7 @@ tokens' mirror** keeps `motion.css` and `motion.ts` equal ([`testing.md`](./test
 | gitleaks              | keys, tokens and passwords in staged changes       | `npm run check:secrets` |
 | typos (`_typos.toml`) | misspellings in code and docs (Rust, TS, Markdown) | `npm run check:typos`   |
 | staged-files guard    | any file over 1 MiB, any `*.sqlite` or `.env`      | `npm run check:staged`  |
-| crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module; a crate root other than `fresher-macos`'s without `#![forbid(unsafe_code)]` | `npm run check:crate-deps` |
+| crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module; a crate root other than `fresher-macos`'s without `#![forbid(unsafe_code)]`; a file of `modules/*/src` naming `std::process` or `std::env` (a module runs a tool through `CommandRunner`) | `npm run check:crate-deps` |
 
 ## Layer 3. Pre-commit (Husky + lint-staged)
 

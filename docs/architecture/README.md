@@ -55,6 +55,7 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
 | `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `demo` and `trial` are dev-only (debug builds)                                                                                           | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
+| `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos |
 | `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
 | `fresher-app`         | `app/tauri`      | the composition root: real adapters, module registration, commands, the event channel                                                                                                   | anything      |
 
@@ -80,6 +81,15 @@ Rules of the layout:
 - A development build and every test get `Reach::Sandbox`: the cleaner acts only below a folder that holds the
   sandbox marker; only a release build's composition makes the token for the real disk
   ([`removal.md`](./removal.md), "Reach and the sandbox").
+- **Sandbox mode** (plan [007](../plans/007-safe-development/readme.md), a debug build only, `app/tauri/src/sandbox.rs`):
+  `FRESHER_SANDBOX=<folder>` makes the composition (`sandbox_engine`) live entirely in a folder the sandbox generator
+  made: its `home/` is `~` and the known folders, `.fresher-data/` the data folder, `home/.Trash` the Trash, the
+  cleaner is `Reach::SandboxFolder`, and the protection is the real Mac's list joined with the sandbox's
+  (`Protection::joined`). The scanner's avoid list is the places that prompt of both homes, so no scan raises a
+  system prompt. The clock, volumes, open files, running apps, commands and access stay real, read-only; the process's
+  IO policy is set only by the app's start, never by `sandbox_engine`, so the autotests run the same composition on
+  fakes. The window shows a banner naming the sandbox (a development build outside one: "nothing can be removed
+  outside a sandbox"; nothing in a release build). A release build has no such branch.
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
 - **The system's facts** (plan [009](../plans/009-system-knowledge/readme.md)): the engine's `Ports.system`
   (`SystemPorts`: known folders, installed apps, running apps) becomes one lazy `SystemFacts` per scan, handed to
@@ -121,6 +131,9 @@ No database: the app keeps its own state in small plain files, with nothing to i
 
 - **The data folder** is `~/Library/Application Support/io.github.alexsergey.fresher/` — never inside a scanned root. The app
   passes it to `fresher-store` (`DataFolder::open`); the store never looks it up itself.
+  A development build (`npm run dev`) runs with `app/tauri/tauri.dev.conf.json`: the identifier
+  `io.github.alexsergey.fresher.dev`, so its data folder, single-instance lock and permission grants are separate; a
+  debug build with the release identifier refuses to start.
 - **`settings.json`**: `{ "format": "settings", "version": 1, "values": { "<key>": <value>, … } }`. Values are checked
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,

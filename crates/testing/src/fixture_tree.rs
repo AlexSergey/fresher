@@ -1,11 +1,11 @@
-use std::fs::{self, File};
-use std::os::unix::fs::symlink;
-use std::path::{Component, Path, PathBuf};
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use fresher_core::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
-use serde::Deserialize;
 use tempfile::TempDir;
+
+use crate::tree_description::{FIXTURE_NOW, TreeDescription, resolve};
 
 /// A fake home folder built from a TOML description in a temporary folder, removed when dropped.
 ///
@@ -28,50 +28,16 @@ pub enum FixtureError {
     Create { path: PathBuf, source: std::io::Error },
     #[error("the tree spec is not valid: {reason}")]
     InvalidSpec { reason: &'static str },
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Description {
-    #[serde(default, rename = "dir")]
-    dirs: Vec<DirSpec>,
-    #[serde(default, rename = "file")]
-    files: Vec<FileSpec>,
-    #[serde(default, rename = "symlink")]
-    symlinks: Vec<SymlinkSpec>,
-    #[serde(default, rename = "hardlink")]
-    hardlinks: Vec<HardlinkSpec>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct DirSpec {
-    path: PathBuf,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct FileSpec {
-    path: PathBuf,
-    #[serde(default)]
-    size: u64,
-    /// Seconds since the Unix epoch.
-    modified: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct SymlinkSpec {
-    path: PathBuf,
-    target: PathBuf,
-}
-
-/// A second name of a file of the tree; `target` is relative to the root too.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct HardlinkSpec {
-    path: PathBuf,
-    target: PathBuf,
+    #[error("the fixture path {path} is written twice")]
+    DuplicatePath { path: PathBuf },
+    #[error("the file {path} has both `age` and `modified`")]
+    AgeWithModified { path: PathBuf },
+    #[error("the age of {path} is not \"<n>d\" or \"<n>h\" within the clock")]
+    InvalidAge { path: PathBuf },
+    #[error("the file {path} is filled over the cap of 64 MiB a file or 512 MiB a tree")]
+    FillOverCap { path: PathBuf },
+    #[error("the fixture path {path} passes through a link")]
+    PathThroughLink { path: PathBuf },
 }
 
 impl FixtureTree {
@@ -87,12 +53,10 @@ impl FixtureTree {
 
     /// Builds the tree described by a TOML string.
     pub fn from_toml_str(text: &str) -> Result<Self, FixtureError> {
-        let description: Description = toml::from_str(text)
-            .map_err(|source| FixtureError::Parse { path: PathBuf::from("<inline>"), source: Box::new(source) })?;
+        let description = TreeDescription::from_toml_str(text)?;
         let root = TempDir::new().map_err(|source| FixtureError::Create { path: PathBuf::from("<temp>"), source })?;
-        let tree = Self { root };
-        tree.build(&description)?;
-        Ok(tree)
+        description.build_at(root.path(), SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW))?;
+        Ok(Self { root })
     }
 
     /// The tree with the sandbox marker at its root: the only kind of tree a development build or a test of the
@@ -104,7 +68,7 @@ impl FixtureTree {
 
     /// Writes the sandbox marker into `folder`, a folder of the tree given relative to its root.
     pub fn mark_sandbox(&self, folder: &Path) -> Result<(), FixtureError> {
-        let folder = self.resolve(folder)?;
+        let folder = resolve(self.root(), folder)?;
         fs::create_dir_all(&folder).map_err(|source| FixtureError::Create { path: folder.clone(), source })?;
         write_marker(&folder)
     }
@@ -113,62 +77,12 @@ impl FixtureTree {
     pub fn root(&self) -> &Path {
         self.root.path()
     }
-
-    fn build(&self, description: &Description) -> Result<(), FixtureError> {
-        for dir in &description.dirs {
-            let path = self.resolve(&dir.path)?;
-            fs::create_dir_all(&path).map_err(|source| FixtureError::Create { path, source })?;
-        }
-        for file in &description.files {
-            self.create_file(file)?;
-        }
-        for link in &description.symlinks {
-            let path = self.resolve(&link.path)?;
-            create_parent(&path)?;
-            symlink(&link.target, &path).map_err(|source| FixtureError::Create { path, source })?;
-        }
-        for link in &description.hardlinks {
-            let (path, target) = (self.resolve(&link.path)?, self.resolve(&link.target)?);
-            create_parent(&path)?;
-            fs::hard_link(&target, &path).map_err(|source| FixtureError::Create { path, source })?;
-        }
-        Ok(())
-    }
-
-    fn create_file(&self, spec: &FileSpec) -> Result<(), FixtureError> {
-        let path = self.resolve(&spec.path)?;
-        create_parent(&path)?;
-        let create_error = |source| FixtureError::Create { path: path.clone(), source };
-        let file = File::create(&path).map_err(create_error)?;
-        file.set_len(spec.size).map_err(create_error)?;
-        if let Some(seconds) = spec.modified {
-            file.set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)).map_err(create_error)?;
-        }
-        Ok(())
-    }
-
-    fn resolve(&self, relative: &Path) -> Result<PathBuf, FixtureError> {
-        let inside = relative.components().all(|component| matches!(component, Component::Normal(_)));
-        if !inside || relative.as_os_str().is_empty() {
-            return Err(FixtureError::PathOutsideRoot { path: relative.to_path_buf() });
-        }
-        Ok(self.root().join(relative))
-    }
 }
 
 /// Writes the sandbox marker, its signature as its first line, into `folder`.
-fn write_marker(folder: &Path) -> Result<(), FixtureError> {
+pub(crate) fn write_marker(folder: &Path) -> Result<(), FixtureError> {
     let marker = folder.join(SANDBOX_MARKER);
     fs::write(&marker, format!("{SANDBOX_SIGNATURE}\n")).map_err(|source| FixtureError::Create { path: marker, source })
-}
-
-fn create_parent(path: &Path) -> Result<(), FixtureError> {
-    match path.parent() {
-        Some(parent) => {
-            fs::create_dir_all(parent).map_err(|source| FixtureError::Create { path: parent.into(), source })
-        }
-        None => Ok(()),
-    }
 }
 
 #[cfg(test)]

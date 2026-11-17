@@ -127,6 +127,20 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the overview in a sandbox, with its banner', async ({ page }) => {
+      await open(page, SCRIPTS.sandboxed);
+      await expect(page.getByRole('note')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the overview of a development build, with its banner', async ({ page }) => {
+      await open(page, SCRIPTS.development);
+      await expect(page.getByRole('note')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the overview with Full Disk Access denied', async ({ page }) => {
       await open(page, SCRIPTS.denied);
       await expect(page.getByText('Fresher cannot see every folder')).toBeVisible();

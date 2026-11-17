@@ -19,7 +19,7 @@ import { mockCore, SCRIPTS } from './core-mock';
 const SCAN = largeScan({ categories: 3, count: 1000 });
 
 const answers = {
-  appVersion: '0.0.1',
+  appInfo: { build: { kind: 'release' }, version: '0.0.1' },
   getAccessStatus: GRANTED,
   getDictionary: SCAN.dictionary,
   getModules: [],

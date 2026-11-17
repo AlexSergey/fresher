@@ -1,0 +1,98 @@
+use std::path::PathBuf;
+
+use fresher_core::{DangerLevel, IdError};
+use fresher_testing::FixtureError;
+
+/// Why a case file was refused; every error about one case names it.
+#[derive(Debug, thiserror::Error)]
+pub enum CaseError {
+    /// The file is not TOML of the case format (an unknown key at the top or in `[case.expect]` included).
+    #[error("the case file is not valid: {source}")]
+    Parse { source: Box<toml::de::Error> },
+    /// The `module` is not a valid module id.
+    #[error("the module `{module}` of the case file is not a module id: {source}")]
+    Module { module: String, source: IdError },
+    /// Two cases have one name.
+    #[error("case \"{case}\": another case has the same name")]
+    DuplicateName { case: String },
+    /// A negative case follows a positive one.
+    #[error("case \"{case}\": a negative case comes after a positive one; negatives go first")]
+    PositiveBeforeNegative { case: String },
+    /// A positive case has no `[case.expect]`.
+    #[error("case \"{case}\": a positive case needs `[case.expect]`")]
+    PositiveWithoutExpect { case: String },
+    /// A negative case has a `[case.expect]`.
+    #[error("case \"{case}\": a negative case expects nothing; remove its `[case.expect]`")]
+    NegativeWithExpect { case: String },
+    /// A `reason` without `after-cleanup = "skipped"`, or `skipped` without a `reason`.
+    #[error("case \"{case}\": `reason` is given with `after-cleanup = \"skipped\"`, and only with it")]
+    SkipReason { case: String },
+    /// The case's files are not of the tree vocabulary (an unknown key included).
+    #[error("case \"{case}\": the files are not valid: {source}")]
+    Files { case: String, source: Box<toml::de::Error> },
+    /// The case's files break a check of the tree: a path twice, an age, the fill cap.
+    #[error("case \"{case}\": {source}")]
+    Tree { case: String, source: FixtureError },
+    /// A path, marker or hard link target that is not relative, plain and inside the sandbox.
+    #[error("case \"{case}\": the path {path} must be relative, plain and inside the sandbox")]
+    PathOutsideSandbox { case: String, path: PathBuf },
+    /// Two cases write one path.
+    #[error("case \"{case}\": the path {path} is also written by case \"{other}\"")]
+    PathWrittenTwice { case: String, other: String, path: PathBuf },
+    /// A positive's `item` is not one of its case's paths or their folders.
+    #[error("case \"{case}\": the item {item} is not one of the case's paths or their folders")]
+    ItemNotInCase { case: String, item: PathBuf },
+    /// The `category` is not a category id `<module>.<name>`.
+    #[error("case \"{case}\": `{category}` is not a category id: {source}")]
+    CategoryId { case: String, category: String, source: IdError },
+    /// The `category` is not among the module's categories.
+    #[error("case \"{case}\": the category `{category}` is not in the module's descriptor")]
+    UnknownCategory { case: String, category: String },
+    /// The expected danger is below the category's level.
+    #[error("case \"{case}\": the danger {danger:?} is below the category's {floor:?}")]
+    DangerBelowCategory { case: String, danger: DangerLevel, floor: DangerLevel },
+    /// The cases together break a check of the tree, such as the fill cap of a sandbox.
+    #[error("the cases do not make one sandbox: {source}")]
+    Sandbox { source: FixtureError },
+}
+
+/// Why a sandbox could not be opened or generated; the generator removes nothing whatever the error.
+#[derive(Debug, thiserror::Error)]
+pub enum SandboxError {
+    /// The folder holds no valid marker of the user.
+    #[error("{folder} holds no valid sandbox marker")]
+    NoMarker { folder: PathBuf },
+    /// The folder is not empty and holds no valid marker: it is not a sandbox, so nothing is written into it.
+    #[error("{folder} is not empty and holds no valid sandbox marker; choose an empty folder or a sandbox")]
+    NotASandbox { folder: PathBuf },
+    /// The real Mac's protection refuses the folder: the home itself, a protected place or an ancestor of one.
+    #[error("{folder} is a protected place of this Mac; a sandbox goes below it, never into it")]
+    Protected { folder: PathBuf },
+    /// The path is a link or passes through one.
+    #[error("{path} is a link or passes through one")]
+    ThroughLink { path: PathBuf },
+    /// The path is not a folder.
+    #[error("{path} is not a folder")]
+    NotAFolder { path: PathBuf },
+    /// The part of the path that does not exist yet holds `.` or `..`.
+    #[error("{path} has `.` or `..` below the folders that exist; give a plain path")]
+    NotPlain { path: PathBuf },
+    /// A file the generator would rewrite has a name it did not make, a hard link that may lie outside the sandbox.
+    #[error("{path} has a hard link the generator did not make; it is not rewritten, so the sandbox is refused")]
+    SharedFile { path: PathBuf },
+    /// A part of the sandbox's layout is missing or not a folder.
+    #[error("the sandbox folder {path} is missing")]
+    MissingPart { path: PathBuf },
+    /// Two case files write one path into one sandbox.
+    #[error("the path {path} is written by both `{first}` and `{second}`")]
+    PathWrittenTwice { path: PathBuf, first: String, second: String },
+    /// A case file does not make one tree.
+    #[error("{source}")]
+    Case { source: CaseError },
+    /// The cases' files could not be written.
+    #[error("cannot write the cases: {source}")]
+    Tree { source: FixtureError },
+    /// A file system call failed.
+    #[error("{path}: {source}")]
+    Io { path: PathBuf, source: std::io::Error },
+}

@@ -49,7 +49,9 @@ Example: "Deletes only caches and logs. Your settings stay, in case you install 
 ## 8. Tested to the bar
 
 Coverage is at least 90 % of lines in the Rust crates and in the UI. Every rule has negative tests (paths it must not
-claim) before positive ones. Details: [`testing.md`](./testing.md).
+claim) before positive ones. Every module and every category ships its sandbox case file,
+`fixtures/sandboxes/<feature>.toml`, negative cases first and positive cases after, with its golden report; a module
+the app registers without one fails the sandbox autotest. Details: [`testing.md`](./testing.md), "Sandboxes".
 
 ## 9. Third-party code in the app only under permissive licences
 

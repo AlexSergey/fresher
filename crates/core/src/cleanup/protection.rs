@@ -15,10 +15,18 @@ use std::path::{Component, Path, PathBuf};
 /// gives canonical paths, so a volume that ignores case is handled before this check.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Protection {
-    never: Vec<PathBuf>,
+    never: Vec<Never>,
     whole: Vec<PathBuf>,
     except: Vec<PathBuf>,
     ignored: Vec<PathBuf>,
+}
+
+/// A `never` place with the carve-outs of its own list: joined lists never let one list's carve-out open another
+/// list's `never` place.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Never {
+    place: PathBuf,
+    except: Vec<PathBuf>,
 }
 
 /// Why a path is refused.
@@ -50,7 +58,35 @@ impl Protection {
         if let Some(loose) = except.iter().find(|place| !never.iter().any(|never| strictly_inside(place, never))) {
             return Err(ProtectionError::LooseExcept { path: loose.clone() });
         }
+        let never = never
+            .into_iter()
+            .map(|place| {
+                let carved = except.iter().filter(|cut| cut.starts_with(&place)).cloned().collect();
+                Never { place, except: carved }
+            })
+            .collect();
         Ok(Self { never, whole, except, ignored: Vec::new() })
+    }
+
+    /// Both lists in one: every place either refuses stays refused, with the same answer as the graver of the two.
+    /// A carve-out opens only the `never` places of its own list. Checked as [`Protection::new`] checks.
+    pub fn joined(&self, other: &Self) -> Result<Self, ProtectionError> {
+        let never: Vec<Never> = self.never.iter().chain(&other.never).cloned().collect();
+        check_plain(never.iter().flat_map(|never| std::iter::once(&never.place).chain(&never.except)))?;
+        check_plain(self.whole.iter().chain(&other.whole).chain(&self.ignored).chain(&other.ignored))?;
+        let except: Vec<PathBuf> = self.except.iter().chain(&other.except).cloned().collect();
+        let carved_from_its_own =
+            |cut: &PathBuf| never.iter().any(|never| never.except.contains(cut) && strictly_inside(cut, &never.place));
+        if let Some(loose) = except.iter().find(|cut| !carved_from_its_own(cut)) {
+            return Err(ProtectionError::LooseExcept { path: loose.clone() });
+        }
+        let joined = |mine: &[PathBuf], theirs: &[PathBuf]| mine.iter().chain(theirs).cloned().collect();
+        Ok(Self {
+            never,
+            whole: joined(&self.whole, &other.whole),
+            except,
+            ignored: joined(&self.ignored, &other.ignored),
+        })
     }
 
     /// The same protection, refusing also the user's `ignored` paths, what is inside them and their ancestors.
@@ -67,11 +103,11 @@ impl Protection {
         if !is_plain(path) {
             return Err(Protected::Never);
         }
-        let carved = |never: &Path| self.except.iter().any(|place| place.starts_with(never) && path.starts_with(place));
-        if self.never.iter().any(|never| path.starts_with(never) && !carved(never)) {
+        let carved = |never: &Never| never.except.iter().any(|place| path.starts_with(place));
+        if self.never.iter().any(|never| path.starts_with(&never.place) && !carved(never)) {
             return Err(Protected::Never);
         }
-        if self.never.iter().any(|never| strictly_inside(never, path)) {
+        if self.never.iter().any(|never| strictly_inside(&never.place, path)) {
             return Err(Protected::Ancestor);
         }
         if self.whole.iter().chain(&self.except).any(|place| place.starts_with(path)) {
@@ -226,6 +262,17 @@ mod tests {
             assert_eq!(nested.check(Path::new("/usr/local/keep/x")), Err(Protected::Never));
             assert_eq!(nested.check(Path::new("/usr/local/other")), Ok(()));
         }
+
+        #[test]
+        fn a_carve_out_of_one_list_does_not_open_the_other() {
+            let strict = Protection::new(paths(&["/usr"]), vec![], vec![]).unwrap();
+
+            let joined = mac_like().joined(&strict).unwrap();
+
+            assert_eq!(joined.check(Path::new("/usr/local/x")), Err(Protected::Never));
+            assert_eq!(strict.joined(&mac_like()).unwrap().check(Path::new("/usr/local/x")), Err(Protected::Never));
+            assert_eq!(joined.check(Path::new("/usr/local")), Err(Protected::Never));
+        }
     }
 
     mod positive {
@@ -321,6 +368,35 @@ mod tests {
             prop::collection::vec(names(), 0..3)
         }
 
+        /// A random list: `never`, `whole`, carve-outs strictly inside the first `never` place, and ignored paths.
+        fn protection() -> impl Strategy<Value = Protection> {
+            (lists(), lists(), lists(), lists()).prop_map(|(never, whole, cuts, ignored)| {
+                let to_paths = |list: &[Vec<&str>]| list.iter().map(|names| path_of(names)).collect::<Vec<_>>();
+                let never: Vec<Vec<&str>> = never.into_iter().filter(|place| !place.is_empty()).collect();
+                let except: Vec<PathBuf> = match never.first() {
+                    Some(place) => {
+                        cuts.iter().filter_map(|cut| cut.first().map(|name| path_of(place).join(name))).collect()
+                    }
+                    None => Vec::new(),
+                };
+                Protection::new(to_paths(&never), to_paths(&whole), except)
+                    .unwrap()
+                    .with_ignored(&to_paths(&ignored))
+                    .unwrap()
+            })
+        }
+
+        /// The order `check` answers in: the first answer is the gravest.
+        fn gravity(answer: Result<(), Protected>) -> u8 {
+            match answer {
+                Err(Protected::Never) => 4,
+                Err(Protected::Ancestor) => 3,
+                Err(Protected::WholeFolder) => 2,
+                Err(Protected::Ignored) => 1,
+                Ok(()) => 0,
+            }
+        }
+
         proptest! {
             #[test]
             fn check_agrees_with_a_naive_component_model(
@@ -344,6 +420,21 @@ mod tests {
                 let answer = protection.check(&path_of(&path));
 
                 prop_assert_eq!(answer, model(&path, &never, &whole, &except, &ignored));
+            }
+
+            #[test]
+            fn a_joined_list_refuses_what_either_refuses(
+                path in names(), first in protection(), second in protection(),
+            ) {
+                let path = path_of(&path);
+
+                let answer = first.joined(&second).unwrap().check(&path);
+
+                let graver = [first.check(&path), second.check(&path)].into_iter().max_by_key(|answer| gravity(*answer));
+                prop_assert_eq!(answer, graver.unwrap());
+                if first.check(&path).is_err() || second.check(&path).is_err() {
+                    prop_assert!(answer.is_err());
+                }
             }
 
             #[test]

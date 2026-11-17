@@ -16,7 +16,8 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
 - The merged branch is kept for two weeks, then deleted.
 - **An unfinished global plan may be merged with a dependent one** when the user asks (the user's decision of
   2026-11-16, plans 006 and 008): its built parts go into `main` in the dependent plan's squash-merge, it stays
-  🔨 in progress, and its rest continues on a new branch from `main`.
+  🔨 in progress, and its rest continues on a new branch from `main`. Likewise a plan whose only open step is the
+  user's run by hand may be merged when the user asks (plan 007, 2026-11-17); the run's results are written on `main`.
 
 ## Pushing
 

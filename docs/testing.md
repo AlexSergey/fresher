@@ -28,6 +28,7 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 | Race           | a swap made by another thread during an act never sends it elsewhere             | `fresher-testing`'s `Swapper`, 100 rounds    | —                                          |
 | Integration    | one crate through its public API, on fixture trees                               | the crate's `tests/`                         | —                                          |
 | Golden reports | a fixture home gives exactly the expected report                                 | `crates/e2e` against `fixtures/golden/`      | —                                          |
+| Sandbox        | every case of a feature's case file is offered, left alone or cleaned as declared | `app/tauri/tests/sandboxes.rs`, `fixtures/golden/sandbox-*.json` | —                      |
 | Core e2e       | command → engine → modules → events → settings file, end to end                  | `crates/e2e` on fixture homes                | —                                          |
 | UI e2e         | the user flows of the interface, on a mocked core                                | —                                            | Playwright on the Vite build, mocked IPC   |
 | Visual         | the gallery's stories and the screens did not change unnoticed                   | —                                            | Playwright screenshots, ≤ 50 pixels differ |
@@ -221,10 +222,134 @@ target = "/Library/Caches"
 [[hardlink]]
 path = "Library/Caches/copy.db"
 target = "Library/Caches/com.example.editor/Cache.db"
+
+# A file may carry an age instead of `modified`: "<n>d" or "<n>h" counted back from the "now" of the build
+# (FIXTURE_NOW for `FixtureTree`), so a stale file stays stale. `age` and `modified` never go together.
+# `fill = "data"` writes real bytes of a fixed pattern instead of a sparse file, so freed space can be measured
+# (at most 64 MiB a file and 512 MiB a description; a larger one is refused).
+[[file]]
+path = "Library/Caches/com.example.editor/old.bin"
+size = 1048576
+age = "30d"
+fill = "data"
+
+# A sandbox marker written into that folder (the folder is created if missing).
+[[marker]]
+path = "work"
 ```
 
 `FixtureTree::from_toml(path)` builds it in a temporary folder that is removed when the tree is dropped;
 `tree.root()` is the only folder a test may scan or clean.
+
+The format is the public `TreeDescription`: `from_toml_str` checks it, `merge` joins two (a path written twice is
+refused), `build_at(folder, now)` builds it in any existing folder and refuses a path that leaves the folder or passes
+through a link. Built again into a folder it built before, it tops up: it rewrites its files and markers, writes what
+is missing and keeps a link that is already as described.
+
+## Sandboxes
+
+A feature's cases live in its case file, `fixtures/sandboxes/<feature>.toml`; every module and every category ships
+one (rule 8). `npm run sandbox -- <feature|all> [--into
+<dir>]` (the binary of `fresher-sandbox`) writes it into a sandbox folder, `sandbox/<feature>/` at the repository's root
+by default (gitignored): the marker `.fresher-sandbox` at its top (the signature, then a line naming the case files),
+the fake home `home/` with its Trash `home/.Trash/`, `Applications/`, `System/Applications/`, the app's data folder
+`.fresher-data/`, every case's files and `EXPECTED.md`, the checklist of a run by hand (one checkbox per case,
+negatives first). `all` writes every case file into one sandbox and refuses a path two of them write.
+
+- It refuses a folder that is not empty and holds no valid marker, and a folder the real Mac's protection list
+  refuses (the home itself, a protected place or an ancestor of one).
+- Links: it refuses a target folder that is itself a link, and any link inside the sandbox on a path it writes (a
+  layout folder, a case's file or folder, the marker, `EXPECTED.md`). Links above the target are resolved: the
+  protection check runs on the real path, and a missing target is made there. A `.` or `..` in the part of the path
+  that does not exist yet is refused.
+- It never rewrites a file of its own that has a hard link it did not make (which may lie outside the sandbox): such
+  a sandbox is refused before anything is written.
+- It removes nothing: on a sandbox it made before it writes what is missing, resets its own files, and lists every
+  entry it did not make (the app's data folder aside) without touching it. A clean start is the developer's own
+  `rm -rf sandbox/<feature>`.
+
+The case files:
+
+- `trial.toml`: the `trial` module. A look-alike folder, a trial folder with no marker next to it, a file named like a
+  trial folder and a plain file next to a marker are never offered; a cache next to a marker goes to the Trash, a kept
+  folder is emptied.
+- `cleanup-guards.toml`: the cleaner's guards, on the `trial` module. Links out of the sandbox are never followed; a
+  file hard-linked into a trial cache keeps its content under its own name; the scan keeps out of `Documents` (a place
+  that may prompt); an item inside the hard-blocked `Library/Caches` goes on its own; a trial cache inside the Trash is
+  offered but left out as protected.
+
+A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox.
+
+`npm run sandbox:test` (`app/tauri/tests/sandboxes.rs`) is the autotest of every case file, one `#[test]` each, listed
+in its `case_files!`: the case file is generated into a temporary folder (the "real" home and data folder are
+temporary too), run through the app's own sandbox composition (`sandbox_engine`) with fakes for the clock, volumes,
+open files, running apps, commands and access, and only the case file's `module` registered. Every negative must not
+be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
+the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
+`after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. The report (findings,
+cleanup, the tree after) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1` rewrites it). A failure names
+its case. Guards: every case file has a test, and every module the app registers (but `demo`, whose findings are made
+up) has a case file naming it.
+
+### The case file
+
+```toml
+feature = "trial"   # the feature: a module's id, or a part of the core (`cleanup-guards`)
+module = "trial"    # the module the autotest registers (absent: every module of the app)
+
+# Negative cases first, then positive ones; names are unique; paths are relative to the sandbox folder, whose fake
+# home is `home/`.
+[[case]]
+name = "a trial folder with no marker next to it is never offered"
+kind = "negative"
+[[case.file]]
+path = "home/bare/fresher-trial-cache/blob.bin"
+size = 1048576
+
+[[case]]
+name = "a trial cache next to a marker goes to the Trash"
+kind = "positive"
+[[case.marker]]
+path = "home/work"
+[[case.file]]
+path = "home/work/fresher-trial-cache/blob.bin"
+size = 52428800
+fill = "data"
+[case.expect]
+item = "home/work/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"   # in-trash | emptied | skipped (with `reason`, a SkipCode as serialized)
+```
+
+A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
+`[[case.hardlink]]`, `[[case.marker]]`, with `age` and `fill`). A negative expects nothing to be offered at or below
+its paths, nor at a folder above them that only it writes into, and its paths untouched after the cleanup; it has no
+`[case.expect]`. A positive's `item` is one of its own paths or their folders. Checked when read, by the generator and
+the autotest alike: unique names, every negative before every positive, plain relative paths inside the sandbox, no
+two cases writing a path, and `category` and `danger` that exist in the module's descriptor (the danger not below the
+category's). `EXPECTED.md` in the generated sandbox is the same cases as a checklist, negatives first, one plain
+sentence each.
+
+The sandbox's home, `home/`, stands for the user's home: its own places that prompt (`Documents`, `Desktop`, …) are not
+scanned, as on the real Mac before access is granted (plan 006). A case file therefore puts its positive cases under
+`home/Library` or in a folder of its own in `home/`, never under those places; a negative may use them to show the
+scan keeps out.
+
+### Sandbox mode
+
+`npm run dev:sandbox -- <feature|path> [--real-trash]` (`scripts/sandbox-dev.ts`) generates `sandbox/<feature>/` when it
+is missing (a path with a separator is used as it is) and starts the development build (`npm run dev`) with
+`FRESHER_SANDBOX` set to it. The app then lives entirely in the sandbox
+([`architecture/removal.md`](./architecture/removal.md), "Reach and the sandbox"): the scan, the settings, the history
+and the Trash are the sandbox's, and the cleaner reaches only inside it. `--real-trash` moves items into the system's
+Trash instead of the sandbox's `home/.Trash`. A banner names the sandbox. A development build always runs as
+`io.github.alexsergey.fresher.dev` (`npm run dev` adds `app/tauri/tauri.dev.conf.json`; a debug build with the release
+identifier refuses to start), so its data and permission grants are apart from the release's. `npm run dev:sandbox` and
+`npm run dev` share that identifier, so single-instance hands a sandbox launch to a development window that is already
+running: that window keeps its own mode (its banner, or the lack of one, shows which) and the log warns; quit it first.
+Before a plan that adds or changes a module or a category is done, its finish runs `npm run dev:sandbox -- <feature>`
+and walks `EXPECTED.md` by hand.
 
 ## Commands
 
@@ -239,6 +364,9 @@ target = "Library/Caches/com.example.editor/Cache.db"
 | `npm run test:e2e:core`        | `cargo nextest run -p fresher-e2e --locked`                                           |
 | `npm run test:e2e:ui`          | Playwright (needs `npx playwright install webkit chromium` once)                      |
 | `npm run bench`                | the scan benches on a generated tree, by hand ("Performance")                         |
+| `npm run sandbox -- <feature>` | writes the feature's case file into `sandbox/<feature>/` ("Sandboxes")                 |
+| `npm run dev:sandbox -- <feature>` | the development build in sandbox mode on `sandbox/<feature>/` (`--real-trash`) |
+| `npm run sandbox:test`         | the autotest of every case file of `fixtures/sandboxes/` ("Sandboxes")                |
 | `npm run build:e2e -w app/ui`  | the app and the gallery into `app/ui/dist-e2e/` (the e2e suite builds it itself)      |
 | `npm run test:perf -w app/ui`  | the performance spec, headed, by hand on a quiet Mac                                  |
 | `cargo nextest run -p <crate>` | one crate                                                                             |

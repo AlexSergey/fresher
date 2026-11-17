@@ -20,6 +20,7 @@ module.exports = {
         'modules',
         'repo',
         'rules',
+        'sandbox',
         'scanner',
         'store',
         'system',

@@ -1,5 +1,6 @@
 //! The composition root: the real adapters, the modules, and the engine they make.
 
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,7 +9,8 @@ use std::time::Duration;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    Clock, CommandRunner, KnownFolders, ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
+    AccessProbe, Build, Clock, CommandRunner, KnownFolders, Module, ModuleId, Protection, ProtectionError, RunningApps,
+    SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 use fresher_macos::{
@@ -41,6 +43,10 @@ pub(crate) enum ComposeError {
     Executable(#[source] std::io::Error),
     #[error("the protected places cannot be listed: {0}")]
     Protection(#[from] ProtectionError),
+    /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
+    #[cfg(debug_assertions)]
+    #[error("sandbox mode is refused: {0}")]
+    Sandbox(#[from] crate::sandbox::SandboxRefusal),
     #[cfg(debug_assertions)]
     #[error("the demo module cannot be built: {0}")]
     Demo(#[from] fresher_module_demo::DemoError),
@@ -63,10 +69,49 @@ pub(crate) struct IoPolicy {
 }
 
 /// The macOS IO policy of `fresher-macos`.
-const MACOS_POLICY: IoPolicy = IoPolicy {
+pub(crate) const MACOS_POLICY: IoPolicy = IoPolicy {
     never_download_cloud_files: || io_policy::never_download_cloud_files().map_err(|error| error.to_string()),
     leave_access_times: || io_policy::leave_access_times().map_err(|error| error.to_string()),
 };
+
+/// Where the app runs: its engine, the data folder it keeps its own data in, and the home of its scan roots.
+#[derive(Debug)]
+pub(crate) struct Start {
+    pub(crate) engine: Engine,
+    pub(crate) data_folder: PathBuf,
+    pub(crate) home: PathBuf,
+    pub(crate) build: Build,
+}
+
+/// The app's start: in a development build whose environment (read through `var`) names a sandbox in
+/// `FRESHER_SANDBOX`, the sandbox's engine, data folder and home (`data_folder` is then only protected); otherwise
+/// the engine of [`engine`] on `data_folder` and `home`. A release build reads no variable.
+pub(crate) fn start(
+    data_folder: PathBuf,
+    home: PathBuf,
+    #[cfg_attr(not(debug_assertions), expect(unused_variables, reason = "a release build has no sandbox mode"))]
+    var: impl Fn(&str) -> Option<OsString>,
+) -> Result<Start, ComposeError> {
+    #[cfg(debug_assertions)]
+    if let Some(mode) = crate::sandbox::SandboxMode::from_env(var)? {
+        apply(&MACOS_POLICY)?;
+        let (engine, sandbox) =
+            crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real())?;
+        return Ok(Start {
+            engine,
+            data_folder: sandbox.data_folder(),
+            home: sandbox.home(),
+            build: Build::Sandbox { path: sandbox.path().to_path_buf() },
+        });
+    }
+    let engine = engine(&data_folder, &home)?;
+    Ok(Start { engine, data_folder, home, build: own_build() })
+}
+
+/// The kind of this build: a release build is never a development one.
+const fn own_build() -> Build {
+    if cfg!(debug_assertions) { Build::Development } else { Build::Release }
+}
 
 /// The engine of the app, with its settings in `data_folder` (Tauri's `app_data_dir`) and `home` the user's home
 /// folder (Tauri's `home_dir`): where the known folders are (`MacKnownFolders`), and `~` in the scan roots.
@@ -75,28 +120,9 @@ pub(crate) fn engine(data_folder: impl Into<PathBuf>, home: &Path) -> Result<Eng
 }
 
 fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Result<Engine, ComposeError> {
-    (policy.never_download_cloud_files)().map_err(ComposeError::IoPolicy)?;
-    if let Err(error) = (policy.leave_access_times)() {
-        tracing::warn!(%error, "reading files may update their access times");
-    }
+    apply(policy)?;
     let folder = DataFolder::open(data_folder)?;
-    // Until plan 006 decides with the capability state, the places that prompt are never opened (docs/hacks/).
-    let options = ScannerOptions {
-        standing_avoid: places_that_prompt(home),
-        cache_body_limit: CachePolicy::DEFAULT.body_limit,
-        ..ScannerOptions::default()
-    };
-    let known_folders: Arc<dyn KnownFolders> = Arc::new(MacKnownFolders::new(home));
-    let journal = MacChangeJournal::new().with_time_limit(JOURNAL_TIME_LIMIT);
     let volumes: Arc<dyn Volumes> = Arc::new(MacVolumes::new());
-    let walk = Scanner::new(
-        Arc::new(MacFolderReader::new()),
-        Arc::clone(&volumes),
-        Arc::new(journal),
-        Arc::new(FileScanCache::new(folder.clone())),
-        known_folders_anchor(&*known_folders),
-        options,
-    );
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let running: Arc<dyn RunningApps> = Arc::new(MacRunningApps::new());
     let commands: Arc<dyn CommandRunner> = Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT));
@@ -108,13 +134,70 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         commands: Arc::clone(&commands),
         clock: Arc::clone(&clock),
     };
-    let cleanup = cleanup(home, &folder, cleaner, volumes)?;
+    let cleanup = cleanup(home, &folder, cleaner, Arc::clone(&volumes))?;
+    assemble(Shared {
+        folder,
+        // Until plan 006 decides with the capability state, the places that prompt are never opened (docs/hacks/).
+        avoid: places_that_prompt(home),
+        known_folders: Arc::new(MacKnownFolders::new(home)),
+        volumes,
+        clock,
+        running,
+        commands,
+        access: Arc::new(UnknownAccess),
+        cleanup,
+        only: None,
+    })
+}
+
+/// Sets the process's IO policy before an engine starts.
+pub(crate) fn apply(policy: &IoPolicy) -> Result<(), ComposeError> {
+    (policy.never_download_cloud_files)().map_err(ComposeError::IoPolicy)?;
+    if let Err(error) = (policy.leave_access_times)() {
+        tracing::warn!(%error, "reading files may update their access times");
+    }
+    Ok(())
+}
+
+/// What the shared assembly takes, chosen apart by the normal engine and the sandbox's: the data `folder`, the
+/// places the walk never opens, the known folders (whose home is `~` of the scan roots), the ports read through, the
+/// cleanup, and the one module registered (`None`: every module of the app).
+pub(crate) struct Shared {
+    pub(crate) folder: DataFolder,
+    pub(crate) avoid: Vec<PathBuf>,
+    pub(crate) known_folders: Arc<dyn KnownFolders>,
+    pub(crate) volumes: Arc<dyn Volumes>,
+    pub(crate) clock: Arc<dyn Clock>,
+    pub(crate) running: Arc<dyn RunningApps>,
+    pub(crate) commands: Arc<dyn CommandRunner>,
+    pub(crate) access: Arc<dyn AccessProbe>,
+    pub(crate) cleanup: CleanupPorts,
+    pub(crate) only: Option<ModuleId>,
+}
+
+/// The engine both paths share: the real walk of the disk over `shared`, the app's modules and its settings file.
+pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
+    let Shared { folder, avoid, known_folders, volumes, clock, running, commands, access, cleanup, only } = shared;
+    let options = ScannerOptions {
+        standing_avoid: avoid,
+        cache_body_limit: CachePolicy::DEFAULT.body_limit,
+        ..ScannerOptions::default()
+    };
+    let journal = MacChangeJournal::new().with_time_limit(JOURNAL_TIME_LIMIT);
+    let walk = Scanner::new(
+        Arc::new(MacFolderReader::new()),
+        volumes,
+        Arc::new(journal),
+        Arc::new(FileScanCache::new(folder.clone())),
+        known_folders_anchor(&*known_folders),
+        options,
+    );
     let ports = Ports {
         walk: Arc::new(walk),
         settings: Arc::new(FileSettingsStore::new(folder)),
         clock,
         commands,
-        access: Arc::new(UnknownAccess),
+        access,
         system_ui: Arc::new(NoSystemUi),
         system: SystemPorts {
             known_folders: Arc::clone(&known_folders),
@@ -122,7 +205,7 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
             running,
         },
     };
-    Ok(Engine::with_cleanup(registry()?, ports, cleanup)?)
+    Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup)?)
 }
 
 /// What a cleanup goes through: this build's cleaner, acting as the user who runs the app, kept from the protected
@@ -134,10 +217,15 @@ pub(crate) fn cleanup(
     ports: CleanerPorts,
     volumes: Arc<dyn Volumes>,
 ) -> Result<CleanupPorts, ComposeError> {
-    let executable = std::env::current_exe().map_err(ComposeError::Executable)?;
-    let protection = protection(home, folder.path(), bundle_of(&executable))?;
+    let protection = real_protection(home, folder.path())?;
     let cleaner = DiskCleaner::new(reach(), current_user(), home.to_path_buf(), protection, ports);
     Ok(CleanupPorts { cleaner: Arc::new(cleaner), journal: Arc::new(FileCleanupJournal::open(folder)), volumes })
+}
+
+/// The protected places of this Mac for `home`, with the app's `data_folder` and, in a built app, its bundle.
+pub(crate) fn real_protection(home: &Path, data_folder: &Path) -> Result<Protection, ComposeError> {
+    let executable = std::env::current_exe().map_err(ComposeError::Executable)?;
+    Ok(protection(home, data_folder, bundle_of(&executable))?)
 }
 
 /// How far the cleaner of a release build reaches: the real disk. The only place that makes the token.
@@ -160,16 +248,37 @@ fn bundle_of(executable: &Path) -> Option<&Path> {
 }
 
 /// Every module of the app, in a fixed order. The dev-only `demo` and `trial` modules run in debug builds only.
+#[cfg(test)]
 pub(crate) fn registry() -> Result<Registry, ComposeError> {
-    let registry = Registry::new()?;
-    #[cfg(debug_assertions)]
-    let registry = {
-        let mut registry = registry;
-        registry.register(Box::new(fresher_module_demo::DemoModule::new()?))?;
-        registry.register(Box::new(fresher_module_trial::TrialModule::new()?))?;
-        registry
-    };
+    registry_of(None)
+}
+
+/// The app's modules, or only the one with the id `only` (none when the app has no such module).
+fn registry_of(only: Option<ModuleId>) -> Result<Registry, ComposeError> {
+    let mut registry = Registry::new()?;
+    for module in modules()? {
+        if only.is_none_or(|id| module.descriptor().id() == id) {
+            registry.register(module)?;
+        }
+    }
     Ok(registry)
+}
+
+/// Every module of the app, in a fixed order.
+#[cfg_attr(
+    not(debug_assertions),
+    expect(clippy::unnecessary_wraps, reason = "only the dev-only modules of a debug build can fail to build")
+)]
+fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
+    let modules: Vec<Box<dyn Module>> = Vec::new();
+    #[cfg(debug_assertions)]
+    let modules = {
+        let mut modules = modules;
+        modules.push(Box::new(fresher_module_demo::DemoModule::new()?));
+        modules.push(Box::new(fresher_module_trial::TrialModule::new()?));
+        modules
+    };
+    Ok(modules)
 }
 
 #[cfg(test)]
@@ -203,6 +312,26 @@ mod tests {
         fn a_development_build_has_no_bundle() {
             assert_eq!(bundle_of(Path::new("/Users/me/fresher/target/debug/fresher-app")), None);
             assert_eq!(bundle_of(Path::new("/Users/me/Fresher.app")), None);
+        }
+
+        /// Run by `cargo test --release`: a release build has no sandbox mode, whatever the environment says.
+        #[cfg(not(debug_assertions))]
+        #[test]
+        fn a_release_build_ignores_the_variable() {
+            let (folder, home, sandbox) =
+                (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            let named = sandbox.path().as_os_str().to_owned();
+            let var = |name: &str| match name {
+                "FRESHER_SANDBOX" => Some(named.clone()),
+                "FRESHER_SANDBOX_TRASH" => Some("not a choice".into()),
+                _ => None,
+            };
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), var).unwrap();
+
+            assert_eq!((start.data_folder.as_path(), start.home.as_path()), (folder.path(), home.path()));
+            assert_eq!(start.build, fresher_core::Build::Release);
+            assert_eq!(std::fs::read_dir(sandbox.path()).unwrap().count(), 0);
         }
 
         #[test]

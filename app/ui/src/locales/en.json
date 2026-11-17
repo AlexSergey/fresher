@@ -1,6 +1,8 @@
 {
   "ui.app.title": "Fresher",
   "ui.app.version": "Version {version}",
+  "ui.build-banner.development": "Development build · nothing can be removed outside a sandbox",
+  "ui.build-banner.sandbox": "Sandbox · {path}",
   "ui.category-card.count.one": "{count} item",
   "ui.category-card.count.other": "{count} items",
   "ui.category-card.open": "Open {name}",

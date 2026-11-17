@@ -1,0 +1,21 @@
+{
+  "identifier": "io.github.alexsergey.fresher.dev",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Fresher (development)",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 900,
+        "minHeight": 600,
+        "incognito": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 18, "y": 22 },
+        "transparent": true,
+        "windowEffects": { "effects": ["sidebar"], "state": "followsWindowActiveState" }
+      }
+    ]
+  }
+}

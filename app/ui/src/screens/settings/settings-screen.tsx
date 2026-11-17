@@ -8,6 +8,7 @@ import { Surface } from '../../design/layout/surface/surface';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { t, tText } from '../../i18n';
 import { SettingsRow } from '../../product/settings-row/settings-row';
+import { useAppInfo } from '../use-app-info';
 import { useModules } from '../use-modules';
 import { FileNotice, isReadOnly } from './file-notice';
 import { IgnoredGroup } from './ignored-group';
@@ -15,7 +16,6 @@ import { OwnDataGroup } from './own-data-group';
 import { RescanNotice } from './rescan-notice';
 import { type SettingsGroup, settingsGroups } from './settings-groups';
 import styles from './settings-screen.module.css';
-import { useAppVersion } from './use-app-version';
 import { useSettings } from './use-settings';
 
 // "What can I change?": the groups in order (General, Scan, each module, Ignored, Permissions, Fresher's own data,
@@ -113,7 +113,7 @@ const Group = ({ group, settings, view }: GroupProps): JSX.Element => {
 // The app's version and its licence. The licences of what it is built from come before the first release.
 const AboutGroup = (): JSX.Element => {
   const headingId = useId();
-  const version = useAppVersion();
+  const version = useAppInfo()?.version ?? null;
 
   return (
     <section aria-labelledby={headingId} className={styles.group}>

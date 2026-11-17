@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod access;
+mod app_info;
 mod cachedir;
 mod cancel;
 mod category;
@@ -44,6 +45,7 @@ pub use access::{
     Access, AccessStatus, Availability, Capability, CapabilityState, CapabilityText, GuardedFolder, GuardedPlace, Need,
     NeedKind, VolumeKind,
 };
+pub use app_info::{AppInfo, Build};
 pub use cachedir::{CACHEDIR_SIGNATURE, CACHEDIR_TAG, is_valid_cachedir_tag};
 pub use cancel::CancelToken;
 pub use category::{CategoryDescriptor, CategoryText};

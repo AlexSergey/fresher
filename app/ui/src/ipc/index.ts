@@ -2,6 +2,7 @@ import { Channel, invoke, type InvokeArgs } from '@tauri-apps/api/core';
 
 import type {
   AccessStatus,
+  AppInfo,
   CleanupDetail,
   CleanupId,
   CleanupItemRef,
@@ -34,7 +35,7 @@ export { inApp } from './runtime';
 
 // The Rust names of the commands (`#[tauri::command]` in app/tauri), the only place they are spelled.
 export const COMMANDS = {
-  appVersion: 'app_version',
+  appInfo: 'app_info',
   cancelCleanup: 'cancel_cleanup',
   cancelScan: 'cancel_scan',
   confirmCleanup: 'confirm_cleanup',
@@ -99,7 +100,7 @@ const call = async <T>(key: CommandKey, args?: InvokeArgs): Promise<T> => {
   }
 };
 
-export const getAppVersion = (): Promise<string> => call('appVersion');
+export const getAppInfo = (): Promise<AppInfo> => call('appInfo');
 
 // Every event of the core from now on goes to `onEvent`.
 export const subscribe = async (onEvent: (event: Event) => void): Promise<void> => {

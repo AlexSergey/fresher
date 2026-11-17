@@ -22,6 +22,7 @@ mod naive_walk;
 mod run_module;
 mod swapper;
 mod system_fakes;
+mod tree_description;
 mod tree_report;
 
 pub use cleanup_fakes::{ExecutedPlan, FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
@@ -39,4 +40,5 @@ pub use naive_walk::NaiveWalk;
 pub use run_module::{HarnessError, ModuleRun, Ports, run_module};
 pub use swapper::Swapper;
 pub use system_fakes::{FakeInstalledApps, FakeRunningApps, fake_system, installed_app, running_app, signed_by};
+pub use tree_description::{FIXTURE_NOW, TreeDescription};
 pub use tree_report::{EntryKind, TreeEntry, TreeReport};

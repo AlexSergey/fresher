@@ -2,6 +2,16 @@
 // `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test bindings` rewrites it.
 
 /**
+ * The app's answer to "which build is this".
+ */
+export type AppInfo = { version: string, build: Build, };
+
+/**
+ * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
+ */
+export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, };
+
+/**
  * Something that happened; a discriminated union on `type` in TypeScript.
  */
 export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };

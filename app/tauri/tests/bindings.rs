@@ -11,19 +11,19 @@ mod support {
     use std::path::PathBuf;
 
     use fresher_core::{
-        Access, AccessStatus, ActionKind, Availability, BlockedReason, ByteSize, Capability, CapabilityState,
-        CategoryDescriptor, CategoryId, CategoryInfo, CategoryPick, CategoryTotal, ChildOrder, CleanupDetail,
-        CleanupId, CleanupItemRef, CleanupItemView, CleanupPlanView, CleanupReport, CleanupSelection, CleanupSummary,
-        CleanupsPage, CleanupsQuery, CommandError, Completeness, Confirmation, Coverage, DangerLevel, Dictionary,
-        Ended, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery,
-        GuardedFolder, IgnoreTarget, IgnoredCount, IgnoredEntry, ItemOutcome, ItemReport, LastScan, LeftOut, Locale,
-        Method, ModuleId, ModuleInfo, ModuleOutcome, Need, NeedKind, NodeId, NodeInfo, NodeKind, NodePage, NotEntered,
-        NotScanned, Operation, OutcomeCounts, Overview, OwnData, PlanGroup, PlanId, PlanItemView, PlanSummary,
-        PutBackItem, PutBackOutcome, PutBackReport, PutBackRequest, RecordedOutcome, Refusal, Removability, Removal,
-        ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind,
-        SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes, SkipCode, SkipReason, StateId,
-        Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashState, Unit, Unreadable, UnreadableCount,
-        UnreadablePlace, VolumeKind,
+        Access, AccessStatus, ActionKind, AppInfo, Availability, BlockedReason, Build, ByteSize, Capability,
+        CapabilityState, CategoryDescriptor, CategoryId, CategoryInfo, CategoryPick, CategoryTotal, ChildOrder,
+        CleanupDetail, CleanupId, CleanupItemRef, CleanupItemView, CleanupPlanView, CleanupReport, CleanupSelection,
+        CleanupSummary, CleanupsPage, CleanupsQuery, CommandError, Completeness, Confirmation, Coverage, DangerLevel,
+        Dictionary, Ended, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage,
+        FindingsQuery, GuardedFolder, IgnoreTarget, IgnoredCount, IgnoredEntry, ItemOutcome, ItemReport, LastScan,
+        LeftOut, Locale, Method, ModuleId, ModuleInfo, ModuleOutcome, Need, NeedKind, NodeId, NodeInfo, NodeKind,
+        NodePage, NotEntered, NotScanned, Operation, OutcomeCounts, Overview, OwnData, PlanGroup, PlanId, PlanItemView,
+        PlanSummary, PutBackItem, PutBackOutcome, PutBackReport, PutBackRequest, RecordedOutcome, Refusal,
+        Removability, Removal, ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingEffect, SettingGroup,
+        SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes,
+        SkipCode, SkipReason, StateId, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashState,
+        Unit, Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
     };
     use ts_rs::{Config, TS};
 
@@ -45,6 +45,8 @@ mod support {
     pub(crate) fn declarations() -> Vec<Declaration> {
         let config = Config::new();
         let mut declarations = vec![
+            declaration::<AppInfo>(&config),
+            declaration::<Build>(&config),
             declaration::<Event>(&config),
             declaration::<Refusal>(&config),
             declaration::<CommandError>(&config),

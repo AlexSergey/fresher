@@ -78,6 +78,9 @@ npm-debug.log*
 .claude/settings.local.json
 .superpowers/
 
+# Sandboxes written by `npm run sandbox` (docs/testing.md, "Sandboxes"): generated, never committed
+/sandbox/
+
 # Local experiments: never committed
 NO_COMMIT/
 

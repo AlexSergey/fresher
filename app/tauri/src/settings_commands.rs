@@ -6,19 +6,19 @@ use std::path::{Path, PathBuf};
 
 use fresher_core::{CommandError, OwnData, Refusal};
 use fresher_store::DataFolder;
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_dialog::DialogExt;
+
+/// The user's home folder, looked up once in the app's setup and managed as state.
+pub(crate) struct HomeFolder(pub(crate) PathBuf);
 
 /// The folder the user picks in the system's folder picker, `null` when the picker was cancelled. A folder in the
 /// home folder is answered as `~/…`, as the settings write it. The engine checks it like any other value when the UI
 /// sends the new list.
 #[tauri::command(async)]
-pub(crate) fn pick_folder<R: Runtime>(app: AppHandle<R>) -> Option<PathBuf> {
+pub(crate) fn pick_folder<R: Runtime>(app: AppHandle<R>, home: State<'_, HomeFolder>) -> Option<PathBuf> {
     let picked = app.dialog().file().blocking_pick_folder()?.into_path().ok()?;
-    Some(match app.path().home_dir() {
-        Ok(home) => home_relative(&picked, &home),
-        Err(_) => picked,
-    })
+    Some(home_relative(&picked, &home.0))
 }
 
 /// What the app's own data folder takes on disk, against its budget.

@@ -5,7 +5,8 @@
 //! execution removes only plan items or what is inside them, strictly inside the root, never protected, ignored, a
 //! hard-blocked folder or an ancestor of one; the outside folder and every protected subtree list exactly as before.
 //! The same holds for a permanent cleanup while a folder of the root is swapped for a link to the outside folder and
-//! back on another thread. Failing seeds are kept in `never.proptest-regressions`.
+//! back on another thread, and for the reach of one sandbox folder: nothing outside that folder ever goes. Failing
+//! seeds are kept in `never.proptest-regressions`.
 
 #[cfg(test)]
 mod model {
@@ -15,7 +16,7 @@ mod model {
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
 
-    use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
+    use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
     use fresher_core::{
         AccessStatus, Action, ActionKind, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Cleaner as _,
         CleanupContext, CleanupPlan, Confirmation, ConfirmedPlan, DangerLevel, Depth, Finding, FindingId, ItemDone,
@@ -184,6 +185,19 @@ mod model {
 
     impl Bench {
         pub(crate) fn new(tree: Tree) -> Self {
+            Self::within(tree, Reach::Sandbox)
+        }
+
+        /// The bench whose cleaner reaches only the folder `folder` of the tree, marked as a sandbox.
+        pub(crate) fn in_folder(tree: Tree, folder: &str) -> Self {
+            let path = tree.at(folder);
+            fs::write(path.join(SANDBOX_MARKER), format!("{SANDBOX_SIGNATURE}\n")).unwrap();
+            let user = fs::metadata(tree.root()).unwrap().uid();
+            let reach = Reach::SandboxFolder(SandboxFolder::new(&path, user, &Protection::default()).unwrap());
+            Self::within(tree, reach)
+        }
+
+        fn within(tree: Tree, reach: Reach) -> Self {
             let trash = Arc::new(FakeTrash::new(tree.at(".Trash")));
             let runner = Arc::new(FakeCommandRunner::default());
             let ports = CleanerPorts {
@@ -194,8 +208,7 @@ mod model {
                 clock: Arc::new(FakeClock::at(1_000)),
             };
             let user = fs::metadata(tree.root()).unwrap().uid();
-            let cleaner =
-                DiskCleaner::new(Reach::Sandbox, user, tree.root().to_path_buf(), Protection::default(), ports);
+            let cleaner = DiskCleaner::new(reach, user, tree.root().to_path_buf(), Protection::default(), ports);
             let protection = Protection::new(vec![tree.at(NEVER)], vec![tree.at(WHOLE)], vec![tree.at(EXCEPT)])
                 .unwrap()
                 .with_ignored(&[tree.at(IGNORED)])
@@ -325,8 +338,8 @@ mod negative {
     use proptest::test_runner::TestCaseError;
 
     use crate::model::{
-        Bench, IGNORED, Leaf, Listed, NEVER, OUTSIDE, SCAN, Tree, WHOLE, acted, is_path_action, item, may_go, relative,
-        tool, twin,
+        BASES, Bench, IGNORED, Leaf, Listed, NEVER, OUTSIDE, SCAN, Tree, WHOLE, acted, is_path_action, item, may_go,
+        relative, tool, twin,
     };
 
     fn leaf() -> impl Strategy<Value = Leaf> {
@@ -429,6 +442,45 @@ mod negative {
             let done = bench.execute(items.clone(), method);
 
             holds(&bench, &items, &before, &done)?;
+        }
+    }
+
+    proptest! {
+        /// The reach of one sandbox folder, any base folder of the tree: on top of everything above, nothing outside
+        /// that folder is ever acted on, moved or deleted, and the folder itself stays.
+        #[test]
+        fn nothing_outside_the_sandbox_folder_goes(
+            entries in entries(),
+            picks in picks(),
+            permanent in any::<bool>(),
+            folder in 0..BASES.len(),
+        ) {
+            let folder = BASES[folder];
+            let bench = Bench::in_folder(Tree::build(&entries), folder);
+            let items = plan(&bench, &picks);
+            let before = bench.tree.listing();
+
+            for depth in [Depth::Quick, Depth::Full] {
+                bench.rehearse(&items, depth);
+                prop_assert_eq!(&bench.tree.listing(), &before, "a rehearsal changed the tree");
+            }
+            let method = if permanent { Method::Permanent } else { Method::Trash };
+            let done = bench.execute(items.clone(), method);
+
+            holds(&bench, &items, &before, &done)?;
+            let strictly_inside = |path: &Path| path.starts_with(folder) && path != Path::new(folder);
+            for (item, done) in items.iter().zip(&done) {
+                if acted(&done.outcome) {
+                    let path = relative(&bench.tree, item);
+                    prop_assert!(path.as_deref().is_some_and(strictly_inside), "acted on {:?}", item.action());
+                }
+            }
+            let after = bench.tree.listing();
+            for (path, listed) in &before {
+                if !strictly_inside(path) {
+                    prop_assert_eq!(after.get(path), Some(listed), "{} changed", path.display());
+                }
+            }
         }
     }
 

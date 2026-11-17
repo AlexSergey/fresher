@@ -40,7 +40,32 @@ line is the core's `SANDBOX_SIGNATURE` — in a folder the system's protection d
 hard-blocked folder such as a mounted volume's root, or an ancestor of a protected place). A tool acts on the real
 system, so it never runs in the sandbox.
 
-**To clean in a development build** (`npm run tauri dev`): make a folder of its own (for example
+The third form, `Reach::SandboxFolder(SandboxFolder)`, is sandbox mode (plan 007): one folder made by a sandbox
+generator. `SandboxFolder::new` takes the folder only when it is no link itself, made canonical, holds a valid marker of
+the user, and is neither a protected place, an ancestor of one nor a whole folder by the real Mac's protection list.
+An item then counts only when it is strictly inside that folder by components (never the folder itself) and the
+folder still holds its marker right then. The protection the cleaner gets in this mode is the real Mac's list joined
+with the sandbox home's (`Protection::joined`: a place either list refuses stays refused, and a carve-out opens only
+its own list's protected places). That joined list makes the sandbox's `home/` a whole folder, so the folder's marker,
+above it, would not count under `Reach::Sandbox`; `SandboxFolder` checks the folder against the real list once, when it
+is made. It never runs a tool, and it grants nothing a release build lacks.
+
+The app enters sandbox mode in its setup (`app/tauri/src/sandbox.rs`, compiled in debug builds only): a debug build
+started with `FRESHER_SANDBOX=<absolute path>` lives entirely in that folder — its `home/` is the home of the scan roots
+(`~`) and of the known folders, `.fresher-data/` holds the settings, the scan cache and the cleanup journal, and the
+cleaner's Trash is the sandbox's `home/.Trash` (`FRESHER_SANDBOX_TRASH=real` chooses the system's Trash; any other
+value is refused). A folder that is a link, is protected on the real Mac, holds no valid marker or has no `home/`
+stops the start with the reason. Clock, volumes, open files, running apps, commands and access stay real and are only
+read; `sandbox_engine` takes them as `SandboxPorts`, so the sandboxes' autotests run the same composition on fakes. A
+release build has no such branch and reads neither variable.
+
+The marker is read by one function, `fresher_macos::sandbox_marker::holds_marker`, shared with the sandbox generator:
+the marker is opened with `O_NOFOLLOW_ANY` (no link in any component) and without waiting on a named pipe, must be the
+entry the folder lists (same volume and file id as its `lstat`), a regular file of the user, and start with the
+signature line. Off macOS no marker counts.
+
+**To clean in a development build**, use sandbox mode (`npm run dev:sandbox -- <feature>`, above). The manual way, in
+`npm run dev` without it: make a folder of its own (for example
 `~/fresher-sandbox`, never the home folder itself), write the signature as the first line of a `.fresher-sandbox`
 file in it, put the trial module's folders (`fresher-trial-cache`, `fresher-trial-kept`) right next to that file (the
 module claims them only there) and make the folder a scan root. The scan roots are read-only in the interface until
@@ -55,7 +80,7 @@ skips the item with its reason. It reads the disk only through paths and handles
 
 | #   | Check                                                                                       | Where              | Skip reason                         |
 | --- | ------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------- |
-| 1   | Reach: in the sandbox, a valid marker at or below the root                                  | `reach.rs`         | `NotInSandbox`                      |
+| 1   | Reach: a valid marker at or below the root, or strictly inside the sandbox folder           | `reach.rs`         | `NotInSandbox`                      |
 | 2   | Inside the roots: absolute, plain, strictly inside a root by components, never a root       | `paths.rs`         | `OutsideRoots` (`CheckFailed`)      |
 | 3   | Protection, both lists, both forms of the path                                              | `paths.rs`         | `Protected`, `WholeFolder`          |
 | 4   | Not ignored                                                                                 | `paths.rs`         | `Ignored`                           |

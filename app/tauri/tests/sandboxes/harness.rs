@@ -1,0 +1,474 @@
+//! One case file run through the app's own sandbox composition: generated into a temporary folder, scanned, every
+//! negative and positive checked, every positive cleaned, what is left checked, and the report made. Every problem is
+//! returned as a [`Failure`] naming its case; nothing here panics on a broken expectation.
+
+use std::fmt;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::mpsc::Receiver;
+use std::time::{Duration, SystemTime};
+
+use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, sandbox_engine};
+use fresher_core::{
+    Access, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, Confirmation, Event, Finding,
+    FindingOrder, FindingsQuery, RecordedOutcome, SANDBOX_MARKER, Subject, TrashState, VolumeFacts, VolumeId,
+};
+use fresher_engine::{Engine, ScanMode};
+use fresher_macos::{current_user, protection};
+use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, generate};
+use fresher_testing::{
+    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeRunningApps, FakeVolumes, TreeEntry,
+    TreeReport,
+};
+use serde_json::{Value, json};
+use tempfile::TempDir;
+
+/// The longest a scan or a cleanup is waited for before the run fails instead of hanging.
+const WAIT: Duration = Duration::from_secs(60);
+
+/// The name of the sandbox inside the run's temporary folder.
+const SANDBOX: &str = "sandbox";
+
+/// What went wrong, and in which case (or, before any case is reached, in which case file).
+#[derive(Debug)]
+pub(crate) struct Failure {
+    pub(crate) case: String,
+    pub(crate) problem: String,
+}
+
+impl fmt::Display for Failure {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "case `{}`: {}", self.case, self.problem)
+    }
+}
+
+fn failure(case: &str, problem: impl fmt::Display) -> Failure {
+    Failure { case: case.to_owned(), problem: problem.to_string() }
+}
+
+/// The repository's `fixtures/` folder.
+pub(crate) fn fixtures() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures")
+}
+
+/// The names of the case files in `fixtures/sandboxes/`, without `.toml`, sorted; none when the folder is missing.
+pub(crate) fn case_file_names() -> Vec<String> {
+    let Ok(entries) = fs::read_dir(fixtures().join("sandboxes")) else { return Vec::new() };
+    let mut names: Vec<String> = entries
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "toml"))
+        .map(|path| path.file_stem().unwrap().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+/// Reads `fixtures/sandboxes/<name>.toml`.
+pub(crate) fn read_case_file(name: &str) -> String {
+    let path = fixtures().join("sandboxes").join(format!("{name}.toml"));
+    fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display())).unwrap()
+}
+
+/// The autotest of `fixtures/sandboxes/<name>.toml`: the run passes and its report equals
+/// `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1` rewrites the file instead).
+pub(crate) fn check_case_file(name: &str) {
+    let report = run(name, &read_case_file(name)).map_err(|failure| format!("{name}.toml: {failure}")).unwrap();
+    let golden = fixtures().join("golden").join(format!("sandbox-{name}.json"));
+    let actual = serde_json::to_string_pretty(&report).unwrap() + "\n";
+    if std::env::var_os("UPDATE_GOLDEN").is_some() {
+        fs::write(&golden, actual).unwrap();
+        return;
+    }
+    let expected = fs::read_to_string(&golden).map_err(|error| format!("{}: {error}", golden.display())).unwrap();
+    assert_eq!(actual, expected, "{name}.toml: the report differs from {}", golden.display());
+}
+
+/// The ids of the modules the app registers, in its order.
+pub(crate) fn registered_modules() -> Vec<String> {
+    let world = World::new("registry").unwrap();
+    let engine = world.engine(&[], None).unwrap();
+    engine.modules().iter().map(|module| module.id.as_str().to_owned()).collect()
+}
+
+/// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation.
+pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
+    let file = CaseFile::parse(text).map_err(|error| failure(name, format!("the case file is refused: {error}")))?;
+    let world = World::new(name)?;
+    let engine = world.engine(std::slice::from_ref(&file), file.module().map(fresher_core::ModuleId::as_str))?;
+    let categories: Vec<_> =
+        engine.modules().into_iter().flat_map(|module| module.categories).map(|info| info.descriptor).collect();
+    file.check(&categories)
+        .map_err(|error| failure(name, format!("the case file does not fit the modules: {error}")))?;
+    let sandbox = world.sandbox();
+    let around = world.around(name)?;
+    let before = report_of(name, &sandbox)?;
+
+    scan(name, &engine)?;
+    let findings = findings(name, &engine)?;
+    let mut positives = Vec::new();
+    for case in file.cases() {
+        match case.expect() {
+            None => check_not_offered(case, &file, &sandbox, &findings)?,
+            Some(expect) => positives.push(check_offered(case, expect, &sandbox, &findings)?),
+        }
+    }
+    let (view, detail) = clean(name, &engine, &positives)?;
+    let (view, detail) = (view.as_ref(), detail.as_ref());
+
+    let after = report_of(name, &sandbox)?;
+    for case in file.cases() {
+        match case.expect() {
+            None => check_untouched(case, &before, &after)?,
+            Some(expect) => check_after(case, expect, &sandbox, &findings, view, detail)?,
+        }
+    }
+    if world.around(name)? != around {
+        return Err(failure(name, "the folder that holds the sandbox changed"));
+    }
+    Ok(json!({
+        "findings": findings.iter().map(|finding| finding_report(finding, &sandbox)).collect::<Vec<_>>(),
+        "cleanup": cleanup_report(&sandbox, &findings, view, detail),
+        "treeAfter": tree_report(&after),
+    }))
+}
+
+/// A temporary folder holding the sandbox and a stand-in for the real Mac: its home, and the development build's data
+/// folder (never made).
+struct World {
+    folder: TempDir,
+    name: String,
+}
+
+impl World {
+    fn new(name: &str) -> Result<Self, Failure> {
+        let folder = tempfile::tempdir().map_err(|error| failure(name, error))?;
+        let real_home = folder.path().join("real-home");
+        fs::create_dir(&real_home).map_err(|error| failure(name, error))?;
+        Ok(Self { folder, name: name.to_owned() })
+    }
+
+    fn real_home(&self) -> PathBuf {
+        self.folder.path().join("real-home")
+    }
+
+    fn real_data(&self) -> PathBuf {
+        self.folder.path().join("real-data")
+    }
+
+    /// The sandbox folder at its canonical path, as the generator writes it.
+    fn sandbox(&self) -> PathBuf {
+        fs::canonicalize(self.folder.path()).unwrap_or_else(|_| self.folder.path().to_path_buf()).join(SANDBOX)
+    }
+
+    /// `files` generated into the sandbox, and the sandbox mode's engine on it with fakes for every port it keeps
+    /// real; only `module` registered when one is named.
+    fn engine(&self, files: &[CaseFile], module: Option<&str>) -> Result<Engine, Failure> {
+        let name = &self.name;
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
+        let real = protection(&self.real_home(), &self.real_data(), None).map_err(|error| failure(name, error))?;
+        let generated = generate(files, &self.folder.path().join(SANDBOX), now, &real, current_user())
+            .map_err(|error| failure(name, format!("the sandbox cannot be generated: {error}")))?;
+        let mode = SandboxMode::new(generated.sandbox.path(), SandboxTrash::Sandbox);
+        let mode = match module {
+            None => mode,
+            Some(id) => mode.only(fresher_core::ModuleId::new(leak(id)).map_err(|error| failure(name, error))?),
+        };
+        let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), fakes())
+            .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
+        if let Some(id) = module
+            && !engine.modules().iter().any(|info| info.id.as_str() == id)
+        {
+            return Err(failure(name, format!("the app registers no module `{id}`")));
+        }
+        Ok(engine)
+    }
+
+    /// Everything in the temporary folder but the sandbox.
+    fn around(&self, name: &str) -> Result<Vec<TreeEntry>, Failure> {
+        let report = TreeReport::of(self.folder.path()).map_err(|error| failure(name, error))?;
+        Ok(report.entries.into_iter().filter(|entry| !Path::new(&entry.path).starts_with(SANDBOX)).collect())
+    }
+}
+
+/// A module id lives as long as the app: the test leaks the few it reads.
+fn leak(id: &str) -> &'static str {
+    Box::leak(id.to_owned().into_boxed_str())
+}
+
+/// Fakes for every port sandbox mode keeps real: no clock, volume, open file, running app, tool or permission of the
+/// machine.
+fn fakes() -> SandboxPorts {
+    let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
+    SandboxPorts {
+        clock: Arc::new(FakeClock::at(FIXTURE_NOW)),
+        volumes: Arc::new(FakeVolumes::default().with("/", facts)),
+        open_files: Arc::new(FakeOpenFiles::default()),
+        running: Arc::new(FakeRunningApps::default()),
+        commands: Arc::new(FakeCommandRunner::default()),
+        access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+    }
+}
+
+fn report_of(name: &str, sandbox: &Path) -> Result<TreeReport, Failure> {
+    TreeReport::of(sandbox).map_err(|error| failure(name, error))
+}
+
+/// A full scan, waited for.
+fn scan(name: &str, engine: &Engine) -> Result<(), Failure> {
+    let events = engine.subscribe();
+    engine.start_scan(ScanMode::Full).map_err(|error| failure(name, format!("the scan does not start: {error:?}")))?;
+    until(name, &events, |event| matches!(event, Event::ScanFinished { .. }))
+}
+
+/// Waits for the first event that `is_last`.
+fn until(name: &str, events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool) -> Result<(), Failure> {
+    loop {
+        let event = events.recv_timeout(WAIT).map_err(|error| failure(name, format!("no end in sight: {error}")))?;
+        if is_last(&event) {
+            return Ok(());
+        }
+    }
+}
+
+/// Every finding of the scan, of every registered module, by subject and category.
+fn findings(name: &str, engine: &Engine) -> Result<Vec<Finding>, Failure> {
+    let query = FindingsQuery::new(None, None, FindingOrder::Found, 0, 1000);
+    let mut page = engine.findings(&query).map_err(|error| failure(name, format!("{error:?}")))?;
+    if page.total as usize > page.findings.len() {
+        return Err(failure(name, format!("{} findings: more than one page", page.total)));
+    }
+    page.findings.sort_by_key(|finding| (format!("{:?}", finding.finding().subject()), finding.finding().category()));
+    Ok(page.findings)
+}
+
+fn path_of(finding: &Finding) -> Option<&Path> {
+    match finding.finding().subject() {
+        Subject::Path(path) => Some(path),
+        Subject::External { .. } => None,
+    }
+}
+
+/// A negative case: no finding at or below any of its paths, nor at a folder above them that only this case writes
+/// into (a look-alike file's folder is what a rule would offer).
+fn check_not_offered(case: &Case, file: &CaseFile, sandbox: &Path, findings: &[Finding]) -> Result<(), Failure> {
+    let others: Vec<&Path> = file
+        .cases()
+        .iter()
+        .filter(|other| other.name() != case.name())
+        .flat_map(|other| other.tree().paths().chain(other.tree().markers()))
+        .collect();
+    let only_its_own = |folder: &Path| !others.iter().any(|other| other.starts_with(folder));
+    for path in case.tree().paths() {
+        let below = sandbox.join(path);
+        let folders: Vec<PathBuf> = path
+            .ancestors()
+            .skip(1)
+            .filter(|folder| !folder.as_os_str().is_empty() && only_its_own(folder))
+            .map(|folder| sandbox.join(folder))
+            .collect();
+        let offered = |found: &&Path| found.starts_with(&below) || folders.iter().any(|folder| found == folder);
+        if let Some(found) = findings.iter().filter_map(path_of).find(offered) {
+            return Err(failure(case.name(), format!("offered: {}", relative(found, sandbox))));
+        }
+    }
+    Ok(())
+}
+
+/// A positive case: its finding, at its item, in its category, with its danger.
+fn check_offered<'a>(
+    case: &Case,
+    expect: &Expectation,
+    sandbox: &Path,
+    findings: &'a [Finding],
+) -> Result<&'a Finding, Failure> {
+    let item = sandbox.join(expect.item());
+    let found = findings
+        .iter()
+        .find(|finding| path_of(finding) == Some(item.as_path()))
+        .ok_or_else(|| failure(case.name(), format!("not offered: {}", expect.item().display())))?;
+    let (category, danger) = (found.finding().category(), found.finding().danger());
+    if category != expect.category() {
+        let problem = format!("offered in `{}`, not in `{}`", category.as_str(), expect.category().as_str());
+        return Err(failure(case.name(), problem));
+    }
+    if danger != expect.danger() {
+        return Err(failure(case.name(), format!("offered as {danger:?}, not as {:?}", expect.danger())));
+    }
+    Ok(found)
+}
+
+/// Prepares the cleanup of `positives`, confirms it to the Trash with the summary it got and waits for its end; no
+/// cleanup runs when the plan holds no item (everything left out).
+fn clean(
+    name: &str,
+    engine: &Engine,
+    positives: &[&Finding],
+) -> Result<(Option<CleanupPlanView>, Option<CleanupDetail>), Failure> {
+    if positives.is_empty() {
+        return Ok((None, None));
+    }
+    let ids: Vec<_> = positives.iter().map(|finding| finding.id()).collect();
+    let selection: CleanupSelection =
+        serde_json::from_value(json!({ "findings": ids, "categories": [] })).map_err(|error| failure(name, error))?;
+    let view = engine
+        .prepare_cleanup(&selection)
+        .map_err(|error| failure(name, format!("the cleanup cannot be prepared: {error:?}")))?;
+    if view.summary.count == 0 {
+        return Ok((Some(view), None));
+    }
+    let summary = view.summary;
+    let echo: Confirmation = serde_json::from_value(json!({ "plan": view.plan, "count": summary.count,
+        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash" }))
+    .map_err(|error| failure(name, error))?;
+    let events = engine.subscribe();
+    let id = engine
+        .confirm_cleanup(&echo)
+        .map_err(|error| failure(name, format!("the cleanup is not confirmed: {error:?}")))?;
+    until(name, &events, |event| matches!(event, Event::CleanupFinished { .. }))?;
+    let detail = engine.cleanup(id).map_err(|error| failure(name, format!("{error:?}")))?;
+    Ok((Some(view), Some(detail)))
+}
+
+/// A negative case: every entry at or below its paths as it was before the cleanup.
+fn check_untouched(case: &Case, before: &TreeReport, after: &TreeReport) -> Result<(), Failure> {
+    let markers = case.tree().markers().map(|folder| folder.join(SANDBOX_MARKER));
+    let paths: Vec<PathBuf> = case.tree().paths().map(Path::to_path_buf).chain(markers).collect();
+    let own = |report: &TreeReport| -> Vec<TreeEntry> {
+        let below = |entry: &&TreeEntry| paths.iter().any(|path| Path::new(&entry.path).starts_with(path));
+        report.entries.iter().filter(below).cloned().collect()
+    };
+    let (was, is) = (own(before), own(after));
+    if was != is {
+        let missing = |from: &[TreeEntry], to: &[TreeEntry]| -> Vec<String> {
+            from.iter().filter(|entry| !to.contains(entry)).map(|entry| entry.path.clone()).collect()
+        };
+        let (gone, added) = (missing(&was, &is), missing(&is, &was));
+        return Err(failure(case.name(), format!("changed by the cleanup: gone {gone:?}, added {added:?}")));
+    }
+    Ok(())
+}
+
+/// A positive case: as its `after-cleanup` says.
+fn check_after(
+    case: &Case,
+    expect: &Expectation,
+    sandbox: &Path,
+    findings: &[Finding],
+    view: Option<&CleanupPlanView>,
+    detail: Option<&CleanupDetail>,
+) -> Result<(), Failure> {
+    let item = sandbox.join(expect.item());
+    let left_out = view.into_iter().flat_map(|view| &view.left_out).find(|left| {
+        findings.iter().any(|finding| finding.id() == left.finding() && path_of(finding) == Some(item.as_path()))
+    });
+    let recorded = detail
+        .into_iter()
+        .flat_map(|detail| &detail.items)
+        .find(|recorded| recorded.path.as_deref() == Some(item.as_path()));
+    let outcome = match (left_out, recorded) {
+        (Some(left), _) => RecordedOutcome::Skipped { reason: left.reason().code() },
+        (None, Some(recorded)) => recorded.outcome,
+        (None, None) => return Err(failure(case.name(), "neither cleaned nor left out")),
+    };
+    let present = fs::symlink_metadata(&item).ok();
+    let as_expected = match expect.after() {
+        AfterCleanup::InTrash => {
+            outcome == RecordedOutcome::Moved
+                && present.is_none()
+                && recorded.is_some_and(|recorded| recorded.trash == Some(TrashState::InTrash))
+                && in_sandbox_trash(sandbox, &item)
+        }
+        AfterCleanup::Emptied => {
+            matches!(outcome, RecordedOutcome::Emptied { .. }) && present.as_ref().is_some_and(fs::Metadata::is_dir)
+        }
+        AfterCleanup::Skipped(code) => outcome == RecordedOutcome::Skipped { reason: code } && present.is_some(),
+    };
+    if !as_expected {
+        let still = if present.is_some() { "still there" } else { "gone" };
+        let problem = format!("expected {:?}, the cleanup ended {outcome:?} and the item is {still}", expect.after());
+        return Err(failure(case.name(), problem));
+    }
+    Ok(())
+}
+
+/// Whether the sandbox's Trash, `home/.Trash`, holds an entry moved there from `item` (named `<n>-<its name>`).
+fn in_sandbox_trash(sandbox: &Path, item: &Path) -> bool {
+    let (Some(name), Ok(entries)) = (item.file_name(), fs::read_dir(sandbox.join("home/.Trash"))) else {
+        return false;
+    };
+    let suffix = format!("-{}", name.to_string_lossy());
+    entries.filter_map(Result::ok).any(|entry| entry.file_name().to_string_lossy().ends_with(&suffix))
+}
+
+/// `path` relative to the sandbox, with `/` separators; a path outside it as it is.
+fn relative(path: &Path, sandbox: &Path) -> String {
+    path.strip_prefix(sandbox).unwrap_or(path).to_string_lossy().replace('\\', "/")
+}
+
+fn finding_report(finding: &Finding, sandbox: &Path) -> Value {
+    let inner = finding.finding();
+    let subject = match inner.subject() {
+        Subject::Path(path) => relative(path, sandbox),
+        Subject::External { tool, id } => format!("{}:{id}", tool.as_str()),
+    };
+    json!({
+        "subject": subject,
+        "module": finding.module(),
+        "category": inner.category(),
+        "danger": inner.danger(),
+        "logical": inner.sizes().logical,
+    })
+}
+
+fn cleanup_report(
+    sandbox: &Path,
+    findings: &[Finding],
+    view: Option<&CleanupPlanView>,
+    detail: Option<&CleanupDetail>,
+) -> Value {
+    let subject = |id| findings.iter().find(|finding| finding.id() == id).and_then(path_of);
+    let left_out: Vec<Value> = view
+        .into_iter()
+        .flat_map(|view| &view.left_out)
+        .map(|left| {
+            json!({
+                "path": subject(left.finding()).map(|path| relative(path, sandbox)),
+                "reason": left.reason().code(),
+            })
+        })
+        .collect();
+    let items: Vec<Value> = detail
+        .into_iter()
+        .flat_map(|detail| &detail.items)
+        .map(|item| {
+            json!({
+                "path": item.path.as_deref().map(|path| relative(path, sandbox)),
+                "category": item.category,
+                "danger": item.danger,
+                "action": item.action,
+                "outcome": item.outcome,
+                "trash": item.trash,
+            })
+        })
+        .collect();
+    json!({ "leftOut": left_out, "items": items })
+}
+
+/// The sandbox after the cleanup, without what depends on where it was made: the app's data folder is left out, and
+/// the checklist (which names the sandbox's path) is kept without its size.
+fn tree_report(after: &TreeReport) -> Value {
+    let entries: Vec<TreeEntry> = after
+        .entries
+        .iter()
+        .filter(|entry| !Path::new(&entry.path).starts_with(".fresher-data"))
+        .map(|entry| {
+            let sized = Path::new(&entry.path) != Path::new("EXPECTED.md");
+            TreeEntry { logical_size: if sized { entry.logical_size } else { 0 }, ..entry.clone() }
+        })
+        .collect();
+    json!({
+        "entries": entries,
+        "totalLogicalSize": entries.iter().map(|entry| entry.logical_size).sum::<u64>(),
+    })
+}

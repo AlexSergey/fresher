@@ -38,8 +38,9 @@ impl Clock for FakeClock {
     }
 }
 
-/// A Trash inside the fixture tree: items are moved (renamed) into its folder as `<n>-<name>`, never deleted, and put
-/// back without replacing anything.
+/// A Trash inside the fixture tree: items are moved (renamed) into its folder as `<n>-<name>`, the first such name
+/// that is free (the folder may hold an earlier session's items), never deleted, and put back without replacing
+/// anything.
 #[derive(Debug)]
 pub struct FakeTrash {
     dir: PathBuf,
@@ -96,7 +97,11 @@ impl Trash for FakeTrash {
         let refused = |error: std::io::Error| TrashError::Refused { reason: error.to_string() };
         fs::create_dir_all(&self.dir).map_err(refused)?;
         let mut moved = lock(&self.moved);
-        let landed = self.dir.join(format!("{}-{}", moved.len(), name.to_string_lossy()));
+        // The folder may outlive the process (the sandbox's Trash): the first free name is taken, never an entry's.
+        let landed = (moved.len()..=usize::MAX)
+            .map(|n| self.dir.join(format!("{n}-{}", name.to_string_lossy())))
+            .find(|landed| landed.symlink_metadata().is_err())
+            .ok_or_else(|| TrashError::Refused { reason: "no free name in the Trash".into() })?;
         fs::rename(path, &landed).map_err(refused)?;
         moved.push(path.to_path_buf());
         Ok(Landed { reported: self.reports.then(|| landed.clone()), at: landed })
@@ -382,6 +387,22 @@ mod tests {
             assert_eq!(trash.put_back(&landed, &gone), Err(TrashError::NoParent));
             fs::rename(&item, tree.root().join("aside")).unwrap();
             assert_eq!(trash.put_back(&tree.root().join(".Trash/9-x"), &item), Err(TrashError::NotFound));
+        }
+
+        #[test]
+        fn the_fake_trash_never_replaces_an_earlier_item() {
+            let toml = "[[file]]\npath = \"a.bin\"\nsize = 3\n[[file]]\npath = \".Trash/0-a.bin\"\nsize = 5\n\
+                        [[dir]]\npath = \".Trash/1-a.bin\"\n";
+            let tree = FixtureTree::from_toml_str(toml).unwrap();
+            let item = tree.root().join("a.bin");
+            let trash = FakeTrash::new(tree.root().join(".Trash"));
+
+            let landed = trash.move_to_trash(&item, &held(&item)).unwrap().at;
+
+            assert_eq!(landed, tree.root().join(".Trash/2-a.bin"));
+            assert_eq!(fs::metadata(tree.root().join(".Trash/0-a.bin")).unwrap().len(), 5);
+            assert!(tree.root().join(".Trash/1-a.bin").is_dir());
+            assert_eq!(fs::metadata(&landed).unwrap().len(), 3);
         }
 
         #[test]

@@ -14,8 +14,14 @@ images.
 
 ## What doing it needs
 
-A script and a checklist written for the run live locally in `NO_COMMIT/008-sandbox/` (`make-sandbox.sh`,
-`CHECKLIST.md`), never committed; if they are gone, they are made again from the steps below.
+Plan 007 built what the run needs: `npm run dev:sandbox -- trial --real-trash` generates `sandbox/trial/` (with its
+`EXPECTED.md`, the checklist of the cases) and starts the development build in sandbox mode with the system's Trash;
+the local script of `NO_COMMIT/008-sandbox/` is no longer needed. The sandbox autotests
+(`npm run sandbox:test`) now hold what a fake Trash can: the folders found or not found, the confirmation's refusals,
+the moves, and that nothing beside the sandbox changes. What stays by hand is what needs the real system: the system's
+Trash and Finder's Put Back, the real process table (a held folder), an image, the real window, quitting during a
+cleanup, the release build. The numbered steps below keep their order; step 1 is `dev:sandbox` for the trial
+folders, the rest (the held folder, the image, the unmarked folders) is added by hand.
 
 1. **Prepare**: `~/FresherSandbox` with the sandbox marker (its first line the core's `SANDBOX_SIGNATURE`), two trial
    folders of a few hundred megabytes, a look-alike that must never be found, and `held/` with its own marker and a
@@ -23,7 +29,8 @@ A script and a checklist written for the run live locally in `NO_COMMIT/008-sand
    images no longer mount) with a trial folder in a `sandbox/` folder beside a marker; `~/FresherNoMarker` with a
    marker file that lacks the signature, a trial folder, and a bare trial folder with no marker. The scan roots are
    set to the three folders in the app's `settings.json` (read-only in the interface until plan 005), a copy kept.
-2. **Scan** with `npm run tauri dev`: the five trial folders are found; the look-alike and the bare folder are not.
+2. ~~**Scan** with `npm run tauri dev`: the five trial folders are found; the look-alike and the bare folder are
+   not.~~ Held by `npm run sandbox:test` (the `trial` case file); by hand, only a look at the real window.
 3. **Move to the Trash**: the confirmation lists what will not be removed and why (the held folder in use, naming its
    holder; the image's folder; the unmarked folder as "Development build"); the progress; the result "Moved to the
    Trash", the measured space about 0, the Trash sentence; the items are in the Trash.

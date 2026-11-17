@@ -108,7 +108,7 @@ pub(crate) fn verify(item: &PlanItem, cx: &GuardContext<'_>, depth: Depth) -> Re
     let placed = cx.roots.place(path);
     let in_reach = match &placed {
         Ok(placed) => cx.reach.admits(&placed.root, &placed.relative, cx.user, cx.system),
-        Err(_) => !matches!(cx.reach, Reach::Sandbox),
+        Err(_) => cx.reach.admits_unplaced(),
     };
     if !in_reach {
         return Err(SkipReason::NotInSandbox.into());

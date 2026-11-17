@@ -21,9 +21,13 @@ fresher-macos = { path = "../../crates/macos" }
 # Registered in debug builds only (`src/compose.rs`); Cargo cannot make a dependency depend on `debug_assertions`.
 fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-trial = { path = "../../modules/trial" }
+# Sandbox mode (`src/sandbox.rs`), used in debug builds only, as the dev-only modules above.
+fresher-sandbox = { path = "../../crates/sandbox" }
 fresher-scanner = { path = "../../crates/scanner" }
 fresher-store = { path = "../../crates/store" }
 fresher-system = { path = "../../crates/system" }
+# The sandbox's Trash (`FakeTrash`) in sandbox mode, debug builds only; the shell's tests' fakes.
+fresher-testing = { path = "../../crates/testing" }
 tauri = { version = "=2.12.5", features = ["macos-private-api"] }
 tauri-plugin-dialog = "=2.8.4"
 tauri-plugin-single-instance = "=2.5.5"
@@ -31,7 +35,6 @@ thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-fresher-testing = { path = "../../crates/testing" }
 serde_json.workspace = true
 tauri = { version = "=2.12.5", features = ["test"] }
 tempfile.workspace = true

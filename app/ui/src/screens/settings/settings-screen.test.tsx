@@ -63,7 +63,7 @@ const STORAGE: Refusal = { error: { code: 'storage' }, text: { args: {}, key: 'c
 
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
-    appVersion: () => '1.2.3',
+    appInfo: () => ({ build: { kind: 'release' }, version: '1.2.3' }),
     getDictionary: () => DICTIONARY,
     getModules: () => MODULES,
     getOverview: () => IDLE,
@@ -203,7 +203,7 @@ describe('SettingsScreen', () => {
     });
 
     it('shows no notice and no version line when the core does not tell them', async () => {
-      core({ appVersion: refuse(STORAGE) });
+      core({ appInfo: refuse(STORAGE) });
       await renderScreen();
 
       await demoSwitch();

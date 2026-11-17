@@ -314,7 +314,7 @@ export const releaseScan = async (page: Page): Promise<void> => {
 
 // What the core answers before any scan: the demo module, its texts and settings, Full Disk Access granted.
 const ANSWERS = {
-  appVersion: '0.0.1',
+  appInfo: { build: { kind: 'release' }, version: '0.0.1' },
   cancelScan: null,
   getAccessStatus: GRANTED,
   getDictionary: SCRIPTS_DICTIONARY,
@@ -378,6 +378,8 @@ export const SCRIPTS = {
   demo: { answers: ANSWERS, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
   // Full Disk Access refused: the overview shows the permission card.
   denied: { answers: { ...ANSWERS, getAccessStatus: DENIED } },
+  // A development build on the real home folder: the banner says nothing can be removed outside a sandbox.
+  development: { answers: { ...ANSWERS, appInfo: { build: { kind: 'development' }, version: '0.1.0' } } },
   // The demo module fails after its first batch, and the scan with it.
   failed: { answers: ANSWERS, scan: DEMO_FAILED_SCAN, scanned: DEMO_FAILED },
   // A thousand findings in three categories, paged by the lists.
@@ -401,6 +403,13 @@ export const SCRIPTS = {
   readOnly: { answers: { ...ANSWERS, getSettings: SETTINGS_READ_ONLY } },
   // The core refuses every scan as busy.
   refused: { answers: ANSWERS, refusals: { startScan: BUSY } },
+  // A development build in a sandbox: the banner names its folder.
+  sandboxed: {
+    answers: {
+      ...ANSWERS,
+      appInfo: { build: { kind: 'sandbox', path: '/Users/dev/sandboxes/trial' }, version: '0.1.0' },
+    },
+  },
   // Settings of every kind.
   settings: {
     answers: {

@@ -22,7 +22,10 @@ The app deletes files from a real person's disk. These rules hold in every versi
 - **Rule:** the scanner and the rules never write to, move or delete anything in a scanned root.
 - **Why:** a scan must be safe to run at any time.
 - **Enforced by:** Clippy `disallowed-methods` forbids the deleting functions (`std::fs`'s and `fresher-macos`'s
-  `remove_at`) outside the cleaner's single deletion point (plans 001 and 008); the crate layout.
+  `remove_at`) outside the cleaner's single deletion point (plans 001 and 008); the crate layout. The same lint
+  forbids looking up the home folder; the only other files that may expect it are the two home lookups (the app's
+  setup and the sandbox generator's binary), once each, for that lookup only (`HOME_LOOKUPS` in
+  `crates/cleaner/tests/deletion_point.rs`).
 
 ## Trash first
 
@@ -66,7 +69,12 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `remove/permanent.rs`, `tests/never.rs` (random trees with links in, out and up, a protected and a carved-out
   folder), `crates/macos/src/protection.rs`. A folder setting (the scan roots) that names a protected folder, a folder
   inside it or above it (`/`, `/private`, `/Users`), or that is not `~`, `~/…` or a plain absolute path, is refused by
-  the core's settings check (`crates/core/src/settings/folders.rs`).
+  the core's settings check (`crates/core/src/settings/folders.rs`). A development build has a third reach, a sandbox
+  folder (`Reach::SandboxFolder`, [`../architecture/removal.md`](../architecture/removal.md)): the cleaner acts only
+  strictly inside a folder that holds a valid marker, is no link (also named with a trailing slash) and is no
+  protected or whole place of the real Mac, with the real and the sandbox protection lists joined, so it removes
+  nothing the real list would keep. Tests: `crates/cleaner/tests/reach.rs`, `crates/core/src/cleanup/protection.rs`,
+  `app/tauri/tests/sandboxes.rs`.
 
 ## The user's own folders are hard-blocked
 

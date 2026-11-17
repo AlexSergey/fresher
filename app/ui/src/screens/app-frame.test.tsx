@@ -83,6 +83,13 @@ describe('AppFrame', () => {
       expect(quitAfterCleanup).not.toHaveBeenCalled();
     });
 
+    it('a release build has no banner', async () => {
+      core({ appInfo: () => ({ build: { kind: 'release' }, version: '0.1.0' }) });
+      await renderFrame();
+
+      expect(screen.queryByRole('note')).toBeNull();
+    });
+
     it('a module the core does not list has no nav item', async () => {
       core();
       const navigation = createNavigation();
@@ -138,6 +145,13 @@ describe('AppFrame', () => {
   });
 
   describe('positive cases', () => {
+    it('a sandbox build shows the sandbox banner above the window', async () => {
+      core({ appInfo: () => ({ build: { kind: 'sandbox', path: '/Users/dev/box' }, version: '0.1.0' }) });
+      await renderFrame();
+
+      expect(await screen.findByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box');
+    });
+
     it('stop and quit asks the core', async () => {
       const quitAfterCleanup = vi.fn(() => null);
       core({ quitAfterCleanup });

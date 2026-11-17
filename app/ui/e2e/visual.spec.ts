@@ -102,6 +102,20 @@ test.describe('positive cases', () => {
       await looksTheSame(page, 'overview-failed.png');
     });
 
+    test('the sandbox banner', async ({ page }) => {
+      await open(page, SCRIPTS.sandboxed);
+      await expect(page.getByRole('note')).toContainText('Sandbox · /Users/dev/sandboxes/trial');
+
+      await looksTheSame(page, 'banner-sandbox.png');
+    });
+
+    test('the development banner', async ({ page }) => {
+      await open(page, SCRIPTS.development);
+      await expect(page.getByRole('note')).toContainText('nothing can be removed outside a sandbox');
+
+      await looksTheSame(page, 'banner-development.png');
+    });
+
     test('Full Disk Access denied', async ({ page }) => {
       await open(page, SCRIPTS.denied);
       await expect(page.getByText('Fresher cannot see every folder')).toBeVisible();

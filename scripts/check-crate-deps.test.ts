@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  findModuleViolations,
   findUnsafeViolations,
   findViolations,
   type MetadataDependency,
   type MetadataPackage,
   type MetadataTarget,
+  type SourceFile,
   type Violation,
 } from './check-crate-deps.ts';
 
@@ -96,6 +98,20 @@ describe('findViolations', () => {
     it('fails on fresher-testing as a normal dependency of a library', () => {
       assert.equal(check(crate('fresher-testing'), crate('fresher-rules', [normal('fresher-testing')])).length, 1);
     });
+
+    it('fails on fresher-sandbox as a dependency of anything but the app and the tests', () => {
+      const violations = check(
+        crate('fresher-sandbox'),
+        crate('fresher-cleaner', [normal('fresher-sandbox')]),
+        crate('fresher-module-demo', [dev('fresher-sandbox')]),
+      );
+
+      assert.equal(violations.length, 2);
+    });
+
+    it('fails on fresher-sandbox depending on the engine', () => {
+      assert.equal(check(crate('fresher-sandbox', [normal('fresher-engine')])).length, 1);
+    });
   });
 
   describe('positive cases', () => {
@@ -150,6 +166,18 @@ describe('findViolations', () => {
             'fresher-e2e',
             everything.map((d) => dev(d.name)),
           ),
+        ),
+        [],
+      );
+    });
+
+    it('allows fresher-sandbox its edges, and the app and e2e to depend on it', () => {
+      assert.deepEqual(
+        check(
+          crate('fresher-testing', [normal('fresher-core')]),
+          crate('fresher-sandbox', [normal('fresher-core'), normal('fresher-macos'), normal('fresher-testing')]),
+          crate('fresher-app', [normal('fresher-sandbox')]),
+          crate('fresher-e2e', [dev('fresher-sandbox')]),
         ),
         [],
       );
@@ -227,6 +255,78 @@ describe('findUnsafeViolations', () => {
             'crates/store/examples/demo.rs',
             'crates/store/build.rs',
           ),
+        ),
+        [],
+      );
+    });
+  });
+});
+
+const moduleWith = (...files: readonly SourceFile[]): Violation[] =>
+  findModuleViolations(
+    {
+      packages: [
+        withTargets('fresher-module-demo', [target('lib', '/m/demo/src/lib.rs')]),
+        withTargets('fresher-core', [target('lib', '/c/src/lib.rs')]),
+      ],
+    },
+    (folder) => (folder === '/m/demo/src' ? files : [{ path: '/c/src/lib.rs', text: 'use std::process::Command;' }]),
+  );
+
+describe('findModuleViolations', () => {
+  describe('negative cases', () => {
+    it('fails on a module naming std::process', () => {
+      const text = 'fn run() { std::process::Command::new("x"); }';
+
+      assert.deepEqual(moduleWith({ path: '/m/demo/src/tool.rs', text }), [
+        { crate: 'fresher-module-demo', reason: '/m/demo/src/tool.rs names std::process or std::env' },
+      ]);
+    });
+
+    it('fails on a module naming std::env', () => {
+      assert.equal(moduleWith({ path: '/m/demo/src/a.rs', text: 'let v = std::env::var("HOME");' }).length, 1);
+    });
+
+    it('fails on a use that groups std::env or std::process', () => {
+      assert.equal(moduleWith({ path: '/m/demo/src/a.rs', text: 'use std::{env, fmt};' }).length, 1);
+      assert.equal(moduleWith({ path: '/m/demo/src/b.rs', text: 'use std::{fmt, process::Command};' }).length, 1);
+    });
+
+    it('fails on a multi-line and on a nested group', () => {
+      assert.equal(moduleWith({ path: '/m/demo/src/a.rs', text: 'use std::{\n    env,\n    fmt,\n};' }).length, 1);
+      assert.equal(moduleWith({ path: '/m/demo/src/b.rs', text: 'use std::{path::{Path}, env};' }).length, 1);
+    });
+
+    it('reports a violation once for a module with a lib and a bin in one folder', () => {
+      const both = findModuleViolations(
+        {
+          packages: [
+            withTargets('fresher-module-demo', [
+              target('lib', '/m/demo/src/lib.rs'),
+              target('bin', '/m/demo/src/main.rs'),
+            ]),
+          ],
+        },
+        () => [{ path: '/m/demo/src/a.rs', text: 'std::env::args();' }],
+      );
+
+      assert.equal(both.length, 1);
+    });
+  });
+
+  describe('positive cases', () => {
+    it('ignores a block comment naming std::process', () => {
+      assert.deepEqual(
+        moduleWith({ path: '/m/demo/src/a.rs', text: '/* std::process::Command\n std::env */ fn a() {}' }),
+        [],
+      );
+    });
+
+    it('passes a module that names neither, and ignores comments and other crates', () => {
+      assert.deepEqual(
+        moduleWith(
+          { path: '/m/demo/src/a.rs', text: '// never std::process::Command\nuse std::path::Path;\nuse std::fmt;' },
+          { path: '/m/demo/src/b.rs', text: 'let environment = 1; // std::envelope' },
         ),
         [],
       );

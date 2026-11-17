@@ -22,14 +22,14 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `miniz_oxide`                  | 0.9.1   | MIT OR Zlib OR Apache-2.0 | scanner, store                                                                      |
 | `objc2`                        | 0.6.5   | MIT                       | macos                                                                               |
 | `objc2-foundation`             | 0.3.2   | MIT                       | macos                                                                               |
-| `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, rules, store, testing                                                    |
+| `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, rules, sandbox, store, testing                                           |
 | `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-demo, store, testing                        |
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
 | `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |
-| `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, scanner, store, system, testing                           |
-| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, core, engine, macos, module-demo, module-trial, rules, scanner, store, system, testing |
-| `toml`                         | 1.2.1   | MIT OR Apache-2.0         | rules, testing                                                                      |
+| `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, sandbox, scanner, store, system, testing                  |
+| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, cleaner, core, engine, macos, module-demo, module-trial, rules, sandbox, scanner, store, system, testing |
+| `toml`                         | 1.2.1   | MIT OR Apache-2.0         | rules, sandbox, testing                                                             |
 | `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, scanner, store, system                                          |
 | `ts-rs`                        | 12.0.1  | MIT                       | app, core                                                                           |
 
@@ -55,7 +55,11 @@ Their only transitive package is `scheduler` 0.28.0 (MIT). No script checks npm 
 
 ## Build and checks only
 
-Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-testing` are our own test crates.
+Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-testing` are our own test crates;
+`fresher-testing` and `fresher-sandbox` are also normal dependencies of `fresher-app`, used by its sandbox mode in
+debug builds only (`docs/hacks/README.md`, "The demo module linked in release builds"). As normal dependencies they
+bring their own (`tempfile`, `toml`, `libc`, `serde_json`) into the release build's dependency graph, though the code
+that uses them is compiled out of it.
 
 ### Rust crates
 

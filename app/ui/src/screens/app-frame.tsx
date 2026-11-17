@@ -8,6 +8,7 @@ import { AppShell } from '../design/layout/app-shell/app-shell';
 import { ScrollArea } from '../design/layout/scroll-area/scroll-area';
 import { t, tText } from '../i18n';
 import { customViews } from '../modules/registry';
+import { BuildBanner } from '../product/build-banner/build-banner';
 import { type Screen, useNavigation, useScreen } from '../state/navigation';
 import { useCore } from '../state/store';
 import styles from './app-frame.module.css';
@@ -20,6 +21,7 @@ import { QuitQuestion } from './quit-question';
 import { ReviewScreen } from './review/review-screen';
 import { screenKey, ScreenStack } from './screen-stack';
 import { SettingsScreen } from './settings/settings-screen';
+import { useAppInfo } from './use-app-info';
 import { useModules } from './use-modules';
 import { useMotionSetting } from './use-motion-setting';
 
@@ -73,6 +75,7 @@ export const AppFrame = (): JSX.Element => {
   useMotionSetting();
   const navigation = useNavigation();
   const modules = useModules();
+  const info = useAppInfo();
   const screen = useScreen(modules?.map((module) => module.id) ?? null);
   const loaded = useCore((state) => state.dictionary !== null);
   const unreachable = useCore((state) => state.failure?.kind === 'unreachable');
@@ -90,24 +93,29 @@ export const AppFrame = (): JSX.Element => {
   };
 
   return (
-    <AppShell sidebar={<FrameSidebar modules={modules} onNavigate={navigation.navigate} screen={screen} />}>
-      {unreachable ? (
-        <div className={styles.unreachable}>
-          <ErrorState
-            action={{
-              label: t('ui.screen.frame.unreachable.retry'),
-              onClick: () => {
-                window.location.reload();
-              },
-            }}
-            text={t('ui.core.unreachable')}
-            title={t('ui.screen.frame.unreachable.title')}
-          />
-        </div>
-      ) : loaded ? (
-        <ScreenStack render={renderScreen} screen={screen} />
-      ) : null}
-      {loaded ? <QuitQuestion /> : null}
-    </AppShell>
+    <div className={styles.window}>
+      {info === null ? null : <BuildBanner build={info.build} />}
+      <div className={styles.body}>
+        <AppShell sidebar={<FrameSidebar modules={modules} onNavigate={navigation.navigate} screen={screen} />}>
+          {unreachable ? (
+            <div className={styles.unreachable}>
+              <ErrorState
+                action={{
+                  label: t('ui.screen.frame.unreachable.retry'),
+                  onClick: () => {
+                    window.location.reload();
+                  },
+                }}
+                text={t('ui.core.unreachable')}
+                title={t('ui.screen.frame.unreachable.title')}
+              />
+            </div>
+          ) : loaded ? (
+            <ScreenStack render={renderScreen} screen={screen} />
+          ) : null}
+          {loaded ? <QuitQuestion /> : null}
+        </AppShell>
+      </div>
+    </div>
   );
 };

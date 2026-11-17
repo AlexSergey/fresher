@@ -4,9 +4,10 @@
 #![expect(clippy::needless_pass_by_value, reason = "Tauri hands a command its state and inputs by value")]
 
 use fresher_core::{
-    AccessStatus, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView, CleanupSelection, CleanupsPage,
-    CleanupsQuery, Confirmation, Dictionary, Event, FindingsPage, FindingsQuery, IgnoreTarget, IgnoredEntry, Locale,
-    ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest, Refusal, ScanId, SettingUpdate, SettingsView,
+    AccessStatus, AppInfo, Build, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView, CleanupSelection,
+    CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingsPage, FindingsQuery, IgnoreTarget,
+    IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest, Refusal, ScanId, SettingUpdate,
+    SettingsView,
 };
 use fresher_engine::{Engine, ScanMode};
 use tauri::ipc::Channel;
@@ -15,10 +16,10 @@ use tauri::{AppHandle, Runtime, State};
 use crate::events::EventForwarder;
 use crate::shell;
 
-/// The version of the app.
+/// The version of the app and the kind of build it is.
 #[tauri::command]
-pub(crate) fn app_version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+pub(crate) fn app_info(build: State<'_, Build>) -> AppInfo {
+    AppInfo { version: env!("CARGO_PKG_VERSION").to_owned(), build: build.inner().clone() }
 }
 
 /// Forwards every event of the engine to `channel` from now on, in place of the channel of an earlier subscribe.
@@ -330,12 +331,13 @@ mod tests {
             Access, Capability, EngineStatus, FindingOrder, FindingsQuery, SettingUpdate, SettingValue, SettingsFile,
         };
 
-        use fresher_core::{PutBackOutcome, TrashState};
+        use fresher_core::{Build, PutBackOutcome, TrashState};
         use serde_json::json;
+        use tauri::Manager;
 
         use super::first_page;
         use crate::commands::{
-            app_version, confirm_cleanup, get_access_status, get_cleanup, get_cleanups, get_dictionary, get_findings,
+            app_info, confirm_cleanup, get_access_status, get_cleanup, get_cleanups, get_dictionary, get_findings,
             get_modules, get_overview, get_settings, prepare_cleanup, put_back, start_scan, subscribe, update_setting,
         };
         use crate::testing::{Shell, caches, echo, recording_channel, scan, trial_home, until_finished};
@@ -374,8 +376,14 @@ mod tests {
         }
 
         #[test]
-        fn app_version_is_the_crate_version() {
-            assert_eq!(app_version(), env!("CARGO_PKG_VERSION"));
+        fn app_info_is_the_crate_version_and_the_managed_build() {
+            let shell = Shell::new();
+            shell.app.manage(Build::Sandbox { path: "/tmp/box".into() });
+
+            let info = app_info(shell.app.state::<Build>());
+
+            assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
+            assert_eq!(info.build, Build::Sandbox { path: "/tmp/box".into() });
         }
 
         #[test]

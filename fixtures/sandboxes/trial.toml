@@ -1,0 +1,73 @@
+# The trial module: a folder is claimed only by its exact name and only right next to the sandbox marker.
+feature = "trial"
+module = "trial"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "a look-alike folder next to a marker is never offered"
+kind = "negative"
+[[case.marker]]
+path = "home/look-alike"
+[[case.file]]
+path = "home/look-alike/fresher-trial-cache2/look-alike.bin"
+size = 4194304
+age = "30d"
+
+[[case]]
+name = "a trial folder with no marker next to it is never offered"
+kind = "negative"
+[[case.file]]
+path = "home/bare/fresher-trial-cache/blob.bin"
+size = 1048576
+
+[[case]]
+name = "a file named like a trial folder is never offered"
+kind = "negative"
+[[case.marker]]
+path = "home/named"
+[[case.file]]
+path = "home/named/fresher-trial-cache.txt"
+size = 2048
+
+[[case]]
+name = "a plain file next to a marker is never offered"
+kind = "negative"
+[[case.marker]]
+path = "home/plain"
+[[case.file]]
+path = "home/plain/keep-me.txt"
+size = 512
+
+[[case]]
+name = "a trial cache next to a marker goes to the Trash"
+kind = "positive"
+[[case.marker]]
+path = "home/work"
+[[case.file]]
+path = "home/work/fresher-trial-cache/blob.bin"
+size = 52428800
+fill = "data"
+[[case.file]]
+path = "home/work/fresher-trial-cache/nested/blob.bin"
+size = 2048
+fill = "data"
+[case.expect]
+item = "home/work/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a trial kept folder next to a marker is emptied and kept"
+kind = "positive"
+[[case.marker]]
+path = "home/keep"
+[[case.file]]
+path = "home/keep/fresher-trial-kept/entry.bin"
+size = 8192
+age = "10d"
+[case.expect]
+item = "home/keep/fresher-trial-kept"
+category = "trial.kept"
+danger = "low"
+after-cleanup = "emptied"
