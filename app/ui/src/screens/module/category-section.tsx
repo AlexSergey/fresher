@@ -1,8 +1,15 @@
 import type { CSSProperties, JSX, Ref } from 'react';
 
-import type { CategoryDescriptor, CategoryId, CategoryTotal, ModuleId } from '../../ipc/bindings.generated';
+import type {
+  CategoryDescriptor,
+  CategoryId,
+  CategoryTotal,
+  LeftOutCount,
+  ModuleId,
+} from '../../ipc/bindings.generated';
 
 import { DangerBadge } from '../../design/data/danger-badge/danger-badge';
+import { ListRow } from '../../design/data/list-row/list-row';
 import { SizeText } from '../../design/data/size-text/size-text';
 import { TreeRow } from '../../design/data/tree-row/tree-row';
 import { Button } from '../../design/primitives/button/button';
@@ -11,6 +18,7 @@ import { t, tText } from '../../i18n';
 import { failureOf, ignore } from '../../ipc';
 import { FindingList } from '../../product/finding-list/finding-list';
 import { levelName } from '../../product/finding-row/texts';
+import { LeftOutLines } from '../../product/left-out-lines/left-out-lines';
 import { honestSize } from '../../product/sizes';
 import { checkedOf } from '../../state/selection';
 import { useCore, useCoreStore } from '../../state/store';
@@ -20,6 +28,8 @@ import styles from './module-screen.module.css';
 export type CategorySectionProps = {
   readonly category: CategoryDescriptor;
   readonly expanded: boolean;
+  // What the module left out of this category in the last scan, as the engine counted it.
+  readonly leftOut?: readonly LeftOutCount[];
   readonly module: ModuleId;
   readonly onExpandedChange: (expanded: boolean) => void;
   // The page scrolls to the section it was opened at.
@@ -82,11 +92,13 @@ const About = ({ category }: { readonly category: CategoryId }): JSX.Element => 
   </details>
 );
 
-// One category of a module's page: its row (name, level, size, count, its box), what it is, Ignore (it leaves the results
-// until it is restored in the settings), and its findings when expanded.
+// One category of a module's page: its row (name, level, size, count, its box; with only left-outs, a quiet row with
+// neither box nor disclosure), what it is, Ignore (it leaves the results until it is restored in the settings), what
+// was left out of it, and its findings when expanded.
 export const CategorySection = ({
   category,
   expanded,
+  leftOut = [],
   module,
   onExpandedChange,
   ref,
@@ -96,33 +108,40 @@ export const CategorySection = ({
   const checked = useCore((state) => checkedOf(state.selection, category.id));
   const name = textOf(`${category.id}.name`);
   const named = { name: { kind: 'text', value: name } } as const;
+  const subtitle = t('ui.screen.module.count', { count: { kind: 'count', value: total.count } });
+  const trailing = (
+    <>
+      <DangerBadge label={levelName(category.danger)} level={category.danger} />
+      <SizeText {...honestSize(total.sizes)} />
+    </>
+  );
 
   return (
     <section aria-label={name} className={styles.category} ref={ref}>
       <div role="list">
-        <TreeRow
-          expanded={expanded}
-          leading={
-            <Checkbox
-              checked={checked}
-              hideLabel
-              label={t('ui.screen.module.select', named)}
-              onChange={() => {
-                store.dispatch({ category: category.id, type: 'toggle-category' });
-              }}
-            />
-          }
-          onExpandedChange={onExpandedChange}
-          subtitle={t('ui.screen.module.count', { count: { kind: 'count', value: total.count } })}
-          title={name}
-          toggleLabel={t('ui.screen.module.expand', named)}
-          trailing={
-            <>
-              <DangerBadge label={levelName(category.danger)} level={category.danger} />
-              <SizeText {...honestSize(total.sizes)} />
-            </>
-          }
-        />
+        {total.count === 0 ? (
+          // Only left-outs: nothing to select, nothing to show below.
+          <ListRow subtitle={subtitle} title={name} trailing={trailing} />
+        ) : (
+          <TreeRow
+            expanded={expanded}
+            leading={
+              <Checkbox
+                checked={checked}
+                hideLabel
+                label={t('ui.screen.module.select', named)}
+                onChange={() => {
+                  store.dispatch({ category: category.id, type: 'toggle-category' });
+                }}
+              />
+            }
+            onExpandedChange={onExpandedChange}
+            subtitle={subtitle}
+            title={name}
+            toggleLabel={t('ui.screen.module.expand', named)}
+            trailing={trailing}
+          />
+        )}
       </div>
       <About category={category.id} />
       <div className={styles.ignore}>
@@ -138,7 +157,8 @@ export const CategorySection = ({
           {t('ui.screen.module.ignore', named)}
         </Button>
       </div>
-      {expanded ? (
+      <LeftOutLines counts={leftOut} />
+      {expanded && total.count > 0 ? (
         <div
           className={styles.findings}
           style={{ '--rows': Math.min(Math.max(total.count, 1), MAX_ROWS) } as CSSProperties}

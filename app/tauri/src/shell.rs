@@ -1,12 +1,13 @@
 //! How the app lives: one instance, and it ends when its window closes. No tray, no thread survives the window.
 //! While a cleanup runs, closing the window or quitting from the app menu (⌘Q) asks first.
 
+use crate::start_failure::holds_exit;
 use fresher_engine::Engine;
 use tauri::menu::{Menu, MenuEvent, MenuItem};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, WindowEvent};
 
 /// The label of the app's only window (`tauri.conf.json`).
-const MAIN_WINDOW: &str = "main";
+pub(crate) const MAIN_WINDOW: &str = "main";
 
 /// The id of the app menu's Quit, the app's own item in place of the system's.
 const QUIT_ITEM: &str = "fresher-quit";
@@ -58,6 +59,8 @@ pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &RunEvent) {
                 api.prevent_close();
             }
         }
+        // A failed start leaves no window, but the app lives until its message is dismissed.
+        RunEvent::ExitRequested { api, code, .. } if holds_exit(app, *code) => api.prevent_exit(),
         RunEvent::ExitRequested { .. } | RunEvent::Exit => on_exit(app),
         _ => {}
     }

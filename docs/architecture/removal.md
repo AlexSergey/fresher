@@ -145,7 +145,8 @@ reachable from outside the crate (`remove/`).
   the item. The system's deleting calls are named only in `crates/macos/src/ffi/beneath.rs` (`tests/deletion_point.rs`),
   and no other crate may hold the unsafe code to call them.
 - **By its tool** (`remove/tool.rs`): the program and its fixed arguments through `CommandRunner`, no shell; exit 0
-  is done, anything else fails with the first line of its error (shown, not journalled).
+  is done, anything else fails with a plain sentence and the first line of its error as the text's `detail` (at
+  most 200 characters, shown only on demand, not journalled).
 
 ## Fail closed
 

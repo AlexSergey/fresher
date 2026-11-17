@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::cleanup::Method;
-use crate::{ByteSize, Capability, FindingId, Removability, Sizes, Text, TextArg, TextKey};
+use crate::{ByteSize, Capability, DETAIL_ARG, FindingId, Removability, Sizes, Text, TextArg, TextKey};
 
 /// Why an item is left out of a plan or skipped by the cleaner: every check that can fail, each with its text.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
@@ -196,21 +196,21 @@ pub enum Failure {
     LandedElsewhere,
     /// The system refused to delete it, or it is still there afterwards.
     DeleteFailed,
-    /// The tool ran and failed; `error` is the first line of what it wrote.
-    ToolFailed { error: String },
+    /// The tool ran and failed; `detail` is the first line of what it wrote, shown only on demand.
+    ToolFailed { detail: String },
     /// The tool could not be started.
     ToolMissing,
 }
 
 impl Failure {
-    /// `core.cleanup.failed.<failure>`; the tool's error as `{error}`.
+    /// `core.cleanup.failed.<failure>`; the tool's line as the `DETAIL_ARG` arg, which the sentence never names.
     pub fn text(&self) -> Text {
         let key = |id: &str| Text::new(TextKey::from_valid(format!("core.cleanup.failed.{id}")));
         match self {
             Self::TrashRefused => key("trash-refused"),
             Self::LandedElsewhere => key("landed-elsewhere"),
             Self::DeleteFailed => key("delete-failed"),
-            Self::ToolFailed { error } => key("tool-failed").with("error", TextArg::Text(error.clone())),
+            Self::ToolFailed { detail } => key("tool-failed").with(DETAIL_ARG, TextArg::Text(detail.clone())),
             Self::ToolMissing => key("tool-missing"),
         }
     }
@@ -603,7 +603,7 @@ pub(crate) mod sample {
             sample(Failure::TrashRefused),
             sample(Failure::LandedElsewhere),
             sample(Failure::DeleteFailed),
-            sample(Failure::ToolFailed { error: "image is in use".into() }),
+            sample(Failure::ToolFailed { detail: "image is in use".into() }),
             sample(Failure::ToolMissing),
         ]
     }
@@ -734,11 +734,21 @@ mod tests {
     mod positive {
         use serde_json::json;
 
+        use crate::cleanup::Failure;
         use crate::cleanup::outcome::sample;
         use crate::cleanup::{
             CleanupReport, Ended, ItemOutcome, ItemReport, Method, RecordedOutcome, SkipCode, SkipReason,
         };
-        use crate::{ByteSize, Capability, FindingId, Sizes};
+        use crate::{ByteSize, Capability, DETAIL_ARG, FindingId, Sizes, TextArg};
+
+        #[test]
+        fn a_tools_failure_carries_its_line_as_the_detail() {
+            let text = Failure::ToolFailed { detail: "Error: image is in use".into() }.text();
+
+            assert_eq!(text.key().as_str(), "core.cleanup.failed.tool-failed");
+            assert_eq!(text.args().len(), 1);
+            assert_eq!(text.args().get(DETAIL_ARG), Some(&TextArg::Text("Error: image is in use".into())));
+        }
 
         #[test]
         fn outcomes_serialize_with_kebab_case_tags() {

@@ -1,7 +1,8 @@
 //! The demo module: made-up findings that prove the module contract end to end, before any real scan exists.
 //!
 //! It has no interests, reads nothing from the disk and runs no command: `finish` describes example items under a
-//! made-up `/demo/` root that does not exist, and example images and volumes of a made-up tool.
+//! made-up `/demo/` root that does not exist, and example images and volumes of a made-up tool, and leaves out one
+//! made-up cache so the line of a left-out item can be seen.
 
 #![forbid(unsafe_code)]
 
@@ -9,8 +10,8 @@ mod settings;
 
 use fresher_core::{
     ByteSize, CategoryDescriptor, CategoryId, Completeness, DangerLevel, DescriptorError, FindingSink, IdError,
-    Interest, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Removal,
-    RemovalError, SettingError, Sizes, Subject, Text, TextArg, TextKey, TextKeyError, ToolCommand, ToolId,
+    Interest, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding,
+    Removal, RemovalError, SettingError, Sizes, Subject, Text, TextArg, TextKey, TextKeyError, ToolCommand, ToolId,
 };
 
 /// The made-up root every example path is under.
@@ -74,6 +75,9 @@ const EXAMPLES: [Example; 8] = [
     },
 ];
 
+/// The size of the one made-up cache the demo leaves out in every scan.
+const LEFT_OUT_BYTES: u64 = 157_286_400;
+
 const fn example(category: usize, name: &'static str, kind: Kind, bytes: u64) -> Example {
     Example { category, name, kind, bytes, completeness: Completeness::Complete, raise: None }
 }
@@ -86,6 +90,7 @@ pub struct DemoModule {
     title: TextKey,
     reason: Text,
     failed: Text,
+    left_out: TextKey,
 }
 
 impl DemoModule {
@@ -100,12 +105,16 @@ impl DemoModule {
         ];
         let settings = vec![settings::count_setting(id)?];
         let locales = Locales { en: include_str!("../locales/en.json") };
+        let (failed, left_out) = (TextKey::new("demo.error.failed")?, TextKey::new("demo.left-out.open")?);
+        let descriptor = ModuleDescriptor::new(id, categories, settings, locales)?
+            .with_problems(vec![failed.clone(), left_out.clone()])?;
         Ok(Self {
-            descriptor: ModuleDescriptor::new(id, categories, settings, locales)?,
+            descriptor,
             tool: ToolId::new("demo-tool")?,
             title: TextKey::new("demo.finding.title")?,
             reason: Text::new(TextKey::new("demo.finding.reason")?),
-            failed: Text::new(TextKey::new("demo.error.failed")?),
+            failed: Text::new(failed),
+            left_out,
         })
     }
 
@@ -138,6 +147,13 @@ impl DemoModule {
         }
         Ok(finding)
     }
+
+    /// The one made-up cache the demo recognizes and does not offer, as if the app that made it were open.
+    fn left_out(&self) -> LeftOutItem {
+        let bytes = ByteSize::new(LEFT_OUT_BYTES);
+        let category = self.descriptor.categories()[CACHES].id();
+        LeftOutItem { category, reason: self.left_out.clone(), sizes: Sizes::complete(bytes, bytes) }
+    }
 }
 
 impl Module for DemoModule {
@@ -166,6 +182,7 @@ impl Module for DemoModule {
             let finding = self.finding(index).map_err(|_| ModuleError::Failed { reason: self.failed.clone() })?;
             out.push(finding);
         }
+        out.left_out(self.left_out());
         Ok(())
     }
 }

@@ -272,6 +272,15 @@ pub(crate) mod tests {
                 assert_eq!(refusal.error, error);
             }
         }
+
+        #[test]
+        fn a_refusal_never_serializes_the_errors_display() {
+            for error in one_of_each() {
+                let json = serde_json::to_string(&Refusal::from(error.clone())).unwrap();
+
+                assert!(!json.contains(&error.to_string()), "{json}");
+            }
+        }
     }
 
     mod positive {

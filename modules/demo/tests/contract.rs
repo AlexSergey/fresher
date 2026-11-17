@@ -20,9 +20,9 @@ mod helpers {
 }
 
 mod positive {
-    use fresher_core::Removal;
+    use fresher_core::{ByteSize, Removal};
     use fresher_testing::{
-        Catalogue, ContractProblem, assert_module_contract, check_removals_matched, check_texts_used,
+        Catalogue, ContractProblem, assert_module_contract, assert_texts_used, check_removals_matched,
     };
 
     use crate::helpers::{demo, run_on_an_empty_home};
@@ -32,16 +32,27 @@ mod positive {
         assert_module_contract(&demo(), &Catalogue::DevOnly);
     }
 
-    /// `demo.error.failed` is shown only when the demo cannot build its example findings, which no run provokes, so
-    /// it is the one text a run leaves unused; anything else the check finds fails the test.
+    /// `demo.error.failed` is shown only when the demo cannot build its example findings, which no run provokes; it
+    /// is a declared problem, so it counts as used.
     #[test]
     fn every_demo_key_is_used() {
         let module = demo();
         let run = run_on_an_empty_home(&module);
 
-        let problems = check_texts_used(&module, &[run]);
+        assert_texts_used(&module, &[run]);
+    }
 
-        assert_eq!(problems, [ContractProblem::UnusedText { key: "demo.error.failed".into() }]);
+    #[test]
+    fn a_scan_leaves_out_one_made_up_cache() {
+        let run = run_on_an_empty_home(&demo());
+
+        let left_out: Vec<_> = run
+            .left_out
+            .iter()
+            .map(|item| (item.category.as_str(), item.reason.as_str(), item.sizes.logical))
+            .collect();
+
+        assert_eq!(left_out, [("demo.caches", "demo.left-out.open", ByteSize::new(157_286_400))]);
     }
 
     /// The demo's paths are made up and nothing matches them, so the kit flags every path removal: the engine shows

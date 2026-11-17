@@ -34,6 +34,12 @@ small `thiserror` error of its own: no panicking path.
 | `on_match(…)`     | one match of one of its interests (`matched.interest` is the index in its own list) → findings     |
 | `finish(…)`       | the end of the walk: work that needs every match (the newest version), or that reads no disk (a tool) |
 
+- A module's problems are declared: `ModuleDescriptor::with_problems(keys)` lists every key it may report. A failed
+  part returns `ModuleError::Failed { reason }` with a declared `Text` (a technical detail goes under `DETAIL_ARG`,
+  never named in the sentence). An item the module recognized and does not offer is `out.left_out(LeftOutItem { … })`:
+  a protected or too-new item, an app that is open. It is not for an unreadable folder, a missing permission or a path
+  no rule knows (the walk and the access status report those, and a rule that cannot tell what a path is does not
+  claim it). The `Vec<NewFinding>` sink used by tests drops left-outs.
 - A category id is `<id>.<name>`; its five texts are found by convention: `<id>.<name>.name`, `.what`, `.made-by`,
   `.if-removed`, `.comes-back`.
 - A setting key is `<id>.<name>`, with `<id>.<name>.label` and `.description`. The settings schema adds the switch
@@ -124,6 +130,9 @@ Through `fresher-testing` ([`../testing.md`](../testing.md)):
   dev-only `demo` and `trial` modules only), `assert_texts_used(&module, &runs)` over the runs of its fixture homes,
   and `check_removals_matched(&runs)` empty: every path a removal names is a path the module was matched on, so the
   engine can tell whether the app may remove it.
+- The contract also fails a module whose run reports a failure or a left-out with a key it did not declare
+  (`UndeclaredProblem`), a left-out in a category that is not its own (`ForeignLeftOutCategory`), or a template that
+  names `{detail}` (`DetailInSentence`); a declared key without a text is `MissingText`.
 - Fixture tests: `run_module(&module, &tree, &Ports::at(seconds))` on a `FixtureTree` → the findings, negative cases
   first; the golden report is `run.golden()` compared with `fixtures/golden/<id>.json`.
 
@@ -136,6 +145,8 @@ A module ships only when every box is ticked:
 - [ ] Every category has its five texts; every setting, `<id>.enabled` included, its label and description.
 - [ ] Every text is plain English, short and without jargon; every choice says what the user keeps or loses (rule 7
       of [`../rules.md`](../rules.md)).
+- [ ] Every failure and left-out text is declared with `with_problems`, plain, and says what to do next.
+- [ ] An item the module recognized and does not offer is reported with `left_out`, never dropped.
 - [ ] Negative fixtures come first: a look-alike name, the current version of a versioned item, a symlink out of the
       root; each is not claimed.
 - [ ] The golden report `fixtures/golden/<id>.json` is written and reviewed.

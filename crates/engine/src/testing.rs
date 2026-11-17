@@ -11,10 +11,10 @@ use std::time::Duration;
 use fresher_core::{
     ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan,
     DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
-    ItemDone, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, Need, NewFinding,
-    Pattern, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId, StoreError,
-    StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable,
-    WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, Need,
+    NewFinding, Pattern, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId,
+    StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem,
+    Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixedDiskState,
@@ -33,6 +33,8 @@ pub(crate) struct TestModule {
     descriptor: ModuleDescriptor,
     interests: Vec<Interest>,
     on_match: OnMatch,
+    /// Reported on every match, before the module does what `on_match` says.
+    match_left_out: Option<LeftOutItem>,
     finish: Box<Finish>,
     seen: Arc<Mutex<Vec<Match>>>,
 }
@@ -50,9 +52,12 @@ pub(crate) struct TestModuleBuilder {
     id: ModuleId,
     categories: Vec<CategoryDescriptor>,
     tool_checks: Vec<ToolCommand>,
+    problems: Vec<TextKey>,
     locales: &'static str,
     interests: Vec<Interest>,
     on_match: OnMatch,
+    /// Reported on every match, before the module does what `on_match` says.
+    match_left_out: Option<LeftOutItem>,
     finish: Box<Finish>,
     seen: Arc<Mutex<Vec<Match>>>,
 }
@@ -64,9 +69,11 @@ impl TestModule {
             id: ModuleId::new(id).unwrap(),
             categories: Vec::new(),
             tool_checks: Vec::new(),
+            problems: Vec::new(),
             locales: "{}",
             interests: Vec::new(),
             on_match: OnMatch::Find,
+            match_left_out: None,
             finish: Box::new(|_, _| Ok(())),
             seen: Arc::default(),
         }
@@ -92,6 +99,12 @@ impl TestModuleBuilder {
         self
     }
 
+    /// The module declares `keys` as the problems it may report.
+    pub(crate) fn problems(mut self, keys: &[&str]) -> Self {
+        self.problems = keys.iter().map(|key| TextKey::new(*key).unwrap()).collect();
+        self
+    }
+
     pub(crate) const fn locales(mut self, en: &'static str) -> Self {
         self.locales = en;
         self
@@ -100,6 +113,12 @@ impl TestModuleBuilder {
     /// The module wants every folder named `name`; each match becomes one finding of its first category.
     pub(crate) fn folder(mut self, name: &str) -> Self {
         self.interests.push(Interest::new(Pattern::FolderName(name.into()), Claim::Whole, vec![]).unwrap());
+        self
+    }
+
+    /// The module leaves out `item` on every match, before it finds, fails or panics.
+    pub(crate) fn left_out_on_match(mut self, item: LeftOutItem) -> Self {
+        self.match_left_out = Some(item);
         self
     }
 
@@ -132,10 +151,12 @@ impl TestModuleBuilder {
         for check in self.tool_checks {
             descriptor = descriptor.with_tool_check(check).unwrap();
         }
+        descriptor = descriptor.with_problems(self.problems).unwrap();
         TestModule {
             descriptor,
             interests: self.interests,
             on_match: self.on_match,
+            match_left_out: self.match_left_out,
             finish: self.finish,
             seen: self.seen,
         }
@@ -157,6 +178,9 @@ impl Module for TestModule {
 
     fn on_match(&self, matched: &Match, _cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError> {
         self.seen.lock().unwrap().push(matched.clone());
+        if let Some(item) = &self.match_left_out {
+            out.left_out(item.clone());
+        }
         match self.on_match {
             OnMatch::Find => {
                 out.push(finding(&self.descriptor.categories()[0], matched.path.clone(), matched.sizes));

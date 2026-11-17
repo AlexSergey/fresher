@@ -6,6 +6,7 @@ import {
   allFiles,
   DEMO_DICTIONARY,
   DEMO_FINDINGS,
+  DEMO_LEFT_OUT,
   DEMO_OVERVIEW,
   DEMO_SCAN,
   FIRST_BATCH,
@@ -21,6 +22,14 @@ const run = (actions: readonly CoreAction[], from: CoreState = INITIAL_STATE): C
 const started: Event = { modules: ['demo'], scan: 1, type: 'scan-started' };
 
 const scanning = (scan: ScanId): Overview => ({ ...IDLE, status: { scan, state: 'scanning' } });
+
+const moduleDone: Event = {
+  leftOut: [DEMO_LEFT_OUT],
+  module: 'demo',
+  outcome: { kind: 'completed' },
+  scan: 1,
+  type: 'module-finished',
+};
 
 const requested: CoreAction = { type: 'overview-requested' };
 
@@ -57,6 +66,18 @@ const SETTINGS: SettingsView = {
 
 describe('reduce', () => {
   describe('negative cases', () => {
+    it('a new scan clears the left-outs', () => {
+      const state = run([started, moduleDone, { modules: ['demo'], scan: 2, type: 'scan-started' }]);
+
+      expect(state.modules).toStrictEqual([]);
+    });
+
+    it('a left-out of another scan is ignored', () => {
+      const state = run([started, { ...moduleDone, scan: 2 }]);
+
+      expect(state.modules).toStrictEqual([]);
+    });
+
     it('a findings batch does not grow the state', () => {
       const once = run([started, FIRST_BATCH]);
 
@@ -73,7 +94,7 @@ describe('reduce', () => {
       const state = run([
         started,
         { findings: [...DEMO_FINDINGS], scan: 2, type: 'findings-added' },
-        { module: 'demo', outcome: { kind: 'completed' }, scan: 2, type: 'module-finished' },
+        { leftOut: [], module: 'demo', outcome: { kind: 'completed' }, scan: 2, type: 'module-finished' },
         { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 2, type: 'scan-finished' },
       ]);
 
@@ -105,7 +126,7 @@ describe('reduce', () => {
       const state = run([
         started,
         FIRST_BATCH,
-        { module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
+        { leftOut: [], module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
         { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
         requested,
         loaded({
@@ -123,7 +144,7 @@ describe('reduce', () => {
 
       expect(state.overview?.totals).toEqual(DEMO_OVERVIEW.totals);
       expect(state.outcome).toEqual({ kind: 'partial' });
-      expect(state.modules).toEqual([{ module: 'demo', outcome: { kind: 'cancelled' } }]);
+      expect(state.modules).toEqual([{ leftOut: [], module: 'demo', outcome: { kind: 'cancelled' } }]);
       expect(state.status).toEqual({ state: 'idle' });
     });
 
@@ -203,10 +224,21 @@ describe('reduce', () => {
   });
 
   describe('positive cases', () => {
+    it('keeps the left-outs of a finished module', () => {
+      const state = run([started, moduleDone]);
+
+      expect(state.modules).toStrictEqual([
+        { leftOut: [DEMO_LEFT_OUT], module: 'demo', outcome: { kind: 'completed' } },
+      ]);
+    });
+
     it('findings, a module and the end of the scan mark the overview stale', () => {
       expect(run([started, FIRST_BATCH]).stale).toBe(true);
       expect(
-        run([started, { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' }]).stale,
+        run([
+          started,
+          { leftOut: [], module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+        ]).stale,
       ).toBe(true);
       expect(
         run([started, { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' }])
@@ -224,7 +256,7 @@ describe('reduce', () => {
       expect(state.overview).toBe(DEMO_OVERVIEW);
       expect(state.stale).toBe(false);
       expect(state.outcome).toEqual({ kind: 'completed' });
-      expect(state.modules).toEqual([{ module: 'demo', outcome: { kind: 'completed' } }]);
+      expect(state.modules).toEqual([{ leftOut: [DEMO_LEFT_OUT], module: 'demo', outcome: { kind: 'completed' } }]);
     });
 
     it('keeps the totals counted so far during a scan', () => {

@@ -15,7 +15,8 @@ mod tests {
     use crate::{
         Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CommandError, Completeness,
         DangerLevel, Ended, MapPart, ModuleOutcome, MountKind, NotScanned, PartKind, PlaceName, RemainderReason,
-        Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextKey, ToolId, TrashState, VolumeMap,
+        Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey, ToolId, TrashState,
+        VolumeMap,
     };
 
     use crate::cleanup::outcome_sample;
@@ -85,6 +86,8 @@ mod tests {
         let failures = outcome_sample::failures().into_iter().map(|failure| failure.text().key().clone());
         let put_backs = outcome_sample::put_back_outcomes().into_iter().map(|outcome| outcome.text().key().clone());
         let storage = storage_keys();
+        let start = std::iter::once(key("core.start.failed".into()));
+        let left_out = left_out_summaries().into_iter().map(|text| text.key().clone());
         let cleanup_states = Ended::ALL
             .map(|ended| ended.text().key().clone())
             .into_iter()
@@ -107,6 +110,8 @@ mod tests {
             .chain(put_backs)
             .chain(cleanup_states)
             .chain(storage)
+            .chain(start)
+            .chain(left_out)
             .chain(settings)
             .collect()
     }
@@ -145,13 +150,43 @@ mod tests {
         volume_notes().purgeable_note()
     }
 
+    /// The line over a category's left-outs, both plural forms, with the args the UI passes to `core.left-out.summary`:
+    /// its translator picks the form by `count`.
+    fn left_out_summaries() -> [Text; 2] {
+        let size = ByteSize::new(1024);
+        [("core.left-out.summary.one", 1), ("core.left-out.summary.other", 2)].map(|(form, count)| {
+            Text::new(TextKey::new(form).unwrap())
+                .with("count", TextArg::Count(count))
+                .with("size", TextArg::Size(size))
+        })
+    }
+
     /// The texts the core builds with arguments: the errors, the tool notes, the skips' instructions, the failures,
     /// the purgeable note.
     fn texts_with_args() -> Vec<Text> {
         let errors = one_error_of_each().iter().map(CommandError::text).collect::<Vec<_>>();
         let skips = outcome_sample::skip_reasons().iter().filter_map(SkipReason::how).collect::<Vec<_>>();
         let failures = outcome_sample::failures().iter().map(crate::Failure::text).collect::<Vec<_>>();
-        errors.into_iter().chain(tool_notes()).chain(skips).chain(failures).chain(purgeable_note()).collect()
+        errors
+            .into_iter()
+            .chain(tool_notes())
+            .chain(skips)
+            .chain(failures)
+            .chain(purgeable_note())
+            .chain(left_out_summaries())
+            .collect()
+    }
+
+    /// The text as a reader sees it: its template with every placeholder it names filled in.
+    fn render(texts: &crate::Dictionary, text: &Text) -> String {
+        let template = texts.get(text.key().as_str()).unwrap().to_owned();
+        text.args().iter().fold(template, |rendered, (name, arg)| {
+            let value = match arg {
+                TextArg::Text(value) => value.clone(),
+                other => format!("{other:?}"),
+            };
+            rendered.replace(&format!("{{{name}}}"), &value)
+        })
     }
 
     /// The notes of a tool's state, with the arguments the core passes.
@@ -166,8 +201,30 @@ mod tests {
     mod negative {
         use std::collections::BTreeSet;
 
-        use super::{core_keys, texts_with_args};
-        use crate::{Capability, CapabilityText, PartKind, TextKey, core_dictionary};
+        use super::{core_keys, render, texts_with_args};
+        use crate::{Capability, CapabilityText, DETAIL_ARG, Failure, PartKind, TextKey, core_dictionary};
+
+        #[test]
+        fn no_core_template_names_the_detail_arg() {
+            let texts = core_dictionary().unwrap();
+
+            for key in texts.keys() {
+                let placeholders = texts.placeholders(key.as_str()).unwrap();
+                assert!(!placeholders.contains(DETAIL_ARG), "{key} names {{{DETAIL_ARG}}}");
+            }
+        }
+
+        #[test]
+        fn a_tools_failure_sentence_holds_no_tool_output() {
+            let texts = core_dictionary().unwrap();
+            let line = "Error: conflict: unable to remove repository reference";
+
+            let with_line = render(&texts, &Failure::ToolFailed { detail: line.into() }.text());
+            let without = render(&texts, &Failure::ToolFailed { detail: String::new() }.text());
+
+            assert_eq!(with_line, without);
+            assert!(!with_line.contains(line), "{with_line}");
+        }
 
         #[test]
         fn every_skip_reason_has_its_text() {
@@ -250,7 +307,8 @@ mod tests {
             let texts = core_dictionary().unwrap();
 
             for text in texts_with_args() {
-                let args: BTreeSet<&str> = text.args().keys().map(String::as_str).collect();
+                let args: BTreeSet<&str> =
+                    text.args().keys().map(String::as_str).filter(|name| *name != DETAIL_ARG).collect();
                 assert_eq!(texts.placeholders(text.key().as_str()), Some(args), "{}", text.key());
             }
         }
@@ -276,6 +334,24 @@ mod tests {
 
             assert_eq!(texts.len(), core_keys().len());
             assert!(texts.keys().all(|key| key.namespace() == "core"));
+        }
+
+        #[test]
+        fn the_start_text_is_in_the_core_dictionary() {
+            let texts = core_dictionary().unwrap();
+
+            assert!(core_keys().iter().any(|key| key.as_str() == "core.start.failed"));
+            assert!(texts.get("core.start.failed").is_some());
+        }
+
+        #[test]
+        fn the_summary_text_is_in_the_core_dictionary() {
+            let texts = core_dictionary().unwrap();
+
+            for form in ["core.left-out.summary.one", "core.left-out.summary.other"] {
+                assert!(core_keys().iter().any(|key| key.as_str() == form), "{form}");
+                assert!(texts.get(form).is_some_and(|text| !text.is_empty()), "{form}");
+            }
         }
 
         #[test]

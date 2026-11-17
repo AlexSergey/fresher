@@ -11,6 +11,10 @@ use ts_rs::TS;
 use crate::ids::is_kebab_case;
 use crate::{ByteSize, Timestamp};
 
+/// The arg of a technical detail (a tool's own message): the UI shows it only on demand, under the sentence. No
+/// template names it, so the sentence stays plain whatever the detail says.
+pub const DETAIL_ARG: &str = "detail";
+
 /// A key of the dictionary: two or more dot-separated kebab-case segments, the first one the namespace
 /// (`core.error.busy`, `demo.caches.name`).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, TS)]

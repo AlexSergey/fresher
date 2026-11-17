@@ -1,0 +1,33 @@
+/* A problem's sentence, with the tool's own line behind a quiet "Details" button. */
+@layer components {
+  .problem {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-1);
+  }
+
+  .toggle {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--type-footnote-size);
+    text-decoration: underline;
+  }
+
+  .toggle:focus-visible {
+    border-radius: var(--radius-xs);
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+
+  .detail {
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: var(--type-footnote-size);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}

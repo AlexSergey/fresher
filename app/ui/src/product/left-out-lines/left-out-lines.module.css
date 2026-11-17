@@ -1,0 +1,19 @@
+/* The quiet lines under a category: how many items were left out, how big, and why. */
+@layer components {
+  .lines {
+    display: grid;
+    margin: 0;
+    padding: 0 var(--space-3);
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1);
+    line-height: var(--type-footnote-line);
+    list-style: none;
+  }
+
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--space-1);
+  }
+}

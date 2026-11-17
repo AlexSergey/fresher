@@ -1,6 +1,12 @@
 import { type JSX, useEffect, useRef, useState } from 'react';
 
-import type { CategoryDescriptor, CategoryId, CategoryTotal, ModuleOutcome } from '../../ipc/bindings.generated';
+import type {
+  CategoryDescriptor,
+  CategoryId,
+  CategoryTotal,
+  LeftOutCount,
+  ModuleOutcome,
+} from '../../ipc/bindings.generated';
 import type { ModuleViewProps } from '../../modules/registry';
 
 import { EmptyState } from '../../design/feedback/empty-state/empty-state';
@@ -22,28 +28,57 @@ type Shown = { readonly category: CategoryDescriptor; readonly total: CategoryTo
 
 const SCANNING = { kind: 'scanning' } as const;
 
+const NO_LEFT_OUT: readonly LeftOutCount[] = [];
+
+const NONE_IGNORED: readonly string[] = [];
+
 const COMPLETED: ModuleOutcome = { kind: 'completed' };
 
-// The module's categories that have findings, largest first (ties keep the descriptor's order).
-const shownOf = (categories: readonly CategoryDescriptor[], totals: readonly CategoryTotal[]): readonly Shown[] =>
+// What a category with nothing found shows when something was left out of it.
+const nothingFound = ({ danger, id }: CategoryDescriptor): CategoryTotal => ({
+  category: id,
+  count: 0,
+  highestDanger: danger,
+  sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+});
+
+// The module's categories that have findings or left-outs, largest first (ties keep the descriptor's order). An ignored
+// category's findings leave the totals; its left-outs, kept from the scan's events, leave with them.
+const shownOf = (
+  categories: readonly CategoryDescriptor[],
+  totals: readonly CategoryTotal[],
+  leftOut: readonly LeftOutCount[],
+  ignored: readonly string[],
+): readonly Shown[] =>
   categories
     .flatMap((category) => {
       const total = totals.find((one) => one.category === category.id);
 
-      return total === undefined || total.count === 0 ? [] : [{ category, total }];
+      if (total !== undefined && total.count > 0) {
+        return [{ category, total }];
+      }
+
+      const left = !ignored.includes(category.id) && leftOut.some((one) => one.category === category.id);
+
+      return left ? [{ category, total: nothingFound(category) }] : [];
     })
     .sort((a, b) => b.total.sizes.allocated - a.total.sizes.allocated);
 
 // The page every module gets for free, from its descriptor alone: what it found, one section per category with
-// findings (the largest expanded), and the selection bar. Opened at a category, it expands it and scrolls it into view.
+// findings or left-outs (the largest with findings expanded), and the selection bar. Opened at a category, it expands
+// it and scrolls it into view.
 export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
   const { scan, stop } = useScanActions();
   const scanning = useCore((state) => state.status.state === 'scanning');
   const overview = useCore((state) => state.overview);
-  const outcome = useCore((state) => state.modules.find((one) => one.module === module.id)?.outcome);
+  const finished = useCore((state) => state.modules.find((one) => one.module === module.id));
+  const outcome = finished?.outcome;
   const selection = useCore((state) => state.selection);
+  // The settings are asked for by the app's frame at start; `setting-changed` events keep them current.
+  const ignoreList = useCore((state) => state.settings?.values['core.ignore.categories']);
+  const ignored = ignoreList?.kind === 'ids' ? ignoreList.value : NONE_IGNORED;
   // The user's own choices; a category not in it is expanded when it is the largest or the one the page opened at.
   const [choices, setChoices] = useState<ReadonlyMap<CategoryId, boolean>>(() => new Map());
   const [openedAt, setOpenedAt] = useState(category);
@@ -57,13 +92,16 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
     }
   }
 
+  const leftOut = finished?.leftOut ?? NO_LEFT_OUT;
   const found = moduleFound(module, overview);
   const totals = overview?.totals ?? [];
   const shown = shownOf(
     module.categories.map(({ descriptor }) => descriptor),
     totals,
+    leftOut,
+    ignored,
   );
-  const largest = shown[0]?.category.id;
+  const largest = shown.find((one) => one.total.count > 0)?.category.id;
   const present = category !== undefined && shown.some((one) => one.category.id === category);
 
   useEffect(() => {
@@ -111,6 +149,7 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
                     category={one.category}
                     expanded={expanded(one.category.id)}
                     key={one.category.id}
+                    leftOut={leftOut.filter(({ category: id }) => id === one.category.id)}
                     module={module.id}
                     onExpandedChange={(next) => {
                       setChoices((all) => new Map(all).set(one.category.id, next));

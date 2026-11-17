@@ -38,4 +38,5 @@ When an issue is fixed, its file stays with the status `fixed` and a link to the
 | [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md)      | repo    | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only)       |
 | [No licence check of npm dependencies yet](./repo-no-npm-licence-check.md)                | repo    | open   | the restriction promises an npm licence check that does not exist; packages are checked by hand   |
 | [Stale temporary files in the data folder](./store-stale-temporary-files.md)              | store   | open   | a crash during an atomic write leaves a `.<target>.<random>.tmp` file that nothing removes        |
+| [The keyboard e2e test fails at times on a long dialog in Chromium](./ui-keyboard-e2e-dialog-long-body.md) | ui | open | "every story, part 8" at times does not reach the buttons of `Dialog/long-body` in Chromium only |
 | [The UI keeps every finding of a scan in memory](./ui-findings-kept-in-memory.md)         | ui      | fixed  | the store held every streamed finding; it keeps totals now, lists are paged (plan 003/05)         |

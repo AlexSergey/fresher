@@ -422,7 +422,7 @@ impl Engine {
             .map(|module| Planned { module: Arc::clone(module), settings: settings.module(module.descriptor().id()) })
             .collect();
         let opt_ins = OPT_INS.into_iter().filter(|&capability| settings.core_switch(&opt_in_key(capability))).collect();
-        Ok(ScanPlan { roots: settings.scan_roots(), opt_ins, modules, mode })
+        Ok(ScanPlan { roots: settings.scan_roots(), opt_ins, modules, mode, ignored: settings.ignored() })
     }
 }
 

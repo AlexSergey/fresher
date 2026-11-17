@@ -215,7 +215,8 @@ impl Ignored {
         self.hides_category(category) || self.paths.iter().any(|ignored| path.starts_with(ignored))
     }
 
-    fn hides_category(&self, category: CategoryId) -> bool {
+    /// Whether `category` is ignored.
+    pub(crate) fn hides_category(&self, category: CategoryId) -> bool {
         self.categories.iter().any(|ignored| ignored == category.as_str())
     }
 }

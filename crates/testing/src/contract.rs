@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryText, DangerLevel, DescriptorError, Dictionary, DictionaryError, Module,
-    ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text,
+    CategoryDescriptor, CategoryText, DETAIL_ARG, DangerLevel, DescriptorError, Dictionary, DictionaryError, Module,
+    ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text, TextKey,
 };
 
 use crate::ModuleRun;
@@ -44,11 +44,18 @@ pub enum ContractProblem {
     MissingArg { key: String, arg: String },
     #[error("the removal of `{identity}` names a path no match reported, so the item can never be removed")]
     UnmatchedRemoval { identity: String },
+    #[error("`{key}` is reported as a failure or a left-out reason but the descriptor does not declare it")]
+    UndeclaredProblem { key: String },
+    #[error("an item is left out in category `{category}`, which is not one of the module's own")]
+    ForeignLeftOutCategory { category: String },
+    #[error("the text of `{key}` names `{{detail}}`: a technical detail is shown only on request, never in a sentence")]
+    DetailInSentence { key: String },
 }
 
-/// Every way `module` breaks the module contract: its descriptor validates; every category has its five texts and
-/// every setting (`<module>.enabled` included) its label and description; every key of its dictionary is in its
-/// namespace; with [`Catalogue::Required`], every category has its catalogue file with the same danger level.
+/// Every way `module` breaks the module contract: its descriptor validates; every category has its five texts, every
+/// setting (`<module>.enabled` included) its label and description and every declared problem its text; every key of
+/// its dictionary is in its namespace and no text names `{detail}`; with [`Catalogue::Required`], every category has
+/// its catalogue file with the same danger level.
 pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<ContractProblem> {
     let descriptor = module.descriptor();
     let mut problems = Vec::new();
@@ -57,7 +64,8 @@ pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<
         descriptor.categories().to_vec(),
         descriptor.settings().to_vec(),
         descriptor.locales(),
-    );
+    )
+    .and_then(|revalidated| revalidated.with_problems(descriptor.problems().to_vec()));
     if let Err(error) = revalidated {
         problems.push(ContractProblem::Descriptor(error));
     }
@@ -65,6 +73,7 @@ pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<
         Ok(dictionary) => {
             let missing = descriptor_keys(descriptor).into_iter().filter(|key| texts_of(&dictionary, key).is_empty());
             problems.extend(missing.map(|key| ContractProblem::MissingText { key }));
+            problems.extend(details_in_sentences(&dictionary));
         }
         Err(error) => problems.push(ContractProblem::Dictionary(error)),
     }
@@ -81,24 +90,39 @@ pub fn assert_module_contract(module: &dyn Module, catalogue: &Catalogue) {
 }
 
 /// Every way the texts of `module` and the findings of `runs` disagree: every key of the dictionary is a descriptor
-/// key or appears in a finding (or a failure) of the runs; every key a finding uses has a text, and the finding gives
-/// every placeholder that text names. A plural text (`<key>.one`, `<key>.other`) stands for `<key>`.
+/// key (a declared problem included) or appears in a finding (or a failure) of the runs; every key a finding uses has
+/// a text, and the finding gives every placeholder that text names; every failure and left-out reason of the runs is
+/// a declared problem, and every left-out is in one of the module's categories. A plural text (`<key>.one`,
+/// `<key>.other`) stands for `<key>`.
 pub fn check_texts_used(module: &dyn Module, runs: &[ModuleRun]) -> Vec<ContractProblem> {
     let descriptor = module.descriptor();
     let dictionary = match Dictionary::parse(descriptor.id().as_str(), descriptor.locales().en) {
         Ok(dictionary) => dictionary,
         Err(error) => return vec![ContractProblem::Dictionary(error)],
     };
-    let texts: Vec<&Text> = runs.iter().flat_map(run_texts).collect();
+    let left_out_reasons: Vec<Text> =
+        runs.iter().flat_map(|run| &run.left_out).map(|item| Text::new(item.reason.clone())).collect();
+    let texts: Vec<&Text> = runs.iter().flat_map(run_texts).chain(&left_out_reasons).collect();
     let mut used: BTreeSet<String> = descriptor_keys(descriptor).into_iter().collect();
     used.extend(texts.iter().map(|text| text.key().as_str().to_owned()));
     let mut problems: Vec<ContractProblem> = dictionary
         .keys()
-        .map(fresher_core::TextKey::as_str)
+        .map(TextKey::as_str)
         .filter(|key| !used.contains(*key) && !used.contains(singular(key)))
         .map(|key| ContractProblem::UnusedText { key: key.into() })
         .collect();
-    for problem in texts.into_iter().flat_map(|text| text_problems(&dictionary, text)) {
+    let undeclared = runs
+        .iter()
+        .flat_map(problem_keys)
+        .filter(|key| !descriptor.problems().contains(key))
+        .map(|key| ContractProblem::UndeclaredProblem { key: key.as_str().into() });
+    let foreign = runs
+        .iter()
+        .flat_map(|run| &run.left_out)
+        .filter(|item| !descriptor.categories().iter().any(|category| category.id() == item.category))
+        .map(|item| ContractProblem::ForeignLeftOutCategory { category: item.category.as_str().into() });
+    let found = texts.into_iter().flat_map(|text| text_problems(&dictionary, text)).chain(undeclared).chain(foreign);
+    for problem in found {
         if !problems.contains(&problem) {
             problems.push(problem);
         }
@@ -126,7 +150,7 @@ pub fn check_removals_matched(runs: &[ModuleRun]) -> Vec<ContractProblem> {
 }
 
 /// The keys a descriptor implies: the five texts of every category, the label and description of every setting,
-/// the `<module>.enabled` switch the settings schema adds included.
+/// the `<module>.enabled` switch the settings schema adds included, and every declared problem.
 fn descriptor_keys(descriptor: &ModuleDescriptor) -> Vec<String> {
     let categories = descriptor
         .categories()
@@ -135,7 +159,14 @@ fn descriptor_keys(descriptor: &ModuleDescriptor) -> Vec<String> {
     let enabled = SettingKey::new(format!("{}.{ENABLED}", descriptor.id())).ok();
     let settings = enabled.into_iter().chain(descriptor.settings().iter().map(|setting| setting.key().clone()));
     let settings = settings.flat_map(|key| [key.label_key(), key.description_key()].map(|key| key.as_str().to_owned()));
-    categories.chain(settings).collect()
+    let problems = descriptor.problems().iter().map(|key| key.as_str().to_owned());
+    categories.chain(settings).chain(problems).collect()
+}
+
+/// Every text of `dictionary` whose template names the detail arg.
+fn details_in_sentences(dictionary: &Dictionary) -> Vec<ContractProblem> {
+    let named = |key: &&TextKey| dictionary.placeholders(key.as_str()).is_some_and(|args| args.contains(DETAIL_ARG));
+    dictionary.keys().filter(named).map(|key| ContractProblem::DetailInSentence { key: key.as_str().into() }).collect()
 }
 
 /// `key` and its plural forms.
@@ -155,11 +186,20 @@ fn singular(key: &str) -> &str {
 
 /// The texts a run shows: every finding's title and reason, and the reason of a failure.
 fn run_texts(run: &ModuleRun) -> impl Iterator<Item = &Text> {
-    let failure = match &run.outcome {
+    run.findings.iter().flat_map(|finding| [finding.title(), finding.reason()]).chain(failure(run))
+}
+
+/// The problem keys a run reports: its failure's reason and every left-out's reason.
+fn problem_keys(run: &ModuleRun) -> impl Iterator<Item = &TextKey> {
+    failure(run).map(Text::key).into_iter().chain(run.left_out.iter().map(|item| &item.reason))
+}
+
+/// The reason of the run's failure, if it failed.
+const fn failure(run: &ModuleRun) -> Option<&Text> {
+    match &run.outcome {
         ModuleOutcome::Failed { reason } => Some(reason),
         ModuleOutcome::Completed | ModuleOutcome::Cancelled | ModuleOutcome::Unavailable { .. } => None,
-    };
-    run.findings.iter().flat_map(|finding| [finding.title(), finding.reason()]).chain(failure)
+    }
 }
 
 /// A text with no entry in the dictionary, or without an arg its text names.
@@ -246,7 +286,7 @@ mod tests {
         };
 
         use super::{catalogue_file, docs, runs};
-        use crate::run_module::sample::CacheModule;
+        use crate::run_module::sample::{CacheModule, en_with};
         use crate::{Catalogue, ContractProblem, check_module_contract, check_removals_matched, check_texts_used};
 
         #[test]
@@ -384,11 +424,65 @@ mod tests {
 
         #[test]
         fn a_finding_key_without_a_text_fails() {
-            let module = CacheModule::failing();
+            let module = CacheModule::failing().declaring(&["sample.error.broken"]);
 
             let problems = check_texts_used(&module, &runs(&module));
 
             assert_eq!(problems, [ContractProblem::MissingText { key: "sample.error.broken".into() }]);
+        }
+
+        #[test]
+        fn an_undeclared_failure_breaks_the_contract() {
+            let en = en_with(r#""sample.error.broken": "The sample broke. Scan again.""#);
+            let module = CacheModule::with_dictionary(en).that_fails();
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            assert_eq!(problems, [ContractProblem::UndeclaredProblem { key: "sample.error.broken".into() }]);
+        }
+
+        #[test]
+        fn an_undeclared_left_out_breaks_the_contract() {
+            let en = en_with(r#""sample.left-out.open": "The app is open. Quit it, then scan again.""#);
+            let module = CacheModule::with_dictionary(en).leaving_out("sample.left-out.open");
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            assert_eq!(problems, [ContractProblem::UndeclaredProblem { key: "sample.left-out.open".into() }]);
+        }
+
+        #[test]
+        fn a_left_out_in_a_category_not_the_modules_breaks_the_contract() {
+            let en = en_with(r#""sample.left-out.open": "The app is open. Quit it, then scan again.""#);
+            let foreign = fresher_core::CategoryId::new(fresher_core::ModuleId::new("other").unwrap(), "other.caches");
+            let module = CacheModule::with_dictionary(en)
+                .declaring(&["sample.left-out.open"])
+                .leaving_out("sample.left-out.open")
+                .in_category(foreign.unwrap());
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            assert_eq!(problems, [ContractProblem::ForeignLeftOutCategory { category: "other.caches".into() }]);
+        }
+
+        #[test]
+        fn a_declared_problem_without_a_text_breaks_the_contract() {
+            let module = CacheModule::new().declaring(&["sample.left-out.open"]);
+
+            let problems = check_module_contract(&module, &Catalogue::DevOnly);
+
+            assert_eq!(problems, [ContractProblem::MissingText { key: "sample.left-out.open".into() }]);
+        }
+
+        #[test]
+        fn a_template_naming_the_detail_breaks_the_contract() {
+            let en = en_with(r#""sample.error.broken": "The sample broke: {detail}""#);
+            let module = CacheModule::with_dictionary(en).declaring(&["sample.error.broken"]);
+
+            let problems = check_module_contract(&module, &Catalogue::DevOnly);
+
+            assert_eq!(problems, [ContractProblem::DetailInSentence { key: "sample.error.broken".into() }]);
+            assert!(problems[0].to_string().contains("{detail}"), "{}", problems[0]);
         }
 
         #[test]
@@ -402,7 +496,7 @@ mod tests {
 
     mod positive {
         use super::{catalogue_file, docs, runs};
-        use crate::run_module::sample::CacheModule;
+        use crate::run_module::sample::{CacheModule, en_with};
         use crate::{Catalogue, assert_module_contract, assert_texts_used, check_removals_matched, check_texts_used};
 
         #[test]
@@ -414,6 +508,25 @@ mod tests {
             assert_module_contract(&module, &Catalogue::DevOnly);
             assert_texts_used(&module, &runs(&module));
             assert_eq!(check_removals_matched(&runs(&module)), []);
+        }
+
+        #[test]
+        fn a_declared_failure_text_no_run_hits_is_not_unused() {
+            let en = en_with(r#""sample.error.broken": "The sample broke. Scan again.""#);
+            let module = CacheModule::with_dictionary(en).declaring(&["sample.error.broken"]);
+
+            assert_module_contract(&module, &Catalogue::DevOnly);
+            assert_eq!(check_texts_used(&module, &runs(&module)), []);
+        }
+
+        #[test]
+        fn a_declared_left_out_is_used() {
+            let en = en_with(r#""sample.left-out.open": "The app is open. Quit it, then scan again.""#);
+            let module = CacheModule::with_dictionary(en).declaring(&["sample.left-out.open"]);
+            let module = module.leaving_out("sample.left-out.open");
+
+            assert_module_contract(&module, &Catalogue::DevOnly);
+            assert_eq!(check_texts_used(&module, &runs(&module)), []);
         }
 
         #[test]

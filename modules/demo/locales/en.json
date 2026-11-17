@@ -25,5 +25,6 @@
   "demo.count.description": "How many made-up findings the demo module shows.",
   "demo.finding.title": "Example: {name}",
   "demo.finding.reason": "Example data from the demo module: it does not exist on your disk.",
-  "demo.error.failed": "The demo module could not build its example findings."
+  "demo.error.failed": "The demo module could not build its example findings.",
+  "demo.left-out.open": "The app that made it is open. Quit the app, then scan again."
 }

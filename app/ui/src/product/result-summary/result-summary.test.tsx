@@ -199,6 +199,15 @@ describe('ResultSummary', () => {
       expect(items[2]).toHaveTextContent('It is no longer there.');
     });
 
+    it('a failed reason with a detail shows the disclosure, closed', () => {
+      const reason = { args: { detail: { kind: 'text', value: 'raw tool line' } }, key: 'test.failed' } as const;
+
+      renderSummary({ problems: [{ outcome: { kind: 'failed', reason }, title: title('installer.dmg') }] });
+
+      expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
+      expect(screen.getByText('raw tool line')).not.toBeVisible();
+    });
+
     it('items a tool removed are counted apart', () => {
       renderSummary({ report: reportOf(TOOL_PLAN, { outcomes: [{ kind: 'moved' }, { kind: 'tool-done' }] }) });
 

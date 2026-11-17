@@ -238,6 +238,26 @@ const boundaryConfigs: Linter.Config[] = [
   ),
 ];
 
+// A screen or a component shows the core's text, never an error's code or message; src/ipc/ and src/state/ may read
+// them to decide, and CommandFailed's message is the developer's console line. The selector is by name: an error is
+// a value called `error`, `err`, `e`, `reason`, `failure` or `cause`, or the `.error` of a refusal.
+const errorValue = String.raw`/^(?:e|err|error|reason|failure|cause)$/u`;
+const errorDetailConfig: Linter.Config = {
+  files: ['app/ui/src/screens/**/*.{ts,tsx}', 'app/ui/src/product/**/*.{ts,tsx}'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      ...[`[object.name=${errorValue}]`, "[object.property.name='error']"].flatMap((object) =>
+        ['message', 'code'].map((property) => ({
+          message:
+            "show the core's text (`tText(refusal.text)`), never an error's code or message (docs/architecture/README.md, UI)",
+          selector: `MemberExpression[property.name='${property}']${object}`,
+        })),
+      ),
+    ],
+  },
+};
+
 // Tooling: configs and repository scripts run on Node.
 const nodeConfig: Linter.Config = {
   files: [...configFiles, 'scripts/**/*.ts', ...jsFiles],
@@ -332,6 +352,7 @@ export default [
   typescriptConfig,
   ...uiConfigs,
   ...boundaryConfigs,
+  errorDetailConfig,
   nodeConfig,
   jsonCustomConfig,
   jsoncConfig,

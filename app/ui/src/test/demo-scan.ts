@@ -7,6 +7,7 @@ import type {
   Dictionary,
   Event,
   Finding,
+  LeftOutCount,
   ModuleInfo,
   Overview,
   Refusal,
@@ -62,11 +63,19 @@ export const SCAN_STARTED: Event = { modules: ['demo'], scan: 1, type: 'scan-sta
 
 export const FIRST_BATCH: Event = { findings: DEMO_FINDINGS.slice(0, 2), scan: 1, type: 'findings-added' };
 
+// The one cache the demo module recognizes and leaves out (its app is open), as the engine counts it.
+export const DEMO_LEFT_OUT: LeftOutCount = {
+  category: 'demo.caches',
+  items: 1,
+  reason: { args: {}, key: 'demo.left-out.open' },
+  sizes: { allocated: 157_286_400, completeness: 'complete', logical: 157_286_400, reclaimable: 157_286_400 },
+};
+
 export const DEMO_SCAN: readonly Event[] = [
   SCAN_STARTED,
   FIRST_BATCH,
   { findings: DEMO_FINDINGS.slice(2), scan: 1, type: 'findings-added' },
-  { module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+  { leftOut: [DEMO_LEFT_OUT], module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
   { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];
@@ -140,6 +149,8 @@ export const DEMO_DICTIONARY: Dictionary = {
   'core.danger.low.name': 'Low',
   'core.danger.safe.name': 'Safe',
   'core.error.busy': 'The app is already running a {running}. Wait for it to finish, or cancel it.',
+  'core.left-out.summary.one': '{count} item left out ({size}):',
+  'core.left-out.summary.other': '{count} items left out ({size}):',
   'core.scan.outcome.completed': 'The scan is complete.',
   'core.scan.outcome.failed': 'The scan could not finish.',
   'core.scan.outcome.partial': 'The scan stopped early or could not read some folders. What it found so far is shown.',
@@ -150,6 +161,7 @@ export const DEMO_DICTIONARY: Dictionary = {
   'demo.enabled.label': 'Demo module',
   'demo.finding.reason': 'Example data from the demo module: it does not exist on your disk.',
   'demo.finding.title': 'Example: {name}',
+  'demo.left-out.open': 'The app that made it is open. Quit the app, then scan again.',
 };
 
 // The live, stopped, partial and failed scans below, the access refused and the settings of every kind: the scripts
@@ -185,7 +197,7 @@ export const DEMO_SCANNING: Overview = {
 
 // What the core streams when the live scan is stopped after its first batch, and the overview it answers then.
 export const DEMO_STOP: readonly Event[] = [
-  { module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
+  { leftOut: [], module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
   { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
 ];
 
@@ -234,7 +246,7 @@ const FAILURE = { args: {}, key: 'demo.error.failed' } as const;
 export const DEMO_FAILED_SCAN: readonly Event[] = [
   SCAN_STARTED,
   FIRST_BATCH,
-  { module: 'demo', outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'module-finished' },
+  { leftOut: [], module: 'demo', outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'module-finished' },
   { kind: { kind: 'full' }, outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'scan-finished' },
 ];
 

@@ -96,7 +96,9 @@ Rules of the layout:
   every module as `cx.system()`; the engine adds its own interests for the projects under `ModuleId::system()` and
   sets the projects before any `finish`. Nothing of it is written to disk.
 - The UI gets everything it shows (names, descriptions, sizes, danger levels, the text of a refusal) from the core, as
-  dictionary keys with arguments; the UI's own dictionary holds only its chrome.
+  dictionary keys with arguments; the UI's own dictionary holds only its chrome. A technical detail (a tool's own
+  message) travels as the arg `detail` (`DETAIL_ARG`), which no template names: the sentence stays plain and the UI
+  shows the detail only on demand. An error's `Display` form is for logs and never reaches the UI.
 - The IPC types are generated from the core's Rust types (`ts-rs`) into `app/ui/src/ipc/bindings.generated.ts`; a
   test keeps the file up to date.
 
@@ -257,6 +259,60 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
   limit)` (`app/tauri/src/storage_commands.rs`). The storage map's sandbox case file (plan 012/05) is not built yet: it
   waits for plan [007](../plans/007-safe-development/readme.md) to be merged into `main`.
 
+## Problems and reasons
+
+Plan [011](../plans/011-diagnostics/readme.md). No raw technical error reaches the user. A problem the user sees has
+one of three forms, each with its carrier:
+
+- **A refusal** (a command that could not run): `Refusal { text }`, built from a `CommandError` by the app; the UI
+  renders `text`.
+- **A reason** (why something is missing, skipped or blocked): a typed enum of the core that turns into a `Text`
+  (a dictionary key with args) in the answer that holds it.
+- **A module's problem** (its part failed, or it left an item out): `ModuleError::Failed { reason }` or
+  `out.left_out(LeftOutItem)`, each with a text the module declared in `ModuleDescriptor::with_problems`.
+
+The rules of the shape:
+
+- A `Text` is the only thing the UI shows. The sentence says what happened and what to do next, in plain English.
+- A technical detail (a tool's own message) is the arg `detail` (`DETAIL_ARG`); no template names it, and the UI shows
+  it only behind "Details" (`product/problem-text`).
+- An error's `Display` form is for the log and never reaches the UI; a test serializes every `CommandError` and
+  checks that no refusal holds its `Display`.
+- A module's declared key must have a text, name no `{detail}`, and be used by a run; an undeclared failure or
+  left-out reason fails the module's contract test (`UndeclaredProblem`, `DetailInSentence`).
+
+| Type                       | Made by                                   | Shown by                                                  |
+| -------------------------- | ----------------------------------------- | --------------------------------------------------------- |
+| `Coverage`                 | the engine, per scan (what was read)      | the overview and the storage map                          |
+| `NotScanned`               | the engine's storage map before a scan    | the storage map's "Not scanned yet"                       |
+| `RemainderReason`          | the storage map (a part that is no file)  | the storage map's remainder lines                         |
+| `SkipReason`               | the cleanup plan builder                  | the review screen, per item                               |
+| `Failure`                  | the cleaner, per item                     | the result summary, through `ProblemText`                 |
+| `BlockedReason`            | the cleanup plan builder                  | the review screen, per item                               |
+| `ModuleOutcome`            | the engine, per module (`ModuleFinished`) | the module section, through `ProblemText`                 |
+| `LeftOutCount`             | the engine, summed from `out.left_out`    | `LeftOutLines` under the category, from `ModuleFinished`  |
+
+### Left-outs
+
+A module that recognizes an item and does not offer it reports `out.left_out(LeftOutItem { category, reason, sizes })`
+(the name `LeftOut` is taken by a cleanup plan's view). `LeftOutItem` holds no path and no args. The engine sums them
+per (category, reason) into `LeftOutCount` (saturating, the weakest completeness) in `crates/engine/src/left_outs.rs`
+and sends them with `ModuleFinished.left_out`, sorted by category, then by reason key, for every outcome (completed,
+failed, cancelled, panicked). A left-out whose category is not the module's own is dropped and logged once as a
+warning, and the contract refuses it (`ForeignLeftOutCategory`); an undeclared reason is counted and logged once.
+A left-out of a category in the scan's ignore list is not counted, and the module page drops a left-out-only category
+once it is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
+UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports none yet.
+
+### A failed start
+
+`app/tauri/src/start_failure.rs`: when setup fails, the app logs the error, destroys the half-started main window (a
+hidden web view would still run script and call commands without their state), manages a `StartFailed` marker and
+shows the native dialog with the plain sentence `core.start.failed` (a development build adds the error under it; a
+release build never does). The dialog does not block the main thread: its callback ends the app with exit code 1.
+`shell::on_run_event` holds an exit with no code while the marker is there, so closing the last window or Cmd-Q waits
+for the dialog.
+
 ## UI
 
 The interface, as plan [003](../plans/003-base-ui/readme.md) built it; its design argues every choice
@@ -288,6 +344,10 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
 - `screens/` imports everything above, `state/` and `ipc/`.
 - `gallery/` imports `design/`, `product/` and `test/`. Never `state/` or `ipc/index`.
 - Only `ipc/` imports `@tauri-apps/api`.
+- `screens/` and `product/` never read an error's `message` or `code` (`no-restricted-syntax` in `errorDetailConfig`
+  of `eslint.config.ts`): they show the core's text. The lint matches names (`e`, `err`, `error`, `reason`, `failure`,
+  `cause`, and `.error` of a refusal), so it is a tripwire, not a guarantee: an aliased or destructured read slips
+  through, and review catches it.
 
 ### State
 

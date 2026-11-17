@@ -21,6 +21,9 @@ mod error;
 #[cfg(test)]
 mod facts_tests;
 mod ignore;
+#[cfg(test)]
+mod left_out_tests;
+mod left_outs;
 mod projects;
 mod registry;
 mod results;

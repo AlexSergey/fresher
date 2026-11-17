@@ -11,6 +11,7 @@ mod identity;
 mod sandbox;
 mod settings_commands;
 mod shell;
+mod start_failure;
 mod storage_commands;
 #[cfg(test)]
 mod testing;
@@ -31,26 +32,11 @@ pub fn run() -> Result<(), tauri::Error> {
         .menu(shell::menu)
         .on_menu_event(|app, event| shell::on_menu_event(app, &event))
         .setup(|app| {
-            identity::check(&app.config().identifier, cfg!(debug_assertions))?;
-            let data = app.path().app_data_dir()?;
-            // The app's one home lookup: everything else gets the home injected.
-            #[expect(clippy::disallowed_methods, reason = "the home folder is looked up once, in the app's setup")]
-            let home = app.path().home_dir()?;
-            // In a development build, `FRESHER_SANDBOX` moves the whole app into a sandbox folder; a refusal stops
-            // the start rather than run anywhere else.
-            let start = compose::start(data, home, |name| std::env::var_os(name))
-                .inspect_err(|error| tracing::error!(%error, "the app cannot start"))?;
-            let compose::Start { engine, data_folder, home, build } = start;
-            // The last result shows at once: the cached state is restored without reading the disk; the UI learns
-            // of it through the usual events and the overview.
-            if let Err(error) = engine.restore() {
-                tracing::warn!(?error, "the last scan was not restored");
+            // A failed start ends the app after a native message; setup itself succeeds so the event loop runs and
+            // the message can show.
+            if let Err(error) = start(app) {
+                start_failure::report(app.handle(), &*error);
             }
-            app.manage(engine);
-            app.manage(build);
-            app.manage(settings_commands::HomeFolder(home));
-            app.manage(events::EventForwarder::default());
-            app.manage(fresher_store::DataFolder::open(data_folder)?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -85,5 +71,29 @@ pub fn run() -> Result<(), tauri::Error> {
         ])
         .build(tauri::generate_context!())?;
     app.run(|app, event| shell::on_run_event(app, &event));
+    Ok(())
+}
+
+/// Everything the app does at start; any error ends the app after the native message.
+fn start(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    identity::check(&app.config().identifier, cfg!(debug_assertions))?;
+    let data = app.path().app_data_dir()?;
+    // The app's one home lookup: everything else gets the home injected.
+    #[expect(clippy::disallowed_methods, reason = "the home folder is looked up once, in the app's setup")]
+    let home = app.path().home_dir()?;
+    // In a development build, `FRESHER_SANDBOX` moves the whole app into a sandbox folder; a refusal stops
+    // the start rather than run anywhere else.
+    let start = compose::start(data, home, |name| std::env::var_os(name))?;
+    let compose::Start { engine, data_folder, home, build } = start;
+    // The last result shows at once: the cached state is restored without reading the disk; the UI learns
+    // of it through the usual events and the overview.
+    if let Err(error) = engine.restore() {
+        tracing::warn!(?error, "the last scan was not restored");
+    }
+    app.manage(engine);
+    app.manage(build);
+    app.manage(settings_commands::HomeFolder(home));
+    app.manage(events::EventForwarder::default());
+    app.manage(fresher_store::DataFolder::open(data_folder)?);
     Ok(())
 }

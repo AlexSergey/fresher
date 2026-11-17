@@ -26,6 +26,7 @@ mod ids;
 mod interest;
 mod journal;
 mod known_folder;
+mod left_out;
 mod module;
 mod ports;
 mod removability;
@@ -81,6 +82,7 @@ pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Time
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
 pub use known_folder::{KnownFolder, KnownFolders};
+pub use left_out::{LeftOutCount, LeftOutItem};
 pub use module::{DescriptorError, FindingSink, Locales, Module, ModuleContext, ModuleDescriptor, ModuleError};
 pub use ports::{
     AccessProbe, Clock, CommandOutput, CommandRunError, CommandRunner, Landed, OpenFiles, OpenFilesError, OpenSet,
@@ -105,7 +107,7 @@ pub use system::{
     AppIdError, BundleId, InstalledApp, InstalledApps, Project, ProjectKind, RunningApp, RunningApps, RunningSet,
     SystemError, SystemFacts, SystemPorts, TeamId,
 };
-pub use text::{Text, TextArg, TextKey, TextKeyError};
+pub use text::{DETAIL_ARG, Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;
 pub use volume::{DiskSpace, MountKind, Neighbour, NeighbourRole, VolumeFacts, VolumeId, Volumes};
 pub use walk::{

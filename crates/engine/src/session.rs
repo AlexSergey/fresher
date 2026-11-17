@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
-    FindingId, FindingSink, InterestSet, LastScan, Match, Module, ModuleContext, ModuleError, ModuleId, ModuleOutcome,
-    ModuleSettings, NewFinding, Removability, Removal, ScanId, ScanKind, ScanOutcome, SystemFacts, Timestamp,
-    WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    FindingId, FindingSink, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
+    ModuleOutcome, ModuleSettings, NewFinding, Removability, Removal, ScanId, ScanKind, ScanOutcome, SystemFacts,
+    Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -18,7 +18,9 @@ use crate::claims;
 use crate::coverage;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
+use crate::left_outs::LeftOuts;
 use crate::projects::{self, ProjectCollector};
+use crate::settings::Ignored;
 use crate::storage::attribution::AppPlaces;
 use crate::storage::roots::expand_home;
 use crate::throttle::Throttle;
@@ -31,6 +33,8 @@ pub(crate) struct ScanPlan {
     pub(crate) modules: Vec<Planned>,
     /// How the walk reads the disk; `Restore` reads nothing.
     pub(crate) mode: WalkMode,
+    /// The ignore lists: a left-out of an ignored category is not counted.
+    pub(crate) ignored: Ignored,
 }
 
 /// An enabled module and its settings.
@@ -82,11 +86,13 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         kind: ScanKind::Full,
         coverage: Coverage::default(),
         facts: HashMap::new(),
+        left_outs: plan.modules.iter().map(|planned| LeftOuts::new(planned.module.descriptor())).collect(),
+        ignored: &plan.ignored,
     };
 
     for (index, missing) in unavailable.into_iter().enumerate() {
         if let Some(missing) = missing {
-            outcomes[index] = Some(output.module_finished(ids[index], ModuleOutcome::Unavailable { missing }));
+            outcomes[index] = Some(output.module_finished(index, ids[index], ModuleOutcome::Unavailable { missing }));
         }
     }
 
@@ -111,9 +117,9 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
             output.facts.insert(found.path.clone(), found.facts);
             let found = Match { interest: local, ..found };
             let module = &plan.modules[index].module;
-            let called = isolated(|| module.on_match(&found, &contexts[index], &mut output));
+            let called = isolated(|| module.on_match(&found, &contexts[index], &mut output.sink(index)));
             if let Err(outcome) = called {
-                outcomes[index] = Some(output.module_finished(owner, outcome));
+                outcomes[index] = Some(output.module_finished(index, owner, outcome));
             }
         };
         let mut on_progress = |progress: WalkProgress| {
@@ -178,16 +184,17 @@ fn finish_modules(
     output: &mut Output<'_>,
     cancel: &CancelToken,
 ) {
-    for ((planned, cx), outcome) in plan.modules.iter().zip(contexts).zip(outcomes.iter_mut()) {
+    for (index, ((planned, cx), outcome)) in plan.modules.iter().zip(contexts).zip(outcomes.iter_mut()).enumerate() {
         if outcome.is_some() {
             continue;
         }
         let finished = if cancel.is_cancelled() {
             ModuleOutcome::Cancelled
         } else {
-            isolated(|| planned.module.finish(cx, output)).map_or_else(|outcome| outcome, |()| ModuleOutcome::Completed)
+            let finished = isolated(|| planned.module.finish(cx, &mut output.sink(index)));
+            finished.map_or_else(|outcome| outcome, |()| ModuleOutcome::Completed)
         };
-        *outcome = Some(output.module_finished(planned.module.descriptor().id(), finished));
+        *outcome = Some(output.module_finished(index, planned.module.descriptor().id(), finished));
     }
 }
 
@@ -314,7 +321,8 @@ fn commit(shared: &Shared, claims: &[ClaimedPath], system: &SystemFacts) -> bool
 }
 
 /// Calls a module; its error or its panic becomes the outcome it ends with. The panic does not reach the scan: what
-/// the module left behind is only the findings it already pushed, which are kept like those of a failing module.
+/// the module left behind is only the findings and left-outs it already reported, which are kept like those of a
+/// failing module.
 fn isolated(call: impl FnOnce() -> Result<(), ModuleError>) -> Result<(), ModuleOutcome> {
     match panic::catch_unwind(AssertUnwindSafe(call)) {
         Ok(result) => result.map_err(outcome_of),
@@ -345,9 +353,13 @@ struct Output<'a> {
     /// What the walk read about each matched entry of this scan, by path: a finding's removability comes from the
     /// entry its removal names, also for a finding made in `finish`.
     facts: HashMap<PathBuf, EntryFacts>,
+    /// What each planned module left out so far, by its index in the plan.
+    left_outs: Vec<LeftOuts<'a>>,
+    /// The scan's ignore lists.
+    ignored: &'a Ignored,
 }
 
-impl Output<'_> {
+impl<'a> Output<'a> {
     /// Records the last scan, publishes `ScanCoverage` then `ScanFinished` and lets the engine go `Idle`, all under the
     /// state's lock.
     fn end(&mut self, outcome: ScanOutcome) {
@@ -370,16 +382,38 @@ impl Output<'_> {
         machine.finish(self.scan);
     }
 
-    /// Sends what the module left in the open batch, then its `ModuleFinished`.
-    fn module_finished(&mut self, module: ModuleId, outcome: ModuleOutcome) -> ModuleOutcome {
+    /// Where the planned module at `index` reports.
+    fn sink(&mut self, index: usize) -> ModuleSink<'_, 'a> {
+        ModuleSink { output: self, index }
+    }
+
+    /// Sends what the module left in the open batch, then its `ModuleFinished` with what it left out, whatever its
+    /// outcome: what it left out before it failed or was cancelled is still true.
+    fn module_finished(&mut self, index: usize, module: ModuleId, outcome: ModuleOutcome) -> ModuleOutcome {
         if let Some(batch) = self.batcher.take() {
             self.send(batch);
         }
         if let ModuleOutcome::Failed { reason } = &outcome {
             tracing::warn!(module = module.as_str(), reason = reason.key().as_str(), "a module failed");
         }
-        self.shared.bus.publish(&Event::ModuleFinished { scan: self.scan, module, outcome: outcome.clone() });
+        let left_out = self.left_outs.get_mut(index).map(LeftOuts::take).unwrap_or_default();
+        let finished = Event::ModuleFinished { scan: self.scan, module, outcome: outcome.clone(), left_out };
+        self.shared.bus.publish(&finished);
         outcome
+    }
+
+    /// Numbers `finding`, adds it to the open batch and sends the batch when it is due.
+    fn push(&mut self, finding: NewFinding) {
+        let Some(id) = self.next_id else {
+            self.exhausted = true;
+            return;
+        };
+        self.next_id = id.checked_add(1);
+        let now = self.shared.ports.clock.now();
+        let removability = Removability::of_removal(finding.removal(), self.removal_facts(finding.removal()).copied());
+        if let Some(batch) = self.batcher.push(Finding::new(FindingId::new(id), finding, removability), now) {
+            self.send(batch);
+        }
     }
 
     /// The facts of the matched entry `removal` names; `None` for a tool's removal or a path no match of this scan
@@ -406,17 +440,23 @@ impl Drop for Output<'_> {
     }
 }
 
-impl FindingSink for Output<'_> {
+/// The sink of one module's call: its findings go to the scan's output, its left-outs to its own sums.
+struct ModuleSink<'o, 'a> {
+    output: &'o mut Output<'a>,
+    index: usize,
+}
+
+impl FindingSink for ModuleSink<'_, '_> {
     fn push(&mut self, finding: NewFinding) {
-        let Some(id) = self.next_id else {
-            self.exhausted = true;
+        self.output.push(finding);
+    }
+
+    fn left_out(&mut self, left_out: LeftOutItem) {
+        if self.output.ignored.hides_category(left_out.category) {
             return;
-        };
-        self.next_id = id.checked_add(1);
-        let now = self.shared.ports.clock.now();
-        let removability = Removability::of_removal(finding.removal(), self.removal_facts(finding.removal()).copied());
-        if let Some(batch) = self.batcher.push(Finding::new(FindingId::new(id), finding, removability), now) {
-            self.send(batch);
+        }
+        if let Some(left_outs) = self.output.left_outs.get_mut(self.index) {
+            left_outs.add(left_out);
         }
     }
 }

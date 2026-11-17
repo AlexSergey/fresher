@@ -48,6 +48,15 @@ describe('ModuleSection', () => {
       expect(screen.getByText('Could not finish')).toBeInTheDocument();
     });
 
+    it('shows a failed module reason with its detail behind a disclosure', () => {
+      const reason = { args: { detail: { kind: 'text', value: 'raw tool line' } }, key: 'demo.error.failed' } as const;
+
+      render(<ModuleSection {...section({ state: { kind: 'failed', reason } })} />);
+
+      expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
+      expect(screen.getByText('raw tool line')).not.toBeVisible();
+    });
+
     it('is a region named by the module', () => {
       render(
         <ModuleSection {...section()}>

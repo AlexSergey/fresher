@@ -11,6 +11,7 @@ import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { formatSize } from '../../i18n/format-size';
 import { skipReasonText } from '../cleanup-texts';
+import { ProblemText } from '../problem-text/problem-text';
 import styles from './result-summary.module.css';
 
 export type ResultSummaryProps = {
@@ -30,8 +31,8 @@ type ResultProblem = {
   readonly title: null | Text;
 };
 
-const reasonOf = ({ outcome }: ResultProblem): string =>
-  outcome.kind === 'failed' ? tText(outcome.reason) : skipReasonText(outcome.reason);
+const Reason = ({ problem: { outcome } }: { readonly problem: ResultProblem }): JSX.Element =>
+  outcome.kind === 'failed' ? <ProblemText text={outcome.reason} /> : <>{skipReasonText(outcome.reason)}</>;
 
 const countArg = (value: number): { readonly count: { readonly kind: 'count'; readonly value: number } } => ({
   count: { kind: 'count', value },
@@ -141,7 +142,9 @@ export const ResultSummary = ({
                 <span className={styles.itemTitle}>
                   {problem.title === null ? t('ui.result.unnamed') : tText(problem.title)}
                 </span>
-                <span className={styles.reason}>{reasonOf(problem)}</span>
+                <span className={styles.reason}>
+                  <Reason problem={problem} />
+                </span>
               </li>
             ))}
           </ul>

@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use crate::settings::schema::ENABLED;
 use crate::{
-    CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, Match, ModuleId, ModuleSettings,
-    NewFinding, SettingDescriptor, SystemFacts, Text, ToolCommand, ToolId,
+    CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, LeftOutItem, Match, ModuleId,
+    ModuleSettings, NewFinding, SettingDescriptor, SystemFacts, Text, TextKey, ToolCommand, ToolId,
 };
 
 /// A feature of the app (Docker, `node_modules`, duplicates): it states what it wants to see during the walk and
@@ -23,7 +23,8 @@ pub trait Module: Send + Sync {
     fn finish(&self, cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError>;
 }
 
-/// Who a module is: its id, its categories, its settings, its texts and the checks of the tools it needs.
+/// Who a module is: its id, its categories, its settings, its texts, the checks of the tools it needs and the problems
+/// it may report.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleDescriptor {
     id: ModuleId,
@@ -31,6 +32,7 @@ pub struct ModuleDescriptor {
     settings: Vec<SettingDescriptor>,
     locales: Locales,
     tool_checks: Vec<ToolCommand>,
+    problems: Vec<TextKey>,
 }
 
 /// A module's dictionaries, one flat JSON object per language, embedded with `include_str!`.
@@ -58,6 +60,10 @@ pub enum DescriptorError {
     MissingToolCheck { tool: String },
     #[error("tool `{tool}` has two checks")]
     DuplicateToolCheck { tool: String },
+    #[error("problem `{key}` is not in the namespace of module `{module}`")]
+    ForeignProblem { key: String, module: String },
+    #[error("problem `{key}` is listed twice")]
+    DuplicateProblem { key: String },
 }
 
 impl ModuleDescriptor {
@@ -82,7 +88,7 @@ impl ModuleDescriptor {
             }
         }
         check_settings(id, &settings)?;
-        Ok(Self { id, categories, settings, locales, tool_checks: Vec::new() })
+        Ok(Self { id, categories, settings, locales, tool_checks: Vec::new(), problems: Vec::new() })
     }
 
     /// This descriptor with the command that tells whether a tool it needs is ready: success means ready. Refused
@@ -96,6 +102,26 @@ impl ModuleDescriptor {
             return Err(DescriptorError::DuplicateToolCheck { tool: tool.as_str().into() });
         }
         self.tool_checks.push(check);
+        Ok(self)
+    }
+
+    /// This descriptor with the keys of the texts the module may report as a failure (`ModuleError::Failed`) or as the
+    /// reason of a left-out (`FindingSink::left_out`). Refused when a key is outside the module's namespace or listed
+    /// twice.
+    pub fn with_problems(mut self, keys: Vec<TextKey>) -> Result<Self, DescriptorError> {
+        let mut seen = BTreeSet::new();
+        for key in &keys {
+            if key.namespace() != self.id.as_str() {
+                return Err(DescriptorError::ForeignProblem {
+                    key: key.as_str().into(),
+                    module: self.id.as_str().into(),
+                });
+            }
+            if !seen.insert(key) {
+                return Err(DescriptorError::DuplicateProblem { key: key.as_str().into() });
+            }
+        }
+        self.problems = keys;
         Ok(self)
     }
 
@@ -126,6 +152,11 @@ impl ModuleDescriptor {
     /// The checks of the tools its categories need.
     pub fn tool_checks(&self) -> &[ToolCommand] {
         &self.tool_checks
+    }
+
+    /// The keys the module may report as a failure or a left-out reason, in the order it declared them.
+    pub fn problems(&self) -> &[TextKey] {
+        &self.problems
     }
 
     fn needed_tools(&self) -> impl Iterator<Item = ToolId> {
@@ -159,19 +190,27 @@ fn check_settings(id: ModuleId, settings: &[SettingDescriptor]) -> Result<(), De
 pub enum ModuleError {
     #[error("the module stopped: the operation was cancelled")]
     Cancelled,
+    /// `reason` is one of the problems the module declares (`ModuleDescriptor::with_problems`); a technical detail,
+    /// such as a tool's output, goes under the arg `DETAIL_ARG`, which no sentence names.
     #[error("the module failed: {}", .reason.key())]
     Failed { reason: Text },
 }
 
-/// Where a module puts its findings.
+/// Where a module puts its findings and what it left out.
 pub trait FindingSink {
     fn push(&mut self, finding: NewFinding);
+
+    /// An item the module recognized and chose not to offer; never dropped silently by a module.
+    fn left_out(&mut self, left_out: LeftOutItem);
 }
 
+/// For tests that look at findings only: it keeps the findings and drops every left-out.
 impl FindingSink for Vec<NewFinding> {
     fn push(&mut self, finding: NewFinding) {
         Vec::push(self, finding);
     }
+
+    fn left_out(&mut self, _left_out: LeftOutItem) {}
 }
 
 /// The ports a module may use, built by the engine (or the test harness) for each call.
@@ -420,6 +459,44 @@ mod tests {
             assert_eq!(error, Err(DescriptorError::DuplicateToolCheck { tool: "docker".into() }));
         }
 
+        fn key(key: &str) -> crate::TextKey {
+            crate::TextKey::new(key).unwrap()
+        }
+
+        #[test]
+        fn a_problem_outside_the_module_is_refused() {
+            let descriptor = ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap();
+
+            let error = descriptor.with_problems(vec![key("demo.error.broken"), key("core.error.internal")]);
+
+            assert_eq!(
+                error,
+                Err(DescriptorError::ForeignProblem { key: "core.error.internal".into(), module: "demo".into() })
+            );
+        }
+
+        #[test]
+        fn a_problem_listed_twice_is_refused() {
+            let descriptor = ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap();
+
+            let error = descriptor.with_problems(vec![key("demo.left-out.open"), key("demo.left-out.open")]);
+
+            assert_eq!(error, Err(DescriptorError::DuplicateProblem { key: "demo.left-out.open".into() }));
+        }
+
+        #[test]
+        fn a_vec_sink_keeps_no_left_out() {
+            let mut found: Vec<crate::NewFinding> = Vec::new();
+            let category = CategoryId::new(demo(), "demo.caches").unwrap();
+
+            crate::FindingSink::left_out(
+                &mut found,
+                crate::LeftOutItem { category, reason: key("demo.left-out.open"), sizes: crate::Sizes::ZERO },
+            );
+
+            assert_eq!(found, []);
+        }
+
         #[test]
         fn a_cancelled_module_reports_it() {
             let cancel = CancelToken::new();
@@ -491,6 +568,17 @@ mod tests {
             let descriptor = descriptor.unwrap();
             assert_eq!(descriptor.check_tools(), Ok(()));
             assert_eq!(descriptor.tool_checks(), [check]);
+        }
+
+        #[test]
+        fn a_descriptor_keeps_its_problems_in_order() {
+            let keys = ["demo.left-out.open", "demo.error.broken"].map(|key| TextKey::new(key).unwrap());
+
+            let descriptor =
+                ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap().with_problems(keys.to_vec()).unwrap();
+
+            assert_eq!(descriptor.problems(), keys);
+            assert_eq!(ModuleDescriptor::new(demo(), vec![], vec![], LOCALES).unwrap().problems(), []);
         }
 
         #[test]

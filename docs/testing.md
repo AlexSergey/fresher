@@ -307,6 +307,9 @@ volume with 4 KiB blocks, as on every Mac and in CI (macOS): a byte of data take
 golden check fails with that message on a volume that differs. A failure names its case. Guards: every case file has
 a test, and every module the app registers (but `demo`, whose findings are made up) has a case file naming it.
 
+A case file does not check left-outs yet: no sandbox module reports one. The first module that does adds the
+expectation to the case format (agent's call 6 of plan [011](./plans/011-diagnostics/00-design.md)).
+
 ### The case file
 
 ```toml

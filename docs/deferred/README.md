@@ -23,3 +23,7 @@ needs. When it is done, its row and file are removed in the same change.
 | [The debug panel and the developer command line](./dev-debug-panel.md) | 2026-11-17 | when the deferred world is built | the panel's knobs need the world's fakes; the command line beyond the generator |
 | [A root's explained line in the by-place roots list](./roots-explained-line.md) | 2026-11-17 | when several roots are common | the explained size of each root in the by-place roots list; needs a core change |
 | [A way up from a folder opened from the by-meaning view](./way-up-from-meaning.md) | 2026-11-17 | with the next change to the overview | a breadcrumb that goes above the folder the by-meaning view opened |
+| [A log file of a session](./session-log-file.md)                 | 2026-11-17 | before the first release | an opt-in log file per session and the scan's phase timings; memory only today  |
+| [The bug-report file](./bug-report-file.md)                      | 2026-11-17 | before the first release | a report the user saves and sends, and the notice after an unexpected exit      |
+| [Why an item matched](./match-explanations.md)                   | 2026-11-17 | the first rule-based module that needs more than its reason | "Why this?" on a finding, and a rule's own left-out reasons |
+| [The diagnostics corner](./diagnostics-screen.md)                | 2026-11-17 | before the first release | versions, permissions, scan statistics, recent problems; left-outs after a restore |

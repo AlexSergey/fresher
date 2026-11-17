@@ -4,11 +4,12 @@ use fresher_core::{Act, CancelToken, CommandRunner, Failure, ItemOutcome, ToolCo
 
 use crate::remove::Removed;
 
-/// At most this many characters of a tool's error are shown.
-const ERROR_LENGTH: usize = 200;
+/// At most this many characters of a tool's line are kept as the detail.
+const DETAIL_LENGTH: usize = 200;
 
-/// Runs the tool: exit 0 is `ToolDone`; any other status fails with the first line of its standard error (shown,
-/// never journalled: the journal keeps the status); a tool that cannot be started fails as missing.
+/// Runs the tool: exit 0 is `ToolDone`; any other status fails with the first line of its standard error as the
+/// failure's detail (shown only on demand, never journalled: the journal keeps the status); a tool that cannot be
+/// started fails as missing.
 ///
 /// The tool runs to its end (or its timeout) even when the user stops the cleanup: Stop ends the cleanup after the
 /// item in flight, and a removal killed halfway would leave its state unknown.
@@ -20,8 +21,8 @@ pub(crate) fn run_tool(command: &ToolCommand, _act: Act<'_>, runner: &dyn Comman
         }
         Ok(output) => {
             let first = output.stderr.lines().map(str::trim).find(|line| !line.is_empty()).unwrap_or_default();
-            let error = first.chars().take(ERROR_LENGTH).collect();
-            let reason = Failure::ToolFailed { error }.text();
+            let detail = first.chars().take(DETAIL_LENGTH).collect();
+            let reason = Failure::ToolFailed { detail }.text();
             Removed { outcome: ItemOutcome::Failed { reason }, trashed: Vec::new(), status: Some(output.status) }
         }
         Err(_) => Removed::ended(ItemOutcome::Failed { reason: Failure::ToolMissing.text() }),
@@ -60,7 +61,7 @@ mod tests {
         use crate::test_support::{Setup, confirmed};
 
         #[test]
-        fn a_tool_that_fails_reports_its_first_error_line() {
+        fn a_tool_that_fails_carries_its_first_error_line_as_the_detail() {
             let setup = Setup::new("");
             let plan = confirmed(&setup, &[], Method::Trash);
             let long = "x".repeat(300);
@@ -68,19 +69,19 @@ mod tests {
 
             let removed = run_tool(&command(), plan.act(), &runner);
 
-            let reason = Failure::ToolFailed { error: "Error: image is in use".into() }.text();
+            let reason = Failure::ToolFailed { detail: "Error: image is in use".into() }.text();
             assert_eq!(removed.outcome, ItemOutcome::Failed { reason });
             assert_eq!(removed.status, Some(1));
         }
 
         #[test]
-        fn a_tool_error_is_cut_to_two_hundred_characters() {
+        fn a_tools_detail_is_cut_to_two_hundred_characters() {
             let setup = Setup::new("");
             let plan = confirmed(&setup, &[], Method::Trash);
 
             let removed = run_tool(&command(), plan.act(), &Failing("é".repeat(300)));
 
-            let reason = Failure::ToolFailed { error: "é".repeat(200) }.text();
+            let reason = Failure::ToolFailed { detail: "é".repeat(200) }.text();
             assert_eq!(removed.outcome, ItemOutcome::Failed { reason });
         }
 

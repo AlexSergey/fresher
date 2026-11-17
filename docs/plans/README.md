@@ -59,7 +59,7 @@ an automated release are decided before the first release ([`../deferred/release
 | 008 | [Safe removal and the cleanup journal](./008-safe-removal/readme.md) | ✔️ done        | 0.5.0   | core, cleaner, macos, store, engine               |
 | 009 | [System knowledge](./009-system-knowledge/readme.md)                 | ✔️ done        | 0.5.5   | core, macos, system, engine, cleaner, testing     |
 | 010 | [History and watch mode](./010-history/readme.md)                    | 📝 draft       | 0.6.0   | core, store, engine, app/ui                       |
-| 011 | [Errors, logs and diagnostics](./011-diagnostics/readme.md)          | 📝 draft       | 0.5.0   | core, engine, app, app/ui                         |
+| 011 | [Problems and reasons](./011-diagnostics/readme.md)                 | 🔨 in progress | 0.1.0   | core, engine, cleaner, testing, modules, app, app/ui |
 | 012 | [The storage map](./012-storage-map/readme.md)                       | 🔨 in progress | 0.1.0   | core, macos, scanner, engine, testing, sandbox, app, app/ui |
 | 013 | [Release and distribution](./013-release/readme.md)                  | 📝 draft       | 1.0.0   | repo, ci, app                                     |
 | 014 | [Onboarding and the first scan](./014-onboarding/readme.md)          | 📝 draft       | 0.5.0   | engine, store, app/ui                             |

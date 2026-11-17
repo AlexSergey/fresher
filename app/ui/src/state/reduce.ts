@@ -6,6 +6,7 @@ import type {
   EngineStatus,
   Event,
   FindingId,
+  LeftOutCount,
   ModuleId,
   ModuleOutcome,
   Overview,
@@ -43,7 +44,12 @@ export type CoreState = {
   readonly cleanup: CleanupState;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
-  readonly modules: readonly { readonly module: ModuleId; readonly outcome: ModuleOutcome }[];
+  // The modules that finished in the followed scan, with how, and what each left out (counted by the engine).
+  readonly modules: readonly {
+    readonly leftOut: readonly LeftOutCount[];
+    readonly module: ModuleId;
+    readonly outcome: ModuleOutcome;
+  }[];
   readonly outcome: null | ScanOutcome;
   // The totals per category, everything found and the last scan, as `get_overview` answered them.
   readonly overview: null | Overview;
@@ -126,7 +132,10 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
       return { ...markStale(state), removed: event.findings };
     case 'module-finished':
       return follows(event.scan)
-        ? markStale({ ...state, modules: [...state.modules, { module: event.module, outcome: event.outcome }] })
+        ? markStale({
+            ...state,
+            modules: [...state.modules, { leftOut: event.leftOut, module: event.module, outcome: event.outcome }],
+          })
         : state;
     case 'quit-requested':
       return state.quitAsked ? state : { ...state, quitAsked: true };

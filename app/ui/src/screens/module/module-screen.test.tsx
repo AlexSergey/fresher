@@ -1,14 +1,23 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CategoryId, FindingsQuery, ModuleInfo, Overview } from '../../ipc/bindings.generated';
+import type { CategoryId, FindingsQuery, LeftOutCount, ModuleInfo, Overview } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
-import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW, IDLE, SCAN_STARTED } from '../../test/demo-scan';
+import {
+  DEMO_DICTIONARY,
+  DEMO_FINDINGS,
+  DEMO_LEFT_OUT,
+  DEMO_MODULES,
+  DEMO_OVERVIEW,
+  DEMO_SETTINGS,
+  IDLE,
+  SCAN_STARTED,
+} from '../../test/demo-scan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
 import { pageOf } from '../../test/page-of';
 import { fakeViewport } from '../../test/viewport';
@@ -19,6 +28,7 @@ const [DEMO] = DEMO_MODULES as readonly [ModuleInfo];
 
 const DICTIONARY = {
   ...FINDING_DICTIONARY,
+  ...DEMO_DICTIONARY,
   'demo.caches.comes-back': 'Yes, as the apps run.',
   'demo.caches.made-by': 'Apps that keep caches.',
   'demo.caches.what': 'Files apps keep to start faster.',
@@ -91,6 +101,22 @@ const renderPage = async (category?: CategoryId): Promise<Rendered> => {
   };
 };
 
+// A finished scan whose module left `leftOut` out, with the demo's totals loaded.
+const scanned = (store: CoreStore, leftOut: readonly LeftOutCount[], overview: Overview = DEMO_OVERVIEW): void => {
+  act(() => {
+    store.dispatch(SCAN_STARTED);
+    store.dispatch({
+      leftOut: [...leftOut],
+      module: 'demo',
+      outcome: { kind: 'completed' },
+      scan: 1,
+      type: 'module-finished',
+    });
+    store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+    store.dispatch({ overview, type: 'overview-loaded' });
+  });
+};
+
 const section = (name: string): HTMLElement => screen.getByRole('region', { name });
 
 const sectionNames = (): readonly (null | string)[] =>
@@ -136,6 +162,15 @@ describe('ModuleScreen', () => {
       expect(screen.queryByRole('region', { name: 'Example downloads' })).toBeNull();
     });
 
+    it('shows no left-out line when nothing was left out', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderPage();
+
+      scanned(store, []);
+
+      expect(screen.queryByRole('list', { name: 'Left out of this list' })).toBeNull();
+    });
+
     it('says so when the module found nothing', async () => {
       core({ getOverview: () => ({ ...DEMO_OVERVIEW, found: sized(0), totals: [] }) });
 
@@ -173,6 +208,7 @@ describe('ModuleScreen', () => {
       act(() => {
         store.dispatch(SCAN_STARTED);
         store.dispatch({
+          leftOut: [],
           module: 'demo',
           outcome: { kind: 'failed', reason: { args: {}, key: 'demo.failed' } },
           scan: 1,
@@ -186,9 +222,76 @@ describe('ModuleScreen', () => {
       expect(screen.getByText('Could not finish')).toBeInTheDocument();
       expect(sectionNames()).toStrictEqual(['Example caches', 'Example downloads']);
     });
+
+    it('a category with only left-outs has neither a box nor a disclosure', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderPage();
+
+      scanned(store, [{ ...DEMO_LEFT_OUT, category: 'demo.downloads' }], {
+        ...DEMO_OVERVIEW,
+        totals: DEMO_OVERVIEW.totals.slice(0, 1),
+      });
+
+      const downloads = section('Example downloads');
+
+      expect(within(downloads).queryByRole('checkbox')).toBeNull();
+      expect(within(downloads).queryByRole('button', { name: 'Show the items of Example downloads' })).toBeNull();
+      expect(within(downloads).getByRole('list', { name: 'Left out of this list' })).toBeVisible();
+    });
+
+    it('Ignore on a category with only left-outs removes its section', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderPage();
+      act(() => {
+        store.dispatch({ settings: DEMO_SETTINGS, type: 'settings-loaded' });
+      });
+      scanned(store, [{ ...DEMO_LEFT_OUT, category: 'demo.downloads' }], {
+        ...DEMO_OVERVIEW,
+        totals: DEMO_OVERVIEW.totals.slice(0, 1),
+      });
+      expect(section('Example downloads')).toBeInTheDocument();
+
+      act(() => {
+        store.dispatch({
+          key: 'core.ignore.categories',
+          type: 'setting-changed',
+          value: { kind: 'ids', value: ['demo.downloads'] },
+        });
+      });
+
+      expect(screen.queryByRole('region', { name: 'Example downloads' })).toBeNull();
+      expect(sectionNames()).toStrictEqual(['Example caches']);
+    });
   });
 
   describe('positive cases', () => {
+    it('shows the line of a left-out under its category', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderPage();
+
+      scanned(store, [DEMO_LEFT_OUT]);
+
+      const line = within(section('Example caches')).getByRole('list', { name: 'Left out of this list' });
+
+      expect(line).toHaveTextContent(
+        '1 item left out (157.3 MB): The app that made it is open. Quit the app, then scan again.',
+      );
+      expect(within(section('Example downloads')).queryByRole('list', { name: 'Left out of this list' })).toBeNull();
+    });
+
+    it('shows the line for a category without findings', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderPage();
+
+      scanned(store, [{ ...DEMO_LEFT_OUT, category: 'demo.downloads' }], {
+        ...DEMO_OVERVIEW,
+        totals: DEMO_OVERVIEW.totals.slice(0, 1),
+      });
+
+      expect(within(section('Example downloads')).getByRole('list', { name: 'Left out of this list' })).toBeVisible();
+      expect(screen.queryByText('No findings in this module')).toBeNull();
+    });
+
     it('Ignore on a category asks the core to ignore it', async () => {
       const ignored: unknown[] = [];
       core({

@@ -5,11 +5,11 @@ mod positive {
         Access, AccessStatus, AppRef, Availability, ByteSize, Capability, CapabilityState, CategoryDescriptor,
         CategoryId, CategoryInfo, CategoryShare, CategoryTotal, CommandError, Completeness, DangerLevel, Descent,
         Dictionary, EngineStatus, Event, Finding, FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery,
-        GuardedFolder, LastScan, Locale, MapPart, MapPhase, MeaningGroup, ModuleId, ModuleInfo, ModuleOutcome,
-        MountKind, Need, NeedKind, NewFinding, Operation, Overview, PartKind, PlaceName, PlaceRow, PlaceShare,
-        PlaceView, Refusal, RemainderReason, Removal, ScanId, ScanOutcome, SettingDescriptor, SettingKey, SettingKind,
-        SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes, StorageMap, Subject, Text,
-        TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit, VolumeKind, VolumeMap,
+        GuardedFolder, LastScan, LeftOutCount, Locale, MapPart, MapPhase, MeaningGroup, ModuleId, ModuleInfo,
+        ModuleOutcome, MountKind, Need, NeedKind, NewFinding, Operation, Overview, PartKind, PlaceName, PlaceRow,
+        PlaceShare, PlaceView, Refusal, RemainderReason, Removal, ScanId, ScanOutcome, SettingDescriptor, SettingKey,
+        SettingKind, SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes, StorageMap,
+        Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, Unit, VolumeKind, VolumeMap,
     };
     use ts_rs::{Config, TS};
 
@@ -47,6 +47,7 @@ mod positive {
             declaration::<FindingsPage>(),
             declaration::<FindingsQuery>(),
             declaration::<LastScan>(),
+            declaration::<LeftOutCount>(),
             declaration::<Locale>(),
             declaration::<ModuleId>(),
             declaration::<ModuleInfo>(),

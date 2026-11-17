@@ -10,6 +10,22 @@
         "type": "scan-started"
       },
       {
+        "leftOut": [
+          {
+            "category": "demo.caches",
+            "items": 1,
+            "reason": {
+              "args": {},
+              "key": "demo.left-out.open"
+            },
+            "sizes": {
+              "allocated": 157286400,
+              "completeness": "complete",
+              "logical": 157286400,
+              "reclaimable": 157286400
+            }
+          }
+        ],
         "module": "demo",
         "outcome": {
           "kind": "completed"
@@ -18,6 +34,7 @@
         "type": "module-finished"
       },
       {
+        "leftOut": [],
         "module": "probe",
         "outcome": {
           "kind": "completed"
@@ -778,6 +795,7 @@
         "type": "scan-started"
       },
       {
+        "leftOut": [],
         "module": "probe",
         "outcome": {
           "kind": "completed"

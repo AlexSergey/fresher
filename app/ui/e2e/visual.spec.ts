@@ -145,6 +145,16 @@ test.describe('positive cases', () => {
 
       await looksTheSame(page, 'module-page.png');
     });
+
+    test('a category with the line of what was left out of it', async ({ page }) => {
+      await open(page, SCRIPTS.demo);
+      await scan(page, '2.6 GB');
+      await page.getByRole('button', { name: 'Open Example caches' }).click();
+      const caches = page.getByRole('region', { name: 'Example caches' });
+      await expect(caches).toContainText('1 item left out (157.3 MB): The app that made it is open.');
+
+      await looksTheSame(page, 'module-page-left-out.png');
+    });
   });
 
   test.describe('review', () => {

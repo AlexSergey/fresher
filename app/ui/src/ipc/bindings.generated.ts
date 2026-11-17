@@ -14,7 +14,12 @@ export type Build = { "kind": "release" } | { "kind": "development" } | { "kind"
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
  */
-export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
+export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, 
+/**
+ * What the module recognized and did not offer, counted per category and reason, sorted by category, then by
+ * reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
+ */
+leftOut: Array<LeftOutCount>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
 
 /**
  * A refused command as the UI receives it: the error, and the text to show for it, built by `CommandError::text()`.
@@ -224,6 +229,11 @@ export type ScanId = number;
  * How one module's part of a scan ended.
  */
 export type ModuleOutcome = { "kind": "completed" } | { "kind": "failed", reason: Text, } | { "kind": "cancelled" } | { "kind": "unavailable", missing: Array<Capability>, };
+
+/**
+ * The engine's sum of the left-outs of one category and one reason.
+ */
+export type LeftOutCount = { category: CategoryId, reason: Text, items: number, sizes: Sizes, };
 
 /**
  * How a scan ended.

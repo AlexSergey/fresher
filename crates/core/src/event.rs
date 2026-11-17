@@ -4,8 +4,8 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::{
-    AccessStatus, ByteSize, Capability, CleanupId, CleanupReport, Coverage, Finding, FindingId, ItemReport, Method,
-    ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp,
+    AccessStatus, ByteSize, Capability, CleanupId, CleanupReport, Coverage, Finding, FindingId, ItemReport,
+    LeftOutCount, Method, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp,
 };
 
 /// Something that happened; a discriminated union on `type` in TypeScript.
@@ -30,6 +30,10 @@ pub enum Event {
         scan: ScanId,
         module: ModuleId,
         outcome: ModuleOutcome,
+        /// What the module recognized and did not offer, counted per category and reason, sorted by category, then by
+        /// reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
+        #[serde(rename = "leftOut")]
+        left_out: Vec<LeftOutCount>,
     },
     /// What the scan saw and what it did not; sent right before `ScanFinished`.
     ScanCoverage {
@@ -147,6 +151,7 @@ mod tests {
                 scan: ScanId::new(1),
                 module: ModuleId::new("demo").unwrap(),
                 outcome: ModuleOutcome::Failed { reason: Text::new(TextKey::new("demo.error.broken").unwrap()) },
+                left_out: vec![],
             };
 
             assert_eq!(
@@ -160,6 +165,7 @@ mod tests {
                     "scan": 1,
                     "module": "demo",
                     "outcome": { "kind": "failed", "reason": { "key": "demo.error.broken", "args": {} } },
+                    "leftOut": [],
                 })
             );
             assert_eq!(
@@ -171,6 +177,36 @@ mod tests {
                 .unwrap(),
                 json!({ "type": "scan-finished", "scan": 1, "outcome": { "kind": "partial" }, "kind": { "kind": "full" } })
             );
+        }
+
+        #[test]
+        fn module_finished_serializes_its_left_outs() {
+            let category = crate::CategoryId::new(ModuleId::new("demo").unwrap(), "demo.caches").unwrap();
+            let mut count = crate::LeftOutCount::new(category, Text::new(TextKey::new("demo.left-out.open").unwrap()));
+            count.add(crate::Sizes::complete(ByteSize::new(1), ByteSize::new(4096)));
+            let finished = Event::ModuleFinished {
+                scan: ScanId::new(3),
+                module: ModuleId::new("demo").unwrap(),
+                outcome: ModuleOutcome::Completed,
+                left_out: vec![count],
+            };
+
+            assert_eq!(
+                serde_json::to_value(finished).unwrap(),
+                json!({
+                    "type": "module-finished",
+                    "scan": 3,
+                    "module": "demo",
+                    "outcome": { "kind": "completed" },
+                    "leftOut": [{
+                        "category": "demo.caches",
+                        "reason": { "key": "demo.left-out.open", "args": {} },
+                        "items": 1,
+                        "sizes": { "logical": 1, "allocated": 4096, "reclaimable": 4096, "completeness": "complete" },
+                    }],
+                })
+            );
+            assert!(Event::decl(&Config::new()).contains("leftOut: Array<LeftOutCount>"));
         }
 
         #[test]

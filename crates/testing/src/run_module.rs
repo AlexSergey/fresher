@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    CancelToken, DiskWalk, InterestSet, Match, Module, ModuleContext, ModuleError, ModuleOutcome, NewFinding,
-    SchemaError, SettingsSchema, StoredSettings, SystemFacts, SystemPorts, WalkError, WalkMode, WalkRequest,
+    CancelToken, DiskWalk, FindingSink, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError,
+    ModuleOutcome, NewFinding, SchemaError, SettingsSchema, StoredSettings, SystemFacts, SystemPorts, WalkError,
+    WalkMode, WalkRequest,
 };
 use serde_json::{Value, json};
 
@@ -56,6 +57,8 @@ impl Ports {
 #[derive(Debug)]
 pub struct ModuleRun {
     pub findings: Vec<NewFinding>,
+    /// What the module recognized and did not offer, in the order it reported it.
+    pub left_out: Vec<LeftOutItem>,
     pub outcome: ModuleOutcome,
     root: PathBuf,
     /// The path of every match the module received.
@@ -86,7 +89,7 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     let cx = ModuleContext::new(&ports.clock, &ports.commands, &system, &settings, &ports.cancel);
     let mut interests = InterestSet::new();
     interests.add(id, module.interests());
-    let mut findings = Vec::new();
+    let mut sink = Recorder::default();
     let mut failure = None;
     let mut matched_paths = BTreeSet::new();
     let mut on_match = |mut matched: Match| {
@@ -97,7 +100,7 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         if let Some((_, local)) = interests.owner(matched.interest) {
             matched.interest = local;
         }
-        failure = module.on_match(&matched, &cx, &mut findings).err();
+        failure = module.on_match(&matched, &cx, &mut sink).err();
     };
     let roots = [tree.root().to_path_buf()];
     let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
@@ -109,23 +112,49 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         Err(error) => return Err(error.into()),
     }
     if failure.is_none() {
-        failure = module.finish(&cx, &mut findings).err();
+        failure = module.finish(&cx, &mut sink).err();
     }
     let outcome = match failure {
         None => ModuleOutcome::Completed,
         Some(ModuleError::Cancelled) => ModuleOutcome::Cancelled,
         Some(ModuleError::Failed { reason }) => ModuleOutcome::Failed { reason },
     };
-    Ok(ModuleRun { findings, outcome, root: tree.root().to_path_buf(), matched: matched_paths })
+    let Recorder { findings, left_out } = sink;
+    Ok(ModuleRun { findings, left_out, outcome, root: tree.root().to_path_buf(), matched: matched_paths })
+}
+
+/// Keeps everything a module reports, in order.
+#[derive(Default)]
+struct Recorder {
+    findings: Vec<NewFinding>,
+    left_out: Vec<LeftOutItem>,
+}
+
+impl FindingSink for Recorder {
+    fn push(&mut self, finding: NewFinding) {
+        self.findings.push(finding);
+    }
+
+    fn left_out(&mut self, left_out: LeftOutItem) {
+        self.left_out.push(left_out);
+    }
 }
 
 impl ModuleRun {
-    /// A stable JSON report of the run: the outcome and the findings sorted by identity, every path relative to the
-    /// fixture root (the root itself is `.`), pretty-printed with a final newline.
+    /// A stable JSON report of the run: the outcome, the findings sorted by identity and, when the module left any
+    /// out, its left-outs in order; every path relative to the fixture root (the root itself is `.`), pretty-printed
+    /// with a final newline.
     pub fn golden(&self) -> Result<String, serde_json::Error> {
         let mut findings: Vec<&NewFinding> = self.findings.iter().collect();
         findings.sort_by(|left, right| left.key().cmp(right.key()));
         let mut report = json!({ "outcome": self.outcome, "findings": findings });
+        if !self.left_out.is_empty() {
+            let left_out = self
+                .left_out
+                .iter()
+                .map(|item| json!({ "category": item.category, "reason": item.reason, "sizes": item.sizes }));
+            report["leftOut"] = Value::Array(left_out.collect());
+        }
         relative_paths(&mut report, &self.root);
         Ok(serde_json::to_string_pretty(&report)? + "\n")
     }
@@ -149,9 +178,9 @@ fn relative_paths(value: &mut Value, root: &Path) {
 #[cfg(test)]
 pub(crate) mod sample {
     use fresher_core::{
-        CategoryDescriptor, CategoryId, Claim, DangerLevel, FindingSink, Interest, Locales, Match, Module,
-        ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal, SettingDescriptor,
-        Subject, Text, TextArg, TextKey,
+        ByteSize, CategoryDescriptor, CategoryId, Claim, DangerLevel, FindingSink, Interest, LeftOutItem, Locales,
+        Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal,
+        SettingDescriptor, Sizes, Subject, Text, TextArg, TextKey,
     };
 
     /// The dictionary of [`CacheModule`]: every key it uses, nothing more.
@@ -167,12 +196,21 @@ pub(crate) mod sample {
         "sample.item.reason": "A folder named Caches."
     }"#;
 
+    /// `EN` with the texts `extra` (JSON members, comma-separated) added.
+    pub(crate) fn en_with(extra: &str) -> &'static str {
+        let body = EN.trim_end().trim_end_matches('}');
+        String::leak(format!("{body}, {extra} }}"))
+    }
+
     /// A module that claims every folder named `Caches` as a Low-danger finding; built with `failing()`, it fails in
-    /// `finish`.
+    /// `finish`; with `leaving_out(reason)`, it leaves out one item of 7 bytes of its category in `finish` (of
+    /// `left_out_category`, when set).
     pub(crate) struct CacheModule {
         descriptor: ModuleDescriptor,
         interests: Vec<Interest>,
         fail_in_finish: bool,
+        left_out: Option<&'static str>,
+        left_out_category: Option<CategoryId>,
     }
 
     impl CacheModule {
@@ -185,7 +223,13 @@ pub(crate) mod sample {
             let category = CategoryDescriptor::new(CategoryId::new(id, "sample.caches").unwrap(), DangerLevel::Low);
             let descriptor = ModuleDescriptor::new(id, vec![category], settings, Locales { en }).unwrap();
             let interest = Interest::new(Pattern::FolderName("Caches".into()), Claim::Whole, vec![]).unwrap();
-            Self { descriptor, interests: vec![interest], fail_in_finish: false }
+            Self {
+                descriptor,
+                interests: vec![interest],
+                fail_in_finish: false,
+                left_out: None,
+                left_out_category: None,
+            }
         }
 
         pub(crate) fn new() -> Self {
@@ -193,7 +237,28 @@ pub(crate) mod sample {
         }
 
         pub(crate) fn failing() -> Self {
-            Self { fail_in_finish: true, ..Self::new() }
+            Self::new().that_fails()
+        }
+
+        /// This module, failing in `finish`.
+        pub(crate) fn that_fails(self) -> Self {
+            Self { fail_in_finish: true, ..self }
+        }
+
+        /// This module, declaring `keys` as its problems.
+        pub(crate) fn declaring(mut self, keys: &[&str]) -> Self {
+            let keys = keys.iter().map(|key| TextKey::new(*key).unwrap()).collect();
+            self.descriptor = self.descriptor.with_problems(keys).unwrap();
+            self
+        }
+
+        pub(crate) fn leaving_out(self, reason: &'static str) -> Self {
+            Self { left_out: Some(reason), ..self }
+        }
+
+        /// This module, leaving out its item in `category` instead of its own.
+        pub(crate) fn in_category(self, category: CategoryId) -> Self {
+            Self { left_out_category: Some(category), ..self }
         }
     }
 
@@ -229,7 +294,12 @@ pub(crate) mod sample {
             Ok(())
         }
 
-        fn finish(&self, _cx: &ModuleContext<'_>, _out: &mut dyn FindingSink) -> Result<(), ModuleError> {
+        fn finish(&self, _cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError> {
+            if let Some(reason) = self.left_out {
+                let category = self.left_out_category.unwrap_or_else(|| self.descriptor.categories()[0].id());
+                let sizes = Sizes::complete(ByteSize::new(7), ByteSize::new(7));
+                out.left_out(LeftOutItem { category, reason: TextKey::new(reason).unwrap(), sizes });
+            }
             if self.fail_in_finish {
                 return Err(ModuleError::Failed { reason: Text::new(TextKey::new("sample.error.broken").unwrap()) });
             }
@@ -269,6 +339,17 @@ mod tests {
 
             assert_eq!(run.outcome, ModuleOutcome::Cancelled);
             assert_eq!(run.findings.len(), 0);
+        }
+
+        #[test]
+        fn a_golden_without_left_outs_is_unchanged() {
+            let tree = FixtureTree::from_toml_str(TREE).unwrap();
+
+            let golden = run_module(&CacheModule::new(), &tree, &Ports::at(0)).unwrap().golden().unwrap();
+
+            let report: serde_json::Value = serde_json::from_str(&golden).unwrap();
+            let fields: Vec<&str> = report.as_object().unwrap().keys().map(String::as_str).collect();
+            assert_eq!(fields, ["findings", "outcome"]);
         }
 
         #[test]
@@ -312,6 +393,26 @@ mod tests {
             assert_eq!(report["findings"][0]["subject"]["value"], "x/Caches");
             assert_eq!(report["findings"][0]["removal"]["value"], "x/Caches");
             assert!(golden.ends_with("}\n"));
+        }
+
+        #[test]
+        fn the_harness_keeps_the_left_outs_and_the_golden_lists_them() {
+            let tree = FixtureTree::from_toml_str(TREE).unwrap();
+            let module = CacheModule::new().leaving_out("sample.left-out.open");
+
+            let run = run_module(&module, &tree, &Ports::at(0)).unwrap();
+
+            assert_eq!(run.left_out.len(), 1);
+            assert_eq!(run.left_out[0].reason.as_str(), "sample.left-out.open");
+            let report: serde_json::Value = serde_json::from_str(&run.golden().unwrap()).unwrap();
+            assert_eq!(
+                report["leftOut"],
+                serde_json::json!([{
+                    "category": "sample.caches",
+                    "reason": "sample.left-out.open",
+                    "sizes": { "logical": 7, "allocated": 7, "reclaimable": 7, "completeness": "complete" },
+                }])
+            );
         }
 
         #[test]

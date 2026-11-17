@@ -22,5 +22,5 @@
   "trial.rule.kept.reason": "A folder made only for trying the app, inside a sandbox folder: it is emptied, not removed.",
   "trial.object.title": "Trial object {name}",
   "trial.object.reason": "An object of fresher-trial-tool, a tool made up for the tests of this app.",
-  "trial.error.failed": "fresher-trial-tool did not list its objects."
+  "trial.error.failed": "fresher-trial-tool did not list its objects. Scan again; if it fails again, the tool is not available on this Mac."
 }

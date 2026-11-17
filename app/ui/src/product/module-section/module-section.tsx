@@ -8,6 +8,7 @@ import { Icon } from '../../design/icons/icon';
 import { Check, CircleAlert, Minus } from '../../design/icons/icons';
 import { Spinner } from '../../design/primitives/spinner/spinner';
 import { t, tText } from '../../i18n';
+import { ProblemText } from '../problem-text/problem-text';
 import { honestSize } from '../sizes';
 import styles from './module-section.module.css';
 
@@ -78,7 +79,7 @@ export const ModuleSection = ({ children, found, module, state }: ModuleSectionP
       </header>
       {state.kind === 'failed' ? (
         <Notice title={t('ui.module-section.failed-title')} tone="danger">
-          {tText(state.reason)}
+          <ProblemText text={state.reason} />
         </Notice>
       ) : null}
       {children}

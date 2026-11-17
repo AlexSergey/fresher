@@ -60,8 +60,10 @@ impl TrialModule {
             category("trial.tool", DangerLevel::Medium)?.with_needs(vec![Need::required(Capability::Tool(tool))]),
         ];
         let locales = Locales { en: include_str!("../locales/en.json") };
+        let failed = TextKey::new("trial.error.failed")?;
         let descriptor = ModuleDescriptor::new(id, categories, vec![], locales)?
-            .with_tool_check(ToolCommand::new(tool, tool::check_args())?)?;
+            .with_tool_check(ToolCommand::new(tool, tool::check_args())?)?
+            .with_problems(vec![failed.clone()])?;
         let rules = RuleSet::parse(&descriptor, include_str!("../rules.toml"))?;
         Ok(Self {
             interests: rules.interests(),
@@ -70,7 +72,7 @@ impl TrialModule {
             tool,
             title: TextKey::new("trial.object.title")?,
             reason: Text::new(TextKey::new("trial.object.reason")?),
-            failed: Text::new(TextKey::new("trial.error.failed")?),
+            failed: Text::new(failed),
         })
     }
 }
