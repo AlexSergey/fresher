@@ -1,0 +1,93 @@
+//! The engine of a flow home, assembled as sandbox mode composes it from the parts a home gives: the real scanner, its
+//! reader seen through the facts lens; the real settings file, scan cache and journal in the sandbox's data folder;
+//! the real `DiskCleaner` reaching only inside the sandbox folder, with the sandbox's places protection and a fake
+//! Trash at `home/.Trash`. Pulled in with `#[path]`, beside `home.rs`, only by the homes that use it.
+
+use std::num::NonZeroUsize;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
+use fresher_core::{Access, ByteSize, Capability, Module, Protection, SystemPorts, VolumeFacts, VolumeId};
+use fresher_engine::{CleanupPorts, Engine, Ports, Registry};
+use fresher_sandbox::Sandbox;
+use fresher_scanner::{Scanner, ScannerOptions, StdReader, known_folders_anchor};
+use fresher_store::{DataFolder, FileCleanupJournal, FileScanCache, FileSettingsStore};
+use fresher_testing::{
+    FactsLens, FakeAccess, FakeChangeJournal, FakeClock, FakeCommandRunner, FakeInstalledApps, FakeOpenFiles,
+    FakeRunningApps, FakeSystemUi, FakeTrash, FakeVolumes, StatedFacts,
+};
+
+use super::home::user;
+
+/// The one volume of a flow home, `/`.
+pub(crate) const VOLUME: VolumeId = VolumeId::new(1);
+
+/// What a home gives its engine besides the files.
+pub(crate) struct Parts {
+    /// The modules registered, in order.
+    pub(crate) modules: Vec<Box<dyn Module>>,
+    pub(crate) clock: Arc<FakeClock>,
+    /// The change journal of the volume `VOLUME`.
+    pub(crate) journal: FakeChangeJournal,
+    pub(crate) installed: FakeInstalledApps,
+    pub(crate) running: FakeRunningApps,
+    /// The scanner's worker threads.
+    pub(crate) threads: NonZeroUsize,
+    /// The places no walk opens (the scanner's standing avoid).
+    pub(crate) avoid: Vec<PathBuf>,
+}
+
+/// The engine of `given` on `sandbox`, its reader stating `stated`, its cleaner meeting `open_files`.
+pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<FakeOpenFiles>, given: Parts) -> Engine {
+    let data = sandbox.data_folder();
+    let folder = DataFolder::open(&data).unwrap();
+    let clock = given.clock;
+    let facts = VolumeFacts { id: VOLUME, device: 1, case_sensitive: false, used: ByteSize::new(1) };
+    let volumes = Arc::new(FakeVolumes::default().with("/", facts));
+    let folders = Arc::new(sandbox.known_folders());
+    let options = ScannerOptions { threads: given.threads, standing_avoid: given.avoid, ..ScannerOptions::default() };
+    let cache = Arc::new(FileScanCache::new(DataFolder::open(&data).unwrap()));
+    let scanner = Scanner::new(
+        Arc::new(FactsLens::new(StdReader::new(), stated.clone())),
+        Arc::clone(&volumes) as _,
+        Arc::new(given.journal),
+        cache,
+        known_folders_anchor(&*folders),
+        options,
+    )
+    .with_clock(Arc::clone(&clock) as _);
+    let running = Arc::new(given.running);
+    let system = SystemPorts {
+        known_folders: Arc::clone(&folders) as _,
+        apps: Arc::new(given.installed),
+        running: Arc::clone(&running) as _,
+    };
+    let commands = Arc::new(FakeCommandRunner::default());
+    let ports = Ports {
+        walk: Arc::new(scanner),
+        settings: Arc::new(FileSettingsStore::new(DataFolder::open(&data).unwrap())),
+        clock: Arc::clone(&clock) as _,
+        commands: Arc::clone(&commands) as _,
+        access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        system_ui: Arc::new(FakeSystemUi::default()),
+        system,
+    };
+    let cleaner_ports = CleanerPorts {
+        trash: Arc::new(FakeTrash::new(sandbox.trash())),
+        open_files: Arc::clone(open_files) as _,
+        running,
+        commands,
+        clock,
+    };
+    let user = user(sandbox.path());
+    let reach = Reach::SandboxFolder(SandboxFolder::new(sandbox.path(), user, &Protection::default()).unwrap());
+    let protection = sandbox.places_protection().unwrap();
+    let disk = Arc::new(DiskCleaner::new(reach, user, sandbox.home(), protection, cleaner_ports));
+    let cleanup = CleanupPorts { cleaner: disk, journal: Arc::new(FileCleanupJournal::open(&folder)), volumes };
+    let mut registry = Registry::new().unwrap();
+    for module in given.modules {
+        registry.register(module).unwrap();
+    }
+    Engine::with_cleanup(registry, ports, cleanup).unwrap()
+}

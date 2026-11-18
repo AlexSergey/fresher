@@ -1,0 +1,87 @@
+# A home for the app-leftovers module whose ids have no proof of an app: a tool's caches, logs, settings and support
+# folder with no saved state and no container; an id whose saved state is a file, not a folder; and version-like names
+# (an IDE's or a language's folders), shaped as ids, with no proof either. Every entry unchanged for 40 days.
+
+[[dir]]
+path = "Library/Caches/org.example.tool"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/org.example.tool/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Logs/org.example.tool"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Logs/org.example.tool/tool.log"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/org.example.tool.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Application Support/org.example.tool"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/org.example.tool/state.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.FileState.savedState"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.example.FileState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.FileState/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/IntelliJIdea2019.3"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/IntelliJIdea2019.3/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Application Support/Python3.11"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/Python3.11/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/PyCharm2019.2.plist"
+size = 4096
+age = "40d"
+changed = "40d"

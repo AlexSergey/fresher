@@ -93,6 +93,19 @@ const devCachesPage = async (page: Page): Promise<void> => {
   await expect(page.getByRole('region', { name: 'Xcode build data' })).toContainText('2 items left out (4.3 GB)');
 };
 
+// The removed apps' leftovers scan, on the module's page: its two choices, and an open app's and a recent one's files
+// left out.
+const leftoversPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.appLeftovers);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^Removed apps' leftovers/ });
+  await expect(nav).toContainText('2.8 GB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: "Removed apps' leftovers" })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Caches of removed apps' })).toContainText('1 item left out (220 MB)');
+};
+
 // Settings, with the temporary files module's number field in view.
 const tempSettings = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.temp);
@@ -247,6 +260,21 @@ test.describe('positive cases', () => {
       await page.getByRole('region', { name: 'Xcode build data' }).scrollIntoViewIfNeeded();
 
       await looksTheSame(page, 'module-page-dev-caches.png');
+    });
+
+    test('the page of Removed apps’ leftovers with its choices and left-out lines', async ({ page }) => {
+      await leftoversPage(page);
+      await expect(page.getByRole('button', { name: 'Remove everything' })).toBeEnabled();
+
+      await looksTheSame(page, 'module-page-app-leftovers.png');
+    });
+
+    test('the page of Removed apps’ leftovers with Keep settings chosen', async ({ page }) => {
+      await leftoversPage(page);
+      await page.getByRole('button', { name: 'Keep settings' }).click();
+      await expect(page.getByRole('region', { name: 'Selection' })).toContainText('2 items selected');
+
+      await looksTheSame(page, 'module-page-app-leftovers-chosen.png');
     });
   });
 

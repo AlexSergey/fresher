@@ -269,11 +269,13 @@ mod positive {
     use std::path::Path;
 
     use fresher_core::{
-        ByteSize, DiskState, InstalledApp, MapPart, MeaningGroup, MountKind, PartKind, Sizes, VolumeMap,
+        ByteSize, DiskState, Finding, FindingId, InstalledApp, MapPart, MeaningGroup, MountKind, PartKind,
+        Removability, Sizes, VolumeMap,
     };
 
     use super::{app, append_volume_parts, caches, found, groups, id, logs, state};
     use crate::settings::Ignored;
+    use crate::testing::finding;
 
     #[test]
     fn the_volume_parts_after_the_scanned_ones_end_the_groups() {
@@ -389,6 +391,20 @@ mod positive {
         assert_eq!(
             groups.lines(),
             ["app com.example.Gone com.example.Gone (gone) 40", "  category alpha.caches 40", "part YourFolders 60"]
+        );
+    }
+
+    #[test]
+    fn an_uninstalled_app_is_named_by_the_finding_when_it_gives_a_name() {
+        let state = state(&[("/home", 100), ("/home/Caches", 40)]).with_owner(Path::new("/home/Caches"), caches().id());
+        let named = finding(&caches(), "/home/Caches", Sizes::ZERO).for_app_named(id("com.example.Gone"), "Gone App");
+        let cache = Finding::new(FindingId::new(1), named, Removability::Removable);
+
+        let groups = groups(&state, Vec::new(), &[cache], &Ignored::default());
+
+        assert_eq!(
+            groups.lines(),
+            ["app com.example.Gone Gone App (gone) 40", "  category alpha.caches 40", "part YourFolders 60"]
         );
     }
 

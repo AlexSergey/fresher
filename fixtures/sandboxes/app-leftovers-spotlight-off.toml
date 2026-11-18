@@ -1,0 +1,35 @@
+# The app-leftovers module while Spotlight cannot be asked (`spotlight = "off"`): no app's absence can be proven, so a
+# removed app's leftovers are kept. Spotlight off holds for the whole sandbox, so this is a world of its own: beside
+# `app-leftovers.toml` it would keep every id there too. The autotest runs each file alone; in `npm run sandbox -- all`
+# Spotlight is off for every case file's look by hand.
+#
+# Every entry of a leftover states its age and status change, 40 days: a status change cannot be set back on disk.
+feature = "app-leftovers-spotlight-off"
+module = "app-leftovers"
+
+[[case]]
+name = "nothing is offered while Spotlight cannot be asked"
+kind = "negative"
+spotlight = "off"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Unsearched.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Unsearched.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Unsearched"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Unsearched/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.spotlight-unread"
+items = 2

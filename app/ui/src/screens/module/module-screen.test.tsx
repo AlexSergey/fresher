@@ -9,6 +9,13 @@ import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import {
+  APP_LEFTOVERS_DICTIONARY,
+  APP_LEFTOVERS_FINDINGS,
+  APP_LEFTOVERS_LEFT_OUT,
+  APP_LEFTOVERS_MODULES,
+  APP_LEFTOVERS_OVERVIEW,
+} from '../../test/app-leftovers-scan';
+import {
   DEMO_DICTIONARY,
   DEMO_FINDINGS,
   DEMO_LEFT_OUT,
@@ -591,6 +598,80 @@ describe('ModuleScreen on the JetBrains scan', () => {
       expect(within(section(SETTINGS)).getByRole('list', { name: 'Left out of this list' })).toHaveTextContent(
         `2 items left out (600 MB): ${JETBRAINS_DICTIONARY['jetbrains.left-out.running'] ?? ''}`,
       );
+    });
+  });
+});
+
+const LEFTOVERS = (key: string): string => APP_LEFTOVERS_DICTIONARY[`app-leftovers.${key}`] ?? '';
+
+// The page of the removed apps' module on its scan: the generic page with the module's two choices.
+const renderLeftovers = async (): Promise<CoreStore> => {
+  const [leftovers] = APP_LEFTOVERS_MODULES as readonly [ModuleInfo];
+  const store = createCoreStore();
+
+  mockCore({
+    getDictionary: () => APP_LEFTOVERS_DICTIONARY,
+    getFindings: (args) => pageOf(APP_LEFTOVERS_FINDINGS, (args as { readonly query: FindingsQuery }).query),
+    getModules: () => APP_LEFTOVERS_MODULES,
+    getOverview: () => IDLE,
+    ...sampleStorageAnswers,
+  });
+  render(
+    <AppProviders navigation={createNavigation()} store={store}>
+      <ModuleScreen module={leftovers} />
+    </AppProviders>,
+  );
+  await screen.findByRole('heading', { level: 1, name: LEFTOVERS('enabled.label') });
+  act(() => {
+    store.dispatch({ modules: ['app-leftovers'], scan: 1, type: 'scan-started' });
+    store.dispatch({
+      leftOut: [...APP_LEFTOVERS_LEFT_OUT],
+      module: 'app-leftovers',
+      outcome: { kind: 'completed' },
+      scan: 1,
+      type: 'module-finished',
+    });
+    store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+    store.dispatch({ overview: APP_LEFTOVERS_OVERVIEW, type: 'overview-loaded' });
+  });
+
+  return store;
+};
+
+describe('ModuleScreen on the removed apps scan', () => {
+  describe('negative cases', () => {
+    it('shows no choices on a module without any', async () => {
+      core();
+
+      await renderPage();
+      await screen.findByRole('region', { name: 'Example caches' });
+
+      expect(screen.queryByRole('group', { name: 'Choices for this module' })).toBeNull();
+    });
+  });
+
+  describe('positive cases', () => {
+    it('shows the two choices above the three categories', async () => {
+      await renderLeftovers();
+
+      const choices = screen.getByRole('group', { name: 'Choices for this module' });
+      expect(
+        within(choices)
+          .getAllByRole('button')
+          .map((button) => button.textContent),
+      ).toStrictEqual([LEFTOVERS('choice.everything.label'), LEFTOVERS('choice.keep-settings.label')]);
+      expect(
+        screen
+          .getAllByRole('region')
+          .filter((one) => one.getAttribute('aria-label')?.endsWith('removed apps') === true),
+      ).toHaveLength(3);
+    });
+
+    it('shows the left-out reasons under their categories', async () => {
+      await renderLeftovers();
+
+      expect(section(LEFTOVERS('caches.name'))).toHaveTextContent(LEFTOVERS('left-out.running'));
+      expect(section(LEFTOVERS('settings.name'))).toHaveTextContent(LEFTOVERS('left-out.used-recently'));
     });
   });
 });

@@ -1,0 +1,10 @@
+# The ids the uninstalled app leftovers module never claims (plan 019, design section 2). An entry only ever keeps.
+# `prefix`: an id prefix ending with `.`; every id that starts with it is kept, case ignored.
+# `id`: one bundle id.
+# `why`: the reason, for the reader.
+# An entry has exactly one of `prefix` and `id`. The `com.apple.` entry must stay. The ids shared frameworks write for
+# every app are added here from what a run on a real Mac shows (plan 019, 04/02).
+
+[[exclude]]
+prefix = "com.apple."
+why = "Apple's own apps and the system's parts"

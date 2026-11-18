@@ -8,7 +8,7 @@ use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
-/// its apps, the facts its files state (which Finder never shows; times counted from `now`), its left-outs and where
+/// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, the facts its files state (which Finder never shows; times counted from `now`), its left-outs and where
 /// the storage map shows it; then the command that opens the app on the sandbox at `sandbox`.
 pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> String {
     let mut text = String::from(
@@ -27,6 +27,15 @@ pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> 
             }
             for app in case.running_elsewhere() {
                 let _ = writeln!(text, "  - Open, not installed: {}.", app.name);
+            }
+            for (name, _) in case.elsewhere() {
+                let _ = writeln!(text, "  - Found by Spotlight outside the apps folders: {name}.");
+            }
+            if case.spotlight_off() {
+                let _ = writeln!(
+                    text,
+                    "  - Spotlight is off: it cannot be asked in this sandbox, for every case file in it."
+                );
             }
             for (path, stated) in case.tree().stated(now).unwrap_or_default() {
                 let _ = writeln!(text, "  - `{}` stated: {}.", path.display(), stated_sentence(&stated, now));
@@ -346,6 +355,27 @@ reason = "in-use"
                     "  - Installed: WebStorm 2025.3.1 (open).",
                     "  - Installed: Plain.",
                     "  - Open, not installed: CLion."
+                ]
+            );
+        }
+
+        #[test]
+        fn the_checklist_names_the_apps_spotlight_finds_elsewhere_and_spotlight_off() {
+            let cases = CASES
+                .replace(
+                    "path = \"home/other.bin\"\n",
+                    "path = \"home/other.bin\"\n[[case.elsewhere]]\nname = \"Far\"\nbundle-id = \"com.example.Far\"\n",
+                )
+                .replace("kind = \"negative\"\n", "kind = \"negative\"\nspotlight = \"off\"\n");
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - Found by Spotlight outside the apps folders: Far.",
+                    "  - Spotlight is off: it cannot be asked in this sandbox, for every case file in it."
                 ]
             );
         }

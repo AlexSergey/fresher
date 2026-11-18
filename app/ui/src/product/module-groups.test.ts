@@ -5,7 +5,7 @@ import type { ModuleInfo } from '../ipc/bindings.generated';
 import { inGroups, modulesByGroup } from './module-groups';
 
 const module = (id: string, group: string): ModuleInfo =>
-  ({ categories: [], group, id, settings: [] }) as unknown as ModuleInfo;
+  ({ categories: [], choices: [], group, id, settings: [] }) as unknown as ModuleInfo;
 
 const ids = (modules: readonly ModuleInfo[]): readonly string[] => modules.map(({ id }) => id);
 
@@ -46,6 +46,16 @@ describe('modulesByGroup', () => {
       ]);
 
       expect(grouped.map(({ group }) => group)).toStrictEqual(['system', 'development', 'debug']);
+    });
+
+    it('puts Apps after System and before Development', () => {
+      const grouped = modulesByGroup([
+        module('xcode', 'development'),
+        module('leftovers', 'apps'),
+        module('temp', 'system'),
+      ]);
+
+      expect(grouped.map(({ group }) => group)).toStrictEqual(['system', 'apps', 'development']);
     });
 
     it('keeps the registration order inside a group', () => {

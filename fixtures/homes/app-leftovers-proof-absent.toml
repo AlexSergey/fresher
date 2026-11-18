@@ -1,0 +1,48 @@
+# A home for the app-leftovers module where neither proof place exists: no `Saved Application State` and no
+# `Containers`. `com.example.Gone`'s caches, logs, settings, cookies and support folder, unchanged for 40 days, prove
+# nothing, so they are never offered.
+
+[[dir]]
+path = "Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Logs/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Logs/com.example.Gone/app.log"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/com.example.Gone.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Cookies/com.example.Gone.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Application Support/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/com.example.Gone/library.db"
+size = 4096
+age = "40d"
+changed = "40d"

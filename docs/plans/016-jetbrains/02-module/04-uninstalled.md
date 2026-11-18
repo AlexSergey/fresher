@@ -85,6 +85,6 @@ reporting what it could not read (`InstalledList::unread`, `installed_apps_compl
 age`. The review found three paths to offering a live IDE's data; all three were closed (links, Spotlight, restored
 scans) and an installed unknown JetBrains app keeps everything. Limits: an IDE reachable only through a link counts
 as not installed when the link does not read; the storage map names a removed IDE by its bundle id
-([deferred](../../../deferred/removed-app-name-in-map.md)); a Mac with Spotlight's index off answers nothing, so only
+(plan 019/01/04 added the name); a Mac with Spotlight's index off answers nothing, so only
 the other guards hold; the age is the folder's own modification time
 ([deferred](../../../deferred/folder-age-from-children.md)).

@@ -8,23 +8,37 @@ use fresher_core::{BundleId, RunningApp, Timestamp};
 use fresher_testing::{FakeRunningApps, Stated, StatedFacts, StatedFlag, StatedKind, StatedOwner};
 use serde::{Deserialize, Serialize};
 
-use crate::case::is_plain;
+use crate::case::{is_bundle_name, is_plain};
 use crate::{CaseFile, Sandbox, SandboxError};
 
 /// The largest `world.toml` read: far more than any set of case files declares.
 const MAX_WORLD_BYTES: u64 = 1024 * 1024;
 
-/// What the case files declare about the Mac beyond their files: the apps that are open, the moment the sandbox
-/// was generated, and the facts its entries state instead of having them (an old status change, an owner, a flag, a
-/// socket). Written as `world.toml` at the sandbox's top; sandbox mode and the autotest take the running apps, the
-/// clock's start and the stated facts from it, never from the real Mac.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// Where Spotlight answers an app of `[[elsewhere]]`, below the sandbox: never written and never read.
+const ELSEWHERE_FOLDER: &str = "Volumes/Elsewhere";
+
+/// What the case files declare about the Mac beyond their files: the apps that are open, what Spotlight answers, the
+/// moment the sandbox was generated, and the facts its entries state instead of having them (an old status change,
+/// an owner, a flag, a socket). Written as `world.toml` at the sandbox's top; sandbox mode and the autotest take the
+/// running apps, Spotlight's answers, the clock's start and the stated facts from it, never from the real Mac.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct World {
     /// The generator's "now", in seconds since the Unix epoch: every age of the case files counts back from it.
     now: Option<u64>,
     running: Vec<RunningApp>,
+    /// Whether Spotlight can be asked: on unless a case says `spotlight = "off"`.
+    spotlight_on: bool,
+    /// The apps Spotlight finds outside the apps folders, by name and bundle id, in the order of the case files.
+    elsewhere: Vec<(String, BundleId)>,
     /// The stated facts, by path relative to the sandbox, in the order of the case files.
     entries: Vec<(PathBuf, Stated)>,
+}
+
+impl Default for World {
+    /// No moment, no running app, Spotlight on with nothing elsewhere, no stated fact: a sandbox without `world.toml`.
+    fn default() -> Self {
+        Self { now: None, running: Vec::new(), spotlight_on: true, elsewhere: Vec::new(), entries: Vec::new() }
+    }
 }
 
 /// `world.toml`, as written and read back.
@@ -33,8 +47,12 @@ pub struct World {
 struct RawWorld {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     now: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    spotlight: Option<RawSpotlight>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     running: Vec<RawRunning>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    elsewhere: Vec<RawElsewhere>,
     #[serde(default, rename = "entry", skip_serializing_if = "Vec::is_empty")]
     entries: Vec<RawEntry>,
 }
@@ -63,14 +81,34 @@ struct RawRunning {
     bundle_ids: Vec<String>,
 }
 
+/// An `[[elsewhere]]`: an app Spotlight finds outside the apps folders.
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+struct RawElsewhere {
+    name: String,
+    bundle_id: String,
+}
+
+/// `spotlight`, written only when it is off.
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum RawSpotlight {
+    Off,
+}
+
 impl World {
     /// The world of `files` generated at `now`, joined: every case's installed app declared `running = true` (its
-    /// name and bundle id), then its `[[case.running]]`, and every fact its files state (times counted back from
-    /// `now`), in the order of the files and their cases.
+    /// name and bundle id), then its `[[case.running]]`, its `[[case.elsewhere]]`, and every fact its files state
+    /// (times counted back from `now`), in the order of the files and their cases; Spotlight is off when any case
+    /// says so.
     pub fn of(files: &[CaseFile], now: SystemTime) -> Result<Self, SandboxError> {
         let mut running = Vec::new();
         let mut entries = Vec::new();
+        let mut elsewhere = Vec::new();
+        let mut spotlight_on = true;
         for case in files.iter().flat_map(CaseFile::cases) {
+            elsewhere.extend(case.elsewhere().iter().cloned());
+            spotlight_on &= !case.spotlight_off();
             entries.extend(case.tree().stated(now).map_err(|source| SandboxError::Tree { source })?);
             // An app's bundle id was checked when its case was read.
             running.extend(case.running_apps().filter_map(|app| {
@@ -80,7 +118,7 @@ impl World {
             running.extend(case.running_elsewhere().iter().cloned());
         }
         let now = now.duration_since(SystemTime::UNIX_EPOCH).ok().map(|since| since.as_secs());
-        Ok(Self { now, running, entries })
+        Ok(Self { now, running, spotlight_on, elsewhere, entries })
     }
 
     /// The world of `sandbox`, read from its `world.toml`, through no link; a missing file is an empty world. Anything
@@ -122,6 +160,24 @@ impl World {
         self.now.map(|seconds| SystemTime::UNIX_EPOCH + Duration::from_secs(seconds))
     }
 
+    /// Whether Spotlight can be asked in the sandbox: on unless a case says `spotlight = "off"`.
+    pub const fn spotlight_on(&self) -> bool {
+        self.spotlight_on
+    }
+
+    /// The apps Spotlight finds outside the apps folders, each by bundle id and at `<sandbox>/Volumes/Elsewhere/
+    /// <name>.app`, below `sandbox` (the canonical sandbox folder): a path Spotlight only answers, never written and
+    /// never read. The app's search is built from them and [`Self::spotlight_on`].
+    pub fn elsewhere_apps(&self, sandbox: &Path) -> Vec<(BundleId, PathBuf)> {
+        let folder = sandbox.join(ELSEWHERE_FOLDER);
+        self.elsewhere.iter().map(|(name, id)| (id.clone(), folder.join(format!("{name}.app")))).collect()
+    }
+
+    /// Whether the world declares anything of Spotlight: an app found elsewhere, or Spotlight off.
+    pub fn declares_spotlight(&self) -> bool {
+        !self.spotlight_on || !self.elsewhere.is_empty()
+    }
+
     /// The running apps as the port the app asks: the same answer at every call.
     pub fn running_apps(&self) -> FakeRunningApps {
         FakeRunningApps::new(self.running.clone())
@@ -155,9 +211,21 @@ impl World {
                 kind: stated.kind,
             })
             .collect();
-        let body = toml::to_string(&RawWorld { now: self.now, running, entries })
+        let elsewhere = self
+            .elsewhere
+            .iter()
+            .map(|(name, id)| RawElsewhere { name: name.clone(), bundle_id: id.as_str().to_owned() })
+            .collect();
+        let spotlight = (!self.spotlight_on).then_some(RawSpotlight::Off);
+        let body = toml::to_string(&RawWorld { now: self.now, spotlight, running, elsewhere, entries })
             .map_err(|error| SandboxError::World { path: "world.toml".into(), reason: error.to_string() })?;
-        // The facts' line only when there are any: a world without them is written as before.
+        // The facts' and Spotlight's lines only when there are any: a world without them is written as before.
+        let spotlight = if self.declares_spotlight() {
+            "# `spotlight = \"off\"` and each [[elsewhere]] are what Spotlight answers in sandbox mode: it cannot be asked,\n\
+             # or it finds the app at Volumes/Elsewhere/<name>.app, which is never written.\n"
+        } else {
+            ""
+        };
         let facts = if self.entries.is_empty() {
             ""
         } else {
@@ -165,7 +233,7 @@ impl World {
         };
         Ok(format!(
             "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written by the\n\
-             # generator from the case files.\n{facts}{body}"
+             # generator from the case files.\n{spotlight}{facts}{body}"
         ))
     }
 
@@ -207,7 +275,20 @@ impl World {
                 Ok((entry.path, stated))
             })
             .collect::<Result<_, String>>()?;
-        Ok(Self { now: raw.now, running, entries })
+        let elsewhere = raw
+            .elsewhere
+            .into_iter()
+            .map(|app| {
+                if !is_bundle_name(&app.name) {
+                    return Err(format!("the app found elsewhere {:?} is not named by one plain file name", app.name));
+                }
+                let id = BundleId::new(app.bundle_id.as_str())
+                    .map_err(|_| format!("`{}` is not a bundle id", app.bundle_id))?;
+                Ok((app.name, id))
+            })
+            .collect::<Result<_, String>>()?;
+        let spotlight_on = raw.spotlight.is_none();
+        Ok(Self { now: raw.now, running, spotlight_on, elsewhere, entries })
     }
 }
 
@@ -254,6 +335,19 @@ mod tests {
         format!("[[case.running]]\nname = \"{name}\"\nbundle-ids = [{ids}]\n")
     }
 
+    fn spotlight(name: &str, id: &str) -> String {
+        format!("[[case.elsewhere]]\nname = \"{name}\"\nbundle-id = \"{id}\"\n")
+    }
+
+    /// A case file whose one case says `spotlight = "off"`.
+    fn spotlight_off(feature: &str) -> CaseFile {
+        CaseFile::parse(&format!(
+            "feature = \"{feature}\"\n[[case]]\nname = \"{feature} case\"\nkind = \"negative\"\nspotlight = \"off\"\n\
+             [[case.file]]\npath = \"home/{feature}.bin\"\n"
+        ))
+        .unwrap()
+    }
+
     fn user(folder: &Path) -> u32 {
         use std::os::unix::fs::MetadataExt as _;
         fs::metadata(folder).unwrap().uid()
@@ -283,6 +377,7 @@ mod tests {
     mod negative {
         use std::fs;
         use std::os::unix::fs::symlink;
+        use std::path::Path;
 
         use fresher_core::RunningApps;
 
@@ -383,6 +478,51 @@ mod tests {
         }
 
         #[test]
+        fn a_world_file_with_a_bad_elsewhere_app_or_spotlight_is_refused() {
+            let (_folder, sandbox) = generated(&[case_file("plain", "")]);
+            for world in [
+                "[[elsewhere]]\nname = \"Far\"\nbundle-id = \"not an id\"\n",
+                "[[elsewhere]]\nname = \"\"\nbundle-id = \"com.example.Far\"\n",
+                "[[elsewhere]]\nname = \"../Far\"\nbundle-id = \"com.example.Far\"\n",
+                "[[elsewhere]]\nname = \"Far\"\n",
+                "[[elsewhere]]\nname = \"Far\"\nbundle-id = \"com.example.Far\"\ncolour = 1\n",
+                "spotlight = \"on\"\n",
+                "spotlight = false\n",
+            ] {
+                fs::write(sandbox.world(), world).unwrap();
+
+                let error = World::read(&sandbox).unwrap_err();
+
+                assert!(matches!(error, SandboxError::World { .. }), "{world}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_world_without_spotlight_answers_is_written_as_before() {
+            let world = World::of(&[case_file("plain", "")], super::now()).unwrap();
+
+            assert_eq!(
+                world.text().unwrap(),
+                format!(
+                    "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written \
+                     by the\n# generator from the case files.\nnow = {}\n",
+                    fresher_testing::FIXTURE_NOW
+                )
+            );
+            assert!(world.spotlight_on());
+            assert!(!world.declares_spotlight());
+            assert_eq!(world.elsewhere_apps(Path::new("/box")), []);
+        }
+
+        #[test]
+        fn a_sandbox_with_no_world_file_has_spotlight_on_and_nothing_elsewhere() {
+            let world = World::default();
+
+            assert!(world.spotlight_on());
+            assert_eq!(world.elsewhere_apps(Path::new("/box")), []);
+        }
+
+        #[test]
         fn a_world_file_that_is_a_link_is_refused() {
             let (folder, sandbox) = generated(&[case_file("plain", "")]);
             let elsewhere = folder.path().join("home/elsewhere.toml");
@@ -400,7 +540,9 @@ mod tests {
         use fresher_core::{RunningApps, Timestamp};
         use fresher_testing::{FIXTURE_NOW, StatedFlag, StatedKind, StatedOwner};
 
-        use super::{case_file, elsewhere, generated, installed, names};
+        use std::path::{Path, PathBuf};
+
+        use super::{case_file, elsewhere, generated, installed, names, spotlight, spotlight_off};
         use crate::World;
 
         #[test]
@@ -510,6 +652,44 @@ mod tests {
             assert_eq!(stated.get(&sandbox.path().join("home/first.bin")).unwrap().owner, Some(StatedOwner::OtherUser));
             let folder = stated.get(&sandbox.path().join("private/var/folders/xx/sandbox/T/d")).unwrap();
             assert_eq!(folder.changed, Some(Timestamp::from_secs(FIXTURE_NOW - 7_200)));
+        }
+
+        #[test]
+        fn a_world_with_spotlight_off_and_an_app_elsewhere_reads_back_equal() {
+            let files = [case_file("far", &spotlight("Far Away", "com.example.Far")), spotlight_off("off")];
+            let (_folder, sandbox) = generated(&files);
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world, World::of(&files, super::now()).unwrap());
+            assert!(!world.spotlight_on());
+            assert!(world.declares_spotlight());
+            let text = fs::read_to_string(sandbox.world()).unwrap();
+            assert!(text.contains("spotlight = \"off\"\n"), "{text}");
+            assert!(text.contains("[[elsewhere]]\nname = \"Far Away\"\nbundle-id = \"com.example.Far\"\n"), "{text}");
+        }
+
+        #[test]
+        fn the_apps_elsewhere_are_answered_below_the_sandbox_and_never_written() {
+            let file = case_file(
+                "far",
+                &format!("{}{}", spotlight("Far", "com.example.Far"), spotlight("Other", "com.example.Other")),
+            );
+            let (_folder, sandbox) = generated(&[file]);
+
+            let world = World::read(&sandbox).unwrap();
+
+            let answered = world.elsewhere_apps(Path::new("/box"));
+            let apps: Vec<(&str, PathBuf)> = answered.iter().map(|(id, path)| (id.as_str(), path.clone())).collect();
+            assert_eq!(
+                apps,
+                [
+                    ("com.example.Far", PathBuf::from("/box/Volumes/Elsewhere/Far.app")),
+                    ("com.example.Other", PathBuf::from("/box/Volumes/Elsewhere/Other.app")),
+                ]
+            );
+            assert!(world.spotlight_on());
+            assert!(!sandbox.path().join("Volumes").exists());
         }
 
         #[test]

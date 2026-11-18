@@ -1,0 +1,177 @@
+# The home of the app-leftovers module's core end-to-end flows (crates/e2e/tests/app_leftovers.rs), laid out as a
+# sandbox lays out its home (`home/`); the flows add the rest of the sandbox's layout and its marker.
+# `com.example.Gone` has a leftover in each of the ten forms of `places.toml`, its container included;
+# `com.example.Boxed` only a container and its caches, so it is proven by its container alone. Every entry of a
+# leftover is unchanged for 40 days (its folder a `[[dir]]`, its files directly inside, each filled with data).
+# The installed `com.example.Editor`'s files and Apple's `com.apple.Safari`'s are never claimed. Beside them, a
+# `dev-caches` cache (Yarn's) and a `jetbrains` older version (WebStorm 2024.3, 2025.3 in use) under `Library/Caches`,
+# offered by their own modules.
+
+[[dir]]
+path = "home/Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Logs/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Logs/com.example.Gone/app.log"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Preferences/com.example.Gone.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/HTTPStorages/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/HTTPStorages/com.example.Gone/httpstorages.sqlite"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/HTTPStorages/com.example.Gone.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/WebKit/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/WebKit/com.example.Gone/WebsiteData.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Cookies/com.example.Gone.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Application Support/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Application Support/com.example.Gone/library.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Containers/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Containers/com.example.Gone/container.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Containers/com.example.Boxed"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Containers/com.example.Boxed/container.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Caches/com.example.Boxed"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Caches/com.example.Boxed/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor/Cache.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Saved Application State/com.example.Editor.savedState/data.data"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Preferences/com.example.Editor.plist"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.apple.Safari/Cache.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Saved Application State/com.apple.Safari.savedState/data.data"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Yarn/v6/npm-x-1.0/package.json"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 4096
+fill = "data"

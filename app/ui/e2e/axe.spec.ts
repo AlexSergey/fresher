@@ -111,6 +111,19 @@ const tempPage = async (page: Page): Promise<void> => {
   );
 };
 
+// The removed apps' leftovers scan, on the module's page: its two choices, and an open app's and a recent one's files
+// left out.
+const leftoversPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.appLeftovers);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^Removed apps' leftovers/ });
+  await expect(nav).toContainText('2.8 GB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: "Removed apps' leftovers" })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Caches of removed apps' })).toContainText('1 item left out (220 MB)');
+};
+
 // The developer caches scan with Xcode open, on the module's page: the projects left out, one Gradle folder not the
 // user's.
 const devCachesPage = async (page: Page): Promise<void> => {
@@ -244,6 +257,12 @@ test.describe('positive cases', () => {
 
     test('the module page of Developer caches, with its left-out lines', async ({ page }) => {
       await devCachesPage(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the module page of Removed apps’ leftovers, with its choices and left-out lines', async ({ page }) => {
+      await leftoversPage(page);
 
       expect(await violations(page)).toStrictEqual([]);
     });

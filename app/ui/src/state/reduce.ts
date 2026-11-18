@@ -228,6 +228,14 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     case 'access-loaded':
       // An event told of the access before the answer came: the event is newer.
       return state.access === null ? { ...state, access: action.status } : state;
+    case 'choose':
+    case 'clear':
+    case 'toggle-category':
+    case 'toggle-finding': {
+      const selection = reduceSelection(state.selection, action);
+
+      return selection === state.selection ? state : { ...state, selection };
+    }
     case 'cleanup-confirmed':
     case 'cleanup-confirming':
     case 'cleanup-dismissed':
@@ -236,13 +244,6 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     case 'cleanup-refused':
     case 'cleanup-stopping':
       return withCleanup(state, reduceCleanup(state.cleanup, action));
-    case 'clear':
-    case 'toggle-category':
-    case 'toggle-finding': {
-      const selection = reduceSelection(state.selection, action);
-
-      return selection === state.selection ? state : { ...state, selection };
-    }
     case 'command-failed':
       return { ...state, failure: action.failure };
     case 'dictionary-loaded':

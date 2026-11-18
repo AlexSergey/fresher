@@ -339,7 +339,7 @@ mod negative {
     }
 
     #[test]
-    fn a_spotlight_that_cannot_be_asked_keeps_a_removed_ides_data_as_spotlight_unread() {
+    fn a_search_that_cannot_see_every_volume_keeps_a_removed_ides_data_as_spotlight_unread() {
         let installed = Arc::new(FakeInstalledApps::new(vec![]).failing_search("timed out"));
         let scan = Scan { installed, ..Scan::new(vec![], vec![]) };
 

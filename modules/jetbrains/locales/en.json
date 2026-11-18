@@ -39,5 +39,5 @@
   "jetbrains.left-out.used-recently": "Fresher could not find this IDE installed, but its data changed within the days set in Settings, so it is kept; a result restored from the last scan, or a scan that could not read every folder, keeps it too. A new scan after those days offers it.",
   "jetbrains.left-out.vendor-app-open": "Another JetBrains app is open and may use this data. Quit it and scan again to clean older versions.",
   "jetbrains.left-out.apps-unread": "Fresher could not read every app in your apps folders, so it keeps every IDE version.",
-  "jetbrains.left-out.spotlight-unread": "Fresher could not ask Spotlight whether this IDE is installed elsewhere on your Mac, so it keeps its data. If Spotlight is turned off, turn it on and scan again."
+  "jetbrains.left-out.spotlight-unread": "Fresher could not ask Spotlight about every drive, so this IDE may be installed elsewhere. It keeps its data. If Spotlight is off, or a drive is not indexed, turn it on and scan again."
 }

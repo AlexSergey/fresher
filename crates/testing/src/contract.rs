@@ -53,9 +53,9 @@ pub enum ContractProblem {
 }
 
 /// Every way `module` breaks the module contract: its descriptor validates; every category has its five texts, every
-/// setting (`<module>.enabled` included) its label and description and every declared problem its text; every key of
-/// its dictionary is in its namespace and no text names `{detail}`; with [`Catalogue::Required`], every category has
-/// its catalogue file with the same danger level.
+/// setting (`<module>.enabled` included) its label and description and every declared problem and every choice
+/// (label and description) its text; every key of its dictionary is in its namespace and no text names `{detail}`;
+/// with [`Catalogue::Required`], every category has its catalogue file with the same danger level.
 pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<ContractProblem> {
     let descriptor = module.descriptor();
     let mut problems = Vec::new();
@@ -66,7 +66,8 @@ pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<
         descriptor.settings().to_vec(),
         descriptor.locales(),
     )
-    .and_then(|revalidated| revalidated.with_problems(descriptor.problems().to_vec()));
+    .and_then(|revalidated| revalidated.with_problems(descriptor.problems().to_vec()))
+    .and_then(|revalidated| revalidated.with_choices(descriptor.choices().to_vec()));
     if let Err(error) = revalidated {
         problems.push(ContractProblem::Descriptor(error));
     }
@@ -161,7 +162,12 @@ fn descriptor_keys(descriptor: &ModuleDescriptor) -> Vec<String> {
     let settings = enabled.into_iter().chain(descriptor.settings().iter().map(|setting| setting.key().clone()));
     let settings = settings.flat_map(|key| [key.label_key(), key.description_key()].map(|key| key.as_str().to_owned()));
     let problems = descriptor.problems().iter().map(|key| key.as_str().to_owned());
-    categories.chain(settings).chain(problems).collect()
+    let choices = descriptor
+        .choices()
+        .iter()
+        .flat_map(|choice| [choice.label_key(descriptor.id()), choice.description_key(descriptor.id())])
+        .map(|key| key.as_str().to_owned());
+    categories.chain(settings).chain(problems).chain(choices).collect()
 }
 
 /// Every text of `dictionary` whose template names the detail arg.
@@ -493,6 +499,16 @@ mod tests {
 
             assert_eq!(problem.to_string(), "the descriptor is not valid: category `sample.caches` is listed twice");
         }
+
+        #[test]
+        fn the_contract_fails_for_a_choice_without_its_label() {
+            let en = en_with(r#""sample.choice.keep.description": "Keeps the caches.""#);
+            let module = CacheModule::with_dictionary(en).choosing("keep");
+
+            let problems = check_module_contract(&module, &Catalogue::DevOnly);
+
+            assert_eq!(problems, [ContractProblem::MissingText { key: "sample.choice.keep.label".into() }]);
+        }
     }
 
     mod positive {
@@ -509,6 +525,16 @@ mod tests {
             assert_module_contract(&module, &Catalogue::DevOnly);
             assert_texts_used(&module, &runs(&module));
             assert_eq!(check_removals_matched(&runs(&module)), []);
+        }
+
+        #[test]
+        fn a_choice_text_no_run_uses_is_not_unused() {
+            let en =
+                en_with(r#""sample.choice.keep.label": "Keep", "sample.choice.keep.description": "Keeps the caches.""#);
+            let module = CacheModule::with_dictionary(en).choosing("keep");
+
+            assert_module_contract(&module, &Catalogue::DevOnly);
+            assert_eq!(check_texts_used(&module, &runs(&module)), []);
         }
 
         #[test]

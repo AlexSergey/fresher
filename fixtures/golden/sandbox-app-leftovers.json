@@ -1,0 +1,821 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "app-leftovers.data",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Application Support/com.example.Gone4",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/com.example.Gone",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/HTTPStorages/com.example.Gone3",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Preferences/com.example.Gone2.plist",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.example.Gone4",
+      "category": "app-leftovers.data",
+      "danger": "high",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Application Support/com.example.Gone4"
+    },
+    {
+      "app": "com.example.Gone",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Caches/com.example.Gone"
+    },
+    {
+      "app": "com.example.Gone3",
+      "category": "app-leftovers.settings",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Cookies/com.example.Gone3.binarycookies"
+    },
+    {
+      "app": "com.example.Gone3",
+      "category": "app-leftovers.settings",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/HTTPStorages/com.example.Gone3"
+    },
+    {
+      "app": "com.example.Gone3",
+      "category": "app-leftovers.settings",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/HTTPStorages/com.example.Gone3.binarycookies"
+    },
+    {
+      "app": "com.example.Gone",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Logs/com.example.Gone"
+    },
+    {
+      "app": "com.example.Gone2",
+      "category": "app-leftovers.settings",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Preferences/com.example.Gone2.plist"
+    },
+    {
+      "app": "com.example.Gone",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Saved Application State/com.example.Gone.savedState"
+    },
+    {
+      "app": "com.example.Gone2",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Saved Application State/com.example.Gone2.savedState"
+    },
+    {
+      "app": "com.example.Gone3",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Saved Application State/com.example.Gone3.savedState"
+    },
+    {
+      "app": "com.example.Gone4",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Saved Application State/com.example.Gone4.savedState"
+    },
+    {
+      "app": "com.example.Gone3",
+      "category": "app-leftovers.settings",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/WebKit/com.example.Gone3"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "app-leftovers.caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "app-leftovers.left-out.installed-elsewhere"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "app-leftovers.caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "app-leftovers.left-out.not-yours"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "app-leftovers.caches",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "app-leftovers.left-out.running"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "app-leftovers.caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "app-leftovers.left-out.special"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "app-leftovers.caches",
+      "items": 4,
+      "reason": {
+        "args": {},
+        "key": "app-leftovers.left-out.used-recently"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 16384,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "app-leftovers.settings",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "app-leftovers.left-out.installed-elsewhere"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Application Support/Notes",
+        "case": "a name that is not an app's id is never claimed",
+        "path": [
+          "home/Library/Application Support/Notes"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Library/Application Support/Notes"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Caches/com.example.Gone",
+        "case": "a removed app's caches, logs and saved windows go",
+        "path": [
+          "home/Library/Caches/com.example.Gone"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Library/Caches/com.example.Gone"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Application Support/com.example.Gone4",
+        "case": "a removed app's support folder goes, at High",
+        "path": [
+          "home/Library/Application Support/com.example.Gone4"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Library/Application Support/com.example.Gone4"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 49152,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67219052,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "folders": 2,
+                  "kind": "unreadable",
+                  "needs": {
+                    "kind": "all-files"
+                  }
+                },
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738038164,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 114,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Editor.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Editor.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 361,
+        "path": "Applications/Editor.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Editor.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/com.example.Gone"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/com.example.Gone/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/com.example.Gone2.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/com.example.Gone3"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/com.example.Gone3/httpstorages.sqlite"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/com.example.Gone4"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/com.example.Gone4/library.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/Notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/Notes/notes.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/SomeTool"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/SomeTool/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.apple.Safari"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.apple.Safari/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Editor.Helper"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Editor.Helper/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Editor.Updater"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Editor.Updater/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Editor/Cache.db"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Linked"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Portable"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Portable/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Recent"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Recent/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/org.example.tool"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/org.example.tool/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.example.Boxed"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.example.Boxed/Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Containers/com.example.Boxed/Data/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Cookies"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Cookies/com.example.Gone3.binarycookies"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Group Containers"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Group Containers/ABCDE12345.com.example.Shared"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Group Containers/ABCDE12345.com.example.Shared/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/HTTPStorages"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/HTTPStorages/com.example.Gone3.binarycookies"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/com.example.Gone"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/com.example.Gone/app.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Preferences"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Preferences/com.example.Elsewhere.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Preferences/org.example.tool.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Preferences/settings.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.apple.Terminal.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.apple.Terminal.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Editor.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Editor.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Elsewhere.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Elsewhere.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Gone.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Gone.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Gone2.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Gone2.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Gone3.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Gone3.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Gone4.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Gone4.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Linked.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Linked.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Portable.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Portable.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Recent.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Recent.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Root.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Root.savedState/data.data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Root.savedState/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Shared.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Shared.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Socket.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Socket.savedState/data.data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Socket.savedState/x.sock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/WebKit"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/WebKit/com.example.Gone3"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/WebKit/com.example.Gone3/WebsiteData.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere/Linked"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/elsewhere/Linked/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 7313,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 159340
+  }
+}

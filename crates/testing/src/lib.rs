@@ -22,6 +22,7 @@ mod fixed_disk_state;
 mod fixture_tree;
 mod known_folders;
 mod large_tree;
+mod naive_places;
 mod naive_walk;
 mod run_module;
 mod special_files;

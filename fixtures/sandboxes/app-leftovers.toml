@@ -1,0 +1,480 @@
+# The app-leftovers module: the files a removed app left in `home/Library`, offered only by bundle id, only for an id
+# proven an app's (a saved state of its windows), and only when every check says the app is gone: not installed (by id
+# or a helper's), not open, not changed in the last 30 days, and not found by Spotlight. `Library/Containers` is not
+# opened in sandbox mode (it may prompt, as `Library/Group Containers` may), so no container is offered here: the
+# fixture homes and the core e2e offer one. Spotlight answers the sandbox's listed apps and the apps a case declares
+# elsewhere (`[[case.elsewhere]]`); `app-leftovers-spotlight-off.toml` turns it off, a world of its own, since Spotlight
+# off would keep every id of this file.
+#
+# Every entry of a leftover states its age and status change (40 days, or 5 for a recent one): a status change cannot
+# be set back on disk, and a whole folder's age is the newest inside it, so a folder holds its files directly.
+# Positives' files are filled with data, so the map's numbers are blocks.
+feature = "app-leftovers"
+module = "app-leftovers"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a name that is not an app's id is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Application Support/Notes"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Application Support/Notes/notes.db"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/SomeTool"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/SomeTool/x"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Preferences/settings.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+[case.map]
+part = "your-folders"
+at = "home/Library/Application Support/Notes"
+
+[[case]]
+name = "Apple's own files are never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Caches/com.apple.Safari"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.apple.Safari/x"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.apple.Terminal.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.apple.Terminal.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[case]]
+name = "a tool's files with no app behind them are not claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Caches/org.example.tool"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/org.example.tool/x"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Preferences/org.example.tool.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[case]]
+name = "an installed app's files are not claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Editor.app"
+bundle-id = "com.example.Editor"
+name = "Editor"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Editor"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Editor/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Editor.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Editor.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Editor.Helper"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Editor.Helper/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Editor.Updater"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Editor.Updater/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[case]]
+name = "an open app outside the apps folders keeps its files"
+kind = "negative"
+[[case.running]]
+name = "Portable"
+bundle-ids = ["com.example.Portable"]
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Portable.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Portable.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Portable"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Portable/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.running"
+items = 2
+
+[[case]]
+name = "files changed lately are kept"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Recent.savedState"
+age = "5d"
+changed = "5d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Recent.savedState/data.data"
+size = 4096
+age = "5d"
+changed = "5d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Recent"
+age = "5d"
+changed = "5d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Recent/Cache.db"
+size = 4096
+age = "5d"
+changed = "5d"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.used-recently"
+items = 2
+
+[[case]]
+name = "an app Spotlight knows elsewhere keeps its files"
+kind = "negative"
+[[case.elsewhere]]
+name = "Elsewhere"
+bundle-id = "com.example.Elsewhere"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Elsewhere.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Elsewhere.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Preferences/com.example.Elsewhere.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.installed-elsewhere"
+items = 1
+[[case.left-out]]
+category = "app-leftovers.settings"
+reason = "app-leftovers.left-out.installed-elsewhere"
+items = 1
+
+[[case]]
+name = "a link at a place is never claimed"
+kind = "negative"
+[[case.symlink]]
+path = "home/Library/Caches/com.example.Linked"
+target = "../../elsewhere/Linked"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/elsewhere/Linked/x"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Linked.savedState"
+age = "5d"
+changed = "5d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Linked.savedState/data.data"
+size = 4096
+age = "5d"
+changed = "5d"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.used-recently"
+items = 1
+
+[[case]]
+name = "a leftover holding a socket is kept"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Socket.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Socket.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Socket.savedState/x.sock"
+age = "40d"
+changed = "40d"
+kind = "socket"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.special"
+items = 1
+
+[[case]]
+name = "a leftover holding the system's file is kept"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Root.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Root.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Root.savedState/x"
+size = 4096
+age = "40d"
+changed = "40d"
+owner = "system"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.not-yours"
+items = 1
+
+[[case]]
+name = "a group container is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Group Containers/ABCDE12345.com.example.Shared"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Group Containers/ABCDE12345.com.example.Shared/x"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Shared.savedState"
+age = "5d"
+changed = "5d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Shared.savedState/data.data"
+size = 4096
+age = "5d"
+changed = "5d"
+[[case.left-out]]
+category = "app-leftovers.caches"
+reason = "app-leftovers.left-out.used-recently"
+items = 1
+
+[[case]]
+name = "a container is not opened"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Containers/com.example.Boxed"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Containers/com.example.Boxed/Data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Containers/com.example.Boxed/Data/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+# Positive cases.
+
+[[case]]
+name = "a removed app's caches, logs and saved windows go"
+kind = "positive"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Logs/com.example.Gone"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Logs/com.example.Gone/app.log"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Library/Caches/com.example.Gone"
+category = "app-leftovers.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Caches/com.example.Gone"
+
+[[case]]
+name = "a removed app's settings go, at Medium"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Preferences/com.example.Gone2.plist"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Gone2.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Gone2.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Library/Preferences/com.example.Gone2.plist"
+category = "app-leftovers.settings"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a removed app's web data and cookies go with its settings"
+kind = "positive"
+[[case.dir]]
+path = "home/Library/HTTPStorages/com.example.Gone3"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/HTTPStorages/com.example.Gone3/httpstorages.sqlite"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/HTTPStorages/com.example.Gone3.binarycookies"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/WebKit/com.example.Gone3"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/WebKit/com.example.Gone3/WebsiteData.db"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Cookies/com.example.Gone3.binarycookies"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Gone3.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Gone3.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Library/HTTPStorages/com.example.Gone3"
+category = "app-leftovers.settings"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a removed app's support folder goes, at High"
+kind = "positive"
+[[case.dir]]
+path = "home/Library/Application Support/com.example.Gone4"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Application Support/com.example.Gone4/library.db"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Gone4.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Gone4.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Library/Application Support/com.example.Gone4"
+category = "app-leftovers.data"
+danger = "high"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Application Support/com.example.Gone4"

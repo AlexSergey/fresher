@@ -16,10 +16,10 @@ confirmation screen, and the confirmation names the highest level among the sele
 
 | Level      | Meaning                                                                                          | Examples                                                                   |
 | ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | app caches, logs, Xcode derived data                                       |
+| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | app caches, logs, Xcode derived data, a removed app's caches               |
 | **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, `node_modules`, Docker build cache                 |
 | **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, old iOS simulators, unused Docker images |
-| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups                     |
+| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder |
 
 The levels are final for a category in its default form; a rule may raise (never lower) a level for a specific finding,
 for example a `node_modules` of a project touched yesterday.
@@ -68,6 +68,9 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `jetbrains.logs`                | Safe         | none (the module's code, `modules/jetbrains`)  | [`jetbrains-logs.md`](./jetbrains-logs.md)                               |
 | `jetbrains.settings`            | Medium       | none (the module's code, `modules/jetbrains`)  | [`jetbrains-settings.md`](./jetbrains-settings.md)                       |
 | `jetbrains.uninstalled`         | Medium       | none (the module's code, `modules/jetbrains`)  | [`jetbrains-uninstalled.md`](./jetbrains-uninstalled.md)                 |
+| `app-leftovers.caches` | Safe | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-caches.md`](./app-leftovers-caches.md) |
+| `app-leftovers.settings` | Medium | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-settings.md`](./app-leftovers-settings.md) |
+| `app-leftovers.data` | High | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-data.md`](./app-leftovers-data.md) |
 | `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |
 
 The next ones (`node_modules`, Docker) come with the plans that implement their rules.

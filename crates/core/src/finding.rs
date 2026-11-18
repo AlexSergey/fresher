@@ -11,6 +11,7 @@ use crate::{
 /// A finding as a module produces it. It has no removability: only the engine sets that, from what the walk read, so a
 /// module cannot make an item removable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
 pub struct NewFinding {
     key: FindingKey,
     category: CategoryId,
@@ -24,6 +25,10 @@ pub struct NewFinding {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional, as = "Option<String>")]
     app: Option<BundleId>,
+    /// The app's display name, for when the app is no longer installed and nothing else can name it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, as = "Option<String>")]
+    app_name: Option<String>,
 }
 
 impl NewFinding {
@@ -48,6 +53,7 @@ impl NewFinding {
             reason,
             removal,
             app: None,
+            app_name: None,
         }
     }
 
@@ -55,6 +61,12 @@ impl NewFinding {
     #[must_use]
     pub fn for_app(self, app: BundleId) -> Self {
         Self { app: Some(app), ..self }
+    }
+
+    /// The finding belongs to `app`, known by `name`: the storage map shows `name` when no installed app has the id.
+    #[must_use]
+    pub fn for_app_named(self, app: BundleId, name: impl Into<String>) -> Self {
+        Self { app: Some(app), app_name: Some(name.into()), ..self }
     }
 
     /// Raises the danger level to `level`; a lower level changes nothing, so a finding is never less dangerous than
@@ -98,6 +110,11 @@ impl NewFinding {
     /// The app the finding belongs to; `None` when the module did not say.
     pub const fn app(&self) -> Option<&BundleId> {
         self.app.as_ref()
+    }
+
+    /// The app's display name; `None` when the module gave none.
+    pub fn app_name(&self) -> Option<&str> {
+        self.app_name.as_deref()
     }
 }
 
@@ -184,6 +201,8 @@ mod tests {
             let json = serde_json::to_value(&finding).unwrap();
 
             assert_eq!(finding.app(), None);
+            assert_eq!(finding.app_name(), None);
+            assert!(json.get("appName").is_none(), "{json}");
             assert!(json.get("app").is_none(), "{json}");
         }
 
@@ -225,6 +244,19 @@ mod tests {
 
             assert_eq!(finding.app(), Some(&app));
             assert_eq!(serde_json::to_value(&finding).unwrap()["app"], "com.example.App");
+        }
+
+        #[test]
+        fn a_finding_for_an_app_by_name_keeps_both() {
+            let app = BundleId::new("com.example.App").unwrap();
+
+            let finding = sample::finding(&sample::caches(DangerLevel::Safe)).for_app_named(app.clone(), "Example");
+
+            assert_eq!(finding.app(), Some(&app));
+            assert_eq!(finding.app_name(), Some("Example"));
+            let json = serde_json::to_value(&finding).unwrap();
+            assert_eq!(json["app"], "com.example.App");
+            assert_eq!(json["appName"], "Example");
         }
 
         #[test]

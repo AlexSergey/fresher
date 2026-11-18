@@ -8,11 +8,13 @@ use std::sync::{Arc, Mutex};
 use fresher_core::{
     ByteSize, CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, Claim, ClaimedPath, Completeness, DiskState, DiskWalk,
     EntryKind, Inside, Interest, KnownFolder, KnownFolders, MarkerCheck, Match, NodeKind, NotScanned, Pattern, Sizes,
-    StateId, Timestamp, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary, is_valid_cachedir_tag,
+    StateId, Timestamp, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary, is_bundle_id_shaped,
+    is_valid_cachedir_tag,
 };
 
 use crate::entry_facts::{Seen, disk_kind, entry_facts};
 use crate::fakes::lock;
+use crate::naive_places::{Listing, Listings};
 use crate::{FakeKnownFolders, FixedDiskState, StatedFacts};
 
 /// A size nothing is known of: a folder not read.
@@ -30,6 +32,7 @@ const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZE
 /// `<UserTemp>/TemporaryItems` is never opened.
 /// Each match carries the facts of its entry, read for the owner of the home folder (see `entry_facts.rs`); a fact the
 /// tree states ([`NaiveWalk::with_stated`]) is read instead of the disk's, as `FactsLens` reports it to the scanner.
+/// The summary's `places` says what it saw of each anchored interest's place, from the folders it listed.
 #[derive(Debug)]
 pub struct NaiveWalk {
     home: PathBuf,
@@ -100,6 +103,7 @@ impl DiskWalk for NaiveWalk {
             on_progress,
             summary: WalkSummary::default(),
             walked: Walked::default(),
+            listings: Listings::default(),
         };
         let mut progress = WalkProgress::default();
         for (index, root) in request.roots.iter().enumerate() {
@@ -108,6 +112,7 @@ impl DiskWalk for NaiveWalk {
             if !metadata.is_dir() {
                 return Err(unreadable(io::ErrorKind::NotADirectory));
             }
+            walker.listings.root(root);
             if walker.avoid.contains(root) {
                 walker.not_scanned(root, NotScanned::Avoided, NOT_READ);
                 continue;
@@ -124,9 +129,15 @@ impl DiskWalk for NaiveWalk {
             let metadata = fs::symlink_metadata(&place.path).ok().filter(Metadata::is_dir);
             match (metadata, fs::read_dir(&place.path)) {
                 (Some(metadata), Ok(_)) => {
+                    walker.listings.root(&place.path);
                     walker.folder(&place.path, metadata.dev(), &mut progress)?;
                 }
-                (_, Err(error)) => {
+                (metadata, Err(error)) => {
+                    // A folder there that cannot be listed is walked as a root and seen unreadable.
+                    if metadata.is_some() {
+                        walker.listings.root(&place.path);
+                        walker.listings.saw(&place.path, Listing::Unreadable);
+                    }
                     let reason = NotScanned::Unreadable(unreadable(&error));
                     *walker.summary.not_scanned.entry(reason).or_default() += 1;
                 }
@@ -135,7 +146,8 @@ impl DiskWalk for NaiveWalk {
                 }
             }
         }
-        let Walker { summary, walked, .. } = walker;
+        let Walker { mut summary, walked, listings, .. } = walker;
+        summary.places = listings.places(request.interests, &self.folders);
         let mut kept = lock(&self.walked);
         kept.folders = walked.folders;
         kept.not_scanned = walked.not_scanned;
@@ -172,6 +184,8 @@ struct Walker<'a> {
     on_progress: &'a mut dyn FnMut(WalkProgress),
     summary: WalkSummary,
     walked: Walked,
+    /// What the walk saw of every folder, for the places of the anchored interests.
+    listings: Listings,
 }
 
 impl Walker<'_> {
@@ -184,10 +198,12 @@ impl Walker<'_> {
                 *self.summary.unreadable.entry(reason).or_default() += 1;
                 self.walked.not_scanned.push((dir.to_path_buf(), NotScanned::Unreadable(reason)));
                 self.walked.folders.push((dir.to_path_buf(), NOT_READ));
+                self.listings.saw(dir, Listing::Unreadable);
                 return Ok(NOT_READ);
             }
         };
         let mut total = Sizes::ZERO;
+        let mut complete = true;
         for path in entries {
             if self.cancel.is_cancelled() {
                 return Err(WalkError::Cancelled);
@@ -195,6 +211,7 @@ impl Walker<'_> {
             let Ok(seen) = Seen::read(&path, self.stated) else {
                 *self.summary.unreadable.entry(Unreadable::Failed).or_default() += 1;
                 total = add(total, NOT_READ);
+                complete = false;
                 continue;
             };
             let metadata = seen.metadata();
@@ -221,6 +238,7 @@ impl Walker<'_> {
             } else if kind == EntryKind::Folder {
                 if self.report(&path, &seen, kind, device) {
                     let sizes = tree_sizes(&path, device, &self.avoid);
+                    self.listings.saw(&path, Listing::Whole);
                     self.walked.folders.push((path, sizes));
                     sizes
                 } else {
@@ -233,6 +251,7 @@ impl Walker<'_> {
             total = add(total, inner);
         }
         self.walked.folders.push((dir.to_path_buf(), total));
+        self.listings.saw(dir, if complete { Listing::Read } else { Listing::Incomplete });
         Ok(total)
     }
 
@@ -241,6 +260,7 @@ impl Walker<'_> {
         *self.summary.not_scanned.entry(reason).or_default() += 1;
         self.walked.not_scanned.push((path.to_path_buf(), reason));
         self.walked.folders.push((path.to_path_buf(), sizes));
+        self.listings.saw(path, Listing::NotEntered);
     }
 
     /// A folder of another user in a place: not entered, reported as itself by the interests that match it, its
@@ -249,7 +269,7 @@ impl Walker<'_> {
         self.not_scanned(path, NotScanned::OthersFolder, NOT_READ);
         let kind = EntryKind::Folder;
         for (index, interest) in self.request.interests.iter() {
-            if !self.matches(interest.pattern(), path, kind) {
+            if !self.matches(interest, path, kind) {
                 continue;
             }
             let whole = interest.claim() == Claim::Whole;
@@ -272,16 +292,17 @@ impl Walker<'_> {
         }
     }
 
-    /// Whether `pattern` matches `path`: in a place, only an anchored pattern does.
-    fn matches(&self, pattern: &Pattern, path: &Path, kind: EntryKind) -> bool {
-        (!self.in_place || matches!(pattern, Pattern::Under(..))) && matches(pattern, self.folders, path, kind)
+    /// Whether `interest` matches `path`: in a place, only an anchored one does.
+    fn matches(&self, interest: &Interest, path: &Path, kind: EntryKind) -> bool {
+        (!self.in_place || matches!(interest.pattern(), Pattern::Under(..)))
+            && matches(interest, self.folders, path, kind)
     }
 
     /// Reports every interest `path` matches; `true` when one of them claims it whole.
     fn report(&mut self, path: &Path, seen: &Seen<'_>, kind: EntryKind, device: u64) -> bool {
         let mut claimed_whole = false;
         for (index, interest) in self.request.interests.iter() {
-            if !self.matches(interest.pattern(), path, kind) {
+            if !self.matches(interest, path, kind) {
                 continue;
             }
             let whole = interest.claim() == Claim::Whole;
@@ -397,9 +418,9 @@ fn unreadable(error: &io::Error) -> Unreadable {
     if error.kind() == io::ErrorKind::PermissionDenied { Unreadable::NoPermission } else { Unreadable::Failed }
 }
 
-fn matches(pattern: &Pattern, folders: &FakeKnownFolders, path: &Path, kind: EntryKind) -> bool {
+fn matches(interest: &Interest, folders: &FakeKnownFolders, path: &Path, kind: EntryKind) -> bool {
     let name = path.file_name().and_then(|name| name.to_str());
-    match pattern {
+    match interest.pattern() {
         Pattern::FolderName(folder) => kind != EntryKind::File && name == Some(folder.as_str()),
         Pattern::MarkerFile(marker) => {
             kind == EntryKind::Folder && listed(path, marker).is_some_and(|marker| marker.is_file())
@@ -411,9 +432,11 @@ fn matches(pattern: &Pattern, folders: &FakeKnownFolders, path: &Path, kind: Ent
             path.strip_prefix(anchor).is_ok_and(|relative| {
                 let names: Vec<_> = relative.iter().filter_map(|name| name.to_str()).collect();
                 let segments: Vec<_> = pattern.split('/').collect();
+                let shaped = interest.matches_only_bundle_ids();
                 names.len() == relative.iter().count()
                     && names.len() == segments.len()
                     && names.iter().zip(&segments).all(|(name, segment)| *segment == "*" || name == segment)
+                    && (!shaped || names.last().is_some_and(|last| is_bundle_id_shaped(last.as_bytes())))
             })
         }),
     }

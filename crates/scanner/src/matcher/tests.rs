@@ -69,6 +69,39 @@ mod negative {
         assert_eq!(matcher.entry(caches, b"ok", EntryKind::Folder).as_slice(), [0]);
     }
 
+    fn shaped(path: &str) -> fresher_core::Interest {
+        interest(Pattern::Under(KnownFolder::Home, path.into()), Claim::Whole, &[]).only_bundle_ids().unwrap()
+    }
+
+    #[test]
+    fn a_shaped_star_takes_no_name_that_is_not_a_bundle_id() {
+        let caches = [shaped("Caches/*")];
+        let matcher = compile(&set_of(&caches), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Caches");
+        for name in [&b"JetBrains"[..], b"Homebrew", b"Yarn", b"go-build", b".DS_Store", b"com.ex\xffample.App"] {
+            assert!(matcher.entry(state, name, EntryKind::Folder).is_empty(), "{name:?}");
+            assert!(!matcher.child_state(state, name).is_live(), "{name:?}");
+        }
+        let tree = fixture(
+            "[[dir]]\npath = \"Caches/JetBrains/IntelliJIdea2024.1\"\n[[dir]]\npath = \"Caches/Homebrew\"\n\
+             [[dir]]\npath = \"Caches/Yarn\"\n[[dir]]\npath = \"Caches/go-build\"\n[[file]]\npath = \"Caches/.DS_Store\"\n",
+        );
+        agrees_and_finds_nothing(&tree, &caches);
+    }
+
+    #[test]
+    fn a_plain_name_hits_only_the_plain_star_beside_a_shaped_one() {
+        let caches =
+            [interest(Pattern::Under(KnownFolder::Home, "Caches/*".into()), Claim::Item, &[]), shaped("Caches/*")];
+        let matcher = compile(&set_of(&caches), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Caches");
+        assert_eq!(matcher.entry(state, b"JetBrains", EntryKind::Folder).as_slice(), [0]);
+        let tree = fixture("[[dir]]\npath = \"Caches/JetBrains\"\n");
+        let set = set_of(&caches);
+        assert_eq!(matched(&tree, &set), reference(&tree, &set));
+        assert_eq!(matched(&tree, &set).iter().map(|found| found.0).collect::<Vec<_>>(), [0]);
+    }
+
     #[test]
     fn an_anchor_that_does_not_resolve_matches_nothing() {
         let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches".into()), Claim::Item, &[])];
@@ -273,6 +306,63 @@ mod positive {
         assert_eq!(agrees("[[dir]]\npath = \"Library/Caches\"\n", &interests).len(), 3);
     }
 
+    fn shaped(path: &str) -> fresher_core::Interest {
+        interest(Pattern::Under(KnownFolder::Home, path.into()), Claim::Whole, &[]).only_bundle_ids().unwrap()
+    }
+
+    #[test]
+    fn a_shaped_star_matches_bundle_id_names() {
+        let toml = "[[dir]]\npath = \"Caches/com.example.App/data\"\n[[file]]\npath = \"Caches/com.example.App.plist\"\n\
+                    [[dir]]\npath = \"Caches/JetBrains\"\n[[file]]\npath = \"Caches/.DS_Store\"\n";
+        let found = agrees(toml, &[shaped("Caches/*")]);
+        let paths: Vec<_> = found.iter().map(|found| found.1.clone()).collect();
+        assert_eq!(paths, [Path::new("Caches/com.example.App"), Path::new("Caches/com.example.App.plist")]);
+    }
+
+    #[test]
+    fn a_bundle_id_name_hits_both_a_plain_and_a_shaped_star() {
+        let caches =
+            [interest(Pattern::Under(KnownFolder::Home, "Caches/*".into()), Claim::Item, &[]), shaped("Caches/*")];
+        let matcher = compile(&set_of(&caches), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Caches");
+        assert_eq!(matcher.entry(state, b"com.example.App", EntryKind::Folder).as_slice(), [0, 1]);
+        assert_eq!(agrees("[[dir]]\npath = \"Caches/com.example.App\"\n", &caches).len(), 2);
+    }
+
+    #[test]
+    fn a_literal_beside_a_shaped_star_still_leads_inside() {
+        let caches = [
+            shaped("Caches/*"),
+            interest(Pattern::Under(KnownFolder::Home, "Caches/JetBrains/*".into()), Claim::Item, &[]),
+        ];
+        let toml =
+            "[[dir]]\npath = \"Caches/JetBrains/IntelliJIdea2024.1\"\n[[dir]]\npath = \"Caches/com.example.App\"\n";
+        let found = agrees(toml, &caches);
+        let summary: Vec<_> = found.iter().map(|found| (found.0, found.1.clone())).collect();
+        assert_eq!(
+            summary,
+            [
+                (0, Path::new("Caches/com.example.App").to_path_buf()),
+                (1, Path::new("Caches/JetBrains/IntelliJIdea2024.1").to_path_buf())
+            ]
+        );
+    }
+
+    #[test]
+    fn a_shaped_literal_takes_the_literal_and_the_shaped_branch() {
+        let caches = [
+            interest(Pattern::Under(KnownFolder::Home, "Caches/com.example.App".into()), Claim::Item, &[]),
+            interest(Pattern::Under(KnownFolder::Home, "Caches/*".into()), Claim::Item, &[]).only_bundle_ids().unwrap(),
+            interest(Pattern::Under(KnownFolder::Home, "Caches/com.example.App/Data".into()), Claim::Item, &[]),
+        ];
+        let matcher = compile(&set_of(&caches), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Caches");
+        assert_eq!(matcher.entry(state, b"com.example.App", EntryKind::Folder).as_slice(), [0, 1]);
+        let app = matcher.child_state(state, b"com.example.App");
+        assert_eq!(matcher.entry(app, b"Data", EntryKind::Folder).as_slice(), [2]);
+        assert_eq!(agrees("[[dir]]\npath = \"Caches/com.example.App/Data\"\n", &caches).len(), 3);
+    }
+
     #[test]
     fn a_marker_file_matches_its_folder_and_a_tag_is_checked() {
         let interests = [
@@ -331,11 +421,12 @@ mod property {
 
     fn interests() -> impl Strategy<Value = Vec<Interest>> {
         let siblings = prop::collection::vec(prop::sample::select(&NAMES[..]), 0..3);
-        prop::collection::vec((pattern(), any::<bool>(), siblings), 1..6).prop_map(|specs| {
+        prop::collection::vec((pattern(), any::<bool>(), siblings, any::<bool>()), 1..6).prop_map(|specs| {
             specs
                 .into_iter()
-                .map(|(pattern, whole, siblings)| {
-                    interest(pattern, if whole { Claim::Whole } else { Claim::Item }, &siblings)
+                .map(|(pattern, whole, siblings, shaped)| {
+                    let plain = interest(pattern, if whole { Claim::Whole } else { Claim::Item }, &siblings);
+                    if shaped { plain.clone().only_bundle_ids().unwrap_or(plain) } else { plain }
                 })
                 .collect()
         })
@@ -404,6 +495,15 @@ mod property {
         assert_ne!(print(held(&["index-v5"])), print(held(&["content-v2"])));
         assert_ne!(print(held(&["index-v5", "content-v2"])), print(held(&["content-v2", "index-v5"])));
         assert_eq!(print(held(&["index-v5"])), print(held(&["index-v5"])));
+    }
+
+    #[test]
+    fn the_fingerprint_changes_with_the_shape_of_the_star() {
+        let plain = || interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Whole, &[]);
+        let home = Path::new("/Users/fixed");
+        let print = |interest: Interest| compile(&set_of(&[interest]), home).fingerprint();
+
+        assert_ne!(print(plain()), print(plain().only_bundle_ids().unwrap()));
     }
 
     #[test]

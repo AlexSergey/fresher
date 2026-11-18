@@ -21,8 +21,9 @@ pub enum Build {
     /// A development build on the real home folder; it removes nothing outside a sandbox.
     Development,
     /// A development build living inside the sandbox folder `path`; `simulated_running` when the apps it sees open
-    /// are the sandbox's declared ones, not the Mac's.
-    Sandbox { path: PathBuf, simulated_running: bool },
+    /// are the sandbox's declared ones, not the Mac's; `simulated_spotlight` when its world declares what Spotlight
+    /// answers (an app found elsewhere, or Spotlight off).
+    Sandbox { path: PathBuf, simulated_running: bool, simulated_spotlight: bool },
 }
 
 #[cfg(test)]
@@ -44,12 +45,12 @@ mod tests {
 
         #[test]
         fn a_sandbox_build_serializes_with_its_folder() {
-            let build = Build::Sandbox { path: "/tmp/box".into(), simulated_running: true };
+            let build = Build::Sandbox { path: "/tmp/box".into(), simulated_running: true, simulated_spotlight: false };
             let info = AppInfo { version: "0.1.0".into(), build };
             let json = serde_json::to_string(&info).unwrap();
             assert_eq!(
                 json,
-                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulatedRunning":true}}"#
+                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulatedRunning":true,"simulatedSpotlight":false}}"#
             );
         }
 

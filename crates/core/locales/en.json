@@ -137,6 +137,8 @@
   "core.error.unknown-module": "There is no part of the app called {id}. Restart the app and try again.",
   "core.error.unknown-setting": "There is no setting called {key}. Restart the app and try again.",
   "core.error.unknown-volume": "This disk is no longer in the overview. Open the overview again.",
+  "core.group.apps.description": "What apps leave behind, such as the files of apps you removed.",
+  "core.group.apps.name": "Apps",
   "core.group.debug.description": "Modules of a development build, for trying the app. They never ship.",
   "core.group.debug.name": "Debug",
   "core.group.development.description": "Tools for building software: IDEs, package managers, containers and project folders.",

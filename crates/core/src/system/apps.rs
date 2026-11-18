@@ -61,6 +61,10 @@ pub trait InstalledApps: Send + Sync {
     /// drive, in a download folder): for a module that must not take an app installed elsewhere for one that is not
     /// installed. An error when the index could not be asked; then nothing is known.
     fn find(&self, ids: &[BundleId], cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError>;
+
+    /// Whether `find` can see every app on the Mac: Spotlight's index is on and every mounted volume is indexed. An
+    /// error names what it cannot see.
+    fn search_complete(&self, cancel: &CancelToken) -> Result<(), SystemError>;
 }
 
 #[cfg(test)]

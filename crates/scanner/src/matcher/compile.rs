@@ -49,11 +49,17 @@ impl Matcher {
                     add(&mut matcher.markers, marker, id);
                 }
                 Pattern::Under(..) => {
-                    let Some(segments) = anchor(interest.pattern()).and_then(|(at, below)| absolute(&at, below)) else {
+                    let Some(mut segments) = anchor(interest.pattern()).and_then(|(at, below)| absolute(&at, below))
+                    else {
                         tracing::warn!(interest = index, "an anchored interest does not resolve; it matches nothing");
                         matcher.interests.push(InterestFacts::default());
                         continue;
                     };
+                    if interest.matches_only_bundle_ids()
+                        && let Some(last @ Segment::Any) = segments.last_mut()
+                    {
+                        *last = Segment::BundleId;
+                    }
                     trie.insert(&segments, id);
                     anchors.push((id, segments));
                     facts.holds = !interest.holds().is_empty();
@@ -74,6 +80,7 @@ impl Matcher {
         }
         matcher.trie = trie.build();
         matcher.fingerprint = fingerprint(interests, &anchors);
+        matcher.anchors = anchors;
         matcher
     }
 }

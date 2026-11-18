@@ -79,6 +79,7 @@ export const TEMP_FINDINGS: readonly Finding[] = [
 export const TEMP_MODULES: readonly ModuleInfo[] = [
   {
     categories: [readyCategory('temp.old-files', 'safe')],
+    choices: [],
     group: 'system',
     id: 'temp',
     settings: ['temp.enabled', 'temp.older-than-days'],

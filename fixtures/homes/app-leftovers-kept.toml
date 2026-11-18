@@ -1,0 +1,147 @@
+# A home for the app-leftovers module where every id is proven (each has a saved state) and kept for its own reason:
+# `com.example.Running` is open; `com.example.Recent` changed 5 days ago; `com.example.Elsewhere` is found by Spotlight
+# outside the apps folders; `com.example.Socket`'s support folder holds a socket (stated: a socket's path is too long
+# to make here); `com.example.Foreign`'s caches hold the system's file (stated); `com.example.Linked`'s caches are a
+# link (never claimed) and its saved state changed 5 days ago. Every other entry unchanged for 40 days, so the saved
+# states of `com.example.Socket` and `com.example.Foreign` are offered while their other item is kept. The logs place
+# is there, empty, so a run that avoids it has a place it does not see.
+
+[[dir]]
+path = "Library/Logs"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Running.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Running.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.example.Running"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Running/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Recent.savedState"
+age = "5d"
+changed = "5d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Recent.savedState/data.data"
+size = 4096
+age = "5d"
+changed = "5d"
+
+[[dir]]
+path = "Library/Caches/com.example.Recent"
+age = "5d"
+changed = "5d"
+
+[[file]]
+path = "Library/Caches/com.example.Recent/Cache.db"
+size = 4096
+age = "5d"
+changed = "5d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Elsewhere.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Elsewhere.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/com.example.Elsewhere.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Socket.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Socket.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Application Support/com.example.Socket"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/com.example.Socket/data.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/com.example.Socket/x.sock"
+age = "40d"
+changed = "40d"
+kind = "socket"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Foreign.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Foreign.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Caches/com.example.Foreign"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Foreign/x"
+size = 4096
+age = "40d"
+changed = "40d"
+owner = "system"
+
+[[symlink]]
+path = "Library/Caches/com.example.Linked"
+target = "../../elsewhere/Linked"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "elsewhere/Linked/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Linked.savedState"
+age = "5d"
+changed = "5d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Linked.savedState/data.data"
+size = 4096
+age = "5d"
+changed = "5d"

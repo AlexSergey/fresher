@@ -89,4 +89,4 @@ Tests: `cargo clippy -p fresher-e2e --all-targets -- -D warnings` clean after th
 golden reviewed. `cargo nextest run -p fresher-e2e --test dev_caches --retries 0` in a loop: 150 of 150 runs passed.
 Parked minors: flow 1 asserts the group but not the module's name; the locked-folder guard relies on mode 000 and
 fails confusingly as root; `dev_caches_home/mod.rs` repeats about 150 lines of `temp_home/mod.rs`
-([deferred](../../../deferred/e2e-module-harness-shared.md)).
+(done by plan 019/03/02).

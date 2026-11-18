@@ -111,12 +111,39 @@ pub struct WalkSummary {
     pub fallback: Option<FullScanReason>,
     /// The folders deliberately not entered (avoided places, other volumes), counted by why.
     pub not_scanned: BTreeMap<NotScanned, u64>,
+    /// What the walk saw of each anchored interest's place (index in the interest set; only interests with one
+    /// place): not the walked places of the request.
+    pub places: BTreeMap<usize, PlaceSeen>,
 }
 
 impl WalkSummary {
     /// `true` when every folder was read; a place not entered on purpose (`not_scanned`) does not count.
     pub fn is_complete(&self) -> bool {
         self.unreadable.values().all(|&count| count == 0)
+    }
+}
+
+/// What the walk saw of the folder an anchored interest matches in (its "place": the pattern's folder without its
+/// last segment, `~/Library/Caches` for `Under(Home, "Library/Caches/*")`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PlaceSeen {
+    /// Listed in full: every entry of its own listing was read (what is inside a matched folder is the match's).
+    Read,
+    /// Not there: its parent was read and holds no such folder.
+    Absent,
+    /// It, or a folder on the way to it, could not be read or is claimed whole, or an entry of its listing could not be
+    /// read.
+    Unread,
+    /// Not entered on purpose (avoided, another volume, another user's) or outside every scan root.
+    NotScanned,
+    /// Not known: during the walk, a restored scan, or an interest without one place.
+    Unknown,
+}
+
+impl PlaceSeen {
+    /// Whether the walk saw the place in full: it was read, or it is not there.
+    pub const fn is_complete(self) -> bool {
+        matches!(self, Self::Read | Self::Absent)
     }
 }
 
@@ -149,7 +176,7 @@ pub enum WalkError {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::{Unreadable, WalkSummary};
+        use crate::{PlaceSeen, Unreadable, WalkSummary};
 
         #[test]
         fn a_summary_with_an_unreadable_folder_is_not_complete() {
@@ -158,10 +185,17 @@ mod tests {
 
             assert!(!summary.is_complete());
         }
+
+        #[test]
+        fn a_place_not_seen_in_full_is_not_complete() {
+            for seen in [PlaceSeen::Unread, PlaceSeen::NotScanned, PlaceSeen::Unknown] {
+                assert!(!seen.is_complete(), "{seen:?}");
+            }
+        }
     }
 
     mod positive {
-        use crate::{NotScanned, ScanKind, WalkSummary};
+        use crate::{NotScanned, PlaceSeen, ScanKind, Unreadable, WalkSummary};
 
         #[test]
         fn an_empty_summary_is_a_complete_full_scan() {
@@ -176,6 +210,24 @@ mod tests {
             let summary = WalkSummary { not_scanned: [(NotScanned::Avoided, 2)].into(), ..WalkSummary::default() };
 
             assert!(summary.is_complete());
+        }
+
+        #[test]
+        fn a_place_read_or_absent_is_complete() {
+            assert!(PlaceSeen::Read.is_complete());
+            assert!(PlaceSeen::Absent.is_complete());
+        }
+
+        #[test]
+        fn the_places_seen_leave_the_summary_completeness_alone() {
+            let unread = [(0, PlaceSeen::Unread)].into();
+            let summary = WalkSummary { places: unread, ..WalkSummary::default() };
+            let read = [(0, PlaceSeen::Read)].into();
+            let guarded =
+                WalkSummary { unreadable: [(Unreadable::Guarded, 1)].into(), places: read, ..summary.clone() };
+
+            assert!(summary.is_complete());
+            assert!(!guarded.is_complete());
         }
     }
 }

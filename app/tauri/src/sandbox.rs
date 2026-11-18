@@ -7,14 +7,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
-use fresher_core::{AccessProbe, Clock, CommandRunner, ModuleId, OpenFiles, RunningApps, Trash, Volumes};
+use fresher_core::{AccessProbe, Build, Clock, CommandRunner, ModuleId, OpenFiles, RunningApps, Trash, Volumes};
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
     MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection,
 };
 use fresher_sandbox::{Sandbox, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
-use fresher_system::{AppSearch, COMMAND_TIMEOUT, ProcessCommandRunner, StartedClock, SystemClock};
+use fresher_system::{AppSearch, COMMAND_TIMEOUT, DeclaredSearch, ProcessCommandRunner, StartedClock, SystemClock};
 use fresher_testing::{FactsLens, FakeTrash, StatedFacts};
 
 use crate::adapters::UnknownAccess;
@@ -197,6 +197,7 @@ pub(crate) fn compose(
     let folder = SandboxFolder::new(mode.path(), user, &real).map_err(SandboxRefusal::from)?;
     let sandbox = Sandbox::open(folder.path(), user).map_err(SandboxRefusal::from)?;
     let ports = ports(&sandbox)?;
+    let world = World::read(&sandbox).map_err(SandboxRefusal::World)?;
     let home = sandbox.home();
     let data = DataFolder::open(sandbox.data_folder())?;
     // Each list keeps its own carve-outs: the real Mac stays safe whatever a bug does, and the sandbox behaves like a
@@ -240,9 +241,26 @@ pub(crate) fn compose(
         cleanup,
         only: mode.only,
         // The sandbox's apps are its declared ones: Spotlight would answer the real Mac's.
-        app_search: AppSearch::Listed,
+        app_search: AppSearch::Declared(app_search(&world, sandbox.path())),
     })?;
     Ok((engine, sandbox))
+}
+
+/// What the app's search answers in the sandbox at `path`: its listed apps, the apps its world declares elsewhere,
+/// and whether its Spotlight is on.
+fn app_search(world: &World, path: &Path) -> DeclaredSearch {
+    DeclaredSearch { index_on: world.spotlight_on(), elsewhere: world.elsewhere_apps(path) }
+}
+
+/// The build the banner shows for `sandbox`: its folder, its open apps simulated, and Spotlight simulated when its
+/// world declares any of it (an app found elsewhere, or Spotlight off).
+pub(crate) fn build(sandbox: &Sandbox) -> Result<Build, SandboxRefusal> {
+    let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
+    Ok(Build::Sandbox {
+        path: sandbox.path().to_path_buf(),
+        simulated_running: true,
+        simulated_spotlight: world.declares_spotlight(),
+    })
 }
 
 #[cfg(test)]

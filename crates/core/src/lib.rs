@@ -65,8 +65,8 @@ pub use cleanup::{
     TrashedItem, VolumeSpace,
 };
 pub use command::{
-    CategoryInfo, CategoryTotal, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, HiddenBy, HiddenModule,
-    IgnoreTarget, IgnoredCount, IgnoredEntry, LastScan, Locale, ModuleInfo, Operation, Overview, OwnData,
+    CategoryInfo, CategoryTotal, ChoiceInfo, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, HiddenBy,
+    HiddenModule, IgnoreTarget, IgnoredCount, IgnoredEntry, LastScan, Locale, ModuleInfo, Operation, Overview, OwnData,
     SettingUpdate, SettingsFile, SettingsView,
 };
 pub use coverage::{Coverage, NotEntered, UnreadableCount};
@@ -87,7 +87,9 @@ pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, Marke
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
 pub use known_folder::{KnownFolder, KnownFolders};
 pub use left_out::{LeftOutCount, LeftOutItem};
-pub use module::{DescriptorError, FindingSink, Locales, Module, ModuleContext, ModuleDescriptor, ModuleError};
+pub use module::{
+    DescriptorError, FindingSink, Locales, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,
+};
 pub use ports::{
     AccessProbe, Clock, CommandOutput, CommandRunError, CommandRunner, Landed, OpenFiles, OpenFilesError, OpenSet,
     SystemUi, SystemUiError, Trash, TrashError,
@@ -107,6 +109,7 @@ pub use storage::{
 };
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};
 pub use subject::Subject;
+pub use system::is_bundle_id_shaped;
 pub use system::{
     AppIdError, BundleId, InstalledApp, InstalledApps, InstalledList, Project, ProjectKind, RunningApp, RunningApps,
     RunningSet, SystemError, SystemFacts, SystemPorts, TeamId,
@@ -114,6 +117,7 @@ pub use system::{
 pub use text::{DETAIL_ARG, Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;
 pub use volume::{DiskSpace, MountKind, Neighbour, NeighbourRole, VolumeFacts, VolumeId, Volumes};
+pub use walk::PlaceSeen;
 pub use walk::{
     ClaimedPath, DiskWalk, FullScanReason, Place, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest,
     WalkSummary,

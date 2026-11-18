@@ -30,12 +30,19 @@ pub struct SystemFacts {
     ports: SystemPorts,
     apps: OnceLock<Result<InstalledList, SystemError>>,
     running: OnceLock<Result<RunningSet, SystemError>>,
+    search: OnceLock<Result<(), SystemError>>,
     projects: OnceLock<Vec<Project>>,
 }
 
 impl SystemFacts {
     pub fn new(ports: &SystemPorts) -> Self {
-        Self { ports: ports.clone(), apps: OnceLock::new(), running: OnceLock::new(), projects: OnceLock::new() }
+        Self {
+            ports: ports.clone(),
+            apps: OnceLock::new(),
+            running: OnceLock::new(),
+            search: OnceLock::new(),
+            projects: OnceLock::new(),
+        }
     }
 
     /// Where this system keeps `folder`.
@@ -63,8 +70,12 @@ impl SystemFacts {
     }
 
     /// The bundles with one of `ids` anywhere the system's index knows them, asked anew at every call (a module asks
-    /// it only for what it is about to offer).
+    /// it only for what it is about to offer), after checking once per scan that the index sees every mounted volume:
+    /// when it cannot, its error is answered and nothing is asked, since an empty answer would prove nothing.
     pub fn find_apps(&self, ids: &[BundleId], cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
+        if let Err(error) = self.search.get_or_init(|| self.ports.apps.search_complete(cancel)) {
+            return Err(error.clone());
+        }
         self.ports.apps.find(ids, cancel)
     }
 
@@ -125,6 +136,10 @@ pub(crate) fn nothing_known() -> SystemFacts {
         fn find(&self, _ids: &[BundleId], _cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
             Ok(Vec::new())
         }
+
+        fn search_complete(&self, _cancel: &CancelToken) -> Result<(), SystemError> {
+            Ok(())
+        }
     }
 
     impl RunningApps for Nothing {
@@ -151,12 +166,15 @@ mod tests {
         RunningApps, SystemError, SystemPorts,
     };
 
-    /// Counts the asks; answers one app and one running app, or an error; with `partial`, a bundle left unread.
+    /// Counts the asks; answers one app and one running app, or an error; with `partial`, a bundle left unread; with
+    /// `blind`, a search that cannot see every volume. The search's checks are counted on their own.
     #[derive(Debug, Default)]
     struct Counting {
         asked: AtomicUsize,
+        searched: AtomicUsize,
         fails: bool,
         partial: bool,
+        blind: bool,
     }
 
     impl Counting {
@@ -191,6 +209,11 @@ mod tests {
             let found = ids.iter().map(|id| PathBuf::from(format!("/Volumes/Drive/{id}.app"))).collect();
             self.answer(found)
         }
+
+        fn search_complete(&self, _cancel: &CancelToken) -> Result<(), SystemError> {
+            self.searched.fetch_add(1, Ordering::SeqCst);
+            if self.blind { Err(SystemError { reason: "a volume is not indexed".into() }) } else { Ok(()) }
+        }
     }
 
     impl RunningApps for Counting {
@@ -216,7 +239,7 @@ mod tests {
         use std::sync::atomic::Ordering;
 
         use super::{Counting, ports};
-        use crate::{KnownFolder, Project, SystemError, SystemFacts};
+        use crate::{BundleId, CancelToken, KnownFolder, Project, SystemError, SystemFacts};
 
         #[test]
         fn facts_never_asked_ask_nothing() {
@@ -256,6 +279,22 @@ mod tests {
         }
 
         #[test]
+        fn an_incomplete_search_is_answered_without_finding_and_checked_once() {
+            let counting = Arc::new(Counting { blind: true, ..Counting::default() });
+            let facts = SystemFacts::new(&ports(&counting));
+            let ids = [BundleId::new("com.example.App").unwrap()];
+
+            for _ in 0..2 {
+                assert_eq!(
+                    facts.find_apps(&ids, &CancelToken::new()),
+                    Err(SystemError { reason: "a volume is not indexed".into() })
+                );
+            }
+            assert_eq!(counting.searched.load(Ordering::SeqCst), 1);
+            assert_eq!(counting.asked.load(Ordering::SeqCst), 0);
+        }
+
+        #[test]
         fn the_projects_are_set_once() {
             let facts = SystemFacts::new(&ports(&Arc::new(Counting::default())));
             let project = Project { root: "/p".into(), kinds: Vec::new(), artifacts: Vec::new(), last_activity: None };
@@ -276,7 +315,7 @@ mod tests {
         use crate::{BundleId, CancelToken, KnownFolder, SystemFacts};
 
         #[test]
-        fn finding_apps_asks_the_port_at_every_call() {
+        fn finding_apps_checks_the_search_once_and_asks_the_port_at_every_call() {
             let counting = Arc::new(Counting::default());
             let facts = SystemFacts::new(&ports(&counting));
             let ids = [BundleId::new("com.example.App").unwrap()];
@@ -288,6 +327,7 @@ mod tests {
                 );
             }
             assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
+            assert_eq!(counting.searched.load(Ordering::SeqCst), 1);
         }
 
         #[test]

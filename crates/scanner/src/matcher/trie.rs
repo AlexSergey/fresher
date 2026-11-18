@@ -4,13 +4,17 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
+use fresher_core::is_bundle_id_shaped;
+
 use crate::matcher::small_list::SmallList;
 
-/// One segment of an anchored path: a name, or `*` (exactly one name).
+/// One segment of an anchored path: a name, `*` (exactly one name), or a `*` that takes only a name shaped as a
+/// bundle id.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Segment {
     Literal(Box<[u8]>),
     Any,
+    BundleId,
 }
 
 impl Segment {
@@ -26,11 +30,12 @@ impl Segment {
 /// The index of a node of the deterministic trie.
 pub(crate) type TrieIndex = u32;
 
-/// A node of the deterministic trie: the next node by exact name, the next node for any other name, and the interests
-/// whose path ends here.
+/// A node of the deterministic trie: the next node by exact name, the next node for any other name shaped as a bundle
+/// id (where a shaped `*` leads from here), the next node for any other name, and the interests whose path ends here.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct TrieNode {
     pub(crate) literal: HashMap<Box<[u8]>, TrieIndex>,
+    pub(crate) bundle_id: Option<TrieIndex>,
     pub(crate) any: Option<TrieIndex>,
     pub(crate) ends: SmallList,
 }
@@ -45,6 +50,7 @@ pub(crate) struct TrieBuilder {
 struct Branches {
     literal: HashMap<Box<[u8]>, usize>,
     any: Option<usize>,
+    bundle_id: Option<usize>,
     ends: Vec<u32>,
 }
 
@@ -70,6 +76,10 @@ impl TrieBuilder {
                     Some(next) => (next, false),
                     None => (*node.any.insert(fresh), true),
                 },
+                Segment::BundleId => match node.bundle_id {
+                    Some(next) => (next, false),
+                    None => (*node.bundle_id.insert(fresh), true),
+                },
             };
             if created {
                 self.nodes.push(Branches::default());
@@ -82,7 +92,8 @@ impl TrieBuilder {
     }
 
     /// The deterministic trie: each of its nodes stands for the set of builder nodes a path can reach. A `*` matches
-    /// only a UTF-8 name, as the reference walk does.
+    /// only a UTF-8 name, as the reference walk does; a shaped `*` only a name shaped as a bundle id, which a plain `*`
+    /// takes too.
     pub(crate) fn build(&self) -> Vec<TrieNode> {
         let mut trie = Vec::new();
         let mut known: HashMap<Vec<usize>, TrieIndex> = HashMap::new();
@@ -101,6 +112,7 @@ impl TrieBuilder {
         while let Some((index, set)) = pending.pop() {
             let members: Vec<&Branches> = set.iter().filter_map(|&member| self.nodes.get(member)).collect();
             let any: Vec<usize> = sorted(members.iter().filter_map(|node| node.any));
+            let bundle_id: Vec<usize> = sorted(members.iter().filter_map(|node| node.bundle_id));
             let mut names: Vec<&[u8]> =
                 members.iter().flat_map(|node| node.literal.keys().map(|name| &**name)).collect();
             names.sort_unstable();
@@ -112,9 +124,16 @@ impl TrieBuilder {
                 if std::str::from_utf8(name).is_ok() {
                     targets.extend_from_slice(&any);
                 }
+                if is_bundle_id_shaped(name) {
+                    targets.extend_from_slice(&bundle_id);
+                }
                 if let Some(target) = intern(sorted(targets), &mut trie, &mut pending) {
                     node.literal.insert(name.into(), target);
                 }
+            }
+            if !bundle_id.is_empty() {
+                node.bundle_id =
+                    intern(sorted(bundle_id.into_iter().chain(any.iter().copied())), &mut trie, &mut pending);
             }
             if !any.is_empty() {
                 node.any = intern(any, &mut trie, &mut pending);

@@ -162,6 +162,7 @@ export const DEV_CACHES_MODULES: readonly ModuleInfo[] = [
       readyCategory('dev-caches.go-build', 'safe'),
       readyCategory('dev-caches.xcode-derived-data', 'safe'),
     ],
+    choices: [],
     group: 'development',
     id: 'dev-caches',
     settings: ['dev-caches.enabled'],

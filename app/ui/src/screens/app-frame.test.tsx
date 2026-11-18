@@ -168,7 +168,7 @@ describe('AppFrame', () => {
     it('a sandbox build shows the sandbox banner above the window', async () => {
       core({
         appInfo: () => ({
-          build: { kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: true },
+          build: { kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: true, simulatedSpotlight: false },
           version: '0.1.0',
         }),
       });
@@ -192,7 +192,13 @@ describe('AppFrame', () => {
     });
 
     it('the nav items sit under their group, Development before Debug, whatever the registration order', async () => {
-      const second: ModuleInfo = { categories: [], group: 'development', id: 'logs', settings: ['logs.enabled'] };
+      const second: ModuleInfo = {
+        categories: [],
+        choices: [],
+        group: 'development',
+        id: 'logs',
+        settings: ['logs.enabled'],
+      };
       core({
         getDictionary: () => ({ ...DEMO_DICTIONARY, 'logs.enabled.label': 'Logs' }),
         getModules: () => [...DEMO_MODULES, second],

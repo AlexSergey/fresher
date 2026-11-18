@@ -179,6 +179,8 @@ mod holds_tests;
 #[cfg(test)]
 mod inside_tests;
 #[cfg(test)]
+mod places_seen_tests;
+#[cfg(test)]
 mod places_tests;
 #[cfg(test)]
 pub(crate) mod tests;

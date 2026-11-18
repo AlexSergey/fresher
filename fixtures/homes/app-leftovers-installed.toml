@@ -1,0 +1,92 @@
+# A home for the app-leftovers module whose ids are an installed app's: `com.example.Editor` (installed, with the
+# helper `com.example.Editor.Helper`), its helper, an id under it (`com.example.Editor.Updater`) and the id it is under
+# (`com.example`), each with a saved state and caches, unchanged for 40 days. Scanned with `com.example.Editor` and
+# `com.example.App` installed.
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Editor.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Editor.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.example.Editor"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Editor/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Editor.Helper.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Editor.Helper.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.example.Editor.Helper"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Editor.Helper/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Editor.Updater.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Editor.Updater.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.example.Editor.Updater"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Editor.Updater/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.example"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"

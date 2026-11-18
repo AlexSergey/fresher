@@ -1,0 +1,81 @@
+# A home for the app-leftovers module where no name at its places is an app's id: folders and files named like a tool
+# or a setting, the system's own logs, a group container (named after a developer, never claimed), and an id's folder
+# outside the module's places. Every entry unchanged for 40 days: nothing but its name keeps it.
+
+[[dir]]
+path = "Library/Application Support/Notes"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/Notes/notes.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/SomeTool"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/SomeTool/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/Notes.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/Notes.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/settings.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Cookies/Cookies.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Logs/DiagnosticReports"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Logs/DiagnosticReports/crash.ips"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Group Containers/ABCDE12345.com.example.Shared"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Group Containers/ABCDE12345.com.example.Shared/x"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Application Scripts/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Scripts/com.example.Gone/x"
+size = 4096
+age = "40d"
+changed = "40d"

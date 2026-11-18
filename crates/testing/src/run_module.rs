@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use fresher_core::{
     CancelToken, DiskWalk, FindingSink, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError,
-    ModuleOutcome, NewFinding, SchemaError, SettingsSchema, StoredSettings, SystemFacts, SystemPorts, WalkError,
-    WalkMode, WalkRequest,
+    ModuleOutcome, NewFinding, PlaceSeen, SchemaError, SettingsSchema, StoredSettings, SystemFacts, SystemPorts,
+    WalkError, WalkMode, WalkRequest, WalkSummary,
 };
 use serde_json::{Value, json};
 
@@ -37,6 +37,9 @@ pub struct Ports {
     pub restored: bool,
     /// The order the module receives the matches in: the walk's by default.
     pub order: MatchOrder,
+    /// The folders the walk does not open, relative to the fixture tree's root: a place among them is not scanned.
+    /// None by default.
+    pub avoid: Vec<PathBuf>,
 }
 
 /// The order a module receives the matches of a run in: a module's answers must not depend on it.
@@ -67,6 +70,7 @@ impl Ports {
             known_folders: None,
             restored: false,
             order: MatchOrder::Walked,
+            avoid: Vec::new(),
         }
     }
 }
@@ -127,21 +131,24 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         MatchOrder::Reversed => held.push(matched),
     };
     let roots = [tree.root().to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
+    let avoid: Vec<PathBuf> = ports.avoid.iter().map(|path| tree.root().join(path)).collect();
+    let request =
+        WalkRequest { roots: &roots, interests: &interests, avoid: &avoid, places: &[], mode: WalkMode::Full };
     let walk = NaiveWalk::new(tree.root()).with_known_folders(known_folders).with_stated(tree.stated().clone());
     let walked = walk.walk(&request, &ports.cancel, &mut on_match, &mut |_| {});
     for matched in held.into_iter().rev() {
         deliver(matched, &mut failure, &mut sink);
     }
-    let walk_complete = match walked {
-        Ok(summary) => summary.is_complete(),
+    let (walk_complete, places) = match walked {
+        Ok(summary) => (summary.is_complete(), places_of(module, &interests, &summary)),
         Err(WalkError::Cancelled) => {
             failure = failure.or(Some(ModuleError::Cancelled));
-            false
+            (false, Vec::new())
         }
         Err(error) => return Err(error.into()),
     };
     if failure.is_none() {
+        let cx = cx.with_places(&places);
         let cx = if walk_complete { cx.complete_walk() } else { cx };
         failure = module.finish(&cx, &mut sink).err();
     }
@@ -152,6 +159,18 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     };
     let Recorder { findings, left_out } = sink;
     Ok(ModuleRun { findings, left_out, outcome, root: tree.root().to_path_buf(), matched: matched_paths })
+}
+
+/// What the walk saw of the place of each of the module's interests, by its own index; `Unknown` when it said
+/// nothing.
+fn places_of(module: &dyn Module, interests: &InterestSet, summary: &WalkSummary) -> Vec<PlaceSeen> {
+    let mut places = vec![PlaceSeen::Unknown; module.interests().len()];
+    for (&interest, &seen) in &summary.places {
+        if let Some(slot) = interests.owner(interest).and_then(|(_, local)| places.get_mut(local)) {
+            *slot = seen;
+        }
+    }
+    places
 }
 
 /// Keeps everything a module reports, in order.
@@ -210,8 +229,8 @@ fn relative_paths(value: &mut Value, root: &Path) {
 pub(crate) mod sample {
     use fresher_core::{
         ByteSize, CategoryDescriptor, CategoryId, Claim, DangerLevel, FindingSink, Interest, LeftOutItem, Locales,
-        Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern, Removal,
-        SettingDescriptor, Sizes, Subject, Text, TextArg, TextKey,
+        Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern,
+        Removal, SettingDescriptor, Sizes, Subject, Text, TextArg, TextKey,
     };
 
     /// The dictionary of [`CacheModule`]: every key it uses, nothing more.
@@ -290,6 +309,13 @@ pub(crate) mod sample {
             self
         }
 
+        /// This module, offering a choice `name` that selects its category.
+        pub(crate) fn choosing(mut self, name: &str) -> Self {
+            let id = CategoryId::new(self.descriptor.id(), "sample.caches").unwrap();
+            self.descriptor = self.descriptor.with_choices(vec![ModuleChoice::new(name, vec![id])]).unwrap();
+            self
+        }
+
         pub(crate) fn leaving_out(self, reason: &'static str) -> Self {
             Self { left_out: Some(reason), ..self }
         }
@@ -345,6 +371,47 @@ pub(crate) mod sample {
         }
     }
 
+    /// A module without categories whose one interest is every item of the caches; `finish` records what the walk saw
+    /// of that place.
+    pub(crate) struct PlaceProbe {
+        descriptor: ModuleDescriptor,
+        interests: Vec<Interest>,
+        pub(crate) seen: std::sync::Mutex<Vec<fresher_core::PlaceSeen>>,
+    }
+
+    impl PlaceProbe {
+        pub(crate) fn new() -> Self {
+            let id = ModuleId::new("sample").unwrap();
+            let group = fresher_core::ModuleGroup::Development;
+            let descriptor = ModuleDescriptor::new(id, group, vec![], vec![], Locales { en: EN }).unwrap();
+            let caches = Pattern::Under(fresher_core::KnownFolder::Home, "Library/Caches/*".into());
+            let interest = Interest::new(caches, Claim::Item, vec![]).unwrap();
+            Self { descriptor, interests: vec![interest], seen: std::sync::Mutex::default() }
+        }
+    }
+
+    impl Module for PlaceProbe {
+        fn descriptor(&self) -> &ModuleDescriptor {
+            &self.descriptor
+        }
+
+        fn interests(&self) -> &[Interest] {
+            &self.interests
+        }
+
+        fn on_match(&self, _: &Match, _: &ModuleContext<'_>, _: &mut dyn FindingSink) -> Result<(), ModuleError> {
+            Ok(())
+        }
+
+        fn finish(&self, cx: &ModuleContext<'_>, _: &mut dyn FindingSink) -> Result<(), ModuleError> {
+            self.seen.lock().unwrap().push(cx.place_seen(0));
+            Ok(())
+        }
+    }
+
+    /// A home whose caches hold one app's folder.
+    pub(crate) const CACHES: &str = "[[file]]\npath = \"Library/Caches/com.example.App/data\"\n";
+
     /// Two `Caches` folders, the second one 10 bytes.
     pub(crate) const TREE: &str = "[[dir]]\npath = \"a/Caches\"\n[[file]]\npath = \"b/Caches/data\"\nsize = 10\n";
 }
@@ -354,7 +421,7 @@ mod tests {
     mod negative {
         use fresher_core::{ModuleOutcome, WalkError};
 
-        use crate::run_module::sample::{CacheModule, TREE};
+        use crate::run_module::sample::{CACHES, CacheModule, PlaceProbe, TREE};
         use crate::{FixtureTree, HarnessError, Ports, run_module};
 
         #[test]
@@ -391,6 +458,17 @@ mod tests {
         }
 
         #[test]
+        fn a_place_avoided_reaches_the_module_not_scanned() {
+            let tree = FixtureTree::from_toml_str(CACHES).unwrap();
+            let probe = PlaceProbe::new();
+            let ports = Ports { avoid: vec!["Library/Caches".into()], ..Ports::at(0) };
+
+            run_module(&probe, &tree, &ports).unwrap();
+
+            assert_eq!(*probe.seen.lock().unwrap(), [fresher_core::PlaceSeen::NotScanned]);
+        }
+
+        #[test]
         fn a_walk_error_is_the_harness_error() {
             let error = HarnessError::from(WalkError::Cancelled);
 
@@ -401,7 +479,7 @@ mod tests {
     mod positive {
         use fresher_core::{ByteSize, ModuleOutcome};
 
-        use crate::run_module::sample::{CacheModule, TREE};
+        use crate::run_module::sample::{CACHES, CacheModule, PlaceProbe, TREE};
         use crate::{FixtureTree, MatchOrder, Ports, run_module};
 
         #[test]
@@ -415,6 +493,16 @@ mod tests {
             let expected = [tree.root().join("a/Caches"), tree.root().join("b/Caches")];
             assert_eq!(identities, expected.iter().map(|path| path.to_str().unwrap()).collect::<Vec<_>>());
             assert_eq!(run.findings[1].sizes().logical, ByteSize::new(10));
+        }
+
+        #[test]
+        fn a_place_read_reaches_the_module_in_finish() {
+            let tree = FixtureTree::from_toml_str(CACHES).unwrap();
+            let probe = PlaceProbe::new();
+
+            run_module(&probe, &tree, &Ports::at(0)).unwrap();
+
+            assert_eq!(*probe.seen.lock().unwrap(), [fresher_core::PlaceSeen::Read]);
         }
 
         #[test]

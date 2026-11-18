@@ -9,7 +9,7 @@ mod running;
 
 pub use apps::{InstalledApp, InstalledApps, InstalledList};
 pub use facts::{SystemFacts, SystemPorts};
-pub use ids::{AppIdError, BundleId, TeamId};
+pub use ids::{AppIdError, BundleId, TeamId, is_bundle_id_shaped};
 pub use projects::{Project, ProjectKind};
 pub use running::{RunningApp, RunningApps, RunningSet};
 

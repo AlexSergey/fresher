@@ -253,7 +253,7 @@ impl JetBrainsModule {
             let subject = Subject::Path(folder.path.clone());
             let removal = Removal::MoveToTrash(folder.path);
             let finding = NewFinding::new(&self.uninstalled, identity, subject, folder.sizes, title, reason, removal);
-            out.push(finding.for_app(app.clone()));
+            out.push(finding.for_app_named(app.clone(), product.name()));
         }
     }
 }

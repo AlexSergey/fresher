@@ -12,7 +12,7 @@ pub(crate) mod trie;
 use std::collections::HashMap;
 
 use small_list::SmallList;
-use trie::TrieNode;
+use trie::{Segment, TrieNode};
 
 /// The interests an entry matched, by index in the interest set, in increasing order.
 pub(crate) type Hits = SmallList;
@@ -45,6 +45,8 @@ pub(crate) struct Matcher {
     held: HashMap<Box<[u8]>, Vec<SiblingSlot>>,
     trie: Vec<TrieNode>,
     interests: Vec<InterestFacts>,
+    /// Every anchored interest that resolved, with its absolute segments.
+    anchors: Vec<(u32, Vec<Segment>)>,
     fingerprint: u64,
 }
 
@@ -57,6 +59,11 @@ impl Matcher {
     /// Whether the interest's marker is a `CACHEDIR.TAG`, whose first bytes the walk must check.
     pub(crate) fn checks_cachedir_tag(&self, interest: u32) -> bool {
         self.facts(interest).cachedir_tag
+    }
+
+    /// Every anchored interest that resolved, with its segments from the file system root.
+    pub(crate) fn anchors(&self) -> &[(u32, Vec<Segment>)] {
+        &self.anchors
     }
 
     fn facts(&self, interest: u32) -> InterestFacts {

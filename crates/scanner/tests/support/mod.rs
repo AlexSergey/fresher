@@ -48,6 +48,41 @@ pub(crate) fn held_interests() -> Vec<Interest> {
     ]
 }
 
+/// Interests at one place, `Library/Caches`, over the names of the random cache trees: a shaped `*` claimed whole and as
+/// an item, a plain `*`, literals beside them, and a shaped `*` below a plain one.
+pub(crate) fn bundle_id_interests() -> Vec<Interest> {
+    let at = |path: &str, claim| interest(Pattern::Under(KnownFolder::Home, path.into()), claim, &[]);
+    let shaped = |path: &str, claim| at(path, claim).only_bundle_ids().unwrap();
+    vec![
+        shaped("Library/Caches/*", Claim::Whole),
+        shaped("Library/Caches/*", Claim::Item),
+        at("Library/Caches/*", Claim::Item),
+        at("Library/Caches/JetBrains/*", Claim::Item),
+        at("Library/Caches/com.example.App", Claim::Item),
+        shaped("Library/Caches/*/*", Claim::Item),
+    ]
+}
+
+/// Anchored interests whose places lie on the ways the random trees build, at and below a folder claimed whole among
+/// them (`Library/Logs`), and outside the root.
+pub(crate) fn place_interests() -> Vec<Interest> {
+    let at = |path: &str, claim| interest(Pattern::Under(KnownFolder::Home, path.into()), claim, &[]);
+    vec![
+        at("Library/Caches/*", Claim::Item),
+        at("Library/Logs", Claim::Whole),
+        at("Library/Logs/*", Claim::Item),
+        at("Library/Logs/a/*", Claim::Item),
+        at("a/b/*", Claim::Item),
+        at("a/Caches/node_modules", Claim::Whole),
+        at("Caches/*", Claim::Item),
+        at("*/b/*", Claim::Item),
+        interest(Pattern::Under(KnownFolder::SystemApplications, "*".into()), Claim::Item, &[]),
+    ]
+}
+
+/// The folders of the random trees a walk may be asked to avoid.
+pub(crate) const AVOIDABLE: [&str; 4] = ["Library", "a", "Library/Caches", "a/b"];
+
 pub(crate) fn set_of(interests: &[Interest]) -> InterestSet {
     let mut set = InterestSet::new();
     set.add(ModuleId::new("demo").unwrap(), interests);
@@ -60,12 +95,14 @@ pub(crate) struct Walked {
     pub(crate) matches: Vec<Match>,
     pub(crate) entries: u64,
     pub(crate) unreadable: std::collections::BTreeMap<fresher_core::Unreadable, u64>,
+    /// What the walk saw of each anchored interest's place.
+    pub(crate) places: std::collections::BTreeMap<usize, fresher_core::PlaceSeen>,
 }
 
 /// Every match with its entry facts, sorted by path and interest.
 fn walked(mut matches: Vec<Match>, summary: &WalkSummary) -> Walked {
     matches.sort_by(|left, right| (&left.path, left.interest).cmp(&(&right.path, right.interest)));
-    Walked { matches, entries: summary.entries, unreadable: summary.unreadable.clone() }
+    Walked { matches, entries: summary.entries, unreadable: summary.unreadable.clone(), places: summary.places.clone() }
 }
 
 fn request<'a>(roots: &'a [PathBuf], interests: &'a InterestSet, avoid: &'a [PathBuf]) -> WalkRequest<'a> {
@@ -308,6 +345,19 @@ pub(crate) fn tagged(sizes: &[u64], items: Vec<RandomItem>) -> Vec<RandomItem> {
 /// modification and access times come from its size; a tag's access time is settled, so the walks' reads of it do not
 /// move it.
 pub(crate) fn random_tree(root: &Path, items: &[RandomItem]) -> Vec<PathBuf> {
+    random_tree_of(root, &NAMES, items)
+}
+
+/// Names shaped as bundle ids and not, no two differing only in case.
+const CACHE_NAMES: [&str; 7] =
+    ["com.example.App", "com.example.App.plist", "org.example-tool_2.x", "JetBrains", ".DS_Store", "Yarn", "a"];
+
+/// Builds `items` under `root/Library/Caches` from `CACHE_NAMES`, as [`random_tree`] does.
+pub(crate) fn random_cache_tree(root: &Path, items: &[RandomItem]) -> Vec<PathBuf> {
+    random_tree_of(&root.join("Library/Caches"), &CACHE_NAMES, items)
+}
+
+fn random_tree_of(root: &Path, names_of: &[&str], items: &[RandomItem]) -> Vec<PathBuf> {
     use std::fs;
     use std::os::unix::fs::{PermissionsExt as _, symlink};
     use std::time::{Duration, SystemTime};
@@ -319,7 +369,7 @@ pub(crate) fn random_tree(root: &Path, items: &[RandomItem]) -> Vec<PathBuf> {
     let mut files = Vec::new();
     let mut locked = Vec::new();
     for (kind, names, size) in items {
-        let path = names.iter().fold(root.to_path_buf(), |path, &name| path.join(NAMES[name % NAMES.len()]));
+        let path = names.iter().fold(root.to_path_buf(), |path, &name| path.join(names_of[name % names_of.len()]));
         if path.symlink_metadata().is_ok() {
             continue;
         }

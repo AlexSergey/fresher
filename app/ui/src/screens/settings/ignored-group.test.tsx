@@ -13,7 +13,7 @@ import { IgnoredGroup } from './ignored-group';
 
 const MODULES: readonly ModuleInfo[] = [
   ...DEMO_MODULES,
-  { categories: [], group: 'development', id: 'jetbrains', settings: [] },
+  { categories: [], choices: [], group: 'development', id: 'jetbrains', settings: [] },
 ];
 
 const DICTIONARY = {

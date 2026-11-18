@@ -44,7 +44,7 @@ pub(crate) fn meaning(
         if !scope.holds(path) {
             continue;
         }
-        let (Some(app), Some(node)) = (places.app(id), state.find(path)) else { continue };
+        let (Some(app), Some(node)) = (places.app(id, new.app_name()), state.find(path)) else { continue };
         if let Some((category, sizes)) = shares.kept_by(node).filter(|&(category, _)| category == new.category())
             && counted.insert(node)
         {

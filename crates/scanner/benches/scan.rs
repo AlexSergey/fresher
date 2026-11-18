@@ -75,7 +75,8 @@ fn matcher(criterion: &mut Criterion) {
     report_peak("matcher");
 }
 
-/// The interests of a real scan's shape: a whole dependency folder, a valid tag, an anchored cache, an extension.
+/// The interests of a real scan's shape: a whole dependency folder, a valid tag, an anchored cache, an extension, and a
+/// `*` that takes only names shaped as bundle ids, over a folder holding both kinds of names (`Data`).
 fn scan_interests() -> InterestSet {
     let interest = |pattern, claim, siblings: &[&str]| {
         Interest::new(pattern, claim, siblings.iter().map(|&name| name.into()).collect())
@@ -89,6 +90,9 @@ fn scan_interests() -> InterestSet {
             interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[]),
             interest(Pattern::Under(KnownFolder::Home, "Library/Caches/*".into()), Claim::Item, &[]),
             interest(Pattern::Extension("tmp".into()), Claim::Item, &[]),
+            interest(Pattern::Under(KnownFolder::Home, "Data/*".into()), Claim::Item, &[])
+                .only_bundle_ids()
+                .unwrap_or_else(|error| panic!("a bench interest: {error}")),
         ],
     );
     set

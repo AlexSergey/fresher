@@ -1,0 +1,192 @@
+# A home for the app-leftovers module holding Apple's own apps' files in every place, each with a saved state, all
+# unchanged for 40 days: `com.apple.` is never claimed.
+
+[[dir]]
+path = "Library/Caches/com.apple.Safari"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.apple.Safari/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Logs/com.apple.Safari"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Logs/com.apple.Safari/app.log"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.apple.Safari.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.apple.Safari.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/com.apple.Safari.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/HTTPStorages/com.apple.Safari"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/HTTPStorages/com.apple.Safari/httpstorages.sqlite"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/HTTPStorages/com.apple.Safari.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/WebKit/com.apple.Safari"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/WebKit/com.apple.Safari/WebsiteData.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Cookies/com.apple.Safari.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Application Support/com.apple.Safari"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/com.apple.Safari/library.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Containers/com.apple.Safari"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Containers/com.apple.Safari/container.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Caches/com.apple.Terminal"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.apple.Terminal/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Logs/com.apple.Terminal"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Logs/com.apple.Terminal/app.log"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Saved Application State/com.apple.Terminal.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.apple.Terminal.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Preferences/com.apple.Terminal.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/HTTPStorages/com.apple.Terminal"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/HTTPStorages/com.apple.Terminal/httpstorages.sqlite"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/HTTPStorages/com.apple.Terminal.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/WebKit/com.apple.Terminal"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/WebKit/com.apple.Terminal/WebsiteData.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Cookies/com.apple.Terminal.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Application Support/com.apple.Terminal"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/com.apple.Terminal/library.db"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Library/Containers/com.apple.Terminal"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Containers/com.apple.Terminal/container.plist"
+size = 4096
+age = "40d"
+changed = "40d"

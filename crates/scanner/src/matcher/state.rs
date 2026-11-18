@@ -3,6 +3,8 @@
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Component, Path};
 
+use fresher_core::is_bundle_id_shaped;
+
 use crate::matcher::Matcher;
 use crate::matcher::trie::{TrieIndex, TrieNode};
 
@@ -35,15 +37,17 @@ impl Matcher {
         })
     }
 
-    /// The state of the entry `name` in a folder at `state`: one lookup.
+    /// The state of the entry `name` in a folder at `state`: one lookup, and a check of the name's shape when no
+    /// literal took it and a shaped `*` leads from here.
     pub(crate) fn child_state(&self, state: TrieState, name: &[u8]) -> TrieState {
         let Some(node) = self.trie_node(state) else { return TrieState::DEAD };
-        match node.literal.get(name) {
-            Some(&next) => TrieState(next),
-            None => match node.any {
-                Some(next) if std::str::from_utf8(name).is_ok() => TrieState(next),
-                _ => TrieState::DEAD,
-            },
+        if let Some(&next) = node.literal.get(name) {
+            return TrieState(next);
+        }
+        match (node.bundle_id, node.any) {
+            (Some(next), _) if is_bundle_id_shaped(name) => TrieState(next),
+            (_, Some(next)) if std::str::from_utf8(name).is_ok() => TrieState(next),
+            _ => TrieState::DEAD,
         }
     }
 

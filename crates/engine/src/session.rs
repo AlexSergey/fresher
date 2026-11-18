@@ -9,7 +9,7 @@ use std::sync::Arc;
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
     FindingId, FindingSink, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, ModuleSettings, NewFinding, Place, Removability, Removal, ScanId, ScanKind, ScanOutcome,
+    ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, Removability, Removal, ScanId, ScanKind, ScanOutcome,
     SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
@@ -151,7 +151,8 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     }
 
     let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
-    finish_modules(plan, &contexts, walk_complete, &mut outcomes, &mut output, cancel);
+    let places = places_of(plan, &interests, summary.as_ref());
+    finish_modules(plan, &contexts, walk_complete, &places, &mut outcomes, &mut output, cancel);
 
     let committed = !cancel.is_cancelled() && {
         let claims = resolve_claims(shared);
@@ -189,12 +190,30 @@ fn all_interests(shared: &Shared) -> InterestSet {
     interests
 }
 
-/// Calls `finish` of every module that has no outcome yet, in order, each told whether the walk read every folder;
-/// after a cancel, each is `Cancelled` instead.
+/// What the walk saw of the place of each planned module's interests, by the index in the module's own `interests()`:
+/// `Unknown` for an interest the walk said nothing of (one without one place, or no summary).
+fn places_of(plan: &ScanPlan, interests: &InterestSet, summary: Option<&WalkSummary>) -> Vec<Vec<PlaceSeen>> {
+    let mut places: Vec<Vec<PlaceSeen>> =
+        plan.modules.iter().map(|planned| vec![PlaceSeen::Unknown; planned.module.interests().len()]).collect();
+    for (&interest, &seen) in summary.iter().flat_map(|summary| &summary.places) {
+        let Some((owner, local)) = interests.owner(interest) else { continue };
+        let Some(index) = plan.modules.iter().position(|planned| planned.module.descriptor().id() == owner) else {
+            continue;
+        };
+        if let Some(slot) = places[index].get_mut(local) {
+            *slot = seen;
+        }
+    }
+    places
+}
+
+/// Calls `finish` of every module that has no outcome yet, in order, each told whether the walk read every folder and
+/// what it saw of the places of the module's own interests; after a cancel, each is `Cancelled` instead.
 fn finish_modules(
     plan: &ScanPlan,
     contexts: &[ModuleContext<'_>],
     walk_complete: bool,
+    places: &[Vec<PlaceSeen>],
     outcomes: &mut [Option<ModuleOutcome>],
     output: &mut Output<'_>,
     cancel: &CancelToken,
@@ -206,7 +225,8 @@ fn finish_modules(
         let finished = if cancel.is_cancelled() {
             ModuleOutcome::Cancelled
         } else {
-            let cx = if walk_complete { cx.complete_walk() } else { *cx };
+            let cx = cx.with_places(places.get(index).map_or(&[], Vec::as_slice));
+            let cx = if walk_complete { cx.complete_walk() } else { cx };
             let finished = isolated(|| planned.module.finish(&cx, &mut output.sink(index)));
             finished.map_or_else(|outcome| outcome, |()| ModuleOutcome::Completed)
         };
@@ -525,6 +545,33 @@ mod tests {
             Fixture, MemorySettings, ScriptedWalk, TestModule, bytes, category, finding, panic_now, scan, text,
             wait_for_finish,
         };
+
+        #[test]
+        fn a_restored_scan_tells_a_module_nothing_of_its_places() {
+            use std::sync::{Arc, Mutex};
+
+            use fresher_core::{PlaceSeen, ScanKind, Timestamp};
+
+            let seen = Arc::new(Mutex::new(Vec::new()));
+            let record = Arc::clone(&seen);
+            let module = TestModule::builder("alpha")
+                .category("alpha.caches", DangerLevel::Safe)
+                .folder("Caches")
+                .on_finish(move |cx, _| {
+                    record.lock().unwrap().push(cx.place_seen(0));
+                    Ok(())
+                });
+            let walk = ScriptedWalk::new()
+                .seeing(0, PlaceSeen::Read)
+                .kind(ScanKind::Restored { taken: Timestamp::from_secs(7) });
+            let engine = Fixture::new(walk).module(module).engine();
+            let events = engine.subscribe();
+
+            engine.restore().unwrap();
+            wait_for_finish(&events);
+
+            assert_eq!(*seen.lock().unwrap(), [PlaceSeen::Unknown]);
+        }
 
         fn alpha() -> ModuleId {
             ModuleId::new("alpha").unwrap()
@@ -930,6 +977,42 @@ mod tests {
         use crate::testing::{
             Fixture, MemorySettings, START, ScriptedWalk, TestModule, batches, bytes, category, finding, scan,
         };
+
+        #[test]
+        fn a_module_sees_in_finish_what_the_walk_saw_of_its_own_places_only() {
+            use std::sync::{Arc, Mutex};
+
+            use fresher_core::PlaceSeen;
+
+            let recorder = |seen: &Arc<Mutex<Vec<PlaceSeen>>>| {
+                let record = Arc::clone(seen);
+                move |cx: &fresher_core::ModuleContext<'_>, _: &mut dyn fresher_core::FindingSink| {
+                    record.lock().unwrap().extend((0..3).map(|interest| cx.place_seen(interest)));
+                    Ok(())
+                }
+            };
+            let (alpha_seen, beta_seen) = (Arc::default(), Arc::default());
+            let alpha = TestModule::builder("alpha")
+                .category("alpha.caches", DangerLevel::Safe)
+                .folder("Caches")
+                .folder("Logs")
+                .on_finish(recorder(&alpha_seen));
+            let beta = TestModule::builder("beta")
+                .category("beta.caches", DangerLevel::Safe)
+                .folder("Tmp")
+                .on_finish(recorder(&beta_seen));
+            let walk = ScriptedWalk::new()
+                .seeing(0, PlaceSeen::Read)
+                .seeing(1, PlaceSeen::Unread)
+                .seeing(2, PlaceSeen::NotScanned);
+            let engine = Fixture::new(walk).module(alpha).module(beta).engine();
+
+            scan(&engine);
+
+            let unknown = PlaceSeen::Unknown;
+            assert_eq!(*alpha_seen.lock().unwrap(), [PlaceSeen::Read, PlaceSeen::Unread, unknown]);
+            assert_eq!(*beta_seen.lock().unwrap(), [PlaceSeen::NotScanned, unknown, unknown]);
+        }
 
         #[test]
         fn a_users_own_matched_item_is_removable() {

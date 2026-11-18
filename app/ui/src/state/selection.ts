@@ -13,6 +13,13 @@ export type Selection = {
 };
 
 export type SelectionAction =
+  // A module's choice: its categories (`categories`, those of `within` that hold a finding) are selected whole, and
+  // nothing of the module's other categories (`within`) stays selected; nothing outside `within` changes.
+  | {
+      readonly categories: readonly CategoryId[];
+      readonly type: 'choose';
+      readonly within: readonly CategoryId[];
+    }
   | { readonly category: CategoryId; readonly type: 'toggle-category' }
   | { readonly finding: Finding; readonly type: 'toggle-finding' }
   | { readonly type: 'clear' };
@@ -58,8 +65,18 @@ const toggleCategory = (selection: Selection, category: CategoryId): Selection =
   return { categories: new Map([...selection.categories, [category, new Map()]]), findings };
 };
 
+const choose = (selection: Selection, categories: readonly CategoryId[], within: readonly CategoryId[]): Selection => ({
+  categories: new Map([
+    ...[...selection.categories].filter(([category]) => !within.includes(category)),
+    ...categories.map((category): [CategoryId, ReadonlyMap<FindingId, Picked>] => [category, new Map()]),
+  ]),
+  findings: new Map([...selection.findings].filter(([, picked]) => !within.includes(picked.category))),
+});
+
 export const reduceSelection = (selection: Selection, action: SelectionAction): Selection => {
   switch (action.type) {
+    case 'choose':
+      return choose(selection, action.categories, action.within);
     case 'clear':
       return NOTHING_SELECTED;
     case 'toggle-category':

@@ -1,0 +1,794 @@
+{
+  "apple": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "installed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "kept": {
+    "findings": [
+      {
+        "app": "com.example.Foreign",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "saved-state/com.example.Foreign.savedState",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Saved Application State/com.example.Foreign.savedState"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Saved Application State/com.example.Foreign.savedState"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Foreign"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
+        }
+      },
+      {
+        "app": "com.example.Socket",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "saved-state/com.example.Socket.savedState",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Saved Application State/com.example.Socket.savedState"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Saved Application State/com.example.Socket.savedState"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Socket"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
+        }
+      }
+    ],
+    "leftOut": [
+      {
+        "category": "app-leftovers.settings",
+        "reason": "app-leftovers.left-out.installed-elsewhere",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.installed-elsewhere",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.used-recently",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.used-recently",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.used-recently",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.caches",
+        "reason": "app-leftovers.left-out.running",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-leftovers.data",
+        "reason": "app-leftovers.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "leftovers": {
+    "findings": [
+      {
+        "app": "com.example.Appx",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "caches/com.example.Appx",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/com.example.Appx"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Appx"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Appx"
+            }
+          },
+          "key": "app-leftovers.title.caches"
+        }
+      },
+      {
+        "app": "com.example.Boxed",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "caches/com.example.Boxed",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/com.example.Boxed"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Boxed"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Boxed"
+            }
+          },
+          "key": "app-leftovers.title.caches"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "caches/com.example.Gone",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/com.example.Gone"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Gone"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.caches"
+        }
+      },
+      {
+        "app": "com.example.Boxed",
+        "category": "app-leftovers.data",
+        "danger": "high",
+        "key": {
+          "identity": "container/com.example.Boxed",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Containers/com.example.Boxed"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Containers/com.example.Boxed"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Boxed"
+            }
+          },
+          "key": "app-leftovers.title.container"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.data",
+        "danger": "high",
+        "key": {
+          "identity": "container/com.example.Gone",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Containers/com.example.Gone"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Containers/com.example.Gone"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.container"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "cookies/com.example.Gone.binarycookies",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Cookies/com.example.Gone.binarycookies"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Cookies/com.example.Gone.binarycookies"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.cookies"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "http-cookies/com.example.Gone.binarycookies",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/HTTPStorages/com.example.Gone.binarycookies"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/HTTPStorages/com.example.Gone.binarycookies"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.http-cookies"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "http-storage/com.example.Gone",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/HTTPStorages/com.example.Gone"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/HTTPStorages/com.example.Gone"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.http-storage"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "logs/com.example.Gone",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Logs/com.example.Gone"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Logs/com.example.Gone"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.logs"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "preferences/com.example.Gone.plist",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Preferences/com.example.Gone.plist"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Preferences/com.example.Gone.plist"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.preferences"
+        }
+      },
+      {
+        "app": "com.example.Appx",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "saved-state/com.example.Appx.savedState",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Saved Application State/com.example.Appx.savedState"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Saved Application State/com.example.Appx.savedState"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Appx"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "key": {
+          "identity": "saved-state/com.example.Gone.savedState",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Saved Application State/com.example.Gone.savedState"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Saved Application State/com.example.Gone.savedState"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.data",
+        "danger": "high",
+        "key": {
+          "identity": "support/com.example.Gone",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Application Support/com.example.Gone"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/com.example.Gone"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.support"
+        }
+      },
+      {
+        "app": "com.example.Gone",
+        "category": "app-leftovers.settings",
+        "danger": "medium",
+        "key": {
+          "identity": "web-data/com.example.Gone",
+          "module": "app-leftovers"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "app-leftovers.finding.reason"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/WebKit/com.example.Gone"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/WebKit/com.example.Gone"
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Gone"
+            }
+          },
+          "key": "app-leftovers.title.web-data"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-ids": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "proof-absent": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "unproven": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

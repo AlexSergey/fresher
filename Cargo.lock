@@ -1232,6 +1232,7 @@ dependencies = [
  "fresher-core",
  "fresher-engine",
  "fresher-macos",
+ "fresher-module-app-leftovers",
  "fresher-module-demo",
  "fresher-module-dev-caches",
  "fresher-module-jetbrains",
@@ -1286,6 +1287,8 @@ dependencies = [
  "fresher-cleaner",
  "fresher-core",
  "fresher-engine",
+ "fresher-macos",
+ "fresher-module-app-leftovers",
  "fresher-module-demo",
  "fresher-module-dev-caches",
  "fresher-module-jetbrains",
@@ -1324,6 +1327,19 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
+]
+
+[[package]]
+name = "fresher-module-app-leftovers"
+version = "0.1.0"
+dependencies = [
+ "fresher-core",
+ "fresher-testing",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]

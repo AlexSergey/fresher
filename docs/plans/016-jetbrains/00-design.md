@@ -550,8 +550,8 @@ its settings stayed):
     through it; a link that leads to no readable bundle makes the list partial. Costs, if wrong: nothing offered on a
     Mac with such a link.
 16. **The finding's app of a removed IDE is its release bundle id** (02/04): the storage map shows a removed app by its
-    id (`com.jetbrains.datagrip`), not the IDE's name; the name is
-    [deferred](../../deferred/removed-app-name-in-map.md) (2026-11-17).
+    id (`com.jetbrains.datagrip`), not the IDE's name; the name was
+    deferred (2026-11-17), done by plan 019/01/04.
 17. **An unknown or future time is recent** (02/04), as the rules' age: the product's folders are kept with
     `used-recently`; `not-installed` is gone. Costs, if wrong: a reason of its own for an unreadable time.
 18. **The sandbox's clock** (02/04): sandbox mode's clock starts at `world.toml`'s `now` and runs from there

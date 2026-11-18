@@ -17,14 +17,22 @@ fixtures and the core e2e read the disk through `FactsLens`, which reports them 
 cleaner reads the disk). The sandbox also lays out the two temporary places. Open files, tools, access and the steps
 between scans stay deferred.
 
+**Partly taken by plan [019](../plans/019-uninstalled-app-leftovers/readme.md)** (2026-11-18), the first module that
+proves an app absent through Spotlight: Spotlight's answers. A case declares an app Spotlight finds outside the apps
+folders (`[[case.elsewhere]]`, a name and a bundle id, answered at `Volumes/Elsewhere/<name>.app`, never written or
+read) and `spotlight = "off"` (Spotlight cannot be asked); `world.toml` lists them (`[[elsewhere]]`, `spotlight`),
+sandbox mode and the autotest search the sandbox's listed apps and these (`AppSearch::Declared`), never the Mac's, and
+the banner says Spotlight is simulated when the world declares any of it. Open files, tools, access and the steps
+between scans stay deferred.
+
 ## What is postponed
 
 Plan [007](../plans/007-safe-development/readme.md)'s former plan 06: a case file of `fixtures/sandboxes/` also
 declares what is not files, and sandbox mode and the sandbox autotests serve it through the fakes plans 008 and 009
 built. The design is in plan 007's [`00-design.md`](../plans/007-safe-development/00-design.md), section 10. Until
 then, sandbox mode keeps volumes, open files, commands and access real and read-only, and the autotests use empty
-fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016), and the
-stated file facts too (plan 017).
+fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016), the
+stated file facts too (plan 017), and Spotlight's answers (plan 019).
 
 ## What doing it needs
 

@@ -8,11 +8,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    BundleId, CancelToken, CommandRunner, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
-    SystemError,
+    BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, SystemError,
 };
 
 use crate::bundle::{bundle_team, helpers, is_bundle, read_bundle};
+use crate::spotlight::SpotlightSearch;
 
 /// The known folders apps are installed in.
 const APPS_FOLDERS: [KnownFolder; 3] =
@@ -42,18 +42,33 @@ pub struct MacInstalledApps {
 /// Where `find` looks for an app beyond the apps folders.
 #[derive(Clone)]
 pub enum AppSearch {
-    /// Spotlight's index, asked with `mdfind` through the runner: the whole Mac.
-    Spotlight(Arc<dyn CommandRunner>),
-    /// Only the apps the list reads: a sandbox, whose apps are the ones its case files declare, never the Mac's.
-    Listed,
+    /// Spotlight's index: the whole Mac.
+    Spotlight(SpotlightSearch),
+    /// What a sandbox declares: its listed apps, the apps its case files keep elsewhere, and whether its Spotlight is
+    /// on; never the Mac's.
+    Declared(DeclaredSearch),
 }
 
 impl fmt::Debug for AppSearch {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::Spotlight(_) => "Spotlight",
-            Self::Listed => "Listed",
+            Self::Declared(_) => "Declared",
         })
+    }
+}
+
+/// A sandbox's search: the listed apps, the `elsewhere` apps by bundle id and path, and whether the index is on.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeclaredSearch {
+    pub index_on: bool,
+    pub elsewhere: Vec<(BundleId, PathBuf)>,
+}
+
+impl DeclaredSearch {
+    /// The index on and nothing elsewhere: only the listed apps are found.
+    pub const fn listed() -> Self {
+        Self { index_on: true, elsewhere: Vec::new() }
     }
 }
 
@@ -68,9 +83,6 @@ impl fmt::Debug for MacInstalledApps {
         formatter.debug_struct("MacInstalledApps").finish_non_exhaustive()
     }
 }
-
-/// Spotlight's command line, run without a shell.
-const MDFIND: &str = "mdfind";
 
 impl InstalledApps for MacInstalledApps {
     fn list(&self) -> Result<InstalledList, SystemError> {
@@ -97,50 +109,51 @@ impl InstalledApps for MacInstalledApps {
         Ok(found.into_list())
     }
 
-    /// Asks Spotlight once per id (the id is checked reverse-DNS, so it cannot break out of the quotes), after asking it
-    /// for the Finder, which every Mac has: no answer for the Finder means the index is off or not built, and an empty
-    /// answer would say nothing. A path it answers that does not exist (an index not yet updated) is not an app. Any
-    /// failure of the command is an error.
+    /// Asks Spotlight once per id (the id is checked reverse-DNS, so it cannot break out of the quotes); a path it
+    /// answers that does not exist (an index not yet updated) is not an app. Any failure of the command is an error.
+    /// An empty answer proves something only after `search_complete`. A declared search answers the listed apps and
+    /// the apps it keeps elsewhere with one of `ids`.
     fn find(&self, ids: &[BundleId], cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
-        let runner = match &self.search {
-            AppSearch::Spotlight(runner) => runner,
-            AppSearch::Listed => {
-                let list = self.list()?;
-                return Ok(list
-                    .apps
-                    .into_iter()
-                    .filter(|app| ids.contains(&app.bundle_id))
-                    .map(|app| app.path)
-                    .collect());
-            }
-        };
-        if spotlight_paths(runner.as_ref(), FINDER, cancel)?.is_empty() {
-            return Err(SystemError { reason: "Spotlight does not know the Finder: its index is off".into() });
-        }
         let mut found = Vec::new();
-        for id in ids {
-            let paths = spotlight_paths(runner.as_ref(), id.as_str(), cancel)?;
-            found.extend(paths.into_iter().filter(|path| fs::symlink_metadata(path).is_ok()));
+        match &self.search {
+            AppSearch::Spotlight(search) => {
+                for id in ids {
+                    let paths = search.paths(id.as_str(), cancel)?;
+                    found.extend(paths.into_iter().filter(|path| fs::symlink_metadata(path).is_ok()));
+                }
+            }
+            AppSearch::Declared(declared) => {
+                let listed = self.list()?.apps.into_iter().map(|app| (app.bundle_id, app.path));
+                found.extend(
+                    listed
+                        .chain(declared.elsewhere.iter().cloned())
+                        .filter(|(id, _)| ids.contains(id))
+                        .map(|(_, path)| path),
+                );
+            }
         }
         found.sort();
         found.dedup();
         Ok(found)
     }
-}
 
-/// The bundle id of the Finder, which Spotlight knows on every Mac whose index is on.
-const FINDER: &str = "com.apple.finder";
-
-/// The paths Spotlight answers for the bundle id `id`, read NUL-separated so a path with a line break stays whole.
-fn spotlight_paths(runner: &dyn CommandRunner, id: &str, cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
-    let query = format!("kMDItemCFBundleIdentifier == '{id}'c");
-    let output = runner
-        .run(MDFIND, &["-0", &query], cancel)
-        .map_err(|error| SystemError { reason: format!("Spotlight could not be asked: {error}") })?;
-    if output.status != 0 {
-        return Err(SystemError { reason: format!("Spotlight answered with the status {}", output.status) });
+    /// Spotlight's own check, for the volume that holds the home among the others; a declared search is complete when
+    /// its index is on.
+    fn search_complete(&self, cancel: &CancelToken) -> Result<(), SystemError> {
+        match &self.search {
+            AppSearch::Spotlight(search) => {
+                let home = self
+                    .folders
+                    .locate(KnownFolder::Home)
+                    .ok_or_else(|| SystemError { reason: "the home folder is unknown".into() })?;
+                search.search_complete(&home, cancel)
+            }
+            AppSearch::Declared(DeclaredSearch { index_on: true, .. }) => Ok(()),
+            AppSearch::Declared(DeclaredSearch { index_on: false, .. }) => {
+                Err(SystemError { reason: "the sandbox's Spotlight is off".into() })
+            }
+        }
     }
-    Ok(output.stdout.split('\0').filter(|path| !path.is_empty()).map(PathBuf::from).collect())
 }
 
 /// The bundles found so far and what could not be read.
@@ -278,7 +291,9 @@ mod tests {
 
     fn list_of(apps_folder: &Path) -> InstalledList {
         let folders = FakeKnownFolders::new().with(KnownFolder::Applications, apps_folder);
-        MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list().unwrap()
+        MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+            .list()
+            .unwrap()
     }
 
     fn listed(apps_folder: &Path) -> Vec<InstalledApp> {
@@ -293,7 +308,9 @@ mod tests {
         let folders = FakeKnownFolders::new()
             .with(KnownFolder::UserApplications, home.join("Applications"))
             .with(KnownFolder::AppSupport, home.join("Library/Application Support"));
-        MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list().unwrap()
+        MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+            .list()
+            .unwrap()
     }
 
     fn toolbox(home: &Path) -> PathBuf {
@@ -310,7 +327,9 @@ mod tests {
         use std::path::Path;
         use std::sync::Arc;
 
-        use fresher_core::{BundleId, CancelToken, CommandRunError, InstalledApps, InstalledList, KnownFolder};
+        use fresher_core::{
+            BundleId, CancelToken, CommandRunError, InstalledApps, InstalledList, KnownFolder, SystemError,
+        };
         use fresher_testing::{FakeCommandRunner, FakeKnownFolders};
 
         use super::{ids, list_of, list_of_home, listed, toolbox};
@@ -378,11 +397,16 @@ mod tests {
                 .with(KnownFolder::AppSupport, "/nonexistent/fresher-support");
 
             assert_eq!(
-                MacInstalledApps::new(Arc::new(missing), crate::AppSearch::Listed).list(),
+                MacInstalledApps::new(Arc::new(missing), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .list(),
                 Ok(InstalledList::default())
             );
             assert_eq!(
-                MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Listed).list(),
+                MacInstalledApps::new(
+                    Arc::new(FakeKnownFolders::new()),
+                    crate::AppSearch::Declared(crate::DeclaredSearch::listed())
+                )
+                .list(),
                 Ok(InstalledList::default())
             );
         }
@@ -394,8 +418,10 @@ mod tests {
             fs::create_dir(&closed_folder).unwrap();
             let folders = FakeKnownFolders::new().with(KnownFolder::Applications, &closed_folder);
 
-            let listed =
-                closed(&closed_folder, || MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list());
+            let listed = closed(&closed_folder, || {
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .list()
+            });
 
             assert!(listed.is_err(), "{listed:?}");
         }
@@ -411,7 +437,9 @@ mod tests {
                 .with(KnownFolder::UserApplications, &closed_folder);
 
             let list = closed(&closed_folder, || {
-                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list().unwrap()
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .list()
+                    .unwrap()
             });
 
             assert_eq!(ids(&list.apps), ["com.example.App"]);
@@ -448,7 +476,7 @@ mod tests {
         }
 
         fn spotlight(runner: FakeCommandRunner) -> MacInstalledApps {
-            MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Spotlight(Arc::new(runner)))
+            MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::spotlight::tests::spotlight(runner))
         }
 
         fn bundle_ids(ids: &[&str]) -> Vec<BundleId> {
@@ -456,22 +484,14 @@ mod tests {
         }
 
         const QUERY: &str = "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c";
-        const FINDER: &str = "mdfind -0 kMDItemCFBundleIdentifier == 'com.apple.finder'c";
-
-        /// A runner whose Spotlight knows the Finder, so its index is on.
-        fn indexed() -> FakeCommandRunner {
-            FakeCommandRunner::default().answering(FINDER, "/System/Library/CoreServices/Finder.app\0")
-        }
 
         #[test]
         fn a_spotlight_that_cannot_be_asked_or_fails_is_an_error() {
-            let refused = || CommandRunError::Failed { program: "mdfind".into(), reason: "timed out".into() };
+            let refused = CommandRunError::Failed { program: "mdfind".into(), reason: "timed out".into() };
             for runner in [
                 FakeCommandRunner::default(),
-                indexed().failing(QUERY, refused()),
-                indexed().exiting(QUERY, 1),
-                FakeCommandRunner::default().failing(FINDER, refused()),
-                FakeCommandRunner::default().exiting(FINDER, 1),
+                FakeCommandRunner::default().failing(QUERY, refused),
+                FakeCommandRunner::default().exiting(QUERY, 1),
             ] {
                 let found = spotlight(runner).find(&bundle_ids(&["com.jetbrains.datagrip"]), &CancelToken::new());
 
@@ -480,23 +500,26 @@ mod tests {
         }
 
         #[test]
-        fn a_spotlight_that_does_not_know_the_finder_is_off_and_an_error() {
-            let runner = FakeCommandRunner::default().answering(FINDER, "").answering(QUERY, "");
-            let runner = Arc::new(runner);
-            let apps = MacInstalledApps::new(
-                Arc::new(FakeKnownFolders::new()),
-                crate::AppSearch::Spotlight(Arc::clone(&runner) as _),
+        fn a_spotlight_search_with_no_home_is_not_complete() {
+            let complete = spotlight(crate::spotlight::tests::indexed()).search_complete(&CancelToken::new());
+
+            assert_eq!(complete, Err(SystemError { reason: "the home folder is unknown".into() }));
+        }
+
+        #[test]
+        fn a_declared_search_with_the_index_off_is_not_complete() {
+            let declared = crate::DeclaredSearch { index_on: false, elsewhere: Vec::new() };
+            let apps = MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Declared(declared));
+
+            assert_eq!(
+                apps.search_complete(&CancelToken::new()),
+                Err(SystemError { reason: "the sandbox's Spotlight is off".into() })
             );
-
-            let found = apps.find(&bundle_ids(&["com.jetbrains.datagrip"]), &CancelToken::new());
-
-            assert!(found.is_err(), "{found:?}");
-            assert_eq!(runner.calls(), [FINDER]);
         }
 
         #[test]
         fn a_path_spotlight_answers_that_does_not_exist_is_not_an_app() {
-            let runner = indexed().answering(QUERY, "/nonexistent/fresher/DataGrip.app\0");
+            let runner = FakeCommandRunner::default().answering(QUERY, "/nonexistent/fresher/DataGrip.app\0");
 
             assert_eq!(
                 spotlight(runner).find(&bundle_ids(&["com.jetbrains.datagrip"]), &CancelToken::new()),
@@ -583,10 +606,6 @@ mod tests {
             let eap = app(drive.path(), "DataGrip EAP", "com.jetbrains.datagrip-EAP");
             let runner = fresher_testing::FakeCommandRunner::default()
                 .answering(
-                    "mdfind -0 kMDItemCFBundleIdentifier == 'com.apple.finder'c",
-                    "/System/Library/CoreServices/Finder.app\0",
-                )
-                .answering(
                     "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
                     &format!("{}\0", release.display()),
                 )
@@ -595,7 +614,7 @@ mod tests {
                     &format!("{}\0{}\0", eap.display(), release.display()),
                 );
             let apps =
-                MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Spotlight(Arc::new(runner)));
+                MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::spotlight::tests::spotlight(runner));
             let ids: Vec<_> = ["com.jetbrains.datagrip", "com.jetbrains.datagrip-EAP"]
                 .iter()
                 .map(|id| fresher_core::BundleId::new(*id).unwrap())
@@ -610,17 +629,12 @@ mod tests {
         fn a_path_with_a_line_break_spotlight_answers_stays_whole() {
             let drive = tempfile::tempdir().unwrap();
             let odd = app(&drive.path().join("two\nlines"), "DataGrip", "com.jetbrains.datagrip");
-            let runner = fresher_testing::FakeCommandRunner::default()
-                .answering(
-                    "mdfind -0 kMDItemCFBundleIdentifier == 'com.apple.finder'c",
-                    "/System/Library/CoreServices/Finder.app\0",
-                )
-                .answering(
-                    "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
-                    &format!("{}\0", odd.display()),
-                );
+            let runner = fresher_testing::FakeCommandRunner::default().answering(
+                "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
+                &format!("{}\0", odd.display()),
+            );
             let apps =
-                MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Spotlight(Arc::new(runner)));
+                MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::spotlight::tests::spotlight(runner));
             let id = fresher_core::BundleId::new("com.jetbrains.datagrip").unwrap();
 
             assert_eq!(apps.find(&[id], &fresher_core::CancelToken::new()), Ok(vec![odd]));
@@ -631,11 +645,53 @@ mod tests {
             let root = tempfile::tempdir().unwrap();
             let listed = app(root.path(), "DataGrip", "com.jetbrains.datagrip");
             let folders = FakeKnownFolders::new().with(KnownFolder::Applications, root.path());
-            let apps = MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed);
+            let apps =
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()));
             let id = |id: &str| fresher_core::BundleId::new(id).unwrap();
 
             assert_eq!(apps.find(&[id("com.jetbrains.datagrip")], &fresher_core::CancelToken::new()), Ok(vec![listed]));
             assert_eq!(apps.find(&[id("com.jetbrains.goland")], &fresher_core::CancelToken::new()), Ok(vec![]));
+        }
+
+        #[test]
+        fn a_declared_search_finds_its_elsewhere_paths_for_their_ids_only() {
+            let id = |id: &str| fresher_core::BundleId::new(id).unwrap();
+            let declared = crate::DeclaredSearch {
+                index_on: true,
+                elsewhere: vec![
+                    (id("com.example.Far"), "/Volumes/Drive/Far.app".into()),
+                    (id("com.example.Other"), "/Volumes/Drive/Other.app".into()),
+                ],
+            };
+            let apps = MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Declared(declared));
+            let cancel = fresher_core::CancelToken::new();
+
+            assert_eq!(apps.find(&[id("com.example.Far")], &cancel), Ok(vec!["/Volumes/Drive/Far.app".into()]));
+            assert_eq!(apps.find(&[id("com.example.None")], &cancel), Ok(vec![]));
+            assert_eq!(apps.search_complete(&cancel), Ok(()));
+        }
+
+        #[test]
+        fn finding_no_longer_asks_spotlight_for_the_finder() {
+            let query = "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c";
+            let runner = fresher_testing::FakeCommandRunner::default().answering(query, "");
+            let (runner, search) = crate::spotlight::tests::search(runner, Ok(Vec::new()));
+            let apps = MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Spotlight(search));
+            let id = fresher_core::BundleId::new("com.jetbrains.datagrip").unwrap();
+
+            assert_eq!(apps.find(&[id], &fresher_core::CancelToken::new()), Ok(vec![]));
+            assert_eq!(runner.calls(), [query]);
+        }
+
+        #[test]
+        fn a_spotlight_search_is_complete_for_the_volume_of_the_home() {
+            let folders = FakeKnownFolders::new().with(KnownFolder::Home, crate::spotlight::tests::HOME);
+            let apps = MacInstalledApps::new(
+                Arc::new(folders),
+                crate::spotlight::tests::spotlight(crate::spotlight::tests::indexed()),
+            );
+
+            assert_eq!(apps.search_complete(&fresher_core::CancelToken::new()), Ok(()));
         }
 
         #[test]
@@ -704,7 +760,10 @@ version = "1.0"
                 .with(KnownFolder::Applications, sandbox.path().join("Applications"))
                 .with(KnownFolder::SystemApplications, sandbox.path().join("System/Applications"));
 
-            let list = MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list().unwrap();
+            let list =
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .list()
+                    .unwrap();
 
             assert!(list.is_complete(), "{:?}", list.unread);
             let read: Vec<_> = list
@@ -732,7 +791,11 @@ version = "1.0"
                 .with(KnownFolder::UserApplications, root.path());
 
             assert_eq!(
-                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list().unwrap().apps.len(),
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .list()
+                    .unwrap()
+                    .apps
+                    .len(),
                 1
             );
         }
@@ -745,7 +808,11 @@ version = "1.0"
             }
             let folders = MacKnownFolders::new("/nonexistent/fresher-home");
 
-            let apps = MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Listed).list().unwrap().apps;
+            let apps =
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .list()
+                    .unwrap()
+                    .apps;
 
             let system: Vec<_> = apps.iter().filter(|app| app.path.starts_with("/System/Applications")).collect();
             assert_ne!(system.len(), 0);

@@ -53,6 +53,14 @@ pub enum CaseError {
     /// A `[[case.running]]` bundle id the app would not read.
     #[error("case \"{case}\": `{id}` of a running app is not a bundle id")]
     RunningBundleId { case: String, id: String },
+    /// A `[[case.elsewhere]]` whose name is empty or not one plain file name.
+    #[error(
+        "case \"{case}\": the app Spotlight finds elsewhere needs a `name` that is one plain file name, not {name:?}"
+    )]
+    ElsewhereName { case: String, name: String },
+    /// A `[[case.elsewhere]]` bundle id the app would not read.
+    #[error("case \"{case}\": `{id}` of an app Spotlight finds elsewhere is not a bundle id")]
+    ElsewhereBundleId { case: String, id: String },
     /// Two cases write one path.
     #[error("case \"{case}\": the path {path} is also written by case \"{other}\"")]
     PathWrittenTwice { case: String, other: String, path: PathBuf },

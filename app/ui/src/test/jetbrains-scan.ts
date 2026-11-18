@@ -126,6 +126,7 @@ export const JETBRAINS_MODULES: readonly ModuleInfo[] = [
       readyCategory('jetbrains.settings', 'medium'),
       readyCategory('jetbrains.uninstalled', 'medium'),
     ],
+    choices: [],
     group: 'development',
     id: 'jetbrains',
     settings: ['jetbrains.enabled', 'jetbrains.uninstalled-after-days'],

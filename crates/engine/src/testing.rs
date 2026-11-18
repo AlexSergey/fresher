@@ -12,9 +12,9 @@ use fresher_core::{
     ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan,
     DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
     ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
-    Need, NewFinding, Pattern, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId,
-    StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem,
-    Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    Need, NewFinding, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes,
+    StateId, StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState,
+    TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixedDiskState,
@@ -246,6 +246,7 @@ pub(crate) struct ScriptedWalk {
     progress: Vec<WalkProgress>,
     unreadable: u64,
     unreadable_by: BTreeMap<Unreadable, u64>,
+    places: BTreeMap<usize, PlaceSeen>,
     kind: ScanKind,
     error: Option<WalkError>,
     commit_error: Option<WalkError>,
@@ -340,6 +341,12 @@ impl ScriptedWalk {
     /// The walk could not read `count` folders for `reason`.
     pub(crate) fn unreadable_by(mut self, reason: Unreadable, count: u64) -> Self {
         self.unreadable_by.insert(reason, count);
+        self
+    }
+
+    /// The walk reports what it saw of the place of the interest at `interest` in the scan's interest set.
+    pub(crate) fn seeing(mut self, interest: usize, seen: PlaceSeen) -> Self {
+        self.places.insert(interest, seen);
         self
     }
 
@@ -454,7 +461,8 @@ impl DiskWalk for ScriptedWalk {
         let mut unreadable = BTreeMap::from([(Unreadable::NoPermission, self.unreadable)]);
         unreadable.extend(&self.unreadable_by);
         let entries = u64::try_from(self.folders.len()).unwrap();
-        Ok(WalkSummary { entries, unreadable, kind: self.kind, ..WalkSummary::default() })
+        let places = self.places.clone();
+        Ok(WalkSummary { entries, unreadable, kind: self.kind, places, ..WalkSummary::default() })
     }
 
     fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {

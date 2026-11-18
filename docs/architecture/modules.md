@@ -39,9 +39,14 @@ small `thiserror` error of its own: no panicking path.
 | `finish(…)`       | the end of the walk: work that needs every match (the newest version), or that reads no disk (a tool) |
 
 - A module names its group: `ModuleDescriptor::new(id, group, categories, settings, locales)`, a `ModuleGroup` of the
-  core (`System` for what macOS and the user's apps keep for themselves, such as `temp`; `Development`; `Debug` for
+  core (`System` for what macOS and the user's apps keep for themselves, such as `temp`; `Apps` for what apps leave behind;
+  `Development`; `Debug` for
   the dev-only `demo` and `trial`, which the registry refuses in a release build), shown in that order. The screens
   show modules under their group's name (`core.group.<group>.name`, `.description`).
+- A module may offer choices of its categories: `ModuleDescriptor::with_choices(Vec<ModuleChoice>)`, each a kebab-case
+  name and the categories it selects (texts `<module>.choice.<name>.label` and `.description`), carried to the UI as
+  `ModuleInfo.choices`. A finding of an app that may no longer be installed names it with
+  `NewFinding::for_app_named(id, name)`, and the storage map shows that name.
 - A module's problems are declared: `ModuleDescriptor::with_problems(keys)` lists every key it may report. A failed
   part returns `ModuleError::Failed { reason }` with a declared `Text` (a technical detail goes under `DETAIL_ARG`,
   never named in the sentence). An item the module recognized and does not offer is `out.left_out(LeftOutItem { … })`:
@@ -62,10 +67,25 @@ small `thiserror` error of its own: no panicking path.
   entries' times must not then (plan 016). In `finish`, `cx.is_walk_complete()` says the walk read every folder
   (`false` during the walk, and after a walk that could not read a folder or stopped early): a module that decides
   from every match together must not offer when a folder it did not see may change the answer (plan 016).
+  `cx.place_seen(interest)` says, in `finish`, what the walk saw of the folder that interest of the module matches in
+  (its place: `Library/Caches` for `Library/Caches/*`; only an `Under` pattern with no `*` before its last segment
+  has one): `Read` (listed in full; what is inside a match is the match's), `Absent` (its parent read, no such folder),
+  `Unread` (it, a folder on the way, or an entry of its listing not read; it or a folder on the way claimed whole counts),
+  `NotScanned` (avoided, another volume, another user's, outside every root) or `Unknown` (during the walk, in a
+  restored scan, an interest without one place). `PlaceSeen::is_complete()` is `Read` or `Absent`. A module that
+  decides from every match of its own places checks them, not `is_walk_complete()`, which any unreadable folder of
+  the scan makes `false` (on every Mac without Full Disk Access); one that decides from the whole walk keeps
+  `is_walk_complete()` (plan 019).
 - **A module never writes an OS path** (the user's decision of 2026-11-15): a place is a known folder and a relative
   path, `Pattern::Under(KnownFolder::AppCaches, "JetBrains/*")` (in rules, `under = { folder = "app-caches", path =
   "JetBrains/*" }`); `KnownFolder::Home` is the home folder itself. The walk resolves the folder through the
   `KnownFolders` port; a folder this system does not have matches nothing.
+- `Interest::only_bundle_ids()` (plan [019](../plans/019-uninstalled-app-leftovers/readme.md)) makes an anchored
+  interest's last `*` match only a name shaped as a bundle id (`is_bundle_id_shaped`: what `BundleId::new` accepts,
+  with at least one dot): `com.example.App` and `com.example.App.plist`, never `JetBrains`, `Homebrew` or
+  `.DS_Store`. A whole claim of `Caches/*` would otherwise swallow the places other modules claim; a literal beside it
+  (`Caches/JetBrains/*`) still leads inside. Only for a `Pattern::Under` whose last segment is `*`
+  (`InterestError::NoStarToShape` otherwise); the shape is part of the interest and of the matcher's fingerprint.
 - Two known folders lie outside the home: `UserTemp` (the user's own temporary folder,
   `/private/var/folders/<xx>/<hash>/T`) and `SharedTemp` (`/private/tmp`). While a registered module's interest is
   anchored in one, and no scan root holds it, the walk reads it as a place: a root of its own after the scan roots,
@@ -81,7 +101,7 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 | ---------------------------- | ------------------------------------------------------------------------------------------------- |
 | `locate(KnownFolder)`        | where this system keeps the folder                                                                |
 | `installed_apps()`           | every installed app: bundle id, team id, name, version, build, path, its helpers' bundle ids      |
-| `find_apps(ids, cancel)`    | the bundles with one of the ids anywhere Spotlight knows them (a sandbox: its own apps); asked anew each call |
+| `find_apps(ids, cancel)`    | the bundles with one of the ids anywhere Spotlight knows them (a sandbox: its own apps); asked anew each call, after checking once per scan that Spotlight sees every mounted volume; an error when it cannot |
 | `installed_apps_complete()`  | the same, but an error when the listing could not read an apps folder, a folder in one or a bundle (`InstalledList::unread`) |
 | `running_apps()`             | the running apps (`RunningSet`); `owner_of(path)` names the running app a path is named after     |
 | `projects()`                 | the projects the walk found (root, kinds, artifact folders, last activity); `None` during the walk |
@@ -163,6 +183,17 @@ apps (derived data is left out while Xcode is open). Like `jetbrains`, the decis
 table of nine rows) and every cache it recognizes and does not offer is a `left_out` with its reason (not the user's,
 a special entry inside, its app is open, the running apps could not be read).
 
+**`app-leftovers` is code with data tables, and the example of a module that decides per app**: its places
+(`places.toml`: nine places in `~/Library`, ten rows with a suffix, a kind, a category and whether the row proves an
+id) match only names shaped as a bundle id (`Interest::only_bundle_ids()`), and a name without the row's suffix is not
+an id. The leftovers of one id are gathered in `on_match`; `finish` decides each id from all of them, in the rows of a
+pure function (`decide.rs`): a proof (a present saved state or container of the same id; an absent place never
+proves), no installed or running app with the id or a related id, every place seen in full (`cx.place_seen`), nothing
+changed within the days setting, and Spotlight last (`find_apps` with the id and its dot-prefixes, one call). Any
+doubt keeps all of the id's leftovers, each reported as a `left_out` with its reason. The exclusion table
+(`exclude.toml`) keeps `com.apple` and system components. Group Containers and launch agents are not places of the
+module. A leftover that is a socket or not the user's is left out alone (`decide_item`), the rest of the id is offered.
+
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.
 
@@ -199,6 +230,8 @@ A module ships only when every box is ticked:
 - [ ] Every category is documented in [`../categories/`](../categories/README.md) as `<id>-<name>.md`, with the same
       danger level as its descriptor, and listed in the catalogue table.
 - [ ] Every category has its five texts; every setting, `<id>.enabled` included, its label and description.
+- [ ] A module with choices gives each its two texts (`<id>.choice.<name>.label` and `.description`), and each choice
+      names categories of the module only.
 - [ ] Every text is plain English, short and without jargon; every choice says what the user keeps or loses (rule 7
       of [`../rules.md`](../rules.md)).
 - [ ] Every failure and left-out text is declared with `with_problems`, plain, and says what to do next.

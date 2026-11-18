@@ -12,6 +12,8 @@ use crate::TextKey;
 pub enum ModuleGroup {
     /// What macOS and the user's apps keep for themselves: temporary files.
     System,
+    /// What apps leave behind: the files of apps you removed.
+    Apps,
     /// Tools for building software: IDEs, package managers, containers, project folders.
     Development,
     /// The dev-only modules of a development build (`demo`, `trial`); a release build refuses them.
@@ -20,7 +22,7 @@ pub enum ModuleGroup {
 
 impl ModuleGroup {
     /// Every group, in the screen's order.
-    pub const ALL: [Self; 3] = [Self::System, Self::Development, Self::Debug];
+    pub const ALL: [Self; 4] = [Self::System, Self::Apps, Self::Development, Self::Debug];
 
     /// The group's name: `core.group.<group>.name`.
     pub fn name_key(self) -> TextKey {
@@ -32,10 +34,11 @@ impl ModuleGroup {
         TextKey::from_valid(format!("core.group.{}.description", self.as_str()))
     }
 
-    /// The group's serialized name: `system`, `development`, `debug`.
+    /// The group's serialized name: `system`, `apps`, `development`, `debug`.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::System => "system",
+            Self::Apps => "apps",
             Self::Development => "development",
             Self::Debug => "debug",
         }
@@ -54,9 +57,9 @@ mod tests {
 
         #[test]
         fn an_unknown_group_is_refused_when_read() {
-            assert!(serde_json::from_str::<ModuleGroup>("\"apps\"").is_err());
+            assert!(serde_json::from_str::<ModuleGroup>("\"downloads\"").is_err());
             assert!(serde_json::from_str::<ModuleGroup>("\"Development\"").is_err());
-            assert_eq!(ModuleGroup::parse("apps"), None);
+            assert_eq!(ModuleGroup::parse("downloads"), None);
             assert_eq!(ModuleGroup::parse("Debug"), None);
         }
     }
@@ -84,7 +87,17 @@ mod tests {
 
         #[test]
         fn lists_every_group_once_with_system_first() {
-            assert_eq!(ModuleGroup::ALL, [ModuleGroup::System, ModuleGroup::Development, ModuleGroup::Debug]);
+            assert_eq!(
+                ModuleGroup::ALL,
+                [ModuleGroup::System, ModuleGroup::Apps, ModuleGroup::Development, ModuleGroup::Debug]
+            );
+        }
+
+        #[test]
+        fn apps_come_right_after_system_and_read_back() {
+            assert!(ModuleGroup::System < ModuleGroup::Apps && ModuleGroup::Apps < ModuleGroup::Development);
+            assert_eq!(ModuleGroup::parse("apps"), Some(ModuleGroup::Apps));
+            assert_eq!(serde_json::from_str::<ModuleGroup>("\"apps\"").unwrap(), ModuleGroup::Apps);
         }
     }
 }

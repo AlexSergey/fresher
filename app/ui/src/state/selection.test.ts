@@ -27,6 +27,12 @@ const BROWSER_CACHE = at(2);
 
 const finding = (picked: Finding): CoreAction => ({ finding: picked, type: 'toggle-finding' });
 
+const choose = (categories: readonly string[], within: readonly string[]): CoreAction => ({
+  categories,
+  type: 'choose',
+  within,
+});
+
 const category = (id: string): CoreAction => ({ category: id, type: 'toggle-category' });
 
 describe('the selection', () => {
@@ -60,6 +66,42 @@ describe('the selection', () => {
   });
 
   describe('positive cases', () => {
+    it('a choice leaves a selected category outside its module selected', () => {
+      const state = run([category('other.cache'), choose(['demo.caches'], ['demo.caches', 'demo.downloads'])]);
+
+      expect([...state.selection.categories.keys()]).toEqual(['other.cache', 'demo.caches']);
+    });
+
+    it('a choice leaves a finding picked outside its module picked', () => {
+      const outside: Finding = { ...INSTALLER, category: 'other.cache' };
+
+      const state = run([finding(outside), choose(['demo.caches'], ['demo.caches', 'demo.downloads'])]);
+
+      expect(state.selection.findings).toEqual(new Map([[outside.id, outside]]));
+    });
+
+    it('a choice drops the module’s other categories and the findings picked in them', () => {
+      const state = run([
+        category('demo.downloads'),
+        finding(INSTALLER),
+        finding(EDITOR_CACHE),
+        choose(['demo.caches'], ['demo.caches', 'demo.downloads']),
+      ]);
+
+      expect([...state.selection.categories]).toEqual([['demo.caches', new Map()]]);
+      expect(state.selection.findings.size).toBe(0);
+    });
+
+    it('a choice selects its categories whole, ticks off included', () => {
+      const state = run([
+        category('demo.caches'),
+        finding(EDITOR_CACHE),
+        choose(['demo.caches'], ['demo.caches', 'demo.downloads']),
+      ]);
+
+      expect(state.selection.categories.get('demo.caches')).toEqual(new Map());
+    });
+
     it('toggling a finding twice leaves the selection as it was', () => {
       const once = run([finding(INSTALLER)]);
 

@@ -142,6 +142,16 @@ pub struct ModuleInfo {
     pub categories: Vec<CategoryInfo>,
     /// Its settings' keys, `<module>.enabled` first.
     pub settings: Vec<SettingKey>,
+    /// Its choices of categories, in the order its page shows them; empty for a module without.
+    pub choices: Vec<ChoiceInfo>,
+}
+
+/// A module's choice as the UI sees it: its name (the texts are `<module>.choice.<name>.label` and `.description`)
+/// and the categories it selects.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+pub struct ChoiceInfo {
+    pub name: String,
+    pub categories: Vec<CategoryId>,
 }
 
 /// A category and what it can do with the current access.
@@ -165,6 +175,11 @@ impl ModuleInfo {
             group: descriptor.group(),
             categories: descriptor.categories().iter().map(category).collect(),
             settings: enabled.into_iter().chain(own).collect(),
+            choices: descriptor
+                .choices()
+                .iter()
+                .map(|choice| ChoiceInfo { name: choice.name().into(), categories: choice.categories().to_vec() })
+                .collect(),
         }
     }
 }
@@ -455,7 +470,8 @@ mod tests {
                 assert_eq!(serde_json::to_value(read).unwrap(), entry);
             }
             assert!(
-                serde_json::from_value::<crate::IgnoreTarget>(json!({ "kind": "group", "group": "apps" })).is_err()
+                serde_json::from_value::<crate::IgnoreTarget>(json!({ "kind": "group", "group": "downloads" }))
+                    .is_err()
             );
         }
 
@@ -508,6 +524,33 @@ mod tests {
             assert_eq!(view.settings.len(), 12);
             assert_eq!(view.values.len(), 12);
             assert_eq!(view.problems, []);
+        }
+
+        #[test]
+        fn module_info_carries_its_choices_in_order_and_none_without() {
+            let demo = ModuleId::new("demo").unwrap();
+            let id = |id| CategoryId::new(demo, id).unwrap();
+            let categories =
+                ["demo.caches", "demo.logs"].map(|name| CategoryDescriptor::new(id(name), DangerLevel::Low));
+            let descriptor =
+                ModuleDescriptor::new(demo, ModuleGroup::Debug, categories.to_vec(), vec![], Locales { en: "{}" })
+                    .unwrap();
+            let choices = vec![
+                crate::ModuleChoice::new("everything", vec![id("demo.caches"), id("demo.logs")]),
+                crate::ModuleChoice::new("keep", vec![id("demo.caches")]),
+            ];
+
+            let plain = ModuleInfo::new(&descriptor, &AccessStatus::default());
+            let info = ModuleInfo::new(&descriptor.with_choices(choices).unwrap(), &AccessStatus::default());
+
+            assert_eq!(plain.choices, []);
+            let names: Vec<_> = info.choices.iter().map(|choice| choice.name.as_str()).collect();
+            assert_eq!(names, ["everything", "keep"]);
+            assert_eq!(info.choices[1].categories, [id("demo.caches")]);
+            assert_eq!(
+                serde_json::to_value(&info.choices[1]).unwrap(),
+                json!({ "name": "keep", "categories": ["demo.caches"] })
+            );
         }
 
         #[test]

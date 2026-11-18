@@ -28,6 +28,7 @@ import { hiddenBy } from '../use-ignored';
 import { moduleFound } from '../use-modules';
 import { useScanActions } from '../use-scan-actions';
 import { CategorySection } from './category-section';
+import { ModuleChoices } from './module-choices';
 import styles from './module-screen.module.css';
 
 type Shown = { readonly category: CategoryDescriptor; readonly total: CategoryTotal };
@@ -191,22 +192,25 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
                 title={t('ui.screen.module.empty.title')}
               />
             ) : (
-              <div className={styles.categories}>
-                {shown.map((one) => (
-                  <CategorySection
-                    category={one.category}
-                    expanded={expanded(one.category.id)}
-                    key={one.category.id}
-                    leftOut={leftOut.filter(({ category: id }) => id === one.category.id)}
-                    module={module.id}
-                    onExpandedChange={(next) => {
-                      setChoices((all) => new Map(all).set(one.category.id, next));
-                    }}
-                    ref={one.category.id === category ? targetRef : undefined}
-                    total={one.total}
-                  />
-                ))}
-              </div>
+              <>
+                <ModuleChoices module={module} totals={totals} />
+                <div className={styles.categories}>
+                  {shown.map((one) => (
+                    <CategorySection
+                      category={one.category}
+                      expanded={expanded(one.category.id)}
+                      key={one.category.id}
+                      leftOut={leftOut.filter(({ category: id }) => id === one.category.id)}
+                      module={module.id}
+                      onExpandedChange={(next) => {
+                        setChoices((all) => new Map(all).set(one.category.id, next));
+                      }}
+                      ref={one.category.id === category ? targetRef : undefined}
+                      total={one.total}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </ModuleSection>
         )}

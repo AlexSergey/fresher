@@ -52,4 +52,11 @@ Open questions:
 
 **Partly taken by [plan 016](../plans/016-jetbrains/readme.md):** a JetBrains IDE that is no longer installed has its data offered in its own category after 30 days (a setting), with Spotlight and the Toolbox folders as extra sources of what is installed. **Still an idea:** the same for every other app, matched by bundle id, and the "keep settings, remove caches only" choice.
 
-**Partly taken by [plan 019](../plans/019-uninstalled-app-leftovers/readme.md) (draft):** the data of every other app that is provably no longer installed, matched by bundle id only (an id proven an app's by its container or saved state), in three categories by kind (caches Safe, settings Medium, support folders and containers High), with the "keep settings" choice as a selection of categories, in the module `app-leftovers`. **Still an idea:** group containers, launch agents and folders named after the app's name.
+**Partly taken by [plan 019](../plans/019-uninstalled-app-leftovers/readme.md) (built 2026-11-18):** the data of every
+other app that is provably no longer installed, matched by bundle id only (an id is proven an app's by a saved state or a
+container of that id), in the module `app-leftovers` (group Apps), in three categories by kind: caches, logs and saved
+state Safe, preferences and web data Medium, support folders and containers High. The "keep settings" choice is built
+as two buttons on the module's page, "Remove everything" and "Keep settings", each a selection of categories, with a
+plain description. A removed app's name is shown in the storage map, and Spotlight must see every mounted volume.
+**Still an idea:** group containers, launch agents, folders named after the app's name, a choice per app instead of per
+module, and a later proof of an app's removal for apps that are not sandboxed and never saved a window.

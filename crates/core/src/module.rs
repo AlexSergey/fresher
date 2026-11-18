@@ -2,10 +2,12 @@
 
 use std::collections::BTreeSet;
 
+use crate::ids::is_kebab_case;
 use crate::settings::schema::ENABLED;
 use crate::{
-    CancelToken, Capability, CategoryDescriptor, Clock, CommandRunner, Interest, LeftOutItem, Match, ModuleGroup,
-    ModuleId, ModuleSettings, NewFinding, SettingDescriptor, SystemFacts, Text, TextKey, ToolCommand, ToolId,
+    CancelToken, Capability, CategoryDescriptor, CategoryId, Clock, CommandRunner, Interest, LeftOutItem, Match,
+    ModuleGroup, ModuleId, ModuleSettings, NewFinding, PlaceSeen, SettingDescriptor, SystemFacts, Text, TextKey,
+    ToolCommand, ToolId,
 };
 
 /// A feature of the app (Docker, `node_modules`, duplicates): it states what it wants to see during the walk and
@@ -34,6 +36,43 @@ pub struct ModuleDescriptor {
     locales: Locales,
     tool_checks: Vec<ToolCommand>,
     problems: Vec<TextKey>,
+    choices: Vec<ModuleChoice>,
+}
+
+/// A way to pick a module's categories in one step ("Remove everything", "Keep settings"): a name and the categories
+/// it selects. Its texts are `<module>.choice.<name>.label` and `.description`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModuleChoice {
+    name: String,
+    categories: Vec<CategoryId>,
+}
+
+impl ModuleChoice {
+    /// A choice called `name` (kebab case) that selects `categories`; [`ModuleDescriptor::with_choices`] checks both.
+    pub fn new(name: impl Into<String>, categories: Vec<CategoryId>) -> Self {
+        Self { name: name.into(), categories }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The categories the choice selects.
+    pub fn categories(&self) -> &[CategoryId] {
+        &self.categories
+    }
+
+    /// The choice's label: `<module>.choice.<name>.label`. A valid key only once the descriptor's `with_choices` has
+    /// checked the choice's name.
+    pub fn label_key(&self, module: ModuleId) -> TextKey {
+        TextKey::from_valid(format!("{module}.choice.{}.label", self.name))
+    }
+
+    /// What the choice does, in a sentence: `<module>.choice.<name>.description`. A valid key only once the
+    /// descriptor's `with_choices` has checked the choice's name.
+    pub fn description_key(&self, module: ModuleId) -> TextKey {
+        TextKey::from_valid(format!("{module}.choice.{}.description", self.name))
+    }
 }
 
 /// A module's dictionaries, one flat JSON object per language, embedded with `include_str!`.
@@ -65,6 +104,12 @@ pub enum DescriptorError {
     ForeignProblem { key: String, module: String },
     #[error("problem `{key}` is listed twice")]
     DuplicateProblem { key: String },
+    #[error("choice `{name}` is not a kebab-case name, or is listed twice")]
+    ChoiceName { name: String },
+    #[error("choice `{name}` selects no category")]
+    EmptyChoice { name: String },
+    #[error("choice `{name}` selects category `{category}`, which is not the module's")]
+    ChoiceCategory { name: String, category: String },
 }
 
 impl ModuleDescriptor {
@@ -90,7 +135,16 @@ impl ModuleDescriptor {
             }
         }
         check_settings(id, &settings)?;
-        Ok(Self { id, group, categories, settings, locales, tool_checks: Vec::new(), problems: Vec::new() })
+        Ok(Self {
+            id,
+            group,
+            categories,
+            settings,
+            locales,
+            tool_checks: Vec::new(),
+            problems: Vec::new(),
+            choices: Vec::new(),
+        })
     }
 
     /// This descriptor with the command that tells whether a tool it needs is ready: success means ready. Refused
@@ -124,6 +178,28 @@ impl ModuleDescriptor {
             }
         }
         self.problems = keys;
+        Ok(self)
+    }
+
+    /// This descriptor with the choices of its page, in the order given. Refused when a name is not kebab case or is
+    /// listed twice, a choice selects no category, or a category is not the module's.
+    pub fn with_choices(mut self, choices: Vec<ModuleChoice>) -> Result<Self, DescriptorError> {
+        let mut seen = BTreeSet::new();
+        for choice in &choices {
+            if !is_kebab_case(&choice.name) || !seen.insert(choice.name.as_str()) {
+                return Err(DescriptorError::ChoiceName { name: choice.name.clone() });
+            }
+            if choice.categories.is_empty() {
+                return Err(DescriptorError::EmptyChoice { name: choice.name.clone() });
+            }
+            if let Some(foreign) = choice.categories.iter().find(|id| !self.categories.iter().any(|c| c.id() == **id)) {
+                return Err(DescriptorError::ChoiceCategory {
+                    name: choice.name.clone(),
+                    category: foreign.as_str().into(),
+                });
+            }
+        }
+        self.choices = choices;
         Ok(self)
     }
 
@@ -164,6 +240,11 @@ impl ModuleDescriptor {
     /// The keys the module may report as a failure or a left-out reason, in the order it declared them.
     pub fn problems(&self) -> &[TextKey] {
         &self.problems
+    }
+
+    /// The choices of the module's page, in the order it declared them; empty for a module without.
+    pub fn choices(&self) -> &[ModuleChoice] {
+        &self.choices
     }
 
     fn needed_tools(&self) -> impl Iterator<Item = ToolId> {
@@ -231,6 +312,8 @@ pub struct ModuleContext<'a> {
     cancel: &'a CancelToken,
     restored: bool,
     walk_complete: bool,
+    /// What the walk saw of the place of each of the module's interests, by its index; empty until `finish`.
+    places: &'a [PlaceSeen],
 }
 
 impl<'a> ModuleContext<'a> {
@@ -241,7 +324,7 @@ impl<'a> ModuleContext<'a> {
         settings: &'a ModuleSettings,
         cancel: &'a CancelToken,
     ) -> Self {
-        Self { clock, commands, system, settings, cancel, restored: false, walk_complete: false }
+        Self { clock, commands, system, settings, cancel, restored: false, walk_complete: false, places: &[] }
     }
 
     /// The same context for a restored scan: its matches come from the last scan's cache, not from the disk, so their
@@ -267,6 +350,23 @@ impl<'a> ModuleContext<'a> {
     /// not see may be the one that changed) must not offer then.
     pub const fn is_walk_complete(&self) -> bool {
         self.walk_complete
+    }
+
+    /// The same context for `finish`, with what the walk saw of the place of each of the module's interests (by its
+    /// index in the module's own `interests()`).
+    #[must_use]
+    pub const fn with_places(self, places: &'a [PlaceSeen]) -> Self {
+        Self { places, ..self }
+    }
+
+    /// What the walk saw of the place of the module's interest `interest`: `Unknown` during the walk, in a restored
+    /// scan, and for an interest without one place. A module that decides from every match of a place checks this
+    /// rather than [`Self::is_walk_complete`], which any folder the walk could not read makes `false`.
+    pub fn place_seen(&self, interest: usize) -> PlaceSeen {
+        if self.restored {
+            return PlaceSeen::Unknown;
+        }
+        self.places.get(interest).copied().unwrap_or(PlaceSeen::Unknown)
     }
 
     pub fn clock(&self) -> &'a dyn Clock {
@@ -301,6 +401,7 @@ impl std::fmt::Debug for ModuleContext<'_> {
             .field("cancel", self.cancel)
             .field("restored", &self.restored)
             .field("walk_complete", &self.walk_complete)
+            .field("places", &self.places.len())
             .finish_non_exhaustive()
     }
 }
@@ -323,6 +424,16 @@ mod tests {
 
     fn category(id: &'static str) -> CategoryDescriptor {
         CategoryDescriptor::new(CategoryId::new(demo(), id).unwrap(), DangerLevel::Low)
+    }
+
+    pub(super) fn choice(name: &str, categories: &[&'static str]) -> crate::ModuleChoice {
+        let ids = categories.iter().map(|id| CategoryId::new(demo(), id).unwrap()).collect();
+        crate::ModuleChoice::new(name, ids)
+    }
+
+    pub(super) fn with_two_categories() -> ModuleDescriptor {
+        let categories = vec![category("demo.caches"), category("demo.logs")];
+        ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, categories, vec![], LOCALES).unwrap()
     }
 
     struct StoppedClock;
@@ -418,7 +529,7 @@ mod tests {
     }
 
     mod negative {
-        use super::{EchoModule, LOCALES, NoCommands, StoppedClock, category, demo};
+        use super::{EchoModule, LOCALES, NoCommands, StoppedClock, category, choice, demo, with_two_categories};
         use crate::{
             CancelToken, CategoryDescriptor, CategoryId, DangerLevel, DescriptorError, Module, ModuleContext,
             ModuleDescriptor, ModuleError, ModuleId,
@@ -566,6 +677,46 @@ mod tests {
         }
 
         #[test]
+        fn a_choice_name_that_is_not_kebab_case_is_refused() {
+            for name in ["Keep", "keep_settings", ""] {
+                let error = with_two_categories().with_choices(vec![choice(name, &["demo.caches"])]);
+
+                assert_eq!(error, Err(DescriptorError::ChoiceName { name: name.into() }));
+            }
+        }
+
+        #[test]
+        fn a_choice_listed_twice_is_refused() {
+            let both = vec![choice("keep", &["demo.caches"]), choice("keep", &["demo.logs"])];
+
+            let error = with_two_categories().with_choices(both);
+
+            assert_eq!(error, Err(DescriptorError::ChoiceName { name: "keep".into() }));
+        }
+
+        #[test]
+        fn a_choice_without_a_category_is_refused() {
+            let error = with_two_categories().with_choices(vec![choice("keep", &[])]);
+
+            assert_eq!(error, Err(DescriptorError::EmptyChoice { name: "keep".into() }));
+        }
+
+        #[test]
+        fn a_choice_of_a_category_the_module_does_not_have_is_refused() {
+            let other = crate::ModuleChoice::new(
+                "keep",
+                vec![CategoryId::new(ModuleId::new("other").unwrap(), "other.caches").unwrap()],
+            );
+
+            let error = with_two_categories().with_choices(vec![other]);
+
+            assert_eq!(
+                error,
+                Err(DescriptorError::ChoiceCategory { name: "keep".into(), category: "other.caches".into() })
+            );
+        }
+
+        #[test]
         fn a_vec_sink_keeps_no_left_out() {
             let mut found: Vec<crate::NewFinding> = Vec::new();
             let category = CategoryId::new(demo(), "demo.caches").unwrap();
@@ -576,6 +727,19 @@ mod tests {
             );
 
             assert_eq!(found, []);
+        }
+
+        #[test]
+        fn a_place_seen_is_unknown_without_the_places_out_of_range_and_when_restored() {
+            let cancel = CancelToken::new();
+            let settings = crate::ModuleSettings::empty(demo());
+            let system = crate::system::nothing_known();
+            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &system, &settings, &cancel);
+            let places = [crate::PlaceSeen::Read];
+
+            assert_eq!(cx.place_seen(0), crate::PlaceSeen::Unknown);
+            assert_eq!(cx.with_places(&places).place_seen(1), crate::PlaceSeen::Unknown);
+            assert_eq!(cx.with_places(&places).restored().place_seen(0), crate::PlaceSeen::Unknown);
         }
 
         #[test]
@@ -594,7 +758,7 @@ mod tests {
     }
 
     mod positive {
-        use super::{EchoModule, LOCALES, NoCommands, StoppedClock, demo, matched};
+        use super::{EchoModule, LOCALES, NoCommands, StoppedClock, choice, demo, matched, with_two_categories};
         use crate::{CancelToken, Module, ModuleContext, ModuleDescriptor, ModuleError, NewFinding, Text, TextKey};
 
         #[test]
@@ -617,6 +781,20 @@ mod tests {
             assert!(cx.restored().is_restored());
             assert!(!cx.is_walk_complete());
             assert!(cx.complete_walk().is_walk_complete());
+        }
+
+        #[test]
+        fn a_place_seen_is_the_state_given_for_the_interest() {
+            let cancel = CancelToken::new();
+            let settings = crate::ModuleSettings::empty(demo());
+            let system = crate::system::nothing_known();
+            let places = [crate::PlaceSeen::Read, crate::PlaceSeen::Unread];
+            let cx = ModuleContext::new(&StoppedClock, &NoCommands, &system, &settings, &cancel).with_places(&places);
+
+            assert_eq!(cx.place_seen(0), crate::PlaceSeen::Read);
+            assert_eq!(cx.place_seen(1), crate::PlaceSeen::Unread);
+            assert_eq!(cx.complete_walk().place_seen(1), crate::PlaceSeen::Unread);
+            assert!(format!("{cx:?}").contains("places: 2"));
         }
 
         #[test]
@@ -670,6 +848,18 @@ mod tests {
                 ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES).unwrap().problems(),
                 []
             );
+        }
+
+        #[test]
+        fn a_descriptor_keeps_its_choices_in_order() {
+            let choices = vec![choice("everything", &["demo.caches", "demo.logs"]), choice("keep", &["demo.caches"])];
+
+            let descriptor = with_two_categories().with_choices(choices.clone()).unwrap();
+
+            assert_eq!(descriptor.choices(), choices);
+            assert_eq!(descriptor.choices()[1].label_key(demo()).as_str(), "demo.choice.keep.label");
+            assert_eq!(descriptor.choices()[1].description_key(demo()).as_str(), "demo.choice.keep.description");
+            assert_eq!(with_two_categories().choices(), []);
         }
 
         #[test]

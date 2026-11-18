@@ -31,14 +31,7 @@ pub struct BundleId {
 impl BundleId {
     pub fn new(id: impl Into<String>) -> Result<Self, AppIdError> {
         let id = id.into();
-        let allowed = |char: char| char.is_ascii_alphanumeric() || matches!(char, '.' | '-' | '_');
-        let valid = !id.is_empty()
-            && id.len() <= MAX_BUNDLE_ID
-            && id.chars().all(allowed)
-            && !id.starts_with('.')
-            && !id.ends_with('.')
-            && !id.contains("..");
-        if !valid {
+        if !is_bundle_id(id.as_bytes()) {
             return Err(AppIdError::NotABundleId { id });
         }
         let folded = id.to_ascii_lowercase();
@@ -61,6 +54,23 @@ impl BundleId {
         let Some((head, rest)) = name.split_at_checked(self.folded.len()) else { return false };
         head.eq_ignore_ascii_case(&self.folded) && (rest.is_empty() || rest.starts_with('.'))
     }
+}
+
+/// Whether `name` is shaped as a bundle id: what [`BundleId::new`] accepts, with at least one dot
+/// (`com.example.App`, `com.example.App.plist`); `Notes`, `JetBrains` and `.DS_Store` are not, nor is a name that is
+/// not UTF-8.
+pub fn is_bundle_id_shaped(name: &[u8]) -> bool {
+    name.contains(&b'.') && is_bundle_id(name)
+}
+
+fn is_bundle_id(id: &[u8]) -> bool {
+    let allowed = |byte: &u8| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_');
+    !id.is_empty()
+        && id.len() <= MAX_BUNDLE_ID
+        && id.iter().all(allowed)
+        && !id.starts_with(b".")
+        && !id.ends_with(b".")
+        && !id.windows(2).any(|pair| pair == b"..")
 }
 
 impl PartialEq for BundleId {
@@ -127,7 +137,28 @@ impl fmt::Display for TeamId {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::{AppIdError, BundleId, TeamId};
+        use crate::{AppIdError, BundleId, TeamId, is_bundle_id_shaped};
+
+        #[test]
+        fn a_name_that_is_not_a_dotted_bundle_id_is_not_shaped() {
+            let long = format!("com.{}", "a".repeat(252));
+            let names: [&[u8]; 11] = [
+                b"Notes",
+                b"JetBrains",
+                b".DS_Store",
+                b"com.example.",
+                b".com.example",
+                b"com..example",
+                b"com example.App",
+                b"com.example/App",
+                long.as_bytes(),
+                b"com.ex\xffample.App",
+                b"",
+            ];
+            for name in names {
+                assert!(!is_bundle_id_shaped(name), "{}", String::from_utf8_lossy(name));
+            }
+        }
 
         #[test]
         fn a_bundle_id_that_is_not_reverse_dns_is_refused() {
@@ -165,7 +196,15 @@ mod tests {
     mod positive {
         use std::collections::HashSet;
 
-        use crate::{BundleId, TeamId};
+        use crate::{BundleId, TeamId, is_bundle_id_shaped};
+
+        #[test]
+        fn a_dotted_bundle_id_is_shaped() {
+            for name in ["com.example.App", "com.example.App.plist", "org.example-tool_2.x"] {
+                assert!(is_bundle_id_shaped(name.as_bytes()), "{name}");
+            }
+            assert!(is_bundle_id_shaped(format!("com.{}", "a".repeat(251)).as_bytes()), "255 bytes");
+        }
 
         #[test]
         fn bundle_ids_compare_ignoring_case_and_keep_their_spelling() {

@@ -1,0 +1,93 @@
+# The places the uninstalled app leftovers module looks in (plan 019, design section 2), one row per form of leftover,
+# in the order of the module's interests. Rows of the same `folder` and `path` share one interest.
+# `id`: the row's id, kebab case: its title (`app-leftovers.title.<id>`) and the start of its findings' identities.
+# `category`: the module's category the row's findings are in.
+# `folder`: the known folder the row's place is under, as rules write it.
+# `path`: plain folder names, then `*`: the `*` matches only a name shaped as a bundle id (`com.example.App`).
+# `kind`: "folder" or "file": a leftover of another kind here is not claimed.
+# `suffix`: what follows the id in the name (`.plist`); none when the name is the id.
+# `proof`: a leftover here proves the id belongs to an app. The system makes a saved state only for an app with
+#   windows, and a container only for a sandboxed app or extension; a command-line tool, a plugin or a framework also
+#   writes `Caches/<id>` and `Preferences/<id>.plist` and has no bundle to find, so an id with no proof is never
+#   offered.
+# `optional`: the place may be left unread or not scanned without keeping every id. `container` is optional: the app
+#   does not open `Library/Containers` until plan 006 settles its permission, and a sandboxed app keeps everything
+#   inside its container, so an unseen container hides no recent leftover of another place.
+# Group containers are left out on purpose (the user's decision): their ids name a developer, not an app.
+
+[[place]]
+id = "caches"
+category = "app-leftovers.caches"
+folder = "app-caches"
+path = "*"
+kind = "folder"
+
+[[place]]
+id = "logs"
+category = "app-leftovers.caches"
+folder = "logs"
+path = "*"
+kind = "folder"
+
+[[place]]
+id = "saved-state"
+category = "app-leftovers.caches"
+folder = "saved-state"
+path = "*"
+kind = "folder"
+suffix = ".savedState"
+proof = true
+
+[[place]]
+id = "preferences"
+category = "app-leftovers.settings"
+folder = "preferences"
+path = "*"
+kind = "file"
+suffix = ".plist"
+
+[[place]]
+id = "http-storage"
+category = "app-leftovers.settings"
+folder = "library"
+path = "HTTPStorages/*"
+kind = "folder"
+
+[[place]]
+id = "http-cookies"
+category = "app-leftovers.settings"
+folder = "library"
+path = "HTTPStorages/*"
+kind = "file"
+suffix = ".binarycookies"
+
+[[place]]
+id = "web-data"
+category = "app-leftovers.settings"
+folder = "library"
+path = "WebKit/*"
+kind = "folder"
+
+[[place]]
+id = "cookies"
+category = "app-leftovers.settings"
+folder = "library"
+path = "Cookies/*"
+kind = "file"
+suffix = ".binarycookies"
+
+[[place]]
+id = "support"
+category = "app-leftovers.data"
+folder = "app-support"
+path = "*"
+kind = "folder"
+
+[[place]]
+id = "container"
+category = "app-leftovers.data"
+folder = "containers"
+path = "*"
+kind = "folder"
+proof = true
+optional = true

@@ -1,0 +1,23 @@
+/*
+ * A module's choices above its categories: each a button with its description beside it.
+ */
+@layer components {
+  .choices {
+    display: grid;
+    padding-bottom: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+}

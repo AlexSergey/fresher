@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { COMMANDS } from '../src/ipc';
+import { APP_LEFTOVERS_DICTIONARY } from '../src/test/app-leftovers-scan';
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
 import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
@@ -150,6 +151,31 @@ const openDevCaches = async (
   await expect(heading(page, 'Developer caches')).toBeFocused();
 };
 
+// The removed apps module's own texts, as its locale file has them.
+const left = (key: string): string => APP_LEFTOVERS_DICTIONARY[`app-leftovers.${key}`] ?? '';
+
+const LEFTOVERS_CACHES = left('caches.name');
+const LEFTOVERS_SETTINGS = left('settings.name');
+const LEFTOVERS_DATA = left('data.name');
+
+const leftoversModule = (page: Page): Locator => page.getByRole('button', { name: /^Removed apps' leftovers/ });
+
+// Scans a removed apps script and opens the module's page.
+const openLeftovers = async (
+  page: Page,
+  script: typeof SCRIPTS.appLeftovers | typeof SCRIPTS.appLeftoversWithDevCaches = SCRIPTS.appLeftovers,
+  total = '2.8 GB',
+): Promise<void> => {
+  await mockCore(page, script);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(leftoversModule(page)).toContainText(total);
+  await leftoversModule(page).click();
+  await expect(heading(page, left('enabled.label'))).toBeFocused();
+};
+
+const choice = (page: Page, name: string): Locator => page.getByRole('button', { name: left(`choice.${name}.label`) });
+
 test.beforeEach(async ({ page }) => {
   await failOnCspViolation(page);
 });
@@ -279,6 +305,35 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select ${GRADLE}` }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('4.3 GB');
+  });
+
+  test('the left-out lines of removed apps cannot be selected', async ({ page }) => {
+    await openLeftovers(page);
+
+    await expect(page.getByRole('region', { name: LEFTOVERS_CACHES })).toContainText(
+      `1 item left out (220 MB): ${left('left-out.running')}`,
+    );
+    await expect(page.getByRole('region', { name: LEFTOVERS_SETTINGS })).toContainText(
+      `1 item left out (3 MB): ${left('left-out.used-recently')}`,
+    );
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).not.toContainText('220 MB');
+  });
+
+  test('a choice selects nothing outside its module', async ({ page }) => {
+    await openLeftovers(page, SCRIPTS.appLeftoversWithDevCaches);
+    await devCachesModule(page).click();
+    await page.getByRole('checkbox', { name: `Select ${NPM}` }).check();
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await leftoversModule(page).click();
+
+    await choice(page, 'keep-settings').click();
+
+    await expect(selectionBar(page)).toContainText('3 items selected');
+    await devCachesModule(page).click();
+    await expect(page.getByRole('checkbox', { name: `Select ${NPM}` })).toBeChecked();
   });
 
   test('an ignored cache category is in no total', async ({ page }) => {
@@ -980,5 +1035,108 @@ test.describe('positive cases', () => {
     await expect(app).toContainText('4.3 GB');
     await page.getByRole('button', { name: 'Show what Xcode keeps' }).click();
     await expect(page.getByRole('group', { name: 'What Xcode keeps' })).toContainText(XCODE_DATA);
+  });
+
+  test('removed apps’ leftovers show under Apps with their size', async ({ page }) => {
+    await openLeftovers(page);
+
+    await expect(page.getByRole('navigation').getByText('Apps', { exact: true })).toBeVisible();
+    await expect(leftoversModule(page)).toContainText('2.8 GB');
+    for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
+      await expect(page.getByRole('region', { name })).toBeVisible();
+    }
+    await expect(page.getByRole('region', { name: LEFTOVERS_DATA })).toContainText('2.1 GB');
+  });
+
+  test('each removed-app category shows its danger and its five texts', async ({ page }) => {
+    await openLeftovers(page);
+
+    for (const [name, key, danger] of [
+      [LEFTOVERS_CACHES, 'caches', 'Safe'],
+      [LEFTOVERS_SETTINGS, 'settings', 'Medium'],
+      [LEFTOVERS_DATA, 'data', 'High'],
+    ] as const) {
+      const category = page.getByRole('region', { name });
+      await expect(category).toContainText(danger);
+      await expect(category).toContainText(left(`${key}.what`));
+      await category.getByText('About this category').click();
+      for (const text of ['made-by', 'if-removed', 'comes-back']) {
+        await expect(category).toContainText(left(`${key}.${text}`));
+      }
+    }
+  });
+
+  test('Remove everything selects the three categories and the review names High', async ({ page }) => {
+    await openLeftovers(page);
+
+    await choice(page, 'everything').click();
+
+    for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
+      await expect(page.getByRole('checkbox', { name: `Select ${name}` })).toBeChecked();
+    }
+    await expect(selectionBar(page)).toContainText('6 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 6 items to the Trash?' });
+    await expect(dialog).toContainText('High');
+    await expect(dialog).toContainText(left('data.if-removed'));
+  });
+
+  test('Keep settings selects only the caches and the review names Safe', async ({ page }) => {
+    await openLeftovers(page);
+
+    await choice(page, 'keep-settings').click();
+
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_SETTINGS}` })).not.toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_DATA}` })).not.toBeChecked();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await expect(dialog).toContainText('Safe');
+    await expect(dialog).not.toContainText('High');
+    await expect(dialog).not.toContainText('Medium');
+  });
+
+  test('the caches of a removed app go to the Trash and come back', async ({ page }) => {
+    await openLeftovers(page);
+    await choice(page, 'keep-settings').click();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 2 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: '640 MB' }).first();
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the switch and the days for removed apps', async ({ page }) => {
+    await mockCore(page, SCRIPTS.appLeftovers);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: left('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('spinbutton', { name: left('uninstalled-after-days.label') })).toHaveValue('30');
+    await expect(page.getByText(left('uninstalled-after-days.description'))).toBeVisible();
+  });
+
+  test('a removed app’s line in the map is named by its id', async ({ page }) => {
+    await mockCore(page, SCRIPTS.appLeftovers);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await expect(cards(page)).toHaveCount(3);
+
+    await page.getByRole('radio', { name: 'By meaning' }).click();
+
+    const app = page.getByRole('list', { name: 'com.example.Gone' });
+    await expect(app).toContainText('not installed');
+    await expect(app).toContainText('2.8 GB');
   });
 });

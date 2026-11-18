@@ -8,6 +8,7 @@ pub mod bench;
 mod codec;
 #[expect(dead_code, reason = "the walker of plan 004/05 uses the matcher")]
 mod matcher;
+mod places_seen;
 mod rescan;
 mod scanner;
 mod state;

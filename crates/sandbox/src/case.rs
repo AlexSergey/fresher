@@ -34,6 +34,10 @@ pub struct Case {
     running: Vec<PathBuf>,
     /// The apps of `[[case.running]]`: open, from no apps folder of the sandbox.
     running_elsewhere: Vec<RunningApp>,
+    /// The apps of `[[case.elsewhere]]`: installed outside the apps folders, known to Spotlight only.
+    elsewhere: Vec<(String, BundleId)>,
+    /// `spotlight = "off"`: Spotlight cannot be asked in the case's sandbox.
+    spotlight_off: bool,
     expect: Option<Expectation>,
     map: Option<MapExpectation>,
     left_out: Vec<LeftOutExpectation>,
@@ -100,12 +104,14 @@ struct RawCaseFile {
     cases: Vec<RawCase>,
 }
 
-// Its files are every key but `name`, `kind`, `expect`, `map`, `left-out` and `running` (`[[case.running]]`, taken out
-// first), read as a `TreeDescription`, which refuses an unknown one; each `[[case.app]]` loses its `running` first.
+// Its files are every key but `name`, `kind`, `spotlight`, `expect`, `map`, `left-out`, `running` and `elsewhere`
+// (`[[case.running]]` and `[[case.elsewhere]]`, taken out first), read as a `TreeDescription`, which refuses an unknown
+// one; each `[[case.app]]` loses its `running` first.
 #[derive(Deserialize)]
 struct RawCase {
     name: String,
     kind: CaseKind,
+    spotlight: Option<RawSpotlight>,
     expect: Option<RawExpectation>,
     map: Option<RawMap>,
     #[serde(default, rename = "left-out")]
@@ -146,6 +152,21 @@ struct RawRunning {
     name: String,
     #[serde(default)]
     bundle_ids: Vec<String>,
+}
+
+/// A `[[case.elsewhere]]`: an app Spotlight finds outside the apps folders; its bundle id is checked once read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+struct RawElsewhere {
+    name: String,
+    bundle_id: String,
+}
+
+/// `spotlight`: the only value is `off`; Spotlight is on when a case says nothing.
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum RawSpotlight {
+    Off,
 }
 
 #[derive(Clone, Copy, Deserialize)]
@@ -287,6 +308,7 @@ impl Case {
         let running = take_running(&mut raw.files)
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
         let running_elsewhere = take_running_elsewhere(&name, &mut raw.files)?;
+        let elsewhere = take_elsewhere(&name, &mut raw.files)?;
         let tree: TreeDescription = toml::Value::Table(raw.files)
             .try_into()
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
@@ -309,7 +331,19 @@ impl Case {
         let map = raw.map.map(|map| MapExpectation::from_raw(&name, raw.kind, &tree, map)).transpose()?;
         let left_out =
             raw.left_out.into_iter().map(|raw| PendingLeftOut::from_raw(&name, raw)).collect::<Result<_, _>>()?;
-        let case = Self { name, kind: raw.kind, tree, running, running_elsewhere, expect: None, map, left_out: vec![] };
+        let spotlight_off = matches!(raw.spotlight, Some(RawSpotlight::Off));
+        let case = Self {
+            name,
+            kind: raw.kind,
+            tree,
+            running,
+            running_elsewhere,
+            elsewhere,
+            spotlight_off,
+            expect: None,
+            map,
+            left_out: vec![],
+        };
         Ok((case, Pending { expect, left_out }))
     }
 
@@ -336,6 +370,16 @@ impl Case {
     /// The case's `[[case.running]]`: apps open while the app scans that are installed in no apps folder.
     pub fn running_elsewhere(&self) -> &[RunningApp] {
         &self.running_elsewhere
+    }
+
+    /// The case's `[[case.elsewhere]]`: apps Spotlight finds outside the apps folders, by name and bundle id.
+    pub fn elsewhere(&self) -> &[(String, BundleId)] {
+        &self.elsewhere
+    }
+
+    /// Whether the case says `spotlight = "off"`: then Spotlight cannot be asked in the whole sandbox.
+    pub const fn spotlight_off(&self) -> bool {
+        self.spotlight_off
     }
 
     /// The expectation of a positive case; a negative case has none.
@@ -537,6 +581,30 @@ fn take_running_elsewhere(case: &str, files: &mut toml::Table) -> Result<Vec<Run
             Ok(RunningApp { name: entry.name, bundle_ids })
         })
         .collect()
+}
+
+/// Removes `[[case.elsewhere]]` from the case's files and checks each: a name that is one plain file name (it names
+/// the app's bundle, `<name>.app`) and a bundle id the app would read.
+fn take_elsewhere(case: &str, files: &mut toml::Table) -> Result<Vec<(String, BundleId)>, CaseError> {
+    let Some(entries) = files.remove("elsewhere") else { return Ok(Vec::new()) };
+    let entries: Vec<RawElsewhere> =
+        entries.try_into().map_err(|source| CaseError::Files { case: case.into(), source: Box::new(source) })?;
+    entries
+        .into_iter()
+        .map(|entry| {
+            if !is_bundle_name(&entry.name) {
+                return Err(CaseError::ElsewhereName { case: case.into(), name: entry.name });
+            }
+            let id = BundleId::new(entry.bundle_id.as_str())
+                .map_err(|_| CaseError::ElsewhereBundleId { case: case.into(), id: entry.bundle_id.clone() })?;
+            Ok((entry.name, id))
+        })
+        .collect()
+}
+
+/// `true` for a name that is one plain file name: not empty, no `/`, not `.` or `..`.
+pub(crate) fn is_bundle_name(name: &str) -> bool {
+    is_plain(Path::new(name)) && Path::new(name).components().count() == 1 && !name.contains('/')
 }
 
 /// Refuses an app outside the apps folders (or more than one folder below one), and anything but an app the case
@@ -954,6 +1022,49 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn an_elsewhere_app_with_an_unknown_or_a_missing_field_is_refused() {
+            for entry in [
+                "name = \"Far\"\nbundle-id = \"com.example.Far\"\ncolour = \"red\"\n",
+                "name = \"Far\"\n",
+                "bundle-id = \"com.example.Far\"\n",
+            ] {
+                let text = file(&[&format!("{NEGATIVE}[[case.elsewhere]]\n{entry}")]);
+
+                assert!(matches!(refused(&text), CaseError::Files { .. }), "{entry}");
+            }
+        }
+
+        #[test]
+        fn an_elsewhere_app_with_an_invalid_bundle_id_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}[[case.elsewhere]]\nname = \"Far\"\nbundle-id = \"not an id\"\n")]);
+
+            assert!(matches!(refused(&text), CaseError::ElsewhereBundleId { id, .. } if id == "not an id"));
+        }
+
+        #[test]
+        fn an_elsewhere_app_with_an_empty_or_a_path_name_is_refused() {
+            for name in ["", "a/b", "..", ".", "Far/"] {
+                let text = file(&[&format!(
+                    "{NEGATIVE}[[case.elsewhere]]\nname = \"{name}\"\nbundle-id = \"com.example.Far\"\n"
+                )]);
+
+                assert!(
+                    matches!(refused(&text), CaseError::ElsewhereName { name: found, .. } if found == name),
+                    "{name:?}"
+                );
+            }
+        }
+
+        #[test]
+        fn a_spotlight_value_other_than_off_is_refused() {
+            for value in ["\"on\"", "\"Off\"", "false"] {
+                let text = file(&[&NEGATIVE.replace("kind =", &format!("spotlight = {value}\nkind ="))]);
+
+                assert!(matches!(refused(&text), CaseError::Parse { .. }), "{value}");
+            }
+        }
+
+        #[test]
         fn a_left_out_with_no_items_is_refused() {
             let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", "trial.error.failed", 0))]);
 
@@ -1150,6 +1261,30 @@ after-cleanup = "in-trash"
             let ids: Vec<&str> = running[0].bundle_ids.iter().map(fresher_core::BundleId::as_str).collect();
             assert_eq!(ids, ["com.jetbrains.CLion", "a.helper"]);
             assert_eq!(parsed.cases()[0].running_apps().count(), 0);
+        }
+
+        #[test]
+        fn elsewhere_apps_and_spotlight_off_parse() {
+            let text = file(&[&format!(
+                "{}[[case.elsewhere]]\nname = \"Far\"\nbundle-id = \"com.example.Far\"\n",
+                NEGATIVE.replace("kind =", "spotlight = \"off\"\nkind =")
+            )]);
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            let case = &parsed.cases()[0];
+            let elsewhere: Vec<(&str, &str)> =
+                case.elsewhere().iter().map(|(name, id)| (name.as_str(), id.as_str())).collect();
+            assert_eq!(elsewhere, [("Far", "com.example.Far")]);
+            assert!(case.spotlight_off());
+        }
+
+        #[test]
+        fn a_case_that_says_nothing_has_spotlight_on_and_nothing_elsewhere() {
+            let parsed = CaseFile::parse(&file(&[NEGATIVE])).unwrap();
+
+            assert_eq!(parsed.cases()[0].elsewhere(), []);
+            assert!(!parsed.cases()[0].spotlight_off());
         }
 
         #[test]

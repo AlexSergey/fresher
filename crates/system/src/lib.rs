@@ -14,9 +14,11 @@ mod plist;
 mod process;
 mod running;
 mod signature;
+mod spotlight;
 
-pub use apps::{AppSearch, MacInstalledApps};
+pub use apps::{AppSearch, DeclaredSearch, MacInstalledApps};
 pub use clock::{StartedClock, SystemClock};
 pub use known_folders::MacKnownFolders;
 pub use process::{COMMAND_TIMEOUT, ProcessCommandRunner};
 pub use running::MacRunningApps;
+pub use spotlight::{INDEX_CHECK_TIMEOUT, MacMounts, Mounts, SpotlightSearch};

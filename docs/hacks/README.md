@@ -68,6 +68,10 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **Why:** a first scan must not raise a wall of system prompts; which places to open is decided by plan 006 with the
   capability state, which then feeds the request's `avoid` and the standing list goes.
 - **If cleaned up:** removing the list before plan 006 makes the first scan raise a prompt for each protected folder.
+- **What it costs `app-leftovers`:** `Library/Containers` is never opened, so no container is offered as a removed
+  app's data and none proves an id; only support folders reach the High category, and an app that is not sandboxed
+  and never saved a window is not proven. Before plan 006 opens it, the helper list must cover every nested bundle
+  ([deferred](../deferred/app-leftovers-containers.md)).
 
 ## Access answers Unknown until plan 006/03
 

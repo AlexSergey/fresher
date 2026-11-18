@@ -34,7 +34,7 @@ pub use places::places_that_prompt;
 pub use process::{Process, current_user, peak_memory, running_processes};
 pub use protection::{is_user_temp, protection};
 pub use trash::MacTrash;
-pub use volume::MacVolumes;
+pub use volume::{MacVolumes, MountedVolume, mount_point_of, mounted_volumes};
 
 #[cfg(test)]
 mod tests {

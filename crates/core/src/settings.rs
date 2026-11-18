@@ -434,7 +434,7 @@ mod tests {
             let key = SettingKey::new("demo.groups").unwrap();
             let groups = list("demo.groups", SettingKind::Ids { of: crate::IdOf::Group }, SettingValue::Ids(vec![]));
 
-            for id in ["", "apps", "Debug", "development.tools"] {
+            for id in ["", "downloads", "Debug", "development.tools"] {
                 let problem = SettingProblem::RefusedId { key: key.clone(), id: id.into() };
                 assert_eq!(groups.read(&json!(["debug", id])), Err(problem), "{id:?}");
             }

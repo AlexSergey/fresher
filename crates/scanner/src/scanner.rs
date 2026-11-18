@@ -17,6 +17,7 @@ use crate::codec::fit::{Limits, fit};
 use crate::codec::header::{Header, RootRecord};
 use crate::matcher::Matcher;
 use crate::matcher::trie::Segment;
+use crate::places_seen::places_seen;
 use crate::rescan::change_set::RESCAN_LIMIT_PERCENT;
 use crate::rescan::emit::emit;
 use crate::rescan::load::{Cached, Use};
@@ -262,7 +263,8 @@ impl Scanner {
         })?;
         // A place's cached times may be older than the disk's: a restore offers nothing inside one.
         emit(&tree, &matcher, request.interests, &scope.places, on_match);
-        let summary = summarize(&tree, ScanKind::Restored { taken: header.taken });
+        let mut summary = summarize(&tree, ScanKind::Restored { taken: header.taken });
+        summary.places = places_seen(&tree, matcher.anchors());
         let positions = header.roots.iter().map(|root| root.journal).collect();
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
             Some(Walked { tree, scope, positions, save: false, taken: Some(header.taken) });
@@ -396,6 +398,7 @@ impl DiskWalk for Scanner {
             match rescan(&scope, &walk, sources, cancel, on_match, on_progress) {
                 Ok((tree, mut summary)) => {
                     settle_places(&roots, &tree, &mut summary);
+                    summary.places = places_seen(&tree, matcher.anchors());
                     *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
                         Some(Walked { tree, scope, positions, save: true, taken: None });
                     return Ok(summary);
@@ -410,6 +413,7 @@ impl DiskWalk for Scanner {
         let (tree, mut summary) = walk.run(cancel, on_match, on_progress)?;
         summary.fallback = fallback;
         settle_places(&roots, &tree, &mut summary);
+        summary.places = places_seen(&tree, matcher.anchors());
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
             Some(Walked { tree, scope, positions, save: true, taken: None });
         Ok(summary)

@@ -46,12 +46,17 @@ pub fn running_app(name: &str, bundle_ids: &[&str]) -> Result<RunningApp, AppIdE
     Ok(RunningApp { name: name.into(), bundle_ids })
 }
 
-/// The installed apps a test sets, or an error; counts how often they are listed. Its search finds the listed apps and
-/// the apps a test installs elsewhere, by bundle id, or answers the error a test sets.
+/// The installed apps a test sets, or an error, one answer per listing, the last repeating; counts how often they are
+/// listed. Its search finds the apps of the latest listing and the apps a test installs elsewhere, by bundle id; it is
+/// complete unless a test makes it fail.
 #[derive(Debug)]
 pub struct FakeInstalledApps {
+    /// The first listing's answer.
     answer: Result<InstalledList, SystemError>,
-    elsewhere: Result<Vec<InstalledApp>, SystemError>,
+    /// The answers of the listings after the first, in order; the last one repeats.
+    then: Vec<Result<InstalledList, SystemError>>,
+    elsewhere: Vec<InstalledApp>,
+    search: Result<(), SystemError>,
     calls: AtomicUsize,
 }
 
@@ -62,19 +67,31 @@ impl FakeInstalledApps {
     }
 
     fn answering(answer: Result<InstalledList, SystemError>) -> Self {
-        Self { answer, elsewhere: Ok(Vec::new()), calls: AtomicUsize::new(0) }
+        Self { answer, then: Vec::new(), elsewhere: Vec::new(), search: Ok(()), calls: AtomicUsize::new(0) }
+    }
+
+    /// Answers `apps` once the answers before it have been given: the apps installed or removed between scans.
+    #[must_use]
+    pub fn then(mut self, apps: Vec<InstalledApp>) -> Self {
+        self.then.push(Ok(InstalledList::complete(apps)));
+        self
+    }
+
+    /// The answer of the listing `at` (counted from 0).
+    fn answer(&self, at: usize) -> &Result<InstalledList, SystemError> {
+        at.checked_sub(1).and_then(|later| self.then.get(later).or(self.then.last())).unwrap_or(&self.answer)
     }
 
     /// The same apps, and `apps` installed outside the apps folders: only the search finds them.
     #[must_use]
     pub fn with_elsewhere(self, apps: Vec<InstalledApp>) -> Self {
-        Self { elsewhere: Ok(apps), ..self }
+        Self { elsewhere: apps, ..self }
     }
 
-    /// The same apps, and a search that answers an error.
+    /// The same apps, and a search that cannot see every app: `search_complete` answers an error.
     #[must_use]
     pub fn failing_search(self, reason: &str) -> Self {
-        Self { elsewhere: Err(SystemError { reason: reason.into() }), ..self }
+        Self { search: Err(SystemError { reason: reason.into() }), ..self }
     }
 
     /// Answers `apps` and says that the bundles or folders `unread` could not be read: a partial list.
@@ -103,19 +120,23 @@ impl Default for FakeInstalledApps {
 
 impl InstalledApps for FakeInstalledApps {
     fn list(&self) -> Result<InstalledList, SystemError> {
-        self.calls.fetch_add(1, Ordering::SeqCst);
-        self.answer.clone()
+        let at = self.calls.fetch_add(1, Ordering::SeqCst);
+        self.answer(at).clone()
     }
 
     fn find(&self, ids: &[BundleId], _cancel: &CancelToken) -> Result<Vec<PathBuf>, SystemError> {
-        let elsewhere = self.elsewhere.as_ref().map_err(Clone::clone)?;
-        let listed = self.answer.as_ref().map(|list| list.apps.as_slice()).unwrap_or_default();
+        let latest = self.answer(self.calls().saturating_sub(1));
+        let listed = latest.as_ref().map(|list| list.apps.as_slice()).unwrap_or_default();
         Ok(listed
             .iter()
-            .chain(elsewhere)
+            .chain(&self.elsewhere)
             .filter(|app| ids.contains(&app.bundle_id))
             .map(|app| app.path.clone())
             .collect())
+    }
+
+    fn search_complete(&self, _cancel: &CancelToken) -> Result<(), SystemError> {
+        self.search.clone()
     }
 }
 
@@ -204,11 +225,11 @@ mod tests {
         }
 
         #[test]
-        fn a_failing_search_answers_its_error() {
+        fn a_failing_search_is_not_complete() {
             let apps = FakeInstalledApps::default().failing_search("no index");
 
             assert_eq!(
-                apps.find(&[fresher_core::BundleId::new("a.b").unwrap()], &fresher_core::CancelToken::new()),
+                apps.search_complete(&fresher_core::CancelToken::new()),
                 Err(SystemError { reason: "no index".into() })
             );
         }
@@ -262,6 +283,23 @@ mod tests {
 
             assert_eq!(found, Ok(vec!["/Applications/Editor.app".into(), "/Volumes/Drive/Far.app".into()]));
             assert_eq!(apps.find(&ids(&["com.example.None"]), &fresher_core::CancelToken::new()), Ok(vec![]));
+            assert_eq!(apps.search_complete(&fresher_core::CancelToken::new()), Ok(()));
+        }
+
+        #[test]
+        fn the_installed_apps_follow_their_script_and_the_search_finds_the_latest_listing() {
+            let editor = installed_app("com.example.Editor", "Editor", "1").unwrap();
+            let apps = FakeInstalledApps::new(Vec::new()).then(vec![editor.clone()]);
+            let ids = [fresher_core::BundleId::new("com.example.Editor").unwrap()];
+            let cancel = fresher_core::CancelToken::new();
+
+            assert_eq!(apps.find(&ids, &cancel), Ok(vec![]));
+            assert_eq!(apps.list(), Ok(InstalledList::default()));
+            assert_eq!(apps.find(&ids, &cancel), Ok(vec![]));
+            assert_eq!(apps.list(), Ok(InstalledList::complete(vec![editor.clone()])));
+            assert_eq!(apps.find(&ids, &cancel), Ok(vec![editor.path.clone()]));
+            assert_eq!(apps.list(), Ok(InstalledList::complete(vec![editor])));
+            assert_eq!(apps.calls(), 3);
         }
 
         #[test]

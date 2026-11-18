@@ -11,6 +11,7 @@ pub struct Interest {
     claim: Claim,
     siblings: Vec<String>,
     holds: Vec<String>,
+    only_bundle_ids: bool,
 }
 
 /// Where the walk looks. Names are single file or folder names; the path of `Under` is relative to its known folder.
@@ -49,6 +50,8 @@ pub enum InterestError {
     HoldsNotAnchored,
     #[error("an interest names {count} entries its folder holds; at most {MAX_HOLDS}")]
     TooManyHolds { count: usize },
+    #[error("only an interest anchored under a known folder whose path ends in `*` may match only bundle ids")]
+    NoStarToShape,
 }
 
 /// The most names an interest may look for in its matched folder: a hit carries them as a 64-bit mask.
@@ -65,7 +68,7 @@ impl Interest {
         for sibling in &siblings {
             check_name(sibling)?;
         }
-        Ok(Self { pattern, claim, siblings, holds: Vec::new() })
+        Ok(Self { pattern, claim, siblings, holds: Vec::new(), only_bundle_ids: false })
     }
 
     /// This interest, with `names` the walk looks for in the matched folder's own listing (`index-v5`,
@@ -84,6 +87,17 @@ impl Interest {
         Ok(Self { holds: names, ..self })
     }
 
+    /// This interest, its pattern's last `*` matching only a name shaped as a bundle id
+    /// ([`is_bundle_id_shaped`](crate::is_bundle_id_shaped)): only for a `Pattern::Under` whose last segment is `*`.
+    /// A whole claim of `Caches/*` would otherwise swallow the places other modules claim (`Caches/JetBrains`).
+    pub fn only_bundle_ids(self) -> Result<Self, InterestError> {
+        let Pattern::Under(_, path) = &self.pattern else { return Err(InterestError::NoStarToShape) };
+        if path.rsplit('/').next() != Some("*") {
+            return Err(InterestError::NoStarToShape);
+        }
+        Ok(Self { only_bundle_ids: true, ..self })
+    }
+
     pub const fn pattern(&self) -> &Pattern {
         &self.pattern
     }
@@ -99,6 +113,11 @@ impl Interest {
     /// The names the walk looks for in the matched folder's own listing; empty for most interests.
     pub fn holds(&self) -> &[String] {
         &self.holds
+    }
+
+    /// Whether the pattern's last `*` matches only a name shaped as a bundle id.
+    pub const fn matches_only_bundle_ids(&self) -> bool {
+        self.only_bundle_ids
     }
 }
 
@@ -286,6 +305,27 @@ mod tests {
         }
 
         #[test]
+        fn only_bundle_ids_is_refused_without_a_last_star_to_shape() {
+            for pattern in [
+                Pattern::FolderName("Caches".into()),
+                Pattern::MarkerFile("CACHEDIR.TAG".into()),
+                Pattern::Extension("plist".into()),
+                Pattern::Under(KnownFolder::AppCaches, "a".into()),
+                Pattern::Under(KnownFolder::AppCaches, "*/a".into()),
+                Pattern::Under(KnownFolder::AppCaches, "a*".into()),
+            ] {
+                let interest = Interest::new(pattern.clone(), Claim::Whole, vec![]).unwrap();
+                assert_eq!(interest.only_bundle_ids(), Err(InterestError::NoStarToShape), "{pattern:?}");
+            }
+        }
+
+        #[test]
+        fn a_plain_interest_matches_more_than_bundle_ids() {
+            let pattern = Pattern::Under(KnownFolder::AppCaches, "*".into());
+            assert!(!Interest::new(pattern, Claim::Whole, vec![]).unwrap().matches_only_bundle_ids());
+        }
+
+        #[test]
         fn an_index_outside_the_set_has_no_owner() {
             let set = crate::InterestSet::new();
 
@@ -324,6 +364,22 @@ mod tests {
             assert_eq!(held.holds(), names);
             assert_eq!((held.pattern(), held.claim()), (interest.pattern(), interest.claim()));
             assert_ne!(held, interest, "the held names are part of the interest");
+        }
+
+        #[test]
+        fn a_last_star_is_shaped_to_match_only_bundle_ids() {
+            for path in ["*", "HTTPStorages/*"] {
+                let plain = Interest::new(Pattern::Under(KnownFolder::Library, path.into()), Claim::Whole, vec![])
+                    .unwrap()
+                    .holding(vec!["a".into()])
+                    .unwrap();
+
+                let shaped = plain.clone().only_bundle_ids().unwrap();
+
+                assert!(shaped.matches_only_bundle_ids(), "{path}");
+                assert_eq!((shaped.pattern(), shaped.holds()), (plain.pattern(), plain.holds()), "{path}");
+                assert_ne!(shaped, plain, "the shape is part of the interest");
+            }
         }
 
         #[test]

@@ -13,6 +13,10 @@ use fresher_core::{
 use crate::errors::read_error;
 use crate::ffi::volume::{self, VolumeResources};
 
+mod mounted;
+
+pub use mounted::{MountedVolume, mount_point_of, mounted_volumes};
+
 /// The volume attributes asked of a mount point: the name, the format capabilities (case sensitivity), the UUID and the
 /// space the volume itself uses.
 const LIST: libc::attrlist = libc::attrlist {

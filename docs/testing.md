@@ -83,7 +83,8 @@ cleanups of a hundred items through the real journal.
     home folder: walk, matches, `finish` → `ModuleRun { findings, outcome }`; `ModuleRun::golden()` is its stable JSON
     report, paths relative to the fixture root. `Ports { restored: true, .. }` runs it as a scan restored from the
     cache; `Ports { order: MatchOrder::Reversed, .. }` hands it the matches last first, so a test can check that its
-    answers do not depend on the walk's order.
+    answers do not depend on the walk's order; `Ports { avoid: vec!["Library/Logs".into()], .. }` (paths relative to
+    the fixture root) leaves those folders unopened, so a place among them reaches `finish` as `PlaceSeen::NotScanned`.
   - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category has its five texts and every
     setting (`<module>.enabled` included) its label and description, every key is in the module's namespace;
     `Catalogue::Required(docs/categories)` also wants each category's catalogue file with the same danger level
@@ -125,9 +126,17 @@ cleanups of a hundred items through the real journal.
   walks the temporary places beside a fixture home (named in the map, cleaned to the Trash, refused once no module
   names them); `tests/temp.rs` runs the `temp` module's flows on the real scanner, settings file and cleaner, two of
   them on real old modification times, a real socket and a real pipe, nothing stated; `tests/dev_caches.rs` runs the
-  `dev-caches` module's flows the same way, with a scripted change journal so its rescans read only what it names.
+  `dev-caches` module's flows the same way, with a scripted change journal so its rescans read only what it names;
+  `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
+  modules' caches under `Library/Caches` still theirs), with scripted installed and open apps, Spotlight's answers, the
+  clock and the change journal, every rescan asserted to be one (`fixtures/golden/app-leftovers-flow.json`).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
-  pulled in with `#[path]` only by the tests that use it.
+  pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
+  `app_leftovers_home`) share one harness there, one file per concern: `home.rs` (the sandbox's layout and the `Flow`),
+  `home_engine.rs` (the engine assembled from the parts a home gives: its modules, its fakes, its avoid list),
+  `home_scan.rs` (the scans and the findings), `home_rescan.rs` (the scripted change journal and a scan that must be a
+  rescan) and `home_cleanup.rs` (the cleanup, the outcomes, the journal's records and the relative report); each home
+  keeps only its module's own.
 - `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
   `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
@@ -307,6 +316,9 @@ wraps its reader: `FactsLens::new(reader, tree.stated().clone())`. A stated fact
 shows, and the cleaner reads the disk, never the lens: a fact that decides what the cleaner does is tested where it can
 be made (a real pipe or socket under a short temporary folder, `make_pipe`). A file written now has a status change
 of now: an item meant to look old states `changed` on every entry inside it.
+A leftover that a module judges by its age (`app-leftovers`: a folder's newest change, a file's modification and
+status change) states both `age` and `changed` on every entry, 40 days for an old one and 5 for a recent one; a missing
+`changed` reads as now, so the leftover would count as recent.
 
 The format is the public `TreeDescription`: `from_toml_str` checks it, `merge` joins two (a path written twice is
 refused), `build_at(folder, now)` builds it in any existing folder and refuses a path that leaves the folder or passes
@@ -323,7 +335,8 @@ the fake home `home/` with its Trash `home/.Trash/`, `Applications/`, `System/Ap
 `.fresher-data/`, the two temporary places laid out as on a Mac from `/` (`private/var/folders/xx/sandbox/T/` with
 `C/`, `0/` and `X/` beside it, and `private/tmp/`), every case's files, `EXPECTED.md`, the checklist of a run by hand
 (one checkbox per case, negatives first), and `world.toml`: `now`, the moment of the generation every age counts back
-from, the apps the cases declare open, and an `[[entry]]` per path whose files state facts (its path in the sandbox,
+from, the apps the cases declare open, what Spotlight answers (`spotlight = "off"`, `[[elsewhere]]`), and an
+`[[entry]]` per path whose files state facts (its path in the sandbox,
 its times in seconds since the epoch, its owner, flags and kind). The sandbox's known folders `UserTemp` and
 `SharedTemp` are those two places, never the Mac's, and a list of its own protects them as the Mac's list protects
 the real ones (`Sandbox::places_protection`: every user's folders and `private/var/tmp` never, the sandbox's `T` carved
@@ -344,6 +357,17 @@ write.
 
 The case files:
 
+- `app-leftovers.toml` and `app-leftovers-spotlight-off.toml`: the `app-leftovers` module. The first: a name that is
+  not an app's id, Apple's own files, a tool's files with no app behind them (no saved state proves an app), an
+  installed app's files (its helper's and a related id's too), a link at a place, a group container and a container
+  (`Library/Containers` is not opened in sandbox mode, so no container is offered here; the fixtures and the core e2e
+  offer one) are never claimed, and an open app's files, files changed 5 days ago, an app Spotlight finds elsewhere
+  and a leftover holding a socket or the system's file are left out (`running`, `used-recently`,
+  `installed-elsewhere`, `special`, `not-yours`); a removed app's caches, logs and saved state go as Safe, its settings
+  and its web data and cookies as Medium, its support folder as High. Every leftover's entries state their age and
+  status change (40 days, or 5). The second runs with Spotlight off, a world of its own: a removed app's files are
+  left out (`spotlight-unread`); in `npm run sandbox -- all` Spotlight is then off for every case file
+  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
 - `trial.toml`: the `trial` module. A look-alike folder, a trial folder with no marker next to it, a file named like a
   trial folder and a plain file next to a marker are never offered; a cache next to a marker goes to the Trash, a kept
   folder is emptied.
@@ -467,8 +491,15 @@ owned by the system, changed 30 days ago."), since a run by hand cannot see them
 app the real installed-apps reader sees: it lies in `Applications/`, `System/Applications/` or `home/Applications/`,
 directly or one folder below, and takes `running = true` when the app is open (`false` by default); a case writes
 nothing but apps into `home/Applications/`, and nothing inside a declared app. A `[[case.running]]` (`name`,
-`bundle-ids`: at least one, each a valid bundle id) is an app open from no apps folder of the sandbox. `EXPECTED.md`
-lists a case's apps under it ("Installed: WebStorm 2025.3.1 (open)", "Open, not installed: CLion") and its left-outs
+`bundle-ids`: at least one, each a valid bundle id) is an app open from no apps folder of the sandbox. A
+`[[case.elsewhere]]` (`name`, one plain file name; `bundle-id`, checked as a `[[case.app]]`'s) is an app Spotlight
+finds outside the apps folders: sandbox mode and the autotest answer it at `<sandbox>/Volumes/Elsewhere/<name>.app`,
+which is never written or read. `spotlight = "off"` on a case (the only value) means Spotlight cannot be asked, so no
+app's absence can be proven; it holds for the whole sandbox, so a file with Spotlight off is a world of its own.
+Both go to `world.toml` (`spotlight = "off"`, `[[elsewhere]]`) only when a case declares them; sandbox mode's
+search answers the sandbox's listed apps and these, never the Mac's Spotlight. `EXPECTED.md`
+lists a case's apps under it ("Installed: WebStorm 2025.3.1 (open)", "Open, not installed: CLion", "Found by Spotlight
+outside the apps folders: Far", and "Spotlight is off" for a case that turns it off) and its left-outs
 ("Under 'trial.caches', 2 left out: trial.error.failed"; the generator has no dictionary, so the category and the reason
 are named by their ids). A negative
 expects nothing to be offered at or below its paths, nor at a folder above them that only it writes into, and its paths untouched after the cleanup; it has no

@@ -13,9 +13,9 @@ impl Matcher {
     }
 }
 
-/// The hash of a canonical encoding: each interest's owner, local index, pattern (with its known folder), claim,
-/// siblings and held names, then each anchored interest's resolved segments. Every string and list is length-prefixed,
-/// so no two sets encode alike.
+/// The hash of a canonical encoding: each interest's owner, local index, pattern (with its known folder and the shape
+/// of its last `*`), claim, siblings and held names, then each anchored interest's resolved segments. Every string and
+/// list is length-prefixed, so no two sets encode alike.
 pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>)]) -> u64 {
     let mut bytes = Vec::new();
     for (index, interest) in interests.iter() {
@@ -24,6 +24,7 @@ pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>
         put_number(&mut bytes, local);
         let (kind, folder, value) = match interest.pattern() {
             Pattern::FolderName(value) => (0, "", value),
+            Pattern::Under(folder, value) if interest.matches_only_bundle_ids() => (4, folder.as_str(), value),
             Pattern::Under(folder, value) => (1, folder.as_str(), value),
             Pattern::MarkerFile(value) => (2, "", value),
             Pattern::Extension(value) => (3, "", value),
@@ -55,6 +56,7 @@ pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>
                     put_bytes(&mut bytes, name);
                 }
                 Segment::Any => bytes.push(1),
+                Segment::BundleId => bytes.push(2),
             }
         }
     }

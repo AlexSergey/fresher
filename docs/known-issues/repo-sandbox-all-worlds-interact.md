@@ -1,6 +1,6 @@
 # The `all` sandbox's checklist is wrong where case files' worlds interact
 
-**Status:** open · **Updated:** 2026-11-17
+**Status:** open · **Updated:** 2026-11-18
 
 ## Symptom
 
@@ -8,11 +8,13 @@
 file expects it. Where one file's installed or open apps change what another file's cases show, the checklist is
 wrong: in the `all` sandbox, the app of the vendor that `jetbrains-unknown-app-open.toml` declares open keeps every
 folder of `jetbrains.toml`, and the one `jetbrains-unknown-app-installed.toml` installs keeps every removed IDE's data,
-so `jetbrains.toml`'s positives are not offered there.
+so `jetbrains.toml`'s positives are not offered there; and `app-leftovers-spotlight-off.toml` turns Spotlight off for
+the whole sandbox, so `app-leftovers.toml`'s positives (and any module's that asks Spotlight) are kept there.
 
 ## Cause
 
-A sandbox has one world: the generator joins every file's installed apps and `world.toml`'s running apps. The autotest
+A sandbox has one world: the generator joins every file's installed apps and `world.toml`'s running apps and
+Spotlight's answers. The autotest
 runs each case file in a sandbox of its own, so it never sees the clash; `all` only refuses two files writing one
 path.
 

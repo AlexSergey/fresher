@@ -1,0 +1,157 @@
+# A home for the app-leftovers module whose leftovers are all offered: `com.example.Gone` in the ten forms of
+# `places.toml`, `com.example.Appx` (caches and a saved state) beside the installed `com.example.App`, and
+# `com.example.Boxed` with only a container and its caches. Every entry unchanged for 40 days, every file filled with
+# data.
+
+[[dir]]
+path = "Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Logs/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Logs/com.example.Gone/app.log"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Gone.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Gone.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Library/Preferences/com.example.Gone.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/HTTPStorages/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/HTTPStorages/com.example.Gone/httpstorages.sqlite"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Library/HTTPStorages/com.example.Gone.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/WebKit/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/WebKit/com.example.Gone/WebsiteData.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Library/Cookies/com.example.Gone.binarycookies"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Application Support/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Application Support/com.example.Gone/library.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Containers/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Containers/com.example.Gone/container.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Caches/com.example.Appx"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Appx/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Saved Application State/com.example.Appx.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Saved Application State/com.example.Appx.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Containers/com.example.Boxed"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Containers/com.example.Boxed/container.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "Library/Caches/com.example.Boxed"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Library/Caches/com.example.Boxed/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"

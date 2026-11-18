@@ -5,7 +5,7 @@ import type { ModuleInfo } from '../../ipc/bindings.generated';
 import { DEMO_MODULES } from '../../test/demo-scan';
 import { moduleProgress } from './module-progress';
 
-const LOGS: ModuleInfo = { categories: [], group: 'development', id: 'logs', settings: ['logs.enabled'] };
+const LOGS: ModuleInfo = { categories: [], choices: [], group: 'development', id: 'logs', settings: ['logs.enabled'] };
 
 describe('moduleProgress', () => {
   describe('negative cases', () => {

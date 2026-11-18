@@ -43,11 +43,14 @@ apply, in their order. When the first three keep nothing and no installed app ha
 - the scan walked the disk and read every folder: a scan restored from the last one's cache never offers, its times
   are old, and neither does a walk that could not read a folder, which may be one of the product's that changed;
 - Spotlight knows no app with one of the product's bundle ids anywhere on the Mac (an IDE on another drive or in a
-  download folder); if Spotlight cannot be asked, or does not know the Finder (its index is off), everything is
-  kept.
+  download folder); before it is asked, once per scan, Spotlight must know the Finder (its index is on) and every
+  mounted volume the system shows, and the one that holds the home, must be local and indexed (`mdutil -s`, 10 s
+  each). If Spotlight cannot be asked, its index is off, a volume is not indexed or a network volume is mounted,
+  everything is kept: "Fresher could not ask Spotlight about every drive, so this IDE may be installed elsewhere. It
+  keeps its data. If Spotlight is off, or a drive is not indexed, turn it on and scan again."
 
 Otherwise every folder of the product is kept and reported as left out here, with the reason: its data changed
 recently (or the scan is restored, or could not read every folder), an unknown JetBrains app is installed, the IDE is
-installed elsewhere, or the app could not ask Spotlight. A folder whose time cannot be read, or is in the future,
-counts as changed recently. The time is the folder's own: an IDE changes it when it starts or quits (its lock files
+installed elsewhere, or the app could not ask Spotlight about every drive. A folder whose time cannot be read, or is
+in the future, counts as changed recently. The time is the folder's own: an IDE changes it when it starts or quits (its lock files
 and its rotated logs), not when it only writes inside the folder's subfolders.

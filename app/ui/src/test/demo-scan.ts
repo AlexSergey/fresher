@@ -54,6 +54,7 @@ export const DEMO_FINDINGS: readonly Finding[] = [
 export const DEMO_MODULES: readonly ModuleInfo[] = [
   {
     categories: [readyCategory('demo.caches', 'safe'), readyCategory('demo.downloads', 'low')],
+    choices: [],
     group: 'debug',
     id: 'demo',
     settings: ['demo.enabled'],

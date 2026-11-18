@@ -67,12 +67,16 @@ impl AppPlaces {
 }
 
 impl AppPlaces {
-    /// The app `id` names: the installed app whose own id or helper's it is, else the id itself, no longer
-    /// installed. `None` when the installed apps could not be listed.
-    pub(crate) fn app(&self, id: &BundleId) -> Option<AppRef> {
+    /// The app `id` names: the installed app whose own id or helper's it is (its own name wins), else `name`, or the
+    /// id itself when none is given, no longer installed. `None` when the installed apps could not be listed.
+    pub(crate) fn app(&self, id: &BundleId, name: Option<&str>) -> Option<AppRef> {
         let apps = self.apps.as_ref()?;
         let installed = self.ids.get(id.folded()).and_then(|&position| apps.get(position));
-        Some(installed.cloned().unwrap_or_else(|| AppRef { id: id.clone(), name: id.to_string(), installed: false }))
+        Some(installed.cloned().unwrap_or_else(|| AppRef {
+            id: id.clone(),
+            name: name.map_or_else(|| id.to_string(), str::to_owned),
+            installed: false,
+        }))
     }
 
     /// The data folders and bundles found, each with the installed app it belongs to.

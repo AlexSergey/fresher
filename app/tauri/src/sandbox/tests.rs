@@ -410,6 +410,38 @@ mod positive {
     }
 
     #[test]
+    fn a_world_that_declares_nothing_of_spotlight_searches_the_listed_apps_only() {
+        let world = World::new();
+        let sandbox = world.sandbox();
+        let declared = fresher_sandbox::World::read(&sandbox).unwrap();
+
+        assert_eq!(crate::sandbox::app_search(&declared, sandbox.path()), fresher_system::DeclaredSearch::listed());
+        assert!(matches!(
+            crate::sandbox::build(&sandbox).unwrap(),
+            fresher_core::Build::Sandbox { simulated_spotlight: false, .. }
+        ));
+    }
+
+    #[test]
+    fn the_sandboxs_search_answers_its_apps_elsewhere_and_its_spotlight_off() {
+        let world = World::new();
+        let sandbox = world.sandbox();
+        let declared = "spotlight = \"off\"\n[[elsewhere]]\nname = \"Far\"\nbundle-id = \"com.example.Far\"\n";
+        fs::write(sandbox.world(), declared).unwrap();
+        let read = fresher_sandbox::World::read(&sandbox).unwrap();
+
+        let search = crate::sandbox::app_search(&read, sandbox.path());
+
+        let far = fresher_core::BundleId::new("com.example.Far").unwrap();
+        let answered = sandbox.path().join("Volumes/Elsewhere/Far.app");
+        assert_eq!(search, fresher_system::DeclaredSearch { index_on: false, elsewhere: vec![(far, answered)] });
+        assert!(matches!(
+            crate::sandbox::build(&sandbox).unwrap(),
+            fresher_core::Build::Sandbox { simulated_running: true, simulated_spotlight: true, .. }
+        ));
+    }
+
+    #[test]
     fn the_real_ports_clock_starts_at_the_moment_the_sandbox_was_generated() {
         let world = World::new();
         fs::write(world.sandbox().world(), format!("now = {}\n", fresher_testing::FIXTURE_NOW)).unwrap();
@@ -483,7 +515,10 @@ mod positive {
         let sandbox = world.sandbox();
         assert_eq!((start.data_folder, start.home), (sandbox.data_folder(), sandbox.home()));
         let canonical = fs::canonicalize(world.folder.path()).unwrap();
-        assert_eq!(start.build, fresher_core::Build::Sandbox { path: canonical, simulated_running: true });
+        assert_eq!(
+            start.build,
+            fresher_core::Build::Sandbox { path: canonical, simulated_running: true, simulated_spotlight: false }
+        );
         assert!(!world.real_data().exists());
     }
 

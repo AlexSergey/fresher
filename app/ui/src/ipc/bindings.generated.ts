@@ -9,7 +9,7 @@ export type AppInfo = { version: string, build: Build, };
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
  */
-export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulatedRunning: boolean, };
+export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulatedRunning: boolean, simulatedSpotlight: boolean, };
 
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
@@ -136,7 +136,7 @@ export type CategoryTotal = { category: CategoryId, count: number, sizes: Sizes,
  * The named group a module belongs to; the sidebar and the overview show modules under it. The order of the variants
  * is the screen's order, `Debug` last.
  */
-export type ModuleGroup = "system" | "development" | "debug";
+export type ModuleGroup = "system" | "apps" | "development" | "debug";
 
 /**
  * A module as the UI sees it: what the generic module page renders.
@@ -145,12 +145,22 @@ export type ModuleInfo = { id: ModuleId, group: ModuleGroup, categories: Array<C
 /**
  * Its settings' keys, `<module>.enabled` first.
  */
-settings: Array<SettingKey>, };
+settings: Array<SettingKey>, 
+/**
+ * Its choices of categories, in the order its page shows them; empty for a module without.
+ */
+choices: Array<ChoiceInfo>, };
 
 /**
  * A category and what it can do with the current access.
  */
 export type CategoryInfo = { descriptor: CategoryDescriptor, availability: Availability, };
+
+/**
+ * A module's choice as the UI sees it: its name (the texts are `<module>.choice.<name>.label` and `.description`)
+ * and the categories it selects.
+ */
+export type ChoiceInfo = { name: string, categories: Array<CategoryId>, };
 
 /**
  * What a category can do with the current access.
@@ -184,7 +194,11 @@ export type Finding = { id: FindingId, module: ModuleId, removability: Removabil
 /**
  * The app the finding belongs to, when the module knows it.
  */
-app?: string, };
+app?: string, 
+/**
+ * The app's display name, for when the app is no longer installed and nothing else can name it.
+ */
+appName?: string, };
 
 /**
  * The id of a finding in one session, assigned by the engine: the UI's only handle on it.

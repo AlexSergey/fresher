@@ -22,7 +22,8 @@ use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, MacInstalledApps, MacKnownFolders, MacRunningApps, ProcessCommandRunner, SystemClock,
+    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacInstalledApps, MacKnownFolders, MacMounts, MacRunningApps,
+    ProcessCommandRunner, SpotlightSearch, SystemClock,
 };
 
 use crate::adapters::{NoSystemUi, UnknownAccess};
@@ -50,6 +51,8 @@ pub(crate) enum ComposeError {
     Temp(#[from] fresher_module_temp::TempError),
     #[error("the dev-caches module cannot be built: {0}")]
     DevCaches(#[from] fresher_module_dev_caches::DevCachesError),
+    #[error("the app-leftovers module cannot be built: {0}")]
+    AppLeftovers(#[from] fresher_module_app_leftovers::AppLeftoversError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -105,12 +108,8 @@ pub(crate) fn start(
         // The running apps come from the sandbox's world, never the Mac's: an app open on the Mac changes nothing.
         let (engine, sandbox) =
             crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
-        return Ok(Start {
-            engine,
-            data_folder: sandbox.data_folder(),
-            home: sandbox.home(),
-            build: Build::Sandbox { path: sandbox.path().to_path_buf(), simulated_running: true },
-        });
+        let build = crate::sandbox::build(&sandbox)?;
+        return Ok(Start { engine, data_folder: sandbox.data_folder(), home: sandbox.home(), build });
     }
     let engine = engine(&data_folder, &home)?;
     Ok(Start { engine, data_folder, home, build: own_build() })
@@ -157,7 +156,11 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         volumes,
         clock,
         running,
-        app_search: AppSearch::Spotlight(Arc::clone(&commands)),
+        app_search: AppSearch::Spotlight(SpotlightSearch::new(
+            Arc::clone(&commands),
+            Arc::new(ProcessCommandRunner::new(INDEX_CHECK_TIMEOUT)),
+            Arc::new(MacMounts),
+        )),
         commands,
         access: Arc::new(UnknownAccess),
         cleanup,
@@ -330,6 +333,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_jetbrains::JetBrainsModule::new()?),
         Box::new(fresher_module_temp::TempModule::new()?),
         Box::new(fresher_module_dev_caches::DevCachesModule::new()?),
+        Box::new(fresher_module_app_leftovers::AppLeftoversModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -461,9 +465,9 @@ mod tests {
         fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             let expected: &[&str] = if cfg!(debug_assertions) {
-                &["jetbrains", "temp", "dev-caches", "demo", "trial"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers", "demo", "trial"]
             } else {
-                &["jetbrains", "temp", "dev-caches"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers"]
             };
 
             let engine = engine(folder.path(), home.path()).unwrap();

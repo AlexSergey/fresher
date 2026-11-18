@@ -1,6 +1,6 @@
 # Spotlight does not see an IDE on a volume it does not index
 
-**Status:** open · **Updated:** 2026-11-17
+**Status:** fixed ([plan 019/01/03](../plans/019-uninstalled-app-leftovers/01-core-prerequisites/03-spotlight-reach.md)) · **Updated:** 2026-11-18
 
 ## Symptom
 
@@ -18,6 +18,9 @@ A single volume left out of the index answers like a volume with no app on it; n
 ## What was tried
 
 - The Finder probe (plan 016, final review): it catches an index that is off or not built, not one volume left out.
+- The fix (plan 019/01/03): once per scan, before any search, `mdutil -s` asks every mounted volume the system shows,
+  and the one that holds the home, whether it is indexed (10 s each); a network volume counts as not indexed without
+  being asked. Any volume not indexed, or any unknown, keeps everything (`jetbrains.left-out.spotlight-unread`).
 
 ## Options left
 

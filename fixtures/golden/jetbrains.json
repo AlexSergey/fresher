@@ -512,6 +512,7 @@
     "findings": [
       {
         "app": "com.jetbrains.datagrip",
+        "appName": "DataGrip",
         "category": "jetbrains.uninstalled",
         "danger": "medium",
         "key": {
@@ -565,6 +566,7 @@
       },
       {
         "app": "com.jetbrains.datagrip",
+        "appName": "DataGrip",
         "category": "jetbrains.uninstalled",
         "danger": "medium",
         "key": {
@@ -618,6 +620,7 @@
       },
       {
         "app": "com.jetbrains.datagrip",
+        "appName": "DataGrip",
         "category": "jetbrains.uninstalled",
         "danger": "medium",
         "key": {

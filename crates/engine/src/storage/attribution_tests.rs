@@ -40,8 +40,20 @@ mod negative {
 
     use fresher_testing::FakeInstalledApps;
 
+    use fresher_core::AppRef;
+
     use super::{LIBRARY, app, facts, id, node, state};
     use crate::storage::attribution::AppPlaces;
+
+    #[test]
+    fn an_installed_apps_own_name_wins_over_the_one_given() {
+        let apps = Arc::new(FakeInstalledApps::new(vec![app("com.example.App", "App")]));
+        let places = AppPlaces::of(&state(&["/home"]), &facts(&apps));
+
+        let named = places.app(&id("com.example.App"), Some("Other"));
+
+        assert_eq!(named, Some(AppRef { id: id("com.example.App"), name: "App".into(), installed: true }));
+    }
 
     #[test]
     fn a_folder_named_like_an_app_is_not_its_without_the_dot() {
@@ -72,7 +84,7 @@ mod negative {
         let places = AppPlaces::of(&state, &facts(&apps));
 
         assert_eq!(places.data().count(), 0);
-        assert_eq!(places.app(&id("com.example.App")), None);
+        assert_eq!(places.app(&id("com.example.App"), None), None);
         assert_eq!(places.trash(), Some(node(&state, "/home/.Trash")));
     }
 }
@@ -155,9 +167,18 @@ mod positive {
         let places = AppPlaces::of(&state(&["/home"]), &facts(&apps));
 
         let installed = AppRef { id: id("com.example.App"), name: "App".into(), installed: true };
-        assert_eq!(places.app(&id("com.example.app.helper")), Some(installed));
+        assert_eq!(places.app(&id("com.example.app.helper"), None), Some(installed));
         let gone = AppRef { id: id("com.example.Gone"), name: "com.example.Gone".into(), installed: false };
-        assert_eq!(places.app(&id("com.example.Gone")), Some(gone));
+        assert_eq!(places.app(&id("com.example.Gone"), None), Some(gone));
+    }
+
+    #[test]
+    fn a_removed_app_is_known_by_the_name_given() {
+        let apps = Arc::new(FakeInstalledApps::new(vec![app("com.example.App", "App")]));
+        let places = AppPlaces::of(&state(&["/home"]), &facts(&apps));
+
+        let gone = AppRef { id: id("com.example.Gone"), name: "Gone App".into(), installed: false };
+        assert_eq!(places.app(&id("com.example.Gone"), Some("Gone App")), Some(gone));
     }
 
     #[test]

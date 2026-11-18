@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 import type {
   Event,
+  Finding,
   FindingsQuery,
   MeaningGroup,
   ModuleInfo,
@@ -13,6 +14,17 @@ import type {
 } from '../src/ipc/bindings.generated';
 
 import { type CommandKey, COMMANDS } from '../src/ipc';
+import {
+  APP_LEFTOVERS_DICTIONARY,
+  APP_LEFTOVERS_FINDINGS,
+  APP_LEFTOVERS_MEANING,
+  APP_LEFTOVERS_MODULES,
+  APP_LEFTOVERS_OVERVIEW,
+  APP_LEFTOVERS_SCAN,
+  APP_LEFTOVERS_SETTINGS,
+  APP_LEFTOVERS_TOTALS,
+  scanOf,
+} from '../src/test/app-leftovers-scan';
 import {
   CLEANUP_DICTIONARY,
   DELETED_DETAIL,
@@ -490,6 +502,7 @@ const CLEANUP = {
 const LARGE_MODULES: readonly ModuleInfo[] = [
   {
     categories: LARGE.overview.totals.map(({ category }) => readyCategory(category, 'safe')),
+    choices: [],
     group: 'debug',
     id: 'demo',
     settings: ['demo.enabled'],
@@ -553,6 +566,52 @@ const DEV_CACHES_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The cleanup of the caches and logs of the removed app (what Keep settings selects): the data and settings stay.
+const APP_LEFTOVERS_CLEANUP_DETAIL = movedDetailOf(planOf(APP_LEFTOVERS_FINDINGS.slice(0, 2)), 3, 1_735_819_200);
+
+const APP_LEFTOVERS_CLEANUP: CleanupScript = {
+  after: {
+    ...APP_LEFTOVERS_OVERVIEW,
+    found: { allocated: 2_130_000_000, completeness: 'complete', logical: 2_130_000_000, reclaimable: 2_130_000_000 },
+    totals: APP_LEFTOVERS_OVERVIEW.totals.filter(({ category }) => category !== 'app-leftovers.caches'),
+  },
+  details: [APP_LEFTOVERS_CLEANUP_DETAIL],
+  history: {
+    blocked: null,
+    cleanups: [APP_LEFTOVERS_CLEANUP_DETAIL.summary],
+    offset: 0,
+    total: 1,
+    waiting: 664_000_000,
+  },
+};
+
+// What the removed apps scripts answer before a scan: the module, its texts and settings.
+const APP_LEFTOVERS_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: {
+    ...APP_LEFTOVERS_DICTIONARY,
+    ...DEV_CACHES_DICTIONARY,
+    ...STORAGE_DICTIONARY,
+    ...CLEANUP_DICTIONARY,
+  },
+  getModules: APP_LEFTOVERS_MODULES,
+  getSettings: APP_LEFTOVERS_SETTINGS,
+  updateSetting: null,
+} as const;
+
+const sizedOf = (bytes: number): Overview['found'] => ({
+  allocated: bytes,
+  completeness: 'complete',
+  logical: bytes,
+  reclaimable: bytes,
+});
+
+// Two modules at once: npm's cache of the developer caches module beside the removed app's findings.
+const [NPM_CACHE] = DEV_CACHES_FINDINGS as readonly [Finding];
+const WITH_DEV_CACHES_FINDINGS: readonly Finding[] = [NPM_CACHE, ...APP_LEFTOVERS_FINDINGS];
+const [DEV_CACHES_MODULE] = DEV_CACHES_MODULES as readonly [ModuleInfo];
+const [APP_LEFTOVERS_MODULE] = APP_LEFTOVERS_MODULES as readonly [ModuleInfo];
+
 // The cleanup of the five temporary findings: nothing is left, and the history holds that one cleanup.
 const TEMP_CLEANUP_DETAIL = movedDetailOf(planOf(TEMP_FINDINGS), 3, 1_735_819_200);
 
@@ -577,6 +636,28 @@ const TEMP_ANSWERS = {
 
 // The scripts the flows and the screenshots play.
 export const SCRIPTS = {
+  // The removed apps' leftovers scan, streamed at once, with cleanup, ignoring and its storage meaning.
+  appLeftovers: {
+    answers: APP_LEFTOVERS_ANSWERS,
+    cleanup: APP_LEFTOVERS_CLEANUP,
+    ignoring: true,
+    meaning: APP_LEFTOVERS_MEANING,
+    scan: APP_LEFTOVERS_SCAN,
+    scanned: APP_LEFTOVERS_OVERVIEW,
+  },
+  // The same beside the developer caches module, which found npm's cache: a choice must leave its selection alone.
+  appLeftoversWithDevCaches: {
+    answers: { ...APP_LEFTOVERS_ANSWERS, getModules: [DEV_CACHES_MODULE, APP_LEFTOVERS_MODULE] },
+    scan: scanOf(WITH_DEV_CACHES_FINDINGS, ['dev-caches', 'app-leftovers']),
+    scanned: {
+      ...APP_LEFTOVERS_OVERVIEW,
+      found: sizedOf(11_694_000_000),
+      totals: [
+        { category: 'dev-caches.npm', count: 1, highestDanger: 'low', sizes: sizedOf(8_900_000_000) },
+        ...APP_LEFTOVERS_TOTALS,
+      ],
+    },
+  },
   // The demo scan, then a cleanup of what is picked: the core's plan, the cleanup streamed at once, a history.
   cleaning: { answers: CLEANING_ANSWERS, cleanup: CLEANUP, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
   // The same, the cleanup held after its first item until `releaseCleanup` or Stop.
@@ -665,7 +746,12 @@ export const SCRIPTS = {
     answers: {
       ...ANSWERS,
       appInfo: {
-        build: { kind: 'sandbox', path: '/Users/dev/sandboxes/trial', simulatedRunning: true },
+        build: {
+          kind: 'sandbox',
+          path: '/Users/dev/sandboxes/trial',
+          simulatedRunning: true,
+          simulatedSpotlight: false,
+        },
         version: '0.1.0',
       },
     },

@@ -265,7 +265,8 @@ mod property {
     use proptest::prelude::*;
 
     use crate::support::{
-        canonical, every_interest, held_interests, random_items, random_tree, reference, scanner, set_of, tagged,
+        AVOIDABLE, bundle_id_interests, canonical, every_interest, held_interests, place_interests, random_cache_tree,
+        random_items, random_tree, reference, scanner, set_of, tagged,
     };
 
     proptest! {
@@ -312,6 +313,65 @@ mod property {
 
             let fast = scanner(Arc::new(StdReader::new()), &root, &set, &[]);
             let slow = reference(&root, &set, &[]);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            prop_assert_eq!(fast, slow);
+        }
+
+        #[test]
+        fn the_scanner_and_the_reference_agree_on_names_shaped_as_bundle_ids(
+            items in random_items(),
+            chosen in prop::collection::vec(any::<bool>(), 6),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            let locked = random_cache_tree(&root, &items);
+            let interests: Vec<_> = bundle_id_interests()
+                .into_iter()
+                .zip(&chosen)
+                .filter(|(_, keep)| **keep)
+                .map(|(interest, _)| interest)
+                .collect();
+            let set = set_of(&interests);
+
+            let fast = scanner(Arc::new(StdReader::new()), &root, &set, &[]);
+            let slow = reference(&root, &set, &[]);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            prop_assert_eq!(fast, slow);
+        }
+
+        #[test]
+        fn the_scanner_and_the_reference_agree_on_what_they_saw_of_each_place(
+            items in random_items(),
+            avoided in prop::collection::vec(any::<bool>(), AVOIDABLE.len()),
+            chosen in prop::collection::vec(any::<bool>(), 8),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            let locked = random_tree(&root, &items);
+            let interests: Vec<_> = place_interests()
+                .into_iter()
+                .zip(&chosen)
+                .filter(|(_, keep)| **keep)
+                .map(|(interest, _)| interest)
+                .collect();
+            let set = set_of(&interests);
+            // The scanner compares an avoided place in its canonical form, the reference as given: no link on the way.
+            let avoid: Vec<_> = AVOIDABLE
+                .iter()
+                .zip(&avoided)
+                .filter(|(_, avoid)| **avoid)
+                .map(|(path, _)| root.join(path))
+                .filter(|path| fs::canonicalize(path).map_or(true, |canonical| canonical == *path))
+                .collect();
+
+            let fast = scanner(Arc::new(StdReader::new()), &root, &set, &avoid);
+            let slow = reference(&root, &set, &avoid);
             for folder in &locked {
                 let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
             }
