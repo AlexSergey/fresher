@@ -166,7 +166,8 @@ mod run {
             options,
         );
         let (roots, interests) = ([root, changes.clone()], interests());
-        let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Auto };
+        let request =
+            WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Auto };
         let mut outcome = Outcome {
             footprints: Vec::new(),
             kinds: Vec::new(),

@@ -52,6 +52,8 @@ pub(crate) const fn raw(kind: EntryKind) -> RawEntry {
         sizes: Sizes::ZERO,
         clone: None,
         modified: None,
+        changed: None,
+        accessed: None,
         cloud_only: false,
         access: EntryAccess { owner: None, mode: 0, user_immutable: false, system_immutable: false, restricted: false },
         error: None,
@@ -61,7 +63,7 @@ pub(crate) const fn raw(kind: EntryKind) -> RawEntry {
 /// The reference walk's matches on `tree`, home at its root, sorted.
 pub(crate) fn reference(tree: &FixtureTree, interests: &InterestSet) -> Vec<Found> {
     let roots = [tree.root().to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests, avoid: &[], mode: WalkMode::Full };
+    let request = WalkRequest { roots: &roots, interests, avoid: &[], places: &[], mode: WalkMode::Full };
     let mut found = Vec::new();
     NaiveWalk::new(tree.root())
         .walk(
@@ -119,8 +121,10 @@ fn read(folder: &Path) -> FolderListing {
             EntryKind::Symlink
         } else if metadata.is_dir() {
             EntryKind::Folder
-        } else {
+        } else if metadata.is_file() {
             EntryKind::File
+        } else {
+            EntryKind::Other
         };
         listing.push(entry.file_name().as_bytes(), raw(kind)).unwrap();
     }

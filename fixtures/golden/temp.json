@@ -1,0 +1,432 @@
+{
+  "old": {
+    "findings": [
+      {
+        "category": "temp.old-files",
+        "danger": "safe",
+        "key": {
+          "identity": "shared-temp/old-build.log",
+          "module": "temp"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 10
+            }
+          },
+          "key": "temp.finding.reason-shared"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "private/tmp/old-build.log"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 16384,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "private/tmp/old-build.log"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "old-build.log"
+            }
+          },
+          "key": "temp.finding.title"
+        }
+      },
+      {
+        "app": "com.example.Viewer",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "key": {
+          "identity": "user-temp/com.example.Viewer",
+          "module": "temp"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 15
+            }
+          },
+          "key": "temp.finding.reason-user"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "private/var/folders/xx/fixture/T/com.example.Viewer"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 131072,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "private/var/folders/xx/fixture/T/com.example.Viewer"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "com.example.Viewer"
+            }
+          },
+          "key": "temp.finding.title"
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "danger": "safe",
+        "key": {
+          "identity": "user-temp/docs-link",
+          "module": "temp"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "temp.finding.reason-user"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "private/var/folders/xx/fixture/T/docs-link"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "private/var/folders/xx/fixture/T/docs-link"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "docs-link"
+            }
+          },
+          "key": "temp.finding.title"
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "danger": "safe",
+        "key": {
+          "identity": "user-temp/node-compile-cache",
+          "module": "temp"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 20
+            }
+          },
+          "key": "temp.finding.reason-user"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "private/var/folders/xx/fixture/T/node-compile-cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 786432,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "private/var/folders/xx/fixture/T/node-compile-cache"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "node-compile-cache"
+            }
+          },
+          "key": "temp.finding.title"
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "danger": "safe",
+        "key": {
+          "identity": "user-temp/tmp.IKKNWYIRnq",
+          "module": "temp"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "temp.finding.reason-user"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "private/var/folders/xx/fixture/T/tmp.IKKNWYIRnq"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "private/var/folders/xx/fixture/T/tmp.IKKNWYIRnq"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "tmp.IKKNWYIRnq"
+            }
+          },
+          "key": "temp.finding.title"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "recent": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.recent",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 16384,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.recent",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.recent",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1024,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.recent",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 67584,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "running": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "special": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.lock",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 11,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.lock",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.lock",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 6,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.lock",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4107,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "system": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.locked",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1024,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "temp.old-files",
+        "reason": "temp.left-out.system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1048576,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

@@ -12,20 +12,37 @@ enum Protected {
     Itself(&'static [&'static str]),
 }
 
-/// The protected paths of docs/restrictions/deletion-safety.md (`/var/db` is `/private/var/db` through its link),
-/// and `/Users`, which holds other users' homes. `/` is above all of them.
+/// The protected paths of docs/restrictions/deletion-safety.md (`/var/db` is `/private/var/db` through its link,
+/// `/tmp` is `/private/tmp`), and `/Users`, which holds other users' homes. `/` is above all of them. Every user's
+/// temporary folders and the shared one are walked as places of their own, never named as a scan root; a folder
+/// inside one of them may be (see [`is_inside_a_temp_folder`]).
 const PROTECTED: &[Protected] = &[
     Protected::Whole(&["System"]),
     Protected::Whole(&["bin"]),
     Protected::Whole(&["sbin"]),
     Protected::Whole(&["private", "var", "db"]),
     Protected::Whole(&["var", "db"]),
+    Protected::Whole(&["private", "var", "folders"]),
+    Protected::Whole(&["var", "folders"]),
+    Protected::Whole(&["private", "var", "tmp"]),
+    Protected::Whole(&["var", "tmp"]),
+    Protected::Whole(&["private", "var", "vm"]),
+    Protected::Whole(&["var", "vm"]),
+    Protected::Itself(&["private", "tmp"]),
+    Protected::Itself(&["tmp"]),
+    Protected::Whole(&[".DocumentRevisions-V100"]),
     Protected::Whole(&["usr"]),
     Protected::Itself(&["Users"]),
 ];
 
 /// Folders inside a protected folder that may be named all the same.
 const ALLOWED_INSIDE: &[&[&str]] = &[&["usr", "local"]];
+
+/// Where macOS keeps every user's temporary folders, in both forms: `<this>/<xx>/<hash>/T`.
+const USER_FOLDERS: [&[&str]; 2] = [&["private", "var", "folders"], &["var", "folders"]];
+/// The user's temporary folder inside its triplet, and the system's own items inside it.
+const TEMP: &str = "T";
+const TEMPORARY_ITEMS: &str = "TemporaryItems";
 
 /// `true` when `folder` is `~`, `~/…` or an absolute path of plain names that is not protected.
 pub(crate) fn is_allowed(folder: &Path) -> bool {
@@ -57,12 +74,25 @@ fn is_protected(names: &[&str]) -> bool {
     let starts_with = |path: &[&str], prefix: &[&str]| {
         path.len() >= prefix.len() && path.iter().zip(prefix).all(|(name, other)| name.eq_ignore_ascii_case(other))
     };
-    if ALLOWED_INSIDE.iter().any(|allowed| starts_with(names, allowed)) {
+    if ALLOWED_INSIDE.iter().any(|allowed| starts_with(names, allowed)) || is_inside_a_temp_folder(names) {
         return false;
     }
     PROTECTED.iter().any(|protected| match protected {
         Protected::Whole(path) => starts_with(names, path) || starts_with(path, names),
         Protected::Itself(path) => starts_with(path, names),
+    })
+}
+
+/// A folder strictly inside a user's temporary folder `T` (as a test's temporary folder is), but not inside its
+/// `TemporaryItems`: the user's own items. Which user's it is cannot be told without reading the disk; another
+/// user's is unreadable, and the protection list keeps the cleaner from it.
+fn is_inside_a_temp_folder(names: &[&str]) -> bool {
+    USER_FOLDERS.iter().any(|folders| {
+        let rest = names.get(folders.len()..).unwrap_or_default();
+        let base = names.iter().zip(folders.iter()).all(|(name, other)| name.eq_ignore_ascii_case(other));
+        base && rest.len() > 3
+            && rest.get(2).is_some_and(|name| name.eq_ignore_ascii_case(TEMP))
+            && !rest.get(3).is_some_and(|name| name.eq_ignore_ascii_case(TEMPORARY_ITEMS))
     })
 }
 
@@ -116,6 +146,24 @@ mod tests {
                 "/var",
                 "/var/db",
                 "/Users",
+                "/private/var/folders",
+                "/var/folders/",
+                "/private/var/folders/xx/abc/T",
+                "/var/folders/xx/abc/T",
+                "/private/var/folders/xx/abc/C",
+                "/private/var/folders/xx/abc/C/com.example.app",
+                "/private/var/folders/xx/abc/0/x",
+                "/private/var/folders/xx/abc/T/TemporaryItems",
+                "/var/folders/xx/abc/t/temporaryitems/x",
+                "/private/var/folders/xx/abc",
+                "/private/var/folders/xx/T/x",
+                "/private/tmp",
+                "/tmp",
+                "/TMP/",
+                "/private/var/tmp",
+                "/private/var/tmp/x",
+                "/var/vm",
+                "/.DocumentRevisions-V100",
             ];
 
             for folder in protected {
@@ -150,7 +198,12 @@ mod tests {
                 "/usr/local",
                 "/usr/local/Cellar",
                 "/Users/me",
-                "/private/var/folders",
+                "/private/var/log",
+                "/private/tmpfiles",
+                "/private/tmp/work",
+                "/tmp/work",
+                "/private/var/folders/xx/abc/T/.tmpAbc",
+                "/var/folders/xx/abc/T/.tmpAbc/home",
                 "/opt/homebrew",
                 "/Systems",
             ] {

@@ -6,14 +6,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use fresher_core::{
     ByteSize, CancelToken, ChangeJournal, Changes, DiskWalk, EntryAccess, FolderIdentity, FolderListing, FolderReader,
-    InterestSet, JournalGap, JournalPosition, Match, ReadError, VolumeId, WalkMode, WalkRequest, WalkSummary,
+    InterestSet, JournalGap, JournalPosition, Match, Place, ReadError, VolumeId, WalkMode, WalkRequest, WalkSummary,
 };
 use fresher_testing::{FakeChangeJournal, FakeClock, FixtureTree, MemoryScanCache};
 
 use crate::codec::testing::snapshot;
 use crate::rescan::Scope;
 use crate::rescan::load::{Cached, Use};
-use crate::scanner::{Scanner, ScannerOptions, home_anchor};
+use crate::scanner::{AnchorResolver, Scanner, ScannerOptions, home_anchor};
 use crate::tree::arena::Tree;
 use crate::walk::roots::tests::one_volume;
 use crate::walk::std_reader::StdReader;
@@ -38,6 +38,8 @@ pub(crate) struct Rig {
     pub(crate) interests: InterestSet,
     pub(crate) avoid: Vec<PathBuf>,
     pub(crate) roots: Vec<PathBuf>,
+    /// The places walked outside the roots; their known folders resolve to them.
+    pub(crate) places: Vec<Place>,
 }
 
 /// What one walk gave.
@@ -63,6 +65,7 @@ impl Rig {
             clock: Arc::new(FakeClock::at(TAKEN)),
             interests,
             avoid: Vec::new(),
+            places: Vec::new(),
         }
     }
 
@@ -78,6 +81,7 @@ impl Rig {
             clock: Arc::new(FakeClock::at(TAKEN)),
             interests,
             avoid: Vec::new(),
+            places: Vec::new(),
         }
     }
 
@@ -96,12 +100,17 @@ impl Rig {
     pub(crate) fn scanner(&self, reader: Arc<dyn FolderReader>, journal: Arc<dyn ChangeJournal>) -> Scanner {
         let options = ScannerOptions { threads: 2.try_into().unwrap(), ..ScannerOptions::default() };
         let cache = Arc::clone(&self.cache);
-        Scanner::new(reader, Arc::new(one_volume()), journal, cache, home_anchor(&self.root), options)
+        let home = home_anchor(&self.root);
+        let places = self.places.clone();
+        let anchor: AnchorResolver = Arc::new(move |folder| {
+            places.iter().find(|place| place.folder == folder).map(|place| place.path.clone()).or_else(|| home(folder))
+        });
+        Scanner::new(reader, Arc::new(one_volume()), journal, cache, anchor, options)
             .with_clock(Arc::clone(&self.clock) as _)
     }
 
     pub(crate) fn request(&self, mode: WalkMode) -> WalkRequest<'_> {
-        WalkRequest { roots: &self.roots, interests: &self.interests, avoid: &self.avoid, mode }
+        WalkRequest { roots: &self.roots, interests: &self.interests, avoid: &self.avoid, places: &self.places, mode }
     }
 
     /// Walks in `mode` with `scanner` and commits when the walk succeeds.

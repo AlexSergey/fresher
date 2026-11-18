@@ -23,7 +23,8 @@ pub(super) fn committed(
     let scanner = scanner(Arc::new(StdReader::new()), &root, 2).with_clock(Arc::new(FakeClock::at(TAKEN)));
     let (roots, interests): ([PathBuf; 1], InterestSet) = ([root.clone()], set_of(&[]));
     let avoid: Vec<PathBuf> = avoid.iter().map(|place| root.join(place)).collect();
-    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &avoid, mode: WalkMode::Full };
+    let request =
+        WalkRequest { roots: &roots, interests: &interests, avoid: &avoid, places: &[], mode: WalkMode::Full };
     scanner.walk(&request, &CancelToken::new(), &mut |_| {}, &mut |_| {}).unwrap();
     let claims: Vec<ClaimedPath> = claims
         .iter()
@@ -247,6 +248,7 @@ mod positive {
             roots: &roots,
             interests: &interests,
             avoid: &[],
+            places: &[],
             mode: fresher_core::WalkMode::Full,
         };
         let mut ids = Vec::new();

@@ -32,6 +32,7 @@ const volume = (parts: readonly MapPart[], overrides: Partial<VolumeMap> = {}): 
   kind: 'internal',
   name: 'Macintosh HD',
   parts: [...parts],
+  places: [],
   purgeable: 18 * GB,
   roots: [],
   ...overrides,

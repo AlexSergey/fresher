@@ -53,7 +53,7 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
 | `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
-| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
+| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
 | `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos |
 | `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
@@ -83,9 +83,12 @@ Rules of the layout:
   ([`removal.md`](./removal.md), "Reach and the sandbox").
 - **Sandbox mode** (plan [007](../plans/007-safe-development/readme.md), a debug build only, `app/tauri/src/sandbox.rs`):
   `FRESHER_SANDBOX=<folder>` makes the composition (`sandbox_engine`) live entirely in a folder the sandbox generator
-  made: its `home/` is `~` and the known folders, `.fresher-data/` the data folder, `home/.Trash` the Trash, the
-  cleaner is `Reach::SandboxFolder`, and the protection is the real Mac's list joined with the sandbox's
-  (`Protection::joined`). The scanner's avoid list is the places that prompt of both homes, so no scan raises a
+  made: its `home/` is `~` and the known folders (its `private/var/folders/xx/sandbox/T` and `private/tmp` the two
+  temporary places), `.fresher-data/` the data folder, `home/.Trash` the Trash, the cleaner is
+  `Reach::SandboxFolder`, and the protection is the real Mac's list joined with the sandbox home's and its temporary
+  places' (`Protection::joined`). The walk's reader is the bulk reader seen through the sandbox's stated facts
+  (`FactsLens` over `world.toml`'s `[[entry]]` lines, plan 017): an old status change, an owner, a flag or a socket
+  that cannot be made on disk; the cleaner reads the disk. The scanner's avoid list is the places that prompt of both homes, so no scan raises a
   system prompt. Volumes, open files, commands and access stay real, read-only; the running apps are never the Mac's
   but the sandbox's declared ones (`world.toml`, none without it: plan 016), and the clock starts at the moment the
   generator wrote into `world.toml` and runs from there (`StartedClock`; the system's without one), so the case files'
@@ -119,7 +122,7 @@ Rules of the layout:
 | `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
 | `CleanupJournal` | `fresher-store`'s `FileCleanupJournal`                                                                          | `MemoryCleanupJournal`                                      |
 | `DiskWalk`       | `fresher-scanner`'s `Scanner`, with the macOS reader in the app                                                 | `NaiveWalk` on a fixture tree                               |
-| `FolderReader`   | `fresher-macos`'s `MacFolderReader` (bulk read); `fresher-scanner`'s portable `StdReader`                       | `StdReader` on a fixture tree                               |
+| `FolderReader`   | `fresher-macos`'s `MacFolderReader` (bulk read); `fresher-scanner`'s portable `StdReader`; in sandbox mode `MacFolderReader` through `FactsLens` | `StdReader` on a fixture tree, through `FactsLens` for its stated facts |
 | `ChangeJournal`  | `fresher-macos`'s `MacChangeJournal` (FSEvents)                                                                 | `FakeChangeJournal` (a script)                              |
 | `Volumes`        | `fresher-macos`'s `MacVolumes`: `identify`, `available` (what a cleanup measures), `space` (the map's volume)   | `FakeVolumes` (`with_space`, `answering_available`)         |
 | `ScanCache`      | `fresher-store`'s `FileScanCache`                                                                               | `MemoryScanCache`                                           |
@@ -175,18 +178,32 @@ No database: the app keeps its own state in small plain files, with nothing to i
 - **The cache body** (the scanner's `codec`): its own tree format version, the time the state was taken, the roots with
   their volumes and journal positions, the avoid list, the interest fingerprint and the claims table; then every node
   of the frozen tree depth-first, children in name order — its name front-coded against the previous sibling, its
-  flags, child count, own bytes, modification time, hits, owner and access (one byte), all as variable-length
-  integers — then the hard link and clone groups. Totals are not stored: the reader sums them again. A body that does
-  not read whole is refused (one full scan). A body whose file would pass the cap (measured compressed, as the store
-  writes it) has its smallest subtrees with no hit, claim or unreadable folder collapsed into their folder (totals and
-  counts only) until it fits; one that does not fit even then is not saved.
+  flags, child count, own bytes, modification time, hits, for a node with hits its status change, access and inside,
+  owner and access (one byte), all as variable-length integers — then the hard link and clone groups. Totals are not
+  stored: the reader sums them again. A body that does not read whole is refused (one full scan). A body whose file
+  would pass the cap (measured compressed, as the store writes it) has its smallest subtrees with no hit, claim or
+  unreadable folder collapsed into their folder (totals and counts only) until it fits; one that does not fit even
+  then is not saved.
 - **Rescan and restore** (the scanner's `rescan`): every committed scan is saved to the cache with each root's journal
   position, taken before the walk read anything. A scan the user starts (`WalkMode::Auto`) loads the cache, checks it
   is of the same roots, volumes, avoid list and interests, asks the change journal what changed since (`ChangeJournal`,
   FSEvents), reads again only those folders with their parents and the unreadable ones, copies the rest of the tree,
   then reads a sample of the copied folders: one difference, a gap in the journal, a position older than two weeks or
   too many changes, and the scan is full (`WalkSummary::fallback` says why). At launch the engine restores the last
-  state (`WalkMode::Restore`): the cache only, no folder read, the modules with interests run over its matches.
+  state (`WalkMode::Restore`): the cache only, no folder read, the modules with interests run over its matches. The
+  places walked outside the roots are never served from the cache: a rescan walks each again in full, whatever the
+  journal says (it reports no read, and a status change through a hard link elsewhere moves no event in the folder),
+  and a restore emits nothing inside one.
+- **Places outside the scan roots** (`WalkRequest.places`, the engine's `places.rs`): the user's temporary folder and
+  `/private/tmp` (`KnownFolder::is_walked_place`), when a registered module's interest is anchored in one, enabled or
+  not, it lies outside the home, and no scan root holds it or lies in it, are walked as roots of their own after the
+  scan roots: only the interests anchored in a place match there, a folder of another user is listed as itself and
+  not entered (`NotScanned::OthersFolder`, which leaves the scan complete), and `<UserTemp>/TemporaryItems` is never
+  opened (`NotScanned::SystemItems`, never a reason to ask for Full Disk Access). A place that is missing or cannot
+  be read is not scanned, with why, and never stops the walk. The places are not in the cache's key (changed places:
+  `OtherRoots`). The cleaner counts the last scan's places as roots; the engine skips a place the cleaner's
+  protection (`Cleaner::protection`) refuses for ever; the storage map shows each place as a root of its own, named
+  by its known folder (`VolumeMap.places`).
 - **The scan in memory** (the scanner's `walk`, `tree` and `matcher`): one parallel pass, a worker per core (at most
   16) taking folders from one queue, each folder read in one bulk call per batch of entries, every entry matched
   against every module's interests with one lookup, and one aggregator building the tree. Files under 1 MiB are

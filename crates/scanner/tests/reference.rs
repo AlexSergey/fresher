@@ -8,13 +8,15 @@ mod negative {
     use std::os::unix::fs::{PermissionsExt, symlink};
     use std::sync::Arc;
 
-    use fresher_core::{Claim, Completeness, EntryFacts, EntryKind, Pattern, Removability, Unreadable};
+    use fresher_core::{Claim, Completeness, EntryFacts, EntryKind, Pattern, Removability, Timestamp, Unreadable};
     use fresher_scanner::StdReader;
     use fresher_testing::FixtureTree;
 
     #[cfg(target_os = "macos")]
     use crate::support::LockedHome;
-    use crate::support::{canonical, every_interest, facts_of, interest, reference, scanner, set_of};
+    use crate::support::{
+        OLD, SpecialHome, TimesHome, canonical, every_interest, facts_of, interest, reference, scanner, set_of,
+    };
 
     #[test]
     fn an_unreadable_folder_is_reported_by_kind_and_makes_whole_sizes_partial() {
@@ -96,6 +98,17 @@ mod negative {
     }
 
     #[test]
+    fn a_pipe_named_like_a_marker_is_not_a_marker() {
+        let home = SpecialHome::new();
+        let set = SpecialHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert_eq!(home.matched(&fast), ["x/pipe", "x/socket"].map(std::path::PathBuf::from));
+    }
+
+    #[test]
     #[cfg(target_os = "macos")]
     fn the_std_reader_gives_no_removable_facts_to_what_the_user_cannot_remove() {
         let home = LockedHome::new();
@@ -114,19 +127,71 @@ mod negative {
         assert_eq!(Removability::of(folder), Removability::NeedsAdministrator);
         assert_eq!(Removability::of(locked), Removability::Locked);
     }
+
+    #[test]
+    fn an_archive_tools_old_times_do_not_hide_the_status_change() {
+        let home = TimesHome::new();
+        let set = TimesHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        let archive = home.inside(&fast, "archive");
+        assert_eq!(archive.newest_change, Some(home.archive_status_change()));
+        assert!(archive.newest_change > Some(Timestamp::from_secs(OLD)));
+        assert!(archive.complete && !archive.special && !archive.foreign);
+    }
+
+    #[test]
+    fn a_folder_holding_an_unreadable_folder_is_not_complete() {
+        let home = TimesHome::new();
+        let set = TimesHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert!(!home.inside(&fast, "locked").complete);
+    }
+
+    #[test]
+    fn a_folder_holding_a_pipe_is_special() {
+        let home = TimesHome::new();
+        let set = TimesHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        let pipes = home.inside(&fast, "pipes");
+        assert!(pipes.special && pipes.complete);
+        assert!(!home.inside(&fast, "archive").special);
+    }
 }
 
 mod positive {
     use std::fs;
     use std::sync::Arc;
 
-    use fresher_core::{CACHEDIR_SIGNATURE, EntryFacts, MarkerCheck};
+    use fresher_core::{CACHEDIR_SIGNATURE, EntryFacts, EntryKind, MarkerCheck};
     use fresher_scanner::StdReader;
     use fresher_testing::FixtureTree;
 
     #[cfg(target_os = "macos")]
     use crate::support::LockedHome;
-    use crate::support::{canonical, every_interest, facts_of, fixtures, reference, scanner, set_of};
+    use crate::support::{SpecialHome, canonical, every_interest, facts_of, fixtures, reference, scanner, set_of};
+
+    #[test]
+    fn a_pipe_and_a_socket_match_as_themselves() {
+        let home = SpecialHome::new();
+        let set = SpecialHome::interests();
+
+        let fast = scanner(Arc::new(StdReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert_eq!(fast.matches.len(), 2);
+        for found in &fast.matches {
+            assert_eq!((found.kind, found.sizes.allocated.bytes()), (EntryKind::Other, 0), "{}", found.path.display());
+        }
+    }
 
     #[test]
     fn the_scanner_and_the_reference_agree_on_every_fixture_home() {
@@ -160,6 +225,7 @@ mod positive {
         )
         .unwrap();
         fs::write(tree.root().join("project/cache/CACHEDIR.TAG"), CACHEDIR_SIGNATURE).unwrap();
+        fresher_testing::settle_access_time(&tree.root().join("project/cache/CACHEDIR.TAG")).unwrap();
         let root = canonical(tree.root());
         let set = set_of(&every_interest());
 
@@ -192,70 +258,25 @@ mod positive {
 
 mod property {
     use std::fs;
-    use std::os::unix::fs::{PermissionsExt, symlink};
-    use std::path::{Path, PathBuf};
+    use std::os::unix::fs::PermissionsExt;
     use std::sync::Arc;
 
-    use fresher_core::CACHEDIR_SIGNATURE;
     use fresher_scanner::StdReader;
     use proptest::prelude::*;
 
-    use crate::support::{canonical, every_interest, reference, scanner, set_of};
-
-    const NAMES: [&str; 10] =
-        ["a", "b", "node_modules", "Caches", "Library", "Logs", "x.json", "CACHEDIR.TAG", "package.json", "Cargo.toml"];
-
-    /// One thing to create: a kind (folder, file, link out, link in, hard link, tag, unreadable folder), a path of
-    /// names from `NAMES`, and a size.
-    type Item = (u8, Vec<usize>, u64);
-
-    fn build(root: &Path, items: &[Item]) -> Vec<PathBuf> {
-        let mut files = Vec::new();
-        let mut locked = Vec::new();
-        for (kind, names, size) in items {
-            let path = names.iter().fold(root.to_path_buf(), |path, &name| path.join(NAMES[name % NAMES.len()]));
-            if path.symlink_metadata().is_ok() {
-                continue;
-            }
-            let Some(parent) = path.parent() else { continue };
-            if fs::create_dir_all(parent).is_err() {
-                continue;
-            }
-            let made = match kind % 7 {
-                0 => fs::create_dir(&path).is_ok(),
-                1 => fs::File::create(&path).and_then(|file| file.set_len(*size)).is_ok(),
-                2 => symlink("/usr", &path).is_ok(),
-                3 => symlink(root.join("a"), &path).is_ok(),
-                4 => files.first().is_some_and(|target: &PathBuf| fs::hard_link(target, &path).is_ok()),
-                5 => fs::write(&path, if size % 2 == 0 { CACHEDIR_SIGNATURE } else { b"Signature: 0" }).is_ok(),
-                _ => {
-                    fs::create_dir(&path).is_ok() && {
-                        locked.push(path.clone());
-                        true
-                    }
-                }
-            };
-            if made && matches!(kind % 7, 1 | 5) {
-                files.push(path);
-            }
-        }
-        for folder in &locked {
-            let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o000));
-        }
-        locked
-    }
+    use crate::support::{canonical, every_interest, random_items, random_tree, reference, scanner, set_of};
 
     proptest! {
         #![proptest_config(ProptestConfig { cases: 48, ..ProptestConfig::default() })]
 
         #[test]
         fn the_scanner_and_the_reference_agree_on_random_trees(
-            items in prop::collection::vec((0_u8..7, prop::collection::vec(0_usize..10, 1..4), 0_u64..5_000_000), 0..40),
+            items in random_items(),
             chosen in prop::collection::vec(any::<bool>(), 8),
         ) {
             let folder = tempfile::tempdir().unwrap();
             let root = canonical(folder.path());
-            let locked = build(&root, &items);
+            let locked = random_tree(&root, &items);
             let interests: Vec<_> =
                 every_interest().into_iter().zip(&chosen).filter(|(_, keep)| **keep).map(|(interest, _)| interest).collect();
             let set = set_of(&interests);

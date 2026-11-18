@@ -18,6 +18,7 @@ use crate::matcher::Matcher;
 use crate::tree::access::NodeAccess;
 use crate::tree::arena::Tree;
 use crate::tree::node::Flag;
+use crate::tree::times::Times;
 use crate::walk::aggregator::{Aggregator, Callbacks};
 use crate::walk::boundary::Boundary;
 use crate::walk::queue::{Job, Lane, WorkQueue};
@@ -71,6 +72,7 @@ impl Walk<'_> {
                 root_device: root.identity.device,
                 parent_siblings: None,
                 is_root: true,
+                times: Times::NONE,
             });
         }
         self.finish(tree, summary, jobs, cancel, on_match, on_progress)
@@ -170,5 +172,11 @@ fn tree_full(error: crate::tree::TreeError) -> WalkError {
     WalkError::Commit { kind: io::ErrorKind::OutOfMemory }
 }
 
+#[cfg(test)]
+mod facts_lens_tests;
+#[cfg(test)]
+mod inside_tests;
+#[cfg(test)]
+mod places_tests;
 #[cfg(test)]
 pub(crate) mod tests;

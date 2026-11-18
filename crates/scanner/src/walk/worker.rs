@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::sync::mpsc::SyncSender;
 
 use fresher_core::{
-    CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, EntryKind, FolderIdentity, FolderListing, FolderReader, MarkerCheck,
-    ReadError, Sizes, is_valid_cachedir_tag,
+    CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, EntryKind, FolderIdentity, FolderListing, FolderReader, Inside,
+    MarkerCheck, ReadError, Sizes, is_valid_cachedir_tag,
 };
 
 use crate::matcher::entry::sibling_mask;
@@ -16,6 +16,7 @@ use crate::matcher::state::TrieState;
 use crate::matcher::{Hits, Matcher};
 use crate::tree::fold::{FolderBatch, SharedFile, fold};
 use crate::tree::node::{Hit, NodeIndex, Sums};
+use crate::tree::times::Times;
 use crate::walk::boundary::{Boundary, Decision};
 use crate::walk::errors;
 use crate::walk::queue::{Job, WorkQueue};
@@ -42,6 +43,8 @@ pub(crate) struct Child {
     pub(crate) decision: Decision,
     /// An interest claims it whole: its subtree is summed, not kept.
     pub(crate) whole: bool,
+    /// Its times in the listing, for its own hits.
+    pub(crate) times: Times,
 }
 
 /// What one job gives the aggregator.
@@ -82,10 +85,12 @@ pub(crate) struct FolderReport {
     pub(crate) counted: Counted,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct OpaqueReport {
     /// The folder's own marker hits, when it is the opaque root.
     pub(crate) own_hits: Vec<Hit>,
+    /// The folder's own times, for its own hits.
+    pub(crate) own_times: Times,
     /// The plain files and links, for the tree.
     pub(crate) sums: Sums,
     /// The files whose bytes may be shared, counted once by the tree.
@@ -95,8 +100,27 @@ pub(crate) struct OpaqueReport {
     pub(crate) folders: u32,
     /// Something in it could not be read or was not entered.
     pub(crate) incomplete: bool,
+    /// What its entries hold, for the subtree's inside.
+    pub(crate) inside: Inside,
     pub(crate) children: Vec<Child>,
     pub(crate) counted: Counted,
+}
+
+impl Default for OpaqueReport {
+    fn default() -> Self {
+        Self {
+            own_hits: Vec::new(),
+            own_times: Times::NONE,
+            sums: Sums::ZERO,
+            shared: Vec::new(),
+            sizes: Sizes::ZERO,
+            folders: 0,
+            incomplete: false,
+            inside: Inside::EMPTY,
+            children: Vec::new(),
+            counted: Counted::default(),
+        }
+    }
 }
 
 /// Takes jobs until the queue ends; a cancelled token or a gone aggregator stops the walk.
@@ -128,7 +152,13 @@ fn folder(context: Context<'_>, job: &Job, listing: &FolderListing) -> Body {
     if !is_opaque_root {
         return Body::Opaque(summed(context, job, listing, Vec::new()));
     }
+    // In a place walked outside the scan roots, only the interests anchored in it match.
+    let in_place = context.boundary.in_place(&job.path);
     let facts = context.matcher.folder(listing);
+    let facts = if in_place { facts.without_markers() } else { facts };
+    let match_entry = |name: &[u8], kind: EntryKind| {
+        if in_place { context.matcher.anchored(job.state, name) } else { context.matcher.entry(job.state, name, kind) }
+    };
     let own_hits = if job.is_root { Vec::new() } else { own_hits(context, job, facts.markers()) };
     if job.opaque.is_some() || own_hits.iter().any(|hit| context.matcher.claims_whole(hit.interest)) {
         return Body::Opaque(summed(context, job, listing, own_hits));
@@ -147,27 +177,26 @@ fn folder(context: Context<'_>, job: &Job, listing: &FolderListing) -> Body {
             if entry.kind == EntryKind::File {
                 counted.bytes = counted.bytes.saturating_add(entry.sizes.logical.bytes());
             }
-            hits.push(context.matcher.entry(job.state, name, entry.kind));
+            hits.push(match_entry(name, entry.kind));
             continue;
         }
         let path = job.path.join(OsStr::from_bytes(name));
-        let decision = context.boundary.decide(&path, entry.device, job.root_device);
-        let found = if decision == Decision::Enter {
-            context.matcher.entry(job.state, name, entry.kind)
-        } else {
-            Hits::default()
-        };
+        let decision = context.boundary.decide(&path, entry.device, entry.access.owner, job.root_device);
+        // Another user's folder in a place is listed as itself, so a module can say why it is left alone.
+        let listed = matches!(decision, Decision::Enter | Decision::NotScanned(fresher_core::NotScanned::OthersFolder));
+        let found = if listed { match_entry(name, entry.kind) } else { Hits::default() };
         if decision != Decision::NotScanned(fresher_core::NotScanned::OtherVolume) {
             counted.entries += 1;
         }
         let whole = found.as_slice().iter().any(|&interest| context.matcher.claims_whole(interest));
         let identity = FolderIdentity { device: entry.device, file_id: entry.file_id };
         let state = context.matcher.child_state(job.state, name);
-        children.push(Child { path, identity, state, decision, whole });
+        children.push(Child { path, identity, state, decision, whole, times: Times::of(entry) });
         hits.push(found);
     }
     let mut batch = fold(job.node, listing, &facts, &hits, context.threshold, context.user);
     batch.own_hits = own_hits;
+    batch.own_times = job.times;
     let child_siblings = (!facts.siblings().is_empty()).then(|| Arc::from(facts.siblings()));
     Body::Folder(FolderReport { batch, children, child_siblings, counted })
 }
@@ -189,10 +218,13 @@ fn own_hits(context: Context<'_>, job: &Job, markers: &[u32]) -> Vec<Hit> {
         .collect()
 }
 
-/// Sums a folder inside an opaque subtree: nothing in it is matched or kept.
+/// Sums a folder inside an opaque subtree: nothing in it is matched or kept; every entry joins the subtree's inside,
+/// and a folder not entered makes it incomplete.
 fn summed(context: Context<'_>, job: &Job, listing: &FolderListing, own_hits: Vec<Hit>) -> OpaqueReport {
-    let mut report = OpaqueReport { own_hits, ..OpaqueReport::default() };
+    let mut report = OpaqueReport { own_hits, own_times: job.times, ..OpaqueReport::default() };
     for (name, entry) in listing.iter() {
+        report.inside.join(entry, context.user);
+        report.inside.join_name(name);
         if entry.error.is_some() {
             report.incomplete = true;
             continue;
@@ -201,7 +233,10 @@ fn summed(context: Context<'_>, job: &Job, listing: &FolderListing, own_hits: Ve
         match entry.kind {
             EntryKind::Folder => {
                 let path = job.path.join(OsStr::from_bytes(name));
-                let decision = context.boundary.decide(&path, entry.device, job.root_device);
+                let decision = context.boundary.decide(&path, entry.device, entry.access.owner, job.root_device);
+                if decision != Decision::Enter {
+                    report.inside.complete = false;
+                }
                 match decision {
                     Decision::NotScanned(fresher_core::NotScanned::OtherVolume) => continue,
                     Decision::Enter => {}
@@ -209,7 +244,8 @@ fn summed(context: Context<'_>, job: &Job, listing: &FolderListing, own_hits: Ve
                 }
                 report.folders = report.folders.saturating_add(1);
                 let identity = FolderIdentity { device: entry.device, file_id: entry.file_id };
-                report.children.push(Child { path, identity, state: TrieState::DEAD, decision, whole: false });
+                let times = Times::NONE;
+                report.children.push(Child { path, identity, state: TrieState::DEAD, decision, whole: false, times });
             }
             EntryKind::File => {
                 report.counted.bytes = report.counted.bytes.saturating_add(entry.sizes.logical.bytes());
@@ -223,7 +259,7 @@ fn summed(context: Context<'_>, job: &Job, listing: &FolderListing, own_hits: Ve
                     report.sums = report.sums.saturating_add(Sums::file(entry.sizes));
                 }
             }
-            EntryKind::Symlink => report.sums = report.sums.saturating_add(Sums::file(Sizes::ZERO)),
+            EntryKind::Symlink | EntryKind::Other => report.sums = report.sums.saturating_add(Sums::file(Sizes::ZERO)),
         }
     }
     report

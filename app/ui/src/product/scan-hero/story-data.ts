@@ -24,6 +24,7 @@ export const STORY_DICTIONARY: Dictionary = {
   'core.completeness.partial': 'Some files could not be read, so the real size is a little bigger.',
   'core.group.debug.name': 'Debug',
   'core.group.development.name': 'Development',
+  'core.group.system.name': 'System',
   'core.left-out.summary.one': '{count} item left out ({size}):',
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'demo.caches.what': 'Example data: made-up cache folders of made-up apps, shown by the demo module.',

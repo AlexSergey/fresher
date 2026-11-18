@@ -10,6 +10,7 @@ pub(crate) mod node;
 mod opaque;
 #[cfg(test)]
 pub(crate) mod testing;
+pub(crate) mod times;
 
 /// Why the tree refused a change.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]

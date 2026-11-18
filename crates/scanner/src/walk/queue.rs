@@ -7,6 +7,7 @@ use fresher_core::FolderIdentity;
 
 use crate::matcher::state::TrieState;
 use crate::tree::node::NodeIndex;
+use crate::tree::times::Times;
 
 /// One folder to read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -25,6 +26,8 @@ pub(crate) struct Job {
     pub(crate) parent_siblings: Option<Arc<[(u32, u64)]>>,
     /// A scan root: it is never matched itself.
     pub(crate) is_root: bool,
+    /// The folder's own times, from its parent's listing, for its own hits; none for a root.
+    pub(crate) times: Times,
 }
 
 /// Which lane a job waits in.
@@ -125,6 +128,7 @@ mod tests {
 
     use crate::matcher::state::TrieState;
     use crate::tree::node::NodeIndex;
+    use crate::tree::times::Times;
     use crate::walk::queue::Job;
 
     fn job(name: &str) -> Job {
@@ -137,6 +141,7 @@ mod tests {
             root_device: 1,
             parent_siblings: None,
             is_root: false,
+            times: Times::NONE,
         }
     }
 

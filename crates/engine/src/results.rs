@@ -9,7 +9,7 @@ use std::sync::{Arc, OnceLock};
 use fresher_core::{
     ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness, DiskState, Finding,
     FindingId, FindingOrder, FindingsPage, HiddenBy, HiddenModule, IgnoredCount, LastScan, ModuleGroup, ModuleId,
-    Sizes, Subject,
+    Place, Sizes, Subject,
 };
 
 use crate::claims::Claims;
@@ -27,6 +27,8 @@ pub(crate) struct Results {
     findings: Vec<Finding>,
     ignored: Ignored,
     roots: Vec<PathBuf>,
+    /// The places the current scan walks outside its roots.
+    walked: Vec<Place>,
     limited: BTreeSet<CategoryId>,
     next_id: Option<u32>,
     last: Option<LastScan>,
@@ -37,6 +39,8 @@ pub(crate) struct Results {
     shares: Arc<OnceLock<Shares>>,
     /// The volumes of `state`'s roots, read at its commit.
     state_volumes: RootVolumes,
+    /// The places walked outside the roots by the scan that committed `state`.
+    state_walked: Arc<[Place]>,
     /// The findings of the scan that committed `state` that name their app: the map's apps are of that scan, never of
     /// a later one that did not commit.
     state_findings: Arc<[Finding]>,
@@ -55,6 +59,7 @@ impl fmt::Debug for Results {
             .field("findings", &self.findings.len())
             .field("ignored", &self.ignored)
             .field("roots", &self.roots)
+            .field("walked", &self.walked)
             .field("limited", &self.limited)
             .field("next_id", &self.next_id)
             .field("last", &self.last)
@@ -62,6 +67,7 @@ impl fmt::Debug for Results {
             .field("places", &self.places.is_some())
             .field("shares", &self.shares.get().is_some())
             .field("state_volumes", &self.state_volumes)
+            .field("state_walked", &self.state_walked)
             .field("state_findings", &self.state_findings.len())
             .field("volumes", &self.volumes)
             .field("scanning", &self.scanning)
@@ -86,6 +92,7 @@ impl Results {
             findings: Vec::new(),
             ignored: Ignored::default(),
             roots: Vec::new(),
+            walked: Vec::new(),
             limited: BTreeSet::new(),
             next_id: Some(1),
             last: None,
@@ -93,6 +100,7 @@ impl Results {
             places: None,
             shares: Arc::new(OnceLock::new()),
             state_volumes: RootVolumes::default(),
+            state_walked: Arc::from([]),
             state_findings: Arc::from([]),
             volumes: RootVolumes::default(),
             scanning: false,
@@ -100,11 +108,12 @@ impl Results {
         }
     }
 
-    /// Forgets the previous scan's findings for those of a scan of `roots`, whose volumes are `volumes`; gives the
-    /// first id of the new scan (`None` when the ids ran out).
-    pub(crate) fn begin(&mut self, roots: &[PathBuf], volumes: RootVolumes) -> Option<u32> {
+    /// Forgets the previous scan's findings for those of a scan of `roots` and of the `places` outside them, whose
+    /// volumes are `volumes`; gives the first id of the new scan (`None` when the ids ran out).
+    pub(crate) fn begin(&mut self, roots: &[PathBuf], places: &[Place], volumes: RootVolumes) -> Option<u32> {
         self.findings.clear();
         roots.clone_into(&mut self.roots);
+        places.clone_into(&mut self.walked);
         self.volumes = volumes;
         self.limited.clear();
         self.claims = None;
@@ -173,9 +182,14 @@ impl Results {
         self.findings.iter().filter(|finding| !self.ignored.hides(finding))
     }
 
-    /// The roots the current scan walked, as the settings had them.
-    pub(crate) fn roots(&self) -> &[PathBuf] {
-        &self.roots
+    /// The places the current scan walked outside its roots.
+    pub(crate) fn walked(&self) -> &[Place] {
+        &self.walked
+    }
+
+    /// Everything the current scan walked: its roots as the settings had them, then its places' paths.
+    pub(crate) fn walked_roots(&self) -> Vec<PathBuf> {
+        self.roots.iter().cloned().chain(self.walked.iter().map(|place| place.path.clone())).collect()
     }
 
     /// Drops `removed` from the findings, and with them every finding at or below the path of one of `cleared` (those
@@ -235,6 +249,7 @@ impl Results {
         self.places = Some(Arc::new(places));
         self.shares = Arc::new(OnceLock::new());
         self.state_volumes = volumes;
+        self.state_walked = Arc::from(self.walked.as_slice());
         self.state_findings =
             self.findings.iter().filter(|finding| finding.finding().app().is_some()).cloned().collect();
     }
@@ -251,6 +266,7 @@ impl Results {
             shares: Arc::clone(&self.shares),
             ignored: self.ignored.clone(),
             volumes: self.state_volumes.clone(),
+            walked: Arc::clone(&self.state_walked),
             findings: Arc::clone(&self.state_findings),
         })
     }
@@ -358,6 +374,8 @@ pub(crate) struct Committed {
     pub(crate) places: Arc<AppPlaces>,
     /// The volumes of the state's roots, read at its commit.
     pub(crate) volumes: RootVolumes,
+    /// The places walked outside the roots by the scan that committed the state.
+    pub(crate) walked: Arc<[Place]>,
     /// The findings of the scan that committed the state that name their app, the ignored ones too.
     pub(crate) findings: Arc<[Finding]>,
     shares: Arc<OnceLock<Shares>>,

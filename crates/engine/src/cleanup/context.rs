@@ -1,5 +1,6 @@
-//! What the cleaner checks against, as it stands now: the scan roots in the settings, the protection with the user's
-//! ignored paths, the access status probed again, and the guarded places under the roots.
+//! What the cleaner checks against, as it stands now: the scan roots in the settings and the places the last scan
+//! walked outside them, the protection with the user's ignored paths, the access status probed again, and the guarded
+//! places under the roots.
 
 use std::path::PathBuf;
 
@@ -22,10 +23,11 @@ impl Context {
     /// the user's ignored paths, what is inside them and what holds them; the cleaner keeps the protected places it
     /// was built with. An ignore list the protection refuses blocks the cleanup: it fails closed.
     pub(crate) fn now(shared: &Shared) -> Result<Self, CommandError> {
-        let (roots, ignored) = {
+        let (mut roots, ignored) = {
             let settings = lock(&shared.settings)?;
             (settings.scan_roots(), settings.ignored_paths())
         };
+        roots.extend(lock(&shared.results)?.walked().iter().map(|place| place.path.clone()));
         let protection = Protection::default().with_ignored(&ignored).map_err(|error| {
             tracing::warn!(%error, "the ignored paths cannot protect anything");
             CommandError::CleaningBlocked { reason: BlockedReason::Settings }

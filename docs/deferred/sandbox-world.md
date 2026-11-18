@@ -7,7 +7,15 @@ an external tool's answers, permissions or the clock is planned
 running apps: its plan 01 builds installed apps as bundles (`[[case.app]]`, item 1 below), the declared running apps
 (`running = true`, `[[case.running]]`, `world.toml` at the sandbox's root; the running part of item 2), sandbox mode
 taking its running apps from the sandbox, never the real Mac (part of item 3), and the left-out expectation
-(`[[case.left-out]]`, from plan 011). Everything else below stays deferred.
+(`[[case.left-out]]`, from plan 011).
+
+**Partly taken by plan [017](../plans/017-temp-files/readme.md)** (2026-11-18), the first module that judges by file
+facts the disk cannot be made to show: a case states a file's or a folder's status change, access time, owner
+(`system`, `other-user`), flags (`user-lock`, `system-lock`, `no-unlink`, `restricted`) and kind (`socket`, `pipe`),
+and a link's age and status change; `world.toml` lists them as `[[entry]]` lines, and sandbox mode, the autotest, the
+fixtures and the core e2e read the disk through `FactsLens`, which reports them for exactly the stated paths (the
+cleaner reads the disk). The sandbox also lays out the two temporary places. Open files, tools, access and the steps
+between scans stay deferred.
 
 ## What is postponed
 
@@ -15,7 +23,8 @@ Plan [007](../plans/007-safe-development/readme.md)'s former plan 06: a case fil
 declares what is not files, and sandbox mode and the sandbox autotests serve it through the fakes plans 008 and 009
 built. The design is in plan 007's [`00-design.md`](../plans/007-safe-development/00-design.md), section 10. Until
 then, sandbox mode keeps volumes, open files, commands and access real and read-only, and the autotests use empty
-fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016).
+fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016), and the
+stated file facts too (plan 017).
 
 ## What doing it needs
 

@@ -1,7 +1,9 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { COMMANDS } from '../src/ipc';
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
+import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
 import { releaseCleanup, requestQuit } from './support/cleanup-mock';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
@@ -85,6 +87,42 @@ const reviewWebStorm = async (page: Page): Promise<void> => {
   }
   await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
   await expect(heading(page, 'Review')).toBeFocused();
+};
+
+// The temporary files module's own texts, as its locale file has them.
+const tmp = (key: string): string => TEMP_DICTIONARY[`temp.${key}`] ?? '';
+
+const TEMP_CATEGORY = tmp('old-files.name');
+
+const tempModule = (page: Page): Locator => page.getByRole('button', { name: /^Temporary files/ });
+
+// Counts the setting updates the page sends to the core from here on.
+const recordUpdates = (page: Page): Promise<void> =>
+  page.evaluate((command) => {
+    const internals = (globalThis as unknown as { __TAURI_INTERNALS__: { invoke: (...args: unknown[]) => unknown } })
+      .__TAURI_INTERNALS__;
+    const invoke = internals.invoke.bind(internals);
+    const counter = { sent: 0 };
+
+    (globalThis as unknown as { __updates: typeof counter }).__updates = counter;
+    internals.invoke = (name: unknown, ...rest: unknown[]): unknown => {
+      counter.sent += name === command ? 1 : 0;
+
+      return invoke(name, ...rest);
+    };
+  }, COMMANDS.updateSetting);
+
+const sentUpdates = (page: Page): Promise<number> =>
+  page.evaluate(() => (globalThis as unknown as { __updates: { sent: number } }).__updates.sent);
+
+// Scans the temporary files script and opens the module's page.
+const openTemp = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.temp);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(tempModule(page)).toContainText('837 MB');
+  await tempModule(page).click();
+  await expect(heading(page, 'Temporary files')).toBeFocused();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -176,6 +214,42 @@ test.describe('negative cases', () => {
     await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
     await releaseCleanup(page);
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
+  });
+
+  test('the left-out lines of the temporary files are not items: nothing on them can be selected', async ({ page }) => {
+    await openTemp(page);
+
+    const category = page.getByRole('region', { name: TEMP_CATEGORY });
+    await expect(category).toContainText(`4,712 items left out (790 MB): ${tmp('left-out.recent')}`);
+    await expect(category.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await category.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
+    await expect(selectionBar(page)).toContainText('5 items selected');
+    await expect(selectionBar(page)).not.toContainText('4,712');
+  });
+
+  test('a value of 6 days is refused with a message and the saved value stays 7', async ({ page }) => {
+    await mockCore(page, SCRIPTS.temp);
+    await page.goto('/');
+    await openSettings(page);
+    const days = page.getByRole('spinbutton', { name: tmp('older-than-days.label') });
+    await expect(days).toHaveValue('7');
+    await recordUpdates(page);
+
+    await days.fill('6');
+
+    await expect(page.getByText('Enter a whole number from 7 to 30.')).toBeVisible();
+    expect(await sentUpdates(page)).toBe(0);
+  });
+
+  test('ignoring the temporary files module puts its findings in no total', async ({ page }) => {
+    await openTemp(page);
+
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(0);
   });
 });
 
@@ -639,5 +713,117 @@ test.describe('positive cases', () => {
     await expect(kept).toContainText(JB.caches);
     await expect(kept).not.toContainText(JB.uninstalled);
     await expect(page.getByRole('list', { name: 'DataGrip' })).toContainText('not installed');
+  });
+
+  test('the sidebar lists Temporary files under System and its page shows the category, Safe and its texts', async ({
+    page,
+  }) => {
+    await openTemp(page);
+
+    await expect(page.getByRole('navigation').getByText('System', { exact: true })).toBeVisible();
+    const category = page.getByRole('region', { name: TEMP_CATEGORY });
+    await expect(category).toContainText('Safe');
+    await expect(category).toContainText('5 items');
+    await category.getByText('About this category').click();
+    for (const key of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(category).toContainText(tmp(`old-files.${key}`));
+    }
+  });
+
+  test('the items left out are lines under the category: the recent ones, the system’s and the pipe', async ({
+    page,
+  }) => {
+    await openTemp(page);
+
+    const category = page.getByRole('region', { name: TEMP_CATEGORY });
+    await expect(category).toContainText(`4,712 items left out (790 MB): ${tmp('left-out.recent')}`);
+    await expect(category).toContainText(`3 items left out (12 MB): ${tmp('left-out.system')}`);
+    await expect(category).toContainText(`1 item left out (0 bytes): ${tmp('left-out.special')}`);
+  });
+
+  test('the temporary findings go from the review to the Trash, and the cleanup is put back from the Cleanups', async ({
+    page,
+  }) => {
+    await openTemp(page);
+    await page.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await expect(page.getByRole('list', { name: `The items of ${TEMP_CATEGORY}` })).toContainText('pip-unpack-ak3j2');
+
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 5 items to the Trash?' });
+    await expect(dialog).toContainText('Safe');
+    await expect(dialog).toContainText(tmp('old-files.if-removed'));
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 5 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: 'pip-unpack-ak3j2' }).first();
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings has the number field at 7 days with its text, and 14 is accepted', async ({ page }) => {
+    await mockCore(page, SCRIPTS.temp);
+    await page.goto('/');
+    await openSettings(page);
+
+    const days = page.getByRole('spinbutton', { name: tmp('older-than-days.label') });
+    await expect(days).toHaveValue('7');
+    await expect(page.getByText(tmp('older-than-days.description'))).toBeVisible();
+    await expect(page.getByRole('switch', { name: tmp('enabled.label') })).toBeChecked();
+
+    await recordUpdates(page);
+
+    await days.fill('14');
+
+    await expect(days).toHaveValue('14');
+    expect(await sentUpdates(page)).toBe(1);
+    await expect(page.getByText('Enter a whole number from 7 to 30.')).toHaveCount(0);
+  });
+
+  test('ignoring the module from its page and the group System from Settings, then restoring both', async ({
+    page,
+  }) => {
+    await openTemp(page);
+
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+
+    await expect(tempModule(page)).toContainText('Ignored');
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    const ignored = page.getByRole('switch', { name: 'Ignore Temporary files' });
+    await expect(ignored).toBeChecked();
+    await ignored.click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(1);
+
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored groups/ }).click();
+    await page.getByRole('switch', { name: 'Ignore System' }).click();
+
+    await expect(page.getByRole('navigation').getByText('System · Ignored')).toBeVisible();
+    await tempModule(page).click();
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await page.getByRole('button', { name: 'Restore the group' }).click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(1);
+    await expect(page.getByRole('navigation').getByText('System · Ignored')).toHaveCount(0);
+  });
+
+  test('the overview by place lists the two temporary folders by their names', async ({ page }) => {
+    await mockCore(page, SCRIPTS.temp);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await expect(cards(page)).toHaveCount(1);
+
+    await page.getByRole('radio', { name: 'By place' }).click();
+
+    const roots = page.getByRole('list', { name: 'Scanned folders' });
+    await expect(roots).toContainText(TEMP_DICTIONARY['core.place.user-temp.name'] ?? '');
+    await expect(roots).toContainText(TEMP_DICTIONARY['core.place.shared-temp.name'] ?? '');
+    await expect(roots.getByText('tmp', { exact: true })).toHaveCount(0);
   });
 });

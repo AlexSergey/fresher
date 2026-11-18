@@ -87,6 +87,7 @@ mod negative {
             roots: &roots,
             interests: &set,
             avoid: &[],
+            places: &[],
             mode: fresher_core::WalkMode::Full,
         };
         fresher_core::DiskWalk::walk(
@@ -109,6 +110,17 @@ mod negative {
         let link = crate::matcher::testing::listing(&[(b"CACHEDIR.TAG", EntryKind::Symlink)]);
         assert_eq!(matcher.folder(&link).markers(), &[] as &[u32]);
         agrees_and_finds_nothing(&fixture("[[dir]]\npath = \"cache/CACHEDIR.TAG\"\n"), &tags);
+    }
+
+    #[test]
+    fn a_pipe_named_like_a_marker_is_not_a_marker() {
+        let tags = [interest(Pattern::MarkerFile("CACHEDIR.TAG".into()), Claim::Whole, &[])];
+        let matcher = compile(&set_of(&tags), Path::new("/home"));
+        let pipe = crate::matcher::testing::listing(&[(b"CACHEDIR.TAG", EntryKind::Other)]);
+        assert_eq!(matcher.folder(&pipe).markers(), &[] as &[u32]);
+        let tree = fixture("[[dir]]\npath = \"cache\"\n");
+        fresher_testing::make_pipe(&tree.root().join("cache/CACHEDIR.TAG")).unwrap();
+        agrees_and_finds_nothing(&tree, &tags);
     }
 
     #[test]
@@ -176,6 +188,22 @@ mod positive {
         let found = agrees("[[dir]]\npath = \"node_modules\"\n[[dir]]\npath = \"a/b/c/node_modules/x\"\n", &modules);
         let paths: Vec<_> = found.iter().map(|found| found.1.clone()).collect();
         assert_eq!(paths, [Path::new("a/b/c/node_modules"), Path::new("node_modules")]);
+    }
+
+    #[test]
+    fn a_folder_name_matches_a_pipe_as_itself() {
+        let tmp = [interest(Pattern::FolderName("tmp".into()), Claim::Item, &[])];
+        let matcher = compile(&set_of(&tmp), Path::new("/home"));
+        let state = matcher.root_state(Path::new("/home"));
+        assert_eq!(matcher.entry(state, b"tmp", EntryKind::Other).as_slice(), [0]);
+        assert_eq!(matcher.entry(state, b"tmp", EntryKind::File).as_slice(), &[] as &[u32]);
+
+        let tree = FixtureTree::from_toml_str("[[dir]]\npath = \"a\"\n").unwrap();
+        fresher_testing::make_pipe(&tree.root().join("a/tmp")).unwrap();
+        let set = set_of(&tmp);
+        let found = matched(&tree, &set);
+        assert_eq!(found, reference(&tree, &set));
+        assert_eq!(found.iter().map(|found| found.1.clone()).collect::<Vec<_>>(), [tree.root().join("a/tmp")]);
     }
 
     #[test]

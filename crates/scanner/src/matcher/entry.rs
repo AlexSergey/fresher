@@ -29,6 +29,13 @@ impl FolderFacts {
     pub(crate) fn siblings(&self) -> &[(u32, u64)] {
         &self.siblings
     }
+
+    /// These facts without the marker hits: in a walked place only anchored interests match.
+    #[must_use]
+    pub(crate) fn without_markers(mut self) -> Self {
+        self.markers.clear();
+        self
+    }
 }
 
 /// The mask of `interest` in `masks`, sorted by interest; 0 when it has none.
@@ -42,8 +49,9 @@ pub(crate) fn sibling_mask(masks: &[(u32, u64)], interest: u32) -> u64 {
 
 impl Matcher {
     /// The interests the entry `name` of kind `kind`, in a folder at `state`, matches by its name, its extension or
-    /// its anchored path. A folder name matches a folder or a link; an extension a file or a link; an anchored path
-    /// any entry. Markers are matched on the folder's own listing ([`Matcher::folder`]).
+    /// its anchored path. A folder name matches anything but a file; an extension anything but a folder; an anchored
+    /// path any entry. A socket, a pipe or a device matches as itself and is never a marker. Markers are matched on the
+    /// folder's own listing ([`Matcher::folder`]).
     pub(crate) fn entry(&self, state: TrieState, name: &[u8], kind: EntryKind) -> Hits {
         let mut hits = Hits::default();
         if kind != EntryKind::File
@@ -57,12 +65,20 @@ impl Matcher {
         {
             hits.extend_from_slice(found.as_slice());
         }
+        hits.extend_from_slice(self.anchored(state, name).as_slice());
+        hits.sort_dedup();
+        hits
+    }
+
+    /// The anchored interests the entry `name`, in a folder at `state`, matches by its path: all that match in a walked
+    /// place.
+    pub(crate) fn anchored(&self, state: TrieState, name: &[u8]) -> Hits {
+        let mut hits = Hits::default();
         if state.is_live()
             && let Some(node) = self.trie_node(self.child_state(state, name))
         {
             hits.extend_from_slice(node.ends.as_slice());
         }
-        hits.sort_dedup();
         hits
     }
 

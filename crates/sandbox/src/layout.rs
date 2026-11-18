@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use fresher_core::{KnownFolder, SANDBOX_MARKER};
+use fresher_core::{KnownFolder, Protection, ProtectionError, SANDBOX_MARKER};
 use fresher_testing::FakeKnownFolders;
 
 use crate::SandboxError;
@@ -12,8 +12,30 @@ pub(crate) const DATA_FOLDER: &str = ".fresher-data";
 pub(crate) const CHECKLIST: &str = "EXPECTED.md";
 /// The world of the case files (the moment of the generation and the apps that are open), at the sandbox's top.
 pub(crate) const WORLD: &str = "world.toml";
-/// The folders of a sandbox, relative to it: the fake home, its Trash, the apps folders and the app's data folder.
-pub(crate) const PARTS: [&str; 5] = ["home", "home/.Trash", "Applications", "System/Applications", DATA_FOLDER];
+/// The folder of every user's temporary and cache folders, relative to the sandbox, as macOS lays it out from `/`.
+const USER_FOLDERS: &str = "private/var/folders";
+/// The sandbox user's own temporary folder.
+pub(crate) const USER_TEMP: &str = "private/var/folders/xx/sandbox/T";
+/// The temporary folder every user shares.
+pub(crate) const SHARED_TEMP: &str = "private/tmp";
+/// The system's temporary folder, which the system keeps.
+const SYSTEM_TEMP: &str = "private/var/tmp";
+/// Inside the user's own `T`: the system's own temporary items.
+const TEMPORARY_ITEMS: &str = "TemporaryItems";
+/// The folders of a sandbox, relative to it: the fake home, its Trash, the apps folders, the app's data folder, and
+/// the temporary places as macOS lays them out from `/` (the user's triplet, its `T` among them, and `private/tmp`).
+pub(crate) const PARTS: [&str; 10] = [
+    "home",
+    "home/.Trash",
+    "Applications",
+    "System/Applications",
+    DATA_FOLDER,
+    "private/var/folders/xx/sandbox/C",
+    "private/var/folders/xx/sandbox/0",
+    USER_TEMP,
+    "private/var/folders/xx/sandbox/X",
+    SHARED_TEMP,
+];
 
 /// A sandbox folder: the marker at its top, the fake home `home/` and the app's places around it
 /// (docs/plans/007-safe-development/00-design.md, "The sandbox folder").
@@ -79,12 +101,37 @@ impl Sandbox {
         self.path.join(WORLD)
     }
 
+    /// The sandbox user's own temporary folder, `private/var/folders/xx/sandbox/T`.
+    pub fn user_temp(&self) -> PathBuf {
+        self.path.join(USER_TEMP)
+    }
+
+    /// The sandbox's shared temporary folder, `private/tmp`.
+    pub fn shared_temp(&self) -> PathBuf {
+        self.path.join(SHARED_TEMP)
+    }
+
     /// The known folders of the sandbox: the user's under `home/`, the apps folders at `Applications/` and
-    /// `System/Applications/`.
+    /// `System/Applications/`, the temporary folders under `private/`: never the Mac's.
     pub fn known_folders(&self) -> FakeKnownFolders {
         FakeKnownFolders::home_layout(self.home())
             .with(KnownFolder::Applications, self.path.join("Applications"))
             .with(KnownFolder::SystemApplications, self.path.join("System").join("Applications"))
+            .with(KnownFolder::UserTemp, self.user_temp())
+            .with(KnownFolder::SharedTemp, self.shared_temp())
+    }
+
+    /// The protection of the sandbox's temporary places, as the Mac's list protects the real ones: every user's
+    /// folders and the system's temporary folder never, but the user's own `T`, carved out and kept whole, and its
+    /// `TemporaryItems` never; the shared temporary folder kept whole. A list of its own, joined to the others: the
+    /// sandbox's `T` is no user's temporary folder of the Mac, so the Mac's list never carves it.
+    pub fn places_protection(&self) -> Result<Protection, ProtectionError> {
+        let temp = self.user_temp();
+        Protection::new(
+            vec![self.path.join(USER_FOLDERS), self.path.join(SYSTEM_TEMP), temp.join(TEMPORARY_ITEMS)],
+            vec![temp.clone(), self.shared_temp()],
+            vec![temp],
+        )
     }
 }
 
@@ -153,6 +200,8 @@ mod tests {
 
         use fresher_core::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
 
+        use fresher_core::Protected;
+
         use super::{laid_out, laid_out_but, signed, user};
         use crate::{Sandbox, SandboxError};
 
@@ -215,6 +264,30 @@ mod tests {
         }
 
         #[test]
+        fn the_sandboxs_temporary_places_are_protected_as_the_macs() {
+            let folder = laid_out(Some(&signed()));
+            let sandbox = Sandbox::open(folder.path(), user(folder.path())).unwrap();
+            let protection = sandbox.places_protection().unwrap();
+
+            for (path, answer) in [
+                // Its `TemporaryItems` is never: `T` is refused as its ancestor, before it is refused whole.
+                ("private/var/folders/xx/sandbox/T", Protected::Ancestor),
+                ("private/tmp", Protected::WholeFolder),
+                ("private/var/folders/xx/sandbox/T/TemporaryItems", Protected::Never),
+                ("private/var/folders/xx/sandbox/T/TemporaryItems/doc", Protected::Never),
+                ("private/var/folders/xx/sandbox/C/cache", Protected::Never),
+                ("private/var/folders/xx/sandbox/0/data", Protected::Never),
+                ("private/var/folders/xx/sandbox/X/code", Protected::Never),
+                ("private/var/folders/yy/other/T/item", Protected::Never),
+                ("private/var/tmp/item", Protected::Never),
+                ("private/var/folders", Protected::Never),
+                ("private", Protected::Ancestor),
+            ] {
+                assert_eq!(protection.check(&sandbox.path().join(path)), Err(answer), "{path}");
+            }
+        }
+
+        #[test]
         fn a_missing_or_linked_part_does_not_open() {
             let folder = laid_out_but(Some(&signed()), "System/Applications");
             let error = Sandbox::open(folder.path(), user(folder.path())).unwrap_err();
@@ -249,6 +322,19 @@ mod tests {
             assert_eq!(locate(KnownFolder::Trash), Some(sandbox.trash()));
             assert_eq!(locate(KnownFolder::Applications), Some(root.join("Applications")));
             assert_eq!(locate(KnownFolder::SystemApplications), Some(root.join("System/Applications")));
+            assert_eq!(locate(KnownFolder::UserTemp), Some(root.join("private/var/folders/xx/sandbox/T")));
+            assert_eq!(locate(KnownFolder::SharedTemp), Some(root.join("private/tmp")));
+        }
+
+        #[test]
+        fn only_items_inside_the_sandboxs_temporary_places_may_go() {
+            let folder = laid_out(Some(&signed()));
+            let sandbox = Sandbox::open(folder.path(), user(folder.path())).unwrap();
+            let protection = sandbox.places_protection().unwrap();
+
+            for inside in ["private/var/folders/xx/sandbox/T/item", "private/tmp/item", "private/tmp/a/b"] {
+                assert_eq!(protection.check(&sandbox.path().join(inside)), Ok(()), "{inside}");
+            }
         }
     }
 }

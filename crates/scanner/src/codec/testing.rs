@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use fresher_core::{EntryAccess, EntryKind, FolderIdentity, MarkerCheck, Timestamp, Unreadable};
+use fresher_core::{EntryAccess, EntryKind, FolderIdentity, Inside, MarkerCheck, Timestamp, Unreadable};
 use proptest::prelude::*;
 
 use crate::codec::encode::GROUP_KINDS;
@@ -11,13 +11,14 @@ use crate::tree::access::NodeAccess;
 use crate::tree::arena::{Shared, Tree};
 use crate::tree::node::{Flag, Hit, NodeIndex, Sums};
 use crate::tree::testing::{Shape, canonical, sums};
+use crate::tree::times::{Stamp, Times};
 
-/// Everything a body keeps of a tree: the canonical nodes, each node's time, owner and access, the roots' identities,
-/// and every group with the paths of its members and the bytes it counts once.
+/// Everything a body keeps of a tree: the canonical nodes, each node's time, owner, access and stamp, the roots'
+/// identities, and every group with the paths of its members and the bytes it counts once.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Snapshot {
     pub(crate) shapes: Vec<Shape>,
-    pub(crate) per_node: Vec<(Option<Timestamp>, u32, NodeAccess)>,
+    pub(crate) per_node: Vec<(Option<Timestamp>, u32, NodeAccess, Stamp)>,
     pub(crate) identities: Vec<FolderIdentity>,
     pub(crate) groups: Vec<(usize, u64, u64, Vec<PathBuf>, Sums)>,
 }
@@ -27,7 +28,7 @@ pub(crate) fn snapshot(tree: &Tree) -> Snapshot {
     let mut stack: Vec<NodeIndex> = tree.roots().iter().rev().map(|root| root.node).collect();
     while let Some(index) = stack.pop() {
         let node = tree.node(index).unwrap();
-        per_node.push((node.modified(), node.owner, node.access));
+        per_node.push((node.modified(), node.owner, node.access, tree.stamp(index)));
         let children: Vec<_> = tree.children(index).collect();
         stack.extend(children.into_iter().rev());
     }
@@ -78,6 +79,10 @@ pub(crate) fn small_tree() -> Tree {
     let app = folder(&mut tree, projects, "app", sums(3, 900, 12_288, 12_288));
     let modules = folder(&mut tree, app, "node_modules", Sums::ZERO);
     tree.add_hits(modules, &[Hit { interest: 3, marker: None, siblings: 0b101 }]).unwrap();
+    let at = |secs| Some(Timestamp::from_secs(secs));
+    tree.set_times(modules, Times { changed: at(1_763_000_200), accessed: None }).unwrap();
+    let inside = Inside { newest_change: at(1_763_000_900), newest_file_access: at(1_762_000_000), ..Inside::EMPTY };
+    tree.set_inside(modules, Some(Inside { foreign: true, ..inside })).unwrap();
     tree.apply_opaque(modules, sums(812, 40 * MIB, 48 * MIB, 48 * MIB), 97, &[]).unwrap();
     let target = folder(&mut tree, app, "target", Sums::ZERO);
     tree.add_hits(target, &[Hit { interest: 5, marker: Some(MarkerCheck::Valid), siblings: 1 }]).unwrap();
@@ -87,6 +92,7 @@ pub(crate) fn small_tree() -> Tree {
     tree.add_own(video, sums(0, 700 * MIB, 700 * MIB, 700 * MIB)).unwrap();
     let link = tree.add_child(app, b"app.log", EntryKind::Symlink).unwrap();
     tree.add_hits(link, &[Hit { interest: 7, marker: Some(MarkerCheck::Invalid), siblings: 0 }]).unwrap();
+    tree.set_times(link, Times { changed: at(1_763_000_300), accessed: at(1_763_000_400) }).unwrap();
     let documents = folder(&mut tree, home, "Documents", Sums::ZERO);
     tree.mark(documents, Flag::Avoided).unwrap();
     let shared = sums(0, 64 * 1024, 64 * 1024, 64 * 1024);
@@ -136,7 +142,7 @@ pub(crate) fn wide_tree(count: usize) -> Tree {
 pub(crate) struct NodeSpec {
     /// Which earlier folder (or root) holds it.
     parent: usize,
-    /// 0 a folder, 1 a kept file, 2 a matched link.
+    /// 0 a folder, 1 a kept file, 2 a matched link, 3 a matched socket, pipe or device.
     kind: u8,
     own: Sums,
     modified: Option<u32>,
@@ -148,7 +154,13 @@ pub(crate) struct NodeSpec {
     state: u8,
     /// A group it belongs to: a hard link group when true, else a clone group; the group's id; the bytes.
     shared: Option<(bool, u8, u32)>,
+    /// Its status change, its access and its inside; kept only when it has hits.
+    stamp: (Option<u32>, Option<u32>, Option<InsideSpec>),
 }
+
+/// An inside: its newest change, its newest file access, the bits of its facts (special, foreign, complete,
+/// a lock file's name).
+type InsideSpec = (Option<u32>, Option<u32>, u8);
 
 /// Up to `max` random nodes under one or two roots.
 pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpec>)> {
@@ -156,9 +168,11 @@ pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpe
         .prop_map(|(files, logical, allocated, reclaimable)| sums(files, logical, allocated, reclaimable));
     let hits = prop::collection::vec((0..64_u32, 0..3_u8, any::<u64>()), 0..3);
     let shared = prop::option::weighted(0.3, (any::<bool>(), 0..6_u8, 1..1_000_000_u32));
+    let time = || prop::option::of(1_600_000_000..1_900_000_000_u32);
+    let stamp = (time(), time(), prop::option::of((time(), time(), 0..16_u8)));
     let node = (
         any::<usize>(),
-        0..3_u8,
+        0..4_u8,
         own,
         prop::option::of(1_700_000_000..1_800_000_000_u32),
         prop::option::weighted(0.2, hits),
@@ -166,8 +180,9 @@ pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpe
         0..32_u8,
         prop::sample::select(vec![0_u8, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5]),
         shared,
+        stamp,
     )
-        .prop_map(|(parent, kind, own, modified, hits, owner, access, state, shared)| NodeSpec {
+        .prop_map(|(parent, kind, own, modified, hits, owner, access, state, shared, stamp)| NodeSpec {
             parent,
             kind,
             own,
@@ -177,6 +192,7 @@ pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpe
             access,
             state,
             shared,
+            stamp,
         });
     (any::<bool>(), prop::collection::vec(node, 0..max))
 }
@@ -193,7 +209,7 @@ pub(crate) fn build(two_roots: bool, specs: &[NodeSpec]) -> Tree {
         let parent = folders[spec.parent % folders.len()];
         let prefix = ["n", "Library", "node_modules", "a b"][position % 4];
         let name = format!("{prefix}{position}");
-        let kind = [EntryKind::Folder, EntryKind::File, EntryKind::Symlink][usize::from(spec.kind)];
+        let kind = [EntryKind::Folder, EntryKind::File, EntryKind::Symlink, EntryKind::Other][usize::from(spec.kind)];
         let index = tree.add_child(parent, name.as_bytes(), kind).unwrap();
         let own = if kind == EntryKind::Folder { spec.own } else { Sums { files: 0, ..spec.own } };
         tree.add_own(index, own).unwrap();
@@ -209,6 +225,20 @@ pub(crate) fn build(two_roots: bool, specs: &[NodeSpec]) -> Tree {
             })
             .collect();
         tree.add_hits(index, &hits).unwrap();
+        if !hits.is_empty() {
+            let at = |secs: Option<u32>| secs.map(|secs| Timestamp::from_secs(u64::from(secs)));
+            let (changed, accessed, inside) = spec.stamp;
+            tree.set_times(index, Times { changed: at(changed), accessed: at(accessed) }).unwrap();
+            let inside = inside.map(|(change, access, bits)| Inside {
+                newest_change: at(change),
+                newest_file_access: at(access),
+                special: bits & 1 != 0,
+                foreign: bits & 2 != 0,
+                complete: bits & 4 != 0,
+                lock_named: bits & 8 != 0,
+            });
+            tree.set_inside(index, inside).unwrap();
+        }
         if let Some((link, id, bytes)) = spec.shared {
             let (kind, bytes) = if link {
                 (Shared::HardLink, sums(0, u64::from(bytes), u64::from(bytes), u64::from(bytes)))

@@ -1,0 +1,61 @@
+# A home for the temp module whose old items are how programs talk to each other or mark something in use, so
+# nothing is offered: a socket in the shared folder, a pipe, and a folder holding a socket are left out as special
+# (stated: a socket's path is too long to make here); the display server's lock, a lock file, a process id file, and a
+# folder holding a serial line's lock (`LCK..ttyS0`) are left out as locks. Every item is 30 days old.
+
+[[file]]
+path = "private/tmp/dev.sock"
+age = "30d"
+changed = "30d"
+kind = "socket"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/pipe"
+age = "30d"
+changed = "30d"
+kind = "pipe"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/srv/s.sock"
+age = "30d"
+changed = "30d"
+kind = "socket"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/srv"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/tmp/.X0-lock"
+size = 11
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/app.lock"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/server.pid"
+size = 6
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/session/LCK..ttyS0"
+size = 11
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/session/log.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/session"
+age = "30d"
+changed = "30d"

@@ -88,6 +88,10 @@ impl Cleaner for DiskCleaner {
         pipeline::execute(&self.cleaning(), &plan, cx, cancel, out)
     }
 
+    fn protection(&self) -> Protection {
+        self.protection.clone()
+    }
+
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
         put_back::locate(items)
     }

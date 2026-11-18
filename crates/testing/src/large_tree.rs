@@ -7,9 +7,10 @@ use std::path::{Path, PathBuf};
 use fresher_core::stable_hash;
 
 use crate::FixtureError;
+use crate::access_time::settle_access_time;
 
 /// Bumped whenever the generator changes, so an old tree is never taken for a new one.
-const GENERATOR_VERSION: u64 = 1;
+const GENERATOR_VERSION: u64 = 2;
 /// Written last: a folder without it was not finished and is never reused.
 const COMPLETE_MARKER: &str = ".complete";
 /// About one folder for this many entries.
@@ -185,7 +186,9 @@ fn write(root: &Path, item: Item<'_>) -> Result<(), FixtureError> {
         Item::Folder(path) => create(&root.join(path), |path| fs::create_dir(path)),
         Item::File { path, size } => create(&root.join(path), |path| File::create(path)?.set_len(size)),
         Item::HardLink { path, target, .. } => create(&root.join(path), |path| fs::hard_link(root.join(target), path)),
-        Item::Tag(path) => create(&root.join(path), |path| fs::write(path, TAG_CONTENT)),
+        Item::Tag(path) => {
+            create(&root.join(path), |path| fs::write(path, TAG_CONTENT).and_then(|()| settle_access_time(path)))
+        }
     }
 }
 

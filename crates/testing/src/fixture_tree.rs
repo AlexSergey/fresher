@@ -5,15 +5,19 @@ use std::time::{Duration, SystemTime};
 use fresher_core::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
 use tempfile::TempDir;
 
+use crate::facts_lens::StatedFacts;
 use crate::tree_description::{FIXTURE_NOW, TreeDescription, resolve};
 
 /// A fake home folder built from a TOML description in a temporary folder, removed when dropped.
 ///
 /// Files get their declared logical size as sparse files, so a "10 GB cache" costs no disk. Modification times come
-/// from the description, never from the wall clock.
+/// from the description, never from the wall clock. The facts it states instead of making them (an old status change,
+/// an owner, a flag, a socket) are kept for [`crate::FactsLens`] and the reference walk, at the root as given and at
+/// its canonical path.
 #[derive(Debug)]
 pub struct FixtureTree {
     root: TempDir,
+    stated: StatedFacts,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -32,7 +36,7 @@ pub enum FixtureError {
     DuplicatePath { path: PathBuf },
     #[error("the file {path} has both `age` and `modified`")]
     AgeWithModified { path: PathBuf },
-    #[error("the age of {path} is not \"<n>d\" or \"<n>h\" within the clock")]
+    #[error("a time of {path} is not \"<n>d\", \"<n>h\" or \"<n>s\" (\"-\" before it: after now) within the clock")]
     InvalidAge { path: PathBuf },
     #[error("the file {path} is filled over the cap of 64 MiB a file or 512 MiB a tree")]
     FillOverCap { path: PathBuf },
@@ -46,6 +50,8 @@ pub enum FixtureError {
     AppTextControl { path: PathBuf },
     #[error("the fixture path {path} is inside the app {app}, which writes its own bundle")]
     InsideApp { path: PathBuf, app: PathBuf },
+    #[error("the file {path} states a `kind` and has a `fill`: a socket or a pipe holds no data")]
+    KindWithFill { path: PathBuf },
 }
 
 impl FixtureTree {
@@ -63,8 +69,14 @@ impl FixtureTree {
     pub fn from_toml_str(text: &str) -> Result<Self, FixtureError> {
         let description = TreeDescription::from_toml_str(text)?;
         let root = TempDir::new().map_err(|source| FixtureError::Create { path: PathBuf::from("<temp>"), source })?;
-        description.build_at(root.path(), SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW))?;
-        Ok(Self { root })
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
+        description.build_at(root.path(), now)?;
+        let stated = description.stated(now)?;
+        let canonical = fs::canonicalize(root.path())
+            .map_err(|source| FixtureError::Create { path: root.path().to_path_buf(), source })?;
+        let entries = || stated.iter().map(|(path, facts)| (path.as_path(), facts));
+        let stated = StatedFacts::under(root.path(), entries()).joined(StatedFacts::under(&canonical, entries()));
+        Ok(Self { root, stated })
     }
 
     /// The tree with the sandbox marker at its root: the only kind of tree a development build or a test of the
@@ -84,6 +96,11 @@ impl FixtureTree {
     /// The root of the tree: the only folder a test may scan or clean.
     pub fn root(&self) -> &Path {
         self.root.path()
+    }
+
+    /// The facts the tree states instead of making them; empty when it states none.
+    pub const fn stated(&self) -> &StatedFacts {
+        &self.stated
     }
 }
 

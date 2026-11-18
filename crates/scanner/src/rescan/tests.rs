@@ -33,6 +33,7 @@ fn gather(cached: &Cached, journal: &dyn ChangeJournal) -> Result<ChangeSet, Ful
         now: Timestamp::from_secs(TAKEN + 60),
         sibling_markers: false,
         limit_percent: RESCAN_LIMIT_PERCENT,
+        places: &[],
         cancel: &cancel,
     };
     ChangeSet::gather(cached, with)
@@ -159,6 +160,7 @@ mod negative {
                 now,
                 sibling_markers: false,
                 limit_percent: RESCAN_LIMIT_PERCENT,
+                places: &[],
                 cancel: &cancel,
             },
         );

@@ -20,6 +20,7 @@ const DICTIONARY = {
   ...DEMO_DICTIONARY,
   'core.group.debug.description': 'Modules of a development build.',
   'core.group.development.description': 'Tools for building software.',
+  'core.group.system.description': 'What macOS and your apps keep for themselves.',
   'core.ignore.groups.description': 'Hides everything the modules of this group find.',
   'core.ignore.modules.description': 'Hides everything this module finds.',
   'jetbrains.enabled.label': 'JetBrains',

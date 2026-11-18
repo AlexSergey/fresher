@@ -1,18 +1,19 @@
 use std::fs::{self, Metadata, OpenOptions};
 use std::io::{self, Read};
+use std::os::unix::ffi::OsStrExt as _;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use fresher_core::{
     ByteSize, CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, Claim, ClaimedPath, Completeness, DiskState, DiskWalk,
-    EntryKind, Interest, KnownFolders, MarkerCheck, Match, NodeKind, NotScanned, Pattern, Sizes, StateId, Timestamp,
-    Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary, is_valid_cachedir_tag,
+    EntryKind, Inside, Interest, KnownFolder, KnownFolders, MarkerCheck, Match, NodeKind, NotScanned, Pattern, Sizes,
+    StateId, Timestamp, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary, is_valid_cachedir_tag,
 };
 
-use crate::entry_facts::entry_facts;
+use crate::entry_facts::{Seen, disk_kind, entry_facts};
 use crate::fakes::lock;
-use crate::{FakeKnownFolders, FixedDiskState};
+use crate::{FakeKnownFolders, FixedDiskState, StatedFacts};
 
 /// A size nothing is known of: a folder not read.
 const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZERO };
@@ -24,11 +25,16 @@ const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZE
 ///
 /// `Full` and `Auto` both walk the disk (always a full scan); there is no cache, so `Restore` has nothing to restore.
 /// `commit` returns a [`FixedDiskState`] of the folders of the last walk, with their sizes; files are not kept.
-/// Each match carries the facts of its entry, read for the owner of the home folder (see `entry_facts.rs`).
+/// The request's places are walked after the roots (one inside a root, or holding one, is not walked; one that cannot
+/// be read is not scanned): only anchored interests match there and a folder of another user is not entered.
+/// `<UserTemp>/TemporaryItems` is never opened.
+/// Each match carries the facts of its entry, read for the owner of the home folder (see `entry_facts.rs`); a fact the
+/// tree states ([`NaiveWalk::with_stated`]) is read instead of the disk's, as `FactsLens` reports it to the scanner.
 #[derive(Debug)]
 pub struct NaiveWalk {
     home: PathBuf,
     folders: FakeKnownFolders,
+    stated: StatedFacts,
     walked: Mutex<Walked>,
 }
 
@@ -46,13 +52,25 @@ impl NaiveWalk {
     /// root of the fixture tree.
     pub fn new(home: impl Into<PathBuf>) -> Self {
         let home = home.into();
-        Self { folders: FakeKnownFolders::home_layout(&home), home, walked: Mutex::default() }
+        Self {
+            folders: FakeKnownFolders::home_layout(&home),
+            home,
+            stated: StatedFacts::new(),
+            walked: Mutex::default(),
+        }
     }
 
     /// This walk, resolving known folders with `folders` instead of the home layout.
     #[must_use]
     pub fn with_known_folders(mut self, folders: FakeKnownFolders) -> Self {
         self.folders = folders;
+        self
+    }
+
+    /// This walk, reading the facts `stated` (a fixture tree's) instead of the disk's.
+    #[must_use]
+    pub fn with_stated(mut self, stated: StatedFacts) -> Self {
+        self.stated = stated;
         self
     }
 }
@@ -68,10 +86,15 @@ impl DiskWalk for NaiveWalk {
         if request.mode == WalkMode::Restore {
             return Err(WalkError::NothingToRestore);
         }
+        let temporary_items = self.folders.locate(KnownFolder::UserTemp).map(|temp| temp.join("TemporaryItems"));
         let mut walker = Walker {
             folders: &self.folders,
+            stated: &self.stated,
             user: fs::metadata(&self.home).ok().map(|home| home.uid()),
             request,
+            avoid: request.avoid.iter().cloned().chain(temporary_items.clone()).collect(),
+            system: temporary_items,
+            in_place: false,
             cancel,
             on_match,
             on_progress,
@@ -85,11 +108,32 @@ impl DiskWalk for NaiveWalk {
             if !metadata.is_dir() {
                 return Err(unreadable(io::ErrorKind::NotADirectory));
             }
-            if request.avoid.contains(root) {
+            if walker.avoid.contains(root) {
                 walker.not_scanned(root, NotScanned::Avoided, NOT_READ);
                 continue;
             }
             walker.folder(root, metadata.dev(), &mut progress)?;
+        }
+        walker.in_place = true;
+        for place in request.places {
+            let nested = |root: &PathBuf| place.path.starts_with(root) || root.starts_with(&place.path);
+            if request.roots.iter().any(nested) {
+                continue;
+            }
+            // A place that cannot be read is not scanned, with why; it never stops the walk nor makes it incomplete.
+            let metadata = fs::symlink_metadata(&place.path).ok().filter(Metadata::is_dir);
+            match (metadata, fs::read_dir(&place.path)) {
+                (Some(metadata), Ok(_)) => {
+                    walker.folder(&place.path, metadata.dev(), &mut progress)?;
+                }
+                (_, Err(error)) => {
+                    let reason = NotScanned::Unreadable(unreadable(&error));
+                    *walker.summary.not_scanned.entry(reason).or_default() += 1;
+                }
+                (None, Ok(_)) => {
+                    *walker.summary.not_scanned.entry(NotScanned::Unreadable(Unreadable::Failed)).or_default() += 1;
+                }
+            }
         }
         let Walker { summary, walked, .. } = walker;
         let mut kept = lock(&self.walked);
@@ -113,9 +157,16 @@ impl DiskWalk for NaiveWalk {
 
 struct Walker<'a> {
     folders: &'a FakeKnownFolders,
+    stated: &'a StatedFacts,
     /// The owner of the home folder: the user the facts of an entry are read for.
     user: Option<u32>,
     request: &'a WalkRequest<'a>,
+    /// The request's avoided places and the system's own items in the user's temporary folder.
+    avoid: Vec<PathBuf>,
+    /// The system's own items (`<UserTemp>/TemporaryItems`), not opened for their own reason.
+    system: Option<PathBuf>,
+    /// Walking a place outside the scan roots: only anchored interests match, another user's folder is not entered.
+    in_place: bool,
     cancel: &'a CancelToken,
     on_match: &'a mut dyn FnMut(Match),
     on_progress: &'a mut dyn FnMut(WalkProgress),
@@ -141,36 +192,43 @@ impl Walker<'_> {
             if self.cancel.is_cancelled() {
                 return Err(WalkError::Cancelled);
             }
-            let Ok(metadata) = fs::symlink_metadata(&path) else {
+            let Ok(seen) = Seen::read(&path, self.stated) else {
                 *self.summary.unreadable.entry(Unreadable::Failed).or_default() += 1;
                 total = add(total, NOT_READ);
                 continue;
             };
+            let metadata = seen.metadata();
             if metadata.dev() != device {
                 if metadata.is_dir() {
                     self.not_scanned(&path, NotScanned::OtherVolume, Sizes::ZERO);
                 }
                 continue;
             }
-            let kind = entry_kind(&metadata);
+            let kind = seen.kind();
             self.summary.entries += 1;
             progress.entries += 1;
-            progress.bytes = progress.bytes.checked_add(own_sizes(&metadata, kind).logical).unwrap_or(progress.bytes);
+            progress.bytes = progress.bytes.checked_add(own_sizes(metadata, kind).logical).unwrap_or(progress.bytes);
             (self.on_progress)(*progress);
-            let inner = if kind == EntryKind::Folder && self.request.avoid.contains(&path) {
+            let inner = if kind == EntryKind::Folder && self.system.as_ref() == Some(&path) {
+                self.not_scanned(&path, NotScanned::SystemItems, NOT_READ);
+                NOT_READ
+            } else if kind == EntryKind::Folder && self.avoid.contains(&path) {
                 self.not_scanned(&path, NotScanned::Avoided, NOT_READ);
                 NOT_READ
+            } else if kind == EntryKind::Folder && self.in_place && self.user != Some(seen.owner()) {
+                self.others_folder(&path, &seen);
+                NOT_READ
             } else if kind == EntryKind::Folder {
-                if self.report(&path, &metadata, kind, device) {
-                    let sizes = tree_sizes(&path, device, self.request.avoid);
+                if self.report(&path, &seen, kind, device) {
+                    let sizes = tree_sizes(&path, device, &self.avoid);
                     self.walked.folders.push((path, sizes));
                     sizes
                 } else {
                     self.folder(&path, device, progress)?
                 }
             } else {
-                self.report(&path, &metadata, kind, device);
-                own_sizes(&metadata, kind)
+                self.report(&path, &seen, kind, device);
+                own_sizes(seen.metadata(), kind)
             };
             total = add(total, inner);
         }
@@ -185,32 +243,109 @@ impl Walker<'_> {
         self.walked.folders.push((path.to_path_buf(), sizes));
     }
 
+    /// A folder of another user in a place: not entered, reported as itself by the interests that match it, its
+    /// sizes not known and its inside foreign and incomplete.
+    fn others_folder(&mut self, path: &Path, seen: &Seen<'_>) {
+        self.not_scanned(path, NotScanned::OthersFolder, NOT_READ);
+        let kind = EntryKind::Folder;
+        for (index, interest) in self.request.interests.iter() {
+            if !self.matches(interest.pattern(), path, kind) {
+                continue;
+            }
+            let whole = interest.claim() == Claim::Whole;
+            let mut inside = Inside { foreign: true, complete: false, ..Inside::EMPTY };
+            inside.newest_change = seen.modified().max(seen.changed());
+            (self.on_match)(Match {
+                interest: index,
+                path: path.to_path_buf(),
+                kind,
+                sizes: if whole { NOT_READ } else { Sizes::ZERO },
+                modified: seen.modified(),
+                changed: seen.changed(),
+                accessed: None,
+                inside: whole.then_some(inside),
+                siblings: present_siblings(interest, path),
+                marker: None,
+                facts: entry_facts(path, seen, kind, self.user, self.stated),
+            });
+        }
+    }
+
+    /// Whether `pattern` matches `path`: in a place, only an anchored pattern does.
+    fn matches(&self, pattern: &Pattern, path: &Path, kind: EntryKind) -> bool {
+        (!self.in_place || matches!(pattern, Pattern::Under(..))) && matches(pattern, self.folders, path, kind)
+    }
+
     /// Reports every interest `path` matches; `true` when one of them claims it whole.
-    fn report(&mut self, path: &Path, metadata: &Metadata, kind: EntryKind, device: u64) -> bool {
+    fn report(&mut self, path: &Path, seen: &Seen<'_>, kind: EntryKind, device: u64) -> bool {
         let mut claimed_whole = false;
         for (index, interest) in self.request.interests.iter() {
-            if !matches(interest.pattern(), self.folders, path, kind) {
+            if !self.matches(interest.pattern(), path, kind) {
                 continue;
             }
             let whole = interest.claim() == Claim::Whole;
             claimed_whole |= whole;
-            let sizes = if whole && kind == EntryKind::Folder {
-                tree_sizes(path, device, self.request.avoid)
-            } else {
-                own_sizes(metadata, kind)
-            };
+            let whole_folder = whole && kind == EntryKind::Folder;
+            let sizes =
+                if whole_folder { tree_sizes(path, device, &self.avoid) } else { own_sizes(seen.metadata(), kind) };
+            let inside = whole_folder.then(|| self.tree_inside(path, seen, device));
             (self.on_match)(Match {
                 interest: index,
                 path: path.to_path_buf(),
                 kind,
                 sizes,
-                modified: metadata.modified().ok().map(Timestamp::from_system_time),
+                modified: seen.modified(),
+                changed: seen.changed(),
+                accessed: (kind != EntryKind::Folder).then(|| seen.accessed()).flatten(),
+                inside,
                 siblings: present_siblings(interest, path),
                 marker: marker_check(interest.pattern(), path),
-                facts: entry_facts(path, metadata, kind, self.user),
+                facts: entry_facts(path, seen, kind, self.user, self.stated),
             });
         }
         claimed_whole
+    }
+
+    /// What the folder `dir` (seen as `seen`) holds, for the walk's user: the newest modification or status change of
+    /// the folder and of everything inside it, the newest access of a file inside, whether anything inside is a
+    /// socket, a pipe or a device, or not the user's or locked, and whether every folder inside was read (one on
+    /// another device or avoided is not).
+    fn tree_inside(&self, dir: &Path, seen: &Seen<'_>, device: u64) -> Inside {
+        let mut inside = Inside::EMPTY;
+        inside.newest_change = seen.modified().max(seen.changed());
+        self.gather_inside(dir, device, &mut inside);
+        inside
+    }
+
+    fn gather_inside(&self, dir: &Path, device: u64, inside: &mut Inside) {
+        let Ok(entries) = sorted_entries(dir) else {
+            inside.complete = false;
+            return;
+        };
+        for path in entries {
+            if let Some(name) = path.file_name() {
+                inside.join_name(name.as_bytes());
+            }
+            let Ok(seen) = Seen::read(&path, self.stated) else {
+                inside.complete = false;
+                continue;
+            };
+            let kind = seen.kind();
+            inside.newest_change = inside.newest_change.max(seen.modified()).max(seen.changed());
+            if kind == EntryKind::File {
+                inside.newest_file_access = inside.newest_file_access.max(seen.accessed());
+            }
+            inside.special |= kind == EntryKind::Other;
+            let (user_lock, system_lock, restricted) = seen.flags();
+            inside.foreign |= self.user != Some(seen.owner()) || user_lock || system_lock || restricted;
+            if kind == EntryKind::Folder {
+                if seen.metadata().dev() != device || self.avoid.contains(&path) {
+                    inside.complete = false;
+                } else {
+                    self.gather_inside(&path, device, inside);
+                }
+            }
+        }
     }
 }
 
@@ -229,16 +364,6 @@ fn sorted_entries(dir: &Path) -> io::Result<Vec<PathBuf>> {
 
 fn unreadable(error: &io::Error) -> Unreadable {
     if error.kind() == io::ErrorKind::PermissionDenied { Unreadable::NoPermission } else { Unreadable::Failed }
-}
-
-fn entry_kind(metadata: &Metadata) -> EntryKind {
-    if metadata.is_symlink() {
-        EntryKind::Symlink
-    } else if metadata.is_dir() {
-        EntryKind::Folder
-    } else {
-        EntryKind::File
-    }
 }
 
 fn matches(pattern: &Pattern, folders: &FakeKnownFolders, path: &Path, kind: EntryKind) -> bool {
@@ -263,9 +388,9 @@ fn matches(pattern: &Pattern, folders: &FakeKnownFolders, path: &Path, kind: Ent
     }
 }
 
-/// The size of the entry itself: a file's bytes; nothing for a folder or a link.
+/// The size of the entry itself: a file's or a socket's, pipe's or device's bytes; nothing for a folder or a link.
 fn own_sizes(metadata: &Metadata, kind: EntryKind) -> Sizes {
-    if kind == EntryKind::File {
+    if matches!(kind, EntryKind::File | EntryKind::Other) {
         Sizes::complete(ByteSize::new(metadata.len()), ByteSize::new(metadata.blocks() * 512))
     } else {
         Sizes::ZERO
@@ -290,7 +415,7 @@ fn tree_sizes(dir: &Path, device: u64, avoid: &[PathBuf]) -> Sizes {
             Ok(metadata) if metadata.dev() != device => Sizes::ZERO,
             Ok(metadata) if metadata.is_dir() && avoid.contains(path) => NOT_READ,
             Ok(metadata) if metadata.is_dir() => tree_sizes(path, device, avoid),
-            Ok(metadata) => own_sizes(&metadata, entry_kind(&metadata)),
+            Ok(metadata) => own_sizes(&metadata, disk_kind(&metadata)),
             Err(_) => NOT_READ,
         };
         add(total, inner)
@@ -347,7 +472,7 @@ mod tests {
     /// Walks `tree` for `interests` and returns the matches with paths relative to the root.
     /// A full walk of `roots` for `interests`, avoiding nothing.
     fn request<'a>(roots: &'a [PathBuf], interests: &'a InterestSet) -> WalkRequest<'a> {
-        WalkRequest { roots, interests, avoid: &[], mode: WalkMode::Full }
+        WalkRequest { roots, interests, avoid: &[], places: &[], mode: WalkMode::Full }
     }
 
     fn walk(tree: &FixtureTree, interests: &[Interest]) -> Result<Vec<(String, Match)>, WalkError> {
@@ -367,11 +492,114 @@ mod tests {
             .collect())
     }
 
+    /// A home that states its facts: a folder `cache` 30 days old in full (a file and a socket inside), a folder
+    /// `theirs` holding a file of the system and a lock file, and top-level `.log` files: one changed 30 days ago, a
+    /// pipe, one of the system and one that states nothing.
+    const STATED: &str = "[[dir]]\npath = \"cache\"\nage = \"30d\"\nchanged = \"30d\"\n\
+        [[file]]\npath = \"cache/a\"\nage = \"30d\"\nchanged = \"30d\"\n\
+        [[file]]\npath = \"cache/s\"\nkind = \"socket\"\nage = \"30d\"\nchanged = \"30d\"\n\
+        [[file]]\npath = \"theirs/f\"\nowner = \"system\"\n\
+        [[file]]\npath = \"theirs/server.pid\"\n\
+        [[file]]\npath = \"old.log\"\nage = \"30d\"\nchanged = \"30d\"\naccessed = \"35d\"\n\
+        [[file]]\npath = \"pipe.log\"\nkind = \"pipe\"\n\
+        [[file]]\npath = \"root.log\"\nowner = \"system\"\nflags = [\"system-lock\"]\n\
+        [[file]]\npath = \"new.log\"\n";
+
+    /// Walks the [`STATED`] home, reading its stated facts when `stated`; the match at each path relative to the root.
+    fn walk_stated(stated: bool) -> std::collections::BTreeMap<String, Match> {
+        use fresher_core::KnownFolder;
+
+        let tree = FixtureTree::from_toml_str(STATED).unwrap();
+        let whole = |name: &str| interest(Pattern::Under(KnownFolder::Home, name.into()), Claim::Whole, &[]);
+        let mut set = InterestSet::new();
+        set.add(
+            ModuleId::new("demo").unwrap(),
+            &[whole("cache"), whole("theirs"), interest(Pattern::Extension("log".into()), Claim::Item, &[])],
+        );
+        let roots = [tree.root().to_path_buf()];
+        let walk = NaiveWalk::new(tree.root());
+        let walk = if stated { walk.with_stated(tree.stated().clone()) } else { walk };
+        let mut matches = std::collections::BTreeMap::new();
+        walk.walk(
+            &request(&roots, &set),
+            &CancelToken::new(),
+            &mut |found| {
+                let path = found.path.strip_prefix(tree.root()).unwrap().to_string_lossy().into_owned();
+                matches.insert(path, found);
+            },
+            &mut |_| {},
+        )
+        .unwrap();
+        matches
+    }
+
+    /// `days` before the fixtures' "now".
+    #[expect(clippy::unnecessary_wraps, reason = "the times it is compared with are options")]
+    fn days_ago(days: u64) -> Option<fresher_core::Timestamp> {
+        Some(fresher_core::Timestamp::from_secs(crate::FIXTURE_NOW - days * 86_400))
+    }
+
     fn paths(matches: &[(String, Match)]) -> Vec<&str> {
         matches.iter().map(|(path, _)| path.as_str()).collect()
     }
 
+    /// Walks `home/` of `tree` as the scan root and `tmp/` and `T/` as the places, for the top-level items of both
+    /// places and every `node_modules` folder; the matches' paths relative to the tree's root, and the summary.
+    fn walk_places(tree: &FixtureTree) -> (Vec<String>, fresher_core::WalkSummary) {
+        use fresher_core::{KnownFolder, ModuleId, Place};
+
+        let root = std::fs::canonicalize(tree.root()).unwrap();
+        let places = [
+            Place { folder: KnownFolder::SharedTemp, path: root.join("tmp") },
+            Place { folder: KnownFolder::UserTemp, path: root.join("T") },
+        ];
+        let folders = crate::FakeKnownFolders::new()
+            .with(KnownFolder::Home, root.join("home"))
+            .with(KnownFolder::SharedTemp, root.join("tmp"))
+            .with(KnownFolder::UserTemp, root.join("T"));
+        let whole = |folder| interest(Pattern::Under(folder, "*".into()), Claim::Whole, &[]);
+        let by_name = interest(Pattern::FolderName("node_modules".into()), Claim::Whole, &[]);
+        let mut set = InterestSet::new();
+        set.add(
+            ModuleId::new("temp").unwrap(),
+            &[whole(KnownFolder::SharedTemp), whole(KnownFolder::UserTemp), by_name],
+        );
+        let roots = [root.join("home")];
+        let request = WalkRequest { places: &places, ..request(&roots, &set) };
+        let mut matches = Vec::new();
+        let summary = NaiveWalk::new(root.join("home"))
+            .with_known_folders(folders)
+            .walk(&request, &CancelToken::new(), &mut |found| matches.push(found), &mut |_| {})
+            .unwrap();
+        let mut found: Vec<String> = matches
+            .iter()
+            .map(|found| format!("{}#{}", found.path.strip_prefix(&root).unwrap().display(), found.interest))
+            .collect();
+        found.sort();
+        (found, summary)
+    }
+
     mod negative {
+        #[test]
+        fn an_entry_not_stated_reads_as_the_disk_has_it() {
+            let matches = super::walk_stated(true);
+
+            let new = &matches["new.log"];
+            assert_eq!(new.kind, EntryKind::File);
+            assert!(new.facts.owned_by_user);
+            assert!(new.changed > super::days_ago(1), "a file written now changed now");
+        }
+
+        #[test]
+        fn without_the_stated_facts_the_walk_reads_the_disk() {
+            let matches = super::walk_stated(false);
+
+            let inside = matches["cache"].inside.unwrap();
+            assert!(inside.newest_change > super::days_ago(1) && !inside.special && !inside.foreign);
+            assert!(matches["root.log"].facts.owned_by_user);
+            assert_eq!(matches["pipe.log"].kind, EntryKind::File);
+        }
+
         use std::fs;
         use std::os::unix::fs::PermissionsExt;
 
@@ -551,7 +779,7 @@ mod tests {
                 &[interest(Pattern::FolderName("Caches".into()), Claim::Whole, &[])],
             );
             let (roots, avoid) = ([tree.root().to_path_buf()], [tree.root().join("Documents")]);
-            let avoiding = WalkRequest { avoid: &avoid, mode: WalkMode::Auto, ..request(&roots, &set) };
+            let avoiding = WalkRequest { avoid: &avoid, places: &[], mode: WalkMode::Auto, ..request(&roots, &set) };
             let walk = NaiveWalk::new(tree.root());
             let mut matches = Vec::new();
 
@@ -643,6 +871,32 @@ mod tests {
             assert_eq!(summary.unreadable.get(&Unreadable::NoPermission), Some(&1));
             assert!(!summary.is_complete());
         }
+
+        #[test]
+        fn in_a_place_only_anchored_interests_match_and_the_system_items_are_not_opened() {
+            let tree = FixtureTree::from_toml_str(
+                "[[dir]]\npath = \"home/node_modules\"\n[[dir]]\npath = \"tmp/node_modules\"\n\
+                 [[file]]\npath = \"T/TemporaryItems/x\"\n",
+            )
+            .unwrap();
+
+            let (found, summary) = super::walk_places(&tree);
+
+            assert_eq!(found, ["home/node_modules#2", "tmp/node_modules#0"]);
+            assert_eq!(summary.not_scanned.get(&NotScanned::SystemItems), Some(&1));
+            assert!(summary.is_complete());
+        }
+
+        #[test]
+        fn a_place_that_does_not_exist_is_not_scanned_and_the_walk_goes_on() {
+            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"home/a\"\n[[file]]\npath = \"tmp/b\"\n").unwrap();
+
+            let (found, summary) = super::walk_places(&tree);
+
+            assert_eq!(found, ["tmp/b#0"]);
+            assert_eq!(summary.not_scanned.get(&NotScanned::Unreadable(Unreadable::Failed)), Some(&1));
+            assert!(summary.is_complete());
+        }
     }
 
     mod positive {
@@ -653,6 +907,42 @@ mod tests {
 
         use super::{interest, paths, request, walk};
         use crate::{FixtureTree, NaiveWalk};
+
+        #[test]
+        fn a_stated_change_reads_in_the_match_and_in_its_folders_inside() {
+            let matches = super::walk_stated(true);
+
+            let old = &matches["old.log"];
+            assert_eq!((old.changed, old.accessed), (super::days_ago(30), super::days_ago(35)));
+            let inside = matches["cache"].inside.unwrap();
+            assert_eq!(inside.newest_change, super::days_ago(30));
+            assert!(inside.complete && !inside.foreign);
+        }
+
+        #[test]
+        fn a_stated_socket_or_pipe_is_another_kind() {
+            let matches = super::walk_stated(true);
+
+            assert_eq!(matches["pipe.log"].kind, EntryKind::Other);
+            assert!(matches["cache"].inside.unwrap().special);
+        }
+
+        #[test]
+        fn a_stated_owner_or_flag_is_the_systems() {
+            let matches = super::walk_stated(true);
+
+            let root = matches["root.log"].facts;
+            assert!(!root.owned_by_user && root.system_immutable);
+            assert!(matches["theirs"].inside.unwrap().foreign);
+        }
+
+        #[test]
+        fn a_lock_files_name_inside_marks_only_its_folder() {
+            let matches = super::walk_stated(true);
+
+            assert!(matches["theirs"].inside.unwrap().lock_named);
+            assert!(!matches["cache"].inside.unwrap().lock_named);
+        }
 
         #[test]
         fn matches_every_kind_of_pattern_in_name_order() {
@@ -774,6 +1064,19 @@ mod tests {
             assert_eq!(summary.entries, 4);
             assert!(summary.is_complete());
             assert_eq!(progress.last().map(|seen| (seen.entries, seen.bytes)), Some((4, ByteSize::new(3))));
+        }
+
+        #[test]
+        fn a_place_is_walked_after_the_scan_roots_for_its_interests() {
+            let tree = FixtureTree::from_toml_str(
+                "[[file]]\npath = \"home/a\"\n[[file]]\npath = \"tmp/old.log\"\n[[file]]\npath = \"T/item\"\n",
+            )
+            .unwrap();
+
+            let (found, summary) = super::walk_places(&tree);
+
+            assert_eq!(found, ["T/item#1", "tmp/old.log#0"]);
+            assert!(summary.is_complete());
         }
     }
 }

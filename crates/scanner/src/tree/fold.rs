@@ -9,6 +9,7 @@ use crate::matcher::Hits;
 use crate::matcher::entry::FolderFacts;
 use crate::tree::access::NodeAccess;
 use crate::tree::node::{Hit, NodeIndex, Sums};
+use crate::tree::times::Times;
 
 /// A file at or over this allocated size is kept as its own record (1 MiB, confirmed by plan 004/01).
 pub(crate) const KEEP_THRESHOLD: u64 = 1 << 20;
@@ -60,6 +61,8 @@ pub(crate) struct FolderBatch {
     pub(crate) hits: Vec<Hit>,
     /// The hits of the folder itself (its marker interests), added by the walker.
     pub(crate) own_hits: Vec<Hit>,
+    /// The folder's own times, from its parent's listing: recorded when it has hits of its own.
+    pub(crate) own_times: Times,
     /// Some entry could not be read.
     pub(crate) incomplete: bool,
 }
@@ -74,6 +77,7 @@ impl FolderBatch {
             names: Vec::new(),
             hits: Vec::new(),
             own_hits: Vec::new(),
+            own_times: Times::NONE,
             incomplete: false,
         }
     }
@@ -110,7 +114,7 @@ pub(crate) fn fold(
         let keep = match entry.kind {
             EntryKind::Folder => true,
             EntryKind::File => !found.is_empty() || entry.sizes.allocated.bytes() >= threshold,
-            EntryKind::Symlink => !found.is_empty(),
+            EntryKind::Symlink | EntryKind::Other => !found.is_empty(),
         };
         if keep {
             keep_entry(&mut batch, name, entry, found, facts, user);

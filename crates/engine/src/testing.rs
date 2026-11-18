@@ -123,6 +123,12 @@ impl TestModuleBuilder {
         self
     }
 
+    /// The module wants what `interest` names; each match becomes one finding of its first category.
+    pub(crate) fn interest(mut self, interest: Interest) -> Self {
+        self.interests.push(interest);
+        self
+    }
+
     /// The module leaves out `item` on every match, before it finds, fails or panics.
     pub(crate) fn left_out_on_match(mut self, item: LeftOutItem) -> Self {
         self.match_left_out = Some(item);
@@ -424,6 +430,9 @@ impl DiskWalk for ScriptedWalk {
                         kind: EntryKind::Folder,
                         sizes,
                         modified: None,
+                        changed: None,
+                        accessed: None,
+                        inside: None,
                         siblings: vec![],
                         marker: None,
                         facts: *facts,
@@ -513,6 +522,10 @@ impl Cleaner for HeldCleaner {
             first = false;
             out(item);
         })
+    }
+
+    fn protection(&self) -> fresher_core::Protection {
+        self.inner.protection()
     }
 
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {

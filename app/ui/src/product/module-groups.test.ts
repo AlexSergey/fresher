@@ -38,6 +38,16 @@ describe('modulesByGroup', () => {
       expect(grouped.map(({ group }) => group)).toStrictEqual(['development', 'debug']);
     });
 
+    it('puts System before Development and Debug', () => {
+      const grouped = modulesByGroup([
+        module('demo', 'debug'),
+        module('xcode', 'development'),
+        module('temp', 'system'),
+      ]);
+
+      expect(grouped.map(({ group }) => group)).toStrictEqual(['system', 'development', 'debug']);
+    });
+
     it('keeps the registration order inside a group', () => {
       const grouped = modulesByGroup([
         module('node', 'development'),

@@ -29,6 +29,8 @@ pub(crate) struct Scope {
     pub(crate) roots: Vec<ScopeRoot>,
     /// Every place the walk does not open, sorted.
     pub(crate) avoid: Vec<PathBuf>,
+    /// The roots that are places walked outside the scan roots, canonical: always walked again in full, never restored.
+    pub(crate) places: Vec<PathBuf>,
     pub(crate) fingerprint: u64,
 }
 
@@ -83,6 +85,7 @@ pub(crate) fn rescan(
         now: sources.now,
         sibling_markers: sibling_markers(walk.interests),
         limit_percent: sources.limit_percent,
+        places: &scope.places,
         cancel,
     };
     let set = match ChangeSet::gather(&cached, gather) {
@@ -95,7 +98,7 @@ pub(crate) fn rescan(
     let changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
     let patched = patch::patch(&cached.tree, &set, walk, cancel, on_progress)?;
     check::check(&patched.tree, &patched.unchanged, walk, sources.seed, cancel)?;
-    emit::emit(&patched.tree, walk.matcher, walk.interests, on_match);
+    emit::emit(&patched.tree, walk.matcher, walk.interests, &[], on_match);
     let summary = summary::summarize(&patched.tree, ScanKind::Rescan { changed_folders: changed });
     Ok((patched.tree, summary))
 }

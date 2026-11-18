@@ -1,7 +1,9 @@
 //! What the cleaner never does, for any plan: random trees with links in, out and up, nested folders, a protected,
-//! a hard-blocked, a carved-out and an ignored folder inside the scan root and a folder outside it; random plans of
-//! real and made-up paths (outside the root, through links, dotted, the root itself, protected places and their
-//! ancestors) with a random action and method. For each: a rehearsal at both depths changes nothing at all, and the
+//! a hard-blocked, a carved-out and an ignored folder inside the scan root, the temporary places of a Mac laid out
+//! inside it with their protection (every user's folders `never` but the user's own `T`, which is `whole`; its
+//! `TemporaryItems` and the system's temporary folder `never`; the shared one `whole`), and a folder outside it;
+//! random plans of real and made-up paths (outside the root, through links, dotted, the root itself, protected places
+//! and their ancestors) with a random action and method. For each: a rehearsal at both depths changes nothing at all, and the
 //! execution removes only plan items or what is inside them, strictly inside the root, never protected, ignored, a
 //! hard-blocked folder or an ancestor of one; the outside folder and every protected subtree list exactly as before.
 //! The same holds for a permanent cleanup while a folder of the root is swapped for a link to the outside folder and
@@ -35,12 +37,51 @@ mod model {
     pub(crate) const IGNORED: &str = "scan/a/ign";
     /// The folder outside every root.
     pub(crate) const OUTSIDE: &str = "outside";
+    /// The temporary places of a Mac, as `crates/macos/src/protection.rs` protects them: every user's folders
+    /// (`never`), the user's own `T` carved out of them (and `whole`), its `TemporaryItems`, another user's `T` and
+    /// the user's own `C`; the system's temporary folder (`never`) and the shared one (`whole`).
+    pub(crate) const USER_FOLDERS: &str = "scan/private/var/folders";
+    pub(crate) const USER_TEMP: &str = "scan/private/var/folders/xx/me/T";
+    pub(crate) const TEMPORARY_ITEMS: &str = "scan/private/var/folders/xx/me/T/TemporaryItems";
+    pub(crate) const USER_CACHES: &str = "scan/private/var/folders/xx/me/C";
+    pub(crate) const OTHER_TEMP: &str = "scan/private/var/folders/yy/other/T";
+    pub(crate) const SYSTEM_TEMP: &str = "scan/private/var/tmp";
+    pub(crate) const SHARED_TEMP: &str = "scan/private/tmp";
+    /// The places of each list.
+    const NEVER_PLACES: [&str; 4] = [NEVER, USER_FOLDERS, TEMPORARY_ITEMS, SYSTEM_TEMP];
+    const EXCEPT_PLACES: [&str; 2] = [EXCEPT, USER_TEMP];
+    const WHOLE_PLACES: [&str; 3] = [WHOLE, USER_TEMP, SHARED_TEMP];
     /// The folders every tree has.
-    pub(crate) const BASES: [&str; 8] = [SCAN, "scan/a", IGNORED, "scan/b", NEVER, EXCEPT, WHOLE, OUTSIDE];
+    pub(crate) const BASES: [&str; 15] = [
+        SCAN,
+        "scan/a",
+        IGNORED,
+        "scan/b",
+        NEVER,
+        EXCEPT,
+        WHOLE,
+        OUTSIDE,
+        USER_FOLDERS,
+        USER_TEMP,
+        TEMPORARY_ITEMS,
+        USER_CACHES,
+        OTHER_TEMP,
+        SYSTEM_TEMP,
+        SHARED_TEMP,
+    ];
     const NAMES: [&str; 3] = ["x", "y", "z"];
     /// Where a link may point, relative to the tree (`None`: up and out by `..`).
-    const TARGETS: [Option<&str>; 7] =
-        [Some(OUTSIDE), Some("outside/o.txt"), Some("scan/a"), Some(NEVER), Some(""), Some(WHOLE), None];
+    const TARGETS: [Option<&str>; 9] = [
+        Some(OUTSIDE),
+        Some("outside/o.txt"),
+        Some("scan/a"),
+        Some(NEVER),
+        Some(""),
+        Some(WHOLE),
+        Some(USER_CACHES),
+        Some(USER_TEMP),
+        None,
+    ];
 
     /// One generated entry: a base folder, the names below it, and what the last one is.
     #[derive(Clone, Debug)]
@@ -209,7 +250,8 @@ mod model {
             };
             let user = fs::metadata(tree.root()).unwrap().uid();
             let cleaner = DiskCleaner::new(reach, user, tree.root().to_path_buf(), Protection::default(), ports);
-            let protection = Protection::new(vec![tree.at(NEVER)], vec![tree.at(WHOLE)], vec![tree.at(EXCEPT)])
+            let at = |places: &[&str]| places.iter().map(|place| tree.at(place)).collect();
+            let protection = Protection::new(at(&NEVER_PLACES), at(&WHOLE_PLACES), at(&EXCEPT_PLACES))
                 .unwrap()
                 .with_ignored(&[tree.at(IGNORED)])
                 .unwrap();
@@ -280,18 +322,21 @@ mod model {
     }
 
     /// The model of what may go, by plain path components relative to the tree: strictly inside the scan root, not
-    /// in or above the `never` place unless inside its carve-out, not the carve-out, the `whole` folder or above them,
-    /// not in or above the ignored folder.
+    /// in or above a `never` place unless strictly inside one of its own carve-outs, not a carve-out, a `whole`
+    /// folder or above them, not in or above the ignored folder.
     pub(crate) fn may_go(path: &Path) -> bool {
-        let refusals = [
-            inside(path, NEVER) && !strictly_inside(path, EXCEPT),
-            above(path, NEVER),
-            above(path, EXCEPT),
-            above(path, WHOLE),
-            inside(path, IGNORED),
-            above(path, IGNORED),
-        ];
-        strictly_inside(path, SCAN) && !refusals.contains(&true)
+        strictly_inside(path, SCAN)
+            && !is_kept(path)
+            && !NEVER_PLACES.iter().chain(&EXCEPT_PLACES).chain(&WHOLE_PLACES).any(|place| above(path, place))
+            && !above(path, IGNORED)
+    }
+
+    /// In a `never` place outside its own carve-outs, or in the ignored folder: must list exactly as before.
+    pub(crate) fn is_kept(path: &Path) -> bool {
+        let carved = |never: &str| {
+            EXCEPT_PLACES.iter().any(|except| Path::new(except).starts_with(never) && strictly_inside(path, except))
+        };
+        NEVER_PLACES.iter().any(|never| inside(path, never) && !carved(never)) || inside(path, IGNORED)
     }
 
     /// An item's path relative to the tree, if it names a path of it.
@@ -338,16 +383,15 @@ mod negative {
     use proptest::test_runner::TestCaseError;
 
     use crate::model::{
-        BASES, Bench, IGNORED, Leaf, Listed, NEVER, OUTSIDE, SCAN, Tree, WHOLE, acted, is_path_action, item, may_go,
-        relative, tool, twin,
+        BASES, Bench, Leaf, Listed, OUTSIDE, Tree, acted, is_kept, is_path_action, item, may_go, relative, tool, twin,
     };
 
     fn leaf() -> impl Strategy<Value = Leaf> {
-        prop_oneof![Just(Leaf::File), Just(Leaf::Folder), (0_usize..7).prop_map(Leaf::Link)]
+        prop_oneof![Just(Leaf::File), Just(Leaf::Folder), (0_usize..9).prop_map(Leaf::Link)]
     }
 
     fn entries() -> impl Strategy<Value = Vec<(usize, Vec<usize>, Leaf)>> {
-        prop::collection::vec((0_usize..8, prop::collection::vec(0_usize..3, 0..3), leaf()), 0..14)
+        prop::collection::vec((0..BASES.len(), prop::collection::vec(0_usize..3, 0..3), leaf()), 0..14)
     }
 
     /// Picks of the tree's candidate paths, each with an action: 0 remove, 1 empty, 2 a tool.
@@ -373,10 +417,7 @@ mod negative {
 
     /// Whether `path` lies in a place that must list exactly as before.
     fn kept(path: &Path) -> bool {
-        let except = Path::new(crate::model::EXCEPT);
-        (path.starts_with(NEVER) && !(path.starts_with(except) && path != except))
-            || path.starts_with(IGNORED)
-            || path.starts_with(OUTSIDE)
+        is_kept(path) || path.starts_with(OUTSIDE)
     }
 
     /// What holds after any execution: no tool ran, only plan items that may go were acted on, everything that went
@@ -418,7 +459,7 @@ mod negative {
                 prop_assert_eq!(after.get(path), Some(listed), "{} changed", path.display());
             }
         }
-        for folder in [SCAN, "scan/a", "scan/b", NEVER, crate::model::EXCEPT, WHOLE, IGNORED, OUTSIDE] {
+        for folder in BASES {
             let path = PathBuf::from(folder);
             prop_assert_eq!(after.get(&path).map(|listed| listed.0), before.get(&path).map(|listed| listed.0));
         }
@@ -511,9 +552,9 @@ mod negative {
 }
 
 mod positive {
-    use fresher_core::{Action, ItemOutcome, Method};
+    use fresher_core::{Action, ItemOutcome, Method, SkipReason};
 
-    use crate::model::{Bench, Leaf, Tree, item};
+    use crate::model::{BASES, Bench, Leaf, SHARED_TEMP, TEMPORARY_ITEMS, Tree, USER_TEMP, item};
 
     #[test]
     fn the_bench_removes_what_may_go() {
@@ -531,5 +572,35 @@ mod positive {
         assert!(matches!(done[2].outcome, ItemOutcome::Skipped { .. }));
         assert!(!bench.tree.at("scan/a/x/f").exists());
         assert!(bench.tree.at("scan/home/y").is_dir());
+    }
+
+    #[test]
+    fn the_bench_removes_items_inside_the_temporary_folders_and_nothing_of_the_systems() {
+        let base = |place: &str| BASES.iter().position(|base| *base == place).unwrap();
+        let entries = [
+            (base(USER_TEMP), vec![0], Leaf::File),
+            (base(SHARED_TEMP), vec![1], Leaf::File),
+            (base(TEMPORARY_ITEMS), vec![2], Leaf::File),
+        ];
+        let bench = Bench::new(Tree::build(&entries));
+        let items = vec![
+            item(1, Action::Remove(bench.tree.at("scan/private/var/folders/xx/me/T/x"))),
+            item(2, Action::Remove(bench.tree.at("scan/private/tmp/y"))),
+            item(3, Action::Remove(bench.tree.at("scan/private/var/folders/xx/me/T/TemporaryItems/z"))),
+            item(4, Action::Remove(bench.tree.at("scan/private/var/folders/xx/me/T"))),
+            item(5, Action::Empty(bench.tree.at("scan/private/tmp"))),
+        ];
+
+        let done = bench.execute(items, Method::Permanent);
+
+        assert_eq!(done[0].outcome, ItemOutcome::Deleted);
+        assert_eq!(done[1].outcome, ItemOutcome::Deleted);
+        for skipped in &done[2..4] {
+            assert!(matches!(skipped.outcome, ItemOutcome::Skipped { .. }), "{:?}", skipped.outcome);
+        }
+        // The shared folder is whole: it is not emptied as one item either.
+        assert_eq!(done[4].outcome, ItemOutcome::Skipped { reason: SkipReason::WholeFolder });
+        assert!(bench.tree.at("scan/private/var/folders/xx/me/T/TemporaryItems/z/f").is_file());
+        assert!(bench.tree.at("scan/private/tmp").is_dir());
     }
 }

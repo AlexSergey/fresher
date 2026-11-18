@@ -9,8 +9,8 @@ use std::sync::Arc;
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
     FindingId, FindingSink, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, ModuleSettings, NewFinding, Removability, Removal, ScanId, ScanKind, ScanOutcome, SystemFacts,
-    Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    ModuleOutcome, ModuleSettings, NewFinding, Place, Removability, Removal, ScanId, ScanKind, ScanOutcome,
+    SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -28,6 +28,8 @@ use crate::throttle::Throttle;
 /// What a scan runs, fixed when it starts: later changes to the settings wait for the next scan.
 pub(crate) struct ScanPlan {
     pub(crate) roots: Vec<PathBuf>,
+    /// The places walked outside the roots (`crate::places`).
+    pub(crate) places: Vec<Place>,
     /// The guarded places the user opted into, by capability.
     pub(crate) opt_ins: Vec<Capability>,
     pub(crate) modules: Vec<Planned>,
@@ -59,11 +61,8 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let ids: Vec<ModuleId> = plan.modules.iter().map(|planned| planned.module.descriptor().id()).collect();
     let interests = all_interests(shared);
     let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
-    // The roots' volumes are read before the lock, so a map query never sees this scan's findings with the last
-    // scan's volumes. The previous scan's findings are forgotten only now that this scan runs; `None` when the ids
-    // ran out.
-    let volumes = shared.read_volumes(&expand_home(&plan.roots, shared.home().as_deref()));
-    let first_id = lock_anyway(&shared.results).begin(&plan.roots, volumes);
+    // The previous scan's findings are forgotten only now that this scan runs.
+    let first_id = begin(shared, plan);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
     let (access, unavailable) = decide_access(shared, plan, cancel);
@@ -135,8 +134,8 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
             matches.into_iter().for_each(&mut on_match);
             Ok(summary)
         } else {
-            let request =
-                WalkRequest { roots: &plan.roots, interests: &interests, avoid: &entry.avoid, mode: plan.mode };
+            let (roots, avoid, places) = (&plan.roots, &entry.avoid, &plan.places);
+            let request = WalkRequest { roots, interests: &interests, avoid, places, mode: plan.mode };
             shared.ports.walk.walk(&request, cancel, &mut on_match, &mut on_progress)
         }
     };
@@ -166,6 +165,16 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         && !cancel.is_cancelled();
     let outcome = if complete { ScanOutcome::Completed } else { ScanOutcome::Partial };
     output.end(outcome);
+}
+
+/// Forgets the previous scan's findings for this scan's, with the volumes of its roots and places read first: a map
+/// query never sees this scan's findings with the last scan's volumes. Gives the scan's first id; `None` when the ids
+/// ran out.
+fn begin(shared: &Shared, plan: &ScanPlan) -> Option<u32> {
+    let mut walked = expand_home(&plan.roots, shared.home().as_deref());
+    walked.extend(plan.places.iter().map(|place| place.path.clone()));
+    let volumes = shared.read_volumes(&walked);
+    lock_anyway(&shared.results).begin(&plan.roots, &plan.places, volumes)
 }
 
 /// Every registered module's interests, enabled or not, so turning one off never changes what the walk reads (design
@@ -261,7 +270,8 @@ fn restore(
     if plan.mode != WalkMode::Restore {
         return Ok(None);
     }
-    let request = WalkRequest { roots: &plan.roots, interests, avoid: &[], mode: WalkMode::Restore };
+    let request =
+        WalkRequest { roots: &plan.roots, interests, avoid: &[], places: &plan.places, mode: WalkMode::Restore };
     let mut matches = Vec::new();
     match shared.ports.walk.walk(&request, cancel, &mut |found| matches.push(found), &mut |_| {}) {
         Ok(summary) => Ok(Some((matches, summary))),

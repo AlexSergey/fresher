@@ -27,8 +27,8 @@ mod support {
         VolumeKind,
     };
     use fresher_core::{
-        AppRef, CategoryShare, Descent, MapPart, MapPhase, MeaningGroup, MountKind, PartKind, PlaceName, PlaceRow,
-        PlaceShare, PlaceView, RemainderReason, StorageMap, VolumeMap,
+        AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, MountKind, PartKind, PlaceName,
+        PlaceRow, PlaceShare, PlaceView, RemainderReason, StorageMap, VolumeMap,
     };
     use ts_rs::{Config, TS};
 
@@ -143,6 +143,7 @@ mod support {
             declaration::<StorageMap>(config),
             declaration::<MapPhase>(config),
             declaration::<VolumeMap>(config),
+            declaration::<MapPlace>(config),
             declaration::<MountKind>(config),
             declaration::<MapPart>(config),
             declaration::<PartKind>(config),

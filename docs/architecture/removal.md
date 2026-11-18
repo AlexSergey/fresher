@@ -81,12 +81,12 @@ skips the item with its reason. It reads the disk only through paths and handles
 | #   | Check                                                                                       | Where              | Skip reason                         |
 | --- | ------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------- |
 | 1   | Reach: a valid marker at or below the root, or strictly inside the sandbox folder           | `reach.rs`         | `NotInSandbox`                      |
-| 2   | Inside the roots: absolute, plain, strictly inside a root by components, never a root       | `paths.rs`         | `OutsideRoots` (`CheckFailed`)      |
+| 2   | Inside the roots (the scan roots and the places the last scan walked): absolute, plain, strictly inside a root by components, never a root | `paths.rs` | `OutsideRoots` (`CheckFailed`) |
 | 3   | Protection, both lists, both forms of the path                                              | `paths.rs`         | `Protected`, `WholeFolder`          |
 | 4   | Not ignored                                                                                 | `paths.rs`         | `Ignored`                           |
 | 5   | Opened beneath the canonical root with `O_SYMLINK \| O_NOFOLLOW_ANY`, kept open until the act | `paths.rs`       | `ThroughLink`, `Vanished`           |
 | 6   | On its root's volume                                                                        | `paths.rs`         | `OtherVolume`                       |
-| 7   | Still the confirmed item: device, file id, kind                                             | `guard/identity.rs` | `Replaced`, `KindChanged`          |
+| 7   | Still the confirmed item: device, file id, kind; a socket, a pipe or a device (`EntryKind::Other`) is refused whatever was confirmed | `guard/identity.rs` | `Replaced`, `KindChanged` |
 | 8   | Removable now: owner, write access, flags, read again from the handle and its parent        | `guard/facts.rs`   | `NotRemovable { removability }`     |
 | 9   | Capability of each guarded place it lies in or holds                                        | `guard/access.rs`  | `MissingCapability { capability }`  |
 | 10  | Not in use: no open file of the user's processes is the item or inside it, and no running app owns it by bundle id (plan 009) | `guard/in_use.rs`  | `InUse { app }`                     |
@@ -94,6 +94,8 @@ skips the item with its reason. It reads the disk only through paths and handles
 
 - A check that cannot tell (an IO error other than "not found", a root that cannot be made canonical, an act on an
   item with no identity) skips with `CheckFailed`.
+- The guard opens an item without waiting on a named pipe (`O_NONBLOCK`, `paths.rs`): a pipe with no writer never
+  blocks it, and check 7 then skips it (`a_pipe_with_no_writer_does_not_block_the_guard`).
 - A tool's item has no path: check 1, its arguments (never `-f`, `--force` or `--force=…`: `ForcedTool`) and check 9,
   where the tool must be `Granted` by plan 006's tool check; then the tool's own refusal decides.
 - **Both protections always apply**: the system's list given to `new`, and the context's (with the ignored paths).

@@ -13,7 +13,8 @@ some of it is not, and generic cleaners rarely explain which is which.
   - user caches (`~/Library/Caches/<id>`) — **Safe**, rebuilt by the app;
   - logs (`~/Library/Logs`, app logs) — **Safe**;
   - crash and diagnostic reports (`~/Library/Logs/DiagnosticReports`) — **Safe**;
-  - temporary files of the user (`$TMPDIR` entries older than a threshold, never ones in use) — **Safe**;
+  - temporary files of the user (`$TMPDIR` entries older than a threshold, never ones in use) — **Safe**; taken up
+    by plan [017](../plans/017-temp-files/readme.md), its own module;
   - old iOS / iPadOS software updates (`.ipsw`) — **Low** (downloaded again if needed);
   - Mail downloads and attachments cache — **Low**;
   - language files and universal binaries' unused slices are **out of scope** (they modify app bundles and break code

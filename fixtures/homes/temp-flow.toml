@@ -1,0 +1,57 @@
+# The temporary places of the temp module's core end-to-end flows (crates/e2e/tests/temp.rs), laid out as a sandbox
+# lays them out beside its home: the user's own temporary folder `private/var/folders/xx/sandbox/T` and the shared one
+# `private/tmp`; the flows add the rest of the sandbox's layout and its marker. Three old items are offered: a file
+# (30 days), a folder (20 days) and a file of the shared folder (10 days), filled with data so a put back is compared
+# byte for byte. A fresh file (1 day) is kept as recent and an old package the system owns (stated) as the system's.
+# Times count back from `FIXTURE_NOW`; the status changes are stated, as a file written now has a status change of now.
+
+[[file]]
+path = "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+size = 65536
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[file]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache/v22/index.bin"
+size = 16384
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache/v22/data.bin"
+size = 32768
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[dir]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache/v22"
+age = "20d"
+changed = "20d"
+
+[[dir]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache"
+age = "20d"
+changed = "20d"
+
+[[file]]
+path = "private/tmp/old-build.log"
+size = 16384
+age = "10d"
+changed = "10d"
+fill = "data"
+
+[[file]]
+path = "private/var/folders/xx/sandbox/T/fresh.tmp"
+size = 4096
+age = "1d"
+changed = "1d"
+
+[[file]]
+path = "private/var/folders/xx/sandbox/T/updater.pkg"
+size = 8192
+age = "30d"
+changed = "30d"
+owner = "system"

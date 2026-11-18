@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 
 use fresher_core::{KnownFolder, KnownFolders};
 
-/// The known folders a test sets: `home_layout` puts the user's folders where macOS keeps them under a fixture home;
-/// the apps folders of every user and of the system are absent until `with` sets them.
+/// The known folders a test sets: `home_layout` puts the user's folders where macOS keeps them under a fixture home,
+/// and the two temporary folders inside it too, so a fixture tree holds them; the apps folders of every user and of
+/// the system are absent until `with` sets them.
 #[derive(Clone, Debug, Default)]
 pub struct FakeKnownFolders {
     folders: BTreeMap<KnownFolder, PathBuf>,
@@ -19,7 +20,8 @@ impl FakeKnownFolders {
     }
 
     /// The user's folders under `home`, laid out as macOS lays them out (the macOS adapter's table, repeated so this
-    /// crate depends on the core alone).
+    /// crate depends on the core alone); the temporary folders as the system's are laid out from `/`, inside `home`
+    /// (`private/var/folders/xx/fixture/T`, `private/tmp`), never the real ones.
     pub fn home_layout(home: impl AsRef<Path>) -> Self {
         let home = home.as_ref();
         let under = |names: &[&str]| names.iter().fold(home.to_path_buf(), |path, name| path.join(name));
@@ -36,6 +38,8 @@ impl FakeKnownFolders {
             (KnownFolder::Trash, under(&[".Trash"])),
             (KnownFolder::Downloads, under(&["Downloads"])),
             (KnownFolder::UserApplications, under(&["Applications"])),
+            (KnownFolder::UserTemp, under(&["private", "var", "folders", "xx", "fixture", "T"])),
+            (KnownFolder::SharedTemp, under(&["private", "tmp"])),
         ];
         Self { folders: folders.into_iter().collect() }
     }
@@ -86,6 +90,17 @@ mod tests {
             assert_eq!(folders.locate(KnownFolder::AppCaches), Some(PathBuf::from("/home/Library/Caches")));
             assert_eq!(folders.locate(KnownFolder::Trash), Some(PathBuf::from("/home/.Trash")));
             assert_eq!(folders.locate(KnownFolder::Applications), Some(PathBuf::from("/apps")));
+        }
+
+        #[test]
+        fn the_home_layout_puts_the_temporary_folders_inside_the_fixture() {
+            let folders = FakeKnownFolders::home_layout("/home");
+
+            assert_eq!(
+                folders.locate(KnownFolder::UserTemp),
+                Some(PathBuf::from("/home/private/var/folders/xx/fixture/T"))
+            );
+            assert_eq!(folders.locate(KnownFolder::SharedTemp), Some(PathBuf::from("/home/private/tmp")));
         }
     }
 }

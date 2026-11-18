@@ -210,7 +210,7 @@ mirror!(MethodForm, Method { Trash, Permanent });
 mirror!(ActionForm, ActionKind { Remove, Empty, Tool });
 mirror!(DangerForm, DangerLevel { Safe, Low, Medium, High });
 mirror!(CompletenessForm, Completeness { Complete, Partial, Unknown });
-mirror!(EntryKindForm, EntryKind { File, Folder, Symlink });
+mirror!(EntryKindForm, EntryKind { File, Folder, Symlink, Other });
 mirror!(EndedForm, Ended { Completed, Cancelled, Stopped, Interrupted });
 mirror!(
     SkipCodeForm,

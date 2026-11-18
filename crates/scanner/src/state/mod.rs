@@ -100,6 +100,10 @@ fn kind_of(node: &Node) -> NodeKind {
 fn not_scanned(node: &Node) -> Option<NotScanned> {
     if let Some(reason) = node.flags.unreadable() {
         Some(NotScanned::Unreadable(reason))
+    } else if node.flags.has(Flag::OthersFolder) {
+        Some(NotScanned::OthersFolder)
+    } else if node.flags.has(Flag::SystemItems) {
+        Some(NotScanned::SystemItems)
     } else if node.flags.has(Flag::Avoided) {
         Some(NotScanned::Avoided)
     } else if node.flags.has(Flag::OtherVolume) {

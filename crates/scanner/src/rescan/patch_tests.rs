@@ -256,8 +256,24 @@ mod positive {
             rig.walk(&rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[]))), WalkMode::Restore);
 
         assert_eq!(restored.matches, scanned.matches);
+        let whole = restored.matches.iter().find(|found| found.path == rig.path("app/node_modules")).unwrap();
+        assert!(whole.inside.is_some_and(|inside| inside.complete && inside.newest_change.is_some()));
         assert!(!facts_at(&restored.matches, &rig.path("Library/Caches/com.y")).parent_writable);
         assert_eq!(facts_at(&restored.matches, &rig.path("app/package.json")), fresher_core::EntryFacts::REMOVABLE);
+    }
+
+    #[test]
+    fn a_rescan_after_one_file_changes_moves_its_folders_newest_change() {
+        let rig = home();
+        let later = fresher_core::Timestamp::from_secs(4_102_444_800);
+        let file = OpenOptions::new().write(true).open(rig.path("app/node_modules/a/index.js")).unwrap();
+        file.set_modified(std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(later.secs())).unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["app/node_modules/a"]), &[]));
+
+        let whole = rescan.matches.iter().find(|found| found.path == rig.path("app/node_modules")).unwrap();
+        assert_eq!(whole.inside.unwrap().newest_change, Some(later));
+        assert_same(&rescan, &rig.full());
     }
 
     #[test]
@@ -287,6 +303,7 @@ mod property {
     use std::sync::Arc;
 
     use fresher_core::{Claim, FullScanReason, Pattern};
+    use fresher_testing::settle_access_time;
     use proptest::prelude::*;
 
     use crate::matcher::testing::{interest, set_of};
@@ -364,7 +381,8 @@ mod property {
         (folders, files)
     }
 
-    /// Applies one random change and returns the folders a journal names for it.
+    /// Applies one random change and returns the folders a journal names for it. A file it writes has its access time
+    /// settled, so neither scan's read of it moves the time (known issue `scanner-rescan-property-access-time`).
     fn change(rig: &Rig, random: &mut Random, step: usize) -> Vec<PathBuf> {
         let (folders, files) = listed(&rig.root);
         let parent = |path: &Path| path.parent().unwrap().to_path_buf();
@@ -375,6 +393,7 @@ mod property {
                 let path =
                     folder.join(if folder.join(name).exists() { format!("n{step}.json") } else { (*name).to_owned() });
                 std::fs::write(&path, vec![1; 300]).unwrap();
+                settle_access_time(&path).unwrap();
                 vec![folder]
             }
             1 if !files.is_empty() => {
@@ -386,6 +405,7 @@ mod property {
                 let file = random.pick(&files).clone();
                 let handle = OpenOptions::new().write(true).open(&file).unwrap();
                 handle.set_len(handle.metadata().unwrap().len() + 2_000_000).unwrap();
+                settle_access_time(&file).unwrap();
                 vec![parent(&file)]
             }
             3 if !files.is_empty() => {
@@ -400,7 +420,9 @@ mod property {
                 let top = folder.join(format!("{}{step}", random.pick(&FOLDER_NAMES)));
                 let deep = top.join(random.pick(&FOLDER_NAMES));
                 std::fs::create_dir_all(&deep).unwrap();
-                std::fs::write(deep.join(random.pick(&FILE_NAMES)), vec![2; 500]).unwrap();
+                let file = deep.join(random.pick(&FILE_NAMES));
+                std::fs::write(&file, vec![2; 500]).unwrap();
+                settle_access_time(&file).unwrap();
                 vec![folder, top, deep]
             }
             _ => {

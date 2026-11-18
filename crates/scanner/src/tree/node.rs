@@ -86,6 +86,12 @@ pub(crate) enum Flag {
     Partial,
     /// A kept file whose hard link group's bytes are counted at another path; set by `freeze`.
     LinkCopy,
+    /// A socket, a named pipe or a device ([`EntryKind::Other`]).
+    Special,
+    /// A folder of another user in a walked place: not entered; always with `Avoided`.
+    OthersFolder,
+    /// The system's own items (`TemporaryItems`): never opened; always with `Avoided`.
+    SystemItems,
 }
 
 impl Flag {
@@ -101,6 +107,9 @@ impl Flag {
             Self::Incomplete => 1 << 7,
             Self::Partial => 1 << 8,
             Self::LinkCopy => 1 << 11,
+            Self::Special => 1 << 12,
+            Self::OthersFolder => 1 << 13,
+            Self::SystemItems => 1 << 14,
         }
     }
 }
@@ -113,7 +122,7 @@ impl NodeFlags {
     const UNREADABLE_SHIFT: u32 = 9;
     const UNREADABLE_MASK: u16 = 0b11 << Self::UNREADABLE_SHIFT;
     /// Every bit a [`Flag`] or the unreadable kind uses.
-    const KNOWN: u16 = 0x0fff;
+    const KNOWN: u16 = 0x7fff;
 
     /// The flags as stored by the cache codec.
     pub(crate) const fn bits(self) -> u16 {
@@ -130,6 +139,7 @@ impl NodeFlags {
             EntryKind::Folder => Flag::Folder.bit(),
             EntryKind::File => Flag::KeptFile.bit(),
             EntryKind::Symlink => Flag::Link.bit(),
+            EntryKind::Other => Flag::Special.bit(),
         })
     }
 
@@ -150,6 +160,8 @@ impl NodeFlags {
             EntryKind::Folder
         } else if self.has(Flag::Link) {
             EntryKind::Symlink
+        } else if self.has(Flag::Special) {
+            EntryKind::Other
         } else {
             EntryKind::File
         }
@@ -265,12 +277,22 @@ impl Node {
     }
 
     pub(crate) fn modified(&self) -> Option<Timestamp> {
-        u64::try_from(self.modified).ok().map(Timestamp::from_secs)
+        time_of(self.modified)
     }
 
     pub(crate) fn set_modified(&mut self, modified: Option<Timestamp>) {
-        self.modified = modified.map_or(Self::NO_TIME, |time| i64::try_from(time.secs()).unwrap_or(i64::MAX));
+        self.modified = time_bits(modified);
     }
+}
+
+/// A time as a node and the cache codec keep it: seconds since the Unix epoch, `i64::MIN` for none.
+pub(crate) fn time_bits(time: Option<Timestamp>) -> i64 {
+    time.map_or(Node::NO_TIME, |time| i64::try_from(time.secs()).unwrap_or(i64::MAX))
+}
+
+/// The time of `bits`; `None` for no time (or any negative value).
+pub(crate) fn time_of(bits: i64) -> Option<Timestamp> {
+    u64::try_from(bits).ok().map(Timestamp::from_secs)
 }
 
 #[cfg(test)]

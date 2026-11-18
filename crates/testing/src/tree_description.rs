@@ -1,13 +1,15 @@
-use std::collections::HashSet;
-use std::fs::{self, File};
+use std::collections::{BTreeSet, HashSet};
+use std::fs::{self, File, FileTimes, OpenOptions};
 use std::io::Write;
-use std::os::unix::fs::{MetadataExt as _, symlink};
+use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _, symlink};
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use fresher_core::Timestamp;
 use serde::Deserialize;
 
 use crate::app_bundle::AppBundle;
+use crate::facts_lens::{Stated, StatedFlag, StatedKind, StatedOwner};
 use crate::fixture_tree::{FixtureError, write_marker};
 
 /// The "now" of a fixture home, in seconds since the Unix epoch: an `age` is counted back from it, so a built tree
@@ -45,8 +47,17 @@ struct DirSpec {
     path: PathBuf,
     /// Seconds since the Unix epoch.
     modified: Option<u64>,
-    /// `"<n>d"` or `"<n>h"` before the "now" of the build; never together with `modified`.
+    /// `"<n>d"`, `"<n>h"` or `"<n>s"` before the "now" of the build (`"-2d"`: after it); never with `modified`.
     age: Option<String>,
+    /// The time of its last status change, stated, as an `age`.
+    changed: Option<String>,
+    /// The time of its last access, stated, as an `age`.
+    accessed: Option<String>,
+    /// Who owns it, stated.
+    owner: Option<StatedOwner>,
+    /// Its flags, stated.
+    #[serde(default)]
+    flags: BTreeSet<StatedFlag>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -57,10 +68,21 @@ struct FileSpec {
     size: u64,
     /// Seconds since the Unix epoch.
     modified: Option<u64>,
-    /// `"<n>d"` or `"<n>h"` before the "now" of the build; never together with `modified`.
+    /// `"<n>d"`, `"<n>h"` or `"<n>s"` before the "now" of the build (`"-2d"`: after it); never with `modified`.
     age: Option<String>,
+    /// Absent: sparse.
+    fill: Option<Fill>,
+    /// The time of its last status change, stated, as an `age`.
+    changed: Option<String>,
+    /// The time of its last access, stated, as an `age`.
+    accessed: Option<String>,
+    /// Who owns it, stated.
+    owner: Option<StatedOwner>,
+    /// Its flags, stated.
     #[serde(default)]
-    fill: Fill,
+    flags: BTreeSet<StatedFlag>,
+    /// A socket or a pipe, stated: written as a plain file. Never with `fill`.
+    kind: Option<StatedKind>,
 }
 
 /// What a file holds: nothing (sparse, costs no disk) or real bytes of a fixed pattern.
@@ -77,6 +99,10 @@ enum Fill {
 struct SymlinkSpec {
     path: PathBuf,
     target: PathBuf,
+    /// The link's own modification and access time, as an `age`; its target is never touched.
+    age: Option<String>,
+    /// The time of the link's last status change, stated, as an `age`.
+    changed: Option<String>,
 }
 
 /// A second name of a file of the tree; `target` is relative to the root too.
@@ -144,6 +170,33 @@ impl TreeDescription {
         self.markers.iter().map(|spec| spec.path.as_path())
     }
 
+    /// The facts the tree states instead of making them (docs/testing.md, "Fixture homes"), its folders', its files'
+    /// then its links', relative to its root as written; times counted back from `now`. An entry that states nothing is
+    /// left out.
+    pub fn stated(&self, now: SystemTime) -> Result<Vec<(PathBuf, Stated)>, FixtureError> {
+        let dirs = self
+            .dirs
+            .iter()
+            .map(|dir| (&dir.path, dir.changed.as_deref(), dir.accessed.as_deref(), dir.owner, &dir.flags, None));
+        let files = self.files.iter().map(|file| {
+            (&file.path, file.changed.as_deref(), file.accessed.as_deref(), file.owner, &file.flags, file.kind)
+        });
+        let no_flags = BTreeSet::new();
+        let links = self.symlinks.iter().map(|link| (&link.path, link.changed.as_deref(), None, None, &no_flags, None));
+        let mut stated = Vec::new();
+        for (path, changed, accessed, owner, flags, kind) in dirs.chain(files).chain(links) {
+            let stamp = |offset: Option<&str>| -> Result<Option<Timestamp>, FixtureError> {
+                Ok(time_of(path, offset, None, now)?.map(Timestamp::from_system_time))
+            };
+            let facts =
+                Stated { changed: stamp(changed)?, accessed: stamp(accessed)?, owner, flags: flags.clone(), kind };
+            if !facts.is_empty() {
+                stated.push((path.clone(), facts));
+            }
+        }
+        Ok(stated)
+    }
+
     /// Builds the tree inside the existing `folder`; an `age` is counted back from `now`.
     ///
     /// Refuses a path that leaves the folder or passes through a link. Built again on a folder it built before, it
@@ -162,12 +215,19 @@ impl TreeDescription {
                 Err(FixtureError::PathThroughLink { path })
                     if path == folder.join(&link.path) && fs::read_link(&path).is_ok_and(|to| to == link.target) =>
                 {
-                    continue;
+                    path
                 }
-                resolved => resolved?,
+                resolved => {
+                    let path = resolved?;
+                    create_parent(&path)?;
+                    symlink(&link.target, &path)
+                        .map_err(|source| FixtureError::Create { path: path.clone(), source })?;
+                    path
+                }
             };
-            create_parent(&path)?;
-            symlink(&link.target, &path).map_err(|source| FixtureError::Create { path, source })?;
+            if let Some(time) = time_of(&link.path, link.age.as_deref(), None, now)? {
+                set_link_time(&path, time).map_err(|source| FixtureError::Create { path, source })?;
+            }
         }
         for link in &self.hardlinks {
             let (path, target) = (resolve(folder, &link.path)?, resolve(folder, &link.target)?);
@@ -227,11 +287,19 @@ impl TreeDescription {
         }
         for dir in &self.dirs {
             check_time(&dir.path, dir.age.as_deref(), dir.modified)?;
+            check_stated_times(&dir.path, &[dir.changed.as_deref(), dir.accessed.as_deref()])?;
+        }
+        for link in &self.symlinks {
+            check_stated_times(&link.path, &[link.age.as_deref(), link.changed.as_deref()])?;
         }
         let mut filled = 0u64;
         for file in &self.files {
             check_time(&file.path, file.age.as_deref(), file.modified)?;
-            if file.fill == Fill::Data {
+            check_stated_times(&file.path, &[file.changed.as_deref(), file.accessed.as_deref()])?;
+            if file.kind.is_some() && file.fill.is_some() {
+                return Err(FixtureError::KindWithFill { path: file.path.clone() });
+            }
+            if file.fill == Some(Fill::Data) {
                 filled = filled.saturating_add(file.size);
                 if file.size > MAX_FILLED_FILE || filled > MAX_FILLED_TREE {
                     return Err(FixtureError::FillOverCap { path: file.path.clone() });
@@ -242,23 +310,43 @@ impl TreeDescription {
     }
 }
 
-/// `"30d"` or `"12h"` as a duration.
-fn parse_age(text: &str) -> Option<Duration> {
-    let (count, per_unit) = match (text.strip_suffix('d'), text.strip_suffix('h')) {
-        (Some(count), _) => (count, 24),
-        (None, Some(count)) => (count, 1),
-        (None, None) => return None,
-    };
-    let hours = count.parse::<u64>().ok()?.checked_mul(per_unit)?;
-    Some(Duration::from_hours(hours))
+/// An age before "now", `"30d"`, `"12h"` or `"90s"`, or after it with a leading `-` (`"-2d"`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Age {
+    Before(Duration),
+    After(Duration),
 }
 
-/// Refuses an `age` together with `modified`, and an age not of the form `"<n>d"` or `"<n>h"`.
+fn parse_age(text: &str) -> Option<Age> {
+    let (after, text) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text),
+    };
+    let (count, per_unit) = match (text.strip_suffix('d'), text.strip_suffix('h'), text.strip_suffix('s')) {
+        (Some(count), ..) => (count, 24 * 3600),
+        (None, Some(count), _) => (count, 3600),
+        (None, None, Some(count)) => (count, 1),
+        (None, None, None) => return None,
+    };
+    // Digits only: `parse` would take a second sign.
+    if count.is_empty() || !count.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    let duration = Duration::from_secs(count.parse::<u64>().ok()?.checked_mul(per_unit)?);
+    Some(if after { Age::After(duration) } else { Age::Before(duration) })
+}
+
+/// Refuses an `age` together with `modified`, and an age not of the form `"<n>d"`, `"<n>h"` or `"<n>s"`.
 fn check_time(path: &Path, age: Option<&str>, modified: Option<u64>) -> Result<(), FixtureError> {
     if age.is_some() && modified.is_some() {
         return Err(FixtureError::AgeWithModified { path: path.to_path_buf() });
     }
-    if let Some(age) = age {
+    check_stated_times(path, &[age])
+}
+
+/// Refuses a stated time that is not an age.
+fn check_stated_times(path: &Path, ages: &[Option<&str>]) -> Result<(), FixtureError> {
+    for age in ages.iter().flatten() {
         parse_age(age).ok_or_else(|| FixtureError::InvalidAge { path: path.to_path_buf() })?;
     }
     Ok(())
@@ -274,7 +362,10 @@ fn time_of(
     Ok(match (age, modified) {
         (Some(age), _) => Some(
             parse_age(age)
-                .and_then(|age| now.checked_sub(age))
+                .and_then(|age| match age {
+                    Age::Before(duration) => now.checked_sub(duration),
+                    Age::After(duration) => now.checked_add(duration),
+                })
                 .ok_or_else(|| FixtureError::InvalidAge { path: path.to_path_buf() })?,
         ),
         (None, Some(seconds)) => Some(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)),
@@ -288,15 +379,28 @@ fn create_file(folder: &Path, spec: &FileSpec, now: SystemTime) -> Result<(), Fi
     create_parent(&path)?;
     let create_error = |source| FixtureError::Create { path: path.clone(), source };
     let mut file = File::create(&path).map_err(create_error)?;
-    match spec.fill {
+    match spec.fill.unwrap_or_default() {
         Fill::Sparse => file.set_len(spec.size).map_err(create_error)?,
-        // Synced, so the blocks are allocated before a walk reads the file's size on disk.
-        Fill::Data => write_pattern(&mut file, spec.size).and_then(|()| file.sync_all()).map_err(create_error)?,
+        // Sized first, so every write lands inside the file: a file grown by appends can keep blocks the file
+        // system reserved past its end, under load even after the sync, and a walk would read them. Synced, so
+        // the blocks are allocated before a walk reads the file's size on disk.
+        Fill::Data => file
+            .set_len(spec.size)
+            .and_then(|()| write_pattern(&mut file, spec.size))
+            .and_then(|()| file.sync_all())
+            .map_err(create_error)?,
     }
     if let Some(time) = modified {
         file.set_modified(time).map_err(create_error)?;
     }
-    Ok(())
+    let written = file.metadata().and_then(|metadata| metadata.modified()).map_err(create_error)?;
+    file.set_times(FileTimes::new().set_accessed(written)).map_err(create_error)
+}
+
+/// Sets the link's own modification and access time: opened with `O_SYMLINK`, the link itself, never its target.
+fn set_link_time(path: &Path, time: SystemTime) -> std::io::Result<()> {
+    let link = OpenOptions::new().read(true).custom_flags(libc::O_SYMLINK).open(path)?;
+    link.set_times(FileTimes::new().set_modified(time).set_accessed(time))
 }
 
 /// Writes `size` bytes of a fixed pseudo-random pattern: the same bytes every time, and not compressible to nothing.
@@ -373,13 +477,78 @@ mod tests {
 
         #[test]
         fn an_age_without_a_known_unit_is_refused() {
-            for age in ["30", "d", "-1d", "3w", "", "5д", "d5"] {
+            for age in ["30", "d", "--1d", "-", "+1d", "3w", "", "5д", "d5", "1ds", "1 d"] {
                 for kind in ["file", "dir"] {
                     let error = parse(&format!("[[{kind}]]\npath = \"a\"\nage = \"{age}\"\n")).unwrap_err();
 
                     assert!(matches!(error, FixtureError::InvalidAge { .. }), "{kind} {age}");
                 }
             }
+        }
+
+        #[test]
+        fn an_unknown_owner_or_flag_is_refused() {
+            for fact in ["owner = \"root\"", "owner = \"me\"", "flags = [\"locked\"]", "flags = \"user-lock\""] {
+                for kind in ["file", "dir"] {
+                    let error = parse(&format!("[[{kind}]]\npath = \"a\"\n{fact}\n")).unwrap_err();
+
+                    assert!(matches!(error, FixtureError::Parse { .. }), "{kind} {fact}");
+                }
+            }
+        }
+
+        #[test]
+        fn a_stated_time_that_is_not_an_age_is_refused() {
+            for fact in ["changed = \"30\"", "accessed = \"1w\""] {
+                let error = parse(&format!("[[file]]\npath = \"a\"\n{fact}\n")).unwrap_err();
+
+                assert!(matches!(error, FixtureError::InvalidAge { .. }), "{fact}");
+            }
+        }
+
+        #[test]
+        fn a_links_time_that_is_not_an_age_is_refused() {
+            for fact in ["age = \"30\"", "changed = \"1w\""] {
+                let error = parse(&format!("[[symlink]]\npath = \"a\"\ntarget = \"b\"\n{fact}\n")).unwrap_err();
+
+                assert!(matches!(error, FixtureError::InvalidAge { .. }), "{fact}");
+            }
+        }
+
+        #[test]
+        fn a_link_states_no_owner_flag_kind_or_access() {
+            for fact in ["owner = \"system\"", "flags = [\"user-lock\"]", "kind = \"socket\"", "accessed = \"1d\""] {
+                let error = parse(&format!("[[symlink]]\npath = \"a\"\ntarget = \"b\"\n{fact}\n")).unwrap_err();
+
+                assert!(matches!(error, FixtureError::Parse { .. }), "{fact}");
+            }
+        }
+
+        #[test]
+        fn a_kind_on_a_folder_or_another_kind_is_refused() {
+            for text in [
+                "[[dir]]\npath = \"a\"\nkind = \"socket\"\n",
+                "[[file]]\npath = \"a\"\nkind = \"device\"\n",
+                "[[file]]\npath = \"a\"\nkind = \"folder\"\n",
+            ] {
+                assert!(matches!(parse(text).unwrap_err(), FixtureError::Parse { .. }), "{text}");
+            }
+        }
+
+        #[test]
+        fn a_kind_with_a_fill_is_refused() {
+            for fill in ["data", "sparse"] {
+                let text = format!("[[file]]\npath = \"a\"\nkind = \"pipe\"\nfill = \"{fill}\"\n");
+
+                assert!(matches!(parse(&text).unwrap_err(), FixtureError::KindWithFill { .. }), "{fill}");
+            }
+        }
+
+        #[test]
+        fn an_entry_that_states_nothing_is_not_stated() {
+            let tree = parse("[[file]]\npath = \"a\"\nage = \"3d\"\n[[dir]]\npath = \"b\"\nflags = []\n").unwrap();
+
+            assert_eq!(tree.stated(SystemTime::UNIX_EPOCH).unwrap(), []);
         }
 
         #[test]
@@ -498,11 +667,14 @@ mod tests {
 
     mod positive {
         use std::os::unix::fs::MetadataExt;
+        use std::path::PathBuf;
         use std::time::{Duration, SystemTime};
 
-        use fresher_core::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
+        use fresher_core::{SANDBOX_MARKER, SANDBOX_SIGNATURE, Timestamp};
 
-        use crate::{FIXTURE_NOW, FixtureTree, TreeDescription, TreeReport};
+        use crate::{
+            FIXTURE_NOW, FixtureTree, Stated, StatedFlag, StatedKind, StatedOwner, TreeDescription, TreeReport,
+        };
 
         fn now() -> SystemTime {
             SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW)
@@ -539,6 +711,83 @@ mod tests {
         }
 
         #[test]
+        fn an_age_in_seconds_or_after_now_is_counted_from_now() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[file]]\npath = \"s\"\nage = \"90s\"\n[[file]]\npath = \"later\"\nage = \"-2d\"\n";
+
+            TreeDescription::from_toml_str(text).unwrap().build_at(folder.path(), now()).unwrap();
+
+            let modified = |name: &str| std::fs::metadata(folder.path().join(name)).unwrap().modified().unwrap();
+            assert_eq!(modified("s"), now() - Duration::from_secs(90));
+            assert_eq!(modified("later"), now() + Duration::from_hours(48));
+        }
+
+        #[test]
+        fn stated_facts_are_listed_and_the_entry_is_written_plain() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[dir]]\npath = \"d\"\nowner = \"other-user\"\nchanged = \"2h\"\n\
+                        [[file]]\npath = \"d/sock\"\nkind = \"socket\"\nflags = [\"no-unlink\", \"user-lock\"]\n\
+                        [[file]]\npath = \"d/old\"\nchanged = \"30d\"\naccessed = \"-1h\"\nowner = \"system\"\n";
+            let tree = TreeDescription::from_toml_str(text).unwrap();
+
+            tree.build_at(folder.path(), now()).unwrap();
+            let stated = tree.stated(now()).unwrap();
+
+            assert!(std::fs::symlink_metadata(folder.path().join("d/sock")).unwrap().is_file());
+            let at = |back: Duration| Some(Timestamp::from_system_time(now() - back));
+            assert_eq!(
+                stated,
+                [
+                    (
+                        PathBuf::from("d"),
+                        Stated {
+                            changed: at(Duration::from_hours(2)),
+                            owner: Some(StatedOwner::OtherUser),
+                            ..Stated::default()
+                        }
+                    ),
+                    (
+                        PathBuf::from("d/sock"),
+                        Stated {
+                            flags: [StatedFlag::NoUnlink, StatedFlag::UserLock].into(),
+                            kind: Some(StatedKind::Socket),
+                            ..Stated::default()
+                        }
+                    ),
+                    (
+                        PathBuf::from("d/old"),
+                        Stated {
+                            changed: at(Duration::from_hours(30 * 24)),
+                            accessed: Some(Timestamp::from_system_time(now() + Duration::from_hours(1))),
+                            owner: Some(StatedOwner::System),
+                            ..Stated::default()
+                        }
+                    ),
+                ]
+            );
+        }
+
+        #[test]
+        fn a_links_age_is_its_own_time_and_its_change_is_stated() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[file]]\npath = \"target\"\nage = \"1d\"\n\
+                        [[symlink]]\npath = \"link\"\ntarget = \"target\"\nage = \"30d\"\nchanged = \"30d\"\n";
+            let tree = TreeDescription::from_toml_str(text).unwrap();
+
+            tree.build_at(folder.path(), now()).unwrap();
+            tree.build_at(folder.path(), now()).unwrap();
+
+            let link = std::fs::symlink_metadata(folder.path().join("link")).unwrap();
+            assert!(link.is_symlink());
+            assert_eq!(link.modified().unwrap(), now() - Duration::from_hours(30 * 24));
+            assert_eq!(link.accessed().unwrap(), now() - Duration::from_hours(30 * 24));
+            let target = std::fs::metadata(folder.path().join("target")).unwrap();
+            assert_eq!(target.modified().unwrap(), now() - Duration::from_hours(24));
+            let changed = Some(Timestamp::from_system_time(now() - Duration::from_hours(30 * 24)));
+            assert_eq!(tree.stated(now()).unwrap(), [(PathBuf::from("link"), Stated { changed, ..Stated::default() })]);
+        }
+
+        #[test]
         fn a_folders_age_is_its_time_after_everything_inside_is_written() {
             let folder = tempfile::tempdir().unwrap();
             let text = "[[dir]]\npath = \"a\"\nage = \"40d\"\n[[dir]]\npath = \"a/b\"\nmodified = 1700000000\n\
@@ -553,15 +802,19 @@ mod tests {
         }
 
         #[test]
-        fn filled_files_take_their_blocks() {
+        fn filled_files_take_exactly_their_blocks() {
             let folder = tempfile::tempdir().unwrap();
-            let text = "[[file]]\npath = \"a\"\nsize = 1000000\nfill = \"data\"\n";
+            let text = "[[file]]\npath = \"a\"\nsize = 1000000\nfill = \"data\"\n\
+                        [[file]]\npath = \"b\"\nsize = 52428800\nfill = \"data\"\n";
 
             TreeDescription::from_toml_str(text).unwrap().build_at(folder.path(), now()).unwrap();
 
-            let metadata = std::fs::metadata(folder.path().join("a")).unwrap();
-            assert_eq!(metadata.len(), 1_000_000);
-            assert!(metadata.blocks() * 512 >= 1_000_000);
+            // Whole 4 KiB blocks, none past the end: what the sandbox goldens hold.
+            for (name, size, blocks) in [("a", 1_000_000, 1_003_520), ("b", 52_428_800, 52_428_800)] {
+                let metadata = std::fs::metadata(folder.path().join(name)).unwrap();
+                assert_eq!(metadata.len(), size, "{name}");
+                assert_eq!(metadata.blocks() * 512, blocks, "{name}");
+            }
         }
 
         #[test]

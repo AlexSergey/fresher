@@ -18,7 +18,7 @@ use fresher_core::{
     VolumeId,
 };
 use fresher_engine::{Engine, ScanMode};
-use fresher_macos::{current_user, protection};
+use fresher_macos::{current_user, protection, user_temp_dir};
 use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, generate};
 use fresher_testing::{
     FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport,
@@ -199,7 +199,9 @@ impl World {
     fn engine(&self, files: &[CaseFile], module: Option<&str>) -> Result<Engine, Failure> {
         let name = &self.name;
         let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
-        let real = protection(&self.real_home(), &self.real_data(), None).map_err(|error| failure(name, error))?;
+        let user_temp = user_temp_dir().ok();
+        let real = protection(&self.real_home(), &self.real_data(), None, user_temp.as_deref())
+            .map_err(|error| failure(name, error))?;
         let generated = generate(files, &self.folder.path().join(SANDBOX), now, &real, current_user())
             .map_err(|error| failure(name, format!("the sandbox cannot be generated: {error}")))?;
         let mode = SandboxMode::new(generated.sandbox.path(), SandboxTrash::Sandbox);
@@ -210,7 +212,8 @@ impl World {
         let tree = TreeReport::of(generated.sandbox.path()).map_err(|error| failure(name, error))?;
         let tree_size = sandbox_entries(&tree).iter().map(|entry| entry.logical_size).sum();
         let world = fresher_sandbox::World::read(&generated.sandbox).map_err(|error| failure(name, error))?;
-        let ports = fakes(tree_size, &world).ok_or_else(|| failure(name, "the sandbox's world.toml holds no `now`"))?;
+        let ports = fakes(tree_size, &world, generated.sandbox.path())
+            .ok_or_else(|| failure(name, "the sandbox's world.toml holds no `now`"))?;
         let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), ports)
             .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
         if let Some(id) = module
@@ -234,10 +237,10 @@ fn leak(id: &str) -> &'static str {
 }
 
 /// Fakes for every port sandbox mode keeps real: no clock, volume, open file, tool or permission of the machine, and
-/// the running apps and the moment of the sandbox's `world`, as sandbox mode takes them: the clock stands at the
-/// moment the sandbox was generated. The volume holds `tree_size` bytes of the sandbox's files. `None` when the world
-/// holds no moment.
-fn fakes(tree_size: u64, world: &fresher_sandbox::World) -> Option<SandboxPorts> {
+/// the running apps, the moment and the stated facts of the sandbox's `world` (at `sandbox`), as sandbox mode takes
+/// them: the clock stands at the moment the sandbox was generated. The volume holds `tree_size` bytes of the sandbox's
+/// files. `None` when the world holds no moment.
+fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Path) -> Option<SandboxPorts> {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
     let now = world.now()?.duration_since(SystemTime::UNIX_EPOCH).ok()?;
     Some(SandboxPorts {
@@ -247,6 +250,7 @@ fn fakes(tree_size: u64, world: &fresher_sandbox::World) -> Option<SandboxPorts>
         running: Arc::new(world.running_apps()),
         commands: Arc::new(FakeCommandRunner::default()),
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        stated: world.stated(sandbox),
     })
 }
 
@@ -543,13 +547,29 @@ fn without_trash_order(path: &str) -> String {
     }
 }
 
-/// The sandbox's entries but what depends on where it was made: the app's data folder is left out, and the checklist
-/// (which names the sandbox's path) is kept without its size.
+/// The folders of the sandbox's temporary places, the same in every sandbox: a report shows what is inside them only.
+const TEMPORARY_LAYOUT: [&str; 10] = [
+    "private",
+    "private/tmp",
+    "private/var",
+    "private/var/folders",
+    "private/var/folders/xx",
+    "private/var/folders/xx/sandbox",
+    "private/var/folders/xx/sandbox/0",
+    "private/var/folders/xx/sandbox/C",
+    "private/var/folders/xx/sandbox/T",
+    "private/var/folders/xx/sandbox/X",
+];
+
+/// The sandbox's entries but what depends on where it was made or is in every sandbox: the app's data folder and the
+/// folders of the temporary places are left out, and the checklist (which names the sandbox's path) is kept without
+/// its size.
 fn sandbox_entries(report: &TreeReport) -> Vec<TreeEntry> {
     report
         .entries
         .iter()
         .filter(|entry| !Path::new(&entry.path).starts_with(".fresher-data"))
+        .filter(|entry| !TEMPORARY_LAYOUT.contains(&entry.path.as_str()))
         .map(|entry| {
             let sized = Path::new(&entry.path) != Path::new("EXPECTED.md");
             TreeEntry { logical_size: if sized { entry.logical_size } else { 0 }, ..entry.clone() }

@@ -18,11 +18,12 @@ use crate::access::AccessView;
 use crate::cleanup::{self, Pending};
 use crate::coverage::{OPT_INS, opt_in_key};
 use crate::error::{EngineError, lock, lock_anyway};
+use crate::places::walked_places;
 use crate::results::{Filter, Results};
 use crate::session::{self, Planned, ScanPlan};
 use crate::settings::{self as settings_rules, Settings};
 use crate::state::{Machine, OperationThread, Running};
-use crate::storage::roots::RootVolumes;
+use crate::storage::roots::{RootVolumes, expand_home};
 use crate::{EventBus, Registry};
 
 /// How long `shutdown` waits for the cancelled operation's thread before it gives up on it.
@@ -428,13 +429,15 @@ impl Engine {
             .map(|module| Planned { module: Arc::clone(module), settings: settings.module(module.descriptor().id()) })
             .collect();
         let opt_ins = OPT_INS.into_iter().filter(|&capability| settings.core_switch(&opt_in_key(capability))).collect();
-        Ok(ScanPlan {
-            roots: settings.scan_roots(),
-            opt_ins,
-            modules,
-            mode,
-            ignored: settings.ignored(&self.shared.registry),
-        })
+        let roots = settings.scan_roots();
+        let protection = self.shared.cleanup.as_ref().map(|cleanup| cleanup.cleaner.protection()).unwrap_or_default();
+        let places = walked_places(
+            &self.shared.registry,
+            &*self.shared.ports.system.known_folders,
+            &expand_home(&roots, self.shared.home().as_deref()),
+            &protection,
+        );
+        Ok(ScanPlan { roots, places, opt_ins, modules, mode, ignored: settings.ignored(&self.shared.registry) })
     }
 }
 

@@ -27,11 +27,12 @@ mod trash;
 mod volume;
 
 pub use bulk::MacFolderReader;
+pub use ffi::confstr::user_temp_dir;
 pub use journal::MacChangeJournal;
 pub use open_files::MacOpenFiles;
 pub use places::places_that_prompt;
 pub use process::{Process, current_user, peak_memory, running_processes};
-pub use protection::protection;
+pub use protection::{is_user_temp, protection};
 pub use trash::MacTrash;
 pub use volume::MacVolumes;
 

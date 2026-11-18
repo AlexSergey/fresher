@@ -9,8 +9,8 @@ use std::time::SystemTime;
 
 use fresher_core::{
     ByteSize, CancelToken, CategoryId, ChangeJournal, ClaimedPath, Clock, DiskState, DiskWalk, FolderReader,
-    FullScanReason, JournalPosition, KnownFolder, KnownFolders, Match, Pattern, ScanCache, ScanKind, StateId,
-    Timestamp, VolumeId, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    FullScanReason, JournalPosition, KnownFolder, KnownFolders, Match, NotScanned, Pattern, ScanCache, ScanKind,
+    StateId, Timestamp, VolumeId, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::codec::fit::{Limits, fit};
@@ -32,6 +32,8 @@ use crate::walk::roots::Roots;
 
 /// The most worker threads: more than the cores made the walk slower in plan 004/01.
 const MAX_THREADS: usize = 16;
+/// The system's own items in the user's temporary folder, guarded by its privacy protection: never opened.
+const TEMPORARY_ITEMS: &str = "TemporaryItems";
 
 /// Resolves a known folder to the absolute folder `Pattern::Under` paths are relative to; `None` when this system has
 /// no such folder.
@@ -201,16 +203,30 @@ impl Scanner {
         Matcher::compile(request.interests, &anchor)
     }
 
-    /// The roots, the boundaries, the matcher and the scope of `request`; reads no folder.
+    /// The roots (the scan roots, then the places), the boundaries, the matcher and the scope of `request`; reads no
+    /// folder.
     pub(crate) fn prepare(&self, request: &WalkRequest<'_>) -> Result<Prepared, WalkError> {
         let asked: Vec<PathBuf> = request.roots.iter().map(|root| self.expand_home(root)).collect();
-        let roots = Roots::prepare(&asked, &*self.volumes, &*self.reader)?;
+        let places: Vec<PathBuf> = request.places.iter().map(|place| place.path.clone()).collect();
+        let roots = Roots::prepare(&asked, &places, &*self.volumes, &*self.reader)?;
         let canonical: Vec<PathBuf> = roots.iter().map(|root| root.path.clone()).collect();
-        let avoid: Vec<PathBuf> = request.avoid.iter().chain(&self.options.standing_avoid).cloned().collect();
-        let boundary = Boundary::new(&canonical, &avoid);
+        let avoid = self.avoid(request);
+        let user = self.user();
+        let boundary = Boundary::new(&canonical, &avoid).with_places(roots.places(), &self.system_items(), user);
         let matcher = self.compile(request);
         let scope = Self::scope(&roots, &avoid, &matcher);
-        Ok(Prepared { roots, boundary, matcher, scope, user: self.user() })
+        Ok(Prepared { roots, boundary, matcher, scope, user })
+    }
+
+    /// Every place the walk of `request` does not open: the request's, the standing ones, and the system's own items.
+    fn avoid(&self, request: &WalkRequest<'_>) -> Vec<PathBuf> {
+        request.avoid.iter().chain(&self.options.standing_avoid).cloned().chain(self.system_items()).collect()
+    }
+
+    /// The system's own items, never opened and reported for their own reason: the user's temporary folder's
+    /// `TemporaryItems`, whose listing the system's privacy protection refuses (no permission would show it).
+    fn system_items(&self) -> Vec<PathBuf> {
+        (self.anchor)(KnownFolder::UserTemp).map(|temp| temp.join(TEMPORARY_ITEMS)).into_iter().collect()
     }
 
     /// The user the scan is for: the owner of the home folder, read through the reader. The app runs as the user whose
@@ -230,18 +246,22 @@ impl Scanner {
     /// the journal is not asked. Any reason the cache cannot be used is `NothingToRestore` (logged).
     fn restore(&self, request: &WalkRequest<'_>, on_match: &mut dyn FnMut(Match)) -> Result<WalkSummary, WalkError> {
         let asked: Vec<PathBuf> = request.roots.iter().map(|root| self.expand_home(root)).collect();
-        let roots = Roots::locate(&asked, &*self.volumes).map_err(|error| {
+        let places: Vec<PathBuf> = request.places.iter().map(|place| place.path.clone()).collect();
+        let roots = Roots::locate(&asked, &places, &*self.volumes).map_err(|error| {
             tracing::info!(%error, "a scan root cannot be restored");
             WalkError::NothingToRestore
         })?;
-        let avoid: Vec<PathBuf> = request.avoid.iter().chain(&self.options.standing_avoid).cloned().collect();
+        let avoid = self.avoid(request);
         let matcher = self.compile(request);
-        let scope = Self::scope(&roots, &avoid, &matcher);
+        // Every place asked, there or not: a restore compares and emits the scan roots only.
+        let asked_places = places.iter().map(|place| canonical(place.clone())).collect();
+        let scope = Scope { places: asked_places, ..Self::scope(&roots, &avoid, &matcher) };
         let Cached { tree, header } = Cached::load(&*self.cache, &scope, Use::Restore).map_err(|reason| {
             tracing::info!(?reason, "the cache cannot be restored");
             WalkError::NothingToRestore
         })?;
-        emit(&tree, &matcher, request.interests, on_match);
+        // A place's cached times may be older than the disk's: a restore offers nothing inside one.
+        emit(&tree, &matcher, request.interests, &scope.places, on_match);
         let summary = summarize(&tree, ScanKind::Restored { taken: header.taken });
         let positions = header.roots.iter().map(|root| root.journal).collect();
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
@@ -261,6 +281,7 @@ impl Scanner {
                 .map(|root| ScopeRoot { path: root.path.clone(), volume: root.volume.id, identity: root.identity })
                 .collect(),
             avoid,
+            places: roots.places(),
             fingerprint: matcher.fingerprint(),
         }
     }
@@ -291,6 +312,28 @@ impl Scanner {
         if let Err(error) = self.cache.save(scope.key, &body) {
             tracing::warn!(%error, "the scan cache could not be saved");
         }
+    }
+}
+
+/// A place outside the scan roots that could not be walked is not scanned, with why, and never makes the scan
+/// incomplete: the places that could not be made ready, and each place root that could not be read.
+fn settle_places(roots: &Roots, tree: &Tree, summary: &mut WalkSummary) {
+    for (_, reason) in roots.unreachable() {
+        *summary.not_scanned.entry(*reason).or_default() += 1;
+    }
+    let places = roots.places();
+    for root in tree.roots() {
+        let Some(reason) = tree.node(root.node).and_then(|node| node.flags.unreadable()) else { continue };
+        if !tree.path(root.node).is_some_and(|path| places.contains(&path)) {
+            continue;
+        }
+        if let Some(count) = summary.unreadable.get_mut(&reason) {
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                summary.unreadable.remove(&reason);
+            }
+        }
+        *summary.not_scanned.entry(NotScanned::Unreadable(reason)).or_default() += 1;
     }
 }
 
@@ -351,7 +394,8 @@ impl DiskWalk for Scanner {
                 limit_percent: self.options.rescan_limit_percent,
             };
             match rescan(&scope, &walk, sources, cancel, on_match, on_progress) {
-                Ok((tree, summary)) => {
+                Ok((tree, mut summary)) => {
+                    settle_places(&roots, &tree, &mut summary);
                     *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
                         Some(Walked { tree, scope, positions, save: true, taken: None });
                     return Ok(summary);
@@ -365,6 +409,7 @@ impl DiskWalk for Scanner {
         }
         let (tree, mut summary) = walk.run(cancel, on_match, on_progress)?;
         summary.fallback = fallback;
+        settle_places(&roots, &tree, &mut summary);
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
             Some(Walked { tree, scope, positions, save: true, taken: None });
         Ok(summary)

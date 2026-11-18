@@ -481,7 +481,7 @@ mod tests {
 
             let modules: Vec<_> = get_modules(shell.engine()).into_iter().map(|module| module.id.as_str()).collect();
 
-            assert_eq!(modules, ["jetbrains", "demo", "trial"]);
+            assert_eq!(modules, ["jetbrains", "temp", "demo", "trial"]);
             assert_eq!(get_access_status(shell.engine()).access(&Capability::AllFiles), Access::Unknown);
         }
     }

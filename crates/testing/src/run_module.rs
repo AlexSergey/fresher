@@ -33,11 +33,27 @@ pub struct Ports {
     pub running: Arc<FakeRunningApps>,
     /// `None`: the home layout under the fixture tree's root.
     pub known_folders: Option<FakeKnownFolders>,
+    /// The scan is restored from the cache (`ModuleContext::is_restored`); a walked one by default.
+    pub restored: bool,
+    /// The order the module receives the matches in: the walk's by default.
+    pub order: MatchOrder,
+}
+
+/// The order a module receives the matches of a run in: a module's answers must not depend on it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MatchOrder {
+    /// Each match as the walk reports it.
+    #[default]
+    Walked,
+    /// Every match once the walk is done, the last one first; the held matches are delivered even when the walk was
+    /// cancelled, before the run reports the cancellation.
+    Reversed,
 }
 
 impl Ports {
     /// The clock at `seconds` after the Unix epoch, no command answers, every setting at its default, no capability,
-    /// a system interface that records its calls, no app installed or running, and the fixture home's folders.
+    /// a system interface that records its calls, no app installed or running, the fixture home's folders, and a
+    /// walked scan whose matches come in the walk's order.
     pub fn at(seconds: u64) -> Self {
         Self {
             clock: FakeClock::at(seconds),
@@ -49,6 +65,8 @@ impl Ports {
             apps: Arc::default(),
             running: Arc::default(),
             known_folders: None,
+            restored: false,
+            order: MatchOrder::Walked,
         }
     }
 }
@@ -75,7 +93,7 @@ pub enum HarnessError {
 }
 
 /// Runs `module` as the engine would, against the fixture tree as the home folder and only root: walks it with
-/// [`NaiveWalk`], sends each match to the module (indexed in the module's own interests), then calls `finish`. A
+/// [`NaiveWalk`], reading the facts the tree states instead of the disk's, sends each match to the module (indexed in the module's own interests), then calls `finish`. A
 /// module's error ends its run with that outcome; a cancelled walk ends it as `Cancelled`.
 pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Result<ModuleRun, HarnessError> {
     let id = module.descriptor().id();
@@ -87,12 +105,14 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         running: Arc::clone(&ports.running) as _,
     });
     let cx = ModuleContext::new(&ports.clock, &ports.commands, &system, &settings, &ports.cancel);
+    let cx = if ports.restored { cx.restored() } else { cx };
     let mut interests = InterestSet::new();
     interests.add(id, module.interests());
     let mut sink = Recorder::default();
     let mut failure = None;
     let mut matched_paths = BTreeSet::new();
-    let mut on_match = |mut matched: Match| {
+    let mut held = Vec::new();
+    let mut deliver = |mut matched: Match, failure: &mut Option<ModuleError>, sink: &mut Recorder| {
         if failure.is_some() {
             return;
         }
@@ -100,12 +120,19 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         if let Some((_, local)) = interests.owner(matched.interest) {
             matched.interest = local;
         }
-        failure = module.on_match(&matched, &cx, &mut sink).err();
+        *failure = module.on_match(&matched, &cx, sink).err();
+    };
+    let mut on_match = |matched: Match| match ports.order {
+        MatchOrder::Walked => deliver(matched, &mut failure, &mut sink),
+        MatchOrder::Reversed => held.push(matched),
     };
     let roots = [tree.root().to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
-    let walk = NaiveWalk::new(tree.root()).with_known_folders(known_folders);
+    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
+    let walk = NaiveWalk::new(tree.root()).with_known_folders(known_folders).with_stated(tree.stated().clone());
     let walked = walk.walk(&request, &ports.cancel, &mut on_match, &mut |_| {});
+    for matched in held.into_iter().rev() {
+        deliver(matched, &mut failure, &mut sink);
+    }
     let walk_complete = match walked {
         Ok(summary) => summary.is_complete(),
         Err(WalkError::Cancelled) => {
@@ -375,7 +402,7 @@ mod tests {
         use fresher_core::{ByteSize, ModuleOutcome};
 
         use crate::run_module::sample::{CacheModule, TREE};
-        use crate::{FixtureTree, Ports, run_module};
+        use crate::{FixtureTree, MatchOrder, Ports, run_module};
 
         #[test]
         fn run_module_returns_the_findings_of_a_test_module() {
@@ -388,6 +415,21 @@ mod tests {
             let expected = [tree.root().join("a/Caches"), tree.root().join("b/Caches")];
             assert_eq!(identities, expected.iter().map(|path| path.to_str().unwrap()).collect::<Vec<_>>());
             assert_eq!(run.findings[1].sizes().logical, ByteSize::new(10));
+        }
+
+        #[test]
+        fn the_matches_reversed_reach_the_module_last_first() {
+            let tree = FixtureTree::from_toml_str(TREE).unwrap();
+            let identities = |order: MatchOrder| {
+                let run = run_module(&CacheModule::new(), &tree, &Ports { order, ..Ports::at(0) }).unwrap();
+                run.findings.iter().map(|finding| finding.key().identity().to_owned()).collect::<Vec<_>>()
+            };
+
+            let mut reversed = identities(MatchOrder::Reversed);
+
+            assert_eq!(reversed.len(), 2);
+            reversed.reverse();
+            assert_eq!(reversed, identities(MatchOrder::Walked));
         }
 
         #[test]

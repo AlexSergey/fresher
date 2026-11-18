@@ -9,14 +9,16 @@ use std::sync::Arc;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{AccessProbe, Clock, CommandRunner, ModuleId, OpenFiles, RunningApps, Trash, Volumes};
 use fresher_engine::{CleanupPorts, Engine};
-use fresher_macos::{MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection};
+use fresher_macos::{
+    MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection,
+};
 use fresher_sandbox::{Sandbox, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
 use fresher_system::{AppSearch, COMMAND_TIMEOUT, ProcessCommandRunner, StartedClock, SystemClock};
-use fresher_testing::FakeTrash;
+use fresher_testing::{FactsLens, FakeTrash, StatedFacts};
 
 use crate::adapters::UnknownAccess;
-use crate::compose::{ComposeError, Shared, assemble, real_protection};
+use crate::compose::{ComposeError, Shared, assemble, real_protection, user_temp};
 
 /// The variable naming the sandbox folder, an absolute path.
 const SANDBOX_VARIABLE: &str = "FRESHER_SANDBOX";
@@ -123,8 +125,8 @@ impl SandboxMode {
 }
 
 /// What sandbox mode keeps real in the app, and the autotests replace by fakes: all of it is only read. The running
-/// apps are never the Mac's and the clock starts at the sandbox's own moment: the app takes both from the sandbox's
-/// world.toml.
+/// apps are never the Mac's, the clock starts at the sandbox's own moment, and the facts the sandbox's entries state
+/// are read instead of the disk's: the app takes all three from the sandbox's world.toml.
 #[derive(Clone)]
 pub struct SandboxPorts {
     pub clock: Arc<dyn Clock>,
@@ -133,6 +135,8 @@ pub struct SandboxPorts {
     pub running: Arc<dyn RunningApps>,
     pub commands: Arc<dyn CommandRunner>,
     pub access: Arc<dyn AccessProbe>,
+    /// What the walk's reader reports instead of the disk's, for the stated entries only (`World::stated`).
+    pub stated: StatedFacts,
 }
 
 impl std::fmt::Debug for SandboxPorts {
@@ -142,10 +146,10 @@ impl std::fmt::Debug for SandboxPorts {
 }
 
 impl SandboxPorts {
-    /// The app's real ports, as a normal development build has them, but the running apps and the clock: the
-    /// sandbox's declared running apps (none without a `world.toml`), so an app open on the Mac never changes what a
-    /// sandbox shows, and a clock that starts at the moment the sandbox was generated (the system's without one), so
-    /// its ages are the case files' however long ago it was generated.
+    /// The app's real ports, as a normal development build has them, but the running apps, the clock and the stated
+    /// facts: the sandbox's declared running apps (none without a `world.toml`), so an app open on the Mac never
+    /// changes what a sandbox shows, a clock that starts at the moment the sandbox was generated (the system's without
+    /// one), so its ages are the case files' however long ago it was generated, and the facts its entries state.
     pub(crate) fn real(sandbox: &Sandbox) -> Result<Self, SandboxRefusal> {
         let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
         let clock: Arc<dyn Clock> = match world.now() {
@@ -159,14 +163,16 @@ impl SandboxPorts {
             running: Arc::new(world.running_apps()),
             commands: Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT)),
             access: Arc::new(UnknownAccess),
+            stated: world.stated(sandbox.path()),
         })
     }
 }
 
 /// The engine of sandbox mode over `ports`: the sandbox's home and known folders, its data folder
 /// `<sandbox>/.fresher-data`, its Trash (`home/.Trash`, or the system's for [`SandboxTrash::Real`]), a cleaner that
-/// reaches only inside the sandbox folder, and both protection lists — the real Mac's for `real_home` (with the
-/// development build's own `real_data_folder`) and the sandbox home's. Refused when the folder is a link, is
+/// reaches only inside the sandbox folder, the system's reader seen through the ports' stated facts, and the
+/// protection lists — the real Mac's for `real_home` (with the development build's own `real_data_folder`), the
+/// sandbox home's and its temporary places'. Refused when the folder is a link, is
 /// protected on the real Mac, holds no valid marker of the user, or misses a part of its layout. It leaves the
 /// process's IO policy alone: the app's start sets it.
 pub fn sandbox_engine(
@@ -186,15 +192,20 @@ pub(crate) fn compose(
     ports: impl FnOnce(&Sandbox) -> Result<SandboxPorts, SandboxRefusal>,
 ) -> Result<(Engine, Sandbox), ComposeError> {
     let user = current_user();
-    let real = real_protection(real_home, real_data_folder)?;
+    let real_temp = user_temp();
+    let real = real_protection(real_home, real_data_folder, real_temp.as_deref())?;
     let folder = SandboxFolder::new(mode.path(), user, &real).map_err(SandboxRefusal::from)?;
     let sandbox = Sandbox::open(folder.path(), user).map_err(SandboxRefusal::from)?;
     let ports = ports(&sandbox)?;
     let home = sandbox.home();
     let data = DataFolder::open(sandbox.data_folder())?;
     // Each list keeps its own carve-outs: the real Mac stays safe whatever a bug does, and the sandbox behaves like a
-    // Mac (its `Documents` whole, its `.Trash` never touched).
-    let joined = real.joined(&protection(&home, data.path(), None)?)?;
+    // Mac (its `Documents` whole, its `.Trash` never touched, its own `T` carved out of its users' folders). The
+    // Mac's lists carve the real user's `T` out of every user's temporary folders, so a sandbox generated there stays
+    // reachable; the sandbox's `T` is no user's of the Mac, so it is carved by a list of its own.
+    let joined = real
+        .joined(&protection(&home, data.path(), None, real_temp.as_deref())?)?
+        .joined(&sandbox.places_protection()?)?;
     let trash: Arc<dyn Trash> = match mode.trash() {
         SandboxTrash::Sandbox => Arc::new(FakeTrash::new(sandbox.trash())),
         SandboxTrash::Real => Arc::new(MacTrash::new()),
@@ -218,6 +229,7 @@ pub(crate) fn compose(
     avoid.extend(places_that_prompt(real_home));
     let engine = assemble(Shared {
         folder: data,
+        reader: Arc::new(FactsLens::new(MacFolderReader::new(), ports.stated)),
         avoid,
         known_folders: Arc::new(sandbox.known_folders()),
         volumes: ports.volumes,

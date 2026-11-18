@@ -61,7 +61,8 @@ mod positive {
         let deps = CategoryId::new(module, "bench.deps").unwrap();
         let caches = CategoryId::new(module, "bench.caches").unwrap();
         let (roots, interests) = ([root], interests());
-        let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
+        let request =
+            WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
         let mut claimed: BTreeMap<PathBuf, CategoryId> = BTreeMap::new();
         scanner
             .walk(

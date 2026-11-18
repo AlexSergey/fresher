@@ -47,7 +47,7 @@ pub(crate) fn scan_with(
 ) -> Scanned {
     let scanner = scanner(reader, root, threads);
     let roots = [root.to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests, avoid, mode: WalkMode::Full };
+    let request = WalkRequest { roots: &roots, interests, avoid, places: &[], mode: WalkMode::Full };
     let mut matches = Vec::new();
     let summary = scanner.walk(&request, cancel, &mut |found| matches.push(found), &mut |_| on_progress());
     Scanned { matches, summary, scanner }
@@ -206,6 +206,7 @@ mod negative {
             roots: &roots,
             interests: &set,
             avoid: &[],
+            places: &[],
             mode: fresher_core::WalkMode::Full,
         };
         let mut matches = Vec::new();
@@ -344,6 +345,7 @@ mod negative {
             roots: &roots,
             interests: &set,
             avoid: &[],
+            places: &[],
             mode: fresher_core::WalkMode::Restore,
         };
 
@@ -429,6 +431,7 @@ mod positive {
                 roots: &roots,
                 interests: &set,
                 avoid: &[],
+                places: &[],
                 mode: fresher_core::WalkMode::Auto,
             };
             fresher_core::DiskWalk::walk(

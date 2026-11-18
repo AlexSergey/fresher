@@ -1,0 +1,22 @@
+{
+  "temp.old-files.name": "Old temporary files",
+  "temp.old-files.what": "Working files that apps and tools put in your Mac's temporary folders and did not clean up. Nothing has changed them for at least a week.",
+  "temp.old-files.made-by": "Many apps and command-line tools; an item's name often says which.",
+  "temp.old-files.if-removed": "They go to the Trash; the space comes back when you empty it. Apps keep their real data elsewhere. An item named after an app that is open is kept, and an item in use when you confirm is skipped.",
+  "temp.old-files.comes-back": "Apps make new temporary files as they work. Your Mac also clears these folders on its own: every day it removes what is older than three days, and a restart empties the shared one.",
+  "temp.enabled.label": "Temporary files",
+  "temp.enabled.description": "Finds old working files in your Mac's temporary folders that apps did not clean up.",
+  "temp.older-than-days.label": "Offer temporary files unchanged for",
+  "temp.older-than-days.description": "Anything changed more recently is kept. It cannot be set below 7 days, so the check never becomes less careful.",
+  "temp.finding.title": "{name}",
+  "temp.finding.reason-user": "In your temporary folder, unchanged for {days} days.",
+  "temp.finding.reason-shared": "In the shared temporary folder, unchanged for {days} days. A restart clears it too.",
+  "temp.left-out.system": "It belongs to the system or another user; removing it needs an administrator.",
+  "temp.left-out.locked": "It is locked. To let Fresher remove it, unlock it in Finder's Get Info.",
+  "temp.left-out.app-open": "It belongs to an app that is open. Quit the app and scan again.",
+  "temp.left-out.special": "A program uses it to talk to another program, so it is kept.",
+  "temp.left-out.lock": "A program uses it to mark something as in use, so it is kept.",
+  "temp.left-out.recent": "Changed or read recently; an app may still be using it. Your Mac clears these on its own when it can.",
+  "temp.left-out.scan-again": "Shown from the last scan. Scan again to check how old it is.",
+  "temp.left-out.no-system": "Fresher could not list your open apps, so it keeps everything. Scan again."
+}

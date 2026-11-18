@@ -6,8 +6,8 @@
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    Access, AccessStatus, Capability, CommandError, Descent, FindingsQuery, MapPhase, MeaningGroup, NodeId, NotScanned,
-    Operation, PlaceView, Sizes, StorageMap, Unreadable, UnreadablePlace, VolumeMap,
+    Access, AccessStatus, Capability, CommandError, Descent, FindingsQuery, MapPhase, MapPlace, MeaningGroup, NodeId,
+    NotScanned, Operation, PlaceView, Sizes, StorageMap, Text, Unreadable, UnreadablePlace, VolumeMap,
 };
 
 use crate::Engine;
@@ -98,7 +98,7 @@ impl Engine {
         let home = self.shared.home();
         let results = lock(&self.shared.results)?;
         if results.is_scanning() {
-            let roots = expand_home(results.roots(), home.as_deref());
+            let roots = expand_home(&results.walked_roots(), home.as_deref());
             let explained = results.explained_under(&roots);
             return Ok(Snapshot::Scanning { roots, explained, volumes: results.volumes().clone() });
         }
@@ -194,6 +194,11 @@ fn complete(committed: &Committed, access: &AccessStatus) -> Result<Vec<(VolumeM
         let input =
             VolumeInput { space: group.space.cloned(), roots: roots_on_volume, unreadable_folders, needs, phase };
         let map = volume_map(input).map_err(|error| CommandError::from(EngineError::StorageMap(error)))?;
+        let named = on_volume.iter().filter_map(|&&(root, ref path)| {
+            let place = committed.walked.iter().find(|place| place.path == *path)?;
+            Some(MapPlace { root, name: Text::new(place.name_key()) })
+        });
+        let map = map.with_places(named.collect());
         maps.push((map, on_volume.iter().map(|(root, _)| *root).collect()));
     }
     Ok(maps)
@@ -201,7 +206,7 @@ fn complete(committed: &Committed, access: &AccessStatus) -> Result<Vec<(VolumeM
 
 /// How many folders `places` hold that the scan did not read (each place and the folders hidden under it; a place on
 /// another volume is not unread), and the permission that would show them: every file, when one is guarded and that
-/// is not granted.
+/// is not granted. The system's own items are unread too, but no permission shows them.
 fn unread(places: &[&UnreadablePlace], access: &AccessStatus) -> (u64, Option<Capability>) {
     let unread = places.iter().filter(|place| place.reason != NotScanned::OtherVolume);
     let folders =

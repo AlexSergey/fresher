@@ -19,6 +19,10 @@ pub(crate) fn summarize(tree: &Tree, kind: ScanKind) -> WalkSummary {
         }
         if node.flags.has(Flag::OtherVolume) {
             *summary.not_scanned.entry(NotScanned::OtherVolume).or_default() += 1;
+        } else if node.flags.has(Flag::OthersFolder) {
+            *summary.not_scanned.entry(NotScanned::OthersFolder).or_default() += 1;
+        } else if node.flags.has(Flag::SystemItems) {
+            *summary.not_scanned.entry(NotScanned::SystemItems).or_default() += 1;
         } else if node.flags.has(Flag::Avoided) {
             *summary.not_scanned.entry(NotScanned::Avoided).or_default() += 1;
         }

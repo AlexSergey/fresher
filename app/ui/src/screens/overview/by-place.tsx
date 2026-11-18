@@ -39,6 +39,7 @@ export const ByPlace = ({ at }: { readonly at: PlaceAt }): JSX.Element => {
         onOpen={(root) => {
           show({ descent: 'through', node: root.id, trail: [] });
         }}
+        places={volume?.places ?? []}
         roots={roots}
       />
     );

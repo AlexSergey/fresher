@@ -27,7 +27,7 @@ use tauri::test::{MockRuntime, mock_app};
 use tempfile::TempDir;
 
 use crate::adapters::{NoSystemUi, UnknownAccess};
-use crate::compose::{cleanup, registry};
+use crate::compose::{cleanup, registry, user_temp};
 use crate::events::EventForwarder;
 
 /// A walk that finds nothing and commits an empty state: the shell's tests drive the commands, not the disk.
@@ -95,6 +95,10 @@ impl Cleaner for HeldCleaner {
         self.0.execute(plan, cx, cancel, out)
     }
 
+    fn protection(&self) -> fresher_core::Protection {
+        self.0.protection()
+    }
+
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
         self.0.locate(items)
     }
@@ -157,7 +161,8 @@ impl Shell {
         // The engine reads the volumes of the scan roots from the cleanup's volumes: the home sits on a 1 000-byte disk.
         let disk = FakeVolumes::disk("Test disk", ByteSize::new(1_000), ByteSize::new(400), ByteSize::new(600));
         let volumes = Arc::new(FakeVolumes::default().with_space(&home, disk));
-        let mut cleanup = cleanup(&home, &data, cleaner, volumes).unwrap();
+        // The test's home lies in the user's temporary folder: the real Mac's list carves it out, as the app's does.
+        let mut cleanup = cleanup(&home, user_temp().as_deref(), &data, cleaner, volumes).unwrap();
         if held {
             cleanup = CleanupPorts { cleaner: Arc::new(HeldCleaner(cleanup.cleaner)), ..cleanup };
         }

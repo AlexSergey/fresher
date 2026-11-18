@@ -4,8 +4,10 @@ Every feature of the app is a module: one crate under `modules/<id>/`, named `fr
 `fresher-core` and, when it has rules, on `fresher-rules` — never on another module. A module never walks the disk and
 never deletes: it says what it wants to see during the one shared walk, turns what the walk matched into findings, and
 describes each removal as data. This page is the pattern every module plan follows; the `demo` module
-(`modules/demo/`) is the smallest working example, and `jetbrains` (`modules/jetbrains/`, plan
-[016](../plans/016-jetbrains/readme.md)) the first real one. Set up by plan
+(`modules/demo/`) is the smallest working example, `jetbrains` (`modules/jetbrains/`, plan
+[016](../plans/016-jetbrains/readme.md)) the first real one, and `temp` (`modules/temp/`, plan
+[017](../plans/017-temp-files/readme.md)) the example of a module that judges each item by its age and refuses it by
+its kind and owner. Set up by plan
 [002/06](../plans/002-base-architecture/06-module-kit/readme.md).
 
 ## The crate
@@ -36,8 +38,9 @@ small `thiserror` error of its own: no panicking path.
 | `finish(…)`       | the end of the walk: work that needs every match (the newest version), or that reads no disk (a tool) |
 
 - A module names its group: `ModuleDescriptor::new(id, group, categories, settings, locales)`, a `ModuleGroup` of the
-  core (`Development`; `Debug` for the dev-only `demo` and `trial`, which the registry refuses in a release build). The
-  screens show modules under their group's name (`core.group.<group>.name`, `.description`).
+  core (`System` for what macOS and the user's apps keep for themselves, such as `temp`; `Development`; `Debug` for
+  the dev-only `demo` and `trial`, which the registry refuses in a release build), shown in that order. The screens
+  show modules under their group's name (`core.group.<group>.name`, `.description`).
 - A module's problems are declared: `ModuleDescriptor::with_problems(keys)` lists every key it may report. A failed
   part returns `ModuleError::Failed { reason }` with a declared `Text` (a technical detail goes under `DETAIL_ARG`,
   never named in the sentence). An item the module recognized and does not offer is `out.left_out(LeftOutItem { … })`:
@@ -62,6 +65,11 @@ small `thiserror` error of its own: no panicking path.
   path, `Pattern::Under(KnownFolder::AppCaches, "JetBrains/*")` (in rules, `under = { folder = "app-caches", path =
   "JetBrains/*" }`); `KnownFolder::Home` is the home folder itself. The walk resolves the folder through the
   `KnownFolders` port; a folder this system does not have matches nothing.
+- Two known folders lie outside the home: `UserTemp` (the user's own temporary folder,
+  `/private/var/folders/<xx>/<hash>/T`) and `SharedTemp` (`/private/tmp`). While a registered module's interest is
+  anchored in one, and no scan root holds it, the walk reads it as a place: a root of its own after the scan roots,
+  walked in full on every scan, where only the interests anchored in it match. A restore emits nothing inside a place
+  ([`README.md`](./README.md), "Places outside the scan roots").
 
 ## The system's facts (`cx.system()`)
 
@@ -97,9 +105,18 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 ## What a module sees of the walk
 
 - Only the matches of its own interests, one `Match` each: `interest` (the index in its own `interests()`), `path`,
-  `kind`, `modified`, `siblings` (which of the interest's sibling names exist next to the entry) and `marker` (for a
-  `CACHEDIR.TAG` marker, whether the tag holds its signature: `Valid` or `Invalid`; `None` for every other interest).
-  The module never reads the file itself.
+  `kind` (a folder, a file, a link, or `Other`: a socket, a named pipe or a device, reported as itself, never read,
+  never a marker; a rule never claims one and the cleaner refuses one), `modified`, `changed` (the status change, which
+  no tool sets back), `accessed` (`None` for a folder, whose access time moves when the walk lists it), `siblings`
+  (which of the interest's sibling names exist next to the entry) and `marker` (for a `CACHEDIR.TAG` marker, whether the
+  tag holds its signature: `Valid` or `Invalid`; `None` for every other interest). The module never reads the file
+  itself.
+- For a `Claim::Whole` folder, `inside` (`None` for anything else), gathered while the walk sums it:
+  `newest_change` (the newest modification or status change of the folder and everything inside it),
+  `newest_file_access` (the newest access of a file inside: lazy, only ever a reason to keep), `special` (a socket, a
+  pipe or a device inside), `foreign` (an entry inside not the user's, or locked or flagged by the system),
+  `lock_named` (an entry inside named as a program's lock: `*.lock`, `*.pid`, `LCK..*`, `.#*`) and
+  `complete` (every folder inside was read; one unreadable, avoided or on another volume was not).
 - Three sizes in `sizes`: `logical` (what Finder shows), `allocated` (what the entry takes on disk) and `reclaimable`
   (the part of `allocated` shared with no clone or other hard link: what removing it frees), with their
   completeness. For a `Claim::Whole` folder they cover everything inside it.

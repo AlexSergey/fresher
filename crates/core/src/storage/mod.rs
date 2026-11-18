@@ -5,7 +5,7 @@ mod map;
 mod meaning;
 mod place;
 
-pub use map::{MapPart, MapPhase, PartKind, RemainderReason, StorageMap, StorageMapError, VolumeMap};
+pub use map::{MapPart, MapPhase, MapPlace, PartKind, RemainderReason, StorageMap, StorageMapError, VolumeMap};
 pub use meaning::{AppRef, CategoryShare, MeaningGroup, PlaceName, PlaceShare};
 pub use place::{Descent, PlaceRow, PlaceView};
 

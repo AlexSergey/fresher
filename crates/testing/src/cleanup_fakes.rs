@@ -297,6 +297,10 @@ impl Cleaner for FakeCleaner {
         ended
     }
 
+    fn protection(&self) -> fresher_core::Protection {
+        fresher_core::Protection::default()
+    }
+
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
         items.iter().map(|item| self.states.get(&item.landed).copied().unwrap_or(TrashState::InTrash)).collect()
     }

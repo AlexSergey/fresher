@@ -457,6 +457,33 @@ mod tests {
             assert!(done.iter().all(|item| item.outcome == ItemOutcome::Skipped { reason: SkipReason::NotInSandbox }));
             assert!(rig.at("home/a.bin").exists());
         }
+
+        #[test]
+        fn an_item_of_a_walked_place_held_open_at_the_act_is_skipped_as_in_use() {
+            // A temporary folder outside the home, a root of the cleanup as a walked place is.
+            let rig = crate::test_support::Rig::new(
+                "[[file]]\npath = \"home/a.bin\"\n[[file]]\npath = \"T/held.tmp\"\n\
+                 [[file]]\npath = \"T/build/out.o\"\n[[file]]\npath = \"T/old.tmp\"\n",
+            );
+            // The sandbox's check 1 wants a marker at or below the root the item is placed in.
+            rig.setup.tree.mark_sandbox(std::path::Path::new("T")).unwrap();
+            let actions = ["T/held.tmp", "T/build", "T/old.tmp"].map(|path| Action::Remove(rig.at(path))).into();
+            let items = rig.items(actions);
+            rig.open_files.hold(rig.at("T/held.tmp"), "Editor");
+            rig.open_files.hold(rig.at("T/build/out.o"), "Compiler");
+            let roots = vec![rig.at("home"), rig.at("T")];
+            let cx = fresher_core::CleanupContext { roots: &roots, ..rig.cx() };
+            let plan = crate::test_support::confirmed_over(&roots, &items, Method::Trash);
+            let mut done = Vec::new();
+
+            rig.cleaner.execute(plan, &cx, &CancelToken::new(), &mut |item| done.push(item));
+
+            let outcomes: Vec<_> = done.iter().map(|item| item.outcome.clone()).collect();
+            let in_use = |app: &str| ItemOutcome::Skipped { reason: SkipReason::InUse { app: app.into() } };
+            assert_eq!(outcomes, [in_use("Editor"), in_use("Compiler"), ItemOutcome::Moved]);
+            assert!(rig.at("T/held.tmp").exists() && rig.at("T/build/out.o").exists());
+            assert!(!rig.at("T/old.tmp").exists());
+        }
     }
 
     mod positive {

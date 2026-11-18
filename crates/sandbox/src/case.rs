@@ -561,7 +561,7 @@ fn check_apps(case: &str, tree: &TreeDescription) -> Result<(), CaseError> {
 }
 
 /// `true` for a non-empty relative path of plain names only: no root, `.`, `..` or prefix.
-fn is_plain(path: &Path) -> bool {
+pub(crate) fn is_plain(path: &Path) -> bool {
     !path.as_os_str().is_empty() && path.components().all(|component| matches!(component, Component::Normal(_)))
 }
 

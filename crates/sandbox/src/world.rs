@@ -1,23 +1,30 @@
-use fresher_core::{BundleId, RunningApp};
-use fresher_testing::FakeRunningApps;
-use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use fresher_core::{BundleId, RunningApp, Timestamp};
+use fresher_testing::{FakeRunningApps, Stated, StatedFacts, StatedFlag, StatedKind, StatedOwner};
+use serde::{Deserialize, Serialize};
+
+use crate::case::is_plain;
 use crate::{CaseFile, Sandbox, SandboxError};
 
 /// The largest `world.toml` read: far more than any set of case files declares.
 const MAX_WORLD_BYTES: u64 = 1024 * 1024;
 
-/// What the case files declare about the Mac beyond their files: the apps that are open, and the moment the sandbox
-/// was generated. Written as `world.toml` at the sandbox's top; sandbox mode and the autotest take the running apps
-/// and the clock's start from it, never from the real Mac.
+/// What the case files declare about the Mac beyond their files: the apps that are open, the moment the sandbox
+/// was generated, and the facts its entries state instead of having them (an old status change, an owner, a flag, a
+/// socket). Written as `world.toml` at the sandbox's top; sandbox mode and the autotest take the running apps, the
+/// clock's start and the stated facts from it, never from the real Mac.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct World {
     /// The generator's "now", in seconds since the Unix epoch: every age of the case files counts back from it.
     now: Option<u64>,
     running: Vec<RunningApp>,
+    /// The stated facts, by path relative to the sandbox, in the order of the case files.
+    entries: Vec<(PathBuf, Stated)>,
 }
 
 /// `world.toml`, as written and read back.
@@ -28,6 +35,25 @@ struct RawWorld {
     now: Option<u64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     running: Vec<RawRunning>,
+    #[serde(default, rename = "entry", skip_serializing_if = "Vec::is_empty")]
+    entries: Vec<RawEntry>,
+}
+
+/// An `[[entry]]`: a path of the sandbox and the facts it states, its times in seconds since the Unix epoch.
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct RawEntry {
+    path: PathBuf,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    changed: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    accessed: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    owner: Option<StatedOwner>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    flags: BTreeSet<StatedFlag>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    kind: Option<StatedKind>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -39,10 +65,13 @@ struct RawRunning {
 
 impl World {
     /// The world of `files` generated at `now`, joined: every case's installed app declared `running = true` (its
-    /// name and bundle id), then its `[[case.running]]`, in the order of the files and their cases.
-    pub fn of(files: &[CaseFile], now: SystemTime) -> Self {
+    /// name and bundle id), then its `[[case.running]]`, and every fact its files state (times counted back from
+    /// `now`), in the order of the files and their cases.
+    pub fn of(files: &[CaseFile], now: SystemTime) -> Result<Self, SandboxError> {
         let mut running = Vec::new();
+        let mut entries = Vec::new();
         for case in files.iter().flat_map(CaseFile::cases) {
+            entries.extend(case.tree().stated(now).map_err(|source| SandboxError::Tree { source })?);
             // An app's bundle id was checked when its case was read.
             running.extend(case.running_apps().filter_map(|app| {
                 let id = BundleId::new(app.bundle_id.as_str()).ok()?;
@@ -51,7 +80,7 @@ impl World {
             running.extend(case.running_elsewhere().iter().cloned());
         }
         let now = now.duration_since(SystemTime::UNIX_EPOCH).ok().map(|since| since.as_secs());
-        Self { now, running }
+        Ok(Self { now, running, entries })
     }
 
     /// The world of `sandbox`, read from its `world.toml`, through no link; a missing file is an empty world. Anything
@@ -74,7 +103,12 @@ impl World {
             Ok(_) => {}
         }
         let text = fs::read_to_string(&path).map_err(io)?;
-        Self::parse(&text).map_err(|reason| SandboxError::World { path, reason })
+        let world = Self::parse(&text).map_err(|reason| SandboxError::World { path: path.clone(), reason })?;
+        if let Some(entry) = world.entries.iter().find(|(entry, _)| !holds(sandbox.path(), entry)) {
+            let reason = format!("it states facts of `{}`, which the sandbox does not hold", entry.0.display());
+            return Err(SandboxError::World { path, reason });
+        }
+        Ok(world)
     }
 
     /// The running apps, in their declared order.
@@ -93,6 +127,12 @@ impl World {
         FakeRunningApps::new(self.running.clone())
     }
 
+    /// The facts the sandbox's entries state, at their paths below `sandbox` (the canonical sandbox folder): what
+    /// sandbox mode's reader reports instead of the disk's.
+    pub fn stated(&self, sandbox: &Path) -> StatedFacts {
+        StatedFacts::under(sandbox, self.entries.iter().map(|(path, stated)| (path.as_path(), stated)))
+    }
+
     /// The `world.toml` text.
     pub(crate) fn text(&self) -> Result<String, SandboxError> {
         let running = self
@@ -103,11 +143,29 @@ impl World {
                 bundle_ids: app.bundle_ids.iter().map(|id| id.as_str().to_owned()).collect(),
             })
             .collect();
-        let body = toml::to_string(&RawWorld { now: self.now, running })
+        let entries = self
+            .entries
+            .iter()
+            .map(|(path, stated)| RawEntry {
+                path: path.clone(),
+                changed: stated.changed.map(Timestamp::secs),
+                accessed: stated.accessed.map(Timestamp::secs),
+                owner: stated.owner,
+                flags: stated.flags.clone(),
+                kind: stated.kind,
+            })
+            .collect();
+        let body = toml::to_string(&RawWorld { now: self.now, running, entries })
             .map_err(|error| SandboxError::World { path: "world.toml".into(), reason: error.to_string() })?;
+        // The facts' line only when there are any: a world without them is written as before.
+        let facts = if self.entries.is_empty() {
+            ""
+        } else {
+            "# Each [[entry]] states facts of a path that the disk does not have (Finder never shows them).\n"
+        };
         Ok(format!(
             "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written by the\n\
-             # generator from the case files.\n{body}"
+             # generator from the case files.\n{facts}{body}"
         ))
     }
 
@@ -128,8 +186,44 @@ impl World {
                 Ok(RunningApp { name: app.name, bundle_ids })
             })
             .collect::<Result<_, String>>()?;
-        Ok(Self { now: raw.now, running })
+        let entries = raw
+            .entries
+            .into_iter()
+            .map(|entry| {
+                let at = entry.path.display().to_string();
+                if !is_plain(&entry.path) {
+                    return Err(format!("the entry `{at}` is not a plain path inside the sandbox"));
+                }
+                let stated = Stated {
+                    changed: entry.changed.map(Timestamp::from_secs),
+                    accessed: entry.accessed.map(Timestamp::from_secs),
+                    owner: entry.owner,
+                    flags: entry.flags,
+                    kind: entry.kind,
+                };
+                if stated.is_empty() {
+                    return Err(format!("the entry `{at}` states nothing"));
+                }
+                Ok((entry.path, stated))
+            })
+            .collect::<Result<_, String>>()?;
+        Ok(Self { now: raw.now, running, entries })
     }
+}
+
+/// Whether the folder `sandbox` holds an entry at `relative`, reached through no link; the entry may be a link.
+fn holds(sandbox: &Path, relative: &Path) -> bool {
+    let mut path = sandbox.to_path_buf();
+    let mut names = relative.components().peekable();
+    while let Some(name) = names.next() {
+        path.push(name);
+        match fs::symlink_metadata(&path) {
+            // A folder on the way (never a link: `symlink_metadata` reads a link as no folder), or the entry itself.
+            Ok(metadata) if names.peek().is_none() || metadata.is_dir() => {}
+            _ => return false,
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -211,7 +305,7 @@ mod tests {
         fn an_app_that_is_not_running_is_not_in_the_world() {
             let file = case_file("apps", &installed("Applications/Tool.app", "a.tool", "Tool", false));
 
-            assert_eq!(World::of(&[file], super::now()).running(), []);
+            assert_eq!(World::of(&[file], super::now()).unwrap().running(), []);
         }
 
         #[test]
@@ -256,6 +350,39 @@ mod tests {
         }
 
         #[test]
+        fn an_entry_outside_the_sandbox_or_stating_nothing_or_unknown_is_refused() {
+            let (_folder, sandbox) = generated(&[case_file("plain", "")]);
+            for entry in [
+                "[[entry]]\npath = \"../out\"\nowner = \"system\"\n",
+                "[[entry]]\npath = \"/etc/hosts\"\nowner = \"system\"\n",
+                "[[entry]]\npath = \"home/plain.bin\"\n",
+                "[[entry]]\npath = \"home/plain.bin\"\nowner = \"root\"\n",
+                "[[entry]]\npath = \"home/plain.bin\"\nflags = [\"sticky\"]\n",
+                "[[entry]]\npath = \"home/plain.bin\"\nchanged = \"30d\"\n",
+                "[[entry]]\npath = \"home/plain.bin\"\nkind = \"socket\"\ncolour = 1\n",
+            ] {
+                fs::write(sandbox.world(), entry).unwrap();
+
+                let error = World::read(&sandbox).unwrap_err();
+
+                assert!(matches!(error, SandboxError::World { .. }), "{entry}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_stated_fact_on_a_path_the_sandbox_does_not_hold_is_refused() {
+            let (folder, sandbox) = generated(&[case_file("plain", "")]);
+            symlink(folder.path().join("home"), folder.path().join("linked")).unwrap();
+            for path in ["home/missing.bin", "linked/plain.bin", "home/plain.bin/inside"] {
+                fs::write(sandbox.world(), format!("[[entry]]\npath = \"{path}\"\nowner = \"system\"\n")).unwrap();
+
+                let error = World::read(&sandbox).unwrap_err();
+
+                assert!(matches!(error, SandboxError::World { .. }), "{path}: {error}");
+            }
+        }
+
+        #[test]
         fn a_world_file_that_is_a_link_is_refused() {
             let (folder, sandbox) = generated(&[case_file("plain", "")]);
             let elsewhere = folder.path().join("home/elsewhere.toml");
@@ -270,7 +397,8 @@ mod tests {
     mod positive {
         use std::fs;
 
-        use fresher_core::RunningApps;
+        use fresher_core::{RunningApps, Timestamp};
+        use fresher_testing::{FIXTURE_NOW, StatedFlag, StatedKind, StatedOwner};
 
         use super::{case_file, elsewhere, generated, installed, names};
         use crate::World;
@@ -331,7 +459,57 @@ mod tests {
 
             assert_eq!(world.now(), Some(super::now()));
             let text = fs::read_to_string(sandbox.world()).unwrap();
-            assert!(text.contains(&format!("now = {}", fresher_testing::FIXTURE_NOW)), "{text}");
+            assert!(text.contains(&format!("now = {FIXTURE_NOW}")), "{text}");
+        }
+
+        #[test]
+        fn the_world_holds_the_stated_facts_and_reads_them_back() {
+            let facts =
+                "owner = \"system\"\nchanged = \"30d\"\naccessed = \"-1h\"\nflags = [\"restricted\", \"user-lock\"]\n";
+            let file =
+                case_file("facts", &format!("[[case.file]]\npath = \"private/tmp/sock\"\nkind = \"pipe\"\n{facts}"));
+            let (_folder, sandbox) = generated(std::slice::from_ref(&file));
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world, World::of(&[file], super::now()).unwrap());
+            let stated = world.stated(sandbox.path());
+            assert_eq!(stated.len(), 1);
+            let sock = stated.get(&sandbox.path().join("private/tmp/sock")).unwrap();
+            assert_eq!(sock.owner, Some(StatedOwner::System));
+            assert_eq!(sock.kind, Some(StatedKind::Pipe));
+            assert_eq!(sock.changed, Some(Timestamp::from_secs(FIXTURE_NOW - 30 * 86_400)));
+            assert_eq!(sock.accessed, Some(Timestamp::from_secs(FIXTURE_NOW + 3_600)));
+            assert_eq!(sock.flags, [StatedFlag::Restricted, StatedFlag::UserLock].into());
+            assert!(fs::symlink_metadata(sandbox.path().join("private/tmp/sock")).unwrap().is_file());
+        }
+
+        /// The link itself is the entry, so the world holds it; a path through it is still refused.
+        #[test]
+        fn a_stated_link_is_held_and_read_back() {
+            let link = "[[case.symlink]]\npath = \"private/tmp/link\"\ntarget = \"../../home\"\nchanged = \"30d\"\n";
+            let file = case_file("link", link);
+            let (_folder, sandbox) = generated(std::slice::from_ref(&file));
+
+            let stated = World::read(&sandbox).unwrap().stated(sandbox.path());
+
+            let link = stated.get(&sandbox.path().join("private/tmp/link")).unwrap();
+            assert_eq!(link.changed, Some(Timestamp::from_secs(FIXTURE_NOW - 30 * 86_400)));
+        }
+
+        #[test]
+        fn two_case_files_join_their_stated_facts() {
+            let first = case_file("first", "owner = \"other-user\"\n");
+            let second =
+                case_file("second", "[[case.dir]]\npath = \"private/var/folders/xx/sandbox/T/d\"\nchanged = \"2h\"\n");
+            let (_folder, sandbox) = generated(&[first, second]);
+
+            let stated = World::read(&sandbox).unwrap().stated(sandbox.path());
+
+            assert_eq!(stated.len(), 2);
+            assert_eq!(stated.get(&sandbox.path().join("home/first.bin")).unwrap().owner, Some(StatedOwner::OtherUser));
+            let folder = stated.get(&sandbox.path().join("private/var/folders/xx/sandbox/T/d")).unwrap();
+            assert_eq!(folder.changed, Some(Timestamp::from_secs(FIXTURE_NOW - 7_200)));
         }
 
         #[test]
@@ -341,7 +519,7 @@ mod tests {
                 installed("Applications/A.app", "a.a", "A \\\"quoted\\\"", true),
                 elsewhere("B", "\"b.b\"")
             );
-            let world = World::of(&[case_file("box", &apps)], super::now());
+            let world = World::of(&[case_file("box", &apps)], super::now()).unwrap();
 
             let parsed = World::parse(&world.text().unwrap()).unwrap();
 

@@ -14,9 +14,10 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 - **Deterministic**: no wall clock (the `Clock` port, `FakeClock` in tests), no network, no real home folder. Every test
   runs on a temporary fixture tree; the Trash and external commands are ports with fakes.
 - **Nothing is ever deleted outside a temporary folder** in a test: `FakeTrash` moves items into a folder inside the
-  fixture tree; every cleaner in a test is `Reach::Sandbox` and acts only below a fixture holding the sandbox marker
-  (`FixtureTree::with_sandbox`); the tests of the system's Trash move items only on a disk image they mount, and no
-  test lists or empties the user's Trash.
+  fixture tree; every cleaner in a test is `Reach::Sandbox`, acting only below a fixture holding the sandbox marker
+  (`FixtureTree::with_sandbox`), or `Reach::SandboxFolder`, acting only strictly inside a generated sandbox folder with
+  the marker at its top (sandbox mode, the sandbox autotest, `crates/e2e/tests/temp.rs`); the tests of the system's
+  Trash move items only on a disk image they mount, and no test lists or empties the user's Trash.
 
 ## Kinds of tests
 
@@ -75,9 +76,14 @@ cleanups of a hundred items through the real journal.
     changed folders and gaps, so no test waits on the system's journal), `MemoryScanCache`, `FixedDiskState` (a tree
     from paths and sizes, for the engine's queries).
   - `LargeTree` — the generated trees of the benches and the large tests ("Performance").
+  - `settle_access_time(path)` — a file's access time set to its modification time: the system moves an access time
+    on a read only while it is older, so a walk reading a `CACHEDIR.TAG` no longer moves it under the next walk's feet.
+    `FixtureTree` settles every file it writes, `LargeTree` every tag.
   - `run_module(&module, &tree, &Ports::at(seconds))` — one module run as the engine would, on the fixture tree as the
     home folder: walk, matches, `finish` → `ModuleRun { findings, outcome }`; `ModuleRun::golden()` is its stable JSON
-    report, paths relative to the fixture root.
+    report, paths relative to the fixture root. `Ports { restored: true, .. }` runs it as a scan restored from the
+    cache; `Ports { order: MatchOrder::Reversed, .. }` hands it the matches last first, so a test can check that its
+    answers do not depend on the walk's order.
   - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category has its five texts and every
     setting (`<module>.enabled` included) its label and description, every key is in the module's namespace;
     `Catalogue::Required(docs/categories)` also wants each category's catalogue file with the same danger level
@@ -115,7 +121,10 @@ cleanups of a hundred items through the real journal.
   home with the real settings file: ignored categories and items leave every answer, Restore brings them back
   without a rescan (`fixtures/golden/ignore.json`); the flows of ignoring a module and a group (an unknown module
   refused, the findings, totals, storage map and `hiddenModules` follow, restore without a rescan, a new engine on
-  the same data folder keeps the lists, a cleanup plan over an ignored module drops its items).
+  the same data folder keeps the lists, a cleanup plan over an ignored module drops its items). `tests/places.rs`
+  walks the temporary places beside a fixture home (named in the map, cleaned to the Trash, refused once no module
+  names them); `tests/temp.rs` runs the `temp` module's flows on the real scanner, settings file and cleaner, two of
+  them on real old modification times, a real socket and a real pipe, nothing stated.
 - `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
   `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
@@ -228,18 +237,26 @@ path = "Library/Logs"
 path = "Library/Caches/JetBrains/DataGrip2024.3"
 age = "40d"
 
-# A symlink: listed, never followed. The target may point outside the root.
+# A symlink: listed, never followed. The target may point outside the root. `age` sets the link's own modification
+# and access time (its target is never touched); `changed` states its status change, as for a file.
 [[symlink]]
 path = "Library/Caches/system"
 target = "/Library/Caches"
+
+[[symlink]]
+path = "Library/Caches/old-link"
+target = "../Documents"
+age = "30d"
+changed = "30d"
 
 # A hard link: a second name of a file of the tree; both paths are relative to the root.
 [[hardlink]]
 path = "Library/Caches/copy.db"
 target = "Library/Caches/com.example.editor/Cache.db"
 
-# A file may carry an age instead of `modified`: "<n>d" or "<n>h" counted back from the "now" of the build
-# (FIXTURE_NOW for `FixtureTree`), so a stale file stays stale. `age` and `modified` never go together.
+# A file may carry an age instead of `modified`: "<n>d", "<n>h" or "<n>s" counted back from the "now" of the build
+# (FIXTURE_NOW for `FixtureTree`), so a stale file stays stale; "-2d" is a time after it. `age` and `modified` never
+# go together.
 # `fill = "data"` writes real bytes of a fixed pattern instead of a sparse file, so freed space can be measured
 # (at most 64 MiB a file and 512 MiB a description; a larger one is refused).
 [[file]]
@@ -247,6 +264,20 @@ path = "Library/Caches/com.example.editor/old.bin"
 size = 1048576
 age = "30d"
 fill = "data"
+
+# Stated facts: what no tool or no user can make on disk (a status-change time, an owner, a system flag, a socket
+# whose path is too long). The entry is written as a plain file or folder; the facts go to a list (`StatedFacts`)
+# that `FactsLens` and the reference walk report instead of the disk's, for exactly these paths.
+# `changed` and `accessed` take an age; `owner` is "system" (user id 0) or "other-user" (`nobody`, 4294967294, never
+# the user running the tests); `flags` take "user-lock", "system-lock", "no-unlink" (read as the system's lock) and
+# "restricted"; a `[[file]]` (never a `[[dir]]`) takes `kind` = "socket" or "pipe", never with `fill`.
+[[file]]
+path = "Library/Caches/com.example.editor/listener"
+kind = "socket"
+age = "30d"
+changed = "30d"
+owner = "system"
+flags = ["no-unlink"]
 
 # A sandbox marker written into that folder (the folder is created if missing).
 [[marker]]
@@ -266,7 +297,12 @@ build = "WS-253.1"
 ```
 
 `FixtureTree::from_toml(path)` builds it in a temporary folder that is removed when the tree is dropped;
-`tree.root()` is the only folder a test may scan or clean.
+`tree.root()` is the only folder a test may scan or clean. `tree.stated()` holds its stated facts, at the root as
+given and at its canonical path; `run_module` walks with them (`NaiveWalk::with_stated`), and a test of the scanner
+wraps its reader: `FactsLens::new(reader, tree.stated().clone())`. A stated fact is never what Finder or the shell
+shows, and the cleaner reads the disk, never the lens: a fact that decides what the cleaner does is tested where it can
+be made (a real pipe or socket under a short temporary folder, `make_pipe`). A file written now has a status change
+of now: an item meant to look old states `changed` on every entry inside it.
 
 The format is the public `TreeDescription`: `from_toml_str` checks it, `merge` joins two (a path written twice is
 refused), `build_at(folder, now)` builds it in any existing folder and refuses a path that leaves the folder or passes
@@ -280,9 +316,14 @@ one (rule 8). `npm run sandbox -- <feature|all> [--into
 <dir>]` (the binary of `fresher-sandbox`) writes it into a sandbox folder, `sandbox/<feature>/` at the repository's root
 by default (gitignored): the marker `.fresher-sandbox` at its top (the signature, then a line naming the case files),
 the fake home `home/` with its Trash `home/.Trash/`, `Applications/`, `System/Applications/`, the app's data folder
-`.fresher-data/`, every case's files, `EXPECTED.md`, the checklist of a run by hand (one checkbox per case,
-negatives first), and `world.toml`: `now`, the moment of the generation every age counts back from, and the apps the
-cases declare open. Sandbox mode's clock starts at that `now`, and the autotest's clock stands at it. `all` writes every case file into one sandbox, joins their worlds, and refuses a path two of them
+`.fresher-data/`, the two temporary places laid out as on a Mac from `/` (`private/var/folders/xx/sandbox/T/` with
+`C/`, `0/` and `X/` beside it, and `private/tmp/`), every case's files, `EXPECTED.md`, the checklist of a run by hand
+(one checkbox per case, negatives first), and `world.toml`: `now`, the moment of the generation every age counts back
+from, the apps the cases declare open, and an `[[entry]]` per path whose files state facts (its path in the sandbox,
+its times in seconds since the epoch, its owner, flags and kind). The sandbox's known folders `UserTemp` and
+`SharedTemp` are those two places, never the Mac's, and a list of its own protects them as the Mac's list protects
+the real ones (`Sandbox::places_protection`: every user's folders and `private/var/tmp` never, the sandbox's `T` carved
+out and kept whole, its `TemporaryItems` never, `private/tmp` whole); the Mac's lists never carve the sandbox's `T`. Sandbox mode's clock starts at that `now`, and the autotest's clock stands at it. `all` writes every case file into one sandbox, joins their worlds, and refuses a path two of them
 write.
 
 - It refuses a folder that is not empty and holds no valid marker, and a folder the real Mac's protection list
@@ -323,6 +364,15 @@ The case files:
   app keeps the folders of every case beside it; in `npm run sandbox -- all` it keeps those of `jetbrains.toml` too
   ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
 
+- `temp.toml`: the `temp` module, in the sandbox's two temporary places, with stated facts for what the disk cannot
+  make. A fresh file, a folder unpacked with old modification times, an old folder with one file changed a day ago,
+  an old file read a day ago, six days, a future time, an open app's items (also a hidden one), the system's and
+  another user's items, a folder holding the system's file, an item you locked, a socket, a pipe and a folder holding
+  one, lock names and a folder holding a lock-named entry are never offered, each left out with its reason; old files
+  in `C/`, `0/`, `X/`, `T/TemporaryItems`, `~/Library/Autosave Information`, another user's `T` and editor files in
+  the home are never claimed, nor the target of a link; an old file, an old folder, your old item in `private/tmp`,
+  an installed app's folder, seven days and one second, and an old link (as itself) go to the Trash.
+
 A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox.
 
 `npm run sandbox:test` (`app/tauri/tests/sandboxes.rs`) is the autotest of every case file, one `#[test]` each, listed
@@ -330,14 +380,15 @@ in its `case_files!`, run one at a time (the nextest test group `sandboxes`, `.c
 cleanup not over within 180 s fails, naming the last event seen. The case file is generated into a temporary folder (the "real" home and data folder are
 temporary too), run through the app's own sandbox composition (`sandbox_engine`) with fakes for the clock (standing at
 the generated sandbox's `now`), volumes, open files, commands and access, the running apps of the generated sandbox's
-`world.toml` (as sandbox mode takes them), and only the case file's `module` registered. Every negative must not
+`world.toml` and its stated facts (as sandbox mode takes them), and only the case file's `module` registered. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
 `after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. After the scan and before
 the cleanup, the storage map is read: the sandbox sits on a fake volume of 1 GiB with the tree's size plus 64 MiB used
 and 256 MiB free, so every part is the same on every Mac; the parts add up to the capacity, the by-meaning groups and
 the by-place roots (with the parts that are no file of the scan) to the same total, and every `[case.map]` holds. The
-report (findings with their app, the map, cleanup, the tree after) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
+report (findings with their app, the map, cleanup, the tree after, without the empty folders of the temporary places,
+which every sandbox has) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
 rewrites it); its lists are sorted by path, then category, and the Trash's entries lose the `<n>-` of the order they
 were moved in, so the findings' ids, which differ from run to run, never show in it. The map's sizes are the space taken on disk, so the goldens assume the temporary folder is on an APFS
 volume with 4 KiB blocks, as on every Mac and in CI (macOS): a byte of data takes one block and a sparse file none. A
@@ -390,7 +441,14 @@ at = "home/work/fresher-trial-cache"   # optional: by default the folder of the 
 ```
 
 A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
-`[[case.hardlink]]`, `[[case.marker]]`, with `age` and `fill`, and `[[case.app]]`). A `[[case.app]]` is an installed
+`[[case.hardlink]]`, `[[case.marker]]`, with `age` and `fill`, the stated facts `changed`, `accessed`, `owner`, `flags`
+and `kind`, and `[[case.app]]`). A path may start with `private/`: the temporary places. A stated fact goes to
+`world.toml`, and `World::read` refuses an `[[entry]]` that states nothing, is not a plain path inside the sandbox, or
+names a path the sandbox does not hold (or holds through a link; the entry itself may be a link, which a
+`[[case.symlink]]`'s `changed` states); `World::stated` gives them at the sandbox's paths.
+Sandbox mode and the autotest wrap the system's reader with them (`FactsLens`), so the scan and the modules see them;
+Finder never does, and the cleaner reads the disk. `EXPECTED.md` names them under the case ("`private/tmp/x` stated:
+owned by the system, changed 30 days ago."), since a run by hand cannot see them. A `[[case.app]]` is an installed
 app the real installed-apps reader sees: it lies in `Applications/`, `System/Applications/` or `home/Applications/`,
 directly or one folder below, and takes `running = true` when the app is open (`false` by default); a case writes
 nothing but apps into `home/Applications/`, and nothing inside a declared app. A `[[case.running]]` (`name`,
@@ -424,7 +482,8 @@ scan keeps out.
 is missing (a path with a separator is used as it is) and starts the development build (`npm run dev`) with
 `FRESHER_SANDBOX` set to it. The app then lives entirely in the sandbox
 ([`architecture/removal.md`](./architecture/removal.md), "Reach and the sandbox"): the scan, the settings, the history
-and the Trash are the sandbox's, and the cleaner reaches only inside it. `--real-trash` moves items into the system's
+and the Trash are the sandbox's, and the cleaner reaches only inside it; the walk's reader reports the facts of
+`world.toml`'s `[[entry]]` lines instead of the disk's. `--real-trash` moves items into the system's
 Trash instead of the sandbox's `home/.Trash`. A banner names the sandbox. A development build always runs as
 `io.github.alexsergey.fresher.dev` (`npm run dev` adds `app/tauri/tauri.dev.conf.json`; a debug build with the release
 identifier refuses to start), so its data and permission grants are apart from the release's. `npm run dev:sandbox` and

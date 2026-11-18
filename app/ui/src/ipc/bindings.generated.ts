@@ -136,7 +136,7 @@ export type CategoryTotal = { category: CategoryId, count: number, sizes: Sizes,
  * The named group a module belongs to; the sidebar and the overview show modules under it. The order of the variants
  * is the screen's order, `Debug` last.
  */
-export type ModuleGroup = "development" | "debug";
+export type ModuleGroup = "system" | "development" | "debug";
 
 /**
  * A module as the UI sees it: what the generic module page renders.
@@ -476,7 +476,7 @@ export type NodeKind = "folder" | "file" | "link" | "collapsed";
 /**
  * Why a folder was not scanned.
  */
-export type NotScanned = { "kind": "unreadable", "value": Unreadable } | { "kind": "avoided" } | { "kind": "other-volume" };
+export type NotScanned = { "kind": "unreadable", "value": Unreadable } | { "kind": "avoided" } | { "kind": "other-volume" } | { "kind": "others-folder" } | { "kind": "system-items" };
 
 /**
  * Why a folder could not be read.
@@ -520,7 +520,16 @@ export type MapPhase = { "kind": "no-scan" } | { "kind": "scanning" } | { "kind"
  * The map of one volume, drawn over the space it shares. Built only by [`VolumeMap::new`], so its parts always add up
  * to its capacity and come in the fixed order of [`PartKind`].
  */
-export type VolumeMap = { name: string, kind: MountKind, capacity: ByteSize, parts: Array<MapPart>, purgeable: ByteSize | null, roots: Array<NodeId>, diskChanged: boolean, };
+export type VolumeMap = { name: string, kind: MountKind, capacity: ByteSize, parts: Array<MapPart>, purgeable: ByteSize | null, roots: Array<NodeId>, 
+/**
+ * The roots that are walked places, each with its name: shown by that name, not by its folder's.
+ */
+places: Array<MapPlace>, diskChanged: boolean, };
+
+/**
+ * A root of a volume's map that is a place walked outside the scan roots (a temporary folder), with its name.
+ */
+export type MapPlace = { root: NodeId, name: Text, };
 
 /**
  * How a volume is attached: it names the map ("Macintosh HD · internal") and says when purgeable space is not asked.

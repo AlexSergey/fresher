@@ -1,7 +1,9 @@
 //! Emitting the matches of a tree without reading the disk: every hit, in pre-order, as the `Match` a full scan sends
 //! for it.
 
-use fresher_core::{ByteSize, Completeness, EntryKind, InterestSet, Match, Sizes};
+use std::path::PathBuf;
+
+use fresher_core::{ByteSize, Completeness, EntryKind, Inside, InterestSet, Match, Sizes};
 
 use crate::matcher::Matcher;
 use crate::rescan::frozen::Frozen;
@@ -10,11 +12,25 @@ use crate::tree::node::{Flag, NodeIndex, Sums};
 
 /// Calls `on_match` for every hit of `tree` (frozen): a folder's hit with no size, a whole claim with its subtree's
 /// files (partial when something in it was not read), a kept file's hit with its sizes, a link's with none. A whole
-/// claim on a folder that is not opaque is not reported, as a full scan does not report it. Returns the count.
-pub(crate) fn emit(tree: &Tree, matcher: &Matcher, interests: &InterestSet, on_match: &mut dyn FnMut(Match)) -> u64 {
+/// claim on a folder that is not opaque is not reported, as a full scan does not report it. A whole claim carries the
+/// folder's inside as the walk recorded it (an incomplete one if none was). Nothing is emitted under a root of
+/// `skipped`. Returns the count.
+pub(crate) fn emit(
+    tree: &Tree,
+    matcher: &Matcher,
+    interests: &InterestSet,
+    skipped: &[PathBuf],
+    on_match: &mut dyn FnMut(Match),
+) -> u64 {
     let frozen = Frozen::new(tree);
     let mut count = 0;
-    let mut stack: Vec<NodeIndex> = tree.roots().iter().rev().map(|root| root.node).collect();
+    let mut stack: Vec<NodeIndex> = tree
+        .roots()
+        .iter()
+        .rev()
+        .filter(|root| tree.path(root.node).is_none_or(|path| !skipped.contains(&path)))
+        .map(|root| root.node)
+        .collect();
     let mut children = Vec::new();
     while let Some(index) = stack.pop() {
         let Some(node) = tree.node(index) else { continue };
@@ -22,6 +38,7 @@ pub(crate) fn emit(tree: &Tree, matcher: &Matcher, interests: &InterestSet, on_m
         if !hits.is_empty() {
             let kind = node.flags.kind();
             let path = tree.path(index);
+            let stamp = tree.stamp(index);
             for hit in hits {
                 let whole = kind == EntryKind::Folder && matcher.claims_whole(hit.interest);
                 let sizes = match kind {
@@ -36,7 +53,7 @@ pub(crate) fn emit(tree: &Tree, matcher: &Matcher, interests: &InterestSet, on_m
                         };
                         Sizes { completeness, ..sizes(frozen.raw(index)) }
                     }
-                    EntryKind::File => sizes(frozen.raw(index)),
+                    EntryKind::File | EntryKind::Other => sizes(frozen.raw(index)),
                     EntryKind::Folder | EntryKind::Symlink => Sizes::ZERO,
                 };
                 let (Some(path), Some(interest)) = (path.clone(), interests.get(hit.interest as usize)) else {
@@ -53,6 +70,9 @@ pub(crate) fn emit(tree: &Tree, matcher: &Matcher, interests: &InterestSet, on_m
                     kind,
                     sizes,
                     modified: node.modified(),
+                    changed: stamp.times.changed,
+                    accessed: stamp.times.accessed,
+                    inside: whole.then(|| stamp.inside.unwrap_or(Inside { complete: false, ..Inside::EMPTY })),
                     siblings,
                     marker: hit.marker,
                     facts: tree.facts(index),

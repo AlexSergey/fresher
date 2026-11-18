@@ -12,10 +12,10 @@ use crate::rules::Rule;
 const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
 
 impl RuleSet {
-    /// The finding for `matched` when the rule at `matched.interest` claims it; `None` otherwise. A symlink is never
-    /// claimed; `must-not-match` is checked first and wins; then the name, the version, the age (the clock of `cx`
-    /// against the match's modification time) and the sibling must all hold. A `marker = "CACHEDIR.TAG"` rule also
-    /// needs the walk's check of the tag's signature. Pure: no IO.
+    /// The finding for `matched` when the rule at `matched.interest` claims it; `None` otherwise. A symlink, a socket, a
+    /// pipe or a device is never claimed; `must-not-match` is checked first and wins; then the name, the version, the
+    /// age (the clock of `cx` against the match's modification time) and the sibling must all hold. A
+    /// `marker = "CACHEDIR.TAG"` rule also needs the walk's check of the tag's signature. Pure: no IO.
     pub fn evaluate(&self, matched: &Match, cx: &ModuleContext<'_>) -> Option<NewFinding> {
         let rule = self.rules.get(matched.interest)?;
         let name = matched.path.file_name()?.to_str()?;
@@ -26,7 +26,8 @@ impl RuleSet {
 
 impl Rule {
     fn claims(&self, matched: &Match, name: &str, now: Timestamp) -> bool {
-        if matched.kind == EntryKind::Symlink || self.must_not_match.iter().any(|glob| glob.matches_ignoring_case(name))
+        if matches!(matched.kind, EntryKind::Symlink | EntryKind::Other)
+            || self.must_not_match.iter().any(|glob| glob.matches_ignoring_case(name))
         {
             return false;
         }
@@ -92,7 +93,8 @@ mod tests {
     const NOW: u64 = 100 * 86_400;
 
     /// `caches` (`Library/Caches/*`, `com.example.*`, 30 days, `Info.plist` next to it, danger medium over the Low
-    /// category, emptied) and `tagged` (any folder with a `CACHEDIR.TAG`).
+    /// category, emptied), `tagged` (any folder with a `CACHEDIR.TAG`) and `logs` (anything in `Library/Logs`, moved
+    /// to the Trash: no kind of its own).
     fn rules() -> RuleSet {
         let toml = r#"
 [[rule]]
@@ -118,6 +120,16 @@ removal = "trash"
 marker = "CACHEDIR.TAG"
 [[rule.must-not-match]]
 name = "Library"
+
+[[rule]]
+id = "logs"
+category = "example.caches"
+danger = "low"
+removal = "trash"
+[rule.look]
+under = { folder = "home", path = "Library/Logs/*" }
+[[rule.must-not-match]]
+name = "keep.log"
 "#;
         RuleSet::parse(&sample::module(), toml).unwrap()
     }
@@ -130,6 +142,9 @@ name = "Library"
             kind: EntryKind::Folder,
             sizes: Sizes::complete(ByteSize::new(10), ByteSize::new(4096)),
             modified: Some(Timestamp::from_secs(NOW - 31 * 86_400)),
+            changed: None,
+            accessed: None,
+            inside: None,
             siblings: vec!["Info.plist".into()],
             marker: None,
             facts: fresher_core::EntryFacts::REMOVABLE,
@@ -139,6 +154,11 @@ name = "Library"
     /// A match of the `tagged` rule, with the walk's check of the tag.
     fn tagged(marker: Option<MarkerCheck>) -> Match {
         Match { interest: 1, path: "/home/project/cache".into(), siblings: vec![], marker, ..cache("unused") }
+    }
+
+    /// A match of the `logs` rule of `kind`, which the rule claims when it is a file or a folder.
+    fn log(kind: EntryKind) -> Match {
+        Match { interest: 2, path: "/home/Library/Logs/app.log".into(), kind, siblings: vec![], ..cache("unused") }
     }
 
     fn evaluate(rules: &RuleSet, matched: &Match) -> Option<NewFinding> {
@@ -152,7 +172,7 @@ name = "Library"
     mod negative {
         use fresher_core::{EntryKind, MarkerCheck, Match, Timestamp};
 
-        use super::{NOW, cache, evaluate, rules, tagged};
+        use super::{NOW, cache, evaluate, log, rules, tagged};
 
         #[test]
         fn a_look_alike_name_is_not_claimed() {
@@ -170,9 +190,14 @@ name = "Library"
 
         #[test]
         fn a_symlink_is_never_claimed() {
-            let link = Match { kind: EntryKind::Symlink, ..cache("com.example.app") };
+            assert!(evaluate(&rules(), &log(EntryKind::File)).is_some(), "the same match as a file is claimed");
+            assert_eq!(evaluate(&rules(), &log(EntryKind::Symlink)), None);
+        }
 
-            assert_eq!(evaluate(&rules(), &link), None);
+        #[test]
+        fn a_socket_a_pipe_or_a_device_is_never_claimed() {
+            assert!(evaluate(&rules(), &log(EntryKind::File)).is_some(), "the same match as a file is claimed");
+            assert_eq!(evaluate(&rules(), &log(EntryKind::Other)), None);
         }
 
         #[test]

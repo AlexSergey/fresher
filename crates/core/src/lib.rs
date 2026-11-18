@@ -24,6 +24,7 @@ mod folder;
 mod group;
 mod hash;
 mod ids;
+mod inside;
 mod interest;
 mod journal;
 mod known_folder;
@@ -81,6 +82,7 @@ pub use folder::{EntryAccess, FolderIdentity, FolderListing, FolderReader, RawEn
 pub use group::ModuleGroup;
 pub use hash::stable_hash;
 pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Timestamp, ToolId};
+pub use inside::Inside;
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
 pub use known_folder::{KnownFolder, KnownFolders};
@@ -100,8 +102,8 @@ pub use settings::{
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{
-    AppRef, CategoryShare, Descent, MapPart, MapPhase, MeaningGroup, PartKind, PlaceName, PlaceRow, PlaceShare,
-    PlaceView, RemainderReason, StorageMap, StorageMapError, VolumeMap,
+    AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, PartKind, PlaceName, PlaceRow,
+    PlaceShare, PlaceView, RemainderReason, StorageMap, StorageMapError, VolumeMap,
 };
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};
 pub use subject::Subject;
@@ -113,5 +115,6 @@ pub use text::{DETAIL_ARG, Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;
 pub use volume::{DiskSpace, MountKind, Neighbour, NeighbourRole, VolumeFacts, VolumeId, Volumes};
 pub use walk::{
-    ClaimedPath, DiskWalk, FullScanReason, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    ClaimedPath, DiskWalk, FullScanReason, Place, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest,
+    WalkSummary,
 };

@@ -100,8 +100,10 @@ fn raw_entry(metadata: &Metadata) -> RawEntry {
         EntryKind::Symlink
     } else if file_type.is_dir() {
         EntryKind::Folder
-    } else {
+    } else if file_type.is_file() {
         EntryKind::File
+    } else {
+        EntryKind::Other
     };
     let sizes = if kind == EntryKind::Folder {
         Sizes::ZERO
@@ -116,6 +118,8 @@ fn raw_entry(metadata: &Metadata) -> RawEntry {
         sizes,
         clone: None,
         modified: u64::try_from(metadata.mtime()).ok().map(Timestamp::from_secs),
+        changed: u64::try_from(metadata.ctime()).ok().map(Timestamp::from_secs),
+        accessed: u64::try_from(metadata.atime()).ok().map(Timestamp::from_secs),
         cloud_only: false,
         access: access(metadata),
         error: None,
@@ -163,6 +167,8 @@ const fn unreadable_entry(error: ReadError) -> RawEntry {
         sizes: Sizes::ZERO,
         clone: None,
         modified: None,
+        changed: None,
+        accessed: None,
         cloud_only: false,
         access: EntryAccess { owner: None, mode: 0, user_immutable: false, system_immutable: false, restricted: false },
         error: Some(error),

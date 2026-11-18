@@ -130,7 +130,7 @@ fn full_scan(root: &Path, interests: &InterestSet, threads: usize) -> usize {
         options,
     );
     let roots = [root.to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests, avoid: &[], mode: WalkMode::Full };
+    let request = WalkRequest { roots: &roots, interests, avoid: &[], places: &[], mode: WalkMode::Full };
     let mut matches = 0;
     scanner
         .walk(&request, &CancelToken::new(), &mut |_| matches += 1, &mut |_| {})
@@ -186,7 +186,7 @@ fn cache(criterion: &mut Criterion) {
     let cores = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
     let scanner = bench_scanner(tree.root(), cores.min(16));
     let roots = [tree.root().to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
+    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
     let bench = CacheBench::of(&scanner, &request).unwrap_or_else(|error| panic!("the bench scan: {error}"));
     let body = bench.encode();
     let sizes = bench.sizes(&body);
@@ -269,7 +269,7 @@ fn rescan(criterion: &mut Criterion) {
     let journal = Arc::new(ScriptedJournal::default());
     let scanner = scanner_with(tree.root(), cores, Arc::clone(&journal) as _, 100);
     let roots = [tree.root().to_path_buf()];
-    let full = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
+    let full = WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
     let auto = WalkRequest { mode: WalkMode::Auto, ..full };
     scanner.walk(&full, &CancelToken::new(), &mut |_| {}, &mut |_| {}).unwrap_or_else(|error| panic!("{error}"));
     let folders = walked_folders(&scanner);
@@ -306,7 +306,7 @@ fn state(criterion: &mut Criterion) {
     let cores = std::thread::available_parallelism().map_or(1, NonZeroUsize::get).min(16);
     let scanner = bench_scanner(tree.root(), cores);
     let roots = [tree.root().to_path_buf()];
-    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
+    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
     let bench = QueryBench::of(&scanner, &request).unwrap_or_else(|error| panic!("the bench scan: {error}"));
     let before = bench.heap_bytes();
     let started = std::time::Instant::now();

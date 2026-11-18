@@ -12,6 +12,8 @@ const ATTR_CMN_NAME: u32 = 0x0000_0001;
 const ATTR_CMN_DEVID: u32 = 0x0000_0002;
 const ATTR_CMN_OBJTYPE: u32 = 0x0000_0008;
 const ATTR_CMN_MODTIME: u32 = 0x0000_0400;
+const ATTR_CMN_CHGTIME: u32 = 0x0000_0800;
+const ATTR_CMN_ACCTIME: u32 = 0x0000_1000;
 const ATTR_CMN_OWNERID: u32 = 0x0000_8000;
 const ATTR_CMN_ACCESSMASK: u32 = 0x0002_0000;
 const ATTR_CMN_FLAGS: u32 = 0x0004_0000;
@@ -30,6 +32,8 @@ pub(super) const COMMON: u32 = ATTR_CMN_RETURNED_ATTRS
     | ATTR_CMN_DEVID
     | ATTR_CMN_OBJTYPE
     | ATTR_CMN_MODTIME
+    | ATTR_CMN_CHGTIME
+    | ATTR_CMN_ACCTIME
     | ATTR_CMN_OWNERID
     | ATTR_CMN_ACCESSMASK
     | ATTR_CMN_FLAGS
@@ -41,7 +45,7 @@ pub(super) const FILE: u32 = ATTR_FILE_LINKCOUNT | ATTR_FILE_TOTALSIZE | ATTR_FI
 /// of every file doubled the walk, so it is read per clone.
 pub(super) const EXTENDED: u32 = ATTR_CMNEXT_CLONEID | ATTR_CMNEXT_EXT_FLAGS;
 
-/// `VREG`, `VDIR` and `VLNK` of `<sys/vnode.h>`.
+/// `VREG`, `VDIR` and `VLNK` of `<sys/vnode.h>`; every other type (a socket, a pipe, a device) is `Other`.
 const VREG: u32 = 1;
 const VDIR: u32 = 2;
 const VLNK: u32 = 5;
@@ -73,6 +77,8 @@ pub(super) struct Record<'a> {
     kind: Option<u32>,
     device: Option<i32>,
     modified: Option<i64>,
+    changed: Option<i64>,
+    accessed: Option<i64>,
     owner: Option<u32>,
     mode: Option<u32>,
     flags: u32,
@@ -94,7 +100,8 @@ impl Record<'_> {
         match self.kind {
             Some(VDIR) => EntryKind::Folder,
             Some(VLNK) => EntryKind::Symlink,
-            _ => EntryKind::File,
+            Some(VREG) | None => EntryKind::File,
+            Some(_) => EntryKind::Other,
         }
     }
 
@@ -118,12 +125,19 @@ impl Record<'_> {
             links: self.links.unwrap_or(1),
             sizes,
             clone: self.clone_id.filter(|_| self.may_share_blocks()),
-            modified: self.modified.map(|secs| Timestamp::from_secs(u64::try_from(secs).unwrap_or(0))),
+            modified: self.modified.and_then(timestamp),
+            changed: self.changed.and_then(timestamp),
+            accessed: self.accessed.and_then(timestamp),
             cloud_only,
             access: access(self.owner, self.mode.unwrap_or(0), self.flags),
             error: (self.error != 0).then(|| from_errno(i32::try_from(self.error).unwrap_or(i32::MAX))),
         }
     }
+}
+
+/// The seconds of a `timespec`; a time before the epoch is not known.
+fn timestamp(secs: i64) -> Option<Timestamp> {
+    u64::try_from(secs).ok().map(Timestamp::from_secs)
 }
 
 /// The access of an entry owned by `owner`, of mode `mode` and with the flags `flags`; a mode not read allows nothing.
@@ -203,8 +217,13 @@ fn parse(bytes: &[u8]) -> Result<Record<'_>, ReadError> {
         record.kind = Some(fields.u32()?);
     }
     if common & ATTR_CMN_MODTIME != 0 {
-        record.modified = Some(fields.i64()?);
-        fields.i64()?;
+        record.modified = Some(fields.seconds()?);
+    }
+    if common & ATTR_CMN_CHGTIME != 0 {
+        record.changed = Some(fields.seconds()?);
+    }
+    if common & ATTR_CMN_ACCTIME != 0 {
+        record.accessed = Some(fields.seconds()?);
     }
     if common & ATTR_CMN_OWNERID != 0 {
         record.owner = Some(fields.u32()?);
@@ -262,8 +281,11 @@ impl<'a> Fields<'a> {
         self.take().map(u64::from_ne_bytes)
     }
 
-    fn i64(&mut self) -> Result<i64, ReadError> {
-        self.take().map(i64::from_ne_bytes)
+    /// The seconds of a `timespec` (seconds, then nanoseconds, both 64-bit).
+    fn seconds(&mut self) -> Result<i64, ReadError> {
+        let seconds = self.take().map(i64::from_ne_bytes)?;
+        self.take::<8>()?;
+        Ok(seconds)
     }
 
     /// The name of an `attrreference`: an offset from the reference itself and a length that counts the final NUL.
@@ -318,8 +340,10 @@ mod tests {
             let mut fields = Vec::new();
             fields.extend_from_slice(&0x0100_000d_i32.to_ne_bytes());
             fields.extend_from_slice(&1_u32.to_ne_bytes());
-            fields.extend_from_slice(&1_700_000_000_i64.to_ne_bytes());
-            fields.extend_from_slice(&0_i64.to_ne_bytes());
+            for seconds in [1_700_000_000_i64, 1_700_000_100, 1_700_000_200] {
+                fields.extend_from_slice(&seconds.to_ne_bytes());
+                fields.extend_from_slice(&0_i64.to_ne_bytes());
+            }
             fields.extend_from_slice(&501_u32.to_ne_bytes());
             fields.extend_from_slice(&0o100_644_u32.to_ne_bytes());
             fields.extend_from_slice(&0_u32.to_ne_bytes());
@@ -441,6 +465,18 @@ mod tests {
         }
 
         #[test]
+        fn a_time_before_the_epoch_is_not_known() {
+            let mut packed = Packed::file(b"old", 0);
+            for offset in [8, 24, 40] {
+                packed.fields[offset..offset + 8].copy_from_slice(&(-5_i64).to_ne_bytes());
+            }
+
+            let entry = records(&packed.bytes(), 1).next().unwrap().unwrap().entry(None);
+
+            assert_eq!((entry.modified, entry.changed, entry.accessed), (None, None, None));
+        }
+
+        #[test]
         fn a_record_without_its_owner_or_mode_is_owned_by_nobody_and_allows_nothing() {
             let buffer = Packed::named(b"bare").bytes();
 
@@ -462,8 +498,9 @@ mod tests {
             UF_IMMUTABLE, device_id, records,
         };
 
-        /// Where the flags lie in the fields of `Packed::file`.
-        const FLAGS: Range<usize> = 32..36;
+        /// Where the flags lie in the fields of `Packed::file`: after the device, the type, three times, the owner and
+        /// the mode.
+        const FLAGS: Range<usize> = 64..68;
 
         #[test]
         fn a_file_record_gives_every_attribute() {
@@ -478,6 +515,8 @@ mod tests {
             assert_eq!((entry.device, entry.file_id, entry.links), (0x0100_000d, 42, 2));
             assert_eq!(entry.sizes, Sizes::complete(ByteSize::new(5_000), ByteSize::new(8_192)));
             assert_eq!(entry.modified, Some(Timestamp::from_secs(1_700_000_000)));
+            assert_eq!(entry.changed, Some(Timestamp::from_secs(1_700_000_100)));
+            assert_eq!(entry.accessed, Some(Timestamp::from_secs(1_700_000_200)));
             assert_eq!((entry.clone, entry.cloud_only, entry.error), (None, false, None));
             assert_eq!(entry.access, EntryAccess { owner: Some(501), mode: 0o644, ..EntryAccess::default() });
         }

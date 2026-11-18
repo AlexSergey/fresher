@@ -4,7 +4,7 @@
 use std::ffi::OsStr;
 use std::fs;
 use std::os::unix::ffi::OsStrExt as _;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use fresher_core::{Protection, ProtectionError};
 
@@ -24,6 +24,18 @@ const SYSTEM: [&str; 9] = [
     // Apps are removed only by an uninstaller, which is not planned yet.
     "/Applications",
 ];
+/// The system's places of temporary and transient data: every user's caches and temporary folders (the user's own
+/// `T` is carved out), the system's temporary folder, its swap and the versions of documents.
+const TRANSIENT: [&str; 4] =
+    ["/private/var/folders", "/private/var/tmp", "/private/var/vm", "/.DocumentRevisions-V100"];
+/// The folder of every user's temporary and cache folders; the user's own `T` is carved out of it.
+const USER_FOLDERS: &str = "/private/var/folders";
+/// The name of a user's own temporary folder inside its triplet.
+const TEMP: &str = "T";
+/// Inside the user's own `T`: the system's own temporary items (a document being saved), never removed.
+const TEMPORARY_ITEMS: &str = "TemporaryItems";
+/// The temporary folder every user shares (`/tmp` is a link to it): what is inside may go, item by item.
+const SHARED_TEMP: &str = "/private/tmp";
 /// Carved out of `/usr`: what the user installed there may go, item by item.
 const USR_LOCAL: &str = "/usr/local";
 /// The folder of every home; the user's own and the shared one are carved out of it, so every other home is never.
@@ -34,8 +46,10 @@ const VOLUMES: &str = "/Volumes";
 /// A volume's Trash folder, at its root: what the user put there is theirs.
 const TRASHES: &str = ".Trashes";
 
-/// Relative to the home: the user's Trash, and the synced places whose removal also removes the copy in the cloud.
-const HOME_NEVER: [&[&str]; 3] = [&[".Trash"], &["Library", "Mobile Documents"], &["Library", "CloudStorage"]];
+/// Relative to the home: the user's Trash, the synced places whose removal also removes the copy in the cloud, and
+/// the documents the system keeps until they are saved.
+const HOME_NEVER: [&[&str]; 4] =
+    [&[".Trash"], &["Library", "Mobile Documents"], &["Library", "CloudStorage"], &["Library", "Autosave Information"]];
 /// Relative to the home: the user's own folders and the Library's standard ones, never removed as a whole.
 const HOME_WHOLE: [&[&str]; 23] = [
     &["Desktop"],
@@ -63,11 +77,22 @@ const HOME_WHOLE: [&[&str]; 23] = [
     &["Library", "Keychains"],
 ];
 
-/// The protection of this Mac for the user whose home is `home`, with the app's own data folder and, in a built app,
-/// its bundle. The given paths are made canonical (`/private/var`, not `/var`); the mounted volumes are read now.
-pub fn protection(home: &Path, data_folder: &Path, app_bundle: Option<&Path>) -> Result<Protection, ProtectionError> {
-    let places =
-        Places::of(&canonical(home), &canonical(data_folder), app_bundle.map(canonical).as_deref(), &mounted_volumes());
+/// The protection of this Mac for the user whose home is `home`, with the app's own data folder, in a built app its
+/// bundle, and the user's own temporary folder when it is known (`user_temp_dir`). The given paths are made canonical
+/// (`/private/var`, not `/var`); the mounted volumes are read now.
+pub fn protection(
+    home: &Path,
+    data_folder: &Path,
+    app_bundle: Option<&Path>,
+    user_temp: Option<&Path>,
+) -> Result<Protection, ProtectionError> {
+    let places = Places::of(
+        &canonical(home),
+        &canonical(data_folder),
+        app_bundle.map(canonical).as_deref(),
+        user_temp.map(canonical).as_deref(),
+        &mounted_volumes(),
+    );
     Protection::new(places.never, places.whole, places.except)
 }
 
@@ -81,30 +106,57 @@ struct Places {
 
 impl Places {
     /// Pure: builds paths from the given ones and reads nothing.
-    fn of(home: &Path, data_folder: &Path, app_bundle: Option<&Path>, volumes: &[PathBuf]) -> Self {
+    /// A `user_temp` outside `/private/var/folders` is no user's `T`: nothing is carved out for it.
+    fn of(
+        home: &Path,
+        data_folder: &Path,
+        app_bundle: Option<&Path>,
+        user_temp: Option<&Path>,
+        volumes: &[PathBuf],
+    ) -> Self {
         let under_home = |names: &&[&str]| names.iter().fold(home.to_path_buf(), |path, name| path.join(name));
         let users = Path::new(USERS);
+        let user_temp = user_temp.filter(|temp| is_user_temp(temp));
 
-        let mut never: Vec<PathBuf> = SYSTEM.iter().map(PathBuf::from).collect();
+        let mut never: Vec<PathBuf> = SYSTEM.iter().chain(&TRANSIENT).map(PathBuf::from).collect();
         never.push(users.to_path_buf());
         never.extend(HOME_NEVER.iter().map(under_home));
         never.push(data_folder.to_path_buf());
         never.extend(app_bundle.map(Path::to_path_buf));
         never.push(Path::new("/").join(TRASHES));
         never.extend(volumes.iter().map(|volume| volume.join(TRASHES)));
+        never.extend(user_temp.map(|temp| temp.join(TEMPORARY_ITEMS)));
 
         let mut except = vec![PathBuf::from(USR_LOCAL), PathBuf::from(SHARED)];
         // The user's own home is carved out of `/Users`, when it is there (a home elsewhere needs no carving).
-        if home.starts_with(users) && home != users {
+        if is_strictly_inside(home, users) {
             except.push(home.to_path_buf());
         }
+        except.extend(user_temp.map(Path::to_path_buf));
 
-        let mut whole = vec![home.to_path_buf(), PathBuf::from(VOLUMES)];
+        let mut whole = vec![home.to_path_buf(), PathBuf::from(VOLUMES), PathBuf::from(SHARED_TEMP)];
         whole.extend(HOME_WHOLE.iter().map(under_home));
         whole.extend(volumes.iter().cloned());
+        whole.extend(user_temp.map(Path::to_path_buf));
 
         Self { never, whole, except }
     }
+}
+
+/// `true` when canonical `path` has the shape of a user's own temporary folder: exactly
+/// `/private/var/folders/<xx>/<hash>/T`, three names below every user's folders, the last `T`. Anything else is no
+/// user's `T`: nothing is carved out for it and it is no known folder.
+pub fn is_user_temp(path: &Path) -> bool {
+    let Ok(below) = path.strip_prefix(USER_FOLDERS) else { return false };
+    let names: Vec<Component<'_>> = below.components().collect();
+    names.len() == 3
+        && names.iter().all(|name| matches!(name, Component::Normal(_)))
+        && names.last() == Some(&Component::Normal(TEMP.as_ref()))
+}
+
+/// `inner` is below `outer`, not `outer` itself, by components.
+fn is_strictly_inside(inner: &Path, outer: &Path) -> bool {
+    inner.starts_with(outer) && inner != outer
 }
 
 /// The mount points of the mounted volumes, as the system names them (canonical). None when they cannot be read:
@@ -161,10 +213,24 @@ mod tests {
     }
 
     /// The protection for the temporary home given as the system names it (through the link `/var`), with a data
-    /// folder that does not exist yet and an app bundle.
+    /// folder that does not exist yet, an app bundle, and the temporary folder that holds the home as the user's own.
     fn protect(folder: &TempDir) -> Protection {
         let data = folder.path().join("Library").join("Application Support").join("Fresher");
-        protection(folder.path(), &data, Some(Path::new("/Applications/Fresher.app"))).unwrap()
+        let bundle = Path::new("/Applications/Fresher.app");
+        protection(folder.path(), &data, Some(bundle), Some(&std::env::temp_dir())).unwrap()
+    }
+
+    /// The user's own temporary folder of [`with_temp`], as the system names it (through the link `/var`).
+    const USER_TEMP: &str = "/var/folders/xx/abc/T/";
+
+    /// The protection of the home `/Users/ann` with [`USER_TEMP`] as the user's own temporary folder.
+    fn with_temp() -> Protection {
+        protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None, Some(Path::new(USER_TEMP))).unwrap()
+    }
+
+    /// `path` as the cleaner checks it: the physical form, through no link (`/var` and `/tmp` resolved).
+    fn physical(path: &str) -> PathBuf {
+        super::canonical(Path::new(path))
     }
 
     mod negative {
@@ -172,9 +238,9 @@ mod tests {
 
         use fresher_core::Protected;
 
-        use super::{home, protect};
+        use super::{USER_TEMP, home, physical, protect, with_temp};
         use crate::protection;
-        use crate::protection::Places;
+        use crate::protection::{Places, is_user_temp};
 
         #[test]
         fn the_home_and_its_standard_folders_are_whole() {
@@ -221,7 +287,7 @@ mod tests {
         #[test]
         fn every_mounted_volume_is_whole_and_its_trash_never() {
             let volume = Path::new("/Volumes/Backup");
-            let places = Places::of(Path::new("/Users/ann"), Path::new("/data"), None, &[volume.to_path_buf()]);
+            let places = Places::of(Path::new("/Users/ann"), Path::new("/data"), None, None, &[volume.to_path_buf()]);
             let protection = fresher_core::Protection::new(places.never, places.whole, places.except).unwrap();
 
             assert_eq!(protection.check(volume), Err(Protected::Ancestor));
@@ -242,7 +308,7 @@ mod tests {
 
         #[test]
         fn another_users_home_is_never() {
-            let protection = protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None).unwrap();
+            let protection = protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None, None).unwrap();
 
             assert_eq!(protection.check(Path::new("/Users/bob")), Err(Protected::Never));
             assert_eq!(protection.check(Path::new("/Users/bob/Library/Caches/x")), Err(Protected::Never));
@@ -266,8 +332,107 @@ mod tests {
         }
 
         #[test]
+        fn the_system_parts_of_the_users_temporary_folders_are_never() {
+            let protection = with_temp();
+
+            for place in ["C", "0", "X", "T/TemporaryItems"] {
+                for form in [format!("/var/folders/xx/abc/{place}/x"), format!("/private/var/folders/xx/abc/{place}/x")]
+                {
+                    assert_eq!(protection.check(&physical(&form)), Err(Protected::Never), "{form}");
+                }
+            }
+            assert_eq!(protection.check(&physical("/var/folders/xx/abc/T/TemporaryItems")), Err(Protected::Never));
+        }
+
+        #[test]
+        fn another_users_temporary_folder_is_never() {
+            let protection = with_temp();
+
+            for form in ["/var/folders/yy/other/T/x", "/private/var/folders/yy/other/T/x", "/var/folders/xx/abd/T/x"] {
+                assert_eq!(protection.check(&physical(form)), Err(Protected::Never), "{form}");
+            }
+            assert_eq!(protection.check(&physical("/var/folders")), Err(Protected::Never));
+        }
+
+        #[test]
+        fn without_a_user_temp_every_temporary_folder_is_never() {
+            let protection = protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None, None).unwrap();
+
+            assert_eq!(protection.check(&physical(&format!("{USER_TEMP}x"))), Err(Protected::Never));
+            assert_eq!(protection.check(Path::new("/private/tmp/x")), Ok(()));
+        }
+
+        #[test]
+        fn a_user_temp_outside_the_users_folders_carves_nothing() {
+            let protection =
+                protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None, Some(Path::new("/opt/T")))
+                    .unwrap();
+
+            assert_eq!(protection.check(Path::new("/opt/T/TemporaryItems/x")), Ok(()));
+            assert_eq!(protection.check(Path::new("/opt/T")), Ok(()));
+            assert_eq!(protection.check(&physical(&format!("{USER_TEMP}x"))), Err(Protected::Never));
+        }
+
+        #[test]
+        fn a_path_not_shaped_as_a_users_temp_is_no_users_temp() {
+            for path in [
+                "/private/var/folders",
+                "/private/var/folders/xx",
+                "/private/var/folders/xx/abc",
+                "/private/var/folders/xx/abc/C",
+                "/private/var/folders/xx/abc/T/TemporaryItems",
+                "/private/var/folders/xx/abc/T/deeper",
+                "/private/var/folders/xx/abc/t",
+                "/var/folders/xx/abc/T",
+                "/private/tmp/xx/abc/T",
+            ] {
+                assert!(!is_user_temp(Path::new(path)), "{path}");
+            }
+        }
+
+        #[test]
+        fn a_user_temp_of_the_wrong_shape_carves_nothing() {
+            for temp in ["/private/var/folders/xx/abc", "/private/var/folders/xx/abc/T/TemporaryItems"] {
+                let places = Places::of(Path::new("/Users/ann"), Path::new("/data"), None, Some(Path::new(temp)), &[]);
+                let protection = fresher_core::Protection::new(places.never, places.whole, places.except).unwrap();
+
+                assert_eq!(protection.check(Path::new("/private/var/folders/xx/abc/T/x")), Err(Protected::Never));
+                assert_eq!(protection.check(&Path::new(temp).join("x")), Err(Protected::Never), "{temp}");
+            }
+        }
+
+        #[test]
+        fn the_systems_transient_places_and_autosaved_documents_are_never() {
+            let protection = with_temp();
+
+            for form in [
+                "/var/tmp/x",
+                "/private/var/tmp/x",
+                "/var/vm/swapfile0",
+                "/private/var/vm",
+                "/.DocumentRevisions-V100/PerUID/501/x",
+                "/Users/ann/Library/Autosave Information/Untitled.rtf",
+            ] {
+                assert_eq!(protection.check(&physical(form)), Err(Protected::Never), "{form}");
+            }
+        }
+
+        #[test]
+        fn the_temporary_folders_are_refused_as_a_whole() {
+            let protection = with_temp();
+
+            // The user's `T` holds a `never` place (`TemporaryItems`), so it is refused as its ancestor first.
+            for form in [USER_TEMP, "/private/var/folders/xx/abc/T"] {
+                assert_eq!(protection.check(&physical(form)), Err(Protected::Ancestor), "{form}");
+            }
+            for form in ["/tmp", "/private/tmp"] {
+                assert_eq!(protection.check(&physical(form)), Err(Protected::WholeFolder), "{form}");
+            }
+        }
+
+        #[test]
         fn a_path_that_cannot_be_made_canonical_is_refused() {
-            let made = protection(Path::new("relative/home"), Path::new("/data"), None);
+            let made = protection(Path::new("relative/home"), Path::new("/data"), None, None);
 
             assert!(made.is_err());
         }
@@ -276,9 +441,9 @@ mod tests {
     mod positive {
         use std::path::{Component, Path};
 
-        use super::{home, protect};
+        use super::{USER_TEMP, home, physical, protect, with_temp};
         use crate::protection;
-        use crate::protection::{Places, canonical, mounted_volumes};
+        use crate::protection::{Places, canonical, is_user_temp, mounted_volumes};
 
         #[test]
         fn an_item_inside_the_caches_folder_may_go() {
@@ -299,10 +464,28 @@ mod tests {
 
         #[test]
         fn the_users_own_home_and_shared_items_may_go() {
-            let protection = protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None).unwrap();
+            let protection = protection(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None, None).unwrap();
 
             assert_eq!(protection.check(Path::new("/Users/ann/Library/Caches/x")), Ok(()));
             assert_eq!(protection.check(Path::new("/Users/Shared/old installer.pkg")), Ok(()));
+        }
+
+        #[test]
+        fn a_users_temp_is_three_names_below_the_users_folders_ending_in_t() {
+            assert!(is_user_temp(Path::new("/private/var/folders/xx/abc/T")));
+            assert!(is_user_temp(Path::new("/private/var/folders/xx/abc/T/")));
+        }
+
+        #[test]
+        fn an_item_in_the_users_temporary_folder_or_the_shared_one_may_go() {
+            let protection = with_temp();
+
+            for form in
+                [&format!("{USER_TEMP}old.log"), "/private/var/folders/xx/abc/T/build-1", "/tmp/x", "/private/tmp/x"]
+            {
+                assert_eq!(protection.check(&physical(form)), Ok(()), "{form}");
+            }
+            assert_eq!(protection.check(&physical(&format!("{USER_TEMP}TemporaryItemsOld"))), Ok(()));
         }
 
         #[test]
@@ -312,6 +495,7 @@ mod tests {
             let places = Places::of(
                 &canonical(folder.path()),
                 &canonical(&tmp.join("not made yet")),
+                Some(&canonical(&tmp)),
                 Some(&canonical(&tmp)),
                 &mounted_volumes(),
             );

@@ -38,11 +38,15 @@ pub enum KnownFolder {
     UserApplications,
     /// The apps that come with the system.
     SystemApplications,
+    /// The user's own temporary folder.
+    UserTemp,
+    /// The temporary folder every user shares.
+    SharedTemp,
 }
 
 impl KnownFolder {
     /// Every known folder, in a fixed order.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 16] = [
         Self::Home,
         Self::Library,
         Self::AppCaches,
@@ -57,7 +61,15 @@ impl KnownFolder {
         Self::Applications,
         Self::UserApplications,
         Self::SystemApplications,
+        Self::UserTemp,
+        Self::SharedTemp,
     ];
+
+    /// Whether a scan walks it as a place of its own when it lies outside the scan roots and a module names it: the
+    /// temporary folders only, so no other folder (the apps', say) ever becomes a place read in full on every scan.
+    pub const fn is_walked_place(self) -> bool {
+        matches!(self, Self::UserTemp | Self::SharedTemp)
+    }
 
     /// The folder's name as rules write it.
     pub const fn as_str(self) -> &'static str {
@@ -76,6 +88,8 @@ impl KnownFolder {
             Self::Applications => "applications",
             Self::UserApplications => "user-applications",
             Self::SystemApplications => "system-applications",
+            Self::UserTemp => "user-temp",
+            Self::SharedTemp => "shared-temp",
         }
     }
 }
@@ -96,6 +110,14 @@ pub trait KnownFolders: Send + Sync {
 mod tests {
     mod negative {
         use crate::KnownFolder;
+
+        #[test]
+        fn only_the_temporary_folders_are_walked_places() {
+            let walked: Vec<KnownFolder> =
+                KnownFolder::ALL.into_iter().filter(|folder| folder.is_walked_place()).collect();
+
+            assert_eq!(walked, [KnownFolder::UserTemp, KnownFolder::SharedTemp]);
+        }
 
         #[test]
         fn an_unknown_folder_name_is_not_read() {

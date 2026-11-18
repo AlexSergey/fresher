@@ -175,7 +175,8 @@ mod positive {
     fn walked(tree: &FixtureTree) -> std::sync::Arc<dyn fresher_core::DiskState> {
         let roots = [tree.root().to_path_buf()];
         let interests = InterestSet::new();
-        let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], mode: WalkMode::Full };
+        let request =
+            WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
         let walk = NaiveWalk::new(tree.root());
         walk.walk(&request, &CancelToken::new(), &mut |_| {}, &mut |_| {}).unwrap();
         let claims: Vec<ClaimedPath> = TreeReport::of(tree.root())

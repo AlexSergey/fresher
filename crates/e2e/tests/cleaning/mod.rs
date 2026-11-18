@@ -346,6 +346,10 @@ impl Cleaner for PausingCleaner {
         })
     }
 
+    fn protection(&self) -> Protection {
+        self.inner.protection()
+    }
+
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
         self.inner.locate(items)
     }

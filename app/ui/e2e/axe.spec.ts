@@ -97,6 +97,31 @@ const jetbrainsPage = async (page: Page): Promise<void> => {
   );
 };
 
+// The temporary files scan, on the module's page.
+const tempPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.temp);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^Temporary files/ });
+  await expect(nav).toContainText('837 MB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Temporary files' })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Old temporary files' })).toContainText(
+    '4,712 items left out (790 MB)',
+  );
+};
+
+// Settings, with the temporary files module's number field in view.
+const tempSettings = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.temp);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeFocused();
+  const days = page.getByRole('spinbutton', { name: 'Offer temporary files unchanged for' });
+  await expect(days).toHaveValue('7');
+  await days.scrollIntoViewIfNeeded();
+};
+
 // WebStorm's three categories ticked, the review open and the confirmation (it names Medium) asked for.
 const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
   await jetbrainsPage(page);
@@ -194,6 +219,18 @@ test.describe('positive cases', () => {
 
     test('the module page of JetBrains IDEs, with its left-out lines', async ({ page }) => {
       await jetbrainsPage(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the module page of Temporary files, with its left-out lines', async ({ page }) => {
+      await tempPage(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the settings with the number field of Temporary files', async ({ page }) => {
+      await tempSettings(page);
 
       expect(await violations(page)).toStrictEqual([]);
     });

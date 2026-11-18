@@ -1,0 +1,92 @@
+# A home for the temp module with five old items, all offered: a file and a folder of the user's temporary folder
+# (30 and 20 days old), an item of the shared folder (10 days), a link (30 days; offered as itself, its target in
+# Documents stays), and the folder of `com.example.Viewer` (15 days), installed and not open. Beside them, what the
+# module never matches: the old files of the temporary folder's neighbours `C/`, `0/`, `X/` and `T/TemporaryItems`,
+# and a home file named like a temporary item. Times count back from `FIXTURE_NOW`; the status changes are stated.
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/tmp.IKKNWYIRnq"
+size = 1048576
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/node-compile-cache/v22/index.bin"
+size = 262144
+age = "20d"
+changed = "20d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/node-compile-cache/v22/data.bin"
+size = 524288
+age = "20d"
+changed = "20d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/node-compile-cache/v22"
+age = "20d"
+changed = "20d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/node-compile-cache"
+age = "20d"
+changed = "20d"
+
+[[file]]
+path = "private/tmp/old-build.log"
+size = 16384
+age = "10d"
+changed = "10d"
+
+[[symlink]]
+path = "private/var/folders/xx/fixture/T/docs-link"
+target = "../../../../../../Documents/linked"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Documents/linked/keep.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/com.example.Viewer/thumbs.db"
+size = 131072
+age = "15d"
+changed = "15d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/com.example.Viewer"
+age = "15d"
+changed = "15d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/C/cache.db"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/0/data.bin"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/X/code.bin"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/TemporaryItems/doc.rtf"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "tmp.ABCDEF1234"
+size = 4096
+age = "30d"
+changed = "30d"

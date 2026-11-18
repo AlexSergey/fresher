@@ -36,6 +36,10 @@ pub struct RawEntry {
     /// The clone group of a file that may share its blocks with a clone; `None` for any other entry.
     pub clone: Option<u64>,
     pub modified: Option<Timestamp>,
+    /// The last change of its status (its metadata or its content): moved by every write, never set back by a tool.
+    pub changed: Option<Timestamp>,
+    /// The last read of its content; lazy, so only ever a reason to keep it.
+    pub accessed: Option<Timestamp>,
     /// A cloud file whose data is not on this Mac: never read, it takes no allocated space.
     pub cloud_only: bool,
     /// Who owns it, its permission bits and its locks: what its removability is worked out from.
@@ -141,6 +145,8 @@ mod tests {
             sizes: Sizes::ZERO,
             clone: None,
             modified: None,
+            changed: None,
+            accessed: None,
             cloud_only: false,
             access: EntryAccess::default(),
             error: None,

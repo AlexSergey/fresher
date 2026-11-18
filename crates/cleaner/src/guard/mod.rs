@@ -219,6 +219,11 @@ mod tests {
 
     mod negative {
         use std::fs;
+        use std::sync::mpsc;
+        use std::thread;
+        use std::time::Duration;
+
+        use fresher_testing::make_pipe;
 
         use fresher_core::{
             Access, Action, Capability, GuardedFolder, GuardedPlace, OpenSet, Protection, SkipReason, ToolCommand,
@@ -280,6 +285,29 @@ mod tests {
             fs::create_dir(setup.at("home/cache/a.bin")).unwrap();
 
             assert_eq!(check(&setup, &item, Purpose::Act).unwrap_err(), SkipReason::KindChanged);
+        }
+
+        #[test]
+        fn a_file_replaced_by_a_pipe_has_changed_kind() {
+            let setup = tree();
+            let item = frozen(&setup, remove(&setup, "home/cache/a.bin"));
+            fs::rename(setup.at("home/cache/a.bin"), setup.at("moved.bin")).unwrap();
+            make_pipe(&setup.at("home/cache/a.bin")).unwrap();
+
+            assert_eq!(check(&setup, &item, Purpose::Act).unwrap_err(), SkipReason::KindChanged);
+        }
+
+        #[test]
+        fn a_pipe_with_no_writer_does_not_block_the_guard() {
+            let setup = tree();
+            make_pipe(&setup.at("home/cache/pipe")).unwrap();
+            let item = remove(&setup, "home/cache/pipe");
+            let (answer, answered) = mpsc::channel();
+
+            thread::spawn(move || answer.send(check(&setup, &item, Purpose::Rehearse).map(|_| ())));
+
+            let answer = answered.recv_timeout(Duration::from_secs(2)).expect("the guard blocked on the pipe");
+            assert_eq!(answer, Err(SkipReason::KindChanged));
         }
 
         #[test]

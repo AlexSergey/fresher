@@ -59,5 +59,6 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `jetbrains.logs`     | Safe         | none (the module's code, `modules/jetbrains`) | [`jetbrains-logs.md`](./jetbrains-logs.md)         |
 | `jetbrains.settings` | Medium       | none (the module's code, `modules/jetbrains`) | [`jetbrains-settings.md`](./jetbrains-settings.md) |
 | `jetbrains.uninstalled` | Medium    | none (the module's code, `modules/jetbrains`) | [`jetbrains-uninstalled.md`](./jetbrains-uninstalled.md) |
+| `temp.old-files`     | Safe         | none (the module's code, `modules/temp`)      | [`temp-old-files.md`](./temp-old-files.md)         |
 
 The next ones (developer caches, `node_modules`, Docker) come with the plans that implement their rules.

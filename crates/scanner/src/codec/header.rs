@@ -11,8 +11,10 @@ use crate::codec::CodecError;
 use crate::codec::varint::{Reader, write_u64};
 
 /// The version of the tree format this build writes and reads; another version is refused (the cache is rebuilt).
-/// 2: every node carries its access (plan 006/05/01).
-pub(crate) const TREE_FORMAT: u16 = 2;
+/// 2: every node carries its access (plan 006/05/01). 3: a node's flags carry the kind `Other` (plan 017/01/02).
+/// 4: a node with hits carries its status change, its access and its inside (plan 017/01/03). 5: an inside carries
+/// whether a lock file's name is in it (plan 017/02/02).
+pub(crate) const TREE_FORMAT: u16 = 5;
 
 /// What a saved tree is of.
 #[derive(Clone, Debug, PartialEq, Eq)]

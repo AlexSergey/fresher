@@ -557,6 +557,10 @@ mod tests {
                     panic_now("the cleaner panics")
                 }
 
+                fn protection(&self) -> fresher_core::Protection {
+                    self.0.protection()
+                }
+
                 fn locate(&self, items: &[fresher_core::TrashedItem]) -> Vec<fresher_core::TrashState> {
                     self.0.locate(items)
                 }

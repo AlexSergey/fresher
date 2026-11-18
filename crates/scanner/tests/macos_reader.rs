@@ -10,11 +10,14 @@ mod negative {
     use std::os::unix::fs::{PermissionsExt, symlink};
     use std::sync::Arc;
 
-    use fresher_core::{Claim, EntryFacts, Pattern, Removability, Unreadable};
+    use fresher_core::{Claim, EntryFacts, Pattern, Removability, Timestamp, Unreadable};
     use fresher_macos::MacFolderReader;
     use fresher_testing::FixtureTree;
 
-    use crate::support::{LockedHome, canonical, every_interest, facts_of, interest, reference, scanner, set_of};
+    use crate::support::{
+        LockedHome, OLD, SpecialHome, TimesHome, canonical, every_interest, facts_of, interest, reference, scanner,
+        set_of,
+    };
 
     #[test]
     fn the_macos_reader_reports_an_unreadable_folder_like_the_reference() {
@@ -65,17 +68,82 @@ mod negative {
         assert_eq!(Removability::of(folder), Removability::NeedsAdministrator);
         assert_eq!(Removability::of(locked), Removability::Locked);
     }
+
+    #[test]
+    fn a_pipe_named_like_a_marker_is_not_a_marker_to_the_macos_reader() {
+        let home = SpecialHome::new();
+        let set = SpecialHome::interests();
+
+        let fast = scanner(Arc::new(MacFolderReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert_eq!(home.matched(&fast), ["x/pipe", "x/socket"].map(std::path::PathBuf::from));
+    }
+
+    #[test]
+    fn an_archive_tools_old_times_do_not_hide_the_status_change_to_the_macos_reader() {
+        let home = TimesHome::new();
+        let set = TimesHome::interests();
+
+        let fast = scanner(Arc::new(MacFolderReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        let archive = home.inside(&fast, "archive");
+        assert_eq!(archive.newest_change, Some(home.archive_status_change()));
+        assert!(archive.newest_change > Some(Timestamp::from_secs(OLD)));
+        assert!(archive.complete && !archive.special && !archive.foreign);
+    }
+
+    #[test]
+    fn a_folder_holding_an_unreadable_folder_is_not_complete_to_the_macos_reader() {
+        let home = TimesHome::new();
+        let set = TimesHome::interests();
+
+        let fast = scanner(Arc::new(MacFolderReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert!(!home.inside(&fast, "locked").complete);
+    }
+
+    #[test]
+    fn a_folder_holding_a_pipe_is_special_to_the_macos_reader() {
+        let home = TimesHome::new();
+        let set = TimesHome::interests();
+
+        let fast = scanner(Arc::new(MacFolderReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        let pipes = home.inside(&fast, "pipes");
+        assert!(pipes.special && pipes.complete);
+        assert!(!home.inside(&fast, "archive").special);
+    }
 }
 
 mod positive {
     use std::fs;
     use std::sync::Arc;
 
-    use fresher_core::{CACHEDIR_SIGNATURE, EntryFacts};
+    use fresher_core::{CACHEDIR_SIGNATURE, EntryFacts, EntryKind};
     use fresher_macos::MacFolderReader;
     use fresher_testing::FixtureTree;
 
-    use crate::support::{LockedHome, canonical, every_interest, facts_of, fixtures, reference, scanner, set_of};
+    use crate::support::{
+        LockedHome, SpecialHome, canonical, every_interest, facts_of, fixtures, reference, scanner, set_of,
+    };
+
+    #[test]
+    fn a_pipe_and_a_socket_match_as_themselves_to_the_macos_reader() {
+        let home = SpecialHome::new();
+        let set = SpecialHome::interests();
+
+        let fast = scanner(Arc::new(MacFolderReader::new()), &home.root, &set, &[]);
+
+        assert_eq!(fast, reference(&home.root, &set, &[]));
+        assert_eq!(fast.matches.len(), 2);
+        for found in &fast.matches {
+            assert_eq!((found.kind, found.sizes.allocated.bytes()), (EntryKind::Other, 0), "{}", found.path.display());
+        }
+    }
 
     #[test]
     fn the_macos_reader_and_the_reference_agree_on_every_fixture_home() {
@@ -105,6 +173,7 @@ mod positive {
         .unwrap();
         fs::create_dir(tree.root().join("project")).unwrap();
         fs::write(tree.root().join("project/CACHEDIR.TAG"), CACHEDIR_SIGNATURE).unwrap();
+        fresher_testing::settle_access_time(&tree.root().join("project/CACHEDIR.TAG")).unwrap();
         fs::write(tree.root().join("project/blob"), vec![1_u8; 10_000]).unwrap();
         let root = canonical(tree.root());
         let set = set_of(&every_interest());
@@ -128,5 +197,41 @@ mod positive {
         assert_eq!(facts_of(&fast, &home.root.join("mine.json")), EntryFacts::REMOVABLE);
         assert_eq!(facts_of(&fast, &home.root.join("read-only.json")), EntryFacts::REMOVABLE, "its folder is writable");
         assert!(fast.matches.iter().all(|found| found.facts != EntryFacts::default()), "every entry was read");
+    }
+}
+
+mod property {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::sync::Arc;
+
+    use fresher_macos::MacFolderReader;
+    use proptest::prelude::*;
+
+    use crate::support::{canonical, every_interest, random_items, random_tree, reference, scanner, set_of};
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, ..ProptestConfig::default() })]
+
+        #[test]
+        fn the_macos_reader_and_the_reference_agree_on_random_trees(
+            items in random_items(),
+            chosen in prop::collection::vec(any::<bool>(), 8),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            let locked = random_tree(&root, &items);
+            let interests: Vec<_> =
+                every_interest().into_iter().zip(&chosen).filter(|(_, keep)| **keep).map(|(interest, _)| interest).collect();
+            let set = set_of(&interests);
+
+            let fast = scanner(Arc::new(MacFolderReader::new()), &root, &set, &[]);
+            let slow = reference(&root, &set, &[]);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            prop_assert_eq!(fast, slow);
+        }
     }
 }

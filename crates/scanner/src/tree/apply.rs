@@ -6,9 +6,11 @@ use crate::tree::TreeError;
 use crate::tree::arena::{Shared, Tree};
 use crate::tree::fold::{FolderBatch, SharedFile};
 use crate::tree::node::{Flag, NodeIndex, Sums};
+use crate::tree::times::Times;
 
 impl Tree {
-    /// Adds the batch's folded bytes to its folder and its kept entries as the folder's children, with their hits.
+    /// Adds the batch's folded bytes to its folder and its kept entries as the folder's children, with their hits; a
+    /// node with hits keeps its entry's times.
     /// `created` receives the node of each kept entry, in batch order: the walker queues the folders among them.
     pub(crate) fn apply(&mut self, batch: &FolderBatch, created: &mut Vec<NodeIndex>) -> Result<(), TreeError> {
         let folder = batch.folder;
@@ -17,6 +19,9 @@ impl Tree {
             self.mark(folder, Flag::Incomplete)?;
         }
         self.add_hits(folder, &batch.own_hits)?;
+        if !batch.own_hits.is_empty() {
+            self.set_times(folder, batch.own_times)?;
+        }
         for file in &batch.shared {
             self.place_file(folder, file, true)?;
         }
@@ -25,12 +30,18 @@ impl Tree {
             let node = self.add_child(folder, batch.name(kept), entry.kind)?;
             self.set_modified(node, entry.modified)?;
             self.set_access(node, kept.access)?;
-            self.add_hits(node, batch.hits_of(kept))?;
+            let hits = batch.hits_of(kept);
+            self.add_hits(node, hits)?;
+            if !hits.is_empty() {
+                self.set_times(node, Times::of(entry))?;
+            }
             match entry.kind {
                 EntryKind::File => {
                     self.place_file(node, &SharedFile::of(entry), false)?;
                 }
-                EntryKind::Symlink => self.add_own(node, Sums { files: 0, ..Sums::file(entry.sizes) })?,
+                EntryKind::Symlink | EntryKind::Other => {
+                    self.add_own(node, Sums { files: 0, ..Sums::file(entry.sizes) })?;
+                }
                 EntryKind::Folder => {}
             }
             created.push(node);

@@ -139,6 +139,8 @@ mod positive {
     use crate::codec::tests::{file_record, handmade};
     use crate::tree::access::NodeAccess;
     use crate::tree::arena::Tree;
+    use crate::tree::node::Hit;
+    use crate::tree::testing::rooted;
 
     #[test]
     fn a_tree_survives_a_round_trip() {
@@ -154,9 +156,34 @@ mod positive {
     fn every_nodes_access_survives_a_round_trip() {
         let tree = small_tree();
         let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();
-        let access = |tree: &Tree| snapshot(tree).per_node.iter().map(|&(_, _, access)| access).collect::<Vec<_>>();
+        let access = |tree: &Tree| snapshot(tree).per_node.iter().map(|&(_, _, access, _)| access).collect::<Vec<_>>();
         assert_eq!(access(&decoded), access(&tree));
         assert!(access(&tree).iter().filter(|&&access| access != NodeAccess::NONE).count() >= 3);
+    }
+
+    #[test]
+    fn the_times_and_the_inside_of_a_node_with_hits_survive_a_round_trip() {
+        let tree = small_tree();
+        let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();
+        let stamps = |tree: &Tree| snapshot(tree).per_node.iter().map(|&(_, _, _, stamp)| stamp).collect::<Vec<_>>();
+        assert_eq!(stamps(&decoded), stamps(&tree));
+        assert!(stamps(&tree).iter().any(|stamp| stamp.inside.is_some_and(|inside| inside.foreign)));
+        assert!(stamps(&tree).iter().any(|stamp| stamp.times.accessed.is_some()));
+    }
+
+    #[test]
+    fn a_socket_a_pipe_or_a_device_keeps_its_kind_through_a_round_trip() {
+        let (mut tree, root) = rooted("/r");
+        let pipe = tree.add_child(root, b"pipe", EntryKind::Other).unwrap();
+        tree.add_hits(pipe, &[Hit { interest: 0, marker: None, siblings: 0 }]).unwrap();
+        tree.freeze();
+
+        let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();
+
+        let root = decoded.roots()[0].node;
+        let kinds: Vec<_> = decoded.children(root).map(|child| decoded.node(child).unwrap().flags.kind()).collect();
+        assert_eq!(kinds, [EntryKind::Other]);
+        assert_eq!(snapshot(&decoded), snapshot(&tree));
     }
 
     #[test]

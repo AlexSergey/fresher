@@ -21,9 +21,9 @@ pub(crate) fn stat_at(folder: BorrowedFd<'_>, name: &OsStr) -> io::Result<libc::
     Ok(unsafe { status.assume_init() })
 }
 
-/// Removes the entry `name` of the open folder `folder`: a file or a link (as the link) with `unlinkat`, an empty
-/// folder with `AT_REMOVEDIR`. `name` must be one plain name (`InvalidInput` otherwise), so nothing is resolved
-/// through a path. The error keeps the system's number.
+/// Removes the entry `name` of the open folder `folder`: a file, a link (as the link), a socket, a pipe or a device
+/// with `unlinkat`, an empty folder with `AT_REMOVEDIR`. `name` must be one plain name (`InvalidInput` otherwise), so
+/// nothing is resolved through a path. The error keeps the system's number.
 ///
 /// The only deleting function of the workspace besides `std::fs`'s: Clippy's `disallowed-methods` forbids calling it
 /// anywhere but the deletion point, `crates/cleaner/src/remove/permanent.rs` (docs/architecture/removal.md).
@@ -31,7 +31,7 @@ pub fn remove_at(folder: BorrowedFd<'_>, name: &OsStr, kind: EntryKind) -> io::R
     let name = c_name(name)?;
     let flags = match kind {
         EntryKind::Folder => libc::AT_REMOVEDIR,
-        EntryKind::File | EntryKind::Symlink => 0,
+        EntryKind::File | EntryKind::Symlink | EntryKind::Other => 0,
     };
     // SAFETY: the descriptor is open for the borrow and `name` is NUL-terminated, alive until the call returns; the
     // call keeps neither.

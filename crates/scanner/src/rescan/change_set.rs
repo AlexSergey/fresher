@@ -1,10 +1,12 @@
 //! The change set: which nodes of the cached tree a rescan reads again, from the journal's changes since the cached
 //! position. A folder whose own entries changed is read again with its parent (whose listing holds the folder's
 //! modification time, identity and sibling names); a change inside an opaque or collapsed node, a subtree the journal
-//! could only name whole, and every unreadable or other-volume folder are walked again from their node.
+//! could only name whole, and every unreadable or other-volume folder are walked again from their node. A place
+//! walked outside the scan roots is always walked again in full: the journal reports no read, and a status change
+//! through a hard link elsewhere moves no event in its folder, so its cached times may be older than the disk's.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use fresher_core::{CancelToken, ChangeJournal, FullScanReason, JournalGap, JournalPosition, Timestamp, VolumeId};
 
@@ -38,6 +40,8 @@ pub(crate) struct Gather<'a> {
     pub(crate) sibling_markers: bool,
     /// The most folders read again, in percent of the tree's folders; past it a full scan is faster.
     pub(crate) limit_percent: u64,
+    /// The roots that are walked places: always walked again, outside the limit.
+    pub(crate) places: &'a [PathBuf],
     pub(crate) cancel: &'a CancelToken,
 }
 
@@ -102,11 +106,21 @@ impl ChangeSet {
                 set.reread.insert(parent);
             }
         }
+        let places: Vec<NodeIndex> = tree
+            .roots()
+            .iter()
+            .filter(|root| tree.path(root.node).is_some_and(|path| with.places.contains(&path)))
+            .map(|root| root.node)
+            .collect();
+        set.rewalk.retain(|node| !places.iter().any(|&place| ancestry(tree, *node).any(|up| up == place)));
+        set.reread.retain(|node| !places.iter().any(|&place| ancestry(tree, *node).any(|up| up == place)));
+        let folders_of = |node: NodeIndex| 1 + tree.node(node).map_or(0, |node| u64::from(node.folders));
         let total: u64 =
-            tree.roots().iter().map(|root| 1 + tree.node(root.node).map_or(0, |node| u64::from(node.folders))).sum();
+            tree.roots().iter().filter(|root| !places.contains(&root.node)).map(|root| folders_of(root.node)).sum();
         if set.folders(tree) * 100 > total * with.limit_percent {
             return Err(FullScanReason::TooManyChanges);
         }
+        set.rewalk.extend(places);
         Ok(set)
     }
 

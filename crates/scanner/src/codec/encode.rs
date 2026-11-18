@@ -3,10 +3,11 @@
 //!
 //! A node: its name front-coded against the previous sibling (the shared prefix's length, then the rest), its flags,
 //! for a folder its child count and its folders not kept as nodes, its own file count and three sizes, its
-//! modification time as a delta from its parent's, its hits (interest, marker check, sibling bits), its owner (0 for
-//! none, else the claim's index + 1), its access (one byte) and, for a root, its folder identity. Totals are not written: the reader sums them
-//! again. A node's own bytes are its total minus its children's and minus the shared bytes credited to it, so the
-//! reader's `freeze` credits the groups again and reaches the same totals.
+//! modification time as a delta from its parent's, its hits (interest, marker check, sibling bits), when it has hits its
+//! stamp (see `stamp`), its owner (0 for none, else the claim's index + 1), its access (one byte) and, for a root, its
+//! folder identity. Totals are not written: the reader sums them again. A node's own bytes are its total minus its
+//! children's and minus the shared bytes credited to it, so the reader's `freeze` credits the groups again and reaches
+//! the same totals.
 //!
 //! A group: its device and id (as deltas from the previous group's), the bytes it counts once, its member count and
 //! the depth-first positions of the nodes that hold them (as deltas).
@@ -15,6 +16,7 @@ use fresher_core::MarkerCheck;
 
 use crate::codec::CodecError;
 use crate::codec::header::{Header, write_len};
+use crate::codec::stamp::write_stamp;
 use crate::codec::varint::{write_i64, write_u64};
 use crate::tree::TreeError;
 use crate::tree::arena::{Shared, Tree};
@@ -235,6 +237,9 @@ impl<'t> Layout<'t> {
                 Some(MarkerCheck::Invalid) => 2,
             });
             write_u64(out, hit.siblings);
+        }
+        if !hits.is_empty() {
+            write_stamp(out, node.modified, &tree.stamp(index));
         }
         write_u64(out, u64::from(node.owner.wrapping_add(1)));
         out.push(node.access.bits());

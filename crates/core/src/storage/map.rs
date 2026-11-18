@@ -35,7 +35,16 @@ pub struct VolumeMap {
     parts: Vec<MapPart>,
     purgeable: Option<ByteSize>,
     roots: Vec<NodeId>,
+    /// The roots that are walked places, each with its name: shown by that name, not by its folder's.
+    places: Vec<MapPlace>,
     disk_changed: bool,
+}
+
+/// A root of a volume's map that is a place walked outside the scan roots (a temporary folder), with its name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+pub struct MapPlace {
+    pub root: NodeId,
+    pub name: Text,
 }
 
 /// Why a volume's map was not built.
@@ -73,7 +82,7 @@ impl VolumeMap {
         if sum != capacity {
             return Err(StorageMapError::PartsDoNotAddUp { capacity, sum });
         }
-        Ok(Self { name, kind, capacity, parts, purgeable, roots, disk_changed })
+        Ok(Self { name, kind, capacity, parts, purgeable, roots, places: Vec::new(), disk_changed })
     }
 
     pub fn name(&self) -> &str {
@@ -102,6 +111,18 @@ impl VolumeMap {
     /// Where the place view starts; empty before a commit.
     pub fn roots(&self) -> &[NodeId] {
         &self.roots
+    }
+
+    /// The map with `places` named among its roots.
+    #[must_use]
+    pub fn with_places(mut self, places: Vec<MapPlace>) -> Self {
+        self.places = places;
+        self
+    }
+
+    /// The roots that are walked places, with their names.
+    pub fn places(&self) -> &[MapPlace] {
+        &self.places
     }
 
     /// The scan counted more than the volume reports: the remainder is shown as zero.
@@ -317,7 +338,8 @@ pub(crate) mod tests {
 
         use super::{every_kind, part};
         use crate::{
-            ByteSize, MapPhase, MountKind, NodeId, PartKind, RemainderReason, StateId, StorageMap, TextArg, VolumeMap,
+            ByteSize, MapPhase, MapPlace, MountKind, NodeId, PartKind, RemainderReason, StateId, StorageMap, Text,
+            TextArg, TextKey, VolumeMap,
         };
 
         #[test]
@@ -340,7 +362,11 @@ pub(crate) mod tests {
                 roots,
                 false,
             )
-            .unwrap();
+            .unwrap()
+            .with_places(vec![MapPlace {
+                root: NodeId::new(StateId::new(2), 0),
+                name: Text::new(TextKey::from_valid("core.place.shared-temp.name".into())),
+            }]);
             let map = StorageMap { phase: MapPhase::Complete { state: StateId::new(2) }, volumes: vec![volume] };
             let sizes = json!({ "logical": 10, "allocated": 10, "reclaimable": 10, "completeness": "complete" });
 
@@ -365,6 +391,10 @@ pub(crate) mod tests {
                         ],
                         "purgeable": 5,
                         "roots": [{ "state": 2, "index": 0 }],
+                        "places": [{
+                            "root": { "state": 2, "index": 0 },
+                            "name": { "key": "core.place.shared-temp.name", "args": {} },
+                        }],
                         "diskChanged": false,
                     }],
                 })

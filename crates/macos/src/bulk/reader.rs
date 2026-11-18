@@ -236,9 +236,10 @@ mod tests {
     mod negative {
         use std::fs;
         use std::os::unix::fs::{PermissionsExt as _, symlink};
+        use std::os::unix::net::UnixListener;
         use std::process::Command;
 
-        use fresher_core::{FolderListing, FolderReader, ReadError};
+        use fresher_core::{EntryKind, FolderListing, FolderReader, ReadError};
 
         use crate::MacFolderReader;
 
@@ -334,6 +335,19 @@ mod tests {
         }
 
         #[test]
+        fn a_pipe_or_a_socket_is_never_a_file() {
+            let root = tempfile::tempdir().unwrap();
+            assert!(Command::new("/usr/bin/mkfifo").arg(root.path().join("pipe")).status().unwrap().success());
+            let _socket = UnixListener::bind(root.path().join("socket")).unwrap();
+
+            let listed = super::listing(MacFolderReader::new(), root.path()).unwrap();
+
+            assert_eq!(listed[b"pipe".as_slice()].kind, EntryKind::Other);
+            assert_eq!(listed[b"socket".as_slice()].kind, EntryKind::Other);
+            assert_eq!(listed[b"pipe".as_slice()].sizes.allocated.bytes(), 0);
+        }
+
+        #[test]
         fn head_refuses_a_name_that_is_not_one_name() {
             let root = tempfile::tempdir().unwrap();
             let reader = MacFolderReader::new();
@@ -365,9 +379,11 @@ mod tests {
         use std::fs::{self, File};
         use std::os::unix::ffi::OsStrExt as _;
         use std::os::unix::fs::{MetadataExt as _, symlink};
+        use std::os::unix::net::UnixListener;
         use std::path::{Path, PathBuf};
+        use std::process::Command;
 
-        use fresher_core::{ByteSize, EntryKind, FolderListing, FolderReader};
+        use fresher_core::{ByteSize, EntryKind, FolderListing, FolderReader, Timestamp};
 
         use super::listing;
         use crate::MacFolderReader;
@@ -393,6 +409,8 @@ mod tests {
             symlink("small", base.join("link")).unwrap();
             symlink("/nowhere/at/all", base.join("dangling")).unwrap();
             fs::write(base.join("\u{e9}t\u{e9} \u{1f600}"), b"utf-8 name").unwrap();
+            assert!(Command::new("/usr/bin/mkfifo").arg(base.join("pipe")).status().unwrap().success());
+            let _socket = UnixListener::bind(base.join("socket")).unwrap();
             many_files(&base.join("many"), 10_000);
             let reader = MacFolderReader::new();
 
@@ -409,13 +427,18 @@ mod tests {
                         EntryKind::Folder
                     } else if metadata.is_symlink() {
                         EntryKind::Symlink
-                    } else {
+                    } else if metadata.is_file() {
                         EntryKind::File
+                    } else {
+                        EntryKind::Other
                     };
                     assert_eq!(entry.kind, kind, "{path:?}");
                     assert_eq!((entry.device, entry.file_id), (metadata.dev(), metadata.ino()), "{path:?}");
                     assert_eq!(entry.error, None);
-                    assert!(entry.modified.is_some());
+                    let seconds = |secs: i64| Some(Timestamp::from_secs(u64::try_from(secs).unwrap()));
+                    assert_eq!(entry.modified, seconds(metadata.mtime()), "{path:?}");
+                    assert_eq!(entry.changed, seconds(metadata.ctime()), "{path:?}");
+                    assert_eq!(entry.accessed, seconds(metadata.atime()), "{path:?}");
                     if kind != EntryKind::Folder {
                         assert_eq!(u64::from(entry.links), metadata.nlink(), "{path:?}");
                         assert_eq!(entry.sizes.logical, ByteSize::new(metadata.len()), "{path:?}");
@@ -499,6 +522,8 @@ mod tests {
                 sizes: fresher_core::Sizes::ZERO,
                 clone: None,
                 modified: None,
+                changed: None,
+                accessed: None,
                 cloud_only: false,
                 access: fresher_core::EntryAccess::default(),
                 error: None,

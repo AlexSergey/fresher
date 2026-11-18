@@ -8,7 +8,10 @@ use std::sync::Arc;
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{ByteSize, CancelToken, CategoryId, DiskState, InterestSet, JournalGap, Match, NotScanned, ScanKind};
+use crate::{
+    ByteSize, CancelToken, CategoryId, DiskState, InterestSet, JournalGap, KnownFolder, Match, NotScanned, ScanKind,
+    TextKey,
+};
 
 /// Walks the scan roots once and reports every entry that matches an interest. Never follows a symbolic link and
 /// never leaves a root.
@@ -31,7 +34,26 @@ pub struct WalkRequest<'a> {
     pub interests: &'a InterestSet,
     /// Places the walk must not open (they would raise a system prompt); each is reported as not scanned.
     pub avoid: &'a [PathBuf],
+    /// Known folders outside the scan roots that a module's interest names: each is walked as a root of its own, for
+    /// the interests anchored in it only, never entering a folder of another user. Always read from the disk: a rescan
+    /// walks them again in full and a restore emits nothing inside them.
+    pub places: &'a [Place],
     pub mode: WalkMode,
+}
+
+/// A known folder walked as a root of its own, outside the scan roots.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Place {
+    pub folder: KnownFolder,
+    /// Its canonical path.
+    pub path: PathBuf,
+}
+
+impl Place {
+    /// Its name as the storage map shows it: `core.place.<folder>.name`.
+    pub fn name_key(&self) -> TextKey {
+        TextKey::from_valid(format!("core.place.{}.name", self.folder.as_str()))
+    }
 }
 
 /// How the walk reads the disk.

@@ -1,0 +1,20 @@
+# A home for the temp module scanned with `com.example.Editor` open: its old temporary folder and its old hidden
+# working file (`.com.example.Editor.XXXXXX`: one leading dot, as a safe-save names it) are left out as belonging to an
+# open app. Both are 30 days old.
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/com.example.Editor.tmp/draft.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/com.example.Editor.tmp"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/.com.example.Editor.XXXXXX"
+size = 2048
+age = "30d"
+changed = "30d"

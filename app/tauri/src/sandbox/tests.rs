@@ -15,7 +15,7 @@ use fresher_core::{
 use fresher_engine::{Engine, ScanMode};
 use fresher_sandbox::{CaseFile, Sandbox, generate};
 use fresher_testing::{
-    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeRunningApps, FakeVolumes,
+    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeRunningApps, FakeVolumes, StatedFacts,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -111,7 +111,31 @@ fn fakes() -> SandboxPorts {
         running: Arc::new(FakeRunningApps::default()),
         commands: Arc::new(FakeCommandRunner::default()),
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        stated: StatedFacts::new(),
     }
+}
+
+/// Sandbox mode on the world's sandbox with its stated facts, as the real ports take them from its `world.toml`.
+fn start_stated(world: &World) -> Engine {
+    let mode = SandboxMode::new(world.folder.path(), SandboxTrash::Sandbox);
+    let ports = |sandbox: &Sandbox| {
+        let stated = fresher_sandbox::World::read(sandbox).map_err(super::SandboxRefusal::World)?;
+        Ok(SandboxPorts { stated: stated.stated(sandbox.path()), ..fakes() })
+    };
+    compose(&mode, &world.real_home(), &world.real_data(), ports).unwrap().0
+}
+
+/// The removability of every `trial` finding, by path.
+fn removability(engine: &Engine) -> Vec<(PathBuf, fresher_core::Removability)> {
+    let query = FindingsQuery::new(Some("trial".into()), None, FindingOrder::Found, 0, 1000);
+    let page = engine.findings(&query).unwrap();
+    page.findings
+        .iter()
+        .filter_map(|finding| match finding.finding().subject() {
+            Subject::Path(path) => Some((path.clone(), finding.removability())),
+            Subject::External { .. } => None,
+        })
+        .collect()
 }
 
 /// A full scan, waited for.
@@ -326,6 +350,21 @@ mod negative {
         assert!(matches!(refusal, Some(SandboxRefusal::World(fresher_sandbox::SandboxError::World { .. }))));
     }
 
+    /// Without a stated fact, the disk's facts stand: the user's own trial cache can be removed.
+    #[test]
+    fn a_path_with_no_stated_fact_reads_as_the_disk_has_it() {
+        let world = World::new();
+        let engine = super::start_stated(&world);
+
+        scan(&engine);
+
+        let home = world.sandbox().home();
+        let found = super::removability(&engine);
+        assert_eq!(found, [(home.join("work/fresher-trial-cache"), fresher_core::Removability::Removable)]);
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+        assert!(ports.stated.is_empty());
+    }
+
     /// A scan root outside the sandbox is scanned, but nothing in it can be removed.
     #[test]
     fn an_item_outside_the_sandbox_is_left_out() {
@@ -380,6 +419,30 @@ mod positive {
 
         let now = ports.clock.now();
         assert!(now >= start && now < start + std::time::Duration::from_secs(60), "{now:?}");
+    }
+
+    #[test]
+    fn sandbox_modes_reader_reports_a_stated_fact() {
+        let world = World::new();
+        let sandbox = world.sandbox();
+        let entry =
+            "\n[[entry]]\npath = \"home/work/fresher-trial-cache\"\nowner = \"system\"\nflags = [\"system-lock\"]\n";
+        let text = fs::read_to_string(sandbox.world()).unwrap() + entry;
+        fs::write(sandbox.world(), text).unwrap();
+        let engine = super::start_stated(&world);
+
+        scan(&engine);
+
+        let ports = crate::sandbox::SandboxPorts::real(&sandbox).unwrap();
+        let cache = sandbox.home().join("work/fresher-trial-cache");
+        assert_eq!(
+            ports.stated.get(&cache).and_then(|stated| stated.owner),
+            Some(fresher_testing::StatedOwner::System)
+        );
+        let found = super::removability(&engine);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].0, cache);
+        assert_ne!(found[0].1, fresher_core::Removability::Removable);
     }
 
     #[test]

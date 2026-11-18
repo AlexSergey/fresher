@@ -67,6 +67,16 @@ import {
   meaningFor,
   STORAGE_DICTIONARY,
 } from '../src/test/storage-map';
+import {
+  TEMP_DICTIONARY,
+  TEMP_FINDINGS,
+  TEMP_MAP,
+  TEMP_MODULES,
+  TEMP_OVERVIEW,
+  TEMP_PLACES,
+  TEMP_SCAN,
+  TEMP_SETTINGS,
+} from '../src/test/temp-scan';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 import { IGNORE_HOOK, mockIgnore } from './support/ignore-mock';
 
@@ -90,8 +100,10 @@ export type CoreScript = {
   readonly scanned?: Overview;
   // What `get_overview` answers while a held scan waits.
   readonly scanning?: Overview;
-  // What `cancel_scan` streams in place of the held events, and the overview after it.
   readonly stop?: { readonly events: readonly Event[]; readonly overview: Overview };
+  // What `cancel_scan` streams in place of the held events, and the overview after it.
+  // The storage map and the places after the scan, in place of the demo volume's.
+  readonly storage?: { readonly map: StorageMap; readonly places: Readonly<Record<string, PlaceView>> };
 };
 
 // What the storage map's commands answer in one phase of the scan: the places by their node's index, any other
@@ -104,14 +116,18 @@ type StorageAnswers = {
 
 // The demo volume's map while the scan runs and once it ended with `scanned` (its categories, as the core would list
 // them); before a scan the default answers hold.
-const storageOfScan = (scanned: null | Overview, meaning?: readonly MeaningGroup[]): ByCommand['storage'] => ({
+const storageOfScan = (
+  scanned: null | Overview,
+  meaning?: readonly MeaningGroup[],
+  storage?: CoreScript['storage'],
+): ByCommand['storage'] => ({
   scanned: {
-    map: DEMO_MAP_COMPLETE,
+    map: storage?.map ?? DEMO_MAP_COMPLETE,
     meaning:
       meaning === undefined
         ? meaningFor(scanned?.totals ?? [])
         : [...meaning, ...meaningFor([]).filter(({ kind }) => kind !== 'app')],
-    places: { 0: DEMO_PLACE, 1: DEMO_DESCENT },
+    places: { 0: DEMO_PLACE, 1: DEMO_DESCENT, ...storage?.places },
   },
   scanning: { map: DEMO_MAP_SCANNING, meaning: DEMO_MEANING_SCANNING, places: null },
 });
@@ -198,7 +214,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     scanning: script.scanning ?? null,
     startScan: COMMANDS.startScan,
     stop: script.stop ?? null,
-    storage: storageOfScan(script.scanned ?? null, script.meaning),
+    storage: storageOfScan(script.scanned ?? null, script.meaning, script.storage),
     subscribe: COMMANDS.subscribe,
     updateSetting: COMMANDS.updateSetting,
   };
@@ -498,6 +514,28 @@ const JETBRAINS_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The cleanup of the five temporary findings: nothing is left, and the history holds that one cleanup.
+const TEMP_CLEANUP_DETAIL = movedDetailOf(planOf(TEMP_FINDINGS), 3, 1_735_819_200);
+
+const TEMP_CLEANUP: CleanupScript = {
+  after: {
+    ...TEMP_OVERVIEW,
+    found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+    totals: [],
+  },
+  details: [TEMP_CLEANUP_DETAIL],
+  history: { blocked: null, cleanups: [TEMP_CLEANUP_DETAIL.summary], offset: 0, total: 1, waiting: 837_000_000 },
+};
+
+// What the temporary files scripts answer before a scan: the module, its texts and settings, the ignore tabs' texts.
+const TEMP_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...TEMP_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: TEMP_MODULES,
+  getSettings: TEMP_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // The scripts the flows and the screenshots play.
 export const SCRIPTS = {
   // The demo scan, then a cleanup of what is picked: the core's plan, the cleanup streamed at once, a history.
@@ -586,6 +624,16 @@ export const SCRIPTS = {
       pickFolder: '~/Music',
       resetSettings: null,
     },
+  },
+  // The temporary files module's scan, streamed at once, with cleanup, ignoring, and the two temporary folders as
+  // places of the storage map.
+  temp: {
+    answers: TEMP_ANSWERS,
+    cleanup: TEMP_CLEANUP,
+    ignoring: true,
+    scan: TEMP_SCAN,
+    scanned: TEMP_OVERVIEW,
+    storage: { map: TEMP_MAP, places: TEMP_PLACES },
   },
   // The demo scan held before its first event: the core runs it, the app does not know yet.
   unannounced: { answers: ANSWERS, hold: 0, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },

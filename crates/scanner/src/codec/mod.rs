@@ -5,6 +5,7 @@ pub(crate) mod decode;
 pub(crate) mod encode;
 pub(crate) mod fit;
 pub(crate) mod header;
+mod stamp;
 mod varint;
 
 #[cfg(test)]

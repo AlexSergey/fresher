@@ -1,0 +1,713 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "private/tmp/old-build.log",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "private/var/folders/xx/sandbox/T/boundary",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "private/var/folders/xx/sandbox/T/com.example.Viewer",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "private/var/folders/xx/sandbox/T/docs-link",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "private/var/folders/xx/sandbox/T/node-compile-cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "temp.old-files",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "temp.old-files",
+      "danger": "safe",
+      "logical": 65536,
+      "module": "temp",
+      "subject": "private/tmp/old-build.log"
+    },
+    {
+      "app": null,
+      "category": "temp.old-files",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "temp",
+      "subject": "private/var/folders/xx/sandbox/T/boundary"
+    },
+    {
+      "app": "com.example.Viewer",
+      "category": "temp.old-files",
+      "danger": "safe",
+      "logical": 131072,
+      "module": "temp",
+      "subject": "private/var/folders/xx/sandbox/T/com.example.Viewer"
+    },
+    {
+      "app": null,
+      "category": "temp.old-files",
+      "danger": "safe",
+      "logical": 0,
+      "module": "temp",
+      "subject": "private/var/folders/xx/sandbox/T/docs-link"
+    },
+    {
+      "app": null,
+      "category": "temp.old-files",
+      "danger": "safe",
+      "logical": 524288,
+      "module": "temp",
+      "subject": "private/var/folders/xx/sandbox/T/node-compile-cache"
+    },
+    {
+      "app": null,
+      "category": "temp.old-files",
+      "danger": "safe",
+      "logical": 1048576,
+      "module": "temp",
+      "subject": "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "temp.old-files",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "temp.left-out.app-open"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 6144,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "temp.old-files",
+      "items": 4,
+      "reason": {
+        "args": {},
+        "key": "temp.left-out.lock"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4177,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "temp.old-files",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "temp.left-out.locked"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "temp.old-files",
+      "items": 6,
+      "reason": {
+        "args": {},
+        "key": "temp.left-out.recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 100352,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "temp.old-files",
+      "items": 3,
+      "reason": {
+        "args": {},
+        "key": "temp.left-out.special"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "temp.old-files",
+      "items": 5,
+      "reason": {
+        "args": {},
+        "key": "temp.left-out.system"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1073152,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "private/var/folders/xx/sandbox/T/fresh.tmp",
+        "case": "a fresh temporary file is kept",
+        "path": [
+          "private/var/folders/xx/sandbox/T/fresh.tmp"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "private/var/folders/xx/sandbox/T/fresh.tmp"
+          }
+        ]
+      },
+      {
+        "at": "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
+        "case": "an old temporary file goes to the Trash",
+        "path": [
+          "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+        ],
+        "rows": [
+          {
+            "allocated": 1048576,
+            "explained": 1048576,
+            "logical": 1048576,
+            "path": "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 1773568,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 68351323,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "folders": 2,
+                  "kind": "unreadable",
+                  "needs": {
+                    "kind": "all-files"
+                  }
+                },
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 735181477,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 105,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Viewer.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Viewer.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Viewer.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Viewer.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/boundary"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/com.example.Viewer"
+      },
+      {
+        "kind": "file",
+        "logical_size": 131072,
+        "path": "home/.Trash/com.example.Viewer/thumbs.db"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/.Trash/docs-link"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/node-compile-cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/node-compile-cache/v22"
+      },
+      {
+        "kind": "file",
+        "logical_size": 262144,
+        "path": "home/.Trash/node-compile-cache/v22/data.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 262144,
+        "path": "home/.Trash/node-compile-cache/v22/index.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 65536,
+        "path": "home/.Trash/old-build.log"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/.Trash/tmp.IKKNWYIRnq"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents/linked"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Documents/linked/keep.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Autosave Information"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Autosave Information/Untitled.rtf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/#notes.txt#"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/.DS_Store"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/.notes.txt.swp"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/notes/__MACOSX"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/__MACOSX/notes.txt"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/notes/report.docx~"
+      },
+      {
+        "kind": "file",
+        "logical_size": 11,
+        "path": "private/tmp/.X0-lock"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "private/tmp/dev.sock"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/tmp/theirs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/0/com.example.Editor"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/0/com.example.Editor/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/C/com.example.Editor"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/C/com.example.Editor/cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "private/var/folders/xx/sandbox/T/.com.example.Editor.XXXXXX"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/TemporaryItems"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/TemporaryItems/doc.rtf"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/app.lock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "private/var/folders/xx/sandbox/T/build/main.o"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "private/var/folders/xx/sandbox/T/build/out.o"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/com.apple.someagent"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "private/var/folders/xx/sandbox/T/com.apple.someagent/state.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/com.example.Editor.tmp"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/com.example.Editor.tmp/draft.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/daemon"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/daemon/run.dat"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/fresh.tmp"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/future"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/kept.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/mixed"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/mixed/mine.dat"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/mixed/root.dat"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/pipe"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/read.dat"
+      },
+      {
+        "kind": "file",
+        "logical_size": 6,
+        "path": "private/var/folders/xx/sandbox/T/server.pid"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/session"
+      },
+      {
+        "kind": "file",
+        "logical_size": 64,
+        "path": "private/var/folders/xx/sandbox/T/session/.#notes.txt"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/session/notes.txt"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/T/six-days"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/srv"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/srv/s.sock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/unpacked"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "private/var/folders/xx/sandbox/T/unpacked/README"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/T/unpacked/lib"
+      },
+      {
+        "kind": "file",
+        "logical_size": 65536,
+        "path": "private/var/folders/xx/sandbox/T/unpacked/lib/data.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "private/var/folders/xx/sandbox/T/updater.pkg"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/xx/sandbox/X/com.example.Editor"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/xx/sandbox/X/com.example.Editor/code.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/yy"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/yy/other"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "private/var/folders/yy/other/T"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "private/var/folders/yy/other/T/old.tmp"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4859,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 3016027
+  }
+}

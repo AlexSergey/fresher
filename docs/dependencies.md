@@ -23,12 +23,12 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `objc2`                        | 0.6.5   | MIT                       | macos                                                                               |
 | `objc2-foundation`             | 0.3.2   | MIT                       | macos                                                                               |
 | `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, module-jetbrains, rules, sandbox, store, testing                         |
-| `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-demo, module-jetbrains, store, testing        |
+| `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-demo, module-jetbrains, module-temp, store, testing        |
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
 | `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |
 | `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, sandbox, scanner, store, system, testing                  |
-| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, cleaner, core, engine, macos, module-demo, module-jetbrains, module-trial, rules, sandbox, scanner, store, system, testing |
+| `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, cleaner, core, engine, macos, module-demo, module-jetbrains, module-temp, module-trial, rules, sandbox, scanner, store, system, testing |
 | `toml`                         | 1.2.1   | MIT OR Apache-2.0         | module-jetbrains, rules, sandbox, testing                                           |
 | `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, scanner, store, system                                          |
 | `ts-rs`                        | 12.0.1  | MIT                       | app, core                                                                           |
@@ -66,7 +66,7 @@ that uses them is compiled out of it.
 | Crate         | Version | Licence           | Used by                                                                       |
 | ------------- | ------- | ----------------- | ----------------------------------------------------------------------------- |
 | `criterion`   | 0.8.2   | Apache-2.0 OR MIT | the benches of `scanner` (default features off)                               |
-| `proptest`    | 1.12.0  | MIT OR Apache-2.0 | tests of `cleaner`, `core`, `engine`, `macos`, `module-jetbrains`, `rules`, `scanner`, `store` and `system` |
+| `proptest`    | 1.12.0  | MIT OR Apache-2.0 | tests of `cleaner`, `core`, `engine`, `macos`, `module-jetbrains`, `module-temp`, `rules`, `scanner`, `store` and `system` |
 | `tauri-build` | 2.7.4   | Apache-2.0 OR MIT | the build script of `fresher-app`                                             |
 | `trybuild`    | 1.0.125 | MIT OR Apache-2.0 | the compile-fail tests of `cleaner` and `core`                                |
 

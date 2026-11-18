@@ -8,7 +8,9 @@
 //! 3. the queued folders are walked by the full walk's workers and aggregator into the new arena, which is then
 //!    frozen. No hole stays in the arena: nothing dropped is ever copied.
 //!
-//! The owners are not copied: the scan's claims are committed again.
+//! The owners are not copied: the scan's claims are committed again. The times and the inside of a node with hits
+//! follow its modification time: kept from the cached tree, or taken from the listing read again; a folder walked
+//! again gets its inside from that walk.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -21,7 +23,8 @@ use crate::rescan::frozen::Frozen;
 use crate::tree::TreeError;
 use crate::tree::access::NodeAccess;
 use crate::tree::arena::Tree;
-use crate::tree::node::{Flag, Hit, NodeFlags, NodeIndex};
+use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex};
+use crate::tree::times::Times;
 use crate::walk::Walk;
 use crate::walk::boundary::Decision;
 use crate::walk::errors::unreadable;
@@ -95,8 +98,10 @@ fn reread_jobs(
         match identity {
             Ok(identity) => {
                 let state = walk.matcher.root_state(&path);
+                let times = old.stamp(node).times;
+                let parent_siblings = None;
                 let job =
-                    Job { node, path, identity, state, opaque: None, root_device, parent_siblings: None, is_root };
+                    Job { node, path, identity, state, opaque: None, root_device, parent_siblings, is_root, times };
                 jobs.push(job);
             }
             Err(error) => {
@@ -184,6 +189,7 @@ impl Builder<'_> {
             self.keep_access(task)?;
         }
         self.old_hits(task)?;
+        self.copy_stamp(task)?;
         for &(kind, member) in self.frozen.members(task.old) {
             self.new.add_shared(kind, member.device, member.id, task.new, member.bytes)?;
         }
@@ -219,6 +225,9 @@ impl Builder<'_> {
     fn apply(&mut self, task: &Task, report: FolderReport) -> Result<(), TreeError> {
         let FolderReport { mut batch, children, child_siblings, .. } = report;
         batch.folder = task.new;
+        if let Some(fresh) = &task.fresh {
+            batch.own_times = fresh.child.times;
+        }
         for hit in &mut batch.own_hits {
             hit.siblings = match &task.fresh {
                 Some(fresh) => sibling_mask(fresh.siblings.as_deref().unwrap_or_default(), hit.interest),
@@ -256,6 +265,11 @@ impl Builder<'_> {
                 Decision::NotScanned(reason) => {
                     let other = reason == fresher_core::NotScanned::OtherVolume;
                     self.new.mark(node, if other { Flag::OtherVolume } else { Flag::Avoided })?;
+                    if reason == fresher_core::NotScanned::OthersFolder {
+                        self.new.mark(node, Flag::OthersFolder)?;
+                    } else if reason == fresher_core::NotScanned::SystemItems {
+                        self.new.mark(node, Flag::SystemItems)?;
+                    }
                 }
                 Decision::Protected => self.new.mark(node, Flag::Avoided)?,
             }
@@ -269,7 +283,8 @@ impl Builder<'_> {
         self.name_hits(&task)?;
         if let Some(Fresh { siblings, child }) = task.fresh {
             let whole = self.claims_whole(task.new);
-            self.queue(task.new, child.path, child.identity, child.state, whole, siblings, task.root_device, false);
+            let (path, identity, state, times) = (child.path, child.identity, child.state, child.times);
+            self.queue(task.new, path, identity, state, whole, siblings, task.root_device, false, times);
             return Ok(());
         }
         let Some(path) = self.new.path(task.new) else { return Ok(()) };
@@ -290,24 +305,38 @@ impl Builder<'_> {
                 Decision::Enter
             }
         } else {
-            walk.boundary.decide(&path, identity.device, task.root_device)
+            let owner = if walk.boundary.in_place(&path) {
+                walk.reader.access(&path).ok().and_then(|access| access.owner)
+            } else {
+                None
+            };
+            walk.boundary.decide(&path, identity.device, owner, task.root_device)
         };
         match decision {
             Decision::Enter => {
                 let state = walk.matcher.root_state(&path);
                 let whole = self.claims_whole(task.new);
-                self.queue(task.new, path, identity, state, whole, None, task.root_device, task.is_root);
+                let times = self.old.stamp(task.old).times;
+                self.queue(task.new, path, identity, state, whole, None, task.root_device, task.is_root, times);
                 Ok(())
             }
             Decision::NotScanned(fresher_core::NotScanned::OtherVolume) => self.new.mark(task.new, Flag::OtherVolume),
+            Decision::NotScanned(fresher_core::NotScanned::OthersFolder) => {
+                self.new.mark(task.new, Flag::Avoided)?;
+                self.new.mark(task.new, Flag::OthersFolder)
+            }
+            Decision::NotScanned(fresher_core::NotScanned::SystemItems) => {
+                self.new.mark(task.new, Flag::Avoided)?;
+                self.new.mark(task.new, Flag::SystemItems)
+            }
             Decision::NotScanned(_) | Decision::Protected => self.new.mark(task.new, Flag::Avoided),
         }
     }
 
     /// Queues a subfolder the cached tree did not have.
     fn walk_new(&mut self, node: NodeIndex, child: Child, siblings: Option<Arc<[(u32, u64)]>>, root_device: u64) {
-        let Child { path, identity, state, whole, .. } = child;
-        self.queue(node, path, identity, state, whole, siblings, root_device, false);
+        let Child { path, identity, state, whole, times, .. } = child;
+        self.queue(node, path, identity, state, whole, siblings, root_device, false, times);
     }
 
     #[expect(clippy::too_many_arguments, reason = "the fields of one job, named at each call")]
@@ -321,9 +350,10 @@ impl Builder<'_> {
         parent_siblings: Option<Arc<[(u32, u64)]>>,
         root_device: u64,
         is_root: bool,
+        times: Times,
     ) {
         let opaque = whole.then_some(node);
-        self.jobs.push(Job { node, path, identity, state, opaque, root_device, parent_siblings, is_root });
+        self.jobs.push(Job { node, path, identity, state, opaque, root_device, parent_siblings, is_root, times });
     }
 
     fn claims_whole(&self, node: NodeIndex) -> bool {
@@ -349,6 +379,24 @@ impl Builder<'_> {
         self.new.add_hits(task.new, &hits)
     }
 
+    /// The times and the inside of a copied node with hits: its times from the listing read again when its parent was,
+    /// else from the cached tree; its inside from the cached tree (nothing inside it changed), with its own changes.
+    fn copy_stamp(&mut self, task: &Task) -> Result<(), TreeError> {
+        if self.new.hits(task.new).is_empty() {
+            return Ok(());
+        }
+        let old = self.old.stamp(task.old);
+        let times = task.fresh.as_ref().map_or(old.times, |fresh| fresh.child.times);
+        self.new.set_times(task.new, times)?;
+        let modified = self.new.node(task.new).and_then(Node::modified);
+        let inside = old.inside.map(|mut inside| {
+            inside.join_change(modified);
+            inside.join_change(times.changed);
+            inside
+        });
+        self.new.set_inside(task.new, inside)
+    }
+
     /// The hits of a node's name, from its parent's listing: kept from the cached tree when that listing was not read
     /// again (it did not change), already made from it when it was. Marker hits come from the node's own listing.
     fn name_hits(&mut self, task: &Task) -> Result<(), TreeError> {
@@ -361,7 +409,8 @@ impl Builder<'_> {
         self.keep_access(task)?;
         let hits: Vec<Hit> =
             self.old.hits(task.old).iter().filter(|hit| !self.is_marker(hit.interest)).copied().collect();
-        self.new.add_hits(task.new, &hits)
+        self.new.add_hits(task.new, &hits)?;
+        if hits.is_empty() { Ok(()) } else { self.new.set_times(task.new, self.old.stamp(task.old).times) }
     }
 
     /// The access of a node whose parent's listing was not read again, kept from the cached tree; a root's was read

@@ -1234,6 +1234,7 @@ dependencies = [
  "fresher-macos",
  "fresher-module-demo",
  "fresher-module-jetbrains",
+ "fresher-module-temp",
  "fresher-module-trial",
  "fresher-sandbox",
  "fresher-scanner",
@@ -1286,7 +1287,9 @@ dependencies = [
  "fresher-engine",
  "fresher-module-demo",
  "fresher-module-jetbrains",
+ "fresher-module-temp",
  "fresher-module-trial",
+ "fresher-sandbox",
  "fresher-scanner",
  "fresher-store",
  "fresher-testing",
@@ -1342,6 +1345,17 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "toml 1.2.1+spec-1.1.0",
+]
+
+[[package]]
+name = "fresher-module-temp"
+version = "0.1.0"
+dependencies = [
+ "fresher-core",
+ "fresher-testing",
+ "proptest",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

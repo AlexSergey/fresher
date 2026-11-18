@@ -58,3 +58,4 @@ One file per idea, `<topic>.md`:
 | [Unused toolchain versions](./unused-toolchain-versions.md)             | 2026-11-15 | agent | rustup, Node, Python, Java and Android SDK versions that no project or virtualenv uses; "not used", not "old"                         |
 | [The Trash holds the freed space](./trash-holds-freed-space.md)         | 2026-11-15 | agent | Trash first plus never emptying it means nothing is freed yet: say "moved", show what waits in the Trash                              |
 | [Why Docker does not give the space back](./container-disk-image.md)    | 2026-11-15 | agent | the container VM disk image: maximum vs on-disk vs used inside; counted once, never offered for deletion                              |
+| [Downloads and installers](./downloads-and-installers.md)               | 2026-11-17 | user  | unfinished downloads (Low; Safari's resumable `.download` Medium) and old installers of installed apps; Downloads needs access       |

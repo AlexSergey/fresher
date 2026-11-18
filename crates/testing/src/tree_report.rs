@@ -15,7 +15,7 @@ pub struct TreeEntry {
     /// The path relative to the root, with `/` separators.
     pub path: String,
     pub kind: EntryKind,
-    /// The logical size of a file; 0 for folders and symlinks.
+    /// The logical size of a file; 0 for folders, symlinks and other entries.
     pub logical_size: u64,
 }
 
@@ -25,6 +25,8 @@ pub enum EntryKind {
     Dir,
     File,
     Symlink,
+    /// A socket, a named pipe or a device.
+    Other,
 }
 
 impl TreeReport {
@@ -48,8 +50,10 @@ fn collect(root: &Path, dir: &Path, entries: &mut Vec<TreeEntry>) -> std::io::Re
             EntryKind::Symlink
         } else if metadata.is_dir() {
             EntryKind::Dir
-        } else {
+        } else if metadata.is_file() {
             EntryKind::File
+        } else {
+            EntryKind::Other
         };
         let logical_size = if kind == EntryKind::File { metadata.len() } else { 0 };
         entries.push(TreeEntry { path: relative, kind, logical_size });

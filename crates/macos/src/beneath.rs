@@ -39,7 +39,8 @@ pub fn identity_at(folder: &File, name: &OsStr) -> io::Result<ItemIdentity> {
     let kind = match status.st_mode & libc::S_IFMT {
         libc::S_IFDIR => EntryKind::Folder,
         libc::S_IFLNK => EntryKind::Symlink,
-        _ => EntryKind::File,
+        libc::S_IFREG => EntryKind::File,
+        _ => EntryKind::Other,
     };
     Ok(ItemIdentity::new(device_id(status.st_dev), status.st_ino, kind))
 }

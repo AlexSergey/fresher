@@ -11,8 +11,8 @@ use crate::{AccessStatus, CancelToken, FindingId, GuardedPlace, Sizes};
 /// Checks items right before they are acted on, removes the items of a confirmed plan, and puts items back.
 pub trait Cleaner: Send + Sync {
     /// Runs every check of the guard on each item of an unconfirmed plan, in order, and does nothing: each answer is
-    /// the item's identity or why it would be skipped. `roots` are the roots of the scan the items come from. It has
-    /// no `Act`, so it cannot remove anything.
+    /// the item's identity or why it would be skipped. `roots` are the roots of the scan the items come from, its
+    /// places included. It has no `Act`, so it cannot remove anything.
     fn rehearse(&self, roots: &[PathBuf], items: &[PlanItem], cx: &CleanupContext<'_>, depth: Depth) -> Vec<Rehearsal>;
 
     /// Acts on the items of `plan`, one at a time in plan order: the checks again right before each item, then its
@@ -26,6 +26,10 @@ pub trait Cleaner: Send + Sync {
         out: &mut dyn FnMut(ItemDone),
     ) -> Ended;
 
+    /// The protected places this cleaner keeps away from, the system's list: the one source of what may never be
+    /// removed (a scan walks no place outside its roots that it refuses for ever).
+    fn protection(&self) -> Protection;
+
     /// Where each item moved to the Trash is now; follows no link.
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState>;
 
@@ -37,7 +41,8 @@ pub trait Cleaner: Send + Sync {
 /// What the guard checks against, as it stands when the cleaner is called.
 #[derive(Clone, Copy, Debug)]
 pub struct CleanupContext<'a> {
-    /// The scan roots in the settings now: an item under a root no longer scanned is outside the roots.
+    /// The scan roots in the settings now, and the places the last scan walked outside them (the temporary folders):
+    /// an item under a root no longer scanned is outside the roots.
     pub roots: &'a [PathBuf],
     /// The protected places, with the user's ignored paths.
     pub protection: &'a Protection,

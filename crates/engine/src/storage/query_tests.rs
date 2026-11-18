@@ -476,6 +476,26 @@ mod positive {
     }
 
     #[test]
+    fn the_systems_own_items_and_others_folders_never_ask_for_every_file() {
+        let unread = state(1, &[("/home", 300), ("/home/Caches", 100), ("/home/T", 0), ("/home/T/TemporaryItems", 0)])
+            .with_owner(Path::new("/home/Caches"), caches())
+            .with_not_scanned(Path::new("/home/T/TemporaryItems"), NotScanned::SystemItems)
+            .with_not_scanned(Path::new("/home/T"), NotScanned::OthersFolder);
+        let access = FakeAccess::with(&[(Capability::AllFiles, Access::Denied)]);
+        let engine = Fixture::new(walk(vec![unread])).module(alpha()).volumes(startup()).access(access).engine();
+        scan(&engine);
+
+        let map = engine.storage_map().unwrap();
+
+        let reasons = vec![
+            RemainderReason::Unreadable { folders: 2, needs: None },
+            RemainderReason::SnapshotsAndBookkeeping,
+            RemainderReason::ChangedDuringScan,
+        ];
+        assert_eq!(map.volumes[0].parts()[2].kind, PartKind::Remainder { outside_scan: true, reasons });
+    }
+
+    #[test]
     fn the_two_views_have_one_total() {
         let engine = Fixture::new(walk(vec![home(1)])).module(alpha()).volumes(startup()).engine();
         scan(&engine);

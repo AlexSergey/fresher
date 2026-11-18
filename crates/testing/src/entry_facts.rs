@@ -1,13 +1,16 @@
 //! What the reference walk reads about an entry for its removability, with `std::fs` only. "The user" is the owner of
 //! the walk's home folder (in a test, whoever built the fixture tree). Write access is read from the mode bits alone:
 //! the owner's bit for the user's own folder, the others' bit for any other; a group is never assumed to include the
-//! user.
+//! user. A fact the tree states (`StatedFacts`) is read instead of the disk's.
 
 use std::fs::{self, Metadata};
+use std::io;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
-use fresher_core::{EntryFacts, EntryKind};
+use fresher_core::{EntryFacts, EntryKind, Timestamp};
+
+use crate::facts_lens::{Stated, StatedFacts, StatedFlag, StatedOwner};
 
 /// The restricted flag (`SF_RESTRICTED` in `sys/stat.h`): the system's integrity protection guards the entry.
 #[cfg(target_os = "macos")]
@@ -16,25 +19,104 @@ const SF_RESTRICTED: u32 = 0x0008_0000;
 #[cfg(target_os = "macos")]
 const SF_NOUNLINK: u32 = 0x0010_0000;
 
-/// The facts of the entry at `path` with `metadata`, for `user`; `None` (the owner of the home folder could not be
-/// read) owns nothing.
-pub(crate) fn entry_facts(path: &Path, metadata: &Metadata, kind: EntryKind, user: Option<u32>) -> EntryFacts {
-    let parent = path.parent().and_then(|parent| fs::symlink_metadata(parent).ok());
-    let (user_immutable, system_immutable, restricted) = flags(metadata);
+/// An entry as the reference walk sees it: its metadata, with the facts the tree states in place of the disk's.
+#[derive(Debug)]
+pub(crate) struct Seen<'a> {
+    metadata: Metadata,
+    stated: Option<&'a Stated>,
+}
+
+impl<'a> Seen<'a> {
+    /// The entry at `path`, never following a link, with what `stated` says of it.
+    pub(crate) fn read(path: &Path, stated: &'a StatedFacts) -> io::Result<Self> {
+        Ok(Self { metadata: fs::symlink_metadata(path)?, stated: stated.get(path) })
+    }
+
+    /// The disk's own metadata: sizes, device, mode.
+    pub(crate) const fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
+    pub(crate) fn kind(&self) -> EntryKind {
+        if self.stated.is_some_and(|stated| stated.kind.is_some()) {
+            EntryKind::Other
+        } else {
+            disk_kind(&self.metadata)
+        }
+    }
+
+    pub(crate) fn owner(&self) -> u32 {
+        self.stated.and_then(|stated| stated.owner).map_or_else(|| self.metadata.uid(), StatedOwner::uid)
+    }
+
+    pub(crate) fn modified(&self) -> Option<Timestamp> {
+        seconds(self.metadata.mtime())
+    }
+
+    pub(crate) fn changed(&self) -> Option<Timestamp> {
+        self.stated.and_then(|stated| stated.changed).or_else(|| seconds(self.metadata.ctime()))
+    }
+
+    pub(crate) fn accessed(&self) -> Option<Timestamp> {
+        self.stated.and_then(|stated| stated.accessed).or_else(|| seconds(self.metadata.atime()))
+    }
+
+    /// The user lock, the system lock and the restricted flag.
+    pub(crate) fn flags(&self) -> (bool, bool, bool) {
+        match self.stated.map(|stated| &stated.flags).filter(|flags| !flags.is_empty()) {
+            Some(flags) => (
+                flags.contains(&StatedFlag::UserLock),
+                flags.contains(&StatedFlag::SystemLock) || flags.contains(&StatedFlag::NoUnlink),
+                flags.contains(&StatedFlag::Restricted),
+            ),
+            None => flags(&self.metadata),
+        }
+    }
+
+    /// Whether `user` may write to the entry, by its mode bits.
+    fn writable(&self, user: Option<u32>) -> bool {
+        let bit = if user == Some(self.owner()) { 0o200 } else { 0o002 };
+        self.metadata.mode() & bit != 0
+    }
+}
+
+/// The kind of an entry as the disk has it.
+pub(crate) fn disk_kind(metadata: &Metadata) -> EntryKind {
+    if metadata.is_symlink() {
+        EntryKind::Symlink
+    } else if metadata.is_dir() {
+        EntryKind::Folder
+    } else if metadata.is_file() {
+        EntryKind::File
+    } else {
+        EntryKind::Other
+    }
+}
+
+/// Whole seconds since the epoch; a time before it is not known.
+fn seconds(secs: i64) -> Option<Timestamp> {
+    u64::try_from(secs).ok().map(Timestamp::from_secs)
+}
+
+/// The facts of the entry at `path`, seen as `seen`, for `user`; `None` (the owner of the home folder could not be
+/// read) owns nothing. Its folder is read with what `stated` says of it.
+pub(crate) fn entry_facts(
+    path: &Path,
+    seen: &Seen<'_>,
+    kind: EntryKind,
+    user: Option<u32>,
+    stated: &StatedFacts,
+) -> EntryFacts {
+    let parent = path.parent().and_then(|parent| Seen::read(parent, stated).ok());
+    let (user_immutable, system_immutable, restricted) = seen.flags();
     EntryFacts {
-        owned_by_user: user == Some(metadata.uid()),
-        parent_writable: parent.is_some_and(|parent| writable(&parent, user)),
-        folder_writable: kind != EntryKind::Folder || writable(metadata, user),
+        owned_by_user: user == Some(seen.owner()),
+        parent_writable: parent.is_some_and(|parent| parent.writable(user)),
+        folder_writable: kind != EntryKind::Folder || seen.writable(user),
         user_immutable,
         system_immutable,
         restricted,
     }
-}
-
-/// Whether `user` may write to the entry, by its mode bits.
-fn writable(metadata: &Metadata, user: Option<u32>) -> bool {
-    let bit = if user == Some(metadata.uid()) { 0o200 } else { 0o002 };
-    metadata.mode() & bit != 0
 }
 
 /// The user lock (immutable or append-only), the system lock (immutable, append-only or no-unlink) and the restricted
@@ -65,15 +147,16 @@ mod tests {
 
     use fresher_core::{EntryFacts, EntryKind};
 
-    use super::entry_facts;
-    use crate::FixtureTree;
+    use super::{Seen, entry_facts};
+    use crate::{FixtureTree, StatedFacts};
 
     fn tree() -> FixtureTree {
         FixtureTree::from_toml_str("[[file]]\npath = \"Caches/a.bin\"\n\n[[dir]]\npath = \"Caches/inner\"\n").unwrap()
     }
 
     fn facts_of(path: &Path, kind: EntryKind, user: Option<u32>) -> EntryFacts {
-        entry_facts(path, &fs::symlink_metadata(path).unwrap(), kind, user)
+        let none = StatedFacts::new();
+        entry_facts(path, &Seen::read(path, &none).unwrap(), kind, user, &none)
     }
 
     fn me(tree: &FixtureTree) -> Option<u32> {

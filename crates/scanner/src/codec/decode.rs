@@ -11,10 +11,12 @@ use fresher_core::{FolderIdentity, MarkerCheck, Timestamp};
 use crate::codec::CodecError;
 use crate::codec::encode::GROUP_KINDS;
 use crate::codec::header::Header;
+use crate::codec::stamp::read_stamp;
 use crate::codec::varint::Reader;
 use crate::tree::access::NodeAccess;
 use crate::tree::arena::{Shared, Tree};
 use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums};
+use crate::tree::times::Stamp;
 
 /// The fewest bytes a node's record takes: an empty suffix, flags, four sums, a time, no hits, no owner, the access,
 /// and the name's prefix and suffix lengths.
@@ -22,7 +24,15 @@ const MIN_RECORD: usize = 11;
 /// The fewest bytes a hit takes: interest, marker check, sibling bits.
 const MIN_HIT: usize = 3;
 /// The flags only a folder may carry.
-const FOLDER_ONLY: [Flag; 5] = [Flag::Opaque, Flag::Collapsed, Flag::Avoided, Flag::OtherVolume, Flag::Incomplete];
+const FOLDER_ONLY: [Flag; 7] = [
+    Flag::Opaque,
+    Flag::Collapsed,
+    Flag::Avoided,
+    Flag::OtherVolume,
+    Flag::Incomplete,
+    Flag::OthersFolder,
+    Flag::SystemItems,
+];
 
 /// The tree and the header in `bytes`; the tree is frozen.
 pub(crate) fn decode(bytes: &[u8]) -> Result<(Tree, Header), CodecError> {
@@ -95,6 +105,8 @@ struct Record {
     hidden: u32,
     own: Sums,
     modified: i64,
+    /// Its times and inside; only a node with hits has one.
+    stamp: Option<Stamp>,
     owner: u32,
     access: NodeAccess,
     identity: Option<FolderIdentity>,
@@ -123,6 +135,7 @@ fn read_record(
         return Err(CodecError::OutOfRange);
     }
     read_hits(reader, hits)?;
+    let stamp = if hits.is_empty() { None } else { Some(read_stamp(reader, modified)?) };
     let owner = match reader.u64()? {
         0 => Node::NO_OWNER,
         claim => {
@@ -136,7 +149,7 @@ fn read_record(
     let [access] = reader.array::<1>()?;
     let access = NodeAccess::from_bits(access).ok_or(CodecError::BadFlags)?;
     let identity = if is_root { Some(FolderIdentity { device: reader.u64()?, file_id: reader.u64()? }) } else { None };
-    Ok(Record { flags, children, hidden, own, modified, owner, access, identity })
+    Ok(Record { flags, children, hidden, own, modified, stamp, owner, access, identity })
 }
 
 /// Reads a front-coded name into `name`: the prefix it shares with `previous`, then the rest.
@@ -168,7 +181,8 @@ fn check_name(name: &[u8], is_root: bool, has_previous: bool, previous: &[u8]) -
 /// The flags of a node: known bits, exactly one kind, the folder flags on a folder only, a root a folder.
 fn read_flags(reader: &mut Reader<'_>, is_root: bool) -> Result<NodeFlags, CodecError> {
     let flags = NodeFlags::from_bits(reader.u16()?).ok_or(CodecError::BadFlags)?;
-    let kinds = [Flag::Folder, Flag::KeptFile, Flag::Link].into_iter().filter(|&kind| flags.has(kind)).count();
+    let kinds =
+        [Flag::Folder, Flag::KeptFile, Flag::Link, Flag::Special].into_iter().filter(|&kind| flags.has(kind)).count();
     let folder = flags.has(Flag::Folder);
     let misplaced = !folder && (FOLDER_ONLY.into_iter().any(|flag| flags.has(flag)) || flags.unreadable().is_some())
         || folder && flags.has(Flag::LinkCopy);
@@ -212,6 +226,10 @@ fn add(
     let modified = u64::try_from(record.modified).ok().map(Timestamp::from_secs);
     tree.set_modified(index, modified)?;
     tree.add_hits(index, hits)?;
+    if let Some(stamp) = record.stamp {
+        tree.set_times(index, stamp.times)?;
+        tree.set_inside(index, stamp.inside)?;
+    }
     tree.set_owner(index, record.owner)?;
     tree.set_access(index, record.access)?;
     Ok(index)

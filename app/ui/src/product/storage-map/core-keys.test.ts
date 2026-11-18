@@ -33,6 +33,8 @@ const NOT_SCANNED: readonly NonNullable<NodeInfo['notScanned']>[] = [
   { kind: 'unreadable', value: 'failed' },
   { kind: 'avoided' },
   { kind: 'other-volume' },
+  { kind: 'others-folder' },
+  { kind: 'system-items' },
 ];
 
 // Every kind the bindings know, so a new one fails the lists above until it is added.
@@ -61,6 +63,8 @@ const NAMED = [
   'core.storage.changed',
   'core.storage.place.trash.name',
   'core.storage.place.trash.description',
+  'core.place.user-temp.name',
+  'core.place.shared-temp.name',
   ...MOUNTS.map((mount) => `core.storage.kind.${mount}`),
 ];
 

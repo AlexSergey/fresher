@@ -34,7 +34,8 @@ pub(crate) fn open_no_link(path: &Path, last: LastLink) -> io::Result<File> {
     const O_NOFOLLOW_ANY: i32 = 0x2000_0000;
     /// `O_SYMLINK`: a link as the last component is opened as the link.
     const O_SYMLINK: i32 = 0x0020_0000;
-    /// `O_NONBLOCK`: a named pipe opens at once instead of waiting for a writer.
+    /// `O_NONBLOCK`: a named pipe opens at once instead of waiting for a writer (proved by the guard's test
+    /// `a_pipe_with_no_writer_does_not_block_the_guard`).
     const O_NONBLOCK: i32 = 0x0000_0004;
 
     let last = match last {

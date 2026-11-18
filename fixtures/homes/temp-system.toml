@@ -1,0 +1,62 @@
+# A home for the temp module whose old items belong to the system or another user, or are locked, so nothing is
+# offered: an installer package owned by root, a file the system will not let be removed (`no-unlink`), a folder named
+# as a part of macOS (`com.apple.x`), a folder holding a root-owned file, and another user's item in the shared
+# folder are left out as the system's; a file the user locked in Finder is left out as locked. Owners and flags are
+# stated: only root can make them. Every item is 30 days old.
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/updater.pkg"
+size = 1048576
+age = "30d"
+changed = "30d"
+owner = "system"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/held.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+flags = ["no-unlink"]
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/com.apple.x/state.db"
+size = 8192
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/com.apple.x"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/mixed/mine.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/mixed/root.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+owner = "system"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/mixed"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/tmp/theirs"
+size = 2048
+age = "30d"
+changed = "30d"
+owner = "other-user"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/kept.txt"
+size = 1024
+age = "30d"
+changed = "30d"
+flags = ["user-lock"]

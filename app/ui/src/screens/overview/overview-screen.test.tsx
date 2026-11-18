@@ -394,6 +394,41 @@ describe('OverviewScreen', () => {
       expect(navigation.getOverviewView()).toMatchObject({ descent: 'stay', node: { index: 11, state: 1 } });
     });
 
+    it('by place names a temporary folder walked beside the home by its own name', async () => {
+      const tmp: NodeId = { index: 30, state: 1 };
+      const map: StorageMap = {
+        ...DEMO_MAP_COMPLETE,
+        volumes: DEMO_MAP_COMPLETE.volumes.map((volume) => ({
+          ...volume,
+          places: [{ name: { args: {}, key: 'core.place.shared-temp.name' }, root: tmp }],
+          roots: [...volume.roots, tmp],
+        })),
+      };
+      const tmpFolder = { ...HOME.folder, id: tmp, name: 'tmp' };
+      const placeWithTmp = (args: unknown): PlaceView => {
+        const { node } = args as { readonly node: NodeId };
+
+        return node.index === tmp.index ? { offset: 0, path: [tmpFolder], rows: [], total: 0 } : placeOf(args);
+      };
+      core({
+        getDictionary: () => ({ ...DICTIONARY, 'core.place.shared-temp.name': 'Shared temporary folder' }),
+        getOverview: () => DEMO_OVERVIEW,
+        getStorageMap: () => map,
+        getStoragePlace: placeWithTmp,
+      });
+      await renderOverview();
+
+      fireEvent.click(await screen.findByRole('radio', { name: 'By place' }));
+
+      const roots = await screen.findByRole('list', { name: 'Scanned folders' });
+      expect(
+        within(roots)
+          .getAllByRole('listitem')
+          .map(({ textContent }) => textContent),
+      ).toStrictEqual([expect.stringContaining('home'), expect.stringContaining('Shared temporary folder')]);
+      expect(within(roots).queryByText('tmp')).toBeNull();
+    });
+
     it('the opened folder survives leaving the overview', async () => {
       const getPlace = vi.fn(placeOf);
       core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE, getStoragePlace: getPlace });

@@ -124,16 +124,22 @@ pub enum NotScanned {
     Avoided,
     /// It is on another volume than its scan root.
     OtherVolume,
+    /// A folder of another user, in a place outside the scan roots.
+    OthersFolder,
+    /// The system's own items (the user's temporary folder's `TemporaryItems`): private to macOS, never opened.
+    SystemItems,
 }
 
 impl NotScanned {
     /// Every reason, in the order of the enum.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 7] = [
         Self::Unreadable(Unreadable::NoPermission),
         Self::Unreadable(Unreadable::Guarded),
         Self::Unreadable(Unreadable::Failed),
         Self::Avoided,
         Self::OtherVolume,
+        Self::OthersFolder,
+        Self::SystemItems,
     ];
 
     /// Why, in plain words, as the place view says it under the folder:
@@ -145,6 +151,8 @@ impl NotScanned {
             Self::Unreadable(Unreadable::Failed) => "unreadable.failed",
             Self::Avoided => "avoided",
             Self::OtherVolume => "other-volume",
+            Self::OthersFolder => "others-folder",
+            Self::SystemItems => "system-items",
         };
         TextKey::from_valid(format!("core.storage.not-scanned.{segment}"))
     }

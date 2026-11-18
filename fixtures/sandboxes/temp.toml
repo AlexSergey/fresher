@@ -1,0 +1,496 @@
+# The temp module: the old items apps left in the user's temporary folder (`private/var/folders/xx/sandbox/T/`) and
+# in the shared one (`private/tmp/`). Every case lives in those two places, beside them (`C/`, `0/`, `X/`, another
+# user's `T`) or in `home/`. What the disk cannot hold is stated (`world.toml`'s `[[entry]]`): an old status change
+# (a file written now has a status change of now), an owner or a flag only root can set, a socket or a pipe. The
+# open and installed apps are the sandbox's own, shared by every case of this file.
+#
+# Times count back from `world.toml`'s `now`. Positives' files are filled with data, so the map's numbers are blocks.
+feature = "temp"
+module = "temp"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a fresh temporary file is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/fresh.tmp"
+size = 4096
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.recent"
+items = 1
+[case.map]
+part = "your-folders"
+at = "private/var/folders/xx/sandbox/T/fresh.tmp"
+
+[[case]]
+name = "an unpacked folder with old modification times is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/unpacked/README"
+size = 2048
+age = "2000d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/unpacked/lib/data.bin"
+size = 65536
+age = "2000d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/unpacked/lib"
+age = "2000d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/unpacked"
+age = "2000d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.recent"
+items = 1
+
+[[case]]
+name = "an old folder with one file changed yesterday is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/build/main.o"
+size = 8192
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/build/out.o"
+size = 8192
+age = "30d"
+changed = "1d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/build"
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.recent"
+items = 1
+
+[[case]]
+name = "an old file read yesterday is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/read.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+accessed = "1d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.recent"
+items = 1
+
+[[case]]
+name = "six days old is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/six-days"
+size = 4096
+age = "6d"
+changed = "6d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.recent"
+items = 1
+
+[[case]]
+name = "an item of a future time is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/future"
+size = 4096
+age = "-2d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.recent"
+items = 1
+
+[[case]]
+name = "an open app's temporary folder is kept"
+kind = "negative"
+[[case.running]]
+name = "Editor"
+bundle-ids = ["com.example.Editor"]
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/com.example.Editor.tmp/draft.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/com.example.Editor.tmp"
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.app-open"
+items = 1
+
+[[case]]
+name = "an open app's hidden working file is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/.com.example.Editor.XXXXXX"
+size = 2048
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.app-open"
+items = 1
+
+[[case]]
+name = "a system service's folder is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/com.apple.someagent/state.db"
+size = 8192
+age = "30d"
+changed = "30d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/com.apple.someagent"
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/daemon/run.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/daemon"
+age = "30d"
+changed = "30d"
+flags = ["no-unlink"]
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.system"
+items = 2
+
+[[case]]
+name = "an item of the system or another user is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/updater.pkg"
+size = 1048576
+age = "30d"
+changed = "30d"
+owner = "system"
+flags = ["user-lock"]
+[[case.file]]
+path = "private/tmp/theirs"
+size = 4096
+age = "30d"
+changed = "30d"
+owner = "other-user"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.system"
+items = 2
+
+[[case]]
+name = "a folder holding the system's file is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/mixed/mine.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/mixed/root.dat"
+size = 4096
+age = "30d"
+changed = "30d"
+owner = "system"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/mixed"
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.system"
+items = 1
+
+[[case]]
+name = "an item you locked is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/kept.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+flags = ["user-lock"]
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.locked"
+items = 1
+
+[[case]]
+name = "a socket, a pipe and a folder holding one are kept"
+kind = "negative"
+[[case.file]]
+path = "private/tmp/dev.sock"
+age = "30d"
+changed = "30d"
+kind = "socket"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/pipe"
+age = "30d"
+changed = "30d"
+kind = "pipe"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/srv/s.sock"
+age = "30d"
+changed = "30d"
+kind = "socket"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/srv"
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.special"
+items = 3
+
+[[case]]
+name = "locks are kept"
+kind = "negative"
+[[case.file]]
+path = "private/tmp/.X0-lock"
+size = 11
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/app.lock"
+size = 0
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/server.pid"
+size = 6
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.lock"
+items = 3
+
+[[case]]
+name = "a folder holding a program's lock is kept"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/session/.#notes.txt"
+size = 64
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/session/notes.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/session"
+age = "30d"
+changed = "30d"
+[[case.left-out]]
+category = "temp.old-files"
+reason = "temp.left-out.lock"
+items = 1
+
+[[case]]
+name = "the temporary folder's neighbours are never claimed"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/C/com.example.Editor/cache.db"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/0/com.example.Editor/data.bin"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/X/com.example.Editor/code.bin"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/TemporaryItems/doc.rtf"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[case]]
+name = "unsaved documents are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Autosave Information/Untitled.rtf"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[case]]
+name = "another user's temporary folder is never claimed"
+kind = "negative"
+[[case.file]]
+path = "private/var/folders/yy/other/T/old.tmp"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[case]]
+name = "editor and Finder files in the home are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/notes/.notes.txt.swp"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "home/notes/#notes.txt#"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "home/notes/report.docx~"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "home/notes/.DS_Store"
+size = 4096
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "home/notes/__MACOSX/notes.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[case]]
+name = "the target of a link in the temporary folder is never touched"
+kind = "negative"
+[[case.file]]
+path = "home/Documents/linked/keep.txt"
+size = 4096
+age = "30d"
+changed = "30d"
+
+# Then the positive cases: each item is offered as an old temporary file and goes to the Trash.
+
+[[case]]
+name = "an old temporary file goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+size = 1048576
+age = "30d"
+changed = "30d"
+fill = "data"
+[case.expect]
+item = "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+category = "temp.old-files"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+
+[[case]]
+name = "an old folder goes to the Trash as a whole"
+kind = "positive"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache/v22/index.bin"
+size = 262144
+age = "20d"
+changed = "20d"
+fill = "data"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache/v22/data.bin"
+size = 262144
+age = "20d"
+changed = "20d"
+fill = "data"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache/v22"
+age = "20d"
+changed = "20d"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/node-compile-cache"
+age = "20d"
+changed = "20d"
+[case.expect]
+item = "private/var/folders/xx/sandbox/T/node-compile-cache"
+category = "temp.old-files"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "your old item in the shared temporary folder goes"
+kind = "positive"
+[[case.file]]
+path = "private/tmp/old-build.log"
+size = 65536
+age = "10d"
+changed = "10d"
+fill = "data"
+[case.expect]
+item = "private/tmp/old-build.log"
+category = "temp.old-files"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an installed app's old temporary folder counts for the app"
+kind = "positive"
+[[case.app]]
+path = "Applications/Viewer.app"
+bundle-id = "com.example.Viewer"
+name = "Viewer"
+version = "1.0"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/com.example.Viewer/thumbs.db"
+size = 131072
+age = "15d"
+changed = "15d"
+fill = "data"
+[[case.dir]]
+path = "private/var/folders/xx/sandbox/T/com.example.Viewer"
+age = "15d"
+changed = "15d"
+[case.expect]
+item = "private/var/folders/xx/sandbox/T/com.example.Viewer"
+category = "temp.old-files"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "seven days and one second is old"
+kind = "positive"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/boundary"
+size = 4096
+age = "604801s"
+changed = "604801s"
+fill = "data"
+[case.expect]
+item = "private/var/folders/xx/sandbox/T/boundary"
+category = "temp.old-files"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an old link goes to the Trash as itself"
+kind = "positive"
+[[case.symlink]]
+path = "private/var/folders/xx/sandbox/T/docs-link"
+target = "../../../../../../home/Documents/linked"
+age = "30d"
+changed = "30d"
+[case.expect]
+item = "private/var/folders/xx/sandbox/T/docs-link"
+category = "temp.old-files"
+danger = "safe"
+after-cleanup = "in-trash"

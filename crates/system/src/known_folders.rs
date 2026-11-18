@@ -4,18 +4,31 @@ use std::path::PathBuf;
 
 use fresher_core::{KnownFolder, KnownFolders};
 
+/// The temporary folder every user shares, canonical (`/tmp` is a link to it).
+const SHARED_TEMP: &str = "/private/tmp";
+
 /// The known folders of macOS for the user whose home folder it is built with. Pure: it builds paths and opens
-/// nothing, so a test gives it a fixture home.
+/// nothing, so a test gives it a fixture home, and the user's temporary folder is read by the caller.
 #[derive(Clone, Debug)]
 pub struct MacKnownFolders {
     home: Option<PathBuf>,
+    user_temp: Option<PathBuf>,
 }
 
 impl MacKnownFolders {
     /// The folders of `home`; a home that is not an absolute path gives no folder of the user.
     pub fn new(home: impl Into<PathBuf>) -> Self {
         let home = home.into();
-        Self { home: home.is_absolute().then_some(home) }
+        Self { home: home.is_absolute().then_some(home), user_temp: None }
+    }
+
+    /// The same folders, with the user's own temporary folder at `path`, which the caller made canonical; a path
+    /// that is not absolute gives none.
+    #[must_use]
+    pub fn with_user_temp(mut self, path: impl Into<PathBuf>) -> Self {
+        let path = path.into();
+        self.user_temp = path.is_absolute().then_some(path);
+        self
     }
 
     fn under_home(&self, names: &[&str]) -> Option<PathBuf> {
@@ -40,6 +53,8 @@ impl KnownFolders for MacKnownFolders {
             KnownFolder::UserApplications => self.under_home(&["Applications"]),
             KnownFolder::Applications => Some(PathBuf::from("/Applications")),
             KnownFolder::SystemApplications => Some(PathBuf::from("/System/Applications")),
+            KnownFolder::UserTemp => self.user_temp.clone(),
+            KnownFolder::SharedTemp => Some(PathBuf::from(SHARED_TEMP)),
         }
     }
 }
@@ -52,7 +67,15 @@ mod tests {
         use crate::MacKnownFolders;
 
         fn of_all_users(folder: KnownFolder) -> bool {
-            matches!(folder, KnownFolder::Applications | KnownFolder::SystemApplications)
+            matches!(folder, KnownFolder::Applications | KnownFolder::SystemApplications | KnownFolder::SharedTemp)
+        }
+
+        #[test]
+        fn without_a_user_temp_there_is_no_user_temp() {
+            let folders = MacKnownFolders::new("/Users/someone");
+
+            assert_eq!(folders.locate(KnownFolder::UserTemp), None);
+            assert_eq!(folders.with_user_temp("relative/T").locate(KnownFolder::UserTemp), None);
         }
 
         #[test]
@@ -65,12 +88,12 @@ mod tests {
         }
 
         #[test]
-        fn no_folder_but_the_apps_of_all_users_is_outside_the_home() {
-            let folders = MacKnownFolders::new("/Users/someone");
+        fn no_folder_but_those_of_all_users_and_the_temporary_one_is_outside_the_home() {
+            let folders = MacKnownFolders::new("/Users/someone").with_user_temp("/private/var/folders/xx/abc/T");
 
             for folder in KnownFolder::ALL {
                 let outside = !folders.locate(folder).unwrap().starts_with("/Users/someone");
-                assert_eq!(outside, of_all_users(folder), "{folder}");
+                assert_eq!(outside, of_all_users(folder) || folder == KnownFolder::UserTemp, "{folder}");
             }
         }
     }
@@ -93,6 +116,15 @@ mod tests {
             assert_eq!(at(KnownFolder::SavedState), PathBuf::from("/Users/someone/Library/Saved Application State"));
             assert_eq!(at(KnownFolder::Trash), PathBuf::from("/Users/someone/.Trash"));
             assert_eq!(at(KnownFolder::SystemApplications), PathBuf::from("/System/Applications"));
+            assert_eq!(at(KnownFolder::SharedTemp), PathBuf::from("/private/tmp"));
+        }
+
+        #[test]
+        fn the_user_temp_is_the_given_path() {
+            let folders = MacKnownFolders::new("/Users/someone").with_user_temp("/private/var/folders/xx/abc/T");
+
+            assert_eq!(folders.locate(KnownFolder::UserTemp), Some(PathBuf::from("/private/var/folders/xx/abc/T")));
+            assert_eq!(folders.locate(KnownFolder::SharedTemp), Some(PathBuf::from("/private/tmp")));
         }
     }
 }

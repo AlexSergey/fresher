@@ -1,0 +1,768 @@
+{
+  "changedBeforeTheAct": {
+    "outcomes": [
+      [
+        "private/tmp/old-build.log",
+        {
+          "kind": "moved"
+        }
+      ],
+      [
+        "private/var/folders/xx/sandbox/T/node-compile-cache",
+        {
+          "kind": "moved"
+        }
+      ],
+      [
+        "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
+        {
+          "kind": "skipped",
+          "reason": {
+            "kind": "replaced"
+          }
+        }
+      ]
+    ]
+  },
+  "cleanAndPutBack": {
+    "journal": [
+      {
+        "format": "cleanup-journal",
+        "version": 1
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "items": [
+          {
+            "action": "remove",
+            "category": "temp.old-files",
+            "danger": "safe",
+            "key": "shared-temp/old-build.log",
+            "path": "~/private/tmp/old-build.log",
+            "reason": {
+              "args": {
+                "days": {
+                  "kind": "count",
+                  "value": 10
+                }
+              },
+              "key": "temp.finding.reason-shared"
+            },
+            "sizes": {
+              "allocated": 16384,
+              "completeness": "complete",
+              "logical": 16384,
+              "reclaimable": 16384
+            }
+          },
+          {
+            "action": "remove",
+            "category": "temp.old-files",
+            "danger": "safe",
+            "key": "user-temp/node-compile-cache",
+            "path": "~/private/var/folders/xx/sandbox/T/node-compile-cache",
+            "reason": {
+              "args": {
+                "days": {
+                  "kind": "count",
+                  "value": 20
+                }
+              },
+              "key": "temp.finding.reason-user"
+            },
+            "sizes": {
+              "allocated": 49152,
+              "completeness": "complete",
+              "logical": 49152,
+              "reclaimable": 49152
+            }
+          },
+          {
+            "action": "remove",
+            "category": "temp.old-files",
+            "danger": "safe",
+            "key": "user-temp/tmp.IKKNWYIRnq",
+            "path": "~/private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
+            "reason": {
+              "args": {
+                "days": {
+                  "kind": "count",
+                  "value": 30
+                }
+              },
+              "key": "temp.finding.reason-user"
+            },
+            "sizes": {
+              "allocated": 65536,
+              "completeness": "complete",
+              "logical": 65536,
+              "reclaimable": 65536
+            }
+          }
+        ],
+        "method": "trash",
+        "roots": [
+          "~",
+          "~/private/var/folders/xx/sandbox/T",
+          "~/private/tmp"
+        ],
+        "space": [],
+        "type": "begin"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/home/.Trash/old-build.log",
+            "original": "~/private/tmp/old-build.log"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/home/.Trash/node-compile-cache",
+            "original": "~/private/var/folders/xx/sandbox/T/node-compile-cache"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "cleanup": 1,
+        "outcome": {
+          "kind": "moved"
+        },
+        "trashed": [
+          {
+            "landed": "~/home/.Trash/tmp.IKKNWYIRnq",
+            "original": "~/private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+          }
+        ],
+        "type": "item"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "ended": "completed",
+        "space": [],
+        "type": "end"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      },
+      {
+        "at": 1767225600,
+        "cleanup": 1,
+        "outcome": {
+          "kind": "put-back"
+        },
+        "type": "put-back"
+      }
+    ],
+    "leftOut": [
+      [
+        "temp.left-out.recent",
+        1
+      ],
+      [
+        "temp.left-out.system",
+        1
+      ]
+    ],
+    "outcomes": [
+      [
+        "private/tmp/old-build.log",
+        {
+          "kind": "moved"
+        }
+      ],
+      [
+        "private/var/folders/xx/sandbox/T/node-compile-cache",
+        {
+          "kind": "moved"
+        }
+      ],
+      [
+        "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
+        {
+          "kind": "moved"
+        }
+      ]
+    ],
+    "plan": {
+      "groups": [
+        {
+          "action": "remove",
+          "category": "temp.old-files",
+          "items": [
+            {
+              "danger": "safe",
+              "path": "~/private/tmp/old-build.log",
+              "reason": {
+                "args": {
+                  "days": {
+                    "kind": "count",
+                    "value": 10
+                  }
+                },
+                "key": "temp.finding.reason-shared"
+              },
+              "sizes": {
+                "allocated": 16384,
+                "completeness": "complete",
+                "logical": 16384,
+                "reclaimable": 16384
+              },
+              "title": {
+                "args": {
+                  "name": {
+                    "kind": "text",
+                    "value": "old-build.log"
+                  }
+                },
+                "key": "temp.finding.title"
+              }
+            },
+            {
+              "danger": "safe",
+              "path": "~/private/var/folders/xx/sandbox/T/node-compile-cache",
+              "reason": {
+                "args": {
+                  "days": {
+                    "kind": "count",
+                    "value": 20
+                  }
+                },
+                "key": "temp.finding.reason-user"
+              },
+              "sizes": {
+                "allocated": 49152,
+                "completeness": "complete",
+                "logical": 49152,
+                "reclaimable": 49152
+              },
+              "title": {
+                "args": {
+                  "name": {
+                    "kind": "text",
+                    "value": "node-compile-cache"
+                  }
+                },
+                "key": "temp.finding.title"
+              }
+            },
+            {
+              "danger": "safe",
+              "path": "~/private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
+              "reason": {
+                "args": {
+                  "days": {
+                    "kind": "count",
+                    "value": 30
+                  }
+                },
+                "key": "temp.finding.reason-user"
+              },
+              "sizes": {
+                "allocated": 65536,
+                "completeness": "complete",
+                "logical": 65536,
+                "reclaimable": 65536
+              },
+              "title": {
+                "args": {
+                  "name": {
+                    "kind": "text",
+                    "value": "tmp.IKKNWYIRnq"
+                  }
+                },
+                "key": "temp.finding.title"
+              }
+            }
+          ],
+          "summary": {
+            "count": 3,
+            "highest": "safe",
+            "irreversible": 0,
+            "sizes": {
+              "allocated": 131072,
+              "completeness": "complete",
+              "logical": 131072,
+              "reclaimable": 131072
+            }
+          }
+        }
+      ],
+      "leftOut": [],
+      "permanentAvailable": true,
+      "plan": 1,
+      "summary": {
+        "count": 3,
+        "highest": "safe",
+        "irreversible": 0,
+        "sizes": {
+          "allocated": 131072,
+          "completeness": "complete",
+          "logical": 131072,
+          "reclaimable": 131072
+        }
+      }
+    },
+    "putBack": {
+      "items": [
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        }
+      ]
+    },
+    "treeAfterCleanup": {
+      "home": {
+        "entries": [
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": ".Trash"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": ".Trash/node-compile-cache"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": ".Trash/node-compile-cache/v22"
+          },
+          {
+            "kind": "file",
+            "logical_size": 32768,
+            "path": ".Trash/node-compile-cache/v22/data.bin"
+          },
+          {
+            "kind": "file",
+            "logical_size": 16384,
+            "path": ".Trash/node-compile-cache/v22/index.bin"
+          },
+          {
+            "kind": "file",
+            "logical_size": 16384,
+            "path": ".Trash/old-build.log"
+          },
+          {
+            "kind": "file",
+            "logical_size": 65536,
+            "path": ".Trash/tmp.IKKNWYIRnq"
+          }
+        ],
+        "total_logical_size": 131072
+      },
+      "places": {
+        "entries": [
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "tmp"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/0"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/C"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/T"
+          },
+          {
+            "kind": "file",
+            "logical_size": 4096,
+            "path": "var/folders/xx/sandbox/T/fresh.tmp"
+          },
+          {
+            "kind": "file",
+            "logical_size": 8192,
+            "path": "var/folders/xx/sandbox/T/updater.pkg"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/X"
+          }
+        ],
+        "total_logical_size": 12288
+      }
+    },
+    "treeAfterPutBack": {
+      "home": {
+        "entries": [
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": ".Trash"
+          }
+        ],
+        "total_logical_size": 0
+      },
+      "places": {
+        "entries": [
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "tmp"
+          },
+          {
+            "kind": "file",
+            "logical_size": 16384,
+            "path": "tmp/old-build.log"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/0"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/C"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/T"
+          },
+          {
+            "kind": "file",
+            "logical_size": 4096,
+            "path": "var/folders/xx/sandbox/T/fresh.tmp"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/T/node-compile-cache"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/T/node-compile-cache/v22"
+          },
+          {
+            "kind": "file",
+            "logical_size": 32768,
+            "path": "var/folders/xx/sandbox/T/node-compile-cache/v22/data.bin"
+          },
+          {
+            "kind": "file",
+            "logical_size": 16384,
+            "path": "var/folders/xx/sandbox/T/node-compile-cache/v22/index.bin"
+          },
+          {
+            "kind": "file",
+            "logical_size": 65536,
+            "path": "var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+          },
+          {
+            "kind": "file",
+            "logical_size": 8192,
+            "path": "var/folders/xx/sandbox/T/updater.pkg"
+          },
+          {
+            "kind": "dir",
+            "logical_size": 0,
+            "path": "var/folders/xx/sandbox/X"
+          }
+        ],
+        "total_logical_size": 143360
+      }
+    }
+  },
+  "fewerDaysRefused": {
+    "refused": {
+      "code": "invalid-setting-value",
+      "key": "temp.older-than-days"
+    },
+    "value": {
+      "kind": "number",
+      "value": 7
+    }
+  },
+  "ignoring": {
+    "findings": [
+      [
+        "temp.old-files",
+        "private/tmp/old-build.log"
+      ],
+      [
+        "temp.old-files",
+        "private/var/folders/xx/sandbox/T/node-compile-cache"
+      ],
+      [
+        "temp.old-files",
+        "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+      ]
+    ]
+  },
+  "moreDaysKeepMore": {
+    "findings": [
+      [
+        "temp.old-files",
+        "private/var/folders/xx/sandbox/T/node-compile-cache"
+      ],
+      [
+        "temp.old-files",
+        "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+      ]
+    ],
+    "leftOut": [
+      [
+        "temp.left-out.recent",
+        2
+      ],
+      [
+        "temp.left-out.system",
+        1
+      ]
+    ]
+  },
+  "placeNoLongerWalked": {
+    "putBack": {
+      "items": [
+        {
+          "outcome": {
+            "kind": "refused",
+            "reason": "outside-roots"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.refused"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "refused",
+            "reason": "outside-roots"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.refused"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "refused",
+            "reason": "outside-roots"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.refused"
+          }
+        }
+      ]
+    }
+  },
+  "placeWalkedAgain": {
+    "putBack": {
+      "items": [
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        },
+        {
+          "outcome": {
+            "kind": "put-back"
+          },
+          "text": {
+            "args": {},
+            "key": "core.cleanup.put-back.put-back"
+          }
+        }
+      ]
+    }
+  },
+  "realSocketsAndPipes": {
+    "findings": [
+      [
+        "temp.old-files",
+        "private/tmp/plain.log"
+      ]
+    ],
+    "leftOut": [
+      [
+        "temp.left-out.special",
+        2
+      ]
+    ],
+    "outcomes": [
+      [
+        "private/tmp/plain.log",
+        {
+          "kind": "skipped",
+          "reason": {
+            "kind": "kind-changed"
+          }
+        }
+      ]
+    ]
+  },
+  "realTimesKept": {
+    "findings": [],
+    "leftOut": [
+      [
+        "temp.left-out.recent",
+        1
+      ]
+    ]
+  },
+  "realTimesLater": {
+    "findings": [
+      [
+        "temp.old-files",
+        "private/var/folders/xx/sandbox/T/unpacked"
+      ]
+    ],
+    "leftOut": []
+  },
+  "restoredAtLaunch": {
+    "rescan": {
+      "findings": [
+        [
+          "temp.old-files",
+          "private/tmp/old-build.log"
+        ],
+        [
+          "temp.old-files",
+          "private/var/folders/xx/sandbox/T/node-compile-cache"
+        ],
+        [
+          "temp.old-files",
+          "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+        ]
+      ],
+      "leftOut": [
+        [
+          "temp.left-out.recent",
+          1
+        ],
+        [
+          "temp.left-out.system",
+          1
+        ]
+      ]
+    },
+    "restored": {
+      "findings": [],
+      "leftOut": []
+    }
+  },
+  "storageMap": {
+    "explained": 131072,
+    "places": [
+      "core.place.shared-temp.name",
+      "core.place.user-temp.name"
+    ]
+  }
+}

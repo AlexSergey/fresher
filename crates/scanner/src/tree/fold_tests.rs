@@ -17,6 +17,8 @@ fn entry(kind: EntryKind, allocated: u64) -> RawEntry {
         sizes: Sizes::complete(ByteSize::new(allocated), ByteSize::new(allocated)),
         clone: None,
         modified: None,
+        changed: None,
+        accessed: None,
         cloud_only: false,
         access: EntryAccess::default(),
         error: None,

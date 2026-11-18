@@ -1,16 +1,18 @@
 //! The arena: every node in one `Vec`, every name in one buffer, linked by 32-bit indices.
 
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Component, Path, PathBuf};
 
-use fresher_core::{Completeness, EntryFacts, EntryKind, FolderIdentity, Timestamp, Unreadable};
+use fresher_core::{Completeness, EntryFacts, EntryKind, FolderIdentity, Inside, Timestamp, Unreadable};
 
 use crate::tree::TreeError;
 use crate::tree::access::NodeAccess;
 use crate::tree::links::{LinkSet, Member};
 use crate::tree::names::{NameRef, Names};
-use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums};
+use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums, time_bits, time_of};
+use crate::tree::times::{Stamp, Times};
 
 /// A scan root: its node and the identity its folder had when the walk began.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -25,6 +27,11 @@ pub(crate) struct Tree {
     nodes: Vec<Node>,
     names: Names,
     hits: Vec<Hit>,
+    /// The status change and the access of the nodes with hits, as a node keeps a time (`i64::MIN` for none): most
+    /// hits are files, so this stays two numbers a node.
+    times: HashMap<NodeIndex, [i64; 2]>,
+    /// The inside of the folders claimed whole.
+    insides: HashMap<NodeIndex, Inside>,
     roots: Vec<Root>,
     links: LinkSet,
     clones: LinkSet,
@@ -109,6 +116,32 @@ impl Tree {
     pub(crate) fn set_modified(&mut self, index: NodeIndex, modified: Option<Timestamp>) -> Result<(), TreeError> {
         self.node_mut(index)?.set_modified(modified);
         Ok(())
+    }
+
+    /// Records the times of the node's entry, for its matches; allowed on a frozen tree, as its modification time.
+    pub(crate) fn set_times(&mut self, index: NodeIndex, times: Times) -> Result<(), TreeError> {
+        self.node(index).ok_or(TreeError::NoSuchNode)?;
+        self.times.insert(index, [time_bits(times.changed), time_bits(times.accessed)]);
+        Ok(())
+    }
+
+    /// Records what the folder claimed whole holds; allowed on a frozen tree, as its modification time.
+    pub(crate) fn set_inside(&mut self, index: NodeIndex, inside: Option<Inside>) -> Result<(), TreeError> {
+        self.node(index).ok_or(TreeError::NoSuchNode)?;
+        match inside {
+            Some(inside) => self.insides.insert(index, inside),
+            None => self.insides.remove(&index),
+        };
+        Ok(())
+    }
+
+    /// The times and the inside recorded for the node; nothing known when none were.
+    pub(crate) fn stamp(&self, index: NodeIndex) -> Stamp {
+        let times = self.times.get(&index).map_or(Times::NONE, |&[changed, accessed]| Times {
+            changed: time_of(changed),
+            accessed: time_of(accessed),
+        });
+        Stamp { times, inside: self.insides.get(&index).copied() }
     }
 
     /// Records the access of the node's entry; allowed on a frozen tree, which a rescan copies into a new one.
@@ -208,6 +241,8 @@ impl Tree {
         self.nodes.shrink_to_fit();
         self.names.shrink_to_fit();
         self.hits.shrink_to_fit();
+        self.times.shrink_to_fit();
+        self.insides.shrink_to_fit();
         self.roots.shrink_to_fit();
         self.links.shrink_to_fit();
         self.clones.shrink_to_fit();
@@ -288,6 +323,8 @@ impl Tree {
         self.nodes.capacity() * size_of::<Node>()
             + self.names.heap_bytes()
             + self.hits.capacity() * size_of::<Hit>()
+            + self.times.capacity() * size_of::<(NodeIndex, [i64; 2])>()
+            + self.insides.capacity() * size_of::<(NodeIndex, Inside)>()
             + self.roots.capacity() * size_of::<Root>()
             + self.links.heap_bytes()
             + self.clones.heap_bytes()

@@ -1,14 +1,16 @@
 use std::fmt::Write as _;
 use std::path::Path;
+use std::time::SystemTime;
 
-use fresher_core::{DangerLevel, SkipCode};
-use fresher_testing::AppBundle;
+use fresher_core::{DangerLevel, SkipCode, Timestamp};
+use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
 use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
-/// where the storage map shows it; then the command that opens the app on the sandbox at `sandbox`.
-pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path) -> String {
+/// its apps, the facts its files state (which Finder never shows; times counted from `now`), its left-outs and where
+/// the storage map shows it; then the command that opens the app on the sandbox at `sandbox`.
+pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> String {
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
     );
@@ -25,6 +27,9 @@ pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path) -> String {
             }
             for app in case.running_elsewhere() {
                 let _ = writeln!(text, "  - Open, not installed: {}.", app.name);
+            }
+            for (path, stated) in case.tree().stated(now).unwrap_or_default() {
+                let _ = writeln!(text, "  - `{}` stated: {}.", path.display(), stated_sentence(&stated, now));
             }
             for left_out in case.left_out() {
                 let _ = writeln!(text, "  - {}.", left_out_sentence(left_out));
@@ -64,6 +69,45 @@ fn installed(app: &AppBundle) -> String {
 /// crate has no dictionary to turn into the module's texts.
 fn left_out_sentence(left_out: &LeftOutExpectation) -> String {
     format!("Under '{}', {} left out: {}", left_out.category().as_str(), left_out.items(), left_out.reason().as_str())
+}
+
+/// What a path states instead of having it, in words: its kind, owner, flags and times.
+fn stated_sentence(stated: &Stated, now: SystemTime) -> String {
+    let mut parts = Vec::new();
+    parts.extend(stated.kind.map(|kind| match kind {
+        StatedKind::Socket => "a socket".to_owned(),
+        StatedKind::Pipe => "a named pipe".to_owned(),
+    }));
+    parts.extend(stated.owner.map(|owner| match owner {
+        StatedOwner::System => "owned by the system".to_owned(),
+        StatedOwner::OtherUser => "owned by another user".to_owned(),
+    }));
+    parts.extend(stated.flags.iter().map(|flag| {
+        match flag {
+            StatedFlag::UserLock => "locked",
+            StatedFlag::SystemLock => "locked by the system",
+            StatedFlag::NoUnlink => "not removable",
+            StatedFlag::Restricted => "guarded by the system",
+        }
+        .to_owned()
+    }));
+    parts.extend(stated.changed.map(|time| format!("changed {}", when(time, now))));
+    parts.extend(stated.accessed.map(|time| format!("last read {}", when(time, now))));
+    parts.join(", ")
+}
+
+/// `time` from `now`: "30 days ago", "2 hours ago", "90 seconds ago", or "in 2 days" after it.
+fn when(time: Timestamp, now: SystemTime) -> String {
+    let now = Timestamp::from_system_time(now).secs();
+    let (seconds, after) = if time.secs() > now { (time.secs() - now, true) } else { (now - time.secs(), false) };
+    let (count, unit) = match seconds {
+        0 => return "now".into(),
+        _ if seconds % 86_400 == 0 => (seconds / 86_400, "day"),
+        _ if seconds % 3_600 == 0 => (seconds / 3_600, "hour"),
+        _ => (seconds, "second"),
+    };
+    let unit = if count == 1 { unit.to_owned() } else { format!("{unit}s") };
+    if after { format!("in {count} {unit}") } else { format!("{count} {unit} ago") }
 }
 
 /// Where the overview's by-place view shows the case's files.
@@ -133,6 +177,10 @@ const fn code_name(code: SkipCode) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    fn now() -> std::time::SystemTime {
+        std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(fresher_testing::FIXTURE_NOW)
+    }
+
     const CASES: &str = r#"
 feature = "trial"
 
@@ -179,7 +227,7 @@ reason = "in-use"
 
         #[test]
         fn a_negative_names_only_its_top_paths() {
-            let text = checklist(&[CaseFile::parse(CASES).unwrap()], Path::new("/sandbox"));
+            let text = checklist(&[CaseFile::parse(CASES).unwrap()], Path::new("/sandbox"), super::now());
 
             assert!(text.contains(
                 "never offered: `home/work/fresher-trial-cache2`, `home/other.bin`; still there after the cleanup."
@@ -233,6 +281,26 @@ reason = "in-use"
         use crate::expected::checklist;
 
         #[test]
+        fn a_stated_fact_is_named_under_its_case() {
+            let cases = CASES.replace(
+                "path = \"home/other.bin\"\n",
+                "path = \"home/other.bin\"\nowner = \"system\"\nchanged = \"30d\"\n\
+                 [[case.file]]\npath = \"private/tmp/sock\"\nkind = \"socket\"\nflags = [\"no-unlink\", \"user-lock\"]\n\
+                 accessed = \"-2h\"\n[[case.dir]]\npath = \"private/tmp/theirs\"\nowner = \"other-user\"\nchanged = \"90s\"\n",
+            );
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+
+            for line in [
+                "  - `private/tmp/theirs` stated: owned by another user, changed 90 seconds ago.",
+                "  - `home/other.bin` stated: owned by the system, changed 30 days ago.",
+                "  - `private/tmp/sock` stated: a socket, locked, not removable, last read in 2 hours.",
+            ] {
+                assert!(text.lines().any(|found| found == line), "{line}\n{text}");
+            }
+        }
+
+        #[test]
         fn the_checklist_says_where_the_map_shows_it() {
             let cases = CASES
                 .replace(
@@ -244,7 +312,7 @@ reason = "in-use"
                     "after-cleanup = \"in-trash\"\n[case.map]\npart = \"explained\"\n",
                 );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"));
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> =
                 text.lines().filter(|line| line.starts_with("- [ ] ") || line.starts_with("  - ")).collect();
@@ -269,7 +337,7 @@ reason = "in-use"
                  name = \"Plain\"\n[[case.running]]\nname = \"CLion\"\nbundle-ids = [\"com.jetbrains.CLion\"]\n",
             );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"));
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert_eq!(
@@ -290,7 +358,7 @@ reason = "in-use"
                  reason = \"trial.error.failed\"\nitems = 2\n",
             );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"));
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert_eq!(lines, ["  - Under 'trial.caches', 2 left out: trial.error.failed."]);
@@ -298,7 +366,7 @@ reason = "in-use"
 
         #[test]
         fn the_checklist_lists_every_case_negatives_first() {
-            let text = checklist(&[CaseFile::parse(CASES).unwrap()], Path::new("/tmp/sandbox/trial"));
+            let text = checklist(&[CaseFile::parse(CASES).unwrap()], Path::new("/tmp/sandbox/trial"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("- [ ] ")).collect();
             assert_eq!(

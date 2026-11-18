@@ -1,5 +1,7 @@
 //! Loading the cached tree of a scope and checking that it is of the scan asked for.
 
+use std::path::PathBuf;
+
 use fresher_core::{FullScanReason, JournalGap, ScanCache};
 
 use crate::codec::decode::decode;
@@ -42,12 +44,17 @@ impl Cached {
     }
 }
 
+/// Whether the cache is of `scope`. A restore compares the scan roots only: it emits nothing inside a place, so a
+/// place gone missing since does not refuse it.
 fn check(tree: &Tree, header: &Header, scope: &Scope, purpose: Use) -> Result<(), FullScanReason> {
-    let paths = header.roots.iter().map(|root| &root.path);
-    if !paths.eq(scope.roots.iter().map(|root| &root.path)) || tree.roots().len() != scope.roots.len() {
+    let compared = |path: &PathBuf| purpose == Use::Rescan || !scope.places.contains(path);
+    let cached: Vec<_> = header.roots.iter().filter(|root| compared(&root.path)).collect();
+    let asked: Vec<_> = scope.roots.iter().filter(|root| compared(&root.path)).collect();
+    let same_paths = cached.iter().map(|root| &root.path).eq(asked.iter().map(|root| &root.path));
+    if !same_paths || tree.roots().len() != header.roots.len() {
         return Err(FullScanReason::OtherRoots);
     }
-    if header.roots.iter().zip(&scope.roots).any(|(cached, asked)| cached.volume != asked.volume) {
+    if cached.iter().zip(&asked).any(|(cached, asked)| cached.volume != asked.volume) {
         return Err(FullScanReason::OtherVolume);
     }
     if header.avoid != scope.avoid {

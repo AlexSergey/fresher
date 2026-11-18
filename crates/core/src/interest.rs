@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::{EntryFacts, KnownFolder, ModuleId, Sizes, Timestamp};
+use crate::{EntryFacts, Inside, KnownFolder, ModuleId, Sizes, Timestamp};
 
 /// One thing a module wants the walk to report.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -139,6 +139,8 @@ pub enum EntryKind {
     Folder,
     /// A symbolic link: reported, never followed.
     Symlink,
+    /// A socket, a named pipe or a device: reported as itself, never read, never a marker.
+    Other,
 }
 
 /// An entry the walk matched against one interest.
@@ -152,6 +154,16 @@ pub struct Match {
     /// The entry's size; for a `Claim::Whole` folder, everything inside it.
     pub sizes: Sizes,
     pub modified: Option<Timestamp>,
+    /// The entry's own last status change.
+    pub changed: Option<Timestamp>,
+    /// The entry's own last access; `None` for a folder, whose access time moves when the walk lists it.
+    pub accessed: Option<Timestamp>,
+    /// What a `Claim::Whole` folder holds, gathered while the walk summed it; `None` for anything else.
+    ///
+    /// `changed`, `accessed` and `inside` are read from the disk on every walk inside a walked place (`UserTemp`,
+    /// `SharedTemp`), which is always read again in full. Elsewhere a rescan copies an unchanged folder's values from
+    /// the cache, so they can be older than the disk's.
+    pub inside: Option<Inside>,
     /// Which of the interest's sibling names exist next to the entry.
     pub siblings: Vec<String>,
     /// For a `Pattern::MarkerFile` interest named `CACHEDIR.TAG`, whether the tag holds the signature; `None` for

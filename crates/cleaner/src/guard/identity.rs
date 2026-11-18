@@ -18,18 +18,23 @@ pub(crate) fn kind(metadata: &Metadata) -> EntryKind {
         EntryKind::Symlink
     } else if file_type.is_dir() {
         EntryKind::Folder
-    } else {
+    } else if file_type.is_file() {
         EntryKind::File
+    } else {
+        EntryKind::Other
     }
 }
 
-/// Check 7: `found` against the plan's identity. A rehearsal of a new plan has none yet and takes the one found;
-/// an act without one acts on nothing.
+/// Check 7: `found` against the plan's identity. A socket, a pipe or a device is never acted on, whatever was
+/// confirmed. A rehearsal of a new plan has none yet and takes the one found; an act without one acts on nothing.
 pub(super) fn check(
     planned: Option<ItemIdentity>,
     found: ItemIdentity,
     purpose: Purpose,
 ) -> Result<ItemIdentity, SkipReason> {
+    if found.kind() == EntryKind::Other {
+        return Err(SkipReason::KindChanged);
+    }
     let Some(planned) = planned else {
         return match purpose {
             Purpose::Rehearse => Ok(found),
@@ -79,6 +84,15 @@ mod tests {
 
             assert_eq!(check(Some(FILE), folder, Purpose::Act), Err(SkipReason::KindChanged));
             assert_eq!(check(Some(FILE), link, Purpose::Act), Err(SkipReason::KindChanged));
+        }
+
+        #[test]
+        fn a_socket_a_pipe_or_a_device_is_refused_whatever_was_confirmed() {
+            let other = ItemIdentity::new(1, 2, EntryKind::Other);
+
+            assert_eq!(check(Some(FILE), other, Purpose::Act), Err(SkipReason::KindChanged));
+            assert_eq!(check(Some(other), other, Purpose::Act), Err(SkipReason::KindChanged));
+            assert_eq!(check(None, other, Purpose::Rehearse), Err(SkipReason::KindChanged));
         }
 
         #[test]

@@ -14,9 +14,9 @@ mod tests {
 
     use crate::{
         Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CommandError, Completeness,
-        DangerLevel, Ended, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotScanned, PartKind, PlaceName,
-        RemainderReason, Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey,
-        ToolId, TrashState, VolumeMap,
+        DangerLevel, Ended, KnownFolder, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotScanned, PartKind, Place,
+        PlaceName, RemainderReason, Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextArg,
+        TextKey, ToolId, TrashState, VolumeMap,
     };
 
     use crate::cleanup::outcome_sample;
@@ -131,7 +131,11 @@ mod tests {
         let kinds = [MountKind::Internal, MountKind::External, MountKind::Network].map(MountKind::text_key);
         let notes = volume_notes().changed_note().into_iter().chain(purgeable_note().map(|note| note.key().clone()));
         let not_scanned = NotScanned::ALL.map(NotScanned::text_key);
-        parts.chain(reasons).chain(trash).chain(kinds).chain(notes).chain(not_scanned).collect()
+        let walked = KnownFolder::ALL
+            .into_iter()
+            .filter(|folder| folder.is_walked_place())
+            .map(|folder| Place { folder, path: std::path::PathBuf::new() }.name_key());
+        parts.chain(reasons).chain(trash).chain(kinds).chain(notes).chain(not_scanned).chain(walked).collect()
     }
 
     fn volume_notes() -> VolumeMap {

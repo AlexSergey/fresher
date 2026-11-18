@@ -1,0 +1,52 @@
+# A home for the temp module where everything in the user's temporary folder changed recently, so nothing is offered:
+# a fresh file, a folder unpacked with 2000-day-old modification times whose status change is the build's (a file
+# written now has a status change of now; nothing is stated), an old folder with one file changed yesterday, and an
+# old file read yesterday. Every item is left out as recent. Times count back from `FIXTURE_NOW`.
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/fresh.tmp"
+size = 4096
+age = "2h"
+changed = "2h"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/unpacked/README"
+size = 2048
+age = "2000d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/unpacked/lib/data.bin"
+size = 65536
+age = "2000d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/unpacked/lib"
+age = "2000d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/unpacked"
+age = "2000d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/build/main.o"
+size = 8192
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/build/out.o"
+size = 8192
+age = "30d"
+changed = "1d"
+
+[[dir]]
+path = "private/var/folders/xx/fixture/T/build"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "private/var/folders/xx/fixture/T/read.dat"
+size = 1024
+age = "30d"
+changed = "30d"
+accessed = "1d"

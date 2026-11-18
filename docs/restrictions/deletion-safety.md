@@ -62,7 +62,11 @@ The app deletes files from a real person's disk. These rules hold in every versi
 - **Enforced by:** the scanner lists a link as itself and never follows it (`crates/scanner/tests/reference.rs`). The
   cleaner's checks 2, 3 and 5: an item strictly inside a root by components, refused by the protection list
   (`fresher-macos`'s `protection`, `crates/macos/src/protection.rs`: `/System`, `/usr` but `/usr/local`, `/bin`,
-  `/sbin`, `/private/var/db`, every other home, the Trash; both forms of the path), and opened with `O_NOFOLLOW_ANY`;
+  `/sbin`, `/private/var/db`, every other home, the Trash; `/private/var/folders` but the user's own temporary folder
+  `<xx>/<hash>/T` (checked to be exactly that shape, `is_user_temp`), whose `TemporaryItems` stays protected;
+  `/private/var/tmp`, `/private/var/vm`, `/.DocumentRevisions-V100` and `~/Library/Autosave Information`; the user's
+  `T` and `/private/tmp` are whole, so only an item inside them can go, never the folder; both forms of the path),
+  and opened with `O_NOFOLLOW_ANY`;
   a delete and an emptying act beneath held folders (`fresher-macos`'s `beneath`); check 8 refuses what the system's
   flags protect (SIP's `restricted`, the immutable flags). A tool removal runs its program with fixed arguments
   through `CommandRunner`, never `-f` or `--force` (`remove/tool.rs`, `guard/mod.rs`). Tests: `paths.rs`,
@@ -106,8 +110,18 @@ The app deletes files from a real person's disk. These rules hold in every versi
 ## Unknown is not junk
 
 - **Rule:** a rule claims a path only when it can tell what it is. Unrecognized space is shown, never offered as junk.
-- **Why:** rule 1 of [`../rules.md`](../rules.md): a false positive is worse than a missed gigabyte.
-- **Enforced by:** every rule's negative tests.
+  **The one exception** (plan [017](../plans/017-temp-files/readme.md), decision 6): a top-level item of the user's own
+  temporary folder (`$TMPDIR`) or the user's own item in `/private/tmp` is claimed by the place's contract whatever
+  its name — macOS itself removes anything there after three days — and offered only after every row of the `temp`
+  module's decision: not restored, no lock name, no socket or pipe, the user's and unflagged, not locked, the open
+  apps listed and none named by it, read in full, and unchanged for more than the setting's days
+  ([`../categories/temp-old-files.md`](../categories/temp-old-files.md)). Nowhere else does a name the app cannot
+  read count.
+- **Why:** rule 1 of [`../rules.md`](../rules.md): a false positive is worse than a missed gigabyte. The exception
+  holds because the place's contract, not the name, says what the item is: working files that the system clears.
+- **Enforced by:** every rule's negative tests; for the exception, the `temp` module's decision tests
+  (`modules/temp/src/decide.rs`), its fixtures and its sandbox case file (`fixtures/sandboxes/temp.toml`), and the
+  protection list above (nothing outside the two places).
 
 ## Settings never weaken deletion safety
 

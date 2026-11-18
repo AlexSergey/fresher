@@ -5,6 +5,7 @@ pub(crate) mod beneath;
 pub(crate) mod bulk;
 #[cfg(any(test, feature = "fixtures"))]
 pub(crate) mod clone;
+pub(crate) mod confstr;
 pub(crate) mod fsevents;
 pub(crate) mod iopolicy;
 pub(crate) mod libproc;

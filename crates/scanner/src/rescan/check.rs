@@ -40,7 +40,18 @@ pub(crate) fn check(
         };
         let state = walk.matcher.root_state(&path);
         let root_device = root.identity.device;
-        jobs.push(Job { node, path, identity, state, opaque: None, root_device, parent_siblings: None, is_root });
+        let times = tree.stamp(node).times;
+        jobs.push(Job {
+            node,
+            path,
+            identity,
+            state,
+            opaque: None,
+            root_device,
+            parent_siblings: None,
+            is_root,
+            times,
+        });
     }
     for report in walk.read_all(jobs, cancel)? {
         let same = match &report.body {

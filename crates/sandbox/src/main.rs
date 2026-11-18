@@ -52,11 +52,12 @@ fn run(args: impl Iterator<Item = OsString>) -> Result<(), String> {
 }
 
 /// The real Mac's protection list for `home`, with the data folders of both the release app and the development
-/// build.
+/// build, and the user's own temporary folder when the system names it.
 fn real_protection(home: &Path) -> Result<Protection, ProtectionError> {
+    let user_temp = fresher_macos::user_temp_dir().ok();
     let [release, development] = APP_IDENTIFIERS.map(|identifier| {
         let data_folder = home.join("Library").join("Application Support").join(identifier);
-        fresher_macos::protection(home, &data_folder, None)
+        fresher_macos::protection(home, &data_folder, None, user_temp.as_deref())
     });
     release?.joined(&development?)
 }

@@ -1,6 +1,7 @@
 //! The composition root: the real adapters, the modules, and the engine they make.
 
 use std::ffi::OsString;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,13 +10,13 @@ use std::time::Duration;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, KnownFolders, Module, ModuleId, Protection, ProtectionError, RunningApps,
-    SchemaError, SystemPorts, Volumes,
+    AccessProbe, Build, Clock, CommandRunner, FolderReader, KnownFolders, Module, ModuleId, Protection,
+    ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 use fresher_macos::{
-    MacChangeJournal, MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, io_policy, places_that_prompt,
-    protection,
+    MacChangeJournal, MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, io_policy, is_user_temp,
+    places_that_prompt, protection, user_temp_dir,
 };
 use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
@@ -40,11 +41,13 @@ pub(crate) enum ComposeError {
     Schema(#[from] SchemaError),
     /// Without its own bundle in the protected places, the app does not start.
     #[error("the app's own executable cannot be found: {0}")]
-    Executable(#[source] std::io::Error),
+    Executable(#[source] io::Error),
     #[error("the protected places cannot be listed: {0}")]
     Protection(#[from] ProtectionError),
     #[error("the jetbrains module cannot be built: {0}")]
     JetBrains(#[from] fresher_module_jetbrains::JetBrainsError),
+    #[error("the temp module cannot be built: {0}")]
+    Temp(#[from] fresher_module_temp::TempError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -137,12 +140,18 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         commands: Arc::clone(&commands),
         clock: Arc::clone(&clock),
     };
-    let cleanup = cleanup(home, &folder, cleaner, Arc::clone(&volumes))?;
+    let user_temp = user_temp();
+    let cleanup = cleanup(home, user_temp.as_deref(), &folder, cleaner, Arc::clone(&volumes))?;
+    let known_folders = match user_temp {
+        Some(temp) => MacKnownFolders::new(home).with_user_temp(temp),
+        None => MacKnownFolders::new(home),
+    };
     assemble(Shared {
         folder,
+        reader: Arc::new(MacFolderReader::new()),
         // Until plan 006 decides with the capability state, the places that prompt are never opened (docs/hacks/).
         avoid: places_that_prompt(home),
-        known_folders: Arc::new(MacKnownFolders::new(home)),
+        known_folders: Arc::new(known_folders),
         volumes,
         clock,
         running,
@@ -163,11 +172,13 @@ pub(crate) fn apply(policy: &IoPolicy) -> Result<(), ComposeError> {
     Ok(())
 }
 
-/// What the shared assembly takes, chosen apart by the normal engine and the sandbox's: the data `folder`, the
-/// places the walk never opens, the known folders (whose home is `~` of the scan roots), the ports read through, the
-/// cleanup, and the one module registered (`None`: every module of the app).
+/// What the shared assembly takes, chosen apart by the normal engine and the sandbox's: the data `folder`, the reader
+/// of the disk, the places the walk never opens, the known folders (whose home is `~` of the scan roots), the ports
+/// read through, the cleanup, and the one module registered (`None`: every module of the app).
 pub(crate) struct Shared {
     pub(crate) folder: DataFolder,
+    /// The system's bulk reader; in sandbox mode seen through the sandbox's stated facts.
+    pub(crate) reader: Arc<dyn FolderReader>,
     pub(crate) avoid: Vec<PathBuf>,
     pub(crate) known_folders: Arc<dyn KnownFolders>,
     pub(crate) volumes: Arc<dyn Volumes>,
@@ -183,8 +194,20 @@ pub(crate) struct Shared {
 
 /// The engine both paths share: the real walk of the disk over `shared`, the app's modules and its settings file.
 pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
-    let Shared { folder, avoid, known_folders, volumes, clock, running, commands, access, cleanup, only, app_search } =
-        shared;
+    let Shared {
+        folder,
+        reader,
+        avoid,
+        known_folders,
+        volumes,
+        clock,
+        running,
+        commands,
+        access,
+        cleanup,
+        only,
+        app_search,
+    } = shared;
     let options = ScannerOptions {
         standing_avoid: avoid,
         cache_body_limit: CachePolicy::DEFAULT.body_limit,
@@ -192,7 +215,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
     };
     let journal = MacChangeJournal::new().with_time_limit(JOURNAL_TIME_LIMIT);
     let walk = Scanner::new(
-        Arc::new(MacFolderReader::new()),
+        reader,
         volumes,
         Arc::new(journal),
         Arc::new(FileScanCache::new(folder.clone())),
@@ -216,23 +239,51 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
 }
 
 /// What a cleanup goes through: this build's cleaner, acting as the user who runs the app, kept from the protected
-/// places of `home` (with the app's data `folder` and its bundle), over `ports`; the journal in `folder`; and the
-/// `volumes` whose space a cleanup measures.
+/// places of `home` and `user_temp` (with the app's data `folder` and its bundle), over `ports`; the journal in
+/// `folder`; and the `volumes` whose space a cleanup measures.
 pub(crate) fn cleanup(
     home: &Path,
+    user_temp: Option<&Path>,
     folder: &DataFolder,
     ports: CleanerPorts,
     volumes: Arc<dyn Volumes>,
 ) -> Result<CleanupPorts, ComposeError> {
-    let protection = real_protection(home, folder.path())?;
+    let protection = real_protection(home, folder.path(), user_temp)?;
     let cleaner = DiskCleaner::new(reach(), current_user(), home.to_path_buf(), protection, ports);
     Ok(CleanupPorts { cleaner: Arc::new(cleaner), journal: Arc::new(FileCleanupJournal::open(folder)), volumes })
 }
 
-/// The protected places of this Mac for `home`, with the app's `data_folder` and, in a built app, its bundle.
-pub(crate) fn real_protection(home: &Path, data_folder: &Path) -> Result<Protection, ComposeError> {
+/// The protected places of this Mac for `home`, with the app's `data_folder`, in a built app its bundle, and the
+/// user's own temporary folder when it is known ([`user_temp`]).
+pub(crate) fn real_protection(
+    home: &Path,
+    data_folder: &Path,
+    user_temp: Option<&Path>,
+) -> Result<Protection, ComposeError> {
     let executable = std::env::current_exe().map_err(ComposeError::Executable)?;
-    Ok(protection(home, data_folder, bundle_of(&executable))?)
+    Ok(protection(home, data_folder, bundle_of(&executable), user_temp)?)
+}
+
+/// The user's own temporary folder, read once from the system's configuration and made canonical (`/var` is a link
+/// to `/private/var`). None when it cannot be read: the folder then matches nothing and stays protected.
+pub(crate) fn user_temp() -> Option<PathBuf> {
+    checked_user_temp(user_temp_dir().and_then(std::fs::canonicalize))
+}
+
+/// The canonical `read` when it is shaped as a user's own temporary folder (`/private/var/folders/<xx>/<hash>/T`,
+/// [`is_user_temp`]); any other answer is refused (logged).
+fn checked_user_temp(read: io::Result<PathBuf>) -> Option<PathBuf> {
+    match read {
+        Ok(temp) if is_user_temp(&temp) => Some(temp),
+        Ok(temp) => {
+            tracing::warn!(folder = %temp.display(), "the user's temporary folder is not where macOS keeps it");
+            None
+        }
+        Err(error) => {
+            tracing::warn!(%error, "the user's temporary folder is unknown");
+            None
+        }
+    }
 }
 
 /// How far the cleaner of a release build reaches: the real disk. The only place that makes the token.
@@ -273,7 +324,10 @@ fn registry_of(only: Option<ModuleId>) -> Result<Registry, ComposeError> {
 
 /// Every module of the app, in a fixed order: the feature modules of every build, then the dev-only ones.
 fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
-    let modules: Vec<Box<dyn Module>> = vec![Box::new(fresher_module_jetbrains::JetBrainsModule::new()?)];
+    let modules: Vec<Box<dyn Module>> = vec![
+        Box::new(fresher_module_jetbrains::JetBrainsModule::new()?),
+        Box::new(fresher_module_temp::TempModule::new()?),
+    ];
     #[cfg(debug_assertions)]
     let modules = {
         let mut modules = modules;
@@ -289,7 +343,7 @@ mod tests {
     mod negative {
         use std::path::Path;
 
-        use crate::compose::{ComposeError, IoPolicy, bundle_of, engine, engine_with};
+        use crate::compose::{ComposeError, IoPolicy, bundle_of, checked_user_temp, engine, engine_with};
 
         #[test]
         fn a_relative_data_folder_is_refused() {
@@ -309,6 +363,23 @@ mod tests {
             let error = engine_with(folder.path(), home.path(), &refusing);
 
             assert!(matches!(error, Err(ComposeError::IoPolicy(_))), "{error:?}");
+        }
+
+        #[test]
+        fn a_user_temp_outside_the_users_folders_or_unread_is_refused() {
+            for path in [
+                "/private/var/folders",
+                "/private/var/folders/xx",
+                "/private/var/folders/xx/abc",
+                "/private/var/folders/xx/abc/C",
+                "/private/var/folders/xx/abc/T/TemporaryItems",
+                "/private/tmp/T",
+                "/var/folders/xx/abc/T",
+                "/Users/me/T",
+            ] {
+                assert_eq!(checked_user_temp(Ok(path.into())), None, "{path}");
+            }
+            assert_eq!(checked_user_temp(Err(std::io::Error::other("unread"))), None);
         }
 
         #[test]
@@ -348,9 +419,24 @@ mod tests {
     }
 
     mod positive {
-        use std::path::Path;
+        use std::path::{Path, PathBuf};
 
-        use crate::compose::{bundle_of, engine};
+        use crate::compose::{bundle_of, checked_user_temp, engine, user_temp};
+
+        #[test]
+        fn the_user_temp_is_kept_inside_the_users_folders() {
+            let temp = PathBuf::from("/private/var/folders/xx/abc/T");
+
+            assert_eq!(checked_user_temp(Ok(temp.clone())), Some(temp));
+        }
+
+        #[test]
+        fn this_macs_user_temp_is_canonical() {
+            let temp = user_temp().unwrap();
+
+            assert!(temp.starts_with("/private/var/folders"), "{}", temp.display());
+            assert!(temp.ends_with("T"), "{}", temp.display());
+        }
 
         #[test]
         fn the_bundle_is_the_outermost_app_around_the_executable() {
@@ -372,7 +458,7 @@ mod tests {
         fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             let expected: &[&str] =
-                if cfg!(debug_assertions) { &["jetbrains", "demo", "trial"] } else { &["jetbrains"] };
+                if cfg!(debug_assertions) { &["jetbrains", "temp", "demo", "trial"] } else { &["jetbrains", "temp"] };
 
             let engine = engine(folder.path(), home.path()).unwrap();
 

@@ -22,8 +22,8 @@ pub struct Generated {
 }
 
 /// Writes the case files `files` into the sandbox folder `into`: the marker (the signature, then a line naming the
-/// case files), the layout, every case's tree (its ages counted back from `now`), `EXPECTED.md` and `world.toml` (`now`
-/// and the running apps the cases declare).
+/// case files), the layout, every case's tree (its ages counted back from `now`), `EXPECTED.md` and `world.toml` (`now`,
+/// the running apps the cases declare and the facts their files state).
 ///
 /// Refuses a folder that `real_protection` (the real Mac's list) refuses, that is a link or reached through one inside
 /// the sandbox, or that is not empty and holds no valid marker of `user`. On a sandbox it made before it tops up:
@@ -49,8 +49,8 @@ pub fn generate(
         FixtureError::PathThroughLink { path } => SandboxError::ThroughLink { path },
         source => SandboxError::Tree { source },
     })?;
-    write_plain(&sandbox.checklist(), &checklist(files, sandbox.path()))?;
-    write_plain(&sandbox.world(), &World::of(files, now).text()?)?;
+    write_plain(&sandbox.checklist(), &checklist(files, sandbox.path(), now))?;
+    write_plain(&sandbox.world(), &World::of(files, now)?.text()?)?;
     let strangers = strangers(sandbox.path(), &own)?;
     Ok(Generated { sandbox, strangers })
 }
@@ -466,6 +466,16 @@ name = "Mine"
                     ("home/work/.fresher-sandbox", EntryKind::File),
                     ("home/work/fresher-trial-cache", EntryKind::Dir),
                     ("home/work/fresher-trial-cache/blob.bin", EntryKind::File),
+                    ("private", EntryKind::Dir),
+                    ("private/tmp", EntryKind::Dir),
+                    ("private/var", EntryKind::Dir),
+                    ("private/var/folders", EntryKind::Dir),
+                    ("private/var/folders/xx", EntryKind::Dir),
+                    ("private/var/folders/xx/sandbox", EntryKind::Dir),
+                    ("private/var/folders/xx/sandbox/0", EntryKind::Dir),
+                    ("private/var/folders/xx/sandbox/C", EntryKind::Dir),
+                    ("private/var/folders/xx/sandbox/T", EntryKind::Dir),
+                    ("private/var/folders/xx/sandbox/X", EntryKind::Dir),
                     ("world.toml", EntryKind::File),
                 ]
             );
