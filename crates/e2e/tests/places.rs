@@ -3,13 +3,15 @@
 //! and the real `DiskCleaner` (`Reach::Sandbox`, a fake Trash next to them).
 
 #[cfg(test)]
-mod support {
+#[path = "support/events.rs"]
+mod events;
+
+#[cfg(test)]
+mod home {
     use std::fs;
     use std::os::unix::fs::MetadataExt as _;
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
-    use std::sync::mpsc::Receiver;
-    use std::time::Duration;
 
     use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
     use fresher_core::Cleaner as _;
@@ -27,6 +29,8 @@ mod support {
         FakeAccess, FakeChangeJournal, FakeClock, FakeCommandRunner, FakeInstalledApps, FakeKnownFolders,
         FakeOpenFiles, FakeRunningApps, FakeSystemUi, FakeTrash, FakeVolumes, FixtureTree,
     };
+
+    use crate::events::until;
 
     const TEXTS: &str = r#"{
         "temp.items.name": "Temporary items",
@@ -171,19 +175,6 @@ mod support {
         }
     }
 
-    /// Every event until `is_last`; fails after 30 s instead of hanging.
-    pub(crate) fn until(events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool) -> Vec<Event> {
-        let mut seen = Vec::new();
-        loop {
-            let event = events.recv_timeout(Duration::from_secs(30)).unwrap();
-            let last = is_last(&event);
-            seen.push(event);
-            if last {
-                return seen;
-            }
-        }
-    }
-
     fn engine(root: &Path, temp: &Path, data: &Path, folder: KnownFolder) -> (Engine, Arc<DiskCleaner>) {
         let clock = Arc::new(FakeClock::at(NOW));
         let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
@@ -244,7 +235,7 @@ mod negative {
     use fresher_core::{Event, KnownFolder, Rehearsal, ScanKind, SettingUpdate, SettingValue, SkipReason};
     use fresher_engine::ScanMode;
 
-    use crate::support::Places;
+    use crate::home::Places;
 
     fn kind(events: &[Event]) -> ScanKind {
         events
@@ -313,7 +304,8 @@ mod positive {
     use fresher_engine::ScanMode;
     use serde_json::json;
 
-    use crate::support::{Places, until};
+    use crate::events::until;
+    use crate::home::Places;
 
     #[test]
     fn the_place_beside_the_home_is_walked_shown_after_it_and_cleaned() {

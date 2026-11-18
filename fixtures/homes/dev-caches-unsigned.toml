@@ -1,0 +1,49 @@
+# A home for the dev-caches module where every place holds its tool's files but not the sign the tool writes there,
+# so nothing is offered and nothing is left out: npm's cache without its index, Yarn's of another layout, Gradle's
+# caches with an invalid tag (43 bytes of nothing), Cargo's registry with no tag, Homebrew's downloads with no `api`
+# beside them, pip's with `wheels` only, Go's with its `README` only, CocoaPods' with `Specs` only, and a derived data
+# project without Xcode's `info.plist`.
+
+[[file]]
+path = ".npm/_cacache/content-v2/sha512/ab/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Yarn/v5/npm-x/package.json"
+size = 512
+
+[[file]]
+path = ".gradle/caches/CACHEDIR.TAG"
+size = 43
+
+[[file]]
+path = ".gradle/caches/modules-2/x.jar"
+size = 8192
+
+[[file]]
+path = ".cargo/registry/cache/index.crates.io-x/a-1.0.crate"
+size = 8192
+
+[[file]]
+path = ".cargo/registry/src/index.crates.io-x/a-1.0/src/lib.rs"
+size = 1024
+
+[[file]]
+path = "Library/Caches/Homebrew/downloads/0123abcd--x-1.0.bottle.tar.gz"
+size = 8192
+
+[[file]]
+path = "Library/Caches/pip/wheels/ab/x-1.0.whl"
+size = 8192
+
+[[file]]
+path = "Library/Caches/go-build/README"
+size = 256
+
+[[file]]
+path = "Library/Caches/CocoaPods/Specs/x.podspec.json"
+size = 512
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Build/x"
+size = 4096

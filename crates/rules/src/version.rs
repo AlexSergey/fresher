@@ -193,6 +193,7 @@ name = "*.lock"
             accessed: None,
             inside: None,
             siblings: vec![],
+            holds: Vec::new(),
             marker: None,
             facts: fresher_core::EntryFacts::REMOVABLE,
         }

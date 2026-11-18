@@ -63,6 +63,13 @@ mod negative {
     }
 
     #[test]
+    fn a_body_of_tree_format_5_is_refused() {
+        let mut body = encode(&small_tree(), &header()).unwrap();
+        body[..2].copy_from_slice(&5_u16.to_le_bytes());
+        assert_eq!(decode(&body).err(), Some(CodecError::OtherFormat { found: 5 }));
+    }
+
+    #[test]
     fn an_overlong_varint_is_refused() {
         let mut body = handmade(1, 2, &[&file_record(0, b"a")]);
         let at = body.len() - 2;
@@ -140,7 +147,7 @@ mod positive {
     use crate::tree::access::NodeAccess;
     use crate::tree::arena::Tree;
     use crate::tree::node::Hit;
-    use crate::tree::testing::rooted;
+    use crate::tree::testing::{canonical, rooted};
 
     #[test]
     fn a_tree_survives_a_round_trip() {
@@ -150,6 +157,17 @@ mod positive {
         assert_eq!(read, header());
         assert_eq!(snapshot(&decoded), snapshot(&tree));
         assert_eq!(encode(&decoded, &header()).unwrap(), body, "a second write gives the same bytes");
+    }
+
+    #[test]
+    fn the_held_names_of_every_hit_survive_a_round_trip() {
+        let tree = small_tree();
+        let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();
+        let held = |tree: &Tree| {
+            canonical(tree).iter().flat_map(|shape| shape.hits.iter().map(|hit| hit.holds)).collect::<Vec<_>>()
+        };
+        assert_eq!(held(&decoded), held(&tree));
+        assert!(held(&tree).contains(&0b110) && held(&tree).contains(&(1 << 63)));
     }
 
     #[test]
@@ -175,7 +193,7 @@ mod positive {
     fn a_socket_a_pipe_or_a_device_keeps_its_kind_through_a_round_trip() {
         let (mut tree, root) = rooted("/r");
         let pipe = tree.add_child(root, b"pipe", EntryKind::Other).unwrap();
-        tree.add_hits(pipe, &[Hit { interest: 0, marker: None, siblings: 0 }]).unwrap();
+        tree.add_hits(pipe, &[Hit { interest: 0, marker: None, siblings: 0, holds: 0 }]).unwrap();
         tree.freeze();
 
         let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();

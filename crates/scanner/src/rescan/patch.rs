@@ -23,7 +23,7 @@ use crate::rescan::frozen::Frozen;
 use crate::tree::TreeError;
 use crate::tree::access::NodeAccess;
 use crate::tree::arena::Tree;
-use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex};
+use crate::tree::node::{Flag, Held, Hit, Node, NodeFlags, NodeIndex};
 use crate::tree::times::Times;
 use crate::walk::Walk;
 use crate::walk::boundary::Decision;
@@ -216,14 +216,18 @@ impl Builder<'_> {
         self.new.set_flags(task.new, NodeFlags::of(EntryKind::Folder))?;
         self.name_hits(&task)?;
         match body {
-            Body::Failed(error) => self.new.mark_unreadable(task.new, unreadable(error)),
+            Body::Failed(error) => {
+                let unread = self.walk.matcher.unread(self.new.hits(task.new));
+                self.new.set_held(task.new, &unread)?;
+                self.new.mark_unreadable(task.new, unreadable(error))
+            }
             Body::Folder(report) => self.apply(&task, report),
             Body::Opaque(_) => self.rewalk(task),
         }
     }
 
     fn apply(&mut self, task: &Task, report: FolderReport) -> Result<(), TreeError> {
-        let FolderReport { mut batch, children, child_siblings, .. } = report;
+        let FolderReport { mut batch, children, child_siblings, held, .. } = report;
         batch.folder = task.new;
         if let Some(fresh) = &task.fresh {
             batch.own_times = fresh.child.times;
@@ -242,6 +246,7 @@ impl Builder<'_> {
         }
         let mut created = Vec::with_capacity(batch.kept.len());
         self.new.apply(&batch, &mut created)?;
+        self.new.set_held(task.new, &held)?;
         let old_folders: HashMap<&[u8], NodeIndex> = self
             .old
             .children(task.old)
@@ -361,22 +366,29 @@ impl Builder<'_> {
     }
 
     /// The hits of a node copied as it was. Reached through a parent read again, its name hits come from that
-    /// listing already: only its marker hits are kept, with that listing's sibling names.
+    /// listing already: only its marker hits are kept, with that listing's sibling names, and its name hits get what
+    /// its own listing, not read again, holds.
     fn old_hits(&mut self, task: &Task) -> Result<(), TreeError> {
-        let hits: Vec<Hit> = match &task.fresh {
-            None => self.old.hits(task.old).to_vec(),
-            Some(fresh) => self
-                .old
-                .hits(task.old)
-                .iter()
-                .filter(|hit| self.is_marker(hit.interest))
-                .map(|hit| Hit {
-                    siblings: sibling_mask(fresh.siblings.as_deref().unwrap_or_default(), hit.interest),
-                    ..*hit
-                })
-                .collect(),
+        let Some(fresh) = &task.fresh else {
+            let hits = self.old.hits(task.old).to_vec();
+            return self.new.add_hits(task.new, &hits);
         };
-        self.new.add_hits(task.new, &hits)
+        let old = self.old.hits(task.old);
+        let hits: Vec<Hit> = old
+            .iter()
+            .filter(|hit| self.is_marker(hit.interest))
+            .map(|hit| Hit {
+                siblings: sibling_mask(fresh.siblings.as_deref().unwrap_or_default(), hit.interest),
+                ..*hit
+            })
+            .collect();
+        let held: Vec<Held> = old
+            .iter()
+            .filter(|hit| self.walk.matcher.holds_names(hit.interest))
+            .map(|hit| Held { interest: hit.interest, holds: hit.holds, marker: hit.marker })
+            .collect();
+        self.new.add_hits(task.new, &hits)?;
+        self.new.set_held(task.new, &held)
     }
 
     /// The times and the inside of a copied node with hits: its times from the listing read again when its parent was,

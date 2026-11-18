@@ -338,6 +338,7 @@ mod tests {
                 accessed: None,
                 inside: None,
                 siblings: vec![],
+                holds: Vec::new(),
                 marker: None,
                 facts: EntryFacts::REMOVABLE,
             };

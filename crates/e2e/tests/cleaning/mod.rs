@@ -2,13 +2,21 @@
 //! reference walk and cleans it through the real `DiskCleaner` (`Reach::Sandbox`, a fake Trash next to the home) and
 //! the real journal in a temporary data folder, and the reports a golden file holds.
 
+#[path = "../support/events.rs"]
+mod events;
+#[path = "../support/report.rs"]
+#[expect(
+    dead_code,
+    reason = "the cleanup home strips its journal only; the report's other helpers serve the module homes"
+)]
+mod report;
+
 use std::fs;
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
@@ -30,6 +38,8 @@ use fresher_testing::{
 use serde_json::{Value, json};
 
 use crate::support::fixtures;
+use events::until;
+use report::strip;
 
 /// The folders of the home that hold a real sandbox marker.
 const MARKED: [&str; 3] = ["home/sandbox", "home/sandbox/fresher-e2e-build", "home/protected"];
@@ -289,31 +299,6 @@ pub(crate) fn echo(view: &CleanupPlanView, method: &str) -> Confirmation {
 /// The events of a cleanup until its end.
 pub(crate) fn until_finished(events: &Receiver<Event>) -> Vec<Event> {
     until(events, |event| matches!(event, Event::CleanupFinished { .. }))
-}
-
-/// Every event until `is_last`; fails after 30 s instead of hanging.
-fn until(events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool) -> Vec<Event> {
-    let mut seen = Vec::new();
-    loop {
-        let event = events.recv_timeout(Duration::from_secs(30)).unwrap();
-        let last = is_last(&event);
-        seen.push(event);
-        if last {
-            return seen;
-        }
-    }
-}
-
-/// Removes every field named `key`, at any depth.
-fn strip(value: &mut Value, key: &str) {
-    match value {
-        Value::Object(fields) => {
-            fields.remove(key);
-            fields.values_mut().for_each(|field| strip(field, key));
-        }
-        Value::Array(items) => items.iter_mut().for_each(|item| strip(item, key)),
-        _ => {}
-    }
 }
 
 /// The real cleaner, waiting after its first item until the cleanup is cancelled: the user's Stop, at a known point.

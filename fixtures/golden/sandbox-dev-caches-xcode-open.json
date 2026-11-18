@@ -1,0 +1,240 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "dev-caches.npm",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.npm/_cacache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "dev-caches.npm",
+      "danger": "low",
+      "logical": 4608,
+      "module": "dev-caches",
+      "subject": "home/.npm/_cacache"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "dev-caches.xcode-derived-data",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "dev-caches.left-out.app-open"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 8192,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67113813,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738184363,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 122,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/content-v2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/content-v2/sha512"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/content-v2/sha512/oo"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/_cacache/content-v2/sha512/oo/o"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/index-v5"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/index-v5/oo"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/index-v5/oo/pp"
+      },
+      {
+        "kind": "file",
+        "logical_size": 512,
+        "path": "home/.Trash/_cacache/index-v5/oo/pp/o"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd/Build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd/Build/o"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd/info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 219,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 13141
+  }
+}

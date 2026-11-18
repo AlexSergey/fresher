@@ -1,0 +1,41 @@
+# The dev-caches module while Xcode is open: a derived data project is kept (its app writes there as it works), the
+# other caches go as ever. A file of its own, since the open app is shared by every case of a file; the files are named
+# apart from `dev-caches.toml`'s.
+feature = "dev-caches-xcode-open"
+module = "dev-caches"
+
+[[case]]
+name = "a project's build data is kept while Xcode is open"
+kind = "negative"
+[[case.running]]
+name = "Xcode"
+bundle-ids = ["com.apple.dt.Xcode"]
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd/info.plist"
+size = 4096
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd/Build/o"
+size = 4096
+[[case.left-out]]
+category = "dev-caches.xcode-derived-data"
+reason = "dev-caches.left-out.app-open"
+items = 1
+
+# Then the positive case.
+
+[[case]]
+name = "npm's cache still goes while Xcode is open"
+kind = "positive"
+[[case.file]]
+path = "home/.npm/_cacache/index-v5/oo/pp/o"
+size = 512
+fill = "data"
+[[case.file]]
+path = "home/.npm/_cacache/content-v2/sha512/oo/o"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.npm/_cacache"
+category = "dev-caches.npm"
+danger = "low"
+after-cleanup = "in-trash"

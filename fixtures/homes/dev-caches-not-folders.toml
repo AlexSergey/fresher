@@ -1,0 +1,31 @@
+# A home for the dev-caches module where a place holds no folder, so nothing is offered and nothing is left out: Go's
+# build cache is a file; CocoaPods' cache and a derived data project are links to folders elsewhere in the home that
+# hold the tool's sign; another derived data project is a file. The links are listed, never followed.
+
+[[file]]
+path = "Library/Caches/go-build"
+size = 4096
+
+[[symlink]]
+path = "Library/Caches/CocoaPods"
+target = "../../elsewhere/CocoaPods"
+
+[[file]]
+path = "elsewhere/CocoaPods/Pods/Release/x/x.tar.gz"
+size = 8192
+
+[[symlink]]
+path = "Library/Developer/Xcode/DerivedData/Link-defghijklmnopqrstuvwxyzabcde"
+target = "../../../../elsewhere/Link"
+
+[[file]]
+path = "elsewhere/Link/info.plist"
+size = 256
+
+[[file]]
+path = "elsewhere/Link/Build/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/File-efghijklmnopqrstuvwxyzabcdef"
+size = 256

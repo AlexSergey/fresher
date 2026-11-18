@@ -10,6 +10,10 @@
 mod support;
 
 #[cfg(test)]
+#[path = "support/tree.rs"]
+mod tree;
+
+#[cfg(test)]
 #[path = "jetbrains_home/mod.rs"]
 mod flow;
 
@@ -21,7 +25,8 @@ mod flows {
     use fresher_testing::{FakeInstalledApps, TreeReport};
     use serde_json::{Value, json};
 
-    use crate::flow::{Apps, Flow, app, because, contents, current_apps, left_out, open, select_all};
+    use crate::flow::{Apps, Flow, app, because, current_apps, left_out, open, select_all};
+    use crate::tree::contents;
 
     const PLACES: [&str; 3] = ["jetbrains.caches", "jetbrains.logs", "jetbrains.settings"];
     const SETTINGS: &str = "home/Library/Application Support/JetBrains";

@@ -192,13 +192,30 @@ impl NodeFlags {
     }
 }
 
-/// One interest that matched a node: which interest, the marker check, and which of its sibling names were present
-/// (bit `i` for the interest's `i`-th sibling).
+/// One interest that matched a node: which interest, the marker check, which of its sibling names were present
+/// (bit `i` for the interest's `i`-th sibling) and which of its held names the node's own listing holds (bit `i` for
+/// its `i`-th held name).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Hit {
     pub(crate) interest: u32,
     pub(crate) marker: Option<MarkerCheck>,
     pub(crate) siblings: u64,
+    pub(crate) holds: u64,
+}
+
+/// What a matched folder's own listing holds for one interest that names entries: the mask of its held names and,
+/// when it names a `CACHEDIR.TAG`, whether a valid one is there. It joins the folder's hit of that interest, which
+/// its parent's listing made.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Held {
+    pub(crate) interest: u32,
+    pub(crate) holds: u64,
+    pub(crate) marker: Option<MarkerCheck>,
+}
+
+/// The names of `names` whose bit is set in `mask`, in order.
+pub(crate) fn masked(names: &[String], mask: u64) -> Vec<String> {
+    (0..64_u32).zip(names).filter(|&(bit, _)| mask & (1 << bit) != 0).map(|(_, name)| name.clone()).collect()
 }
 
 /// A node: a folder or a kept entry. 72 bytes (its access takes a byte that was padding); lists and names are 32-bit

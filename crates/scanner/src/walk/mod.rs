@@ -175,6 +175,8 @@ fn tree_full(error: crate::tree::TreeError) -> WalkError {
 #[cfg(test)]
 mod facts_lens_tests;
 #[cfg(test)]
+mod holds_tests;
+#[cfg(test)]
 mod inside_tests;
 #[cfg(test)]
 mod places_tests;

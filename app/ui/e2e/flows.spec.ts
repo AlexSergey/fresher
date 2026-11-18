@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { COMMANDS } from '../src/ipc';
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
+import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
@@ -125,6 +126,30 @@ const openTemp = async (page: Page): Promise<void> => {
   await expect(heading(page, 'Temporary files')).toBeFocused();
 };
 
+// The developer caches module's own texts, as its locale file has them.
+const dev = (key: string): string => DEV_CACHES_DICTIONARY[`dev-caches.${key}`] ?? '';
+
+const NPM = dev('npm.name');
+const CARGO = dev('cargo.name');
+const GRADLE = dev('gradle.name');
+const XCODE_DATA = dev('xcode-derived-data.name');
+
+const devCachesModule = (page: Page): Locator => page.getByRole('button', { name: /^Developer caches/ });
+
+// Scans a developer caches script (Xcode closed unless said) and opens the module's page.
+const openDevCaches = async (
+  page: Page,
+  script: typeof SCRIPTS.devCaches | typeof SCRIPTS.devCachesXcodeOpen = SCRIPTS.devCaches,
+  total = '17.2 GB',
+): Promise<void> => {
+  await mockCore(page, script);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(devCachesModule(page)).toContainText(total);
+  await devCachesModule(page).click();
+  await expect(heading(page, 'Developer caches')).toBeFocused();
+};
+
 test.beforeEach(async ({ page }) => {
   await failOnCspViolation(page);
 });
@@ -239,6 +264,33 @@ test.describe('negative cases', () => {
 
     await expect(page.getByText('Enter a whole number from 7 to 30.')).toBeVisible();
     expect(await sentUpdates(page)).toBe(0);
+  });
+
+  test('the left-out lines of developer caches cannot be selected', async ({ page }) => {
+    await openDevCaches(page, SCRIPTS.devCachesXcodeOpen, '12.9 GB');
+
+    const data = page.getByRole('region', { name: XCODE_DATA });
+    await expect(data).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
+    await expect(page.getByRole('region', { name: GRADLE })).toContainText(
+      `1 item left out (35 MB): ${dev('left-out.not-yours')}`,
+    );
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await expect(data.getByRole('checkbox')).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select ${GRADLE}` }).check();
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await expect(selectionBar(page)).not.toContainText('4.3 GB');
+  });
+
+  test('an ignored cache category is in no total', async ({ page }) => {
+    await openDevCaches(page);
+
+    await page.getByRole('button', { name: `Ignore ${NPM}` }).click();
+
+    await expect(devCachesModule(page)).toContainText('8.3 GB');
+    await expect(devCachesModule(page)).not.toContainText('17.2 GB');
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page).filter({ hasText: NPM })).toHaveCount(0);
+    await expect(page.getByText('8.3 GB').first()).toBeVisible();
   });
 
   test('ignoring the temporary files module puts its findings in no total', async ({ page }) => {
@@ -825,5 +877,108 @@ test.describe('positive cases', () => {
     await expect(roots).toContainText(TEMP_DICTIONARY['core.place.user-temp.name'] ?? '');
     await expect(roots).toContainText(TEMP_DICTIONARY['core.place.shared-temp.name'] ?? '');
     await expect(roots.getByText('tmp', { exact: true })).toHaveCount(0);
+  });
+
+  test('developer caches show under Development with their size', async ({ page }) => {
+    await openDevCaches(page);
+
+    await expect(page.getByRole('navigation').getByText('Development', { exact: true })).toBeVisible();
+    await expect(devCachesModule(page)).toContainText('17.2 GB');
+    for (const name of [NPM, CARGO, GRADLE, XCODE_DATA]) {
+      await expect(page.getByRole('region', { name })).toBeVisible();
+    }
+    await expect(page.getByRole('region', { name: NPM })).toContainText('8.9 GB');
+  });
+
+  test('a developer cache category shows its danger and its five texts', async ({ page }) => {
+    await openDevCaches(page);
+
+    const npm = page.getByRole('region', { name: NPM });
+    await expect(npm).toContainText('Low');
+    await expect(page.getByRole('region', { name: XCODE_DATA })).toContainText('Safe');
+    await expect(npm).toContainText(dev('npm.what'));
+    await npm.getByText('About this category').click();
+    for (const key of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(npm).toContainText(dev(`npm.${key}`));
+    }
+  });
+
+  test('npm’s cache and a project go to the Trash and come back, the confirmation naming Low', async ({ page }) => {
+    await openDevCaches(page);
+    await page.getByRole('checkbox', { name: `Select ${NPM}` }).check();
+    await page.getByRole('checkbox', { name: `Select ${XCODE_DATA}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await expect(page.getByRole('list', { name: `The items of ${NPM}` })).toContainText(dev('title.npm'));
+    await expect(page.getByRole('list', { name: `The items of ${XCODE_DATA}` })).toContainText('Notes');
+
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await expect(dialog).toContainText('Low');
+    await expect(dialog).toContainText(dev('npm.if-removed'));
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 3 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: '_cacache' }).first();
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('ignoring npm’s cache keeps the other caches, and restoring brings it back', async ({ page }) => {
+    await openDevCaches(page);
+
+    await page.getByRole('button', { name: `Ignore ${NPM}` }).click();
+
+    await expect(page.getByRole('region', { name: NPM })).toHaveCount(0);
+    for (const name of [CARGO, GRADLE, XCODE_DATA]) {
+      await expect(page.getByRole('region', { name })).toBeVisible();
+    }
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored items/ }).click();
+    await page.getByRole('button', { name: `Restore ${NPM}` }).click();
+    await devCachesModule(page).click();
+    await expect(page.getByRole('region', { name: NPM })).toContainText('8.9 GB');
+    await expect(devCachesModule(page)).toContainText('17.2 GB');
+  });
+
+  test('ignoring the developer caches module hides them all', async ({ page }) => {
+    await openDevCaches(page);
+
+    await page.getByRole('button', { name: 'Ignore this module' }).click();
+
+    await expect(devCachesModule(page)).toContainText('Ignored');
+    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    for (const name of [NPM, CARGO, GRADLE, XCODE_DATA]) {
+      await expect(page.getByRole('region', { name })).toHaveCount(0);
+    }
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await expect(cards(page)).toHaveCount(0);
+  });
+
+  test('Settings shows the developer caches switch alone', async ({ page }) => {
+    await mockCore(page, SCRIPTS.devCaches);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: dev('enabled.label') })).toBeChecked();
+    await expect(page.getByText(dev('enabled.description'))).toBeVisible();
+    await expect(page.getByRole('spinbutton')).toHaveCount(0);
+  });
+
+  test('a project’s build data counts in Xcode’s line', async ({ page }) => {
+    await mockCore(page, SCRIPTS.devCaches);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await expect(cards(page)).toHaveCount(1);
+
+    await page.getByRole('radio', { name: 'By meaning' }).click();
+
+    const app = page.getByRole('list', { name: 'Xcode' });
+    await expect(app).toContainText('4.3 GB');
+    await page.getByRole('button', { name: 'Show what Xcode keeps' }).click();
+    await expect(page.getByRole('group', { name: 'What Xcode keeps' })).toContainText(XCODE_DATA);
   });
 });

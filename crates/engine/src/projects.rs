@@ -135,6 +135,7 @@ mod tests {
             accessed: None,
             inside: None,
             siblings: Vec::new(),
+            holds: Vec::new(),
             marker: None,
             facts: EntryFacts::default(),
         };

@@ -123,8 +123,8 @@ Numbers: the scan bench moved by −1 % to +4.6 % (within 5 %); the tree's memor
 `modules/temp` 100 % of lines; sandbox autotests 37; the temp core e2e 13 tests, stable over 150 runs; Playwright 320 of
 321 (a flake that was there before). `npm run pre-push` and the scan's time on the real Mac are for the run by hand.
 
-Open: everything in [04/02](./04-finish/02-run-and-conclusions.md); two deferred items ([the e2e homes'
-helpers](../../deferred/e2e-shared-helpers.md), [a special entry in the browse
+Open: everything in [04/02](./04-finish/02-run-and-conclusions.md); two deferred items (the e2e homes'
+helpers, done by plan 018/03/02, [a special entry in the browse
 view](../../deferred/special-entry-in-browse-view.md)); a flake under load seen before this plan, the accessibility
 gallery's part 3 in WebKit ([known issue](../../known-issues/ui-axe-gallery-part-3-webkit-timeout.md)); the parked small
 points of the design's conclusions. Fixed in the final review's wave: the rescan property test's access time ([known

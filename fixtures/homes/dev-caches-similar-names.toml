@@ -1,0 +1,106 @@
+# A home for the dev-caches module where nothing is a tool's whole cache at its default place, so nothing is offered
+# and nothing is left out: folders named like a cache beside the place (each holding the sign the place would need),
+# the tools' other stores (npm's `_npx` and `_logs`, Cargo's index, git checkouts and programs, Maven's and pnpm's
+# stores, Gradle's wrappers), their settings and credentials, Homebrew's own data with no downloads folder, and
+# derived data folders whose names are no project (`ModuleCache.noindex`, a hash too short, no hash).
+
+[[dir]]
+path = ".npm/_cacache-old/index-v5"
+
+[[file]]
+path = ".npm/_cacache-old/content-v2/sha512/ab/x"
+size = 4096
+
+[[file]]
+path = ".npm/_npx/a1b2/package.json"
+size = 512
+
+[[file]]
+path = ".npm/_logs/debug-0.log"
+size = 2048
+
+[[file]]
+path = ".npmrc"
+size = 64
+
+[[file]]
+path = "Library/Caches/Yarn2/v6/npm-x/package.json"
+size = 512
+
+# Cargo's registry carries its valid tag: only the names differ from the places.
+[[file]]
+path = ".cargo/registry/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = ".cargo/registry/cache-old/index.crates.io-x/a-1.0.crate"
+size = 8192
+
+[[file]]
+path = ".cargo/registry/index/index.crates.io-x/config.json"
+size = 128
+
+[[file]]
+path = ".cargo/git/checkouts/x-1234/abcd/lib.rs"
+size = 1024
+
+[[file]]
+path = ".cargo/bin/cargo-tool"
+size = 4096
+
+[[file]]
+path = ".cargo/credentials.toml"
+size = 64
+
+[[file]]
+path = ".m2/repository/x/x-1.0.jar"
+size = 8192
+
+[[file]]
+path = "Library/pnpm/store/v3/files/00/x"
+size = 1024
+
+[[file]]
+path = ".gradle/caches-old/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = ".gradle/caches-old/modules-2/x.jar"
+size = 8192
+
+[[file]]
+path = ".gradle/wrapper/dists/gradle-8.0-bin/x.zip"
+size = 8192
+
+[[file]]
+path = ".gradle/gradle.properties"
+size = 64
+
+[[file]]
+path = "Library/Caches/Homebrew/api/formula.jws.json"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Homebrew/Cask/x--1.0.dmg"
+size = 8192
+
+# Homebrew's top-level link to a download; no downloads folder is here.
+[[symlink]]
+path = "Library/Caches/Homebrew/x--1.0"
+target = "downloads/0123abcd--x-1.0.bottle.tar.gz"
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/ModuleCache.noindex/info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/ModuleCache.noindex/x.pcm"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-short/info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Plain/info.plist"
+size = 256

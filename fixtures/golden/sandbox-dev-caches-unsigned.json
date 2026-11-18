@@ -1,0 +1,339 @@
+{
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67150099,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738156269,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 120,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/cache/index.crates.io-u"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/registry/cache/index.crates.io-u/u-1.0.crate"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src/index.crates.io-u"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src/index.crates.io-u/u-1.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src/index.crates.io-u/u-1.0/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/registry/src/index.crates.io-u/u-1.0/src/lib.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle/caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle/caches/modules-2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.gradle/caches/modules-2/u.jar"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache/content-v2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache/content-v2/sha512"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache/content-v2/sha512/zz"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.npm/_cacache/content-v2/sha512/zz/u"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/CocoaPods"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/CocoaPods/Specs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/CocoaPods/Specs/u.podspec.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew/downloads"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Homebrew/downloads/89efabcd--u-1.0.bottle.tar.gz"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Yarn"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Yarn/v5"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Yarn/v5/npm-u"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Yarn/v5/npm-u/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/go-build"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/go-build/01"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/go-build/01/u-a"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/pip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/pip/wheels"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/pip/wheels/uu"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/pip/wheels/uu/u-1.0.whl"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Unsigned-abcdefghijklmnopqrstuvwxyzab"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Unsigned-abcdefghijklmnopqrstuvwxyzab/Build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Unsigned-abcdefghijklmnopqrstuvwxyzab/Build/u"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 41235
+  }
+}

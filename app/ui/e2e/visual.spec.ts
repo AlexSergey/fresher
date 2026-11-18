@@ -80,6 +80,19 @@ const tempPage = async (page: Page): Promise<void> => {
   );
 };
 
+// The developer caches scan with Xcode open, on the module's page: the projects left out, one Gradle folder not the
+// user's.
+const devCachesPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.devCachesXcodeOpen);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^Developer caches/ });
+  await expect(nav).toContainText('12.9 GB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Developer caches' })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Xcode build data' })).toContainText('2 items left out (4.3 GB)');
+};
+
 // Settings, with the temporary files module's number field in view.
 const tempSettings = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.temp);
@@ -226,6 +239,14 @@ test.describe('positive cases', () => {
       await expect(page.getByRole('region', { name: 'Old temporary files' })).toContainText('3 items left out (12 MB)');
 
       await looksTheSame(page, 'module-page-temp.png');
+    });
+
+    test('the page of Developer caches with its left-out lines', async ({ page }) => {
+      await devCachesPage(page);
+      await expect(page.getByRole('region', { name: "Gradle's caches" })).toContainText('1 item left out (35 MB)');
+      await page.getByRole('region', { name: 'Xcode build data' }).scrollIntoViewIfNeeded();
+
+      await looksTheSame(page, 'module-page-dev-caches.png');
     });
   });
 

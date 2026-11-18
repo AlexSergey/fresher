@@ -12,6 +12,10 @@
 mod support;
 
 #[cfg(test)]
+#[path = "support/tree.rs"]
+mod tree;
+
+#[cfg(test)]
 #[path = "temp_home/mod.rs"]
 mod flow;
 
@@ -32,9 +36,8 @@ mod flows {
     use fresher_testing::{FIXTURE_NOW, TreeReport, make_pipe};
     use serde_json::{Value, json};
 
-    use crate::flow::{
-        CATEGORY, DAY, Flow, Home, SHARED_TEMP, Setup, USER_TEMP, contents, left_out, newest_change, select_all,
-    };
+    use crate::flow::{CATEGORY, DAY, Flow, Home, SHARED_TEMP, Setup, USER_TEMP, left_out, newest_change, select_all};
+    use crate::tree::contents;
 
     /// The three old items of the flow home, relative to the sandbox, sorted.
     const OLD: [&str; 3] = [

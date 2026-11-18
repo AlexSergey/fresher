@@ -1,0 +1,472 @@
+{
+  "caches": {
+    "findings": [
+      {
+        "category": "dev-caches.cargo",
+        "danger": "low",
+        "key": {
+          "identity": "cargo-cache/cache",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Cargo"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".cargo/registry/cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".cargo/registry/cache"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.cargo-cache"
+        }
+      },
+      {
+        "category": "dev-caches.cargo",
+        "danger": "low",
+        "key": {
+          "identity": "cargo-src/src",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Cargo"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".cargo/registry/src"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1024,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".cargo/registry/src"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.cargo-src"
+        }
+      },
+      {
+        "category": "dev-caches.cocoapods",
+        "danger": "low",
+        "key": {
+          "identity": "cocoapods/CocoaPods",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "CocoaPods"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/CocoaPods"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/CocoaPods"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.cocoapods"
+        }
+      },
+      {
+        "category": "dev-caches.go-build",
+        "danger": "safe",
+        "key": {
+          "identity": "go-build/go-build",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Go"
+            }
+          },
+          "key": "dev-caches.finding.reason-build"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/go-build"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1296,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/go-build"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.go-build"
+        }
+      },
+      {
+        "category": "dev-caches.gradle",
+        "danger": "low",
+        "key": {
+          "identity": "gradle/caches",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Gradle"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".gradle/caches"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 8278,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".gradle/caches"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.gradle"
+        }
+      },
+      {
+        "category": "dev-caches.homebrew",
+        "danger": "low",
+        "key": {
+          "identity": "homebrew/downloads",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Homebrew"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/Homebrew/downloads"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Homebrew/downloads"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.homebrew"
+        }
+      },
+      {
+        "category": "dev-caches.npm",
+        "danger": "low",
+        "key": {
+          "identity": "npm/_cacache",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "npm"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".npm/_cacache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4608,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".npm/_cacache"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.npm"
+        }
+      },
+      {
+        "category": "dev-caches.pip",
+        "danger": "low",
+        "key": {
+          "identity": "pip/pip",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "pip"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/pip"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 10240,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/pip"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.pip"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "dev-caches.xcode-derived-data",
+        "danger": "safe",
+        "key": {
+          "identity": "xcode-derived-data/Demo-abcdefghijklmnopqrstuvwxyzab",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Xcode"
+            }
+          },
+          "key": "dev-caches.finding.reason-build"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 6400,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
+        },
+        "title": {
+          "args": {
+            "project": {
+              "kind": "text",
+              "value": "Demo"
+            }
+          },
+          "key": "dev-caches.title.xcode-derived-data"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "dev-caches.xcode-derived-data",
+        "danger": "safe",
+        "key": {
+          "identity": "xcode-derived-data/My-App-bcdefghijklmnopqrstuvwxyzabc",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Xcode"
+            }
+          },
+          "key": "dev-caches.finding.reason-build"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/DerivedData/My-App-bcdefghijklmnopqrstuvwxyzabc"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4352,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/DerivedData/My-App-bcdefghijklmnopqrstuvwxyzabc"
+        },
+        "title": {
+          "args": {
+            "project": {
+              "kind": "text",
+              "value": "My-App"
+            }
+          },
+          "key": "dev-caches.title.xcode-derived-data"
+        }
+      },
+      {
+        "category": "dev-caches.yarn",
+        "danger": "low",
+        "key": {
+          "identity": "yarn/Yarn",
+          "module": "dev-caches"
+        },
+        "reason": {
+          "args": {
+            "tool": {
+              "kind": "text",
+              "value": "Yarn"
+            }
+          },
+          "key": "dev-caches.finding.reason-download"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Caches/Yarn"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Yarn"
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.yarn"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "dev-caches.cargo",
+        "reason": "dev-caches.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1024,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "dev-caches.gradle",
+        "reason": "dev-caches.left-out.not-yours",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 8261,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "dev-caches.npm",
+        "reason": "dev-caches.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "dev-caches.xcode-derived-data",
+        "reason": "dev-caches.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4352,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-folders": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "similar-names": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "unsigned": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

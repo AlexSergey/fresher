@@ -115,7 +115,11 @@ impl Rule {
         let interest =
             compile_look(spec.look, recognize.sibling.iter().cloned().collect()).map_err(|error| match error {
                 InterestError::OutsideFolder { .. } => RuleError::PathOutOfFolder { rule: id.clone() },
-                InterestError::EmptyName | InterestError::NotAName { .. } => bad_pattern(),
+                // A rule names no held entries: the last two cannot come from `Interest::new`.
+                InterestError::EmptyName
+                | InterestError::NotAName { .. }
+                | InterestError::HoldsNotAnchored
+                | InterestError::TooManyHolds { .. } => bad_pattern(),
             })?;
         if let Pattern::Under(_, path) = interest.pattern()
             && path.split('/').any(|segment| Glob::new(segment).is_none())

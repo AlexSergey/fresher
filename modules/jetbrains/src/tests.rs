@@ -54,6 +54,7 @@ fn matched(interest: usize, path: &str, kind: EntryKind, bytes: u64) -> Match {
         accessed: None,
         inside: None,
         siblings: Vec::new(),
+        holds: Vec::new(),
         marker: None,
         facts: EntryFacts::default(),
     }

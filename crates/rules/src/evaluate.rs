@@ -146,6 +146,7 @@ name = "keep.log"
             accessed: None,
             inside: None,
             siblings: vec!["Info.plist".into()],
+            holds: Vec::new(),
             marker: None,
             facts: fresher_core::EntryFacts::REMOVABLE,
         }

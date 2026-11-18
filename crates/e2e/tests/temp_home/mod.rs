@@ -4,13 +4,16 @@
 //! reaching only inside the sandbox folder, as sandbox mode composes it, with the sandbox's places protection and a
 //! fake Trash at `home/.Trash`. `restart` builds a new engine on the same files, as when the app starts again.
 
+#[path = "../support/events.rs"]
+mod events;
+#[path = "../support/report.rs"]
+mod report;
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::mpsc::Receiver;
-use std::time::Duration;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
@@ -29,6 +32,8 @@ use fresher_testing::{
 use serde_json::{Value, json};
 
 use crate::support::fixtures;
+use events::until;
+use report::{sort_by_path, strip, trash_unnumbered};
 
 /// The folders of a sandbox's layout besides what the fixture holds (`crates/sandbox/src/layout.rs`, checked by
 /// `Sandbox::open`).
@@ -217,7 +222,7 @@ impl Flow {
     /// items' indexes removed (the walk's order is not the report's), and the lists of paths sorted by path.
     pub(crate) fn relative(&self, report: &Value) -> Value {
         let text = serde_json::to_string(report).unwrap().replace(&self.fixture.display().to_string(), "~");
-        let mut report: Value = serde_json::from_str(&trash_unnumbered(&text)).unwrap();
+        let mut report: Value = serde_json::from_str(&trash_unnumbered(&text, ".Trash/")).unwrap();
         for key in ["finding", "findings", "index"] {
             strip(&mut report, key);
         }
@@ -233,22 +238,6 @@ impl Flow {
 /// The selection of the module's one category, whole.
 pub(crate) fn select_all() -> CleanupSelection {
     serde_json::from_value(json!({ "findings": [], "categories": [{ "category": CATEGORY, "except": [] }] })).unwrap()
-}
-
-/// Every file at or under `at` with its bytes, by path.
-pub(crate) fn contents(at: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
-    let mut files = BTreeMap::new();
-    let mut pending = vec![at.to_path_buf()];
-    while let Some(next) = pending.pop() {
-        if !next.is_dir() {
-            files.insert(next.clone(), fs::read(&next).unwrap());
-            continue;
-        }
-        for entry in fs::read_dir(&next).unwrap() {
-            pending.push(entry.unwrap().path());
-        }
-    }
-    files
 }
 
 /// What the `temp` module left out in the events' `ModuleFinished`, as reason key and item count, sorted.
@@ -330,62 +319,4 @@ fn engine(sandbox: &Sandbox, stated: &StatedFacts, setup: Setup) -> Engine {
         registry.register(Box::new(TempModule::new().unwrap())).unwrap();
     }
     Engine::with_cleanup(registry, ports, cleanup).unwrap()
-}
-
-/// Every event until `is_last`; fails after 30 s instead of hanging.
-fn until(events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool) -> Vec<Event> {
-    let mut seen = Vec::new();
-    loop {
-        let event = events.recv_timeout(Duration::from_secs(30)).unwrap();
-        let last = is_last(&event);
-        seen.push(event);
-        if last {
-            return seen;
-        }
-    }
-}
-
-/// `text` with the fake Trash's order number dropped from the names it gives (`.Trash/3-Name` is `.Trash/Name`).
-fn trash_unnumbered(text: &str) -> String {
-    const TRASH: &str = ".Trash/";
-    let mut out = String::new();
-    let mut rest = text;
-    while let Some(at) = rest.find(TRASH) {
-        let (before, after) = rest.split_at(at + TRASH.len());
-        out.push_str(before);
-        let digits = after.bytes().take_while(u8::is_ascii_digit).count();
-        let named = after.get(digits..).and_then(|tail| tail.strip_prefix('-'));
-        rest = named.filter(|_| digits > 0).unwrap_or(after);
-    }
-    out.push_str(rest);
-    out
-}
-
-/// Sorts every list of objects that all name a place (`path` or `original`), by it, at any depth.
-fn sort_by_path(value: &mut Value) {
-    fn place(item: &Value) -> Option<String> {
-        item["path"].as_str().or_else(|| item["original"].as_str()).map(str::to_owned)
-    }
-    match value {
-        Value::Object(fields) => fields.values_mut().for_each(sort_by_path),
-        Value::Array(items) => {
-            items.iter_mut().for_each(sort_by_path);
-            if items.iter().all(|item| place(item).is_some()) {
-                items.sort_by_key(|item| place(item).unwrap_or_default());
-            }
-        }
-        _ => {}
-    }
-}
-
-/// Removes every field named `key`, at any depth.
-fn strip(value: &mut Value, key: &str) {
-    match value {
-        Value::Object(fields) => {
-            fields.remove(key);
-            fields.values_mut().for_each(|field| strip(field, key));
-        }
-        Value::Array(items) => items.iter_mut().for_each(|item| strip(item, key)),
-        _ => {}
-    }
 }

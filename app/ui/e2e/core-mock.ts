@@ -46,6 +46,17 @@ import {
   SETTINGS_READ_ONLY,
 } from '../src/test/demo-scan';
 import {
+  DEV_CACHES_DICTIONARY,
+  DEV_CACHES_FINDINGS,
+  DEV_CACHES_MEANING,
+  DEV_CACHES_MODULES,
+  DEV_CACHES_OVERVIEW,
+  DEV_CACHES_SCAN,
+  DEV_CACHES_SETTINGS,
+  DEV_CACHES_XCODE_OPEN_OVERVIEW,
+  DEV_CACHES_XCODE_OPEN_SCAN,
+} from '../src/test/dev-caches-scan';
+import {
   JETBRAINS_DICTIONARY,
   JETBRAINS_FINDINGS,
   JETBRAINS_MEANING,
@@ -514,6 +525,34 @@ const JETBRAINS_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The cleanup of the six developer cache findings: nothing is left, and the history holds that one cleanup.
+const DEV_CACHES_CLEANUP_DETAIL = movedDetailOf(planOf(DEV_CACHES_FINDINGS), 3, 1_735_819_200);
+
+const DEV_CACHES_CLEANUP: CleanupScript = {
+  after: {
+    ...DEV_CACHES_OVERVIEW,
+    found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+    totals: [],
+  },
+  details: [DEV_CACHES_CLEANUP_DETAIL],
+  history: {
+    blocked: null,
+    cleanups: [DEV_CACHES_CLEANUP_DETAIL.summary],
+    offset: 0,
+    total: 1,
+    waiting: 17_200_000_000,
+  },
+};
+
+// What the developer caches scripts answer before a scan: the module, its texts and settings.
+const DEV_CACHES_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...DEV_CACHES_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: DEV_CACHES_MODULES,
+  getSettings: DEV_CACHES_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // The cleanup of the five temporary findings: nothing is left, and the history holds that one cleanup.
 const TEMP_CLEANUP_DETAIL = movedDetailOf(planOf(TEMP_FINDINGS), 3, 1_735_819_200);
 
@@ -560,6 +599,22 @@ export const SCRIPTS = {
   demo: { answers: ANSWERS, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
   // Full Disk Access refused: the overview shows the permission card.
   denied: { answers: { ...ANSWERS, getAccessStatus: DENIED } },
+  // The developer caches scan with Xcode closed, streamed at once, with cleanup, ignoring and its storage meaning.
+  devCaches: {
+    answers: DEV_CACHES_ANSWERS,
+    cleanup: DEV_CACHES_CLEANUP,
+    ignoring: true,
+    meaning: DEV_CACHES_MEANING,
+    scan: DEV_CACHES_SCAN,
+    scanned: DEV_CACHES_OVERVIEW,
+  },
+  // The same with Xcode open: the projects are left out, only the downloads are offered.
+  devCachesXcodeOpen: {
+    answers: DEV_CACHES_ANSWERS,
+    ignoring: true,
+    scan: DEV_CACHES_XCODE_OPEN_SCAN,
+    scanned: DEV_CACHES_XCODE_OPEN_OVERVIEW,
+  },
   // A development build on the real home folder: the banner says nothing can be removed outside a sandbox.
   development: { answers: { ...ANSWERS, appInfo: { build: { kind: 'development' }, version: '0.1.0' } } },
   // The demo module fails after its first batch, and the scan with it.

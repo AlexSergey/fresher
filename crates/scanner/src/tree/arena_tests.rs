@@ -188,11 +188,11 @@ mod positive {
         let (mut tree, root) = rooted("/home");
         let first = tree.add_child(root, b"node_modules", EntryKind::Folder).unwrap();
         let second = tree.add_child(root, b"target", EntryKind::Folder).unwrap();
-        let hit = |interest| Hit { interest, marker: None, siblings: 0b1 };
+        let hit = |interest| Hit { interest, marker: None, siblings: 0b1, holds: 0 };
         tree.add_hits(first, &[hit(0)]).unwrap();
         tree.add_hits(second, &[hit(1), hit(2)]).unwrap();
         tree.add_hits(second, &[hit(3)]).unwrap();
-        tree.add_hits(first, &[Hit { interest: 4, marker: Some(MarkerCheck::Valid), siblings: 0 }]).unwrap();
+        tree.add_hits(first, &[Hit { interest: 4, marker: Some(MarkerCheck::Valid), siblings: 0, holds: 0 }]).unwrap();
         tree.add_hits(first, &[]).unwrap();
         tree.set_modified(first, Some(Timestamp::from_secs(7))).unwrap();
         tree.freeze();

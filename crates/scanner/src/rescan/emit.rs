@@ -8,7 +8,7 @@ use fresher_core::{ByteSize, Completeness, EntryKind, Inside, InterestSet, Match
 use crate::matcher::Matcher;
 use crate::rescan::frozen::Frozen;
 use crate::tree::arena::Tree;
-use crate::tree::node::{Flag, NodeIndex, Sums};
+use crate::tree::node::{Flag, NodeIndex, Sums, masked};
 
 /// Calls `on_match` for every hit of `tree` (frozen): a folder's hit with no size, a whole claim with its subtree's
 /// files (partial when something in it was not read), a kept file's hit with its sizes, a link's with none. A whole
@@ -74,6 +74,7 @@ pub(crate) fn emit(
                     accessed: stamp.times.accessed,
                     inside: whole.then(|| stamp.inside.unwrap_or(Inside { complete: false, ..Inside::EMPTY })),
                     siblings,
+                    holds: masked(interest.holds(), hit.holds),
                     marker: hit.marker,
                     facts: tree.facts(index),
                 });

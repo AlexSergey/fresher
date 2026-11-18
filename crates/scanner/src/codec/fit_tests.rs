@@ -70,7 +70,7 @@ mod negative {
     #[test]
     fn a_subtree_with_a_hit_is_never_collapsed() {
         let tree = families(&[1, 2, 3], |tree, children| {
-            tree.add_hits(children[0][5], &[Hit { interest: 1, marker: None, siblings: 0 }]).unwrap();
+            tree.add_hits(children[0][5], &[Hit { interest: 1, marker: None, siblings: 0, holds: 0 }]).unwrap();
         });
         let floor = fully_collapsed(&tree, &header());
         let body = fit(&tree, &header(), body_limit(floor.len())).unwrap();
@@ -93,7 +93,7 @@ mod negative {
     fn a_tree_whose_hits_exceed_the_cap_is_not_saved() {
         let tree = families(&[1, 2], |tree, children| {
             for kids in children {
-                tree.add_hits(kids[0], &[Hit { interest: 1, marker: None, siblings: 0 }]).unwrap();
+                tree.add_hits(kids[0], &[Hit { interest: 1, marker: None, siblings: 0, holds: 0 }]).unwrap();
             }
         });
         let floor = fully_collapsed(&tree, &header());

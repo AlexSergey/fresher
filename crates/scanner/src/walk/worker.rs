@@ -15,7 +15,7 @@ use crate::matcher::entry::sibling_mask;
 use crate::matcher::state::TrieState;
 use crate::matcher::{Hits, Matcher};
 use crate::tree::fold::{FolderBatch, SharedFile, fold};
-use crate::tree::node::{Hit, NodeIndex, Sums};
+use crate::tree::node::{Held, Hit, NodeIndex, Sums};
 use crate::tree::times::Times;
 use crate::walk::boundary::{Boundary, Decision};
 use crate::walk::errors;
@@ -82,6 +82,8 @@ pub(crate) struct FolderReport {
     pub(crate) children: Vec<Child>,
     /// The listing's sibling masks, shared by every subfolder's job.
     pub(crate) child_siblings: Option<Arc<[(u32, u64)]>>,
+    /// What the folder's own listing holds for its hits that name entries.
+    pub(crate) held: Vec<Held>,
     pub(crate) counted: Counted,
 }
 
@@ -91,6 +93,8 @@ pub(crate) struct OpaqueReport {
     pub(crate) own_hits: Vec<Hit>,
     /// The folder's own times, for its own hits.
     pub(crate) own_times: Times,
+    /// What the folder's own listing holds for its hits that name entries, when it is the opaque root.
+    pub(crate) held: Vec<Held>,
     /// The plain files and links, for the tree.
     pub(crate) sums: Sums,
     /// The files whose bytes may be shared, counted once by the tree.
@@ -111,6 +115,7 @@ impl Default for OpaqueReport {
         Self {
             own_hits: Vec::new(),
             own_times: Times::NONE,
+            held: Vec::new(),
             sums: Sums::ZERO,
             shared: Vec::new(),
             sizes: Sizes::ZERO,
@@ -160,8 +165,9 @@ fn folder(context: Context<'_>, job: &Job, listing: &FolderListing) -> Body {
         if in_place { context.matcher.anchored(job.state, name) } else { context.matcher.entry(job.state, name, kind) }
     };
     let own_hits = if job.is_root { Vec::new() } else { own_hits(context, job, facts.markers()) };
+    let held = if job.is_root { Vec::new() } else { held(context, job, listing) };
     if job.opaque.is_some() || own_hits.iter().any(|hit| context.matcher.claims_whole(hit.interest)) {
-        return Body::Opaque(summed(context, job, listing, own_hits));
+        return Body::Opaque(OpaqueReport { held, ..summed(context, job, listing, own_hits) });
     }
     let mut hits: Vec<Hits> = Vec::with_capacity(listing.len());
     let mut children = Vec::new();
@@ -198,7 +204,7 @@ fn folder(context: Context<'_>, job: &Job, listing: &FolderListing) -> Body {
     batch.own_hits = own_hits;
     batch.own_times = job.times;
     let child_siblings = (!facts.siblings().is_empty()).then(|| Arc::from(facts.siblings()));
-    Body::Folder(FolderReport { batch, children, child_siblings, counted })
+    Body::Folder(FolderReport { batch, children, child_siblings, held, counted })
 }
 
 /// The folder's own marker hits: their sibling masks come from the parent's listing; a `CACHEDIR.TAG` is read.
@@ -207,15 +213,34 @@ fn own_hits(context: Context<'_>, job: &Job, markers: &[u32]) -> Vec<Hit> {
     markers
         .iter()
         .map(|&interest| {
-            let marker = context.matcher.checks_cachedir_tag(interest).then(|| {
-                match context.reader.head(&job.path, CACHEDIR_TAG, CACHEDIR_SIGNATURE.len()) {
-                    Ok(head) if is_valid_cachedir_tag(&head) => MarkerCheck::Valid,
-                    _ => MarkerCheck::Invalid,
-                }
-            });
-            Hit { interest, marker, siblings: sibling_mask(siblings, interest) }
+            let marker = context.matcher.checks_cachedir_tag(interest).then(|| tag_check(context, job));
+            Hit { interest, marker, siblings: sibling_mask(siblings, interest), holds: 0 }
         })
         .collect()
+}
+
+/// What the folder's own listing holds for the anchored interests that end at it and name entries; a held
+/// `CACHEDIR.TAG` is read once, whatever the number of interests naming it.
+fn held(context: Context<'_>, job: &Job, listing: &FolderListing) -> Vec<Held> {
+    let mut held = context.matcher.held(job.state, listing);
+    let mut tag = None;
+    for found in &mut held {
+        let Some(bit) = context.matcher.held_tag(found.interest) else { continue };
+        found.marker = Some(if found.holds & (1 << bit) == 0 {
+            MarkerCheck::Invalid
+        } else {
+            *tag.get_or_insert_with(|| tag_check(context, job))
+        });
+    }
+    held
+}
+
+/// Whether the folder's `CACHEDIR.TAG` starts with the signature; anything that cannot be read is not valid.
+fn tag_check(context: Context<'_>, job: &Job) -> MarkerCheck {
+    match context.reader.head(&job.path, CACHEDIR_TAG, CACHEDIR_SIGNATURE.len()) {
+        Ok(head) if is_valid_cachedir_tag(&head) => MarkerCheck::Valid,
+        _ => MarkerCheck::Invalid,
+    }
 }
 
 /// Sums a folder inside an opaque subtree: nothing in it is matched or kept; every entry joins the subtree's inside,

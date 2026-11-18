@@ -53,12 +53,21 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 
 ## Catalogue
 
-| Category             | Danger level | Rule                                          | File                                               |
-| -------------------- | ------------ | --------------------------------------------- | -------------------------------------------------- |
-| `jetbrains.caches`   | Safe         | none (the module's code, `modules/jetbrains`) | [`jetbrains-caches.md`](./jetbrains-caches.md)     |
-| `jetbrains.logs`     | Safe         | none (the module's code, `modules/jetbrains`) | [`jetbrains-logs.md`](./jetbrains-logs.md)         |
-| `jetbrains.settings` | Medium       | none (the module's code, `modules/jetbrains`) | [`jetbrains-settings.md`](./jetbrains-settings.md) |
-| `jetbrains.uninstalled` | Medium    | none (the module's code, `modules/jetbrains`) | [`jetbrains-uninstalled.md`](./jetbrains-uninstalled.md) |
-| `temp.old-files`     | Safe         | none (the module's code, `modules/temp`)      | [`temp-old-files.md`](./temp-old-files.md)         |
+| Category                        | Danger level | Rule                                           | File                                                                     |
+| ------------------------------- | ------------ | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `dev-caches.npm`                | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-npm.md`](./dev-caches-npm.md)                               |
+| `dev-caches.yarn`               | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-yarn.md`](./dev-caches-yarn.md)                             |
+| `dev-caches.homebrew`           | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-homebrew.md`](./dev-caches-homebrew.md)                     |
+| `dev-caches.cargo`              | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-cargo.md`](./dev-caches-cargo.md)                           |
+| `dev-caches.cocoapods`          | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-cocoapods.md`](./dev-caches-cocoapods.md)                   |
+| `dev-caches.gradle`             | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-gradle.md`](./dev-caches-gradle.md)                         |
+| `dev-caches.pip`                | Low          | none (the module's code, `modules/dev-caches`) | [`dev-caches-pip.md`](./dev-caches-pip.md)                               |
+| `dev-caches.go-build`           | Safe         | none (the module's code, `modules/dev-caches`) | [`dev-caches-go-build.md`](./dev-caches-go-build.md)                     |
+| `dev-caches.xcode-derived-data` | Safe         | none (the module's code, `modules/dev-caches`) | [`dev-caches-xcode-derived-data.md`](./dev-caches-xcode-derived-data.md) |
+| `jetbrains.caches`              | Safe         | none (the module's code, `modules/jetbrains`)  | [`jetbrains-caches.md`](./jetbrains-caches.md)                           |
+| `jetbrains.logs`                | Safe         | none (the module's code, `modules/jetbrains`)  | [`jetbrains-logs.md`](./jetbrains-logs.md)                               |
+| `jetbrains.settings`            | Medium       | none (the module's code, `modules/jetbrains`)  | [`jetbrains-settings.md`](./jetbrains-settings.md)                       |
+| `jetbrains.uninstalled`         | Medium       | none (the module's code, `modules/jetbrains`)  | [`jetbrains-uninstalled.md`](./jetbrains-uninstalled.md)                 |
+| `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |
 
-The next ones (developer caches, `node_modules`, Docker) come with the plans that implement their rules.
+The next ones (`node_modules`, Docker) come with the plans that implement their rules.

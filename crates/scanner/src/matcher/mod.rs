@@ -4,6 +4,7 @@
 pub(crate) mod compile;
 pub(crate) mod entry;
 mod fingerprint;
+pub(crate) mod holds;
 pub(crate) mod small_list;
 pub(crate) mod state;
 pub(crate) mod trie;
@@ -16,7 +17,7 @@ use trie::TrieNode;
 /// The interests an entry matched, by index in the interest set, in increasing order.
 pub(crate) type Hits = SmallList;
 
-/// A sibling name of an interest: bit `bit` of that interest's sibling mask.
+/// A sibling or held name of an interest: bit `bit` of that interest's sibling or held mask.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct SiblingSlot {
     interest: u32,
@@ -28,6 +29,10 @@ struct SiblingSlot {
 struct InterestFacts {
     whole: bool,
     cachedir_tag: bool,
+    /// The bit of a held `CACHEDIR.TAG` in the interest's held mask.
+    held_tag: Option<u8>,
+    /// It names entries its matched folder must be checked for.
+    holds: bool,
 }
 
 /// Every interest compiled once per scan; shared by the workers, read-only.
@@ -37,6 +42,7 @@ pub(crate) struct Matcher {
     markers: HashMap<Box<[u8]>, SmallList>,
     extensions: HashMap<Box<[u8]>, SmallList>,
     siblings: HashMap<Box<[u8]>, Vec<SiblingSlot>>,
+    held: HashMap<Box<[u8]>, Vec<SiblingSlot>>,
     trie: Vec<TrieNode>,
     interests: Vec<InterestFacts>,
     fingerprint: u64,

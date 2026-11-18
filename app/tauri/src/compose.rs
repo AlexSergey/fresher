@@ -48,6 +48,8 @@ pub(crate) enum ComposeError {
     JetBrains(#[from] fresher_module_jetbrains::JetBrainsError),
     #[error("the temp module cannot be built: {0}")]
     Temp(#[from] fresher_module_temp::TempError),
+    #[error("the dev-caches module cannot be built: {0}")]
+    DevCaches(#[from] fresher_module_dev_caches::DevCachesError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -327,6 +329,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
     let modules: Vec<Box<dyn Module>> = vec![
         Box::new(fresher_module_jetbrains::JetBrainsModule::new()?),
         Box::new(fresher_module_temp::TempModule::new()?),
+        Box::new(fresher_module_dev_caches::DevCachesModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -457,8 +460,11 @@ mod tests {
         #[test]
         fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-            let expected: &[&str] =
-                if cfg!(debug_assertions) { &["jetbrains", "temp", "demo", "trial"] } else { &["jetbrains", "temp"] };
+            let expected: &[&str] = if cfg!(debug_assertions) {
+                &["jetbrains", "temp", "dev-caches", "demo", "trial"]
+            } else {
+                &["jetbrains", "temp", "dev-caches"]
+            };
 
             let engine = engine(folder.path(), home.path()).unwrap();
 

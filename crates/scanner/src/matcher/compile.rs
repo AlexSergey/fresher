@@ -40,7 +40,7 @@ impl Matcher {
                 matcher.interests.push(InterestFacts::default());
                 continue;
             }
-            let mut facts = InterestFacts { whole: interest.claim() == Claim::Whole, cachedir_tag: false };
+            let mut facts = InterestFacts { whole: interest.claim() == Claim::Whole, ..InterestFacts::default() };
             match interest.pattern() {
                 Pattern::FolderName(name) => add(&mut matcher.folder_names, name, id),
                 Pattern::Extension(extension) => add(&mut matcher.extensions, extension, id),
@@ -56,6 +56,14 @@ impl Matcher {
                     };
                     trie.insert(&segments, id);
                     anchors.push((id, segments));
+                    facts.holds = !interest.holds().is_empty();
+                    for (bit, name) in (0_u8..).zip(interest.holds()) {
+                        if name == CACHEDIR_TAG {
+                            facts.held_tag = Some(bit);
+                        }
+                        let slots = matcher.held.entry(name.as_bytes().into()).or_default();
+                        slots.push(SiblingSlot { interest: id, bit });
+                    }
                 }
             }
             for (bit, sibling) in (0_u8..).zip(interest.siblings()) {

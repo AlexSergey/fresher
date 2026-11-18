@@ -1,0 +1,110 @@
+# The cache folders the developer caches module offers and the signs it checks (plan 018, design section 2), one row
+# per offered folder, in the order of the module's interests.
+# `id`: the row's id, kebab case: its title (`dev-caches.title.<id>`) and the start of its findings' identities.
+# `category`: the module's category the row's findings are in.
+# `tool`: the tool's name as its makers write it; the finding's reason names it.
+# `folder`: the known folder the row's places are under, as rules write it; never a temporary folder.
+# `path`: the folder offered, relative to `folder`, plain names; `*` matches one name.
+# `sign-at`: where the sign is, when not in the folder offered: a strict ancestor of `path`. Rows with the same
+#   `sign-at` look for the same sign.
+# `sign`: the names that folder must hold, all of them; a `CACHEDIR.TAG` must also be a valid cache directory tag.
+# `comes-back`: "download" or "build": how the tool makes the folder again, which reason the finding gives.
+# `app`: the bundle id of the app whose folder it is; kept while that app is open.
+# `name`: the shape each matched name must have ("project-hash"); only with a `path` ending in `*`.
+# The signs of `cocoapods`, `go-build` and `xcode-derived-data` and the `project-hash` shape are marked "to verify"
+# in the design: they are checked by hand on a real Mac in 018/04/02.
+
+[[cache]]
+id = "npm"
+category = "dev-caches.npm"
+tool = "npm"
+folder = "home"
+path = ".npm/_cacache"
+sign = ["index-v5", "content-v2"]
+comes-back = "download"
+
+[[cache]]
+id = "yarn"
+category = "dev-caches.yarn"
+tool = "Yarn"
+folder = "app-caches"
+path = "Yarn"
+sign = ["v6"]
+comes-back = "download"
+
+[[cache]]
+id = "homebrew"
+category = "dev-caches.homebrew"
+tool = "Homebrew"
+folder = "app-caches"
+path = "Homebrew/downloads"
+sign-at = "Homebrew"
+sign = ["api"]
+comes-back = "download"
+
+[[cache]]
+id = "cargo-cache"
+category = "dev-caches.cargo"
+tool = "Cargo"
+folder = "home"
+path = ".cargo/registry/cache"
+sign-at = ".cargo/registry"
+sign = ["CACHEDIR.TAG"]
+comes-back = "download"
+
+[[cache]]
+id = "cargo-src"
+category = "dev-caches.cargo"
+tool = "Cargo"
+folder = "home"
+path = ".cargo/registry/src"
+sign-at = ".cargo/registry"
+sign = ["CACHEDIR.TAG"]
+comes-back = "download"
+
+[[cache]]
+id = "cocoapods"
+category = "dev-caches.cocoapods"
+tool = "CocoaPods"
+folder = "app-caches"
+path = "CocoaPods"
+sign = ["Pods"]
+comes-back = "download"
+
+[[cache]]
+id = "gradle"
+category = "dev-caches.gradle"
+tool = "Gradle"
+folder = "home"
+path = ".gradle/caches"
+sign = ["CACHEDIR.TAG"]
+comes-back = "download"
+
+[[cache]]
+id = "pip"
+category = "dev-caches.pip"
+tool = "pip"
+folder = "app-caches"
+path = "pip"
+sign = ["http-v2"]
+comes-back = "download"
+
+[[cache]]
+id = "go-build"
+category = "dev-caches.go-build"
+tool = "Go"
+folder = "app-caches"
+path = "go-build"
+sign = ["README", "trim.txt"]
+comes-back = "build"
+
+[[cache]]
+id = "xcode-derived-data"
+category = "dev-caches.xcode-derived-data"
+tool = "Xcode"
+folder = "library"
+path = "Developer/Xcode/DerivedData/*"
+sign = ["info.plist"]
+comes-back = "build"
+app = "com.apple.dt.Xcode"
+name = "project-hash"

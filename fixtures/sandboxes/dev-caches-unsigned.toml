@@ -1,0 +1,71 @@
+# The dev-caches module with every place present and none holding its sign: nothing is offered and nothing is left
+# out. A file of its own, since the places are fixed: `dev-caches.toml` writes the signs. No file path here is one
+# that file writes. An invalid tag, a link or a file at a place are the fixtures' and the core e2e's.
+feature = "dev-caches-unsigned"
+module = "dev-caches"
+
+[[case]]
+name = "npm's cache without its index is not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.npm/_cacache/content-v2/sha512/zz/u"
+size = 4096
+
+[[case]]
+name = "Yarn's cache of another version is not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/Yarn/v5/npm-u/package.json"
+size = 4096
+
+[[case]]
+name = "Homebrew's downloads without its API folder are not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/Homebrew/downloads/89efabcd--u-1.0.bottle.tar.gz"
+size = 4096
+
+[[case]]
+name = "Cargo's crates without the registry's tag are not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.cargo/registry/cache/index.crates.io-u/u-1.0.crate"
+size = 4096
+[[case.file]]
+path = "home/.cargo/registry/src/index.crates.io-u/u-1.0/src/lib.rs"
+size = 4096
+
+[[case]]
+name = "CocoaPods' folder without its pods is not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/CocoaPods/Specs/u.podspec.json"
+size = 4096
+
+[[case]]
+name = "Gradle's caches without a tag are not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.gradle/caches/modules-2/u.jar"
+size = 4096
+
+[[case]]
+name = "pip's folder without its download cache is not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/pip/wheels/uu/u-1.0.whl"
+size = 4096
+
+[[case]]
+name = "Go's folder without its own files is not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/go-build/01/u-a"
+size = 4096
+
+[[case]]
+name = "a project's folder without Xcode's file is not claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Unsigned-abcdefghijklmnopqrstuvwxyzab/Build/u"
+size = 4096

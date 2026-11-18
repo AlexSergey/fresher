@@ -1,0 +1,44 @@
+# A home for the dev-caches module where every cache is recognized and kept: npm's cache holds a socket (stated: a
+# socket's path is too long to make here), a file of Gradle's caches is the system's (stated, as after a build run with
+# sudo), Cargo's unpacked sources carry the user's lock (stated), and a derived data project is scanned while Xcode is
+# open (or while the open apps cannot be listed).
+
+[[dir]]
+path = ".npm/_cacache/index-v5/ab"
+
+[[file]]
+path = ".npm/_cacache/content-v2/sha512/ab/x"
+size = 4096
+
+[[file]]
+path = ".npm/_cacache/tmp/s.sock"
+kind = "socket"
+
+[[file]]
+path = ".gradle/caches/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = ".gradle/caches/modules-2/x.jar"
+size = 8192
+owner = "system"
+
+[[file]]
+path = ".cargo/registry/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[dir]]
+path = ".cargo/registry/src"
+flags = ["user-lock"]
+
+[[file]]
+path = ".cargo/registry/src/index.crates.io-x/a-1.0/src/lib.rs"
+size = 1024
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Build/x"
+size = 4096

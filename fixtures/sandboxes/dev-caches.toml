@@ -1,0 +1,317 @@
+# The dev-caches module: the caches the developer tools keep at their default places (`home/.npm/_cacache`, the
+# `Library/Caches` folders of Yarn, Homebrew, CocoaPods, pip and Go, Cargo's registry, Gradle's caches and Xcode's
+# derived data projects). A cache is offered only with its tool's sign beside it, so the places here hold their signs.
+# Two files of their own: `dev-caches-unsigned.toml` writes every place without its sign, and
+# `dev-caches-xcode-open.toml` runs with Xcode open; the places are fixed, so those worlds cannot sit beside these.
+# The autotest runs each file alone; `npm run sandbox -- all` joins them for a look by hand only, so no file writes a
+# path another writes.
+#
+# Positives' files are filled with data, so the map's numbers are blocks; the valid tags are written by
+# `fill = "cachedir-tag"`. The Homebrew positive takes its sign (`api/`) from the negative case "Homebrew's own data
+# beside its downloads is never claimed": a path is written once per file, so deleting that case breaks the positive.
+feature = "dev-caches"
+module = "dev-caches"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "look-alike folders are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.npm/_cacache-old/index-v5/x"
+size = 4096
+[[case.file]]
+path = "home/.npm/_cacache-old/content-v2/x"
+size = 4096
+[[case.file]]
+path = "home/Library/Caches/Yarn2/v6/x"
+size = 4096
+[[case.file]]
+path = "home/.cargo/registry/cache-old/x"
+size = 4096
+[[case.file]]
+path = "home/.gradle/caches-old/CACHEDIR.TAG"
+fill = "cachedir-tag"
+[case.map]
+part = "your-folders"
+at = "home/.npm/_cacache-old"
+
+[[case]]
+name = "a tool's settings, credentials and programs are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.npmrc"
+size = 4096
+[[case.file]]
+path = "home/.cargo/credentials.toml"
+size = 4096
+[[case.file]]
+path = "home/.cargo/bin/cargo-tool"
+size = 4096
+[[case.file]]
+path = "home/.gradle/gradle.properties"
+size = 4096
+
+[[case]]
+name = "stores that are not plain caches are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.npm/_npx/a/x"
+size = 4096
+[[case.file]]
+path = "home/.m2/repository/x.jar"
+size = 4096
+[[case.file]]
+path = "home/Library/pnpm/store/v3/x"
+size = 4096
+[[case.file]]
+path = "home/.cargo/git/checkouts/x/y"
+size = 4096
+[[case.file]]
+path = "home/.cargo/registry/index/x"
+size = 4096
+[[case.file]]
+path = "home/.gradle/wrapper/dists/x.zip"
+size = 4096
+[case.map]
+part = "your-folders"
+at = "home/.cargo/registry/index"
+
+[[case]]
+name = "Homebrew's own data beside its downloads is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/Homebrew/api/formula.jws.json"
+size = 4096
+[[case.file]]
+path = "home/Library/Caches/Homebrew/Cask/x"
+size = 4096
+[[case.file]]
+path = "home/Library/Caches/Homebrew/Backup/x"
+size = 4096
+
+[[case]]
+name = "derived data that is no project is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/x"
+size = 4096
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Demo-short/info.plist"
+size = 4096
+
+[[case]]
+name = "a link or a file in a project's place is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/elsewhere/Link/info.plist"
+size = 4096
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/File-efghijklmnopqrstuvwxyzabcdef"
+size = 4096
+[[case.symlink]]
+path = "home/Library/Developer/Xcode/DerivedData/Link-defghijklmnopqrstuvwxyzabcde"
+target = "../../../../elsewhere/Link"
+
+[[case]]
+name = "a project holding a socket is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Sock-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 4096
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Sock-abcdefghijklmnopqrstuvwxyzab/x.sock"
+kind = "socket"
+[[case.left-out]]
+category = "dev-caches.xcode-derived-data"
+reason = "dev-caches.left-out.special"
+items = 1
+
+[[case]]
+name = "a project holding the system's file is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Root-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 4096
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Root-abcdefghijklmnopqrstuvwxyzab/Build/x"
+size = 4096
+owner = "system"
+[[case.left-out]]
+category = "dev-caches.xcode-derived-data"
+reason = "dev-caches.left-out.not-yours"
+items = 1
+
+# Then the positive cases: each cache is offered in its category, goes to the Trash, and the rest stays.
+
+[[case]]
+name = "npm's cache goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/.npm/_cacache/index-v5/ab/cd/x"
+size = 512
+fill = "data"
+[[case.file]]
+path = "home/.npm/_cacache/content-v2/sha512/ab/x"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.npm/_cacache/tmp/t"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.npm/_cacache"
+category = "dev-caches.npm"
+danger = "low"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/.npm/_cacache"
+
+[[case]]
+name = "Yarn's cache goes"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/Yarn/v6/npm-x-1.0/package.json"
+size = 512
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/Yarn"
+category = "dev-caches.yarn"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "Homebrew's downloads go, its links stay"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/Homebrew/downloads/0123abcd--x-1.0.bottle.tar.gz"
+size = 8192
+fill = "data"
+[[case.symlink]]
+path = "home/Library/Caches/Homebrew/x--1.0"
+target = "downloads/0123abcd--x-1.0.bottle.tar.gz"
+[case.expect]
+item = "home/Library/Caches/Homebrew/downloads"
+category = "dev-caches.homebrew"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "Cargo's downloaded crates are cleaned, the unpacked sources stay offered"
+kind = "positive"
+[[case.file]]
+path = "home/.cargo/registry/CACHEDIR.TAG"
+fill = "cachedir-tag"
+[[case.file]]
+path = "home/.cargo/registry/cache/index.crates.io-x/a-1.0.crate"
+size = 8192
+fill = "data"
+[[case.file]]
+path = "home/.cargo/registry/src/index.crates.io-x/a-1.0/src/lib.rs"
+size = 1024
+fill = "data"
+[case.expect]
+item = "home/.cargo/registry/cache"
+category = "dev-caches.cargo"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "CocoaPods' cache goes"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/CocoaPods/Pods/Release/x/x.tar.gz"
+size = 8192
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/CocoaPods"
+category = "dev-caches.cocoapods"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "Gradle's caches go"
+kind = "positive"
+[[case.file]]
+path = "home/.gradle/caches/CACHEDIR.TAG"
+fill = "cachedir-tag"
+[[case.file]]
+path = "home/.gradle/caches/modules-2/files-2.1/x.jar"
+size = 8192
+fill = "data"
+[[case.file]]
+path = "home/.gradle/caches/modules-2/modules-2.lock"
+size = 17
+fill = "data"
+[case.expect]
+item = "home/.gradle/caches"
+category = "dev-caches.gradle"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "pip's cache goes"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/pip/http-v2/a/b/c"
+size = 2048
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/pip/wheels/ab/x-1.0.whl"
+size = 8192
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/pip"
+category = "dev-caches.pip"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "Go's build cache goes"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/go-build/README"
+size = 256
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/go-build/trim.txt"
+size = 16
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/go-build/00/x-a"
+size = 1024
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/go-build"
+category = "dev-caches.go-build"
+danger = "safe"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a closed Xcode's project build data goes, in Xcode's line"
+kind = "positive"
+[[case.app]]
+path = "Applications/Xcode.app"
+bundle-id = "com.apple.dt.Xcode"
+name = "Xcode"
+version = "16.2"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 256
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Build/x"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Index.noindex/y"
+size = 2048
+fill = "data"
+[case.expect]
+item = "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
+category = "dev-caches.xcode-derived-data"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"

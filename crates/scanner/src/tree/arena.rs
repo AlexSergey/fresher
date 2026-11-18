@@ -11,7 +11,7 @@ use crate::tree::TreeError;
 use crate::tree::access::NodeAccess;
 use crate::tree::links::{LinkSet, Member};
 use crate::tree::names::{NameRef, Names};
-use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums, time_bits, time_of};
+use crate::tree::node::{Flag, Held, Hit, Node, NodeFlags, NodeIndex, Sums, time_bits, time_of};
 use crate::tree::times::{Stamp, Times};
 
 /// A scan root: its node and the identity its folder had when the walk began.
@@ -185,6 +185,24 @@ impl Tree {
         let node = self.node_mut(index)?;
         node.hits_start = start;
         node.hits_len = len;
+        Ok(())
+    }
+
+    /// Gives each hit of the node whose interest is in `held` what the node's own listing holds; the others keep
+    /// theirs.
+    pub(crate) fn set_held(&mut self, index: NodeIndex, held: &[Held]) -> Result<(), TreeError> {
+        if held.is_empty() {
+            return Ok(());
+        }
+        let node = *self.node(index).ok_or(TreeError::NoSuchNode)?;
+        let start = node.hits_start as usize;
+        let hits = self.hits.get_mut(start..start + usize::from(node.hits_len)).unwrap_or_default();
+        for hit in hits {
+            if let Some(found) = held.iter().find(|found| found.interest == hit.interest) {
+                hit.holds = found.holds;
+                hit.marker = found.marker;
+            }
+        }
         Ok(())
     }
 

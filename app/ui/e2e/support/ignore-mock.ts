@@ -18,7 +18,7 @@ export const IGNORE_HOOK = '__fresherIgnoreInvoke';
 
 const STORE = 'fresher.mock.ignore';
 
-type Lists = { groups: string[]; modules: string[] };
+type Lists = { categories: string[]; groups: string[]; modules: string[] };
 
 type Setup = {
   readonly commands: typeof COMMANDS;
@@ -35,11 +35,11 @@ export const mockIgnore = async (page: Page): Promise<void> => {
 
       const load = (): Lists => {
         try {
-          const saved = JSON.parse(sessionStorage.getItem(setup.store) ?? 'null') as Lists | null;
+          const saved = JSON.parse(sessionStorage.getItem(setup.store) ?? 'null') as null | Partial<Lists>;
 
-          return saved ?? { groups: [], modules: [] };
+          return { categories: saved?.categories ?? [], groups: saved?.groups ?? [], modules: saved?.modules ?? [] };
         } catch {
-          return { groups: [], modules: [] };
+          return { categories: [], groups: [], modules: [] };
         }
       };
       const lists = load();
@@ -67,6 +67,7 @@ export const mockIgnore = async (page: Page): Promise<void> => {
         ...view,
         values: {
           ...view.values,
+          'core.ignore.categories': { kind: 'ids', value: lists.categories },
           'core.ignore.groups': { kind: 'ids', value: lists.groups },
           'core.ignore.modules': { kind: 'ids', value: lists.modules },
         },
@@ -82,7 +83,8 @@ export const mockIgnore = async (page: Page): Promise<void> => {
         };
         const hidden = modules.flatMap(hiddenOf);
         const totals = base.totals.filter(
-          ({ category }) => !hidden.some(({ module }) => category.startsWith(`${module}.`)),
+          ({ category }) =>
+            !lists.categories.includes(category) && !hidden.some(({ module }) => category.startsWith(`${module}.`)),
         );
         const sum = (field: 'allocated' | 'logical' | 'reclaimable'): number =>
           totals.reduce((bytes, total) => bytes + total.sizes[field], 0);
@@ -96,13 +98,20 @@ export const mockIgnore = async (page: Page): Promise<void> => {
             reclaimable: sum('reclaimable'),
           },
           hiddenModules: hidden,
-          ignored: { ...base.ignored, groups: lists.groups.length, modules: lists.modules.length },
+          ignored: {
+            ...base.ignored,
+            categories: lists.categories.length,
+            groups: lists.groups.length,
+            modules: lists.modules.length,
+          },
           totals,
         };
       };
 
       const change = (entry: IgnoredEntry | IgnoreTarget, on: boolean): void => {
-        if (entry.kind === 'group') {
+        if (entry.kind === 'category') {
+          toggle(lists.categories, 'core.ignore.categories', entry.category, on);
+        } else if (entry.kind === 'group') {
           toggle(lists.groups, 'core.ignore.groups', entry.group, on);
         } else if (entry.kind === 'module') {
           toggle(lists.modules, 'core.ignore.modules', entry.module, on);

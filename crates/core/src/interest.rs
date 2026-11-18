@@ -10,6 +10,7 @@ pub struct Interest {
     pattern: Pattern,
     claim: Claim,
     siblings: Vec<String>,
+    holds: Vec<String>,
 }
 
 /// Where the walk looks. Names are single file or folder names; the path of `Under` is relative to its known folder.
@@ -44,7 +45,14 @@ pub enum InterestError {
     NotAName { name: String },
     #[error("`{path}` is not a relative path inside its known folder")]
     OutsideFolder { path: String },
+    #[error("only an interest anchored under a known folder may name what its folder holds")]
+    HoldsNotAnchored,
+    #[error("an interest names {count} entries its folder holds; at most {MAX_HOLDS}")]
+    TooManyHolds { count: usize },
 }
+
+/// The most names an interest may look for in its matched folder: a hit carries them as a 64-bit mask.
+const MAX_HOLDS: usize = 64;
 
 impl Interest {
     /// An interest in `pattern`; `siblings` are names whose presence next to a matched entry the walk reports
@@ -57,7 +65,23 @@ impl Interest {
         for sibling in &siblings {
             check_name(sibling)?;
         }
-        Ok(Self { pattern, claim, siblings })
+        Ok(Self { pattern, claim, siblings, holds: Vec::new() })
+    }
+
+    /// This interest, with `names` the walk looks for in the matched folder's own listing (`index-v5`,
+    /// `CACHEDIR.TAG`): at most 64 single names, only for a `Pattern::Under` interest. They are reported in
+    /// [`Match::holds`]; a `CACHEDIR.TAG` among them is also checked for its signature ([`Match::marker`]).
+    pub fn holding(self, names: Vec<String>) -> Result<Self, InterestError> {
+        if !matches!(self.pattern, Pattern::Under(..)) {
+            return Err(InterestError::HoldsNotAnchored);
+        }
+        if names.len() > MAX_HOLDS {
+            return Err(InterestError::TooManyHolds { count: names.len() });
+        }
+        for name in &names {
+            check_name(name)?;
+        }
+        Ok(Self { holds: names, ..self })
     }
 
     pub const fn pattern(&self) -> &Pattern {
@@ -70,6 +94,11 @@ impl Interest {
 
     pub fn siblings(&self) -> &[String] {
         &self.siblings
+    }
+
+    /// The names the walk looks for in the matched folder's own listing; empty for most interests.
+    pub fn holds(&self) -> &[String] {
+        &self.holds
     }
 }
 
@@ -166,8 +195,15 @@ pub struct Match {
     pub inside: Option<Inside>,
     /// Which of the interest's sibling names exist next to the entry.
     pub siblings: Vec<String>,
-    /// For a `Pattern::MarkerFile` interest named `CACHEDIR.TAG`, whether the tag holds the signature; `None` for
-    /// every other interest.
+    /// Which of the interest's `holds` names the matched folder itself holds, in the interest's order; empty for a
+    /// file, a link, an `Other` entry, a folder not entered or not read (another volume, another user's, not
+    /// scanned, unreadable) and an interest that names none. An entry that could not be read is absent; any kind
+    /// counts, but a `CACHEDIR.TAG` only as a regular file.
+    pub holds: Vec<String>,
+    /// For a `Pattern::MarkerFile` interest named `CACHEDIR.TAG`, whether the tag holds the signature. For an
+    /// interest whose `holds` names `CACHEDIR.TAG` and whose folder's listing was read, whether the folder holds a
+    /// valid one: `Invalid` when it is absent, not a regular file, unreadable or without the signature. `None` for
+    /// every other interest, and when the folder's listing was not read.
     pub marker: Option<MarkerCheck>,
     /// What the walk read about the entry, for its removability; the default when it could not tell.
     pub facts: EntryFacts,
@@ -218,6 +254,37 @@ mod tests {
             }
         }
 
+        fn anchored() -> Interest {
+            Interest::new(Pattern::Under(KnownFolder::Home, ".npm/_cacache".into()), Claim::Whole, vec![]).unwrap()
+        }
+
+        #[test]
+        fn holding_names_is_refused_for_an_unanchored_interest() {
+            for pattern in [
+                Pattern::FolderName("caches".into()),
+                Pattern::MarkerFile("CACHEDIR.TAG".into()),
+                Pattern::Extension("dmg".into()),
+            ] {
+                let interest = Interest::new(pattern.clone(), Claim::Whole, vec![]).unwrap();
+                assert_eq!(interest.holding(vec!["a".into()]), Err(InterestError::HoldsNotAnchored), "{pattern:?}");
+            }
+        }
+
+        #[test]
+        fn a_held_name_that_is_not_a_single_name_is_refused() {
+            assert_eq!(anchored().holding(vec![String::new()]), Err(InterestError::EmptyName));
+            for name in ["a/b", ".", "..", "a\0b"] {
+                let held = anchored().holding(vec!["index-v5".into(), name.into()]);
+                assert_eq!(held, Err(InterestError::NotAName { name: name.into() }), "{name:?}");
+            }
+        }
+
+        #[test]
+        fn more_than_64_held_names_are_refused() {
+            let names = (0..65).map(|index| format!("name{index}")).collect();
+            assert_eq!(anchored().holding(names), Err(InterestError::TooManyHolds { count: 65 }));
+        }
+
         #[test]
         fn an_index_outside_the_set_has_no_owner() {
             let set = crate::InterestSet::new();
@@ -243,6 +310,20 @@ mod tests {
             assert_eq!(interest.pattern(), &pattern);
             assert_eq!(interest.claim(), Claim::Item);
             assert_eq!(interest.siblings(), Vec::<String>::new());
+            assert_eq!(interest.holds(), Vec::<String>::new());
+        }
+
+        #[test]
+        fn an_anchored_interest_holds_up_to_64_names_in_order() {
+            let pattern = Pattern::Under(KnownFolder::Home, ".npm/_cacache".into());
+            let interest = Interest::new(pattern, Claim::Whole, vec![]).unwrap();
+            let names: Vec<String> = (0..64).rev().map(|index| format!("name{index}")).collect();
+
+            let held = interest.clone().holding(names.clone()).unwrap();
+
+            assert_eq!(held.holds(), names);
+            assert_eq!((held.pattern(), held.claim()), (interest.pattern(), interest.claim()));
+            assert_ne!(held, interest, "the held names are part of the interest");
         }
 
         #[test]

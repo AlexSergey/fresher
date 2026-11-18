@@ -434,6 +434,7 @@ impl DiskWalk for ScriptedWalk {
                         accessed: None,
                         inside: None,
                         siblings: vec![],
+                        holds: Vec::new(),
                         marker: None,
                         facts: *facts,
                     });

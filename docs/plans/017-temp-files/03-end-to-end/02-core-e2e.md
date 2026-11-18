@@ -46,4 +46,4 @@ Changed from the design, each accepted by the review:
   residual already written in [`removal.md`](../../../architecture/removal.md).
 - Flows 2 and 3 set their clocks from the real entries' status change plus one or eight days (read from the disk, never
   the wall clock), proving the age by status change both ways on real times, a real socket and a real pipe.
-- The harness copies five helpers of the JetBrains one ([deferred](../../../deferred/e2e-shared-helpers.md)).
+- The harness copies five helpers of the JetBrains one (deferred item, done by plan 018/03/02).

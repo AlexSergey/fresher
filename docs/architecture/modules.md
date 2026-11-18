@@ -7,7 +7,8 @@ describes each removal as data. This page is the pattern every module plan follo
 (`modules/demo/`) is the smallest working example, `jetbrains` (`modules/jetbrains/`, plan
 [016](../plans/016-jetbrains/readme.md)) the first real one, and `temp` (`modules/temp/`, plan
 [017](../plans/017-temp-files/readme.md)) the example of a module that judges each item by its age and refuses it by
-its kind and owner. Set up by plan
+its kind and owner, and `dev-caches` (`modules/dev-caches/`, plan
+[018](../plans/018-developer-caches/readme.md)) the example of a module with a data table of places and signs. Set up by plan
 [002/06](../plans/002-base-architecture/06-module-kit/readme.md).
 
 ## The crate
@@ -108,9 +109,17 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
   `kind` (a folder, a file, a link, or `Other`: a socket, a named pipe or a device, reported as itself, never read,
   never a marker; a rule never claims one and the cleaner refuses one), `modified`, `changed` (the status change, which
   no tool sets back), `accessed` (`None` for a folder, whose access time moves when the walk lists it), `siblings`
-  (which of the interest's sibling names exist next to the entry) and `marker` (for a `CACHEDIR.TAG` marker, whether the
-  tag holds its signature: `Valid` or `Invalid`; `None` for every other interest). The module never reads the file
-  itself.
+  (which of the interest's sibling names exist next to the entry), `holds` (below) and `marker` (for a `CACHEDIR.TAG`
+  marker, or a held `CACHEDIR.TAG`, whether the tag holds its signature: `Valid` or `Invalid`; `None` for every other
+  interest). The module never reads the file itself.
+- **What a matched folder holds**: an anchored interest (`Pattern::Under`) may name, with
+  `Interest::holding(names)` (at most 64 single names), entries its matched folder must be checked for: a tool's sign
+  inside its own folder (`index-v5`, `CACHEDIR.TAG`). `holds` lists which of them the folder's own listing holds, in
+  the interest's order: an entry that could not be read is absent, any kind counts, but a `CACHEDIR.TAG` only as a
+  regular file. A held `CACHEDIR.TAG` also sets `marker`: `Valid`, or `Invalid` when it is absent, not a regular file,
+  unreadable or without the signature. For a file, a link, an `Other` entry, a folder not entered or not read
+  (another volume, another user's, unreadable) and an interest that names none, `holds` is empty and `marker` `None`.
+  A rescan reads it again with the folder's listing; a folder it copies keeps what the cache recorded.
 - For a `Claim::Whole` folder, `inside` (`None` for anything else), gathered while the walk sums it:
   `newest_change` (the newest modification or status change of the folder and everything inside it),
   `newest_file_access` (the newest access of a file inside: lazy, only ever a reason to keep), `special` (a socket, a
@@ -144,6 +153,15 @@ product; a rule sees a name and a path only. Its products are data (`products.to
 (`decide.rs`, a table of eight rows checked in order), and every folder it recognizes and does not offer is a
 `left_out` with its reason (the version in use, a newer one, an IDE that is open, an app of unknown version, a list
 of apps that could not be read, a removed IDE's data that changed lately): the user sees why, never a silent skip.
+
+**`dev-caches` is code with a data table**: each tool's cache is a folder at a default place (`tools.toml`: the place,
+the sign the tool writes there, the category, whether it comes back by a download or a build), claimed whole, and the
+sign is checked by what the folder holds (`Interest::holding`: npm's `index-v5` and `content-v2`, a valid
+`CACHEDIR.TAG`). Cargo's and Homebrew's signs lie in a folder beside the cache, so the sign is its own item match, a
+holder that the cache's match finds in `finish`; the answers wait for `finish` for that reason, and for the running
+apps (derived data is left out while Xcode is open). Like `jetbrains`, the decision is a pure function (`decide.rs`, a
+table of nine rows) and every cache it recognizes and does not offer is a `left_out` with its reason (not the user's,
+a special entry inside, its app is open, the running apps could not be read).
 
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.

@@ -21,8 +21,8 @@ use crate::tree::times::Stamp;
 /// The fewest bytes a node's record takes: an empty suffix, flags, four sums, a time, no hits, no owner, the access,
 /// and the name's prefix and suffix lengths.
 const MIN_RECORD: usize = 11;
-/// The fewest bytes a hit takes: interest, marker check, sibling bits.
-const MIN_HIT: usize = 3;
+/// The fewest bytes a hit takes: interest, marker check, sibling bits, held bits.
+const MIN_HIT: usize = 4;
 /// The flags only a folder may carry.
 const FOLDER_ONLY: [Flag; 7] = [
     Flag::Opaque,
@@ -203,7 +203,8 @@ fn read_hits(reader: &mut Reader<'_>, hits: &mut Vec<Hit>) -> Result<(), CodecEr
             [2] => Some(MarkerCheck::Invalid),
             _ => return Err(CodecError::OutOfRange),
         };
-        hits.push(Hit { interest, marker, siblings: reader.u64()? });
+        let siblings = reader.u64()?;
+        hits.push(Hit { interest, marker, siblings, holds: reader.u64()? });
     }
     Ok(())
 }

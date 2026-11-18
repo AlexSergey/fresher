@@ -147,6 +147,7 @@ fn keep_entry(
         interest,
         marker: None,
         siblings: facts.siblings_of(interest),
+        holds: 0,
     }));
     batch.kept.push(Kept {
         name: name_start..batch.names.len(),

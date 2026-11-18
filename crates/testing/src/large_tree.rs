@@ -8,6 +8,7 @@ use fresher_core::stable_hash;
 
 use crate::FixtureError;
 use crate::access_time::settle_access_time;
+use crate::tree_description::CACHEDIR_TAG_CONTENT as TAG_CONTENT;
 
 /// Bumped whenever the generator changes, so an old tree is never taken for a new one.
 const GENERATOR_VERSION: u64 = 2;
@@ -19,8 +20,6 @@ const ENTRIES_PER_FOLDER: u64 = 10;
 const SMALL_FILE_MAX: u64 = 64 * 1024;
 const LARGE_FILE_MIN: u64 = 1 << 20;
 const LARGE_FILE_SPAN: u64 = 63 << 20;
-/// The content of every generated `CACHEDIR.TAG`.
-const TAG_CONTENT: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n# A cache directory tag.\n";
 
 /// The shape of a generated tree. The same spec always gives the same tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -3,6 +3,9 @@
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
+use fresher_core::{CACHEDIR_SIGNATURE, Claim, KnownFolder, MarkerCheck, Match, Pattern};
+
+use crate::matcher::testing::{interest, set_of};
 use crate::rescan::testing::Rig;
 use crate::walk::tests::interests;
 
@@ -51,8 +54,61 @@ impl Drop for Mode {
 }
 
 /// The facts of the match at `path` among `matches`.
-fn facts_at(matches: &[fresher_core::Match], path: &std::path::Path) -> fresher_core::EntryFacts {
+fn facts_at(matches: &[Match], path: &std::path::Path) -> fresher_core::EntryFacts {
     matches.iter().find(|found| found.path == path).unwrap().facts
+}
+
+/// The tag files of the held home.
+const TAGS: [&str; 2] = [".gradle/caches/CACHEDIR.TAG", ".cargo/registry/CACHEDIR.TAG"];
+
+/// A home whose matched folders are checked for what they hold: Gradle's caches claimed whole (a valid tag and
+/// `modules-2`), npm's cache as an item (`content-v2`, not yet `index-v5`) and Cargo's registry as an item (a valid
+/// tag), each in a parent of its own; scanned once.
+fn held_home() -> Rig {
+    let toml = "[[file]]\npath = \".gradle/caches/modules-2/files-2.1/a.jar\"\nsize = 100\n\
+                [[file]]\npath = \".gradle/caches/jars-9/b.jar\"\nsize = 50\n\
+                [[file]]\npath = \".npm/_cacache/content-v2/sha512/x\"\nsize = 10\n\
+                [[file]]\npath = \".cargo/registry/cache/c.crate\"\nsize = 20\n\
+                [[file]]\npath = \"docs/a.txt\"\nsize = 10\n";
+    let held = |path: &str, claim, names: &[&str]| {
+        interest(Pattern::Under(KnownFolder::Home, path.into()), claim, &[])
+            .holding(names.iter().map(|&name| name.into()).collect())
+            .unwrap()
+    };
+    let rig = Rig::new(
+        toml,
+        set_of(&[
+            held(".gradle/caches", Claim::Whole, &["CACHEDIR.TAG", "modules-2"]),
+            held(".npm/_cacache", Claim::Item, &["index-v5", "content-v2"]),
+            held(".cargo/registry", Claim::Item, &["CACHEDIR.TAG"]),
+        ]),
+    );
+    for tag in TAGS {
+        write_tag(&rig, tag, CACHEDIR_SIGNATURE);
+    }
+    rig.scan();
+    rig
+}
+
+fn write_tag(rig: &Rig, relative: &str, content: &[u8]) {
+    std::fs::write(rig.path(relative), content).unwrap();
+    fresher_testing::settle_access_time(&rig.path(relative)).unwrap();
+}
+
+/// What the match at `relative` holds, and its marker check.
+fn held_at(rig: &Rig, matches: &[Match], relative: &str) -> (Vec<String>, Option<MarkerCheck>) {
+    let found = matches.iter().find(|found| found.path == rig.path(relative)).unwrap();
+    (found.holds.clone(), found.marker)
+}
+
+/// Asserts that the walk was a rescan, not a full scan in its place.
+fn assert_rescanned(walked: &crate::rescan::testing::Walked) {
+    let kind = walked.summary.as_ref().unwrap().kind;
+    assert!(matches!(kind, fresher_core::ScanKind::Rescan { .. }), "{kind:?}");
+}
+
+fn names(names: &[&str]) -> Vec<String> {
+    names.iter().map(|&name| name.into()).collect()
 }
 
 mod negative {
@@ -62,7 +118,9 @@ mod negative {
         CancelToken, DiskWalk, FolderIdentity, FolderListing, FolderReader, ReadError, WalkError, WalkMode,
     };
 
-    use super::{Mode, facts_at, home, paths};
+    use fresher_core::MarkerCheck;
+
+    use super::{Mode, assert_rescanned, facts_at, held_at, held_home, home, names, paths, write_tag};
     use crate::rescan::testing::{assert_same, journal_of};
     use crate::walk::counting::CountingReader;
     use crate::walk::std_reader::StdReader;
@@ -171,15 +229,53 @@ mod negative {
         assert!(scanner.commit(&[]).is_err());
         assert_eq!(rig.cached().tree.len(), before);
     }
+
+    #[test]
+    fn a_tag_rewritten_invalid_in_an_item_folder_read_again_turns_it_invalid() {
+        let rig = held_home();
+        write_tag(&rig, ".cargo/registry/CACHEDIR.TAG", b"Signature: 0");
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &[".cargo/registry"]), &[]));
+
+        let held = held_at(&rig, &rescan.matches, ".cargo/registry");
+        assert_eq!(held, (names(&["CACHEDIR.TAG"]), Some(MarkerCheck::Invalid)));
+        assert_rescanned(&rescan);
+        assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_tag_gone_from_a_whole_folder_walked_again_is_no_longer_held() {
+        let rig = held_home();
+        rig.remove(&rig.path(".gradle/caches/CACHEDIR.TAG"));
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &[".gradle/caches"]), &[]));
+
+        let held = held_at(&rig, &rescan.matches, ".gradle/caches");
+        assert_eq!(held, (names(&["modules-2"]), Some(MarkerCheck::Invalid)));
+        assert_rescanned(&rescan);
+        assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_matched_folder_that_can_no_longer_be_read_holds_nothing_after_a_rescan() {
+        let rig = held_home();
+        let _mode = Mode::set(rig.path(".cargo/registry"), 0o000);
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &[".cargo/registry"]), &[]));
+
+        assert_eq!(held_at(&rig, &rescan.matches, ".cargo/registry"), (Vec::new(), None));
+        assert_rescanned(&rescan);
+        assert_same(&rescan, &rig.full());
+    }
 }
 
 mod positive {
     use std::fs::OpenOptions;
     use std::sync::Arc;
 
-    use fresher_core::{ScanCache, WalkMode};
+    use fresher_core::{MarkerCheck, ScanCache, WalkMode};
 
-    use super::{Mode, facts_at, home, paths};
+    use super::{Mode, assert_rescanned, facts_at, held_at, held_home, home, names, paths};
     use crate::codec::decode::decode;
     use crate::codec::fit::fully_collapsed;
     use crate::rescan::testing::{assert_same, journal_of};
@@ -273,6 +369,91 @@ mod positive {
 
         let whole = rescan.matches.iter().find(|found| found.path == rig.path("app/node_modules")).unwrap();
         assert_eq!(whole.inside.unwrap().newest_change, Some(later));
+        assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_held_name_added_inside_a_folder_whose_parent_did_not_change_appears_after_a_rescan() {
+        let rig = held_home();
+        std::fs::create_dir(rig.path(".npm/_cacache/index-v5")).unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &[".npm/_cacache"]), &[]));
+
+        assert_eq!(held_at(&rig, &rescan.matches, ".npm/_cacache"), (names(&["index-v5", "content-v2"]), None));
+        assert_rescanned(&rescan);
+        assert_same(&rescan, &rig.full());
+    }
+
+    /// An unreadable folder is walked again by every rescan, its parent copied: its kept hit gets the fresh mask.
+    #[test]
+    fn a_matched_folder_readable_again_under_a_parent_not_read_again_gets_what_it_holds() {
+        let rig = held_home();
+        let mode = Mode::set(rig.path(".cargo/registry"), 0o000);
+        let before = rig.scan().matches;
+        drop(mode);
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        assert_eq!(held_at(&rig, &before, ".cargo/registry"), (Vec::new(), None));
+        let held = held_at(&rig, &rescan.matches, ".cargo/registry");
+        assert_eq!(held, (names(&["CACHEDIR.TAG"]), Some(MarkerCheck::Valid)));
+        assert_rescanned(&rescan);
+        // Only what the folder holds is compared: its mode changed under a parent the journal did not name, so its
+        // access stays the cached one.
+        assert_eq!(held, held_at(&rig, &rig.full().matches, ".cargo/registry"));
+    }
+
+    /// The same for a folder claimed whole: its walk's opaque root reports what it holds.
+    #[test]
+    fn a_whole_folder_readable_again_under_a_parent_not_read_again_gets_what_it_holds() {
+        let rig = held_home();
+        let mode = Mode::set(rig.path(".gradle/caches"), 0o000);
+        let before = rig.scan().matches;
+        drop(mode);
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        assert_eq!(held_at(&rig, &before, ".gradle/caches"), (Vec::new(), None));
+        let held = held_at(&rig, &rescan.matches, ".gradle/caches");
+        assert_eq!(held, (names(&["CACHEDIR.TAG", "modules-2"]), Some(MarkerCheck::Valid)));
+        assert_rescanned(&rescan);
+        assert_eq!(held, held_at(&rig, &rig.full().matches, ".gradle/caches"));
+    }
+
+    #[test]
+    fn a_matched_folder_copied_under_a_parent_read_again_keeps_what_it_holds() {
+        let rig = held_home();
+        let before = rig.scan().matches;
+        for parent in [".gradle", ".npm", ".cargo"] {
+            std::fs::write(rig.path(&format!("{parent}/new.txt")), b"new").unwrap();
+        }
+
+        let rescan =
+            rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &[".gradle", ".npm", ".cargo"]), &[]));
+
+        for folder in [".gradle/caches", ".npm/_cacache", ".cargo/registry"] {
+            assert_eq!(held_at(&rig, &rescan.matches, folder), held_at(&rig, &before, folder), "{folder}");
+        }
+        assert_eq!(held_at(&rig, &rescan.matches, ".gradle/caches").1, Some(MarkerCheck::Valid));
+        assert_rescanned(&rescan);
+        assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_folder_copied_from_the_cache_keeps_what_it_holds_and_a_restore_hands_it_back() {
+        let rig = held_home();
+        let scanned = rig.scan();
+        std::fs::write(rig.path("docs/new.txt"), b"new").unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["docs"]), &[]));
+        let restored =
+            rig.walk(&rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[]))), WalkMode::Restore);
+
+        assert_eq!(rescan.matches, scanned.matches);
+        assert_eq!(restored.matches, scanned.matches);
+        let held = held_at(&rig, &restored.matches, ".cargo/registry");
+        assert_eq!(held, (names(&["CACHEDIR.TAG"]), Some(MarkerCheck::Valid)));
+        assert_rescanned(&rescan);
         assert_same(&rescan, &rig.full());
     }
 

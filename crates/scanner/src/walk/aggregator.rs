@@ -15,7 +15,7 @@ use crate::matcher::state::TrieState;
 use crate::tree::TreeError;
 use crate::tree::arena::Tree;
 use crate::tree::fold::SharedFile;
-use crate::tree::node::{Flag, Hit, NodeIndex, Sums};
+use crate::tree::node::{Flag, Held, Hit, NodeIndex, Sums, masked};
 use crate::tree::times::Times;
 use crate::walk::boundary::Decision;
 use crate::walk::errors::unreadable;
@@ -139,6 +139,9 @@ impl<'a> Aggregator<'a> {
                     totals.inside.complete = false;
                 } else {
                     self.tree.mark_unreadable(node, unreadable(error))?;
+                    // Its listing was not read: it holds nothing and its tag is not checked.
+                    let unread = self.matcher.unread(self.tree.hits(node));
+                    self.held(node, &unread)?;
                     if let Some(root) = opaque {
                         let totals = self.opaque.entry(root).or_default();
                         totals.incomplete = true;
@@ -162,11 +165,12 @@ impl<'a> Aggregator<'a> {
     }
 
     fn folder(&mut self, node: NodeIndex, root_device: u64, report: FolderReport) -> Result<(), TreeError> {
-        let FolderReport { batch, children, child_siblings, counted } = report;
+        let FolderReport { batch, children, child_siblings, held, counted } = report;
         self.count(counted, true);
         self.created.clear();
         let mut created = std::mem::take(&mut self.created);
         self.tree.apply(&batch, &mut created)?;
+        self.held(node, &held)?;
         for hit in &batch.own_hits {
             self.emit(node, hit, EntryKind::Folder, Sizes::ZERO, None);
         }
@@ -175,12 +179,16 @@ impl<'a> Aggregator<'a> {
             let entry = &kept.entry;
             let sizes = if entry.kind == EntryKind::File { entry.sizes } else { Sizes::ZERO };
             let folder = entry.kind == EntryKind::Folder;
+            let child = if folder { children.next() } else { None };
+            // A folder entered reports what it holds with its own listing: its hits that name entries wait for it.
+            let entered = child.as_ref().is_some_and(|child| child.decision == Decision::Enter);
             for hit in batch.hits_of(kept) {
-                if !(folder && self.matcher.claims_whole(hit.interest)) {
+                let whole = folder && self.matcher.claims_whole(hit.interest);
+                if !(whole || entered && self.matcher.holds_names(hit.interest)) {
                     self.emit(child_node, hit, entry.kind, sizes, None);
                 }
             }
-            if folder && let Some(child) = children.next() {
+            if let Some(child) = child {
                 self.child(child_node, child, root_device, child_siblings.as_ref())?;
             }
         }
@@ -229,6 +237,9 @@ impl<'a> Aggregator<'a> {
         let root = opaque.unwrap_or(node);
         self.count(report.counted, false);
         self.tree.add_hits(node, &report.own_hits)?;
+        if root == node {
+            self.held(node, &report.held)?;
+        }
         if !report.own_hits.is_empty() {
             self.tree.set_times(node, report.own_times)?;
         }
@@ -264,6 +275,23 @@ impl<'a> Aggregator<'a> {
         }
         if opaque.is_none() && self.opaque.get(&root).is_some_and(|totals| totals.pending == 0) {
             self.finish_opaque(root)?;
+        }
+        Ok(())
+    }
+
+    /// Gives the folder's hits that name entries what its own listing holds, and reports those its claim does not keep
+    /// for the whole subtree's end.
+    fn held(&mut self, node: NodeIndex, held: &[Held]) -> Result<(), TreeError> {
+        self.tree.set_held(node, held)?;
+        let waiting: Vec<Hit> = self
+            .tree
+            .hits(node)
+            .iter()
+            .filter(|hit| self.matcher.holds_names(hit.interest) && !self.matcher.claims_whole(hit.interest))
+            .copied()
+            .collect();
+        for hit in &waiting {
+            self.emit(node, hit, EntryKind::Folder, Sizes::ZERO, None);
         }
         Ok(())
     }
@@ -346,6 +374,7 @@ impl<'a> Aggregator<'a> {
             accessed: times.accessed,
             inside,
             siblings,
+            holds: masked(interest.holds(), hit.holds),
             marker: hit.marker,
             facts: self.tree.facts(node),
         });

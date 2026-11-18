@@ -208,7 +208,9 @@ mod property {
     use fresher_macos::MacFolderReader;
     use proptest::prelude::*;
 
-    use crate::support::{canonical, every_interest, random_items, random_tree, reference, scanner, set_of};
+    use crate::support::{
+        canonical, every_interest, held_interests, random_items, random_tree, reference, scanner, set_of, tagged,
+    };
 
     proptest! {
         #![proptest_config(ProptestConfig { cases: 32, ..ProptestConfig::default() })]
@@ -223,6 +225,33 @@ mod property {
             let locked = random_tree(&root, &items);
             let interests: Vec<_> =
                 every_interest().into_iter().zip(&chosen).filter(|(_, keep)| **keep).map(|(interest, _)| interest).collect();
+            let set = set_of(&interests);
+
+            let fast = scanner(Arc::new(MacFolderReader::new()), &root, &set, &[]);
+            let slow = reference(&root, &set, &[]);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            prop_assert_eq!(fast, slow);
+        }
+
+        #[test]
+        fn the_macos_reader_and_the_reference_agree_on_what_matched_folders_hold(
+            items in random_items(),
+            tags in prop::collection::vec(0_u64..4, 4),
+            chosen in prop::collection::vec(any::<bool>(), 9),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            let locked = random_tree(&root, &tagged(&tags, items));
+            let interests: Vec<_> = held_interests()
+                .into_iter()
+                .chain(every_interest().into_iter().take(4))
+                .zip(&chosen)
+                .filter(|(_, keep)| **keep)
+                .map(|(interest, _)| interest)
+                .collect();
             let set = set_of(&interests);
 
             let fast = scanner(Arc::new(MacFolderReader::new()), &root, &set, &[]);

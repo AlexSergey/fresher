@@ -52,6 +52,8 @@ pub enum FixtureError {
     InsideApp { path: PathBuf, app: PathBuf },
     #[error("the file {path} states a `kind` and has a `fill`: a socket or a pipe holds no data")]
     KindWithFill { path: PathBuf },
+    #[error("the file {path} is a cache directory tag and has a `size`: the tag's content sets it")]
+    TagWithSize { path: PathBuf },
 }
 
 impl FixtureTree {

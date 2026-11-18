@@ -58,9 +58,9 @@ pub(crate) fn snapshot(tree: &Tree) -> Snapshot {
 
 const MIB: u64 = 1 << 20;
 
-/// A home-like tree with every kind of node: folders, a large kept file, a matched link, hits with marker checks
-/// and siblings, an owner, unreadable, avoided and opaque folders, a hard link group across two folders and a
-/// clone group. Frozen; its owners index the header's two claims.
+/// A home-like tree with every kind of node: folders, a large kept file, a matched link, hits with marker checks,
+/// siblings and held names, an owner, unreadable, avoided and opaque folders, a hard link group across two folders
+/// and a clone group. Frozen; its owners index the header's two claims.
 pub(crate) fn small_tree() -> Tree {
     let mut tree = Tree::new();
     let home = tree.add_root(Path::new("/home/user"), FolderIdentity { device: 16, file_id: 2 }).unwrap();
@@ -78,20 +78,21 @@ pub(crate) fn small_tree() -> Tree {
     let projects = folder(&mut tree, home, "projects", sums(2, 500, 8192, 8192));
     let app = folder(&mut tree, projects, "app", sums(3, 900, 12_288, 12_288));
     let modules = folder(&mut tree, app, "node_modules", Sums::ZERO);
-    tree.add_hits(modules, &[Hit { interest: 3, marker: None, siblings: 0b101 }]).unwrap();
+    tree.add_hits(modules, &[Hit { interest: 3, marker: None, siblings: 0b101, holds: 0b110 }]).unwrap();
     let at = |secs| Some(Timestamp::from_secs(secs));
     tree.set_times(modules, Times { changed: at(1_763_000_200), accessed: None }).unwrap();
     let inside = Inside { newest_change: at(1_763_000_900), newest_file_access: at(1_762_000_000), ..Inside::EMPTY };
     tree.set_inside(modules, Some(Inside { foreign: true, ..inside })).unwrap();
     tree.apply_opaque(modules, sums(812, 40 * MIB, 48 * MIB, 48 * MIB), 97, &[]).unwrap();
     let target = folder(&mut tree, app, "target", Sums::ZERO);
-    tree.add_hits(target, &[Hit { interest: 5, marker: Some(MarkerCheck::Valid), siblings: 1 }]).unwrap();
+    tree.add_hits(target, &[Hit { interest: 5, marker: Some(MarkerCheck::Valid), siblings: 1, holds: 1 << 63 }])
+        .unwrap();
     tree.set_access(target, access(0o555, false)).unwrap();
     let video = tree.add_child(home, b"video.mov", EntryKind::File).unwrap();
     tree.set_access(video, access(0o444, true)).unwrap();
     tree.add_own(video, sums(0, 700 * MIB, 700 * MIB, 700 * MIB)).unwrap();
     let link = tree.add_child(app, b"app.log", EntryKind::Symlink).unwrap();
-    tree.add_hits(link, &[Hit { interest: 7, marker: Some(MarkerCheck::Invalid), siblings: 0 }]).unwrap();
+    tree.add_hits(link, &[Hit { interest: 7, marker: Some(MarkerCheck::Invalid), siblings: 0, holds: 0 }]).unwrap();
     tree.set_times(link, Times { changed: at(1_763_000_300), accessed: at(1_763_000_400) }).unwrap();
     let documents = folder(&mut tree, home, "Documents", Sums::ZERO);
     tree.mark(documents, Flag::Avoided).unwrap();
@@ -146,7 +147,7 @@ pub(crate) struct NodeSpec {
     kind: u8,
     own: Sums,
     modified: Option<u32>,
-    hits: Vec<(u32, u8, u64)>,
+    hits: Vec<(u32, u8, u64, u64)>,
     owner: Option<u8>,
     /// The bits of its access.
     access: u8,
@@ -166,7 +167,7 @@ type InsideSpec = (Option<u32>, Option<u32>, u8);
 pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpec>)> {
     let own = (0..1000_u32, 0..1_u64 << 36, 0..1_u64 << 36, 0..1_u64 << 36)
         .prop_map(|(files, logical, allocated, reclaimable)| sums(files, logical, allocated, reclaimable));
-    let hits = prop::collection::vec((0..64_u32, 0..3_u8, any::<u64>()), 0..3);
+    let hits = prop::collection::vec((0..64_u32, 0..3_u8, any::<u64>(), any::<u64>()), 0..3);
     let shared = prop::option::weighted(0.3, (any::<bool>(), 0..6_u8, 1..1_000_000_u32));
     let time = || prop::option::of(1_600_000_000..1_900_000_000_u32);
     let stamp = (time(), time(), prop::option::of((time(), time(), 0..16_u8)));
@@ -218,10 +219,11 @@ pub(crate) fn build(two_roots: bool, specs: &[NodeSpec]) -> Tree {
         let hits: Vec<Hit> = spec
             .hits
             .iter()
-            .map(|&(interest, marker, siblings)| Hit {
+            .map(|&(interest, marker, siblings, holds)| Hit {
                 interest,
                 marker: [None, Some(MarkerCheck::Valid), Some(MarkerCheck::Invalid)][usize::from(marker)],
                 siblings,
+                holds,
             })
             .collect();
         tree.add_hits(index, &hits).unwrap();

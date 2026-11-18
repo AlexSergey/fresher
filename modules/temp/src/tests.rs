@@ -72,6 +72,7 @@ fn file(interest: usize, path: &str, days: u64) -> Match {
         accessed: time,
         inside: None,
         siblings: Vec::new(),
+        holds: Vec::new(),
         marker: None,
         facts: EntryFacts::REMOVABLE,
     }

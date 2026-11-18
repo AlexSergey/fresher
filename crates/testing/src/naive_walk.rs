@@ -265,6 +265,7 @@ impl Walker<'_> {
                 accessed: None,
                 inside: whole.then_some(inside),
                 siblings: present_siblings(interest, path),
+                holds: Vec::new(),
                 marker: None,
                 facts: entry_facts(path, seen, kind, self.user, self.stated),
             });
@@ -289,6 +290,7 @@ impl Walker<'_> {
             let sizes =
                 if whole_folder { tree_sizes(path, device, &self.avoid) } else { own_sizes(seen.metadata(), kind) };
             let inside = whole_folder.then(|| self.tree_inside(path, seen, device));
+            let (holds, held_tag) = self.held(interest, path, kind);
             (self.on_match)(Match {
                 interest: index,
                 path: path.to_path_buf(),
@@ -299,11 +301,40 @@ impl Walker<'_> {
                 accessed: (kind != EntryKind::Folder).then(|| seen.accessed()).flatten(),
                 inside,
                 siblings: present_siblings(interest, path),
-                marker: marker_check(interest.pattern(), path),
+                holds,
+                marker: marker_check(interest.pattern(), path).or(held_tag),
                 facts: entry_facts(path, seen, kind, self.user, self.stated),
             });
         }
         claimed_whole
+    }
+
+    /// Which of the interest's held names the folder `path` lists, in the interest's order, and, when they name a
+    /// `CACHEDIR.TAG`, whether a valid one is there. An entry that cannot be read is absent; any kind counts, but a
+    /// tag only as a regular file. Nothing, and no check, for an entry that is not a folder or a folder that cannot
+    /// be listed.
+    fn held(&self, interest: &Interest, path: &Path, kind: EntryKind) -> (Vec<String>, Option<MarkerCheck>) {
+        if interest.holds().is_empty() || kind != EntryKind::Folder {
+            return (Vec::new(), None);
+        }
+        let Ok(entries) = sorted_entries(path) else { return (Vec::new(), None) };
+        let holds: Vec<String> = interest
+            .holds()
+            .iter()
+            .filter(|name| {
+                entries.iter().any(|entry| {
+                    entry.file_name().is_some_and(|found| found == name.as_str())
+                        && Seen::read(entry, self.stated)
+                            .is_ok_and(|seen| name.as_str() != CACHEDIR_TAG || seen.kind() == EntryKind::File)
+                })
+            })
+            .cloned()
+            .collect();
+        let tag = interest.holds().iter().any(|name| name == CACHEDIR_TAG).then(|| {
+            let held = holds.iter().any(|name| name == CACHEDIR_TAG);
+            if held && holds_valid_tag(path) { MarkerCheck::Valid } else { MarkerCheck::Invalid }
+        });
+        (holds, tag)
     }
 
     /// What the folder `dir` (seen as `seen`) holds, for the walk's user: the newest modification or status change of
@@ -990,6 +1021,28 @@ mod tests {
 
             assert_eq!(paths(&matches), ["project/cache"]);
             assert_eq!(matches[0].1.marker, Some(MarkerCheck::Valid));
+        }
+
+        #[test]
+        fn the_reference_walk_reports_what_a_matched_folder_holds_and_its_tag() {
+            let tree = FixtureTree::from_toml_str(
+                "[[dir]]\npath = \"cache/index-v5\"\n[[file]]\npath = \"cache/CACHEDIR.TAG\"\n\
+                 [[dir]]\npath = \"other\"\n",
+            )
+            .unwrap();
+            std::fs::write(tree.root().join("cache/CACHEDIR.TAG"), fresher_core::CACHEDIR_SIGNATURE).unwrap();
+            let held = |path: &str| {
+                interest(Pattern::Under(KnownFolder::Home, path.into()), Claim::Item, &[])
+                    .holding(vec!["content-v2".into(), CACHEDIR_TAG.into(), "index-v5".into()])
+                    .unwrap()
+            };
+
+            let matches = walk(&tree, &[held("cache"), held("other")]).unwrap();
+
+            assert_eq!(paths(&matches), ["cache", "other"]);
+            assert_eq!(matches[0].1.holds, [CACHEDIR_TAG, "index-v5"]);
+            assert_eq!(matches[0].1.marker, Some(MarkerCheck::Valid));
+            assert_eq!((matches[1].1.holds.len(), matches[1].1.marker), (0, Some(MarkerCheck::Invalid)));
         }
 
         #[test]

@@ -178,7 +178,7 @@ mod positive {
         let folded = fold(root, &entries, &matcher.folder(&entries), &hits, KEEP_THRESHOLD, None);
         assert_eq!(folded.kept.len(), 1);
         let created = apply(&mut tree, &folded);
-        assert_eq!(tree.hits(created[0]), [Hit { interest: 0, marker: None, siblings: 0b1 }]);
+        assert_eq!(tree.hits(created[0]), [Hit { interest: 0, marker: None, siblings: 0b1, holds: 0 }]);
         tree.freeze();
         assert_eq!(tree.sums(root), Some(sums(2, 20, 20, 20)));
     }
@@ -237,7 +237,12 @@ mod positive {
     fn apply_gives_the_kept_nodes_in_order_and_the_folders_own_hits() {
         let (mut tree, root) = rooted("/home");
         let mut folded = batch(root, &[("z", entry(EntryKind::Folder, 0)), ("a", entry(EntryKind::File, 2 * MIB))]);
-        folded.own_hits.push(Hit { interest: 3, marker: Some(fresher_core::MarkerCheck::Valid), siblings: 0 });
+        folded.own_hits.push(Hit {
+            interest: 3,
+            marker: Some(fresher_core::MarkerCheck::Valid),
+            siblings: 0,
+            holds: 0,
+        });
         let created = apply(&mut tree, &folded);
         assert_eq!(created.iter().map(|&node| tree.name(node)).collect::<Vec<_>>(), [&b"z"[..], b"a"]);
         assert_eq!(tree.hits(root).len(), 1);

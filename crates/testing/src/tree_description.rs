@@ -19,6 +19,9 @@ pub const FIXTURE_NOW: u64 = 1_767_225_600;
 const MAX_FILLED_FILE: u64 = 64 * 1024 * 1024;
 const MAX_FILLED_TREE: u64 = 512 * 1024 * 1024;
 const FILL_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
+/// What a valid `CACHEDIR.TAG` holds: the standard's signature line, then a comment. The large trees write it too.
+pub(crate) const CACHEDIR_TAG_CONTENT: &[u8] =
+    b"Signature: 8a477f597d28d172789f06886806bc55\n# A cache directory tag.\n";
 
 /// A tree of files, folders, links, sandbox markers and app bundles as plain data (the format: docs/testing.md, "Fixture homes").
 ///
@@ -85,13 +88,15 @@ struct FileSpec {
     kind: Option<StatedKind>,
 }
 
-/// What a file holds: nothing (sparse, costs no disk) or real bytes of a fixed pattern.
+/// What a file holds: nothing (sparse, costs no disk), real bytes of a fixed pattern, or a valid cache directory tag.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 enum Fill {
     #[default]
     Sparse,
     Data,
+    /// [`CACHEDIR_TAG_CONTENT`]; never with a `size`.
+    CachedirTag,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -299,6 +304,9 @@ impl TreeDescription {
             if file.kind.is_some() && file.fill.is_some() {
                 return Err(FixtureError::KindWithFill { path: file.path.clone() });
             }
+            if file.fill == Some(Fill::CachedirTag) && file.size != 0 {
+                return Err(FixtureError::TagWithSize { path: file.path.clone() });
+            }
             if file.fill == Some(Fill::Data) {
                 filled = filled.saturating_add(file.size);
                 if file.size > MAX_FILLED_FILE || filled > MAX_FILLED_TREE {
@@ -389,6 +397,9 @@ fn create_file(folder: &Path, spec: &FileSpec, now: SystemTime) -> Result<(), Fi
             .and_then(|()| write_pattern(&mut file, spec.size))
             .and_then(|()| file.sync_all())
             .map_err(create_error)?,
+        Fill::CachedirTag => {
+            file.write_all(CACHEDIR_TAG_CONTENT).and_then(|()| file.sync_all()).map_err(create_error)?;
+        }
     }
     if let Some(time) = modified {
         file.set_modified(time).map_err(create_error)?;
@@ -542,6 +553,15 @@ mod tests {
 
                 assert!(matches!(parse(&text).unwrap_err(), FixtureError::KindWithFill { .. }), "{fill}");
             }
+        }
+
+        #[test]
+        fn a_cache_directory_tag_with_a_size_or_a_kind_is_refused() {
+            let sized = parse("[[file]]\npath = \"CACHEDIR.TAG\"\nsize = 10\nfill = \"cachedir-tag\"\n").unwrap_err();
+            let kind = parse("[[file]]\npath = \"CACHEDIR.TAG\"\nkind = \"socket\"\nfill = \"cachedir-tag\"\n");
+
+            assert!(matches!(sized, FixtureError::TagWithSize { .. }), "{sized}");
+            assert!(matches!(kind.unwrap_err(), FixtureError::KindWithFill { .. }));
         }
 
         #[test]
@@ -827,6 +847,21 @@ mod tests {
             };
 
             assert_eq!(bytes(), bytes());
+        }
+
+        #[test]
+        fn a_cache_directory_tag_holds_a_valid_tag() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[file]]\npath = \"a/CACHEDIR.TAG\"\nfill = \"cachedir-tag\"\n\
+                        [[file]]\npath = \"b/CACHEDIR.TAG\"\nsize = 0\nfill = \"cachedir-tag\"\n";
+
+            TreeDescription::from_toml_str(text).unwrap().build_at(folder.path(), now()).unwrap();
+
+            for tag in ["a/CACHEDIR.TAG", "b/CACHEDIR.TAG"] {
+                let content = std::fs::read(folder.path().join(tag)).unwrap();
+                assert!(fresher_core::is_valid_cachedir_tag(&content), "{tag}");
+                assert_eq!(content, crate::tree_description::CACHEDIR_TAG_CONTENT, "{tag}");
+            }
         }
 
         #[test]

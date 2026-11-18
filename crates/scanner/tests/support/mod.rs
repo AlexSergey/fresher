@@ -31,6 +31,23 @@ pub(crate) fn every_interest() -> Vec<Interest> {
     ]
 }
 
+/// Anchored interests that look for names in their folders, over the names of the random trees: an item and a whole
+/// claim, `*` and a tag among the held names, two interests ending at the same folder.
+pub(crate) fn held_interests() -> Vec<Interest> {
+    let held = |path: &str, claim, names: &[&str]| {
+        interest(Pattern::Under(KnownFolder::Home, path.into()), claim, &[])
+            .holding(names.iter().map(|&name| (*name).into()).collect())
+            .unwrap()
+    };
+    vec![
+        held("Library/Caches/*", Claim::Item, &["CACHEDIR.TAG", "x.json", "a"]),
+        held("a", Claim::Whole, &["b", "CACHEDIR.TAG", "Logs"]),
+        held("*/b", Claim::Item, &["Caches", "CACHEDIR.TAG", "package.json"]),
+        held("Library", Claim::Item, &["Caches", "Logs", "node_modules"]),
+        held("Library", Claim::Whole, &["CACHEDIR.TAG"]),
+    ]
+}
+
 pub(crate) fn set_of(interests: &[Interest]) -> InterestSet {
     let mut set = InterestSet::new();
     set.add(ModuleId::new("demo").unwrap(), interests);
@@ -278,6 +295,13 @@ pub(crate) fn random_items() -> impl proptest::strategy::Strategy<Value = Vec<Ra
     use proptest::prelude::*;
 
     prop::collection::vec((0_u8..8, prop::collection::vec(0_usize..10, 1..4), 0_u64..5_000_000), 0..40)
+}
+
+/// `items` after four tags, valid when their `sizes` are even, in the folders `held_interests` match: `Library`, `a`,
+/// a cache, and `b/b`.
+pub(crate) fn tagged(sizes: &[u64], items: Vec<RandomItem>) -> Vec<RandomItem> {
+    let placed = [vec![4, 7], vec![0, 7], vec![4, 3, 1, 7], vec![1, 1, 7]];
+    placed.into_iter().zip(sizes.iter().copied()).map(|(path, size)| (5, path, size)).chain(items).collect()
 }
 
 /// Builds `items` under `root` and returns the folders it locked (mode 0), to open again after the walks. A file's

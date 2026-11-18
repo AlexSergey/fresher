@@ -1,0 +1,102 @@
+# A home for the dev-caches module where every place holds its tool's cache with its sign, Xcode closed: eleven
+# findings, one per row and two derived data projects (`Demo`, `My-App`). Cargo's index, Homebrew's `api` and its
+# top-level link beside the downloads are not offered.
+
+[[file]]
+path = ".npm/_cacache/index-v5/ab/cd/x"
+size = 512
+
+[[file]]
+path = ".npm/_cacache/content-v2/sha512/ab/x"
+size = 4096
+
+[[dir]]
+path = ".npm/_cacache/tmp"
+
+[[file]]
+path = "Library/Caches/Yarn/v6/npm-x-1.0/package.json"
+size = 512
+
+[[file]]
+path = "Library/Caches/Homebrew/api/formula.jws.json"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Homebrew/downloads/0123abcd--x-1.0.bottle.tar.gz"
+size = 8192
+
+[[symlink]]
+path = "Library/Caches/Homebrew/x--1.0"
+target = "downloads/0123abcd--x-1.0.bottle.tar.gz"
+
+[[file]]
+path = ".cargo/registry/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = ".cargo/registry/cache/index.crates.io-x/a-1.0.crate"
+size = 8192
+
+[[file]]
+path = ".cargo/registry/src/index.crates.io-x/a-1.0/src/lib.rs"
+size = 1024
+
+[[file]]
+path = ".cargo/registry/index/index.crates.io-x/config.json"
+size = 128
+
+[[file]]
+path = "Library/Caches/CocoaPods/Pods/Release/x/x.tar.gz"
+size = 8192
+
+[[file]]
+path = ".gradle/caches/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = ".gradle/caches/modules-2/files-2.1/x.jar"
+size = 8192
+
+[[file]]
+path = ".gradle/caches/modules-2/modules-2.lock"
+size = 17
+
+[[file]]
+path = "Library/Caches/pip/http-v2/a/b/c"
+size = 2048
+
+[[file]]
+path = "Library/Caches/pip/wheels/ab/x-1.0.whl"
+size = 8192
+
+[[file]]
+path = "Library/Caches/go-build/README"
+size = 256
+
+[[file]]
+path = "Library/Caches/go-build/trim.txt"
+size = 16
+
+[[file]]
+path = "Library/Caches/go-build/00/x-a"
+size = 1024
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Build/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Index.noindex/y"
+size = 2048
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/My-App-bcdefghijklmnopqrstuvwxyzabc/info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/My-App-bcdefghijklmnopqrstuvwxyzabc/Build/x"
+size = 4096

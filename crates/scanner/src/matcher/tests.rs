@@ -381,7 +381,7 @@ mod property {
                 interest(Pattern::Extension("log".into()), Claim::Item, &[]),
             ],
         );
-        assert_eq!(compile(&set, Path::new("/Users/fixed")).fingerprint(), 0x73b7_bf11_ede0_8e26);
+        assert_eq!(compile(&set, Path::new("/Users/fixed")).fingerprint(), 0x3a31_54b2_3a10_b966);
     }
 
     #[test]
@@ -391,6 +391,19 @@ mod property {
             compile(&set, Path::new("/Users/a")).fingerprint(),
             compile(&set, Path::new("/Users/b")).fingerprint()
         );
+    }
+
+    #[test]
+    fn the_fingerprint_changes_with_the_held_names() {
+        let anchored = || interest(Pattern::Under(KnownFolder::Home, ".npm/_cacache".into()), Claim::Whole, &[]);
+        let held = |names: &[&str]| anchored().holding(names.iter().map(|&name| name.into()).collect()).unwrap();
+        let home = Path::new("/Users/fixed");
+        let print = |interest: Interest| compile(&set_of(&[interest]), home).fingerprint();
+
+        assert_ne!(print(anchored()), print(held(&["index-v5"])));
+        assert_ne!(print(held(&["index-v5"])), print(held(&["content-v2"])));
+        assert_ne!(print(held(&["index-v5", "content-v2"])), print(held(&["content-v2", "index-v5"])));
+        assert_eq!(print(held(&["index-v5"])), print(held(&["index-v5"])));
     }
 
     #[test]

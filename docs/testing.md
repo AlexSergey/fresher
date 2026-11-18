@@ -124,7 +124,10 @@ cleanups of a hundred items through the real journal.
   the same data folder keeps the lists, a cleanup plan over an ignored module drops its items). `tests/places.rs`
   walks the temporary places beside a fixture home (named in the map, cleaned to the Trash, refused once no module
   names them); `tests/temp.rs` runs the `temp` module's flows on the real scanner, settings file and cleaner, two of
-  them on real old modification times, a real socket and a real pipe, nothing stated.
+  them on real old modification times, a real socket and a real pipe, nothing stated; `tests/dev_caches.rs` runs the
+  `dev-caches` module's flows the same way, with a scripted change journal so its rescans read only what it names.
+  The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
+  pulled in with `#[path]` only by the tests that use it.
 - `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
   `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
@@ -258,7 +261,8 @@ target = "Library/Caches/com.example.editor/Cache.db"
 # (FIXTURE_NOW for `FixtureTree`), so a stale file stays stale; "-2d" is a time after it. `age` and `modified` never
 # go together.
 # `fill = "data"` writes real bytes of a fixed pattern instead of a sparse file, so freed space can be measured
-# (at most 64 MiB a file and 512 MiB a description; a larger one is refused).
+# (at most 64 MiB a file and 512 MiB a description; a larger one is refused). `fill = "cachedir-tag"` writes a valid
+# cache directory tag (its standard signature line, then a comment), never with a `size` or a `kind`.
 [[file]]
 path = "Library/Caches/com.example.editor/old.bin"
 size = 1048576
@@ -363,6 +367,17 @@ The case files:
   does not know, open (every folder kept) or installed (every removed IDE's data kept). Files of their own, since the
   app keeps the folders of every case beside it; in `npm run sandbox -- all` it keeps those of `jetbrains.toml` too
   ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+
+- `dev-caches.toml`, `dev-caches-unsigned.toml` and `dev-caches-xcode-open.toml`: the `dev-caches` module, in three
+  files because its places are fixed, so a world where a sign is missing or Xcode is open cannot sit beside the
+  signed one. The first: look-alike folders, a tool's settings, credentials and programs, stores that are not plain
+  caches, Homebrew's own data, derived data that is no project, a link or a file in a project's place are never
+  offered, and a project holding a socket or the system's file is left out (`special`, `not-yours`); each tool's cache
+  goes to the Trash in its category (npm, Yarn, Homebrew with its links kept, Cargo, CocoaPods, Gradle, pip, Go, and a
+  closed Xcode's project). The second writes every place without its sign: nothing is offered, nothing left out. The
+  third runs with Xcode open: a project is left out (`app-open`), npm's cache still goes. Their worlds are their own:
+  the autotest runs each alone and `npm run sandbox -- all` joins them for a look by hand only (there the unsigned
+  files land in signed places), so no file writes a path another writes.
 
 - `temp.toml`: the `temp` module, in the sandbox's two temporary places, with stated facts for what the disk cannot
   make. A fresh file, a folder unpacked with old modification times, an old folder with one file changed a day ago,

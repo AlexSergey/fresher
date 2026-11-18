@@ -66,6 +66,20 @@ fn listings(reader: &dyn FolderReader, root: &Path) -> Vec<Listed> {
     found
 }
 
+/// Sets every access time below `root` (itself included) to its modification time, so the first listing's reads do
+/// not move one under the second listing's feet.
+fn settle_tree(root: &Path) {
+    fresher_testing::settle_access_time(root).unwrap();
+    for entry in std::fs::read_dir(root).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            settle_tree(&path);
+        } else {
+            fresher_testing::settle_access_time(&path).unwrap();
+        }
+    }
+}
+
 mod negative {
     use std::path::PathBuf;
 
@@ -73,7 +87,7 @@ mod negative {
     use fresher_testing::{FactsLens, FixtureTree, Stated, StatedFacts, StatedOwner};
     use proptest::prelude::*;
 
-    use super::{days_ago, listings, scanned, tree_text};
+    use super::{days_ago, listings, scanned, settle_tree, tree_text};
     use crate::walk::std_reader::StdReader;
     use crate::walk::tests::canonical;
 
@@ -92,6 +106,7 @@ mod negative {
         let tree = FixtureTree::from_toml_str(super::STATED).unwrap();
         let other = FixtureTree::from_toml_str(super::STATED).unwrap();
         let root = canonical(other.root());
+        settle_tree(&root);
 
         let lens = FactsLens::new(StdReader::new(), tree.stated().clone());
 
@@ -109,6 +124,7 @@ mod negative {
         ) {
             let tree = FixtureTree::from_toml_str(&tree_text(&files, &empty)).unwrap();
             let root = canonical(tree.root());
+            settle_tree(&root);
             let mut elsewhere = StatedFacts::new();
             let theirs = Stated { owner: Some(StatedOwner::System), ..Stated::default() };
             elsewhere.insert(PathBuf::from("/nowhere/d0/f0"), theirs);

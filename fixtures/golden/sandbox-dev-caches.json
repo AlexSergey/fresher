@@ -1,0 +1,1028 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "dev-caches.cargo",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.cargo/registry/cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.gradle",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.gradle/caches",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.npm",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.npm/_cacache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.cocoapods",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/CocoaPods",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.homebrew",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/Homebrew/downloads",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.yarn",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/Yarn",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.go-build",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/go-build",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.pip",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/pip",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "dev-caches.xcode-derived-data",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "dev-caches.cargo",
+      "danger": "low",
+      "logical": 8192,
+      "module": "dev-caches",
+      "subject": "home/.cargo/registry/cache"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.cargo",
+      "danger": "low",
+      "logical": 1024,
+      "module": "dev-caches",
+      "subject": "home/.cargo/registry/src"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.gradle",
+      "danger": "low",
+      "logical": 8278,
+      "module": "dev-caches",
+      "subject": "home/.gradle/caches"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.npm",
+      "danger": "low",
+      "logical": 8704,
+      "module": "dev-caches",
+      "subject": "home/.npm/_cacache"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.cocoapods",
+      "danger": "low",
+      "logical": 8192,
+      "module": "dev-caches",
+      "subject": "home/Library/Caches/CocoaPods"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.homebrew",
+      "danger": "low",
+      "logical": 8192,
+      "module": "dev-caches",
+      "subject": "home/Library/Caches/Homebrew/downloads"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.yarn",
+      "danger": "low",
+      "logical": 512,
+      "module": "dev-caches",
+      "subject": "home/Library/Caches/Yarn"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.go-build",
+      "danger": "safe",
+      "logical": 1296,
+      "module": "dev-caches",
+      "subject": "home/Library/Caches/go-build"
+    },
+    {
+      "app": null,
+      "category": "dev-caches.pip",
+      "danger": "low",
+      "logical": 10240,
+      "module": "dev-caches",
+      "subject": "home/Library/Caches/pip"
+    },
+    {
+      "app": "com.apple.dt.Xcode",
+      "category": "dev-caches.xcode-derived-data",
+      "danger": "safe",
+      "logical": 6400,
+      "module": "dev-caches",
+      "subject": "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "dev-caches.xcode-derived-data",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "dev-caches.left-out.not-yours"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "dev-caches.xcode-derived-data",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "dev-caches.left-out.special"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/.npm/_cacache-old",
+        "case": "look-alike folders are never claimed",
+        "path": [
+          "home/.npm/_cacache-old"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/.npm/_cacache-old/content-v2"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/.npm/_cacache-old/index-v5"
+          }
+        ]
+      },
+      {
+        "at": "home/.cargo/registry/index",
+        "case": "stores that are not plain caches are never claimed",
+        "path": [
+          "home/.cargo/registry/index"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/.cargo/registry/index"
+          }
+        ]
+      },
+      {
+        "at": "home/.npm/_cacache",
+        "case": "npm's cache goes to the Trash",
+        "path": [
+          "home/.npm/_cacache"
+        ],
+        "rows": [
+          {
+            "allocated": 12288,
+            "explained": 12288,
+            "logical": 8704,
+            "path": "home/.npm/_cacache"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab",
+        "case": "a closed Xcode's project build data goes, in Xcode's line",
+        "path": [
+          "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
+        ],
+        "rows": [
+          {
+            "allocated": 12288,
+            "explained": 12288,
+            "logical": 6400,
+            "path": "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 98304,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 8192,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67162861,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738037011,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 111,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Xcode.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Xcode.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Xcode.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Xcode.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/CocoaPods"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/CocoaPods/Pods"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/CocoaPods/Pods/Release"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/CocoaPods/Pods/Release/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/CocoaPods/Pods/Release/x/x.tar.gz"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Demo-abcdefghijklmnopqrstuvwxyzab"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Demo-abcdefghijklmnopqrstuvwxyzab/Build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Demo-abcdefghijklmnopqrstuvwxyzab/Build/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Demo-abcdefghijklmnopqrstuvwxyzab/Index.noindex"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "home/.Trash/Demo-abcdefghijklmnopqrstuvwxyzab/Index.noindex/y"
+      },
+      {
+        "kind": "file",
+        "logical_size": 256,
+        "path": "home/.Trash/Demo-abcdefghijklmnopqrstuvwxyzab/info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Yarn"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Yarn/v6"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Yarn/v6/npm-x-1.0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 512,
+        "path": "home/.Trash/Yarn/v6/npm-x-1.0/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/content-v2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/content-v2/sha512"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/content-v2/sha512/ab"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/_cacache/content-v2/sha512/ab/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/index-v5"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/index-v5/ab"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/index-v5/ab/cd"
+      },
+      {
+        "kind": "file",
+        "logical_size": 512,
+        "path": "home/.Trash/_cacache/index-v5/ab/cd/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/_cacache/tmp"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/_cacache/tmp/t"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/cache/index.crates.io-x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/cache/index.crates.io-x/a-1.0.crate"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/caches"
+      },
+      {
+        "kind": "file",
+        "logical_size": 69,
+        "path": "home/.Trash/caches/CACHEDIR.TAG"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/caches/modules-2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/caches/modules-2/files-2.1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/caches/modules-2/files-2.1/x.jar"
+      },
+      {
+        "kind": "file",
+        "logical_size": 17,
+        "path": "home/.Trash/caches/modules-2/modules-2.lock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/downloads"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/downloads/0123abcd--x-1.0.bottle.tar.gz"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/go-build"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/go-build/00"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1024,
+        "path": "home/.Trash/go-build/00/x-a"
+      },
+      {
+        "kind": "file",
+        "logical_size": 256,
+        "path": "home/.Trash/go-build/README"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16,
+        "path": "home/.Trash/go-build/trim.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/pip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/pip/http-v2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/pip/http-v2/a"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/pip/http-v2/a/b"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "home/.Trash/pip/http-v2/a/b/c"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/pip/wheels"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/pip/wheels/ab"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/pip/wheels/ab/x-1.0.whl"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/bin/cargo-tool"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/credentials.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/git"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/git/checkouts"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/git/checkouts/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/git/checkouts/x/y"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry"
+      },
+      {
+        "kind": "file",
+        "logical_size": 69,
+        "path": "home/.cargo/registry/CACHEDIR.TAG"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/cache-old"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/registry/cache-old/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cargo/registry/index/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src/index.crates.io-x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src/index.crates.io-x/a-1.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cargo/registry/src/index.crates.io-x/a-1.0/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1024,
+        "path": "home/.cargo/registry/src/index.crates.io-x/a-1.0/src/lib.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle/caches-old"
+      },
+      {
+        "kind": "file",
+        "logical_size": 69,
+        "path": "home/.gradle/caches-old/CACHEDIR.TAG"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.gradle/gradle.properties"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle/wrapper"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.gradle/wrapper/dists"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.gradle/wrapper/dists/x.zip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.m2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.m2/repository"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.m2/repository/x.jar"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache-old"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache-old/content-v2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.npm/_cacache-old/content-v2/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_cacache-old/index-v5"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.npm/_cacache-old/index-v5/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_npx"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.npm/_npx/a"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.npm/_npx/a/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.npmrc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew/Backup"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Homebrew/Backup/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew/Cask"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Homebrew/Cask/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew/api"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Homebrew/api/formula.jws.json"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Homebrew/x--1.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Yarn2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Yarn2/v6"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Yarn2/v6/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Demo-short"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Demo-short/info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/File-efghijklmnopqrstuvwxyzabcdef"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Link-defghijklmnopqrstuvwxyzabcde"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/ModuleCache.noindex"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Root-abcdefghijklmnopqrstuvwxyzab"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Root-abcdefghijklmnopqrstuvwxyzab/Build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Root-abcdefghijklmnopqrstuvwxyzab/Build/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Root-abcdefghijklmnopqrstuvwxyzab/info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Sock-abcdefghijklmnopqrstuvwxyzab"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/DerivedData/Sock-abcdefghijklmnopqrstuvwxyzab/info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/DerivedData/Sock-abcdefghijklmnopqrstuvwxyzab/x.sock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/pnpm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/pnpm/store"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/pnpm/store/v3"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/pnpm/store/v3/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere/Link"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/elsewhere/Link/info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 488,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 160493
+  }
+}

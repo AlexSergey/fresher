@@ -1,0 +1,74 @@
+# The home of the dev-caches module's core end-to-end flows (crates/e2e/tests/dev_caches.rs), laid out as a sandbox
+# lays out its home (`home/`); the flows add the rest of the sandbox's layout and its marker. Five caches are offered,
+# each with its sign: npm's, Cargo's `registry/cache` and `registry/src` (the tag in `registry`), Gradle's caches and
+# one derived data project. Cargo's `index`, `bin` and `credentials.toml` are the user's and never offered. The
+# offered files are filled with data, so a put back is compared byte for byte; the valid tags are written by
+# `fill = "cachedir-tag"`. `content-v2/sha512/ab` is the folder flow 5 makes unreadable.
+
+[[file]]
+path = "home/.npm/_cacache/index-v5/ab/cd/x"
+size = 512
+fill = "data"
+
+[[file]]
+path = "home/.npm/_cacache/content-v2/sha512/ab/x"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/.npm/_cacache/content-v2/sha512/cd/y"
+size = 2048
+fill = "data"
+
+[[file]]
+path = "home/.cargo/registry/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = "home/.cargo/registry/cache/index.crates.io-x/a-1.0.crate"
+size = 8192
+fill = "data"
+
+[[file]]
+path = "home/.cargo/registry/src/index.crates.io-x/a-1.0/src/lib.rs"
+size = 1024
+fill = "data"
+
+[[file]]
+path = "home/.cargo/registry/index/index.crates.io-x/config.json"
+size = 128
+fill = "data"
+
+[[file]]
+path = "home/.cargo/bin/cargo-x"
+size = 2048
+fill = "data"
+
+[[file]]
+path = "home/.cargo/credentials.toml"
+size = 64
+fill = "data"
+
+[[file]]
+path = "home/.gradle/caches/CACHEDIR.TAG"
+fill = "cachedir-tag"
+
+[[file]]
+path = "home/.gradle/caches/modules-2/files-2.1/x.jar"
+size = 8192
+fill = "data"
+
+[[file]]
+path = "home/.gradle/caches/modules-2/modules-2.lock"
+size = 17
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 256
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab/Build/x"
+size = 4096
+fill = "data"
