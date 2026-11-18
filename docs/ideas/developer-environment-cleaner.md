@@ -27,3 +27,5 @@ Open questions:
 - Detect tools that are installed but not used for months and point at their whole footprint?
 
 **Partly taken by [plan 016](../plans/016-jetbrains/readme.md):** the IDEs line for JetBrains: older versions' settings, caches and logs, and the data of an IDE that is no longer installed, in the module `jetbrains`. **Still an idea:** VS Code extension caches and every other tool above.
+
+**Partly taken by [plan 018](../plans/018-developer-caches/readme.md) (draft):** the package managers' download caches (npm, Yarn, Homebrew, Cargo's registry, CocoaPods, Gradle, pip), Go's build cache and Xcode's DerivedData, moved to the Trash rather than through the tools' own commands, in the module `dev-caches`. **Still an idea:** Docker, simulators and runtimes, device support, Archives, previews, VS Code, pnpm's store, Maven's repository, Cargo's git caches.

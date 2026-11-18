@@ -66,3 +66,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 015 | [Module groups and ignoring a module](./015-module-groups/readme.md) | 🔨 in progress | 0.1.0 | core, engine, modules, testing, app, app/ui |
 | 016 | [JetBrains IDE leftovers](./016-jetbrains/readme.md) | 🔨 in progress | 0.1.0 | modules, core, sandbox, testing, app, app/ui, docs |
 | 017 | [Temporary files](./017-temp-files/readme.md)                        | 🔨 in progress | 0.1.0   | core, macos, system, scanner, engine, cleaner, testing, sandbox, modules, app, app/ui |
+| 018 | [Developer caches](./018-developer-caches/readme.md)                 | 📝 draft       | 0.1.0   | modules, core, sandbox, testing, app, app/ui, docs |
