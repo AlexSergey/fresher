@@ -67,3 +67,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 016 | [JetBrains IDE leftovers](./016-jetbrains/readme.md) | 🔨 in progress | 0.1.0 | modules, core, sandbox, testing, app, app/ui, docs |
 | 017 | [Temporary files](./017-temp-files/readme.md)                        | 🔨 in progress | 0.1.0   | core, macos, system, scanner, engine, cleaner, testing, sandbox, modules, app, app/ui |
 | 018 | [Developer caches](./018-developer-caches/readme.md)                 | ✅ approved    | 0.1.0   | core, scanner, testing, modules, sandbox, e2e, app, app/ui, docs |
+| 019 | [Uninstalled app leftovers](./019-uninstalled-app-leftovers/readme.md) | 📝 draft     | 0.1.0   | modules, core, system, sandbox, testing, e2e, app, app/ui, docs |

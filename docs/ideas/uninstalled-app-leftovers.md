@@ -51,3 +51,5 @@ Open questions:
   rule covers them.
 
 **Partly taken by [plan 016](../plans/016-jetbrains/readme.md):** a JetBrains IDE that is no longer installed has its data offered in its own category after 30 days (a setting), with Spotlight and the Toolbox folders as extra sources of what is installed. **Still an idea:** the same for every other app, matched by bundle id, and the "keep settings, remove caches only" choice.
+
+**Partly taken by [plan 019](../plans/019-uninstalled-app-leftovers/readme.md) (draft):** the data of every other app that is provably no longer installed, matched by bundle id only (an id proven an app's by its container or saved state), in three categories by kind (caches Safe, settings Medium, support folders and containers High), with the "keep settings" choice as a selection of categories, in the module `app-leftovers`. **Still an idea:** group containers, launch agents and folders named after the app's name.
