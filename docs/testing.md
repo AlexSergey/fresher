@@ -169,7 +169,10 @@ cleanups of a hundred items through the real journal.
   modules, groups and items and keeps the lists for the session; `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
   reference engine (the app runs in WebKit on macOS); Chromium runs too. The suite runs on `npm run build:e2e` (the
   app and the gallery in `dist-e2e/`), served with the app's production CSP; every spec checks that the policy
-  refused nothing.
+  refused nothing. The screenshots are compared only on the developer's Mac, by the pre-push checks: the CI runner has
+  another macOS version, which draws text a few pixels differently, so CI runs the suite with `--ignore-snapshots`
+  (every other check still runs) and turns on full keyboard access (`AppleKeyboardUIMode` 3), without which WebKit's
+  Tab skips buttons. When the runner has the developer's macOS version, CI can compare the screenshots again.
 - **The gallery** (`app/ui/gallery.html`, `src/gallery/`): every component in every state, each `*.stories.tsx`
   found by `import.meta.glob`; built only by `build:e2e`, never into the app's `dist/`. `gallery.spec.ts` photographs
   every story in WebKit; `visual.spec.ts` photographs every screen in each of its states in WebKit and Chromium.

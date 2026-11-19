@@ -81,7 +81,13 @@ jobs:
           tool: cargo-nextest@0.9.149
       - name: Install the Playwright browsers
         run: npm exec --workspace app/ui -- playwright install webkit chromium
-      - run: npm run test:e2e
+      # Full keyboard access, as on a developer's Mac: without it WebKit's Tab skips buttons.
+      - name: Turn on full keyboard access
+        run: defaults write -g AppleKeyboardUIMode -int 3
+      # The screenshots are compared on the developer's Mac only (pre-push, docs/testing.md): the runner's macOS draws
+      # text a few pixels differently from the one the baselines were taken on.
+      - run: npm run test:e2e:core
+      - run: npm run test:e2e --workspace app/ui -- --ignore-snapshots
       - if: ${{ failure() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
