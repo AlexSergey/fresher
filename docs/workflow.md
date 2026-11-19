@@ -19,6 +19,14 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
   🔨 in progress, and its rest continues on a new branch from `main`. Likewise a plan whose only open step is the
   user's run by hand may be merged when the user asks (plan 007, 2026-11-17); the run's results are written on `main`.
 
+## Worktrees
+
+- A global plan's branch may be worked in a sibling worktree (`git worktree add ../fresher-NNN -b feat/NNN-<name>`),
+  so `main` stays free for small changes while the plan is built.
+- The git hooks run the Node tools, so a new worktree needs `node_modules`: run `npm ci` in it, or link the main
+  checkout's folder (`ln -s ../fresher/node_modules node_modules`; the link is ignored by git).
+- Every worktree has its own `target/`: watch the free disk space, and remove the worktree when its plan is merged.
+
 ## Pushing
 
 - Push only when the user asks. Committing and merging locally is part of doing the work.
