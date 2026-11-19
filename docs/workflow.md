@@ -25,7 +25,8 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
   so `main` stays free for small changes while the plan is built.
 - The git hooks run the Node tools, so a new worktree needs `node_modules`: run `npm ci` in it, or link the main
   checkout's folder (`ln -s ../fresher/node_modules node_modules`; the link is ignored by git).
-- Every worktree has its own `target/`: watch the free disk space, and remove the worktree when its plan is merged.
+- Every worktree has its own `target/`: watch the free disk space, and remove the worktree when its plan is merged
+  (`git worktree remove ../fresher-NNN`).
 
 ## Pushing
 
