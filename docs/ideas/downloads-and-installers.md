@@ -1,6 +1,6 @@
 # Downloads and installers
 
-**Since:** 2026-11-17
+**Since:** 2026-11-17 · **Plan:** [020](../plans/020-downloads/readme.md) (draft)
 
 ## Problem
 
