@@ -1,6 +1,6 @@
 # 021 — Stale projects
 
-**Status:** 📝 draft · **Version:** 0.1.0 · **Date:** 2026-11-19 · **Modules:** core, engine, scanner, modules,
+**Status:** ✅ approved · **Version:** 0.1.0 · **Date:** 2026-11-19 · **Modules:** core, engine, scanner, modules,
 testing, sandbox, e2e, app, app/ui, docs
 
 A one-file draft: the design in short, with the recommended decisions taken as agent's calls. Plans, steps and
@@ -119,11 +119,19 @@ None for the user; the calls below are waiting for a confirm or an overrule.
 6. **Uncommitted changes do not matter**: only regenerable folders are offered, never source; no git status is read.
 7. **Projects under `~/Library`, `/Applications`, app bundles and hidden home folders are not projects here.**
 8. **A nested project follows its outermost project's staleness.**
-9. **`dist`, `.next`, `.nuxt`, `.turbo`, `.parcel-cache` are left for later**: whether `dist` is build output depends on
-   the project's own configuration; the framework caches can join `build-output` in a follow-up once their markers are
-   verified.
+9. **`dist`, `.next`, `.nuxt`, `.turbo`, `.parcel-cache` are never offered** — the user's decision (below).
 10. **No running-process check**: a stale project has no build running; the Rust cache's 7 days unchanged and the
     cleaner's in-use check cover an active one.
+
+## Decisions
+
+The user's, of 2026-11-19 (translated):
+
+1. "`dist` and the rest must definitely not be touched": `dist`, `.next`, `.nuxt`, `.turbo`, `.parcel-cache` and other
+   framework output are never offered by this module, not even later.
+2. "Maybe think about cleaning nvm too, but it must definitely not be on by default": recorded in
+   [unused toolchain versions](../../ideas/unused-toolchain-versions.md) for plan 024; not part of this plan.
+3. "The rest seems fine; work autonomously, take the recommended decisions": the agent's calls above are approved.
 
 ## Deferred items this takes
 

@@ -55,3 +55,7 @@ Open questions:
   [Developer Environment Cleaner](./developer-environment-cleaner.md)?
 - The managers' own commands delete for good, while our default is the Trash
   ([`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md)): which wins for a toolchain?
+
+**The user, 2026-11-19:** cleaning Node versions installed by nvm (and the like) is worth considering, but it must
+never be on by default: the category starts off (an opt-in in the module's settings or an unticked, ignored-by-default
+section), whatever its danger level.
