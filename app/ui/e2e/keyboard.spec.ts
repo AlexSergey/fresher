@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
+import { nextFrames } from './support/frames';
 import { motionOff } from './support/motion';
 
 /* eslint-disable playwright/no-conditional-in-test, playwright/no-conditional-expect -- the sweep walks whatever focus stops each story holds */
@@ -30,6 +31,7 @@ const openStory = async (page: Page, id: string): Promise<Locator> => {
   await page.goto(`/gallery.html#/${encodeURIComponent(component)}/${encodeURIComponent(state)}`);
   const story = page.locator(`[data-story="${id}"]`);
   await expect(story).toBeVisible();
+  await nextFrames(page);
 
   return story;
 };

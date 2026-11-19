@@ -1,6 +1,6 @@
 # The keyboard e2e test fails at times on a long dialog in Chromium
 
-**Status:** open · **Updated:** 2026-11-17
+**Status:** fixed (the gallery tests wait two frames before they look) · **Updated:** 2026-11-19
 
 ## Symptom
 
@@ -11,13 +11,16 @@ it failed during plan 011/02/03 and passed in the final run of plan 011.
 
 ## Cause
 
-Not known. It is not caused by plan 011: during 011/02/03 it failed the same with the plan's new stories removed. A
-guess to check: the long body scrolls inside the dialog, and the buttons below it are reached late or not at all
-while the dialog is still settling.
+A race in the test, not in the dialog. The dialog's body measures whether it overflows before the dialog is opened
+(`showModal()` runs in the panel's layout effect, after the body's), so it becomes a focusable region only a frame
+later, when its resize observer reports. A test that collects the focus stops, or runs the accessibility checker, in
+between sees a scrolling body that cannot take the focus: Tab then stops on the body the test did not expect, and the
+checker reports `scrollable-region-focusable` (seen on CI, Chromium, 2026-11-19). It was not caused by plan 011.
 
 ## What was tried
 
-Nothing yet.
+The gallery parts of `keyboard.spec.ts` and `axe.spec.ts` wait two frames (`nextFrames`, `e2e/support/frames.ts`)
+after the story is visible, so the body's focusable state is settled before they look.
 
 ## Options left
 

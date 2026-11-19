@@ -103,3 +103,17 @@ export const settle = (page: Page, min = 800): Promise<void> =>
       }),
     min,
   );
+
+// Waits two frames: what a resize observer changes after the first layout (a long dialog body that becomes focusable
+// once the dialog is open) is on the page when this returns.
+export const nextFrames = (page: Page): Promise<void> =>
+  page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      }),
+  );

@@ -3,6 +3,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { type CoreScript, mockCore, SCRIPTS } from './core-mock';
 import { requestQuit } from './support/cleanup-mock';
+import { nextFrames } from './support/frames';
 import { motionOff } from './support/motion';
 
 // The automated checker over every screen in each of its states and every story of the gallery: no violation of
@@ -396,6 +397,7 @@ test.describe('positive cases', () => {
           await page.goto(`/gallery.html#/${encodeURIComponent(component)}/${encodeURIComponent(state)}`);
           const selector = `[data-story="${id}"]`;
           await expect(page.locator(selector)).toBeVisible();
+          await nextFrames(page);
 
           expect.soft(await violations(page, selector), id).toStrictEqual([]);
         });
