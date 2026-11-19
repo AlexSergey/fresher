@@ -287,13 +287,61 @@ mod property {
     use std::os::unix::fs::PermissionsExt;
     use std::sync::Arc;
 
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, SystemTime};
+
+    use fresher_core::{CancelToken, DiskWalk, InterestSet, Subtree, SubtreeQuery, WalkMode, WalkRequest};
     use fresher_scanner::StdReader;
+    use fresher_testing::NaiveWalk;
     use proptest::prelude::*;
 
     use crate::support::{
         AVOIDABLE, bundle_id_interests, canonical, every_interest, held_interests, place_interests, random_cache_tree,
-        random_download_tree, random_items, random_tree, reference, scanner, set_of, suffixed_interests, tagged,
+        random_download_tree, random_items, random_tree, reference, scanner, scanner_over, set_of, suffixed_interests,
+        tagged,
     };
+
+    /// What `walk` saw below each of `queries` after a full walk of `root` for `interests`, before any commit.
+    #[expect(clippy::unwrap_used, reason = "a test helper: a walk that fails fails the test")]
+    fn walked_subtrees(
+        walk: &dyn DiskWalk,
+        root: &Path,
+        interests: &InterestSet,
+        queries: &[SubtreeQuery],
+    ) -> Vec<Option<Subtree>> {
+        let roots = [root.to_path_buf()];
+        let request = WalkRequest { roots: &roots, interests, avoid: &[], places: &[], mode: WalkMode::Full };
+        walk.walk(&request, &CancelToken::new(), &mut |_| {}, &mut |_| {}).unwrap();
+        walk.subtrees(queries)
+    }
+
+    /// Every folder below `root`, links not followed, sorted; a folder that cannot be listed has nothing below it.
+    fn folders_below(root: &Path) -> Vec<PathBuf> {
+        let mut found = Vec::new();
+        let mut pending = vec![root.to_path_buf()];
+        while let Some(folder) = pending.pop() {
+            let Ok(entries) = fs::read_dir(&folder) else { continue };
+            let inside: Vec<PathBuf> = entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| path.symlink_metadata().is_ok_and(|metadata| metadata.is_dir()))
+                .collect();
+            found.extend(inside.iter().cloned());
+            pending.extend(inside);
+        }
+        found.sort();
+        found
+    }
+
+    /// Gives each of `folders` its own modification time, older than every file's of the random trees
+    /// (`1_500_000_000` and up): a walk that counted a file's time would see a newer one.
+    fn date_folders(folders: &[PathBuf]) {
+        for (index, folder) in (0_u64..).zip(folders) {
+            let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_400_000_000 + index * 1_000);
+            let opened = fs::File::open(folder);
+            let _ = opened.and_then(|file| file.set_times(fs::FileTimes::new().set_modified(modified)));
+        }
+    }
 
     proptest! {
         #![proptest_config(ProptestConfig { cases: 48, ..ProptestConfig::default() })]
@@ -428,6 +476,58 @@ mod property {
             }
 
             prop_assert_eq!(fast, slow);
+        }
+
+        #[test]
+        fn the_scanner_and_the_reference_agree_on_subtrees(
+            items in random_items(),
+            chosen in prop::collection::vec(any::<bool>(), 10),
+            skipped in prop::collection::vec(any::<bool>(), 1..16),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            // Links are summed differently by design: the scanner counts a link's own bytes (its target's length) and a
+            // hard link group's bytes once, the reference neither; the sizes are compared only on a tree without them.
+            let linked = items.iter().any(|(kind, _, _)| matches!(kind % 8, 2..=4));
+            let locked = random_tree(&root, &items);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+            let folders = folders_below(&root);
+            date_folders(&folders);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o000));
+            }
+            let interests: Vec<_> =
+                every_interest().into_iter().zip(&chosen).filter(|(_, keep)| **keep).map(|(interest, _)| interest).collect();
+            let set = set_of(&interests);
+            // Every folder, the root among them, each skipping a pseudo-random set of the folders below it.
+            let mut draws = skipped.iter().cycle();
+            let queries: Vec<_> = std::iter::once(root.clone())
+                .chain(folders.iter().cloned())
+                .map(|queried| {
+                    let below = folders.iter().filter(|other| other.starts_with(&queried) && **other != queried);
+                    let skip = below.filter(|_| draws.next().copied().unwrap_or(false)).cloned().collect();
+                    SubtreeQuery { folder: queried, skip }
+                })
+                .collect();
+
+            let fast = walked_subtrees(&scanner_over(Arc::new(StdReader::new()), &root), &root, &set, &queries);
+            let slow = walked_subtrees(&NaiveWalk::new(&root), &root, &set, &queries);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            let seen = |answers: &[Option<Subtree>]| -> Vec<_> {
+                answers.iter().map(|found| found.map(|found| (found.newest, found.complete))).collect()
+            };
+            let sizes = |answers: &[Option<Subtree>]| -> Vec<_> {
+                answers.iter().map(|found| found.map(|found| found.sizes.logical)).collect()
+            };
+            prop_assert_eq!(seen(&fast), seen(&slow));
+            if !linked {
+                prop_assert_eq!(sizes(&fast), sizes(&slow));
+            }
         }
     }
 }

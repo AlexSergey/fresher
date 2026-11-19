@@ -1,0 +1,293 @@
+# The home of the stale-projects module's kept fixture run: each project is kept, with its reason. `active` changed 3
+# days ago (`recent`); `committed` has 400-day folders and a branch moved 3 days ago (`recent`); `mono` is a monorepo
+# whose nested package changed 3 days ago, so both packages' `node_modules` are `recent`; `engine` is an active Rust
+# project whose `target` is `recent` and whose incremental cache was built 3 days ago (`cache-recent`); `hidden-part`
+# has a folder the walk is told to avoid (`private`), so its last change is unknown (`unread`); `pip-old` is a 400-day
+# Python project whose `.venv` had a package installed 3 days ago, so the `.venv` itself is `recent`. EVERY folder is
+# a dated `[[dir]]`, parents of files and `.git/refs/heads` included: an undated folder counts as changed now.
+
+[[dir]]
+path = "Code"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/active"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/active/node_modules"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/active/node_modules/x"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/committed"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/committed/.git"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/committed/.git/refs"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/committed/.git/refs/heads"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/committed/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/committed/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/engine"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/engine/src"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/engine/target"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/engine/target/debug"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/engine/target/debug/incremental"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/engine/target/debug/incremental/x-1"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/engine/target/debug/incremental/x-1/s-1"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/hidden-part"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/hidden-part/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/hidden-part/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/hidden-part/private"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/packages"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/packages/web"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/packages/web/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/packages/web/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/mono/packages/web/src"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/pip-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/pip-old/.venv"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/pip-old/.venv/lib"
+age = "3d"
+changed = "3d"
+
+[[file]]
+path = "Code/active/node_modules/x/index.js"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/active/package.json"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/committed/.git/refs/heads/main"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/committed/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/committed/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/engine/Cargo.toml"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/engine/src/lib.rs"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/engine/target/debug/incremental/x-1/s-1/f"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/hidden-part/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/hidden-part/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/hidden-part/private/x"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/mono/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/mono/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/mono/packages/web/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/mono/packages/web/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/mono/packages/web/src/index.ts"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/pip-old/.venv/lib/x"
+size = 512
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/pip-old/pyproject.toml"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"

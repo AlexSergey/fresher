@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use criterion::{Criterion, criterion_group, criterion_main};
 use fresher_core::{
     ByteSize, CancelToken, ChangeJournal, Changes, Claim, DiskWalk, EntryKind, Interest, InterestSet, JournalGap,
-    JournalPosition, KnownFolder, ModuleId, Pattern, VolumeId, WalkMode, WalkRequest,
+    JournalPosition, KnownFolder, ModuleId, Pattern, SubtreeQuery, VolumeId, WalkMode, WalkRequest,
 };
 use fresher_macos::{MacFolderReader, MacVolumes};
 use fresher_scanner::bench::{CacheBench, MatcherBench, QueryBench, walked_folders};
@@ -340,5 +340,35 @@ fn state(criterion: &mut Criterion) {
     report_peak("state");
 }
 
-criterion_group!(benches, matcher, scan, cache, rescan, state);
+/// What the walk saw below each project of the bench tree (`Projects/app<n>`), its `node_modules` skipped: one query
+/// per project in one call, after a full scan with the scan's interests, before the commit.
+fn subtrees(criterion: &mut Criterion) {
+    let tree = bench_tree();
+    let interests = scan_interests();
+    let cores = std::thread::available_parallelism().map_or(1, NonZeroUsize::get).min(16);
+    let scanner = bench_scanner(tree.root(), cores);
+    let roots = [tree.root().to_path_buf()];
+    let request = WalkRequest { roots: &roots, interests: &interests, avoid: &[], places: &[], mode: WalkMode::Full };
+    scanner
+        .walk(&request, &CancelToken::new(), &mut |_| {}, &mut |_| {})
+        .unwrap_or_else(|error| panic!("the bench scan: {error}"));
+    // The tree keeps the canonical path of its root, the bench tree's has `..` in it.
+    let root = std::fs::canonicalize(tree.root()).unwrap_or_else(|error| panic!("the bench tree's root: {error}"));
+    let queries: Vec<SubtreeQuery> = (0..tree.spec().deep_dependency_folders)
+        .map(|index| {
+            let folder = root.join(format!("Projects/app{index}"));
+            SubtreeQuery { skip: vec![folder.join("node_modules")], folder }
+        })
+        .collect();
+    let answered = scanner.subtrees(&queries).iter().filter(|answer| answer.is_some()).count();
+    assert_eq!(answered, queries.len(), "every project of the bench tree is answered");
+    let mut group = criterion.benchmark_group("subtrees");
+    group.bench_function(format!("projects/{}", tree.spec().name), |bencher| {
+        bencher.iter(|| scanner.subtrees(black_box(&queries)));
+    });
+    group.finish();
+    report_peak("subtrees");
+}
+
+criterion_group!(benches, matcher, scan, cache, rescan, state, subtrees);
 criterion_main!(benches);

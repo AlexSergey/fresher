@@ -121,6 +121,17 @@ const downloadsPage = async (
   await expect(page.getByRole('heading', { level: 1, name: 'Downloads and installers' })).toBeFocused();
 };
 
+// The old-projects scan, on the module's page: four categories and three left-out lines.
+const staleProjectsPage = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.staleProjects);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^Old projects/ });
+  await expect(nav).toContainText('6.6 GB');
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Old projects' })).toBeFocused();
+};
+
 // Settings, with the temporary files module's number field in view.
 const tempSettings = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.temp);
@@ -297,6 +308,13 @@ test.describe('positive cases', () => {
       await expect(page.getByRole('button', { name: 'Let Fresher look there' }).first()).toBeVisible();
 
       await looksTheSame(page, 'module-page-downloads-unavailable.png');
+    });
+
+    test('the page of Old projects with its four categories and left-out lines', async ({ page }) => {
+      await staleProjectsPage(page);
+      await expect(page.getByRole('region', { name: 'Packages of old projects' })).toContainText('2 items left out');
+
+      await looksTheSame(page, 'module-page-stale-projects.png');
     });
 
     test('the page of Removed apps’ leftovers with Keep settings chosen', async ({ page }) => {

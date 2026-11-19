@@ -139,6 +139,16 @@ pub(crate) fn reference(root: &Path, interests: &InterestSet, avoid: &[PathBuf])
     walked(matches, &summary)
 }
 
+/// The scanner over `root` (also the home folder) with `reader`, a cache in memory and a journal with no position.
+pub(crate) fn scanner_over(reader: Arc<dyn FolderReader>, root: &Path) -> Scanner {
+    let volumes = FakeVolumes::default()
+        .with("/", VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) });
+    let journal = Arc::new(FakeChangeJournal::default());
+    let cache = Arc::new(MemoryScanCache::with_cap(ByteSize::new(8 << 20)));
+    let anchor = known_folders_anchor(&FakeKnownFolders::home_layout(root));
+    Scanner::new(reader, Arc::new(volumes), journal, cache, anchor, ScannerOptions::default())
+}
+
 /// The scanner's walk of `root` (also the home folder) with `reader`.
 pub(crate) fn scanner(
     reader: Arc<dyn FolderReader>,
@@ -146,12 +156,7 @@ pub(crate) fn scanner(
     interests: &InterestSet,
     avoid: &[PathBuf],
 ) -> Walked {
-    let volumes = FakeVolumes::default()
-        .with("/", VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) });
-    let journal = Arc::new(FakeChangeJournal::default());
-    let cache = Arc::new(MemoryScanCache::with_cap(ByteSize::new(8 << 20)));
-    let anchor = known_folders_anchor(&FakeKnownFolders::home_layout(root));
-    let scanner = Scanner::new(reader, Arc::new(volumes), journal, cache, anchor, ScannerOptions::default());
+    let scanner = scanner_over(reader, root);
     let roots = [root.to_path_buf()];
     let mut matches = Vec::new();
     let summary = scanner

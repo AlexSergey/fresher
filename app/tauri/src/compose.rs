@@ -53,6 +53,8 @@ pub(crate) enum ComposeError {
     AppLeftovers(#[from] fresher_module_app_leftovers::AppLeftoversError),
     #[error("the downloads module cannot be built: {0}")]
     Downloads(#[from] fresher_module_downloads::DownloadsError),
+    #[error("the stale-projects module cannot be built: {0}")]
+    StaleProjects(#[from] fresher_module_stale_projects::StaleProjectsError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -346,6 +348,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_dev_caches::DevCachesModule::new()?),
         Box::new(fresher_module_app_leftovers::AppLeftoversModule::new()?),
         Box::new(fresher_module_downloads::DownloadsModule::new()?),
+        Box::new(fresher_module_stale_projects::StaleProjectsModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -507,9 +510,9 @@ mod tests {
         fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             let expected: &[&str] = if cfg!(debug_assertions) {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "demo", "trial"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects", "demo", "trial"]
             } else {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects"]
             };
 
             let engine = engine(folder.path(), home.path()).unwrap();

@@ -111,14 +111,15 @@ pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, Versio
 pub use subject::Subject;
 pub use system::is_bundle_id_shaped;
 pub use system::{
-    AppIdError, BundleId, InstallRecords, InstalledApp, InstalledApps, InstalledList, Project, ProjectKind, Receipt,
-    RunningApp, RunningApps, RunningSet, SystemError, SystemFacts, SystemPorts, SystemVersion, TeamId,
+    AppIdError, Artifact, BundleId, InstallRecords, InstalledApp, InstalledApps, InstalledList, LastChange, Project,
+    ProjectFinder, ProjectKind, Receipt, RunningApp, RunningApps, RunningSet, SystemError, SystemFacts, SystemPorts,
+    SystemVersion, TeamId,
 };
 pub use text::{DETAIL_ARG, Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;
 pub use volume::{DiskSpace, MountKind, Neighbour, NeighbourRole, VolumeFacts, VolumeId, Volumes};
 pub use walk::PlaceSeen;
 pub use walk::{
-    ClaimedPath, DiskWalk, FullScanReason, Place, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest,
-    WalkSummary,
+    ClaimedPath, DiskWalk, FullScanReason, Place, Subtree, SubtreeQuery, Unreadable, WalkError, WalkMode, WalkProgress,
+    WalkRequest, WalkSummary,
 };

@@ -124,7 +124,7 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 | `running_apps()`             | the running apps (`RunningSet`); `owner_of(path)` names the running app a path is named after     |
 | `receipts()`                 | the installer receipts the system keeps (package file name, when installed); an error when the folder cannot be read; asked once per scan |
 | `system_version()`           | the version of the running macOS (`SystemVersion`, major and minor); an error when it cannot be read; asked once per scan |
-| `projects()`                 | the projects the walk found (root, kinds, artifact folders, last activity); `None` during the walk |
+| `projects()`                 | the projects the walk found: root, kinds, artifact folders and Rust caches with their sizes and last change, and the last activity; `None` during the walk |
 
 - An app is identified by its bundle id and team id only (`BundleId` compares ignoring case), never by a loose name.
   `BundleId::names(name)` tells whether a folder's or a file's name is named after the id: the whole name, or the id
@@ -133,8 +133,13 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
   could not read must not count as not installed (plan 016).
 - At the commit the engine lists the installed apps too (once per scan, even when no module asked), to attribute each
   app's data folders and its bundle in the storage map.
-- The projects are known in `finish`, not in `on_match`. A project's last activity is its folder's own modification
-  time for now ([deferred](../deferred/project-last-activity.md)).
+- The projects are known in `finish`, not in `on_match`. A project's last activity is the newest folder time outside
+  its artifact folders and `.git` (and the artifact folders and `.git` of the projects inside it), or the newest folder
+  time of `.git/refs/heads`: `Known` when every folder counted was read, `AtLeast` when one was not (unreadable, on
+  another volume, collapsed, or claimed whole by a module's interest), `Unknown` when the walk saw no time. Status
+  changes and files' times are never used: a folder's time moves on every new file, rename and atomic save, and a
+  migration moves the status change of every file. A project whose artifact was removed looks active from that day.
+  Details: [plan 021](../plans/021-stale-projects/00-design.md). `run_module` finds the projects as the engine does.
 - An item a running app owns is skipped by the cleaner anyway; a module may raise a finding's danger or say "quit the
   app first" with `running_apps()`.
 - In tests, `run_module`'s `Ports` carry `apps: FakeInstalledApps`, `running: FakeRunningApps` and the known folders
@@ -224,6 +229,20 @@ the app that writes each, the macOS installers' names), the decision (a pure fun
 data and code of the crate; an installer is claimed only when a receipt or its name proves it is an installed app's at
 that version or older (`cx.system().receipts()`, `installed_apps()` with `changed`, `system_version()`), and the rest
 of what it recognizes is a `left_out` with its reason. A disk image is never mounted, an archive never expanded.
+
+**`stale-projects` is code with a data table, and the example of a module that decides from `cx.system().projects()` in
+`finish`**: its interests are `Item` matches of the artifact folders' names only to learn which folders exist (they are
+claimed one by one, never whole, so no folder named `build`, `target` or `incremental` becomes opaque to the storage
+map), and nothing is claimed whole. The sizes, the complete or partial state and the caches come from the projects
+(`Project`'s artifacts and caches, `Artifact`, sized from the walked tree after the walk by `DiskWalk::subtrees`), not from a
+claim. The table (`artifacts.toml`: a folder, the project's kind, a category, the command that brings it back) is
+checked against the core's artifacts when the module is built. `finish` groups a monorepo's projects under the
+outermost one (the group's last activity is the newest of its members'), then decides each group and each Rust cache
+in a pure function (`decide.rs`): the days setting (`DaySetting`, 365 by default), the last activity (`Known`, `AtLeast`
+or `Unknown`: only a `Known` one older than the days offers), whether every size was read in full, and whether the scan
+is a restored one (nothing is offered, `scan-again`). Source, the project folder, `.git` and framework output are not in
+the table and are never offered; a cache is offered by its own age (7 days), not its project's. Every project it
+recognizes and does not offer is a `left_out` with its reason.
 
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.

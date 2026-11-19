@@ -1,0 +1,69 @@
+# The folders of projects the module may offer, one row per artifact of each kind of project.
+#
+# kind      the kind of project: node, rust, gradle, maven, python, swift-package, go or dart.
+# folder    one of the kind's artifact folders in the core (`ProjectKind::artifacts`), beside the project's marker file.
+# category  what the folder is: dependencies, build-output or python-environments.
+# command   what the reason names as the way to make the folder again. It is only text: the app never runs it.
+#
+# Every artifact of the core needs its row, and a row the core does not list is refused. Framework output (`dist`,
+# `.next`, `.nuxt`, `.turbo`, `.parcel-cache`) is never a row: the user's decision of 2026-11-19.
+
+[[artifact]]
+kind = "node"
+folder = "node_modules"
+category = "dependencies"
+command = "npm install"
+
+[[artifact]]
+kind = "rust"
+folder = "target"
+category = "build-output"
+command = "cargo build"
+
+[[artifact]]
+kind = "gradle"
+folder = "build"
+category = "build-output"
+command = "gradle build"
+
+[[artifact]]
+kind = "gradle"
+folder = ".gradle"
+category = "build-output"
+command = "gradle build"
+
+[[artifact]]
+kind = "maven"
+folder = "target"
+category = "build-output"
+command = "mvn package"
+
+[[artifact]]
+kind = "python"
+folder = ".venv"
+category = "python-environments"
+command = "python3 -m venv .venv"
+
+[[artifact]]
+kind = "python"
+folder = "venv"
+category = "python-environments"
+command = "python3 -m venv venv"
+
+[[artifact]]
+kind = "swift-package"
+folder = ".build"
+category = "build-output"
+command = "swift build"
+
+[[artifact]]
+kind = "dart"
+folder = ".dart_tool"
+category = "build-output"
+command = "dart pub get"
+
+[[artifact]]
+kind = "dart"
+folder = "build"
+category = "build-output"
+command = "flutter build"

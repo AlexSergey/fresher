@@ -13,8 +13,8 @@ use fresher_core::{
     DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
     ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
     Need, NewFinding, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes,
-    StateId, StoreError, StoredSettings, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState,
-    TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand, ToolId,
+    TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixedDiskState,
@@ -242,7 +242,8 @@ pub(crate) const fn bytes(size: u64) -> Sizes {
 /// released or cancelled. Its `commit` returns an empty state numbered by the commits so far, or a scripted error.
 #[derive(Default)]
 pub(crate) struct ScriptedWalk {
-    folders: Vec<(String, PathBuf, Sizes, EntryFacts)>,
+    /// What each found folder matches (a folder name, or a marker it holds), its path, sizes and facts.
+    folders: Vec<(Pattern, PathBuf, Sizes, EntryFacts)>,
     progress: Vec<WalkProgress>,
     unreadable: u64,
     unreadable_by: BTreeMap<Unreadable, u64>,
@@ -260,6 +261,8 @@ pub(crate) struct ScriptedWalk {
     commits: Arc<Mutex<Vec<Vec<ClaimedPath>>>>,
     modes: Arc<Mutex<Vec<WalkMode>>>,
     states: Vec<Arc<dyn DiskState>>,
+    subtrees: Vec<(PathBuf, Subtree)>,
+    subtree_queries: Arc<Mutex<Vec<Vec<SubtreeQuery>>>>,
 }
 
 /// Lets a held [`ScriptedWalk`] finish.
@@ -323,7 +326,13 @@ impl ScriptedWalk {
 
     /// The walk finds a folder `name` at `path` with `facts`.
     pub(crate) fn folder_with(mut self, name: &str, path: &str, sizes: Sizes, facts: EntryFacts) -> Self {
-        self.folders.push((name.into(), path.into(), sizes, facts));
+        self.folders.push((Pattern::FolderName(name.into()), path.into(), sizes, facts));
+        self
+    }
+
+    /// The walk finds a folder at `path` holding the file `marker`: a match of the interests in `marker`.
+    pub(crate) fn marker(mut self, marker: &str, path: &str) -> Self {
+        self.folders.push((Pattern::MarkerFile(marker.into()), path.into(), Sizes::ZERO, EntryFacts::REMOVABLE));
         self
     }
 
@@ -405,6 +414,17 @@ impl ScriptedWalk {
     pub(crate) fn modes(&self) -> Arc<Mutex<Vec<WalkMode>>> {
         Arc::clone(&self.modes)
     }
+
+    /// `subtrees` answers a query of one of these folders with its subtree, any other with `None`.
+    pub(crate) fn answering_subtrees(mut self, answers: Vec<(PathBuf, Subtree)>) -> Self {
+        self.subtrees = answers;
+        self
+    }
+
+    /// The queries of every `subtrees` call, in order.
+    pub(crate) fn subtree_queries(&self) -> Arc<Mutex<Vec<Vec<SubtreeQuery>>>> {
+        Arc::clone(&self.subtree_queries)
+    }
 }
 
 impl std::fmt::Debug for ScriptedWalk {
@@ -424,12 +444,12 @@ impl DiskWalk for ScriptedWalk {
         self.roots.lock().unwrap().extend_from_slice(request.roots);
         self.avoided.lock().unwrap().push(request.avoid.to_vec());
         self.modes.lock().unwrap().push(request.mode);
-        for (position, (name, path, sizes, facts)) in self.folders.iter().enumerate() {
+        for (position, (pattern, path, sizes, facts)) in self.folders.iter().enumerate() {
             for (_, gate) in self.pauses.iter().filter(|(at, _)| *at == position) {
                 self.wait(gate, cancel)?;
             }
             for (interest, wanted) in request.interests.iter() {
-                if wanted.pattern() == &Pattern::FolderName(name.clone()) {
+                if wanted.pattern() == pattern {
                     let (path, sizes) = (path.clone(), *sizes);
                     on_match(Match {
                         interest,
@@ -476,6 +496,14 @@ impl DiskWalk for ScriptedWalk {
         }
         let id = StateId::new(u32::try_from(commits.len()).unwrap());
         Ok(Arc::new(FixedDiskState::new(id, Timestamp::from_secs(0), [])))
+    }
+
+    fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {
+        self.subtree_queries.lock().unwrap().push(queries.to_vec());
+        let answer = |query: &SubtreeQuery| {
+            self.subtrees.iter().find(|(folder, _)| *folder == query.folder).map(|(_, subtree)| *subtree)
+        };
+        queries.iter().map(answer).collect()
     }
 }
 
@@ -763,4 +791,71 @@ pub(crate) fn poison<T: Send>(mutex: &Mutex<T>) {
             .join()
     });
     assert!(poisoned.is_err());
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use fresher_core::{CancelToken, Claim, DiskWalk, Interest, InterestSet, ModuleId, Pattern, WalkMode, WalkRequest};
+
+    use super::ScriptedWalk;
+
+    /// The paths `walk` delivers to the interests `patterns`, each with its interest's index.
+    fn delivered(walk: &ScriptedWalk, patterns: Vec<Pattern>) -> Vec<(usize, PathBuf)> {
+        let interests: Vec<Interest> =
+            patterns.into_iter().map(|pattern| Interest::new(pattern, Claim::Item, vec![]).unwrap()).collect();
+        let mut set = InterestSet::new();
+        set.add(ModuleId::new("demo").unwrap(), &interests);
+        let request = WalkRequest { roots: &[], interests: &set, avoid: &[], places: &[], mode: WalkMode::Full };
+        let mut found = Vec::new();
+        walk.walk(
+            &request,
+            &CancelToken::new(),
+            &mut |matched| found.push((matched.interest, matched.path)),
+            &mut |_| {},
+        )
+        .unwrap();
+        found
+    }
+
+    mod negative {
+        use fresher_core::Pattern;
+
+        use super::{ScriptedWalk, delivered};
+
+        #[test]
+        fn a_scripted_marker_does_not_match_a_folder_of_its_name() {
+            let walk = ScriptedWalk::new().marker("package.json", "/home/app");
+
+            let found = delivered(&walk, vec![Pattern::FolderName("package.json".into())]);
+
+            assert!(found.is_empty(), "{found:?}");
+        }
+    }
+
+    mod positive {
+        use std::path::PathBuf;
+
+        use fresher_core::Pattern;
+
+        use super::{ScriptedWalk, delivered};
+        use crate::testing::bytes;
+
+        #[test]
+        fn a_scripted_marker_matches_the_interests_in_it_beside_a_folder() {
+            let walk = ScriptedWalk::new().marker("package.json", "/home/app").folder(
+                "node_modules",
+                "/home/app/node_modules",
+                bytes(9),
+            );
+
+            let found = delivered(
+                &walk,
+                vec![Pattern::FolderName("node_modules".into()), Pattern::MarkerFile("package.json".into())],
+            );
+
+            assert_eq!(found, [(1, PathBuf::from("/home/app")), (0, PathBuf::from("/home/app/node_modules"))]);
+        }
+    }
 }

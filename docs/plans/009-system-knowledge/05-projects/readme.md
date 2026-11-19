@@ -15,4 +15,4 @@ Projects found during the one shared walk and handed to every module's `finish`.
 
 Built with one change: the artifacts are found by their own `FolderName` interests, since a marker's sibling names
 are read beside the matched folder. The projects reach every module's `finish`; a project's last activity is its
-folder's own time ([deferred](../../../deferred/project-last-activity.md)).
+folder's own time ([deferred](../../021-stale-projects/00-design.md)).

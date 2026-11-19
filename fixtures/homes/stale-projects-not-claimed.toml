@@ -1,0 +1,373 @@
+# The home of the stale-projects module's negative fixture run: nothing in it is offered or left out. A stale Node
+# project without `node_modules` but with source, `dist`, `.next`, `.turbo` and `.git`; a `node_modules` with no project
+# marker; a project whose `node_modules` is a link; a project at the home itself; projects in a hidden folder, in
+# `Library` and in an app bundle; a Go project with a `target`; a Node project's `build`; a stale Gradle project whose
+# `build` is itself a Node project (a project folder is never offered as another's artifact). EVERY folder is a dated
+# `[[dir]]` (400 days): an undated folder counts as changed now and turns a stale case active.
+
+[[dir]]
+path = ".config"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = ".config/tool"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = ".config/tool/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = ".config/tool/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications/Tool.app"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications/Tool.app/Contents"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications/Tool.app/Contents/Resources"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications/Tool.app/Contents/Resources/app"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications/Tool.app/Contents/Resources/app/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Applications/Tool.app/Contents/Resources/app/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/gradle-app"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/gradle-app/build"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/linked"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/notes"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/notes/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/notes/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/.git"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/.git/refs"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/.git/refs/heads"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/.next"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/.next/cache"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/.turbo"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/dist"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/site/src"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/svc"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/svc/target"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web/build"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Library"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Library/Application Support"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Library/Application Support/Example"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Library/Application Support/Example/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Library/Application Support/Example/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "elsewhere"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "elsewhere/modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "node_modules/left-pad"
+age = "400d"
+changed = "400d"
+
+[[file]]
+path = ".config/tool/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = ".config/tool/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Applications/Tool.app/Contents/Resources/app/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Applications/Tool.app/Contents/Resources/app/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/gradle-app/build.gradle"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/gradle-app/build/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/linked/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/notes/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/site/.git/refs/heads/main"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/site/.next/cache/x"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/site/.turbo/x"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/site/dist/app.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/site/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/site/src/index.ts"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/svc/go.mod"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/svc/target/x"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/web/build/x"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/web/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Library/Application Support/Example/node_modules/x/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Library/Application Support/Example/package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "elsewhere/modules/x"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "node_modules/left-pad/index.js"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "package.json"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[symlink]]
+path = "Code/linked/node_modules"
+target = "../../elsewhere/modules"
+age = "400d"
+changed = "400d"

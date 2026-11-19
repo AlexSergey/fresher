@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    CancelToken, DiskWalk, FindingSink, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError,
-    ModuleOutcome, NewFinding, PlaceSeen, SchemaError, SettingsSchema, StoredSettings, SystemFacts, SystemPorts,
-    WalkError, WalkMode, WalkRequest, WalkSummary,
+    CancelToken, DiskWalk, FindingSink, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
+    ModuleOutcome, NewFinding, PlaceSeen, ProjectFinder, SchemaError, SettingsSchema, StoredSettings, SystemFacts,
+    SystemPorts, WalkError, WalkMode, WalkRequest, WalkSummary,
 };
 use serde_json::{Value, json};
 
@@ -100,8 +100,9 @@ pub enum HarnessError {
 }
 
 /// Runs `module` as the engine would, against the fixture tree as the home folder and only root: walks it with
-/// [`NaiveWalk`], reading the facts the tree states instead of the disk's, sends each match to the module (indexed in the module's own interests), then calls `finish`. A
-/// module's error ends its run with that outcome; a cancelled walk ends it as `Cancelled`.
+/// [`NaiveWalk`], reading the facts the tree states instead of the disk's, finds the projects of the tree as the engine
+/// does ([`ProjectFinder`]), sends each match to the module (indexed in the module's own interests), then calls
+/// `finish`. A module's error ends its run with that outcome; a cancelled walk ends it as `Cancelled`.
 pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Result<ModuleRun, HarnessError> {
     let id = module.descriptor().id();
     let settings = SettingsSchema::new([module.descriptor()])?.resolve(&ports.settings).module(id);
@@ -116,6 +117,8 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     let cx = if ports.restored { cx.restored() } else { cx };
     let mut interests = InterestSet::new();
     interests.add(id, module.interests());
+    interests.add(ModuleId::system(), &ProjectFinder::interests());
+    let mut finder = ProjectFinder::default();
     let mut sink = Recorder::default();
     let mut failure = None;
     let mut matched_paths = BTreeSet::new();
@@ -130,9 +133,17 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         }
         *failure = module.on_match(&matched, &cx, sink).err();
     };
-    let mut on_match = |matched: Match| match ports.order {
-        MatchOrder::Walked => deliver(matched, &mut failure, &mut sink),
-        MatchOrder::Reversed => held.push(matched),
+    let mut on_match = |matched: Match| {
+        if let Some((owner, local)) = interests.owner(matched.interest)
+            && owner == ModuleId::system()
+        {
+            finder.add(local, &matched);
+            return;
+        }
+        match ports.order {
+            MatchOrder::Walked => deliver(matched, &mut failure, &mut sink),
+            MatchOrder::Reversed => held.push(matched),
+        }
     };
     let roots = [tree.root().to_path_buf()];
     let avoid: Vec<PathBuf> = ports.avoid.iter().map(|path| tree.root().join(path)).collect();
@@ -143,6 +154,7 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
     for matched in held.into_iter().rev() {
         deliver(matched, &mut failure, &mut sink);
     }
+    system.set_projects(finder.finish(walked.is_ok().then_some(&walk as &dyn DiskWalk)));
     let (walk_complete, places) = match walked {
         Ok(summary) => (summary.is_complete(), places_of(module, &interests, &summary)),
         Err(WalkError::Cancelled) => {
@@ -413,6 +425,47 @@ pub(crate) mod sample {
         }
     }
 
+    /// A module without categories and interests whose `finish` keeps the projects the system knew then.
+    pub(crate) struct ProjectProbe {
+        descriptor: ModuleDescriptor,
+        pub(crate) seen: std::sync::Mutex<Option<Vec<fresher_core::Project>>>,
+    }
+
+    impl ProjectProbe {
+        pub(crate) fn new() -> Self {
+            let id = ModuleId::new("sample").unwrap();
+            let group = fresher_core::ModuleGroup::Development;
+            let descriptor = ModuleDescriptor::new(id, group, vec![], vec![], Locales { en: EN }).unwrap();
+            Self { descriptor, seen: std::sync::Mutex::default() }
+        }
+    }
+
+    impl Module for ProjectProbe {
+        fn descriptor(&self) -> &ModuleDescriptor {
+            &self.descriptor
+        }
+
+        fn interests(&self) -> &[Interest] {
+            &[]
+        }
+
+        fn on_match(&self, _: &Match, _: &ModuleContext<'_>, _: &mut dyn FindingSink) -> Result<(), ModuleError> {
+            Ok(())
+        }
+
+        fn finish(&self, cx: &ModuleContext<'_>, _: &mut dyn FindingSink) -> Result<(), ModuleError> {
+            *self.seen.lock().unwrap() = cx.system().projects().map(<[_]>::to_vec);
+            Ok(())
+        }
+    }
+
+    /// A Node project with dated folders: its `node_modules` has a package of 10 bytes.
+    pub(crate) const NODE_PROJECT: &str = "[[file]]\npath = \"p/package.json\"\n\
+        [[dir]]\npath = \"p\"\nmodified = 100\n\
+        [[file]]\npath = \"p/node_modules/pkg/a.js\"\nsize = 10\n\
+        [[dir]]\npath = \"p/node_modules/pkg\"\nmodified = 600\n\
+        [[dir]]\npath = \"p/node_modules\"\nmodified = 500\n";
+
     /// A home whose caches hold one app's folder.
     pub(crate) const CACHES: &str = "[[file]]\npath = \"Library/Caches/com.example.App/data\"\n";
 
@@ -425,8 +478,19 @@ mod tests {
     mod negative {
         use fresher_core::{ModuleOutcome, WalkError};
 
-        use crate::run_module::sample::{CACHES, CacheModule, PlaceProbe, TREE};
+        use crate::run_module::sample::{CACHES, CacheModule, NODE_PROJECT, PlaceProbe, TREE};
         use crate::{FixtureTree, HarnessError, Ports, run_module};
+
+        #[test]
+        fn the_module_never_receives_the_project_finder_s_matches() {
+            let tree = FixtureTree::from_toml_str(&format!("{NODE_PROJECT}[[dir]]\npath = \"p/Caches\"\n")).unwrap();
+
+            let run = run_module(&CacheModule::new(), &tree, &Ports::at(0)).unwrap();
+
+            let expected = [tree.root().join("p/Caches")];
+            assert_eq!(run.matched.iter().collect::<Vec<_>>(), expected.iter().collect::<Vec<_>>());
+            assert_eq!(run.findings.len(), 1);
+        }
 
         #[test]
         fn a_failing_module_reports_its_failure() {
@@ -483,8 +547,28 @@ mod tests {
     mod positive {
         use fresher_core::{ByteSize, ModuleOutcome};
 
-        use crate::run_module::sample::{CACHES, CacheModule, PlaceProbe, TREE};
+        use crate::run_module::sample::{CACHES, CacheModule, NODE_PROJECT, PlaceProbe, ProjectProbe, TREE};
         use crate::{FixtureTree, MatchOrder, Ports, run_module};
+
+        #[test]
+        fn a_module_sees_the_projects_with_their_facts_in_finish() {
+            use fresher_core::{ByteSize, LastChange, ProjectKind, Timestamp};
+            let tree = FixtureTree::from_toml_str(NODE_PROJECT).unwrap();
+            let probe = ProjectProbe::new();
+
+            run_module(&probe, &tree, &Ports::at(0)).unwrap();
+
+            let seen = probe.seen.lock().unwrap();
+            let projects = seen.as_deref().unwrap();
+            assert_eq!(projects.len(), 1);
+            assert_eq!(projects[0].root, tree.root().join("p"));
+            assert_eq!(projects[0].kinds, [ProjectKind::Node]);
+            assert_eq!(projects[0].last_activity, LastChange::Known(Timestamp::from_secs(100)));
+            assert_eq!(projects[0].artifacts.len(), 1);
+            assert_eq!(projects[0].artifacts[0].path, tree.root().join("p/node_modules"));
+            assert_eq!(projects[0].artifacts[0].sizes.logical, ByteSize::new(10));
+            assert_eq!(projects[0].artifacts[0].last_change, LastChange::Known(Timestamp::from_secs(600)));
+        }
 
         #[test]
         fn run_module_returns_the_findings_of_a_test_module() {

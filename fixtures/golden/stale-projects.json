@@ -1,0 +1,835 @@
+{
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "stale-projects.dependencies",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.rust-build-cache",
+        "reason": "stale-projects.left-out.cache-recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "reason": "stale-projects.left-out.unread",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "stale-projects.python-environments",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/android-old/.gradle",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "gradle build"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/android-old/.gradle"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/android-old/.gradle"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": ".gradle"
+            },
+            "project": {
+              "kind": "text",
+              "value": "android-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/android-old/build",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "gradle build"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/android-old/build"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/android-old/build"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "build"
+            },
+            "project": {
+              "kind": "text",
+              "value": "android-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/dart-old/.dart_tool",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "dart pub get"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/dart-old/.dart_tool"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/dart-old/.dart_tool"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": ".dart_tool"
+            },
+            "project": {
+              "kind": "text",
+              "value": "dart-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/dart-old/build",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "flutter build"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/dart-old/build"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/dart-old/build"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "build"
+            },
+            "project": {
+              "kind": "text",
+              "value": "dart-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/java-old/target",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "mvn package"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/java-old/target"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/java-old/target"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target"
+            },
+            "project": {
+              "kind": "text",
+              "value": "java-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/swift-old/.build",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "swift build"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/swift-old/.build"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/swift-old/.build"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": ".build"
+            },
+            "project": {
+              "kind": "text",
+              "value": "swift-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "key": {
+          "identity": "build-output/Code/tool-old/target",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "cargo build"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.build-output"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/tool-old/target"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/tool-old/target"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target"
+            },
+            "project": {
+              "kind": "text",
+              "value": "tool-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "danger": "low",
+        "key": {
+          "identity": "dependencies/Code/shop/node_modules",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "npm install"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.dependencies"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/shop/node_modules"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/shop/node_modules"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "shop"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "danger": "low",
+        "key": {
+          "identity": "dependencies/Code/shop/packages/web/node_modules",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "npm install"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.dependencies"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/shop/packages/web/node_modules"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/shop/packages/web/node_modules"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "packages/web/node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "shop"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.dependencies",
+        "danger": "low",
+        "key": {
+          "identity": "dependencies/Code/web-old/node_modules",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "npm install"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.dependencies"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/web-old/node_modules"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/web-old/node_modules"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "web-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.python-environments",
+        "danger": "medium",
+        "key": {
+          "identity": "python-environments/Code/py-old/.venv",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "python3 -m venv .venv"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.python-environments"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/py-old/.venv"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/py-old/.venv"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": ".venv"
+            },
+            "project": {
+              "kind": "text",
+              "value": "py-old"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.python-environments",
+        "danger": "medium",
+        "key": {
+          "identity": "python-environments/Code/py-venv/venv",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "python3 -m venv venv"
+            },
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            }
+          },
+          "key": "stale-projects.reason.python-environments"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/py-venv/venv"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/py-venv/venv"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "venv"
+            },
+            "project": {
+              "kind": "text",
+              "value": "py-venv"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.rust-build-cache",
+        "danger": "low",
+        "key": {
+          "identity": "rust-build-cache/Code/fresher/target/aarch64-apple-darwin/debug/incremental",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "cargo build"
+            },
+            "days": {
+              "kind": "count",
+              "value": 7
+            }
+          },
+          "key": "stale-projects.reason.rust-build-cache"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/fresher/target/aarch64-apple-darwin/debug/incremental"
+        },
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 8192
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/fresher/target/aarch64-apple-darwin/debug/incremental"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target/aarch64-apple-darwin/debug/incremental"
+            },
+            "project": {
+              "kind": "text",
+              "value": "fresher"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.rust-build-cache",
+        "danger": "low",
+        "key": {
+          "identity": "rust-build-cache/Code/fresher/target/debug/incremental",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "cargo build"
+            },
+            "days": {
+              "kind": "count",
+              "value": 7
+            }
+          },
+          "key": "stale-projects.reason.rust-build-cache"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/fresher/target/debug/incremental"
+        },
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 8192
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/fresher/target/debug/incremental"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target/debug/incremental"
+            },
+            "project": {
+              "kind": "text",
+              "value": "fresher"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      },
+      {
+        "category": "stale-projects.rust-build-cache",
+        "danger": "low",
+        "key": {
+          "identity": "rust-build-cache/Code/fresher/target/llvm-cov-target",
+          "module": "stale-projects"
+        },
+        "reason": {
+          "args": {
+            "command": {
+              "kind": "text",
+              "value": "cargo build"
+            },
+            "days": {
+              "kind": "count",
+              "value": 7
+            }
+          },
+          "key": "stale-projects.reason.rust-build-cache"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Code/fresher/target/llvm-cov-target"
+        },
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 8192
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Code/fresher/target/llvm-cov-target"
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target/llvm-cov-target"
+            },
+            "project": {
+              "kind": "text",
+              "value": "fresher"
+            }
+          },
+          "key": "stale-projects.title"
+        }
+      }
+    ],
+    "leftOut": [
+      {
+        "category": "stale-projects.build-output",
+        "reason": "stale-projects.left-out.recent",
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 8192
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

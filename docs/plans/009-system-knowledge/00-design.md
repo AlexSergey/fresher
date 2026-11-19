@@ -171,7 +171,7 @@ pub struct Project {
 - **Last activity**, first version: the project folder's own modification time as the walk reports it (it changes
   when a file is added, removed or renamed at the top level, which atomic saves do). The newest change of the whole
   project outside its artifact folders needs a query of the walked tree before the commit; it is
-  [deferred](../../deferred/project-last-activity.md) to the stale-project module's plan, its first consumer.
+  [deferred](../021-stale-projects/00-design.md) to the stale-project module's plan, its first consumer.
 
 ### 6. One scan's facts: `SystemFacts`
 

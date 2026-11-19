@@ -10,7 +10,8 @@ use std::time::SystemTime;
 use fresher_core::{
     ByteSize, CancelToken, CategoryId, ChangeJournal, ClaimedPath, Clock, DiskState, DiskWalk, FolderReader,
     FullScanReason, JournalPosition, KnownFolder, KnownFolders, Match, NotScanned, Pattern, ScanCache, ScanKind,
-    StateId, Timestamp, VolumeId, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    StateId, Subtree, SubtreeQuery, Timestamp, VolumeId, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest,
+    WalkSummary,
 };
 
 use crate::codec::fit::{Limits, fit};
@@ -24,6 +25,7 @@ use crate::rescan::load::{Cached, Use};
 use crate::rescan::summary::summarize;
 use crate::rescan::{Scope, ScopeRoot, Sources, Stop, rescan};
 use crate::state::TreeState;
+use crate::subtrees::subtrees;
 use crate::tree::arena::Tree;
 use crate::tree::fold::KEEP_THRESHOLD;
 use crate::tree::node::{Node, NodeIndex};
@@ -444,5 +446,13 @@ impl DiskWalk for Scanner {
             self.save(&scope, &positions, &state);
         }
         Ok(state)
+    }
+
+    /// Answers from the tree of the walk not committed yet; `None` for every query when there is none.
+    fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {
+        match &*self.last.lock().unwrap_or_else(PoisonError::into_inner) {
+            Some(walked) => subtrees(&walked.tree, queries),
+            None => vec![None; queries.len()],
+        }
     }
 }

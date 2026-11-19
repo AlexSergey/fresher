@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::Timestamp;
+use crate::{Sizes, Timestamp};
 
 /// A kind of project, known by its marker files.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -49,24 +49,69 @@ impl ProjectKind {
         }
     }
 
+    /// Folders inside the kind's artifact folders that only make the next build faster, relative to the project root,
+    /// `*` one name: Rust's `target/*/incremental`, `target/*/*/incremental` (a target triple's) and
+    /// `target/llvm-cov-target`; none for the other kinds. A cache folder's name is its pattern's last segment.
+    pub const fn caches(self) -> &'static [&'static str] {
+        match self {
+            Self::Rust => &["target/*/incremental", "target/*/*/incremental", "target/llvm-cov-target"],
+            Self::Node | Self::Gradle | Self::Maven | Self::Python | Self::SwiftPackage | Self::Go | Self::Dart => &[],
+        }
+    }
+
     /// The kind a marker file name makes; `None` for any other name.
     pub fn of_marker(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.markers().contains(&name))
     }
 }
 
-/// A project found during the scan's walk.
+/// When something last changed, as far as the walk could tell.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LastChange {
+    /// Every folder counted was read: this is the newest change.
+    Known(Timestamp),
+    /// A folder could not be read: the newest change is this one or later.
+    AtLeast(Timestamp),
+    /// The walk saw nothing to date it.
+    Unknown,
+}
+
+impl LastChange {
+    /// The newest time the walk saw, `Known` when every folder counted was read (`complete`), `AtLeast` otherwise;
+    /// `Unknown` when there is no time.
+    pub const fn of(newest: Option<Timestamp>, complete: bool) -> Self {
+        match newest {
+            None => Self::Unknown,
+            Some(time) if complete => Self::Known(time),
+            Some(time) => Self::AtLeast(time),
+        }
+    }
+}
+
+/// A folder of a project that its tools make again, with what the walk saw of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Artifact {
+    pub path: PathBuf,
+    /// Everything inside it, as the walk summed it.
+    pub sizes: Sizes,
+    /// The newest change of it and of every folder inside it.
+    pub last_change: LastChange,
+}
+
+/// A project found during the scan's walk, with what the walk saw of it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Project {
     /// The folder holding the markers.
     pub root: PathBuf,
     /// Its kinds, in the order of `ProjectKind::ALL`; a folder may be several (a Rust crate with a `package.json`).
     pub kinds: Vec<ProjectKind>,
-    /// The kinds' artifact folders that exist in it, by path.
-    pub artifacts: Vec<PathBuf>,
-    /// When the project folder itself last changed (a file added, removed or renamed at its top); `None` when the
-    /// walk could not tell.
-    pub last_activity: Option<Timestamp>,
+    /// The kinds' artifact folders that the walk saw in it, by path.
+    pub artifacts: Vec<Artifact>,
+    /// The kinds' cache folders that exist inside its artifact folders, by path; none inside another.
+    pub caches: Vec<Artifact>,
+    /// The newest change of its own folders (its artifact folders, its `.git` and the projects inside it, with their
+    /// artifact folders and `.git`, left out) and of its git branches (`.git/refs/heads`).
+    pub last_activity: LastChange,
 }
 
 #[cfg(test)]
@@ -93,10 +138,42 @@ mod tests {
                 assert!(kind.artifacts().iter().all(|artifact| ProjectKind::of_marker(artifact).is_none()));
             }
         }
+
+        #[test]
+        fn every_cache_pattern_starts_with_one_of_its_kind_s_artifacts() {
+            for kind in ProjectKind::ALL {
+                for pattern in kind.caches() {
+                    let first = pattern.split('/').next().unwrap();
+                    assert!(kind.artifacts().contains(&first), "{kind:?} {pattern}");
+                    assert!(pattern.split('/').count() > 1, "{pattern}");
+                }
+            }
+        }
     }
 
     mod positive {
-        use crate::ProjectKind;
+        use crate::{LastChange, ProjectKind, Timestamp};
+
+        #[test]
+        fn rust_has_its_incremental_and_coverage_caches_and_the_other_kinds_none() {
+            assert_eq!(
+                ProjectKind::Rust.caches(),
+                ["target/*/incremental", "target/*/*/incremental", "target/llvm-cov-target"]
+            );
+            for kind in ProjectKind::ALL.into_iter().filter(|kind| *kind != ProjectKind::Rust) {
+                assert_eq!(kind.caches(), [] as [&str; 0], "{kind:?}");
+            }
+        }
+
+        #[test]
+        fn last_change_of_reads_complete_as_known() {
+            let time = Timestamp::from_secs(7);
+
+            assert_eq!(LastChange::of(Some(time), true), LastChange::Known(time));
+            assert_eq!(LastChange::of(Some(time), false), LastChange::AtLeast(time));
+            assert_eq!(LastChange::of(None, true), LastChange::Unknown);
+            assert_eq!(LastChange::of(None, false), LastChange::Unknown);
+        }
 
         #[test]
         fn every_kind_has_a_marker_that_names_it() {

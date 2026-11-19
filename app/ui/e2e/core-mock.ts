@@ -97,6 +97,15 @@ import {
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
 import {
+  STALE_PROJECTS_DICTIONARY,
+  STALE_PROJECTS_FINDINGS,
+  STALE_PROJECTS_MODULES,
+  STALE_PROJECTS_OVERVIEW,
+  STALE_PROJECTS_SCAN,
+  STALE_PROJECTS_SETTINGS,
+  STALE_PROJECTS_TOTALS,
+} from '../src/test/stale-projects-scan';
+import {
   DEMO_DESCENT,
   DEMO_MAP_COMPLETE,
   DEMO_MAP_NO_SCAN,
@@ -656,6 +665,30 @@ const DOWNLOADS_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The cleanup of the old-projects findings `ids`: the categories in `gone` leave the totals, `waiting` bytes wait.
+const staleProjectsCleanupOf = (ids: readonly number[], waiting: number, gone: readonly string[]): CleanupScript => {
+  const detail = movedDetailOf(planOf(STALE_PROJECTS_FINDINGS.filter(({ id }) => ids.includes(id))), 3, 1_735_819_200);
+
+  return {
+    after: {
+      ...STALE_PROJECTS_OVERVIEW,
+      found: sizedOf(6_570_000_000 - waiting),
+      totals: STALE_PROJECTS_TOTALS.filter(({ category }) => !gone.includes(category)),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting },
+  };
+};
+
+// What the old-projects script answers before a scan: the module, its texts and settings.
+const STALE_PROJECTS_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...STALE_PROJECTS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: STALE_PROJECTS_MODULES,
+  getSettings: STALE_PROJECTS_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // Two modules at once: npm's cache of the developer caches module beside the removed app's findings.
 const [NPM_CACHE] = DEV_CACHES_FINDINGS as readonly [Finding];
 const WITH_DEV_CACHES_FINDINGS: readonly Finding[] = [NPM_CACHE, ...APP_LEFTOVERS_FINDINGS];
@@ -844,6 +877,17 @@ export const SCRIPTS = {
       pickFolder: '~/Music',
       resetSettings: null,
     },
+  },
+  // The old-projects scan, streamed at once; the cleanup moves the Python environment and the build output.
+  staleProjects: {
+    answers: STALE_PROJECTS_ANSWERS,
+    cleanup: staleProjectsCleanupOf([403, 404], 3_720_000_000, [
+      'stale-projects.build-output',
+      'stale-projects.python-environments',
+    ]),
+    ignoring: true,
+    scan: STALE_PROJECTS_SCAN,
+    scanned: STALE_PROJECTS_OVERVIEW,
   },
   // The temporary files module's scan, streamed at once, with cleanup, ignoring, and the two temporary folders as
   // places of the storage map.

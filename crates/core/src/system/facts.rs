@@ -117,7 +117,8 @@ impl SystemFacts {
         self.projects.get().map(Vec::as_slice)
     }
 
-    /// Sets the projects of the walk, once; a second call changes nothing. Called by the engine after the walk.
+    /// Sets the projects of the walk, once; a second call changes nothing. Called by the engine after the walk, with
+    /// what the walk saw of them.
     pub fn set_projects(&self, projects: Vec<Project>) {
         // The first set is kept: the engine sets them once per scan.
         let _ = self.projects.set(projects);
@@ -351,7 +352,13 @@ mod tests {
         #[test]
         fn the_projects_are_set_once() {
             let facts = SystemFacts::new(&ports(&Arc::new(Counting::default())));
-            let project = Project { root: "/p".into(), kinds: Vec::new(), artifacts: Vec::new(), last_activity: None };
+            let project = Project {
+                root: "/p".into(),
+                kinds: Vec::new(),
+                artifacts: Vec::new(),
+                caches: Vec::new(),
+                last_activity: crate::LastChange::Unknown,
+            };
 
             facts.set_projects(vec![project.clone()]);
             facts.set_projects(Vec::new());

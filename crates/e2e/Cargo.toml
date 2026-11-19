@@ -22,6 +22,7 @@ fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-dev-caches = { path = "../../modules/dev-caches" }
 fresher-module-downloads = { path = "../../modules/downloads" }
 fresher-module-jetbrains = { path = "../../modules/jetbrains" }
+fresher-module-stale-projects = { path = "../../modules/stale-projects" }
 fresher-module-temp = { path = "../../modules/temp" }
 fresher-module-trial = { path = "../../modules/trial" }
 fresher-sandbox = { path = "../sandbox" }

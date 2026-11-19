@@ -1,0 +1,132 @@
+{
+  "leftOut": [
+    [
+      "build-output",
+      "recent",
+      1,
+      24576
+    ],
+    [
+      "dependencies",
+      "recent",
+      3,
+      28672
+    ],
+    [
+      "rust-build-cache",
+      "cache-recent",
+      1,
+      8192
+    ]
+  ],
+  "offered": [
+    {
+      "category": "stale-projects.build-output",
+      "danger": "low",
+      "path": "home/Code/tool/target",
+      "title": {
+        "args": {
+          "folder": {
+            "kind": "text",
+            "value": "target"
+          },
+          "project": {
+            "kind": "text",
+            "value": "tool"
+          }
+        },
+        "key": "stale-projects.title"
+      }
+    },
+    {
+      "category": "stale-projects.dependencies",
+      "danger": "low",
+      "path": "home/Code/shop/node_modules",
+      "title": {
+        "args": {
+          "folder": {
+            "kind": "text",
+            "value": "node_modules"
+          },
+          "project": {
+            "kind": "text",
+            "value": "shop"
+          }
+        },
+        "key": "stale-projects.title"
+      }
+    },
+    {
+      "category": "stale-projects.dependencies",
+      "danger": "low",
+      "path": "home/Code/shop/packages/web/node_modules",
+      "title": {
+        "args": {
+          "folder": {
+            "kind": "text",
+            "value": "packages/web/node_modules"
+          },
+          "project": {
+            "kind": "text",
+            "value": "shop"
+          }
+        },
+        "key": "stale-projects.title"
+      }
+    },
+    {
+      "category": "stale-projects.dependencies",
+      "danger": "low",
+      "path": "home/Code/site/node_modules",
+      "title": {
+        "args": {
+          "folder": {
+            "kind": "text",
+            "value": "node_modules"
+          },
+          "project": {
+            "kind": "text",
+            "value": "site"
+          }
+        },
+        "key": "stale-projects.title"
+      }
+    },
+    {
+      "category": "stale-projects.python-environments",
+      "danger": "medium",
+      "path": "home/Code/py/.venv",
+      "title": {
+        "args": {
+          "folder": {
+            "kind": "text",
+            "value": ".venv"
+          },
+          "project": {
+            "kind": "text",
+            "value": "py"
+          }
+        },
+        "key": "stale-projects.title"
+      }
+    },
+    {
+      "category": "stale-projects.rust-build-cache",
+      "danger": "low",
+      "path": "home/Code/daily/target/debug/incremental",
+      "title": {
+        "args": {
+          "folder": {
+            "kind": "text",
+            "value": "target/debug/incremental"
+          },
+          "project": {
+            "kind": "text",
+            "value": "daily"
+          }
+        },
+        "key": "stale-projects.title"
+      }
+    }
+  ]
+}

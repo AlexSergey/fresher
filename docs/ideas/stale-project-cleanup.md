@@ -1,6 +1,6 @@
 # Stale project cleanup
 
-**Since:** 2026-11-15 · **Plan:** [021](../plans/021-stale-projects/readme.md) (draft)
+**Since:** 2026-11-15 · **Plan:** [021](../plans/021-stale-projects/readme.md) (built)
 
 ## Problem
 
@@ -31,3 +31,24 @@ Open questions:
 - A project with uncommitted changes — skip it, or offer with a warning?
 - Monorepos and nested `node_modules`: count once at the project root, list the nested ones inside the finding.
 - Should "recently active but huge" projects be shown as information only (no cleanup offered)?
+
+## Built by plan 021
+
+The module `stale-projects` offers the artifact folders of projects nothing has changed in for a year (a setting, 30 to
+3650 days): packages (`node_modules`), build output (`target`, `build`, `.gradle`, `.build`, `.dart_tool`), Python
+environments (`.venv`, `venv`, Medium), and, for any Rust project, the build cache unused for 7 days. The last
+activity is the newest folder time outside the artifact folders and `.git`, or the newest folder time of
+`.git/refs/heads`; git is never run. A monorepo is one group; a project that could not be read in full, and a restored
+scan, offer nothing. Known limits: [a file edited in place](../known-issues/core-project-activity-misses-edits-in-place.md)
+and [a project cleaned once looks active](../known-issues/core-cleaned-stale-project-looks-active.md).
+
+Decided by the user on 2026-11-19: `dist`, `.next`, `.nuxt`, `.turbo`, `.parcel-cache` and any other framework output
+are never offered, not even later (so the "`dist` only when the config says it is build output" idea above is dropped).
+
+Stays an idea:
+
+- other kinds and artifacts (`Pods`, `build/` of other build tools, a project's own caches);
+- single stale files inside a live `target/deps`;
+- the editors that save in place, if the run by hand (plan 021 step 04/02) finds any;
+- a project with uncommitted changes shown with a warning, and "recently active but huge" as information only (the
+  module keeps them, with the reason, and never offers them).

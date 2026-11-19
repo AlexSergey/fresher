@@ -9,8 +9,8 @@ use std::sync::Arc;
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
     FindingId, FindingSink, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, Removability, Removal, ScanId, ScanKind, ScanOutcome,
-    SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability, Removal, ScanId,
+    ScanKind, ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -19,7 +19,6 @@ use crate::coverage;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
 use crate::left_outs::LeftOuts;
-use crate::projects::{self, ProjectCollector};
 use crate::settings::Ignored;
 use crate::storage::attribution::AppPlaces;
 use crate::storage::roots::expand_home;
@@ -50,6 +49,9 @@ pub(crate) struct Planned {
 /// then is each module's availability decided, so a module needing a place runs in the scan that first tries it. A
 /// module whose every category is unavailable is not run; the totals of a limited category are partial; an
 /// incomplete coverage ends the scan partial.
+///
+/// The projects every module's `finish` sees carry what the walk saw of them: the walk is asked once after it ends
+/// (or after the restore) and before the commit; a walk that did not end is asked nothing.
 ///
 /// The events, in order: `ScanStarted`; `AccessChanged` when a tool's state changed; `AccessChanged` when a try
 /// changed a state; the `ModuleFinished` of each module not run for what it lacks; then the walk's progress and
@@ -108,7 +110,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let publish_progress = |progress: WalkProgress| {
         shared.bus.publish(&Event::ScanProgress { scan, entries: progress.entries, bytes: progress.bytes });
     };
-    let mut projects = ProjectCollector::default();
+    let mut projects = ProjectFinder::default();
     let walked = {
         let mut on_match = |found: Match| {
             let Some((owner, local)) = interests.owner(found.interest) else { return };
@@ -144,7 +146,8 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         }
     };
     throttle.take().into_iter().for_each(&publish_progress);
-    system.set_projects(projects.finish());
+    let ended = walked.is_ok().then_some(&*shared.ports.walk);
+    system.set_projects(projects.finish(ended));
     let summary = summary_of(walked);
     output.coverage = coverage::after_walk(entry.not_entered, summary.as_ref());
     if let Some(summary) = &summary {
@@ -183,14 +186,14 @@ fn begin(shared: &Shared, plan: &ScanPlan) -> Option<u32> {
 }
 
 /// Every registered module's interests, enabled or not, so turning one off never changes what the walk reads (design
-/// call 22; the matches of a module that is off are dropped), then the engine's own for the projects, owned by
+/// call 22; the matches of a module that is off are dropped), then the project finder's, owned by
 /// `ModuleId::system()`.
 fn all_interests(shared: &Shared) -> InterestSet {
     let mut interests = InterestSet::new();
     for module in shared.registry.registered() {
         interests.add(module.descriptor().id(), module.interests());
     }
-    interests.add(ModuleId::system(), &projects::interests());
+    interests.add(ModuleId::system(), &ProjectFinder::interests());
     interests
 }
 
@@ -869,6 +872,21 @@ mod tests {
         }
 
         #[test]
+        fn a_walk_that_did_not_end_asks_nothing() {
+            let walk = ScriptedWalk::new().marker("Cargo.toml", "/home/tool");
+            let (walk, _gate) = walk.hold();
+            let queries = walk.subtree_queries();
+            let engine = Fixture::new(walk).module(TestModule::builder("alpha")).engine();
+            let events = engine.subscribe();
+            engine.start_scan(crate::ScanMode::Auto).unwrap();
+
+            engine.cancel_scan().unwrap();
+
+            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
+            assert!(queries.lock().unwrap().is_empty());
+        }
+
+        #[test]
         fn a_walk_that_stopped_is_not_committed() {
             let root = WalkError::RootUnreadable { index: 0, kind: std::io::ErrorKind::NotFound };
             let walk = ScriptedWalk::new().failing(root);
@@ -1031,6 +1049,51 @@ mod tests {
             let unknown = PlaceSeen::Unknown;
             assert_eq!(*alpha_seen.lock().unwrap(), [PlaceSeen::Read, PlaceSeen::Unread, unknown]);
             assert_eq!(*beta_seen.lock().unwrap(), [PlaceSeen::NotScanned, unknown, unknown]);
+        }
+
+        #[test]
+        fn the_projects_carry_what_the_walk_saw_of_them_before_any_finish() {
+            use std::path::PathBuf;
+            use std::sync::{Arc, Mutex};
+
+            use fresher_core::{Artifact, LastChange, Project, ProjectKind, Subtree};
+
+            let tool = Subtree { sizes: bytes(1), newest: Some(Timestamp::from_secs(40)), complete: true };
+            let target = Subtree { sizes: bytes(9), newest: Some(Timestamp::from_secs(30)), complete: true };
+            let walk = ScriptedWalk::new()
+                .marker("Cargo.toml", "/home/tool")
+                .folder("target", "/home/tool/target", bytes(9))
+                .answering_subtrees(vec![("/home/tool".into(), tool), ("/home/tool/target".into(), target)]);
+            let (queries, commits) = (walk.subtree_queries(), walk.commits());
+            let seen = Arc::new(Mutex::new(None));
+            let record = Arc::clone(&seen);
+            let (asked, committed) = (Arc::clone(&queries), Arc::clone(&commits));
+            let module = TestModule::builder("alpha").on_finish(move |cx, _| {
+                let before_commit = (asked.lock().unwrap().len(), committed.lock().unwrap().len());
+                *record.lock().unwrap() = Some((cx.system().projects().map(<[Project]>::to_vec), before_commit));
+                Ok(())
+            });
+            let engine = Fixture::new(walk).module(module).engine();
+
+            scan(&engine);
+
+            let (projects, before_commit) = seen.lock().unwrap().take().unwrap();
+            let target = Artifact {
+                path: PathBuf::from("/home/tool/target"),
+                sizes: bytes(9),
+                last_change: LastChange::Known(Timestamp::from_secs(30)),
+            };
+            let expected = Project {
+                root: PathBuf::from("/home/tool"),
+                kinds: vec![ProjectKind::Rust],
+                artifacts: vec![target],
+                caches: Vec::new(),
+                last_activity: LastChange::Known(Timestamp::from_secs(40)),
+            };
+            assert_eq!(projects, Some(vec![expected]));
+            assert_eq!(before_commit, (1, 0), "asked once, after the walk and before the commit");
+            assert_eq!(queries.lock().unwrap().len(), 1);
+            assert_eq!(commits.lock().unwrap().len(), 1);
         }
 
         #[test]

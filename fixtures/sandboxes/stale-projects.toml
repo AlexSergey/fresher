@@ -1,0 +1,669 @@
+# The stale-projects module: the dependency and build folders of projects not worked on for a long time, offered from
+# the folders under `home` that the walk reads (`home/Code` here). Projects live under `home/Code/<the case's own
+# name>/`, so no path is written twice.
+#
+# EVERY folder of a project is a `[[case.dir]]` with an `age`, the parents of files and `.git/refs/heads` included: a
+# folder the generator makes is "changed now", so a stale case that forgets one turns active and fails on its missing
+# offer (`home/Code` is written once, by the first positive: a negative owns every folder above its paths, and no
+# negative may own the folder holding another case's offer). Ages: 400 days for an old project, 3 days for an active
+# one, 10 days for a cache unused for a week.
+# Positives' files are small and filled with data.
+feature = "stale-projects"
+module = "stale-projects"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "the source, .git and the project folder are never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/kept-source"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/kept-source/.git"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/kept-source/.git/refs"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/kept-source/.git/refs/heads"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/kept-source/src"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/kept-source/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/kept-source/src/index.ts"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/kept-source/.git/HEAD"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/kept-source/.git/refs/heads/main"
+size = 4096
+age = "400d"
+changed = "400d"
+[case.map]
+part = "your-folders"
+at = "home/Code/kept-source/src"
+
+[[case]]
+name = "dist and .next are never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/framework"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/framework/.next"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/framework/.next/cache"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/framework/dist"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/framework/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/framework/dist/app.js"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/framework/.next/cache/x"
+size = 4096
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "a node_modules without a project is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/loose"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/loose/node_modules"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/loose/node_modules/x"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/loose/node_modules/x/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "a link named node_modules is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/linked"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/elsewhere"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/elsewhere/modules"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/linked/package.json"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/elsewhere/modules/x"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.symlink]]
+path = "home/Code/linked/node_modules"
+target = "../../elsewhere/modules"
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "a node_modules in the home itself is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/node_modules"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/node_modules/left-pad"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/node_modules/left-pad/x"
+size = 4096
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "a project in a hidden folder of the home is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/.config"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/.config/tool"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/.config/tool/node_modules"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/.config/tool/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/.config/tool/node_modules/x"
+size = 4096
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "a project inside an app bundle is never claimed"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/Tool.app"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/Tool.app/Contents"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/Tool.app/Contents/Resources"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/Tool.app/Contents/Resources/app"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/Tool.app/Contents/Resources/app/node_modules"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/Tool.app/Contents/Resources/app/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/Tool.app/Contents/Resources/app/node_modules/x"
+size = 4096
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "an active project's packages are kept"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/active"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/active/node_modules"
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/active/package.json"
+size = 4096
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/active/node_modules/x"
+size = 4096
+age = "3d"
+changed = "3d"
+[[case.left-out]]
+category = "stale-projects.dependencies"
+reason = "stale-projects.left-out.recent"
+items = 1
+
+[[case]]
+name = "a project with a recent commit is kept"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/committed"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/committed/.git"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/committed/.git/refs"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/committed/.git/refs/heads"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/committed/node_modules"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/committed/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/committed/node_modules/x"
+size = 4096
+age = "400d"
+changed = "400d"
+[[case.left-out]]
+category = "stale-projects.dependencies"
+reason = "stale-projects.left-out.recent"
+items = 1
+
+[[case]]
+name = "a Rust build cache used this week is kept"
+kind = "negative"
+[[case.dir]]
+path = "home/Code/building"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/building/src"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/building/target"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/building/target/debug"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/building/target/debug/incremental"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/building/target/debug/incremental/x-1"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/building/target/debug/incremental/x-1/s-1"
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/building/Cargo.toml"
+size = 4096
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/building/src/main.rs"
+size = 4096
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/building/target/debug/incremental/x-1/s-1/w"
+size = 4096
+age = "3d"
+changed = "3d"
+[[case.left-out]]
+category = "stale-projects.rust-build-cache"
+reason = "stale-projects.left-out.cache-recent"
+items = 1
+[[case.left-out]]
+category = "stale-projects.build-output"
+reason = "stale-projects.left-out.recent"
+items = 1
+
+[[case]]
+name = "an old Node project's packages go"
+kind = "positive"
+[[case.dir]]
+path = "home/Code"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/.git"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/.git/refs"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/.git/refs/heads"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/node_modules"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/src"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/package.json"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/src/index.ts"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/node_modules/x"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/.git/refs/heads/main"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[case.expect]
+item = "home/Code/old-web/node_modules"
+category = "stale-projects.dependencies"
+danger = "low"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Code/old-web/node_modules"
+
+[[case]]
+name = "an old Rust project's target goes"
+kind = "positive"
+[[case.dir]]
+path = "home/Code/old-tool"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-tool/src"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-tool/target"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-tool/target/debug"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-tool/Cargo.toml"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-tool/src/main.rs"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-tool/target/debug/x"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[case.expect]
+item = "home/Code/old-tool/target"
+category = "stale-projects.build-output"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an old Gradle project's build goes"
+kind = "positive"
+[[case.dir]]
+path = "home/Code/old-android"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-android/build"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-android/build.gradle.kts"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-android/build/x"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[case.expect]
+item = "home/Code/old-android/build"
+category = "stale-projects.build-output"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an old Python project's environment goes, at Medium"
+kind = "positive"
+[[case.dir]]
+path = "home/Code/old-py"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-py/.venv"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-py/pyproject.toml"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-py/.venv/x"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[case.expect]
+item = "home/Code/old-py/.venv"
+category = "stale-projects.python-environments"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a monorepo's package goes under the monorepo's name"
+kind = "positive"
+[[case.dir]]
+path = "home/Code/shop"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/shop/packages"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/shop/packages/web"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/shop/packages/web/node_modules"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/shop/package.json"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/shop/packages/web/package.json"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/shop/packages/web/node_modules/x"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[case.expect]
+item = "home/Code/shop/packages/web/node_modules"
+category = "stale-projects.dependencies"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an active Rust project's incremental cache goes"
+kind = "positive"
+[[case.dir]]
+path = "home/Code/daily"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/daily/src"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/daily/target"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/daily/target/debug"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/daily/target/debug/incremental"
+age = "10d"
+changed = "10d"
+[[case.dir]]
+path = "home/Code/daily/target/debug/incremental/x-1"
+age = "10d"
+changed = "10d"
+[[case.dir]]
+path = "home/Code/daily/target/debug/incremental/x-1/s-1"
+age = "10d"
+changed = "10d"
+[[case.file]]
+path = "home/Code/daily/Cargo.toml"
+size = 4096
+fill = "data"
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/daily/src/main.rs"
+size = 4096
+fill = "data"
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/daily/target/debug/incremental/x-1/s-1/w"
+size = 4096
+fill = "data"
+age = "10d"
+changed = "10d"
+[case.expect]
+item = "home/Code/daily/target/debug/incremental"
+category = "stale-projects.rust-build-cache"
+danger = "low"
+after-cleanup = "in-trash"
+[[case.left-out]]
+category = "stale-projects.build-output"
+reason = "stale-projects.left-out.recent"
+items = 1
+
+[[case]]
+name = "an active Rust project's coverage build goes"
+kind = "positive"
+[[case.dir]]
+path = "home/Code/covered"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/covered/src"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/covered/target"
+age = "3d"
+changed = "3d"
+[[case.dir]]
+path = "home/Code/covered/target/llvm-cov-target"
+age = "10d"
+changed = "10d"
+[[case.dir]]
+path = "home/Code/covered/target/llvm-cov-target/debug"
+age = "10d"
+changed = "10d"
+[[case.file]]
+path = "home/Code/covered/Cargo.toml"
+size = 4096
+fill = "data"
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/covered/src/main.rs"
+size = 4096
+fill = "data"
+age = "3d"
+changed = "3d"
+[[case.file]]
+path = "home/Code/covered/target/llvm-cov-target/debug/x"
+size = 4096
+fill = "data"
+age = "10d"
+changed = "10d"
+[case.expect]
+item = "home/Code/covered/target/llvm-cov-target"
+category = "stale-projects.rust-build-cache"
+danger = "low"
+after-cleanup = "in-trash"
+[[case.left-out]]
+category = "stale-projects.build-output"
+reason = "stale-projects.left-out.recent"
+items = 1

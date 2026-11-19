@@ -6,6 +6,7 @@ import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanu
 import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
+import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
 import { releaseCleanup, requestQuit } from './support/cleanup-mock';
@@ -203,6 +204,33 @@ const openDownloads = async (
   await expect(heading(page, dl('enabled.label'))).toBeFocused();
 };
 
+// The old-projects module's own texts, as its locale file has them.
+const sp = (key: string): string => {
+  const value = STALE_PROJECTS_DICTIONARY[`stale-projects.${key}`];
+  if (value === undefined) {
+    throw new Error(`no text stale-projects.${key}`);
+  }
+
+  return value;
+};
+
+const SP_DEPENDENCIES = sp('dependencies.name');
+const SP_BUILD = sp('build-output.name');
+const SP_PYTHON = sp('python-environments.name');
+const SP_RUST = sp('rust-build-cache.name');
+
+const staleProjectsModule = (page: Page): Locator => page.getByRole('button', { name: /^Old projects/ });
+
+// Scans the old-projects script and opens the module's page.
+const openStaleProjects = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.staleProjects);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(staleProjectsModule(page)).toContainText('6.6 GB');
+  await staleProjectsModule(page).click();
+  await expect(heading(page, sp('enabled.label'))).toBeFocused();
+};
+
 const choice = (page: Page, name: string): Locator => page.getByRole('button', { name: left(`choice.${name}.label`) });
 
 test.beforeEach(async ({ page }) => {
@@ -381,6 +409,24 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('1.2 GB');
+  });
+
+  test('the left-out lines of old projects cannot be selected', async ({ page }) => {
+    await openStaleProjects(page);
+
+    await expect(page.getByRole('region', { name: SP_DEPENDENCIES })).toContainText(
+      `2 items left out (1.3 GB): ${sp('left-out.recent')}`,
+    );
+    await expect(page.getByRole('region', { name: SP_BUILD })).toContainText(
+      `1 item left out (900 MB): ${sp('left-out.recent')}`,
+    );
+    await expect(page.getByRole('region', { name: SP_RUST })).toContainText(
+      `1 item left out (2.1 GB): ${sp('left-out.cache-recent')}`,
+    );
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select ${SP_DEPENDENCIES}` }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).not.toContainText('1.3 GB');
   });
 
   test('a choice selects nothing outside its module', async ({ page }) => {
@@ -1279,6 +1325,94 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: dl('enabled.label') })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: dl('older-than-days.label') })).toHaveValue('30');
     await expect(page.getByText(dl('older-than-days.description'))).toBeVisible();
+  });
+
+  test('old projects show under Development with their size', async ({ page }) => {
+    await openStaleProjects(page);
+
+    await expect(page.getByRole('navigation').getByText('Development', { exact: true })).toBeVisible();
+    await expect(staleProjectsModule(page)).toContainText('6.6 GB');
+    for (const name of [SP_DEPENDENCIES, SP_BUILD, SP_PYTHON, SP_RUST]) {
+      await expect(page.getByRole('region', { name })).toBeVisible();
+    }
+    await expect(page.getByRole('region', { name: SP_BUILD })).toContainText('3.2 GB');
+  });
+
+  test('each old-projects category shows its danger and its five texts', async ({ page }) => {
+    await openStaleProjects(page);
+
+    for (const [name, key, danger] of [
+      [SP_DEPENDENCIES, 'dependencies', 'Low'],
+      [SP_BUILD, 'build-output', 'Low'],
+      [SP_PYTHON, 'python-environments', 'Medium'],
+      [SP_RUST, 'rust-build-cache', 'Low'],
+    ] as const) {
+      const category = page.getByRole('region', { name });
+      await expect(category).toContainText(danger);
+      await expect(category).toContainText(sp(`${key}.what`));
+      await category.getByText('About this category').click();
+      for (const text of ['made-by', 'if-removed', 'comes-back']) {
+        await expect(category).toContainText(sp(`${key}.${text}`));
+      }
+    }
+  });
+
+  test('an old project’s finding names the project, the folder, the date and the command', async ({ page }) => {
+    await openStaleProjects(page);
+
+    await page.getByRole('button', { name: `Show the items of ${SP_DEPENDENCIES}` }).click();
+    await page.getByRole('button', { name: `Show the items of ${SP_RUST}` }).click();
+    const items = page.getByRole('region', { name: SP_DEPENDENCIES });
+    await expect(items).toContainText('shop · node_modules');
+    await expect(items).toContainText('shop · packages/web/node_modules');
+    const [beforeDate = '', afterDate = ''] = sp('reason.dependencies').split('{date}');
+    await expect(items).toContainText(beforeDate.trim());
+    await expect(items).toContainText('Nov 15, 2023');
+    await expect(items).toContainText(afterDate.replace('{command}', 'npm install').trim());
+    await expect(page.getByRole('region', { name: SP_RUST })).toContainText('daily · target/debug/incremental');
+  });
+
+  test('selecting the Python environments and the build output makes the review name Medium', async ({ page }) => {
+    await openStaleProjects(page);
+
+    await page.getByRole('checkbox', { name: `Select ${SP_PYTHON}` }).check();
+    await page.getByRole('checkbox', { name: `Select ${SP_BUILD}` }).check();
+
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await expect(dialog).toContainText('Medium');
+    await expect(dialog).toContainText(sp('python-environments.if-removed'));
+  });
+
+  test('a build output goes to the Trash and comes back from the Cleanups', async ({ page }) => {
+    await openStaleProjects(page);
+    await page.getByRole('checkbox', { name: `Select ${SP_BUILD}` }).check();
+    await page.getByRole('checkbox', { name: `Select ${SP_PYTHON}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 2 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: 'target' });
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the switch and the days for old projects', async ({ page }) => {
+    await mockCore(page, SCRIPTS.staleProjects);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: sp('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('spinbutton', { name: sp('unused-for-days.label') })).toHaveValue('365');
+    await expect(page.getByText(sp('unused-for-days.description'))).toBeVisible();
   });
 
   test('a removed app’s line in the map is named by its id', async ({ page }) => {

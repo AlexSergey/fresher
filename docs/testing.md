@@ -140,7 +140,14 @@ cleanups of a hundred items through the real journal.
   updated turn a left-out into an offer on a rescan; the storage map counts an installer in its app's line and opens
   the user's folder; ignoring the big files; and Full Disk Access, which makes the module available without a try.
   `FakeAccess` remembers a try that answered `Granted` or `Denied`, as the real probe does, so the cleanup's own access
-  check agrees with the scan. `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
+  check agrees with the scan. `tests/stale_projects.rs` runs the `stale-projects` module's flows beside the other modules the app registers over
+  `fixtures/homes/stale-projects-flow.toml`, every folder dated (an undated one counts as changed now), the module asking
+  the real scanner's tree after the walk: an active project and one with a recent commit keep their packages
+  (`recent`), the first scan's report is the golden `fixtures/golden/stale-projects-flow.json`, scan, confirm with
+  Medium, Trash and put back byte for byte, a change in a stale project kept by a rescan, the setting moving the days, a
+  restore at launch that offers nothing (`scan-again`), the storage map and the browse view opening `target`,
+  `incremental` and `build` folders, ignoring the build output, and the known risk that a cleaned stale project looks
+  active on the next scan. `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
   modules' caches under `Library/Caches` still theirs), with scripted installed and open apps, Spotlight's answers, the
   clock and the change journal, every rescan asserted to be one (`fixtures/golden/app-leftovers-flow.json`).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
@@ -260,7 +267,8 @@ modified = 1735689600
 path = "Library/Logs"
 
 # A folder with its own time: `age` (or `modified`) is set once everything inside it is written, the deepest folder
-# first, so the folder keeps it whatever the tree writes into it.
+# first, so the folder keeps it whatever the tree writes into it. A project that must look stale dates EVERY folder
+# (the parents of its files and `.git/refs/heads` included): an undated folder counts as changed now and turns it active.
 [[dir]]
 path = "Library/Caches/JetBrains/DataGrip2024.3"
 age = "40d"
@@ -436,6 +444,18 @@ The case files:
   every case file ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)). The autotest does not opt in to
   Downloads in Settings, so a `not-asked` answer turning granted after the opt-in is not proven there but in the core
   e2e (`tests/downloads.rs`, below); a case file cannot opt in.
+
+- `stale-projects.toml`: the `stale-projects` module, offered from the folders under `home` the walk reads
+  (`home/Code`). Source, `.git` and the project folder, `dist` and `.next`, a `node_modules` without a project, a link
+  named `node_modules`, a `node_modules` in the home itself, a project in a hidden folder of the home and one inside an
+  app bundle are never claimed; an active project's packages, a project with a recent commit and a Rust build cache
+  used this week are left out (`recent`, `cache-recent`). An old Node project's packages, an old Rust project's `target`,
+  an old Gradle project's `build`, an old Python project's `.venv` (at Medium), a monorepo's package and an active Rust
+  project's unused incremental cache and coverage build go to the Trash. Every folder of a project is a dated
+  `[[case.dir]]` (400 days for an old project, 3 for an active one, 10 for a cache unused for a week), parents of files
+  and `.git/refs/heads` included: an undated folder counts as changed now and silently turns a stale case active.
+  `home/Code` is dated once, in the first positive, because a negative owns every folder above its paths and none may
+  own the folder holding another case's offer.
 
 - `temp.toml`: the `temp` module, in the sandbox's two temporary places, with stated facts for what the disk cannot
   make. A fresh file, a folder unpacked with old modification times, an old folder with one file changed a day ago,

@@ -16,8 +16,8 @@ mod app {
     use std::time::Duration;
 
     use fresher_core::{
-        Access, CancelToken, Capability, ClaimedPath, DiskState, DiskWalk, Event, Match, StateId, Timestamp, WalkError,
-        WalkProgress, WalkRequest, WalkSummary,
+        Access, CancelToken, Capability, ClaimedPath, DiskState, DiskWalk, Event, Match, StateId, Subtree,
+        SubtreeQuery, Timestamp, WalkError, WalkProgress, WalkRequest, WalkSummary,
     };
     use fresher_engine::{Engine, Ports, Registry};
     use fresher_module_demo::DemoModule;
@@ -46,6 +46,10 @@ mod app {
         fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
             Ok(empty_state())
         }
+
+        fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {
+            vec![None; queries.len()]
+        }
     }
 
     /// A walk that holds the scan until it is cancelled.
@@ -67,6 +71,10 @@ mod app {
 
         fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
             Ok(empty_state())
+        }
+
+        fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {
+            vec![None; queries.len()]
         }
     }
 

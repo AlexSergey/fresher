@@ -25,7 +25,9 @@ The rule is **"not used", not "old"**: a version is offered only when nothing on
 | Android       | `~/Library/Android/sdk/system-images`, `ndk/`, `build-tools/`             | an AVD's `config.ini` naming the image, a project's `ndkVersion`                               |
 
 - "A project" is any project found by [stale project cleanup](./stale-project-cleanup.md) in the folders the user
-  chose; the finding says so: "not used by any project in `~/dev`". Projects come from the `Projects` service of plan
+  chose; plan [021](../plans/021-stale-projects/readme.md) built the project list with each project's `LastChange`
+  (the last activity) for this idea to read; the finding says so: "not used by any project in `~/dev`". Projects come
+  from the `Projects` service of plan
   [009](../plans/009-system-knowledge/readme.md); their pins and a virtualenv's `pyvenv.cfg` are small files the rule
   must read, and plan 002's `ModuleContext` has no file access yet — proposed: a read-only reader with a size cap,
   offered by plan 009.

@@ -1,0 +1,510 @@
+# The home of the stale-projects flows: `active` (3 days), `committed` (old files, a branch moved 3 days ago),
+# the stale (400 days) `shop` (a monorepo), `tool` (Rust, with git), `py`, `site` (with `dist`), `older` (300 days),
+# and `daily`, an active Rust project whose incremental cache is 10 days old and whose `llvm-cov-target` is 3 days old;
+# `Documents/keep.txt` and `Documents/build` (a folder in it: the browse view lists folders) are outside every
+# project. EVERY folder is a dated `[[dir]]`, parents of files and every `.git/refs/heads` included: an undated folder
+# counts as changed now and turns a stale case active.
+
+[[dir]]
+path = "home/Code"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/active"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/active/.git"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/active/.git/refs"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/active/.git/refs/heads"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/active/node_modules"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/active/node_modules/x"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/active/src"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/committed"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/committed/.git"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/committed/.git/refs"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/committed/.git/refs/heads"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/committed/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/committed/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/committed/src"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/daily"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/daily/src"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/daily/target"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/daily/target/debug"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/daily/target/debug/deps"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/daily/target/debug/incremental"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "home/Code/daily/target/debug/incremental/x-1"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "home/Code/daily/target/debug/incremental/x-1/s-1"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "home/Code/daily/target/llvm-cov-target"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "home/Code/older"
+age = "300d"
+changed = "300d"
+
+[[dir]]
+path = "home/Code/older/node_modules"
+age = "300d"
+changed = "300d"
+
+[[dir]]
+path = "home/Code/older/node_modules/x"
+age = "300d"
+changed = "300d"
+
+[[dir]]
+path = "home/Code/older/src"
+age = "300d"
+changed = "300d"
+
+[[dir]]
+path = "home/Code/py"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/py/.venv"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/py/.venv/bin"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop/node_modules/a"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop/packages"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop/packages/web"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop/packages/web/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/shop/packages/web/node_modules/b"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/site"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/site/dist"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/site/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/site/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/site/src"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/.git"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/.git/refs"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/.git/refs/heads"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/src"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/target"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/target/debug"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/target/debug/incremental"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/target/debug/incremental/x-1"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Code/tool/target/debug/incremental/x-1/s-1"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Documents"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Documents/build"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Documents/build/drafts"
+age = "400d"
+changed = "400d"
+
+[[file]]
+path = "home/Code/active/.git/refs/heads/main"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/active/node_modules/x/index.js"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/active/package.json"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/active/src/index.ts"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/committed/.git/refs/heads/main"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/committed/node_modules/x/index.js"
+size = 8192
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/committed/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/committed/src/index.ts"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/daily/Cargo.toml"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/daily/src/main.rs"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/daily/target/debug/deps/x"
+size = 16384
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/daily/target/debug/incremental/x-1/s-1/f"
+size = 4096
+age = "10d"
+changed = "10d"
+fill = "data"
+
+[[file]]
+path = "home/Code/daily/target/llvm-cov-target/f"
+size = 8192
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "home/Code/older/node_modules/x/index.js"
+size = 16384
+age = "300d"
+changed = "300d"
+fill = "data"
+
+[[file]]
+path = "home/Code/older/package.json"
+size = 4096
+age = "300d"
+changed = "300d"
+fill = "data"
+
+[[file]]
+path = "home/Code/older/src/index.ts"
+size = 4096
+age = "300d"
+changed = "300d"
+fill = "data"
+
+[[file]]
+path = "home/Code/py/.venv/bin/python"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/py/pyproject.toml"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/shop/node_modules/a/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/shop/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/shop/packages/web/node_modules/b/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/shop/packages/web/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/site/dist/bundle.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/site/node_modules/x/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/site/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/site/src/index.ts"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/tool/.git/refs/heads/main"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/tool/Cargo.toml"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/tool/src/main.rs"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Code/tool/target/debug/incremental/x-1/s-1/f"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Documents/build/drafts/notes.txt"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Documents/keep.txt"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"

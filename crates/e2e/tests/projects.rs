@@ -60,11 +60,14 @@ mod app {
 
     /// Scans `home` with the recorder and gives what it saw.
     pub(crate) fn scan(folder: &Path, home: &Path) -> Seen {
+        scan_claiming(folder, home, fresher_core::Claim::Item)
+    }
+
+    /// Scans `home` with the recorder, whose interest in every `src` folder claims it as `claim` says.
+    pub(crate) fn scan_claiming(folder: &Path, home: &Path, claim: fresher_core::Claim) -> Seen {
         let seen = Arc::new(Mutex::new(Seen::default()));
         let id = ModuleId::new("recorder").unwrap();
-        let interest =
-            Interest::new(fresher_core::Pattern::FolderName("src".into()), fresher_core::Claim::Item, Vec::new())
-                .unwrap();
+        let interest = Interest::new(fresher_core::Pattern::FolderName("src".into()), claim, Vec::new()).unwrap();
         let recorder = Recorder {
             descriptor: ModuleDescriptor::new(
                 id,
@@ -133,14 +136,37 @@ mod app {
         [[dir]]
         path = "Projects/notes/package.json"
     "#;
+
+    /// A monorepo whose every folder is 400 days old but the nested package's `node_modules`, 3 days old.
+    pub(crate) const DATED_HOME: &str = r#"
+        [[file]]
+        path = "Code/mono/package.json"
+        [[file]]
+        path = "Code/mono/packages/web/package.json"
+        [[file]]
+        path = "Code/mono/packages/web/node_modules/left-pad.js"
+        [[dir]]
+        path = "Code/mono"
+        age = "400d"
+        [[dir]]
+        path = "Code/mono/packages"
+        age = "400d"
+        [[dir]]
+        path = "Code/mono/packages/web"
+        age = "400d"
+        [[dir]]
+        path = "Code/mono/packages/web/node_modules"
+        age = "3d"
+    "#;
 }
 
 mod negative {
     use std::path::PathBuf;
 
+    use fresher_core::{Claim, LastChange};
     use fresher_testing::FixtureTree;
 
-    use crate::app::{HOME, roots, scan};
+    use crate::app::{HOME, roots, scan, scan_claiming};
 
     #[test]
     fn packages_builds_and_a_folder_named_like_a_marker_are_not_projects() {
@@ -154,13 +180,28 @@ mod negative {
         assert_eq!(seen.during_walk, [false, false], "no projects while the walk runs");
         assert_eq!(seen.matches, 2, "the module gets only its own matches");
     }
+
+    #[test]
+    fn a_folder_claimed_whole_in_a_project_s_source_makes_its_activity_at_least() {
+        let (folder, tree) = (tempfile::tempdir().unwrap(), FixtureTree::from_toml_str(HOME).unwrap());
+        let home = tree.root().canonicalize().unwrap();
+
+        let projects = scan_claiming(folder.path(), &home, Claim::Whole).in_finish.unwrap();
+
+        for project in &projects {
+            assert!(matches!(project.last_activity, LastChange::AtLeast(_)), "{:?}", project.last_activity);
+        }
+        assert_eq!(projects.len(), 2);
+    }
 }
 
 mod positive {
-    use fresher_core::ProjectKind;
-    use fresher_testing::FixtureTree;
+    use fresher_core::{LastChange, ProjectKind, Timestamp};
+    use fresher_testing::{FIXTURE_NOW, FixtureTree};
 
-    use crate::app::{HOME, scan};
+    use crate::app::{DATED_HOME, HOME, scan};
+
+    const DAY: u64 = 86_400;
 
     #[test]
     fn every_module_gets_the_projects_with_their_kinds_and_artifacts_in_finish() {
@@ -171,10 +212,31 @@ mod positive {
 
         let tool = &projects[0];
         assert_eq!(tool.kinds, [ProjectKind::Node, ProjectKind::Rust]);
-        assert_eq!(tool.artifacts, [home.join("Projects/tool/target")]);
-        assert!(tool.last_activity.is_some());
+        let paths = |project: &fresher_core::Project| -> Vec<_> {
+            project.artifacts.iter().map(|artifact| artifact.path.clone()).collect()
+        };
+        assert_eq!(paths(tool), [home.join("Projects/tool/target")]);
+        assert!(matches!(tool.last_activity, LastChange::Known(_)), "{:?}", tool.last_activity);
         let web = &projects[1];
         assert_eq!(web.kinds, [ProjectKind::Node]);
-        assert_eq!(web.artifacts, [home.join("Projects/web/node_modules")]);
+        assert_eq!(paths(web), [home.join("Projects/web/node_modules")]);
+    }
+
+    #[test]
+    fn a_nested_package_s_artifacts_are_not_the_outer_project_s_activity() {
+        let (folder, tree) = (tempfile::tempdir().unwrap(), FixtureTree::from_toml_str(DATED_HOME).unwrap());
+        let home = tree.root().canonicalize().unwrap();
+
+        let projects = scan(folder.path(), &home).in_finish.unwrap();
+
+        let old = LastChange::Known(Timestamp::from_secs(FIXTURE_NOW - 400 * DAY));
+        let (mono, web) = (&projects[0], &projects[1]);
+        assert_eq!(mono.root, home.join("Code/mono"));
+        assert_eq!(mono.last_activity, old);
+        assert_eq!(web.root, home.join("Code/mono/packages/web"));
+        assert_eq!(web.last_activity, old);
+        let modules = &web.artifacts[0];
+        assert_eq!(modules.path, home.join("Code/mono/packages/web/node_modules"));
+        assert_eq!(modules.last_change, LastChange::Known(Timestamp::from_secs(FIXTURE_NOW - 3 * DAY)));
     }
 }

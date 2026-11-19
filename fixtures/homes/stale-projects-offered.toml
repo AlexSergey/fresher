@@ -1,0 +1,488 @@
+# The home of the stale-projects module's offered fixture run: stale (400 days) Node (`web-old`, with source and a
+# branch last moved 400 days ago), Rust (`tool-old`, its `target` holding an incremental cache: one finding), Maven,
+# Gradle, Swift, Dart and Python (`.venv` and `venv`) projects and the monorepo `shop` with two `node_modules`; and
+# `fresher`, an active (3 days) Rust project whose three caches are 10 days old and whose `target/debug/deps` was
+# built 3 days ago. EVERY folder is a dated `[[dir]]`, parents of files and `.git/refs/heads` included: an undated
+# folder counts as changed now and turns a stale case active.
+
+[[dir]]
+path = "Code"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/android-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/android-old/.gradle"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/android-old/build"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/dart-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/dart-old/.dart_tool"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/dart-old/build"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/fresher"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/fresher/src"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/fresher/target"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/fresher/target/aarch64-apple-darwin"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/aarch64-apple-darwin/debug"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/aarch64-apple-darwin/debug/incremental"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/aarch64-apple-darwin/debug/incremental/x-1"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/aarch64-apple-darwin/debug/incremental/x-1/s-1"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/debug"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/fresher/target/debug/deps"
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Code/fresher/target/debug/incremental"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/debug/incremental/x-1"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/debug/incremental/x-1/s-1"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/fresher/target/llvm-cov-target"
+age = "10d"
+changed = "10d"
+
+[[dir]]
+path = "Code/java-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/java-old/target"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/java-old/target/classes"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/py-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/py-old/.venv"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/py-old/.venv/bin"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/py-venv"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/py-venv/venv"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/py-venv/venv/bin"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop/node_modules/a"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop/packages"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop/packages/web"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop/packages/web/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/shop/packages/web/node_modules/b"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/swift-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/swift-old/.build"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old/src"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old/target"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old/target/debug"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old/target/debug/incremental"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old/target/debug/incremental/x-1"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/tool-old/target/debug/incremental/x-1/s-1"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old/.git"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old/.git/refs"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old/.git/refs/heads"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old/node_modules/x"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Code/web-old/src"
+age = "400d"
+changed = "400d"
+
+[[file]]
+path = "Code/android-old/.gradle/x"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/android-old/build.gradle.kts"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/android-old/build/x"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/dart-old/.dart_tool/x"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/dart-old/build/x"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/dart-old/pubspec.yaml"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/fresher/Cargo.toml"
+size = 8192
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/fresher/src/main.rs"
+size = 8192
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/fresher/target/aarch64-apple-darwin/debug/incremental/x-1/s-1/f"
+size = 8192
+age = "10d"
+changed = "10d"
+fill = "data"
+
+[[file]]
+path = "Code/fresher/target/debug/deps/x"
+size = 8192
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Code/fresher/target/debug/incremental/x-1/s-1/f"
+size = 8192
+age = "10d"
+changed = "10d"
+fill = "data"
+
+[[file]]
+path = "Code/fresher/target/llvm-cov-target/f"
+size = 8192
+age = "10d"
+changed = "10d"
+fill = "data"
+
+[[file]]
+path = "Code/java-old/pom.xml"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/java-old/target/classes/A.class"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/py-old/.venv/bin/python"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/py-old/pyproject.toml"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/py-venv/setup.py"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/py-venv/venv/bin/python"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/shop/node_modules/a/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/shop/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/shop/packages/web/node_modules/b/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/shop/packages/web/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/swift-old/.build/x"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/swift-old/Package.swift"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/tool-old/Cargo.toml"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/tool-old/src/main.rs"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/tool-old/target/debug/incremental/x-1/s-1/f"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/web-old/.git/refs/heads/main"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/web-old/node_modules/x/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/web-old/package.json"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Code/web-old/src/index.ts"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"

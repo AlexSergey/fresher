@@ -12,6 +12,7 @@ mod places_seen;
 mod rescan;
 mod scanner;
 mod state;
+mod subtrees;
 #[expect(dead_code, reason = "the walker of plan 004/05 builds the tree")]
 mod tree;
 mod walk;

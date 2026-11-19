@@ -1,0 +1,887 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "stale-projects.rust-build-cache",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/covered/target/llvm-cov-target",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "stale-projects.rust-build-cache",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/daily/target/debug/incremental",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/old-android/build",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "stale-projects.python-environments",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/old-py/.venv",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "stale-projects.build-output",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/old-tool/target",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "stale-projects.dependencies",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/old-web/node_modules",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "stale-projects.dependencies",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Code/shop/packages/web/node_modules",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "stale-projects.rust-build-cache",
+      "danger": "low",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/covered/target/llvm-cov-target"
+    },
+    {
+      "app": null,
+      "category": "stale-projects.rust-build-cache",
+      "danger": "low",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/daily/target/debug/incremental"
+    },
+    {
+      "app": null,
+      "category": "stale-projects.build-output",
+      "danger": "low",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/old-android/build"
+    },
+    {
+      "app": null,
+      "category": "stale-projects.python-environments",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/old-py/.venv"
+    },
+    {
+      "app": null,
+      "category": "stale-projects.build-output",
+      "danger": "low",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/old-tool/target"
+    },
+    {
+      "app": null,
+      "category": "stale-projects.dependencies",
+      "danger": "low",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/old-web/node_modules"
+    },
+    {
+      "app": null,
+      "category": "stale-projects.dependencies",
+      "danger": "low",
+      "logical": 4096,
+      "module": "stale-projects",
+      "subject": "home/Code/shop/packages/web/node_modules"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "stale-projects.build-output",
+      "items": 3,
+      "reason": {
+        "args": {},
+        "key": "stale-projects.left-out.recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "stale-projects.dependencies",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "stale-projects.left-out.recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "stale-projects.rust-build-cache",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "stale-projects.left-out.cache-recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Code/kept-source/src",
+        "case": "the source, .git and the project folder are never claimed",
+        "path": [
+          "home/Code/kept-source/src"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Code/kept-source/src"
+          }
+        ]
+      },
+      {
+        "at": "home/Code/old-web/node_modules",
+        "case": "an old Node project's packages go",
+        "path": [
+          "home/Code/old-web/node_modules"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Code/old-web/node_modules"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 28672,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 61440,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67203380,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738012876,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 115,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/.venv"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/.venv/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/build"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/build/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/incremental"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/incremental/x-1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/incremental/x-1/s-1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/incremental/x-1/s-1/w"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/llvm-cov-target"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/llvm-cov-target/debug"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/llvm-cov-target/debug/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/node_modules"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/node_modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/node_modules/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/node_modules/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/target"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/target/debug"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/target/debug/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.config"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.config/tool"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.config/tool/node_modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.config/tool/node_modules/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.config/tool/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/Tool.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/Tool.app/Contents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/Tool.app/Contents/Resources"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/Tool.app/Contents/Resources/app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/Tool.app/Contents/Resources/app/node_modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/Tool.app/Contents/Resources/app/node_modules/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/Tool.app/Contents/Resources/app/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/active"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/active/node_modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/active/node_modules/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/active/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/building/Cargo.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/building/src/main.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building/target"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building/target/debug"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building/target/debug/incremental"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building/target/debug/incremental/x-1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/building/target/debug/incremental/x-1/s-1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/building/target/debug/incremental/x-1/s-1/w"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/committed"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/committed/.git"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/committed/.git/refs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/committed/.git/refs/heads"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/committed/node_modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/committed/node_modules/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/committed/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/covered"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/covered/Cargo.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/covered/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/covered/src/main.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/covered/target"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/daily"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/daily/Cargo.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/daily/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/daily/src/main.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/daily/target"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/daily/target/debug"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/framework"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/framework/.next"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/framework/.next/cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/framework/.next/cache/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/framework/dist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/framework/dist/app.js"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/framework/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/kept-source"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/kept-source/.git"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/kept-source/.git/HEAD"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/kept-source/.git/refs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/kept-source/.git/refs/heads"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/kept-source/.git/refs/heads/main"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/kept-source/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/kept-source/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/kept-source/src/index.ts"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/linked"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Code/linked/node_modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/linked/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/loose"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/loose/node_modules"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/loose/node_modules/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/loose/node_modules/x/index.js"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-android"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-android/build.gradle.kts"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-py"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-py/pyproject.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-tool"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-tool/Cargo.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-tool/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-tool/src/main.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-web"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-web/.git"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-web/.git/refs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-web/.git/refs/heads"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-web/.git/refs/heads/main"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-web/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-web/src"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-web/src/index.ts"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/shop"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/shop/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/shop/packages"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/shop/packages/web"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/shop/packages/web/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere/modules"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/elsewhere/modules/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/node_modules"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/node_modules/left-pad"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/node_modules/left-pad/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/package.json"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8385,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 184628
+  }
+}

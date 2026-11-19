@@ -69,7 +69,7 @@ Built on `feat/009-system-knowledge` in one session on 2026-11-16, step by step,
   30 pass; the UI's 213 pass on the second run — the first run had one gallery screenshot (`AppShell/narrow`) differ
   by a few anti-aliased pixels at the sidebar's edge, a flake of a screen this plan does not touch.
 - **Left**: the volume facts ([deferred](../../deferred/volume-facts.md), plan 012); a project's precise last activity
-  ([deferred](../../deferred/project-last-activity.md)); the known issue of other users' processes is narrowed, not
+  ([deferred](../021-stale-projects/00-design.md)); the known issue of other users' processes is narrowed, not
   closed ([known issue](../../known-issues/cleaner-other-users-processes.md)). No module uses the facts yet: the first
   real module is the first consumer. No shortcut was taken (nothing in `docs/hacks/`).
 - **For the user to check**: the design's agent's calls 1–11, and the version decision (0.5.5, the user's).

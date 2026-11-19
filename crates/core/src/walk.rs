@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 use crate::{
     ByteSize, CancelToken, CategoryId, DiskState, InterestSet, JournalGap, KnownFolder, Match, NotScanned, ScanKind,
-    TextKey,
+    Sizes, TextKey, Timestamp,
 };
 
 /// Walks the scan roots once and reports every entry that matches an interest. Never follows a symbolic link and
@@ -25,6 +25,31 @@ pub trait DiskWalk: Send + Sync {
     ) -> Result<WalkSummary, WalkError>;
     /// Records the scan's claims and keeps its state; called only after a walk that was not cancelled.
     fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError>;
+    /// What the last walk saw below each of `queries`, in their order, from its tree before `commit`: no disk is
+    /// read (a restore answers from the cached tree). `None` for a path that is not a folder of that tree (never
+    /// walked, inside a folder claimed whole, a link, a file) and for every query before any walk.
+    fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>>;
+}
+
+/// A folder of the last walk to describe, and the folders below it whose times are left out.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SubtreeQuery {
+    pub folder: PathBuf,
+    /// Folders below `folder` left out of `newest` and `complete`, with everything inside them; their sizes count.
+    pub skip: Vec<PathBuf>,
+}
+
+/// What the last walk saw below one folder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Subtree {
+    /// The folder and everything inside it, as the walk summed it.
+    pub sizes: Sizes,
+    /// The newest modification time of the folder and of every folder below it, the skipped ones and everything
+    /// inside them left out; `None` when none has one.
+    pub newest: Option<Timestamp>,
+    /// Every folder counted in `newest` was read in full: none unreadable, avoided, on another volume or collapsed, and
+    /// none below `folder` claimed whole (nothing inside it is kept).
+    pub complete: bool,
 }
 
 /// What one walk is asked to do.

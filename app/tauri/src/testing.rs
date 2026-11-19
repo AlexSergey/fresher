@@ -12,8 +12,8 @@ use fresher_cleaner::CleanerPorts;
 use fresher_core::{
     AccessProbe, ByteSize, CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock,
     CommandRunner, Confirmation, ConfirmedPlan, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match, PlanItem,
-    PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Timestamp, TrashState,
-    TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
+    PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Subtree, SubtreeQuery, Timestamp,
+    TrashState, TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports};
 use fresher_store::{DataFolder, FileSettingsStore};
@@ -49,6 +49,10 @@ impl DiskWalk for NoWalk {
     fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
         Ok(Arc::new(FixedDiskState::new(StateId::new(0), Timestamp::from_secs(0), [])))
     }
+
+    fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {
+        vec![None; queries.len()]
+    }
 }
 
 /// A walk that holds the scan until it is cancelled.
@@ -71,6 +75,10 @@ impl DiskWalk for HeldWalk {
 
     fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
         NoWalk.commit(claims)
+    }
+
+    fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {
+        vec![None; queries.len()]
     }
 }
 

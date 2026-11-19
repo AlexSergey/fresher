@@ -3,6 +3,7 @@
 
 mod apps;
 mod facts;
+mod finder;
 mod ids;
 mod installs;
 mod projects;
@@ -10,9 +11,10 @@ mod running;
 
 pub use apps::{InstalledApp, InstalledApps, InstalledList};
 pub use facts::{SystemFacts, SystemPorts};
+pub use finder::ProjectFinder;
 pub use ids::{AppIdError, BundleId, TeamId, is_bundle_id_shaped};
 pub use installs::{InstallRecords, Receipt, SystemVersion};
-pub use projects::{Project, ProjectKind};
+pub use projects::{Artifact, LastChange, Project, ProjectKind};
 pub use running::{RunningApp, RunningApps, RunningSet};
 
 #[cfg(test)]

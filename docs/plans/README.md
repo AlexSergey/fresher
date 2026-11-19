@@ -69,4 +69,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 018 | [Developer caches](./018-developer-caches/readme.md)                 | ✅ approved    | 0.1.0   | core, scanner, testing, modules, sandbox, e2e, app, app/ui, docs |
 | 019 | [Uninstalled app leftovers](./019-uninstalled-app-leftovers/readme.md) | ✅ approved  | 0.1.0   | core, scanner, macos, system, engine, testing, modules, sandbox, e2e, app, app/ui, docs |
 | 020 | [Downloads and installers](./020-downloads/readme.md)               | 🔨 in progress | 0.1.0   | core, scanner, system, engine, testing, modules, sandbox, e2e, app, app/ui, docs |
-| 021 | [Stale projects](./021-stale-projects/readme.md)                    | ✅ approved    | 0.1.0   | core, engine, scanner, modules, testing, sandbox, e2e, app, app/ui, docs |
+| 021 | [Stale projects](./021-stale-projects/readme.md)                    | 🔨 in progress | 0.1.0   | core, engine, scanner, modules, testing, sandbox, e2e, app, app/ui, docs |
