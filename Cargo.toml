@@ -78,6 +78,13 @@ lto = "thin"
 panic = "unwind"
 strip = "symbols"
 
-# Fast scans in debug builds: dependencies are optimized, the workspace's own code is not.
+# Line tables only: panics and backtraces keep file and line, while `target/` stays a fraction of its size with full
+# debug info (no variable values in a debugger; set `debug = true` locally for a debugging session).
+[profile.dev]
+debug = "line-tables-only"
+
+# Fast scans in debug builds: dependencies are optimized, the workspace's own code is not. Dependencies carry no debug
+# info at all.
 [profile.dev.package."*"]
 opt-level = 2
+debug = false
