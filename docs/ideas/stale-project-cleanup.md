@@ -1,6 +1,6 @@
 # Stale project cleanup
 
-**Since:** 2026-11-15
+**Since:** 2026-11-15 · **Plan:** [021](../plans/021-stale-projects/readme.md) (draft)
 
 ## Problem
 
