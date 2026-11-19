@@ -203,6 +203,18 @@ mod positive {
     }
 
     #[test]
+    fn reveal_finding_is_allowlisted_everywhere() {
+        let in_handler = handler_commands().iter().position(|command| command == "reveal_finding");
+        let in_manifest = manifest_commands().iter().position(|command| command == "reveal_finding");
+        let granted: Vec<String> =
+            capability_permissions().into_iter().filter(|permission| !permission.contains(':')).collect();
+        let in_capability = granted.iter().position(|permission| permission == "allow-reveal-finding");
+
+        assert!(in_handler.is_some());
+        assert_eq!((in_manifest, in_capability), (in_handler, in_handler), "the same place in all three lists");
+    }
+
+    #[test]
     fn the_capability_allows_dragging_and_zoom_by_double_click() {
         let core: Vec<String> =
             capability_permissions().into_iter().filter(|permission| permission.contains(':')).collect();

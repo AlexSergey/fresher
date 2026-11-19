@@ -165,13 +165,11 @@ mod positive {
     };
     use crate::{CACHES, DATA, SETTINGS, identities, left_out};
 
-    /// Per finding: its identity, its category, its danger, its app's id and its path under `Library`.
-    const EXPECTED: [(&str, &str, DangerLevel, &str, &str); 14] = [
+    /// Per finding: its identity, its category, its danger, its app's id and its path under `Library`. A container is
+    /// not read: it proves nothing, so `com.example.Boxed`, with only a container and its caches, is not claimed.
+    const EXPECTED: [(&str, &str, DangerLevel, &str, &str); 11] = [
         ("caches", CACHES, DangerLevel::Safe, "com.example.Appx", "Caches/com.example.Appx"),
-        ("caches", CACHES, DangerLevel::Safe, "com.example.Boxed", "Caches/com.example.Boxed"),
         ("caches", CACHES, DangerLevel::Safe, "com.example.Gone", "Caches/com.example.Gone"),
-        ("container", DATA, DangerLevel::High, "com.example.Boxed", "Containers/com.example.Boxed"),
-        ("container", DATA, DangerLevel::High, "com.example.Gone", "Containers/com.example.Gone"),
         ("cookies", SETTINGS, DangerLevel::Medium, "com.example.Gone", "Cookies/com.example.Gone.binarycookies"),
         (
             "http-cookies",
@@ -242,15 +240,12 @@ mod positive {
         assert_eq!(reversed.golden().unwrap(), walked.golden().unwrap());
     }
 
-    /// Without its container `com.example.Boxed` has no proof; `com.example.Gone` keeps its saved state.
+    /// The module reads no container, so a walk that avoids them gives the same answers.
     #[test]
-    fn with_the_containers_avoided_a_container_only_id_is_not_claimed_and_the_rest_is_offered() {
+    fn with_the_containers_avoided_the_answers_are_the_same() {
         let (_tree, run) = leftovers_with(System::plain().avoiding("Library/Containers"));
 
-        let mut expected = expected_identities();
-        expected
-            .retain(|identity| !identity.starts_with("container/") && identity.as_str() != "caches/com.example.Boxed");
-        assert_eq!(identities(&run), expected);
+        assert_eq!(identities(&run), expected_identities());
         assert_eq!(left_out(&run), []);
     }
 

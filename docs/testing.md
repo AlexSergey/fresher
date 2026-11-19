@@ -65,6 +65,10 @@ cleanups of a hundred items through the real journal.
   - `FakeOpenFiles` (a fixed set of held paths, or a failure), `FakeVolumes::answering_available` (the space before
     and after), `MemoryCleanupJournal` (the journal in memory, or failing), `FakeCleaner` (records the `ExecutedPlan`
     the engine handed it).
+  - `FakeAccess` (the state of each capability, the guarded places of a fixture home folder, scripted answers of
+    `try_place` and the places tried) and `FakeSystemUi` (records every pane opened and path revealed, or fails): the
+    ports of permissions ([`architecture/permissions.md`](./architecture/permissions.md)); both in
+    `crates/testing/src/fake_access.rs`.
   - `Swapper` swaps a folder for a link to another folder and back on its own thread until dropped, then puts the
     folder back: the race tests of the cleaner.
   For modules ([`architecture/modules.md`](./architecture/modules.md)):

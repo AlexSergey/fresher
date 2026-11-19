@@ -35,6 +35,7 @@ import {
   planOf,
 } from '../src/test/cleanup-plan';
 import {
+  ACCESS_DICTIONARY,
   BUSY,
   DEMO_FAILED,
   DEMO_FAILED_SCAN,
@@ -51,6 +52,7 @@ import {
   DENIED,
   GRANTED,
   IDLE,
+  LIMITED_COVERAGE,
   LIVE_HOLD,
   readyCategory,
   SCRIPTS_DICTIONARY,
@@ -199,6 +201,14 @@ const EVENT_AT = '__fresherEventAt';
 // The page's name of the function that streams the rest of a held scan.
 const RELEASE = '__fresherRelease';
 
+// `refresh_access` answers what `get_access_status` does, unless the script answers it.
+const withRefreshAccess = <T>(
+  answers: Partial<Readonly<Record<CommandKey, T>>> = {},
+): Partial<Readonly<Record<CommandKey, T>>> =>
+  answers.getAccessStatus === undefined || 'refreshAccess' in answers
+    ? answers
+    : { ...answers, refreshAccess: answers.getAccessStatus };
+
 const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Readonly<Record<string, T>> =>
   Object.fromEntries((Object.entries(table) as [CommandKey, T][]).map(([key, value]) => [COMMANDS[key], value]));
 
@@ -213,7 +223,7 @@ const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Rea
 export const mockCore = async (page: Page, script: CoreScript = {}): Promise<void> => {
   const findings = (script.scan ?? []).flatMap((event) => (event.type === 'findings-added' ? event.findings : []));
   const setup: ByCommand = {
-    answers: byCommand(script.answers),
+    answers: byCommand(withRefreshAccess(script.answers)),
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
     emptyPlace: EMPTY_PLACE,
@@ -651,7 +661,7 @@ export const SCRIPTS = {
     scan: scanOf(WITH_DEV_CACHES_FINDINGS, ['dev-caches', 'app-leftovers']),
     scanned: {
       ...APP_LEFTOVERS_OVERVIEW,
-      found: sizedOf(11_694_000_000),
+      found: sizedOf(11_384_000_000),
       totals: [
         { category: 'dev-caches.npm', count: 1, highestDanger: 'low', sizes: sizedOf(8_900_000_000) },
         ...APP_LEFTOVERS_TOTALS,
@@ -678,8 +688,16 @@ export const SCRIPTS = {
   cleanupsEmpty: { answers: CLEANING_ANSWERS, cleanup: {} },
   // The demo scan, streamed at once.
   demo: { answers: ANSWERS, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
-  // Full Disk Access refused: the overview shows the permission card.
-  denied: { answers: { ...ANSWERS, getAccessStatus: DENIED } },
+  // Full Disk Access refused and the scan limited by it: after the scan, the overview shows the coverage notices.
+  denied: {
+    answers: {
+      ...ANSWERS,
+      getAccessStatus: DENIED,
+      getDictionary: { ...ANSWERS.getDictionary, ...ACCESS_DICTIONARY },
+    },
+    scan: DEMO_SCAN.map((event) => (event.type === 'scan-coverage' ? { ...event, coverage: LIMITED_COVERAGE } : event)),
+    scanned: DEMO_OVERVIEW,
+  },
   // The developer caches scan with Xcode closed, streamed at once, with cleanup, ignoring and its storage meaning.
   devCaches: {
     answers: DEV_CACHES_ANSWERS,

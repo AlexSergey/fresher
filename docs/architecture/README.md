@@ -7,7 +7,8 @@ system's facts; their designs argue every choice
 ([002](../plans/002-base-architecture/00-design.md), [004](../plans/004-fast-scan/00-design.md),
 [008](../plans/008-safe-removal/00-design.md)). A crate a later plan creates keeps its row here and is described in
 detail by that plan. How to write a module: [`modules.md`](./modules.md); how anything is removed, for a developer
-about to touch it: [`removal.md`](./removal.md).
+about to touch it: [`removal.md`](./removal.md); what the app may see and do, and how to test it:
+[`permissions.md`](./permissions.md).
 
 ## Layers
 
@@ -89,7 +90,8 @@ Rules of the layout:
   places' (`Protection::joined`). The walk's reader is the bulk reader seen through the sandbox's stated facts
   (`FactsLens` over `world.toml`'s `[[entry]]` lines, plan 017): an old status change, an owner, a flag or a socket
   that cannot be made on disk; the cleaner reads the disk. The scanner's avoid list is the places that prompt of both homes, so no scan raises a
-  system prompt. Volumes, open files, commands and access stay real, read-only; the running apps are never the Mac's
+  system prompt. Volumes, open files and commands stay real, read-only; the access is the stand-in `UnknownAccess` (the
+  sandbox's world is not the Mac's, `docs/hacks/`); the running apps are never the Mac's
   but the sandbox's declared ones (`world.toml`, none without it: plan 016), Spotlight answers only the sandbox's
   listed apps and the apps `world.toml` declares elsewhere, and cannot be asked when it says `spotlight = "off"` (plan
   019), and the clock starts at the moment the
@@ -131,8 +133,8 @@ Rules of the layout:
 | `ScanCache`      | `fresher-store`'s `FileScanCache`                                                                               | `MemoryScanCache`                                           |
 | `DiskState`      | `fresher-scanner`'s `TreeState`, returned by `DiskWalk::commit`                                                 | `FixedDiskState` (a tree from paths and sizes)              |
 | `SettingsStore`  | `fresher-store` (`FileSettingsStore`)                                                                           | in memory, in the engine's tests                            |
-| `AccessProbe`    | plan 006 (`fresher-macos`); `Unknown` and `NotAsked` until then                                                 | `FakeAccess` (any state, guarded places, tries)             |
-| `SystemUi`       | plan 006 (`/usr/bin/open`); `Unsupported` until then                                                            | `FakeSystemUi` (records every call)                         |
+| `AccessProbe`    | `fresher-system`'s `MacAccess` (`fresher-macos::privacy`: the guarded places, checks that never prompt, its own tries remembered); in sandbox mode the app's `UnknownAccess` | `FakeAccess` (any state, guarded places, tries)             |
+| `SystemUi`       | `fresher-system`'s `MacSystemUi` (`/usr/bin/open` with a settings pane's address, or `-R` and a path)            | `FakeSystemUi` (records every call)                         |
 
 The stand-ins until a later plan are listed in [`../hacks/`](../hacks/README.md).
 
@@ -340,6 +342,18 @@ shows the native dialog with the plain sentence `core.start.failed` (a developme
 release build never does). The dialog does not block the main thread: its callback ends the app with exit code 1.
 `shell::on_run_event` holds an exit with no code while the marker is there, so closing the last window or Cmd-Q waits
 for the dialog.
+
+### Permissions in the shell
+
+When the main window gains focus, `shell::on_focus` probes the permissions again on a blocking thread
+(`tauri::async_runtime::spawn_blocking`), never on the event loop's; the engine publishes `access-changed` when
+something changed. The commands are `refresh_access` (the same check, answering the status), `open_access_settings`
+(takes a `Capability`, never an address or a path) and `relaunch` ("Reopen Fresher": refused while a cleanup runs,
+otherwise the engine is shut down and the app restarts). `reveal_finding` ("Show in Finder" on an item the app may not
+remove) takes a finding's id, never a path: the engine shows that finding's own path through `SystemUi::reveal`, and
+refuses an id of another scan (`unknown-finding`) and a tool's object (`nothing-to-reveal`). `app/tauri/Info.plist`,
+merged by the bundler, holds the five reason strings of plan 006's design and no other usage key
+(`app/tauri/tests/info_plist.rs`).
 
 ## UI
 

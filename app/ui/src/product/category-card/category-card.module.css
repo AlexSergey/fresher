@@ -32,12 +32,12 @@
     --card-glow: var(--level-high-glow);
   }
 
-  .card:hover,
+  .card:hover:not([data-unavailable]),
   .card[data-hover] {
     transform: translateY(-1px);
   }
 
-  .card:has(.open:active),
+  .card:not([data-unavailable]):has(.open:active),
   .card[data-pressed] {
     transform: scale(var(--scale-press-card));
     transition-duration: var(--duration-press);
@@ -138,6 +138,22 @@
     color: var(--text-secondary);
     font-size: var(--type-footnote-size);
     line-height: var(--type-footnote-line);
+  }
+
+  /* Why it cannot be cleaned: readable, not dimmed (WCAG contrast), the card as a whole is quieter. */
+  .reason {
+    margin-top: var(--space-2);
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .card[data-unavailable] .icon {
+    opacity: 0.6;
+  }
+
+  .card[data-unavailable] .open {
+    cursor: default;
   }
 
   .count {

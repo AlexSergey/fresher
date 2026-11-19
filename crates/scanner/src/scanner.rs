@@ -69,8 +69,7 @@ pub struct ScannerOptions {
     pub threads: NonZeroUsize,
     /// A file whose allocated size is at least this many bytes is kept as its own record; smaller ones are folded.
     pub fold_threshold: u64,
-    /// Places no walk opens, added to every request's own `avoid`: the app's stand-in until plan 006 feeds the
-    /// request (docs/hacks/, "Places that prompt are avoided until plan 006").
+    /// Places no walk opens, added to every request's own `avoid`: sandbox mode's list (docs/hacks/).
     pub standing_avoid: Vec<PathBuf>,
     /// The largest cache body, before compression, the cache keeps: the store's body limit, passed where the app
     /// composes the store and the scanner (the port carries only the cap of the file).
@@ -186,12 +185,8 @@ impl Scanner {
     /// A root as the settings write it, `~` and `~/…` filled in with the home folder (the anchor of home-relative
     /// paths); any other root as given.
     fn expand_home(&self, root: &Path) -> PathBuf {
-        let mut parts = root.components();
-        if parts.next().map(std::path::Component::as_os_str) != Some(std::ffi::OsStr::new("~")) {
-            return root.to_path_buf();
-        }
         match (self.anchor)(KnownFolder::Home) {
-            Some(home) => home.join(parts.as_path()),
+            Some(home) => fresher_core::expand_home(root, &home),
             None => root.to_path_buf(),
         }
     }

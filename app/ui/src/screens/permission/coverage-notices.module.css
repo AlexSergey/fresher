@@ -1,0 +1,12 @@
+/* The coverage notices, one under another; the live region takes no room while it is empty. */
+@layer components {
+  .notices {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .notices:empty {
+    display: none;
+  }
+}

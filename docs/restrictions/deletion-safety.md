@@ -137,3 +137,16 @@ The app deletes files from a real person's disk. These rules hold in every versi
   (`crates/engine/src/results.rs`, `cleanup/pending.rs`) and gives the cleaner `Protection::with_ignored`
   (`cleanup/context.rs`; a list it refuses blocks the cleanup). Tests: `crates/engine/src/ignore.rs`,
   `crates/e2e/tests/ignore.rs`; cleaning blocked on an unloaded file: `crates/engine/src/cleanup/blocked.rs`.
+
+## No administrator rights
+
+- **Rule:** the app never elevates: no privileged helper, no launch daemon, no password prompt, no `sudo`. An item the
+  app may not remove (owned by another user or the system, in a folder it cannot write to, locked, or protected by the
+  system) is shown with its size and why, is never selected, and is left out of every plan; the user removes it by
+  hand, in Finder.
+- **Why:** rule 1 of [`../rules.md`](../rules.md): a deleter with administrator rights is the largest risk the product
+  could carry, and a copied privileged command with a wrong path the worst outcome it could cause.
+- **Enforced by:** `Removability`, worked out by the core from the walk's entry facts and never set by a module
+  (`crates/core/src/removability.rs`); the plan builder's `SkipReason::NotRemovable`
+  (`crates/engine/src/cleanup/plan.rs`); the `Info.plist` test, which allows no privileged-helper key
+  (`app/tauri/tests/info_plist.rs`); review.

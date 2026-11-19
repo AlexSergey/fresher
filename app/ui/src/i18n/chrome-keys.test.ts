@@ -21,6 +21,12 @@ describe('the chrome dictionary', () => {
 
       expect(unused).toEqual([]);
     });
+
+    it('no text mentions sudo', () => {
+      const mentions = Object.entries(chrome).filter(([, text]) => text.toLowerCase().includes('sudo'));
+
+      expect(mentions).toEqual([]);
+    });
   });
 
   describe('positive cases', () => {

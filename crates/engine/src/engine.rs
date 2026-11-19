@@ -320,10 +320,22 @@ impl Engine {
         self.shared.access.status()
     }
 
-    /// Probes the system's permissions again (the tools are checked at the start of a scan); publishes
-    /// `AccessChanged` and answers `true` when something changed.
+    /// Probes the system's permissions again, as the window's focus asks (the tools are checked at the start of a
+    /// scan and by [`Self::check_access_again`]); publishes `AccessChanged` and answers `true` when something changed.
     pub fn refresh_access(&self) -> bool {
         self.shared.refresh_access()
+    }
+
+    /// "Check again": probes the system's permissions and runs every module's tool check; publishes `AccessChanged`
+    /// once and answers `true` when something changed.
+    pub fn check_access_again(&self) -> bool {
+        let probed = self.shared.access.refresh();
+        let checked = self.shared.access.check_tools(self.shared.registry.tool_checks(), &CancelToken::new());
+        let changed = probed || checked;
+        if changed {
+            self.shared.bus.publish(&Event::AccessChanged { status: self.shared.access.status() });
+        }
+        changed
     }
 
     /// Opens the system's settings at the pane that grants `capability`. Refused for a tool, for a capability this

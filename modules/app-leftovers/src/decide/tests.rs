@@ -19,7 +19,6 @@ const CACHES: usize = 0;
 const SAVED_STATE: usize = 2;
 const PREFERENCES: usize = 3;
 const SUPPORT: usize = 8;
-const CONTAINER: usize = 9;
 
 fn id(id: &str) -> BundleId {
     BundleId::new(id).unwrap()
@@ -149,8 +148,7 @@ mod negative {
     use fresher_core::{EntryFacts, Inside, Timestamp};
 
     use super::{
-        CACHES, CONTAINER, GONE, NOW, PREFERENCES, SAVED_STATE, SUPPORT, World, app, days_ago, file, folder, folder_at,
-        gone,
+        CACHES, GONE, NOW, PREFERENCES, SAVED_STATE, SUPPORT, World, app, days_ago, file, folder, folder_at, gone,
     };
     use crate::decide::{IdVerdict, ItemVerdict, NoSystem, Reason, Search, decide_item};
     use crate::gathered::Leftover;
@@ -428,7 +426,7 @@ mod negative {
                 ItemVerdict::LeftOut(Reason::NotYours)
             );
         }
-        let foreign = Leftover { inside: Some(Inside { foreign: true, ..Inside::EMPTY }), ..folder(CONTAINER, GONE) };
+        let foreign = Leftover { inside: Some(Inside { foreign: true, ..Inside::EMPTY }), ..folder(SUPPORT, GONE) };
         assert_eq!(decide_item(&foreign), ItemVerdict::LeftOut(Reason::NotYours));
     }
 
@@ -482,7 +480,7 @@ mod negative {
 mod positive {
     use fresher_core::Timestamp;
 
-    use super::{CACHES, CONTAINER, DAY, GONE, NOW, PREFERENCES, SAVED_STATE, World, file, folder, folder_at, gone};
+    use super::{CACHES, DAY, GONE, NOW, SAVED_STATE, World, folder_at, gone};
     use crate::decide::{IdVerdict, ItemVerdict, decide_item};
 
     #[test]
@@ -496,13 +494,6 @@ mod positive {
     #[test]
     fn the_leftovers_of_an_app_that_is_gone_are_offered() {
         assert_eq!(World::default().verdict(), IdVerdict::Offer);
-    }
-
-    #[test]
-    fn a_container_is_a_proof() {
-        let leftovers = [folder(CONTAINER, GONE), file(PREFERENCES, GONE)];
-
-        assert_eq!(World::default().decide(GONE, &leftovers).0, IdVerdict::Offer);
     }
 
     #[test]

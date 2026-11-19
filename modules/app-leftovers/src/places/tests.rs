@@ -145,8 +145,14 @@ mod negative {
     fn an_index_of_no_interest_has_no_rows() {
         let places = Places::shipped().unwrap();
 
-        assert_eq!(places.rows_of(9), []);
-        assert_eq!(places.row(10), None);
+        assert_eq!(places.rows_of(8), []);
+        assert_eq!(places.row(9), None);
+    }
+
+    #[test]
+    fn a_row_neither_offered_nor_a_proof_is_refused() {
+        let text = format!("{}{}", valid(), row("unused", "suffix = \".x\"\noffered = false"));
+        assert_eq!(refused(&text), PlacesError::RowWithoutUse { id: "unused".into() });
     }
 
     #[test]
@@ -160,15 +166,31 @@ mod positive {
     use fresher_core::{Claim, KnownFolder, Pattern};
 
     use crate::categories::CATEGORIES;
-    use crate::places::{Form, Places};
+    use crate::places::{Form, Places, Row};
 
     fn shipped() -> Places {
         Places::shipped().unwrap()
     }
 
     #[test]
+    fn the_shipped_table_parses() {
+        assert!(Places::shipped().is_ok());
+    }
+
+    #[test]
     fn a_valid_table_made_here_is_read() {
         assert!(Places::parse(&super::valid(), &super::CATEGORIES).is_ok());
+    }
+
+    #[test]
+    fn a_proof_that_is_not_offered_is_read() {
+        let text =
+            format!("{}{}", super::valid(), super::row("proof-only", "suffix = \".x\"\nproof = true\noffered = false"));
+
+        let places = Places::parse(&text, &super::CATEGORIES).unwrap();
+
+        let row = places.rows.iter().find(|row| row.id == "proof-only").unwrap();
+        assert!(row.proof && !row.offered);
     }
 
     #[test]
@@ -192,13 +214,13 @@ mod positive {
         };
         assert_eq!(of(0), [(0, "caches")]);
         assert_eq!(of(4), [(4, "http-storage"), (5, "http-cookies")]);
-        assert_eq!(of(8), [(9, "container")]);
+        assert_eq!(of(7), [(8, "support")]);
         assert_eq!(places.row(2).map(|row| row.id.as_str()), Some("saved-state"));
-        assert_eq!(places.rows().len(), 10);
+        assert_eq!(places.rows().len(), 9);
     }
 
     #[test]
-    fn the_shipped_table_has_ten_rows_in_the_designs_order() {
+    fn the_shipped_table_has_nine_rows_in_the_designs_order() {
         let places = shipped();
         let ids: Vec<&str> = places.rows.iter().map(|row| row.id.as_str()).collect();
 
@@ -214,7 +236,6 @@ mod positive {
                 "web-data",
                 "cookies",
                 "support",
-                "container"
             ]
         );
     }
@@ -229,13 +250,15 @@ mod positive {
     }
 
     #[test]
-    fn saved_state_and_container_are_the_proofs_and_container_alone_is_optional() {
+    fn saved_state_alone_is_a_proof_and_every_row_is_offered_and_read_in_full() {
         let places = shipped();
 
-        let proofs: Vec<&str> = places.rows.iter().filter(|row| row.proof).map(|row| row.id.as_str()).collect();
-        let optional: Vec<&str> = places.rows.iter().filter(|row| row.optional).map(|row| row.id.as_str()).collect();
-        assert_eq!(proofs, ["saved-state", "container"]);
-        assert_eq!(optional, ["container"]);
+        let ids = |keep: fn(&Row) -> bool| -> Vec<&str> {
+            places.rows.iter().filter(|row| keep(row)).map(|row| row.id.as_str()).collect()
+        };
+        assert_eq!(ids(|row| row.proof), ["saved-state"]);
+        assert_eq!(ids(|row| row.optional), Vec::<&str>::new());
+        assert_eq!(ids(|row| !row.offered), Vec::<&str>::new());
     }
 
     #[test]
@@ -249,7 +272,7 @@ mod positive {
     }
 
     #[test]
-    fn nine_interests_claim_whole_names_shaped_as_ids_and_the_http_rows_share_one() {
+    fn eight_interests_claim_whole_names_shaped_as_ids_and_the_http_rows_share_one() {
         let interests = shipped().interests().unwrap();
 
         let places: Vec<(KnownFolder, &str)> = interests
@@ -270,7 +293,6 @@ mod positive {
                 (KnownFolder::Library, "WebKit/*"),
                 (KnownFolder::Library, "Cookies/*"),
                 (KnownFolder::AppSupport, "*"),
-                (KnownFolder::Containers, "*"),
             ]
         );
         assert!(

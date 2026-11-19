@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import type { CategoryId, MeaningGroup, NodeId } from '../../ipc/bindings.generated';
+import type { CategoryId, CategoryTotal, MeaningGroup, NodeId } from '../../ipc/bindings.generated';
 
 import { setCoreDictionary } from '../../i18n';
 import { BUSY } from '../../test/demo-scan';
@@ -18,6 +18,7 @@ type Handlers = {
 const renderList = (
   groups: null | readonly MeaningGroup[] = MEANING,
   failure: MeaningListProps['failure'] = null,
+  extra: Partial<MeaningListProps> = {},
 ): Handlers => {
   const handlers: Handlers = { onOpen: vi.fn(), onOpenPlace: vi.fn() };
 
@@ -30,12 +31,15 @@ const renderList = (
       scanning={false}
       selected={() => false}
       totals={DEMO_TOTALS}
+      {...extra}
       {...handlers}
     />,
   );
 
   return handlers;
 };
+
+const NOTHING_FOUND = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 } as const;
 
 const FIVE_GB = { allocated: 5e9, completeness: 'complete', logical: 5e9, reclaimable: 5e9 } as const;
 
@@ -87,6 +91,22 @@ describe('MeaningList', () => {
       expect(screen.getByRole('button', { name: /^Open Example caches/u })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^Open Example downloads/u })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^Open Example volumes/u })).toBeNull();
+    });
+
+    it('an unavailable category the core did not count is a disabled card, not absent', () => {
+      const [, , , volumes] = DEMO_TOTALS as readonly [CategoryTotal, CategoryTotal, CategoryTotal, CategoryTotal];
+      renderList(MEANING, null, {
+        access: new Map([[volumes.category, { kind: 'unavailable', text: 'Docker is not running.' }]]),
+        unavailable: [{ ...volumes, count: 0, sizes: { ...NOTHING_FOUND } }],
+      });
+
+      const card = screen.getByRole('button', { name: /^Open Example volumes/u });
+
+      expect(cards()).toHaveLength(4);
+      expect(cards().at(-1)).toBe(card);
+      expect(card).toHaveAttribute('aria-disabled', 'true');
+      expect(within(card).queryByRole('checkbox')).toBeNull();
+      expect(card).toHaveAccessibleDescription('Docker is not running.');
     });
 
     it('a failed answer says so and keeps the cards', () => {

@@ -3,6 +3,7 @@ import { Channel, invoke, type InvokeArgs } from '@tauri-apps/api/core';
 import type {
   AccessStatus,
   AppInfo,
+  Capability,
   CleanupDetail,
   CleanupId,
   CleanupItemRef,
@@ -14,6 +15,7 @@ import type {
   Descent,
   Dictionary,
   Event,
+  FindingId,
   FindingsPage,
   FindingsQuery,
   IgnoredEntry,
@@ -58,12 +60,16 @@ export const COMMANDS = {
   getStorageMeaning: 'get_storage_meaning',
   getStoragePlace: 'get_storage_place',
   ignore: 'ignore',
+  openAccessSettings: 'open_access_settings',
   pickFolder: 'pick_folder',
   prepareCleanup: 'prepare_cleanup',
   putBack: 'put_back',
   quitAfterCleanup: 'quit_after_cleanup',
+  refreshAccess: 'refresh_access',
+  relaunch: 'relaunch',
   resetSettings: 'reset_settings',
   restoreIgnored: 'restore_ignored',
+  revealFinding: 'reveal_finding',
   revealInTrash: 'reveal_in_trash',
   startScan: 'start_scan',
   subscribe: 'subscribe',
@@ -165,6 +171,18 @@ export const getStoragePlace = (node: NodeId, descent: Descent, offset: number, 
 export const getDictionary = (locale: string): Promise<Dictionary> => call('getDictionary', { locale });
 
 export const getAccessStatus = (): Promise<AccessStatus> => call('getAccessStatus');
+
+// The core probes the system's permissions again and answers the status; `access-changed` follows a change.
+export const refreshAccess = (): Promise<AccessStatus> => call('refreshAccess');
+
+// System Settings opens at the pane that grants `capability`; the core picks the pane, the UI never names one.
+export const openAccessSettings = (capability: Capability): Promise<void> => call('openAccessSettings', { capability });
+
+// "Show in Finder": Finder shows the finding selected; the UI names the finding's id, the core holds its path.
+export const revealFinding = (finding: FindingId): Promise<void> => call('revealFinding', { finding });
+
+// "Reopen Fresher": the app relaunches, as a Full Disk Access grant needs; refused while a cleanup runs.
+export const relaunch = (): Promise<void> => call('relaunch');
 
 // The core checks every item of the selection and answers the plan the confirmation shows; nothing is removed.
 export const prepareCleanup = (selection: CleanupSelection): Promise<CleanupPlanView> =>

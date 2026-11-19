@@ -16,7 +16,7 @@ import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
 
 // A scan of the removed apps' leftovers module as the core streams it: `com.example.Gone` is no longer installed and
-// left caches, logs, settings, web data, a support folder and a container; another app is open (its files left out as
+// left caches, logs, settings, web data and a support folder; another app is open (its files left out as
 // `running`), the files of a third changed within the days (`used-recently`). An id is offered or left out, never
 // both. The texts are the module's own, read from its locale file, so a changed text changes the tests. Shared by the
 // unit tests and the e2e mock.
@@ -59,7 +59,7 @@ const findingOf = (spec: Spec): Finding => ({
   title: { args: { id: text(GONE) }, key: `app-leftovers.title.${spec.title}` },
 });
 
-// Safe caches and logs, Medium settings and web data, High support folder and container.
+// Safe caches and logs, Medium settings and web data, a High support folder (the module reads no container).
 export const APP_LEFTOVERS_FINDINGS: readonly Finding[] = [
   findingOf({
     bytes: 640 * MB,
@@ -100,14 +100,6 @@ export const APP_LEFTOVERS_FINDINGS: readonly Finding[] = [
     folder: `Application Support/${GONE}`,
     id: 105,
     title: 'support',
-  }),
-  findingOf({
-    bytes: 310 * MB,
-    category: 'app-leftovers.data',
-    danger: 'high',
-    folder: `Containers/${GONE}`,
-    id: 106,
-    title: 'container',
   }),
 ];
 
@@ -166,7 +158,7 @@ export const APP_LEFTOVERS_SCAN: readonly Event[] = scanOf(APP_LEFTOVERS_FINDING
 export const APP_LEFTOVERS_TOTALS: Overview['totals'] = [
   { category: 'app-leftovers.caches', count: 2, highestDanger: 'safe', sizes: sized(664 * MB) },
   { category: 'app-leftovers.settings', count: 2, highestDanger: 'medium', sizes: sized(20 * MB) },
-  { category: 'app-leftovers.data', count: 2, highestDanger: 'high', sizes: sized(2_110 * MB) },
+  { category: 'app-leftovers.data', count: 1, highestDanger: 'high', sizes: sized(1_800 * MB) },
 ];
 
 const overviewOf = (found: number, totals: Overview['totals']): Overview => ({
@@ -185,7 +177,7 @@ const overviewOf = (found: number, totals: Overview['totals']): Overview => ({
   totals,
 });
 
-export const APP_LEFTOVERS_OVERVIEW: Overview = overviewOf(2_794 * MB, APP_LEFTOVERS_TOTALS);
+export const APP_LEFTOVERS_OVERVIEW: Overview = overviewOf(2_484 * MB, APP_LEFTOVERS_TOTALS);
 
 // The by-meaning view: the removed app's line is named by its id and marked as no longer installed.
 export const APP_LEFTOVERS_MEANING: readonly MeaningGroup[] = [
@@ -195,7 +187,7 @@ export const APP_LEFTOVERS_MEANING: readonly MeaningGroup[] = [
       app: { id: GONE, installed: false, name: GONE },
       categories: APP_LEFTOVERS_TOTALS.map(({ category, sizes }) => ({ category, sizes })),
       data: [],
-      sizes: sized(2_794 * MB),
+      sizes: sized(2_484 * MB),
     },
   },
 ];

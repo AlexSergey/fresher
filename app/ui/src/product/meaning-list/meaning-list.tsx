@@ -10,6 +10,7 @@ import type {
   Refusal,
   Sizes,
 } from '../../ipc/bindings.generated';
+import type { CardAccess } from '../category-card/category-card';
 
 import { Notice } from '../../design/feedback/notice/notice';
 import { t, tText } from '../../i18n';
@@ -19,6 +20,8 @@ import styles from './meaning-list.module.css';
 import { PartRow, PlaceRow } from './rows';
 
 export type MeaningListProps = {
+  // The categories that are limited or unavailable and what that says; a category not in it is ready.
+  readonly access?: ReadonlyMap<CategoryId, CardAccess> | undefined;
   // Why the core's groups could not be had; the cards then come from the totals, as before an answer.
   readonly failure: MeaningFailure | null;
   // Everything found: the cards' shares are of this.
@@ -34,6 +37,8 @@ export type MeaningListProps = {
   // The categories the core counted: the cards before the core's groups arrive, and the count and the danger level of
   // each card after.
   readonly totals: readonly CategoryTotal[];
+  // Zero totals of the unavailable categories that found nothing: they are cards after the sized ones, never absent.
+  readonly unavailable?: readonly CategoryTotal[];
 };
 
 type AppGroup = Extract<MeaningGroup, { readonly kind: 'app' }>['value'];
@@ -48,6 +53,8 @@ type Cards = {
   readonly totals: readonly CategoryTotal[];
   readonly underApps: ReadonlyMap<CategoryId, Sizes>;
 };
+
+const NO_TOTALS: readonly CategoryTotal[] = [];
 
 const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
 
@@ -102,6 +109,7 @@ const failureText = (failure: MeaningFailure): string =>
 // Where the space went, by what it is: the apps first, then the categories as cards (selectable, as ever), then the
 // places of your folders, then the rest of the disk. Only the cards offer a cleanup.
 export const MeaningList = ({
+  access,
   failure,
   found,
   groups,
@@ -111,6 +119,7 @@ export const MeaningList = ({
   scanning,
   selected,
   totals,
+  unavailable = NO_TOTALS,
 }: MeaningListProps): JSX.Element => {
   const apps: AppGroup[] = [];
   const places: PlaceShare[] = [];
@@ -126,7 +135,14 @@ export const MeaningList = ({
     }
   }
 
-  const cards = cardsOf(groups, totals);
+  const counted = cardsOf(groups, totals);
+  const cards = {
+    ...counted,
+    totals: [
+      ...counted.totals,
+      ...unavailable.filter(({ category }) => !counted.totals.some((total) => total.category === category)),
+    ],
+  };
 
   return (
     <div className={styles.list}>
@@ -152,6 +168,7 @@ export const MeaningList = ({
       ) : null}
       {cards.totals.length > 0 ? (
         <CategoryGrid
+          access={access}
           found={found}
           onOpen={onOpen}
           onToggle={onToggle}

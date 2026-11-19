@@ -1,10 +1,11 @@
 # The app-leftovers module: the files a removed app left in `home/Library`, offered only by bundle id, only for an id
 # proven an app's (a saved state of its windows), and only when every check says the app is gone: not installed (by id
-# or a helper's), not open, not changed in the last 30 days, and not found by Spotlight. `Library/Containers` is not
-# opened in sandbox mode (it may prompt, as `Library/Group Containers` may), so no container is offered here: the
-# fixture homes and the core e2e offer one. Spotlight answers the sandbox's listed apps and the apps a case declares
-# elsewhere (`[[case.elsewhere]]`); `app-leftovers-spotlight-off.toml` turns it off, a world of its own, since Spotlight
-# off would keep every id of this file.
+# or a helper's), not open, not changed in the last 30 days, and not found by Spotlight. The module reads no app
+# container: a container neither proves an id nor is offered, since an installed app's extension keeps a container
+# under its own id. `Library/Containers` is not opened in sandbox mode either (it may prompt, as
+# `Library/Group Containers` may). Spotlight answers the sandbox's listed apps and the apps a case declares elsewhere
+# (`[[case.elsewhere]]`); `app-leftovers-spotlight-off.toml` turns it off, a world of its own, since Spotlight off
+# would keep every id of this file.
 #
 # Every entry of a leftover states its age and status change (40 days, or 5 for a recent one): a status change cannot
 # be set back on disk, and a whole folder's age is the newest inside it, so a folder holds its files directly.

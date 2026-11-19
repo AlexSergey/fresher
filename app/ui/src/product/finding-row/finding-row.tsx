@@ -14,12 +14,15 @@ import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { t, tText } from '../../i18n';
 import { honestSize } from '../sizes';
 import styles from './finding-row.module.css';
-import { levelName } from './texts';
+import { RemovabilityNote } from './removability-note';
+import { levelName, removabilityName } from './texts';
 
 export type FindingRowProps = Forced &
   Partial<VirtualRowProps> & {
     // `undefined` while its page loads: the row is a skeleton of the same height.
     readonly finding: Finding | undefined;
+    // "Show in Finder" on a row the app may not remove; without it the row offers no button.
+    readonly onReveal?: ((finding: Finding) => void) | undefined;
     readonly onToggle: (finding: Finding) => void;
     readonly selected: boolean;
   };
@@ -66,7 +69,9 @@ const LoadingRow = ({ row }: { readonly row: Forced & Partial<VirtualRowProps> }
 // One finding in a row (52 px inside a frame of `findingRowsClass`): its checkbox, its title over its
 // path, its danger level and its size. Its accessible name reads title, level and size; its description is the
 // reason, which the level's badge also shows in a tooltip. A selected High row lights its edge in High's colour.
-export const FindingRow = ({ finding, onToggle, selected, ...row }: FindingRowProps): JSX.Element => {
+// A finding the core says the app may not remove keeps its level and size but has no checkbox and is never shown
+// selected; its removability's word stands before the level, with what the user can do on demand.
+export const FindingRow = ({ finding, onReveal, onToggle, selected, ...row }: FindingRowProps): JSX.Element => {
   const reasonId = useId();
 
   if (finding === undefined) {
@@ -77,29 +82,43 @@ export const FindingRow = ({ finding, onToggle, selected, ...row }: FindingRowPr
   const reason = tText(finding.reason);
   const level = levelName(finding.danger);
   const size = honestSize(finding.sizes);
+  const { removability } = finding;
+  const named = {
+    level: { kind: 'text', value: level },
+    size: { kind: 'text', value: size.accessibleText },
+    title: { kind: 'text', value: title },
+  } as const;
 
   return (
     <ListRow
       {...row}
       aria-describedby={reasonId}
-      aria-label={t('ui.finding-list.row', {
-        level: { kind: 'text', value: level },
-        size: { kind: 'text', value: size.accessibleText },
-        title: { kind: 'text', value: title },
-      })}
+      aria-label={
+        removability === 'removable'
+          ? t('ui.finding-list.row', named)
+          : t('ui.finding-list.row-kept', {
+              ...named,
+              removability: { kind: 'text', value: removabilityName(removability) },
+            })
+      }
       {...(finding.danger === 'high' ? { edgeLevel: 'high' as const } : {})}
       leading={
-        <Checkbox
-          checked={selected}
-          hideLabel
-          label={t('ui.finding-list.select', { title: { kind: 'text', value: title } })}
-          onChange={() => {
-            onToggle(finding);
-          }}
-          tabIndex={-1}
-        />
+        removability === 'removable' ? (
+          <Checkbox
+            checked={selected}
+            hideLabel
+            label={t('ui.finding-list.select', { title: { kind: 'text', value: title } })}
+            onChange={() => {
+              onToggle(finding);
+            }}
+            tabIndex={-1}
+          />
+        ) : (
+          // The checkbox's place stays empty, so the titles of a list line up.
+          <span aria-hidden="true" className={styles.noCheckbox} />
+        )
       }
-      selected={selected}
+      selected={removability === 'removable' && selected}
       subtitle={
         <>
           <SubjectText subject={finding.subject} />
@@ -111,6 +130,9 @@ export const FindingRow = ({ finding, onToggle, selected, ...row }: FindingRowPr
       title={title}
       trailing={
         <>
+          {removability === 'removable' ? null : (
+            <RemovabilityNote finding={finding} onReveal={onReveal} removability={removability} />
+          )}
           <span className={styles.level}>
             <Tooltip content={reason} repeatsName>
               {() => <DangerBadge label={level} level={finding.danger} size="small" />}

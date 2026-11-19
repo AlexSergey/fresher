@@ -17,6 +17,9 @@ export type FindingListProps = {
   readonly label: string;
   // The rows rendered changed: load their pages. "Try again" asks for the last range again.
   readonly onRangeChange: (first: number, last: number) => void;
+  // "Show in Finder" on a row the app may not remove; without it the rows offer no button.
+  readonly onReveal?: (finding: Finding) => void;
+  // A finding the app may not remove is never toggled: its row has no checkbox and Space passes it by.
   readonly onToggle: (finding: Finding) => void;
   // The finding at an index, or `undefined` while its page loads.
   readonly rowAt: (index: number) => Finding | undefined;
@@ -60,6 +63,7 @@ export const FindingList = ({
   isSelected,
   label,
   onRangeChange,
+  onReveal,
   onToggle,
   rowAt,
   total,
@@ -108,7 +112,7 @@ export const FindingList = ({
         onToggle={(index) => {
           const finding = itemAt(index);
 
-          if (finding !== undefined) {
+          if (finding?.removability === 'removable') {
             onToggle(finding);
           }
         }}
@@ -116,6 +120,7 @@ export const FindingList = ({
           <FindingRow
             {...row}
             finding={finding}
+            onReveal={onReveal}
             onToggle={onToggle}
             selected={finding !== undefined && isSelected(finding)}
           />

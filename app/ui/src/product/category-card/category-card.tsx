@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX, ReactNode } from 'react';
+import { type CSSProperties, type JSX, type ReactNode, useId } from 'react';
 
 import type { CategoryTotal, DangerLevel, Sizes } from '../../ipc/bindings.generated';
 
@@ -14,7 +14,12 @@ import { t, tText } from '../../i18n';
 import { honestSize } from '../sizes';
 import styles from './category-card.module.css';
 
+// What the core's availability of the category says, in words: `limited` keeps the (partial) size and explains it in a
+// tooltip; `unavailable` disables the card and gives the one sentence of why.
+export type CardAccess = { readonly kind: 'limited' | 'unavailable'; readonly text: string };
+
 export type CategoryCardProps = {
+  readonly access?: CardAccess | undefined;
   // A slot for the card's own actions: the ignore list's "Ignore" will go here.
   readonly actions?: ReactNode;
   readonly onOpen: () => void;
@@ -44,6 +49,7 @@ const clamp = (share: number): number => Math.min(Math.max(share, 0), 1);
 // One category the scan found: its level's icon, its name and what it is, its level, size and count, and a bar of its
 // share along the bottom. The card opens the category; the checkbox in its corner selects it whole.
 export const CategoryCard = ({
+  access,
   actions,
   onOpen,
   onToggle,
@@ -53,59 +59,85 @@ export const CategoryCard = ({
   underApps,
 }: CategoryCardProps): JSX.Element => {
   const spotlight = useSpotlightProps();
+  const reasonId = useId();
+  const unavailable = access?.kind === 'unavailable';
   const { category, count, highestDanger: level, sizes } = total;
   const name = textOf(`${category}.name`);
   const what = textOf(`${category}.what`);
   const drawn = clamp(share);
 
+  // Named by its content: everything the card shows is in what it reads (WCAG 2.5.3, Label in Name). An unavailable card
+  // is `aria-disabled`, not `disabled`: focus still reaches it, and it reads why.
+  const openButton = (describedBy: string | undefined): JSX.Element => (
+    <button
+      aria-describedby={describedBy ?? (unavailable ? reasonId : undefined)}
+      aria-disabled={unavailable ? true : undefined}
+      className={styles.open}
+      onClick={unavailable ? undefined : onOpen}
+      type="button"
+    >
+      <span className={styles.icon}>
+        <Icon icon={ICONS[level]} size={20} />
+      </span>
+      <span className={styles.text}>
+        <span className={styles.name}>
+          {/* Read once, as "Open …"; the visible name is that same text. */}
+          <span className="u-visually-hidden">
+            {t('ui.category-card.open', { name: { kind: 'text', value: name } })}
+          </span>
+          <span aria-hidden="true">{name}</span>
+        </span>
+        <Tooltip content={what} repeatsName>
+          {() => <span className={styles.what}>{what}</span>}
+        </Tooltip>
+        <span className={styles.meta}>
+          <DangerBadge label={textOf(`core.danger.${level}.name`)} level={level} size="small" />
+          <span className={styles.figures}>
+            <SizeText {...honestSize(sizes)} size="title-3" />
+            <span className={styles.count}>
+              {t('ui.category-card.count', { count: { kind: 'count', value: count } })}
+            </span>
+          </span>
+        </span>
+        {unavailable ? (
+          <span className={styles.reason} id={reasonId}>
+            {access.text}
+          </span>
+        ) : null}
+        {underApps === undefined ? null : (
+          <span className={styles.under}>
+            {t('ui.category-card.under-apps', { size: { kind: 'size', value: underApps.allocated } })}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+
   return (
-    <div className={styles.card} data-card data-level={level} data-selected={selected === false ? undefined : selected}>
+    <div
+      className={styles.card}
+      data-card
+      data-level={level}
+      data-selected={selected === false ? undefined : selected}
+      data-unavailable={unavailable ? true : undefined}
+    >
       <Surface
         className={`${spotlight.className} ${styles.surface ?? ''}`}
         elevation={1}
         padding="none"
         ref={spotlight.ref}
       >
-        {/* Named by its content: everything the card shows is in what it reads (WCAG 2.5.3, Label in Name). */}
-        <button className={styles.open} onClick={onOpen} type="button">
-          <span className={styles.icon}>
-            <Icon icon={ICONS[level]} size={20} />
+        {access?.kind === 'limited' ? <Tooltip content={access.text}>{openButton}</Tooltip> : openButton(undefined)}
+        {unavailable ? null : (
+          <span className={styles.check}>
+            <Checkbox
+              checked={selected}
+              hideLabel
+              label={t('ui.category-card.select', { name: { kind: 'text', value: name } })}
+              onChange={onToggle}
+            />
           </span>
-          <span className={styles.text}>
-            <span className={styles.name}>
-              {/* Read once, as "Open …"; the visible name is that same text. */}
-              <span className="u-visually-hidden">
-                {t('ui.category-card.open', { name: { kind: 'text', value: name } })}
-              </span>
-              <span aria-hidden="true">{name}</span>
-            </span>
-            <Tooltip content={what} repeatsName>
-              {() => <span className={styles.what}>{what}</span>}
-            </Tooltip>
-            <span className={styles.meta}>
-              <DangerBadge label={textOf(`core.danger.${level}.name`)} level={level} size="small" />
-              <span className={styles.figures}>
-                <SizeText {...honestSize(sizes)} size="title-3" />
-                <span className={styles.count}>
-                  {t('ui.category-card.count', { count: { kind: 'count', value: count } })}
-                </span>
-              </span>
-            </span>
-            {underApps === undefined ? null : (
-              <span className={styles.under}>
-                {t('ui.category-card.under-apps', { size: { kind: 'size', value: underApps.allocated } })}
-              </span>
-            )}
-          </span>
-        </button>
-        <span className={styles.check}>
-          <Checkbox
-            checked={selected}
-            hideLabel
-            label={t('ui.category-card.select', { name: { kind: 'text', value: name } })}
-            onChange={onToggle}
-          />
-        </span>
+        )}
         {actions === undefined ? null : <div className={styles.actions}>{actions}</div>}
         {drawn > 0 ? (
           <span aria-hidden="true" className={styles.share} data-share style={{ '--share': drawn } as CSSProperties} />

@@ -1,37 +1,126 @@
 # 006/03/04 — Commands, focus and `Info.plist`
 
-**Status:** ✅ approved · **Version:** 0.4.0 · **Date:** 2026-11-15 · **Modules:** app, app/ui
+**Status:** ✔️ done · **Version:** 0.1.0 · **Date:** 2026-11-19 · **Modules:** app, app/ui
+
+## What exists already
+
+- `crates/engine/src/engine.rs` — `Engine::access_status()`, `Engine::refresh_access() -> bool` (publishes
+  `AccessChanged` itself when something changed) and `Engine::open_access_settings(&Capability) ->
+  Result<(), CommandError>` (refuses a tool or a `NotApplicable` capability with `NoSettingsPane`; `Unsupported` →
+  `NoSettingsPane`, `Failed` → `Internal`). No engine change is needed.
+- `fresher_core::Capability`'s `Deserialize` refuses a `tool` sent from outside the app.
+- `app/tauri/src/commands.rs` — `get_access_status` returns `AccessStatus` already; every command is a plain `fn` with
+  `#[tauri::command(async)]` taking `State<'_, Engine>` and returning `Result<_, Refusal>`.
+- `app/tauri/src/lib.rs` (`generate_handler!`), `app/tauri/build.rs` (`COMMANDS`) and
+  `app/tauri/capabilities/default.json` (`allow-…`), kept equal by
+  `every_command_in_the_handler_is_in_the_app_manifest_and_the_capability` in `app/tauri/tests/config.rs`.
+- `app/tauri/src/shell.rs` — `on_run_event(app, &RunEvent)` handles `RunEvent::WindowEvent { event:
+  WindowEvent::CloseRequested { .. }, .. }`; `holds_close(app)` (a cleanup runs), `quit_after_cleanup`, `on_exit`
+  (shuts the engine down). There is no `on_window_event`.
+- `app/ui/src/ipc/index.ts` — `COMMANDS` and `getAccessStatus()`; `app/ui/src/ipc/mock.ts` answers by command key;
+  the access fixtures are in `app/ui/src/test/demo-scan.ts` (`allFiles(access)`).
 
 ## Files
 
-- `app/tauri/src/commands.rs` — `get_access_status` returns the new `AccessStatus`; new `refresh_access` (returns the
-  status) and `open_access_settings(capability: Capability)` (takes a capability, never an address or a path; returns
-  `Result<(), Refusal>`). All `async`, like the others.
-- `app/tauri/src/lib.rs`, `app/tauri/build.rs`, `app/tauri/capabilities/default.json` — the two commands in
-  `generate_handler!`, the app manifest and the allowlist (`allow-refresh-access`, `allow-open-access-settings`); the
-  existing test that reads the three files keeps them equal.
-- `app/tauri/src/shell.rs` — `on_window_event`: `WindowEvent::Focused(true)` on the main window calls
-  `Engine::refresh_access()` (it sends `AccessChanged` itself when something changed). If 01/01 found that a grant
-  applies only after a relaunch, `relaunch` (the engine shut down first, then Tauri's `AppHandle::restart`) and a
-  `relaunch` command, allowlisted the same way.
-- `app/tauri/Info.plist` (new) — the five reason strings of the design, section 7, word for word, and nothing else.
+- `app/tauri/src/commands.rs` — new `refresh_access(engine) -> AccessStatus` (calls `engine.refresh_access()`, then
+  returns `engine.access_status()`), `open_access_settings(engine, capability: Capability) -> Result<(), Refusal>`
+  (takes a capability, never an address or a path), and `relaunch(app: AppHandle<R>) -> Result<(), Refusal>` (below).
+  Same form as the others: `#[tauri::command(async)]`.
+- `app/tauri/src/lib.rs`, `app/tauri/build.rs`, `app/tauri/capabilities/default.json` — the three commands in
+  `generate_handler!`, `COMMANDS` and the allowlist (`allow-refresh-access`, `allow-open-access-settings`,
+  `allow-relaunch`), in the same order in all three.
+- `app/tauri/src/shell.rs` —
+  - `on_run_event`: `RunEvent::WindowEvent { label, event: WindowEvent::Focused(true), .. }` with `label == "main"`
+    calls `engine.refresh_access()` off the event loop's thread (`tauri::async_runtime::spawn_blocking`: the probe is
+    one `open`, but the UI thread is never blocked). Without a managed engine (a failed start) it does nothing.
+  - `relaunch(app)`: the design's "Probe results" say a Full Disk Access grant applies after a relaunch, so the step
+    builds it. Refused with `CommandError::Busy { running: Operation::Clean }` while
+    `holds_close(app)` (a cleanup runs); otherwise
+    the engine is shut down as in `on_exit`, then `AppHandle::restart()`. If the user's run of plan 01 finds that a
+    grant applies live, `relaunch` and its command are removed in that run's commit.
+- `app/tauri/src/testing.rs` — the test shell takes the access port as an option (default `UnknownAccess`), so the
+  focus tests use a `FakeAccess` they can `set` (`crates/testing/src/fake_access.rs`).
+- `app/tauri/Info.plist` (new) — the five reason strings of the design, section 7, word for word, and nothing else
+  (the Tauri bundler merges it into `Contents/Info.plist`: "Probe results", unverified).
 - `app/tauri/tests/info_plist.rs` (new) — reads `Info.plist` as text: exactly those five `NS…UsageDescription` keys,
-  each text non-empty and free of "Fresher will delete"-like promises; no `NSAppleEventsUsageDescription`, no
-  `SMPrivilegedExecutables`, no other usage key.
-- `app/ui/src/ipc/index.ts`, `mock.ts`, `index.test.ts` — `refreshAccess()`, `openAccessSettings(capability)` (and
-  `relaunch()` if added); the mock answers every access state; `bindings.generated.ts` regenerated, never edited.
+  each text non-empty, equal to the design's, free of promises such as "Fresher will delete"; no
+  `NSAppleEventsUsageDescription`, no `SMPrivilegedExecutables`, no other `UsageDescription` key.
+- `app/ui/src/ipc/index.ts` — `refreshAccess(): Promise<AccessStatus>`, `openAccessSettings(capability: Capability):
+  Promise<void>`, `relaunch(): Promise<void>`, and their keys in `COMMANDS`.
+- `app/ui/src/ipc/index.test.ts` — the new functions: the command name and the arguments sent.
+- `app/ui/src/test/demo-scan.ts` — an `accessStatus(states)` fixture next to `allFiles`, so tests and the gallery can
+  answer any capability in any state; `app/ui/e2e/core-mock.ts` answers `refreshAccess` like `getAccessStatus`.
+- `app/ui/src/ipc/bindings.generated.ts` — regenerated by the bindings test if any type changed, never edited by hand.
 
 ## Produces
 
-The IPC surface plan 04 and plans 003/014 call: `getAccessStatus`, `refreshAccess`, `openAccessSettings`, the
-`access-changed` and `scan-coverage` events.
+The IPC surface plan 04, step 05/02 and plan 014 call: `getAccessStatus`, `refreshAccess`, `openAccessSettings`,
+`relaunch`, and the `access-changed` and `scan-coverage` events (already in the bindings).
 
 ## Checks
 
-- Negative: `open_access_settings_for_a_tool_is_refused`, `the_plist_declares_no_other_usage_key`,
-  `the_plist_declares_no_privileged_helper`, `a_focus_without_a_change_sends_no_event` (mocked app, `FakeAccess`), the
-  UI's `openAccessSettings` passes a capability object, not a string (type test).
-- Positive: `a_focus_after_a_grant_sends_access_changed`, `the_commands_are_allowlisted_everywhere`,
+- Negative (first): `open_access_settings_for_a_tool_is_refused` (the JSON of a `tool` capability does not
+  deserialize), `open_access_settings_for_a_capability_this_mac_lacks_is_refused`, `the_plist_declares_no_other_usage_key`,
+  `the_plist_declares_no_privileged_helper`, `a_focus_without_a_change_sends_no_event` (the app's test engine with
+  `FakeAccess`), `a_focus_of_another_window_checks_nothing`, `relaunch_during_a_cleanup_is_refused`; the UI's
+  `openAccessSettings` takes a `Capability` object, not a string (a `@ts-expect-error` type test).
+- Positive: `a_focus_after_a_grant_sends_access_changed`, `refresh_access_answers_the_new_status`,
+  `the_commands_are_allowlisted_everywhere` (the existing config test, with the three new names),
   `the_plist_holds_the_five_reason_strings`, the UI IPC tests for the new functions.
+- `cargo nextest run -p fresher-app`; `npx vitest run app/ui/src/ipc`; Clippy and ESLint clean.
 - By hand, in the plan's conclusions: `npm run build`; the bundle's `Contents/Info.plist` holds the five strings; the
-  app opens the Full Disk Access pane; granting it, then focusing the window updates the status (or offers to reopen).
+  app opens the Full Disk Access pane; granting it, then focusing the window updates the status, or "Reopen Fresher"
+  relaunches into the granted state.
+
+## Conclusions
+
+Built as the step says. `app/tauri` gains the commands `refresh_access`, `open_access_settings` and `relaunch` (in the
+handler, the app manifest and the capability, in that order after `get_access_status`); `shell::on_focus` re-checks the
+access when the main window gains focus; `app/tauri/Info.plist` holds the five reason strings of the design, section 7,
+and nothing else. The UI gains `refreshAccess`, `openAccessSettings(capability)` and `relaunch` in `src/ipc/index.ts`,
+the `accessStatus(states)` fixture (`allFiles` is now built on it), and the e2e mock answers `refreshAccess` with the
+script's `getAccessStatus` unless the script answers it. No type changed, so the bindings are unchanged.
+
+- Decision: `RunEvent::WindowEvent` is `#[non_exhaustive]`, so a test cannot build one. `on_run_event` hands
+  `WindowEvent::Focused(true)` to `shell::on_focus(app, label)`, which the tests call. It answers the check's task
+  (`Option<JoinHandle<bool>>`): `None` for another window or without a managed engine, so the tests wait for the check
+  instead of sleeping; the run loop drops the handle and never waits.
+- Decision: `relaunch` tells a running cleanup from `engine.status()` (`EngineStatus::Cleaning`), not from
+  `holds_close`: `holds_close` calls `request_quit`, which publishes `quit-requested`, and the UI would then ask to
+  quit. A refused relaunch publishes nothing (`relaunch_during_a_cleanup_is_refused` checks it). A poisoned engine
+  lock refuses with its own error. Otherwise the engine is shut down (`on_exit`), then `AppHandle::restart()`; the
+  command runs off the main thread, so Tauri restarts through `ExitRequested` with its restart code, which
+  `holds_exit` lets through (it holds only an exit without a code).
+- Decision: the positive path of `relaunch` and a real `open_access_settings` are not unit-tested: one restarts the
+  test process, the other opens System Settings. The command's acceptance is tested against `FakeSystemUi`
+  (`open_access_settings_for_a_capability_this_mac_has_is_accepted`).
+- Decision: the Info.plist test parses `<key>`/`<string>` pairs as text; besides the step's checks it also asserts the
+  plist holds nothing but the five entries, that each text says it removes nothing unless the user confirms, and that
+  no `SMAuthorizedClients` key is there.
+- Tests added: `fresher-app` — `open_access_settings_for_a_tool_is_refused`,
+  `open_access_settings_for_a_capability_this_mac_lacks_is_refused`, `refresh_access_answers_the_new_status`,
+  `open_access_settings_for_a_capability_this_mac_has_is_accepted` (commands); `a_focus_without_a_change_sends_no_event`,
+  `a_focus_of_another_window_checks_nothing`, `relaunch_during_a_cleanup_is_refused`,
+  `a_focus_after_a_grant_sends_access_changed`, and a focus without an engine in
+  `exit_and_a_second_launch_without_an_engine_or_a_window_do_nothing` (shell);
+  `tests/info_plist.rs` — `the_plist_declares_no_other_usage_key`, `the_plist_declares_no_privileged_helper`,
+  `no_reason_promises_to_delete`, `the_plist_holds_the_five_reason_strings`; the config test
+  `every_command_in_the_handler_is_in_the_app_manifest_and_the_capability` covers the three new names. UI —
+  "opens the settings only for a capability object, never a string" (a `@ts-expect-error` type test) and "passes every
+  access command its arguments by name". None opens System Settings, relaunches or reads the real home folder.
+- Checked: `cargo nextest run -p fresher-app` 151 passed; `npx vitest run src/ipc` 14 passed; `npm run lint:ts`,
+  ESLint and Prettier on the changed files clean; `cargo fmt` and `cargo clippy --workspace --all-targets -- -D
+  warnings` clean.
+- By hand (agent): `npm run build` builds `Fresher.app`; `plutil -p` of its `Contents/Info.plist` shows exactly the
+  five `NS…UsageDescription` keys with the design's texts, so the bundler's merge holds ("Probe results", the row of
+  `app/tauri/Info.plist`, for the bundle).
+- By hand (left for the user's run of plan 01): the app opens the Full Disk Access pane; granting it, then focusing
+  the window updates the status, or "Reopen Fresher" relaunches into the granted state (including that the
+  single-instance lock lets the relaunched process start). If a grant applies live, `relaunch` and its command are
+  removed in that run's commit.
+- Final review fix: the command `refresh_access` ("Check again") probed the system only, so a tool installed or
+  started meanwhile stayed `Denied` until the next scan, against agent's call 8 ("at scan start and on refresh"). It
+  now calls the new `Engine::check_access_again`: the probe, then every registered module's tool check, one
+  `AccessChanged` when something changed. The focus re-check keeps `Engine::refresh_access` (no tool is run). Tests:
+  `the_focus_re_check_runs_no_tool_check`, `checking_again_without_a_change_sends_no_event`,
+  `checking_again_runs_every_tool_check_and_sends_access_changed` (engine).

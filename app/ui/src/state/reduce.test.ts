@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Event, Overview, ScanId, SettingsView, SettingValue, Sizes } from '../ipc/bindings.generated';
+import type { Coverage, Event, Overview, ScanId, SettingsView, SettingValue, Sizes } from '../ipc/bindings.generated';
 
 import {
   allFiles,
@@ -35,6 +35,11 @@ const moduleDone: Event = {
 const requested: CoreAction = { type: 'overview-requested' };
 
 const loaded = (overview: Overview): CoreAction => ({ overview, type: 'overview-loaded' });
+
+const LIMITED: Coverage = {
+  notEntered: [{ access: 'denied', capability: { kind: 'all-files' } }],
+  unreadable: [],
+};
 
 const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
 
@@ -213,6 +218,36 @@ describe('reduce', () => {
       expect(run([event])).toBe(INITIAL_STATE);
     });
 
+    it('an access-changed event does not touch the findings', () => {
+      const before = run([started, FIRST_BATCH, { coverage: LIMITED, scan: 1, type: 'scan-coverage' }]);
+      const after = run([{ status: allFiles('granted'), type: 'access-changed' }], before);
+
+      expect(after).toEqual({ ...before, access: allFiles('granted') });
+    });
+
+    it('scan started clears the coverage', () => {
+      const state = run([started, { coverage: LIMITED, scan: 1, type: 'scan-coverage' }, { ...started, scan: 2 }]);
+
+      expect(state.coverage).toBeNull();
+    });
+
+    it('keeps the coverage of the followed scan when a later overview carries another', () => {
+      const lastScan = { ...DEMO_OVERVIEW.lastScan, coverage: FULL_COVERAGE } as NonNullable<Overview['lastScan']>;
+      const state = run([
+        started,
+        { coverage: LIMITED, scan: 1, type: 'scan-coverage' },
+        loaded({ ...DEMO_OVERVIEW, lastScan }),
+      ]);
+
+      expect(state.coverage).toEqual(LIMITED);
+    });
+
+    it('a coverage of another scan is ignored', () => {
+      const state = run([started, { coverage: LIMITED, scan: 2, type: 'scan-coverage' }]);
+
+      expect(state.coverage).toBeNull();
+    });
+
     it('an access status answered after an access-changed event does not undo it', () => {
       const state = run([
         { status: allFiles('granted'), type: 'access-changed' },
@@ -344,6 +379,19 @@ describe('reduce', () => {
 
       expect(state.stale).toBe(true);
       expect(state.settings).toBeNull();
+    });
+
+    it('scan coverage sets the coverage', () => {
+      const state = run([started, { coverage: LIMITED, scan: 1, type: 'scan-coverage' }]);
+
+      expect(state.coverage).toEqual(LIMITED);
+    });
+
+    it('a restored overview brings its coverage', () => {
+      const lastScan = { ...DEMO_OVERVIEW.lastScan, coverage: LIMITED } as NonNullable<Overview['lastScan']>;
+      const state = run([loaded({ ...DEMO_OVERVIEW, lastScan })]);
+
+      expect(state.coverage).toEqual(LIMITED);
     });
 
     it('an access-changed event replaces the access status', () => {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>Fresher measures what takes space on your Desktop. It reads names and sizes only, and removes nothing unless you confirm it.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>Fresher measures what takes space in Documents, such as old project folders. It reads names and sizes only, and removes nothing unless you confirm it.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>Fresher measures what takes space in Downloads, such as old installers. It reads names and sizes only, and removes nothing unless you confirm it.</string>
+  <key>NSRemovableVolumesUsageDescription</key>
+  <string>You added this drive to the folders Fresher scans. It reads names and sizes only, and removes nothing unless you confirm it.</string>
+  <key>NSNetworkVolumesUsageDescription</key>
+  <string>You added this network folder to the folders Fresher scans. It reads names and sizes only, and removes nothing unless you confirm it.</string>
+</dict>
+</plist>

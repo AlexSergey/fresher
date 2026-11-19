@@ -4,10 +4,10 @@
 #![expect(clippy::needless_pass_by_value, reason = "Tauri hands a command its state and inputs by value")]
 
 use fresher_core::{
-    AccessStatus, AppInfo, Build, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView, CleanupSelection,
-    CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingsPage, FindingsQuery, IgnoreTarget,
-    IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest, Refusal, ScanId, SettingUpdate,
-    SettingsView,
+    AccessStatus, AppInfo, Build, Capability, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView,
+    CleanupSelection, CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingId, FindingsPage,
+    FindingsQuery, IgnoreTarget, IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest,
+    Refusal, ScanId, SettingUpdate, SettingsView,
 };
 use fresher_engine::{Engine, ScanMode};
 use tauri::ipc::Channel;
@@ -93,6 +93,32 @@ pub(crate) fn get_access_status(engine: State<'_, Engine>) -> AccessStatus {
     engine.access_status()
 }
 
+/// "Check again": probes the system's permissions and runs every module's tool check (the focus re-check runs no
+/// tool), and answers the status (`access-changed` is published when something changed).
+#[tauri::command(async)]
+pub(crate) fn refresh_access(engine: State<'_, Engine>) -> AccessStatus {
+    engine.check_access_again();
+    engine.access_status()
+}
+
+/// Opens the system's settings at the pane that grants `capability`; never an address or a path from the UI.
+#[tauri::command(async)]
+pub(crate) fn open_access_settings(engine: State<'_, Engine>, capability: Capability) -> Result<(), Refusal> {
+    engine.open_access_settings(&capability).map_err(Refusal::from)
+}
+
+/// "Show in Finder": shows a finding of the current scan in Finder, selected; takes the finding's id, never a path.
+#[tauri::command(async)]
+pub(crate) fn reveal_finding(engine: State<'_, Engine>, finding: FindingId) -> Result<(), Refusal> {
+    engine.reveal_finding(finding).map_err(Refusal::from)
+}
+
+/// "Reopen Fresher": a Full Disk Access grant applies after a relaunch. Refused while a cleanup runs.
+#[tauri::command(async)]
+pub(crate) fn relaunch<R: Runtime>(app: AppHandle<R>) -> Result<(), Refusal> {
+    shell::relaunch(&app).map_err(Refusal::from)
+}
+
 /// The plan of what `selection` would remove, rehearsed and nothing done: what the confirmation shows.
 #[tauri::command(async)]
 pub(crate) fn prepare_cleanup(
@@ -158,9 +184,13 @@ mod tests {
     }
 
     mod negative {
+        use std::sync::Arc;
+
         use fresher_core::{
-            CommandError, FindingOrder, FindingsQuery, Operation, Refusal, SettingKey, SettingUpdate, SettingValue,
+            Access, Capability, CommandError, FindingOrder, FindingsQuery, GuardedFolder, Operation, Refusal,
+            SettingKey, SettingUpdate, SettingValue,
         };
+        use fresher_testing::FakeAccess;
 
         use fresher_core::{CleanupId, LeftOut, SkipReason};
         use serde_json::json;
@@ -168,7 +198,8 @@ mod tests {
         use super::first_page;
         use crate::commands::{
             cancel_cleanup, cancel_scan, confirm_cleanup, discard_cleanup, get_cleanup, get_cleanups, get_dictionary,
-            get_findings, prepare_cleanup, put_back, reveal_in_trash, start_scan, subscribe, update_setting,
+            get_findings, open_access_settings, prepare_cleanup, put_back, reveal_finding, reveal_in_trash, start_scan,
+            subscribe, update_setting,
         };
         use crate::testing::{
             Shell, caches, echo, is_scan_finished, recording_channel, scan, trial_home, until_finished,
@@ -316,6 +347,35 @@ mod tests {
         }
 
         #[test]
+        fn reveal_finding_of_an_unknown_id_is_refused() {
+            let shell = Shell::new();
+            let finding = serde_json::from_value(json!(9)).unwrap();
+
+            let refused = reveal_finding(shell.engine(), finding);
+
+            assert_eq!(refused, Err(Refusal::from(CommandError::UnknownFinding { id: finding })));
+        }
+
+        #[test]
+        fn open_access_settings_for_a_tool_is_refused() {
+            // The UI cannot even name one: a tool sent from outside the app does not deserialize.
+            let tool = serde_json::from_value::<Capability>(json!({ "kind": "tool", "value": "docker" }));
+
+            assert!(tool.is_err());
+        }
+
+        #[test]
+        fn open_access_settings_for_a_capability_this_mac_lacks_is_refused() {
+            let shell = Shell::with_access(Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Denied)])));
+            let desktop = Capability::Folder(GuardedFolder::Desktop);
+
+            assert_eq!(
+                open_access_settings(shell.engine(), desktop),
+                Err(Refusal::from(CommandError::NoSettingsPane { capability: desktop }))
+            );
+        }
+
+        #[test]
         fn get_dictionary_for_an_unknown_locale_is_refused() {
             let shell = Shell::new();
 
@@ -327,9 +387,13 @@ mod tests {
     }
 
     mod positive {
+        use std::sync::Arc;
+
         use fresher_core::{
-            Access, Capability, EngineStatus, FindingOrder, FindingsQuery, SettingUpdate, SettingValue, SettingsFile,
+            Access, Capability, EngineStatus, Event, FindingOrder, FindingsQuery, SettingUpdate, SettingValue,
+            SettingsFile,
         };
+        use fresher_testing::FakeAccess;
 
         use fresher_core::{Build, PutBackOutcome, TrashState};
         use serde_json::json;
@@ -338,7 +402,8 @@ mod tests {
         use super::first_page;
         use crate::commands::{
             app_info, confirm_cleanup, get_access_status, get_cleanup, get_cleanups, get_dictionary, get_findings,
-            get_modules, get_overview, get_settings, prepare_cleanup, put_back, start_scan, subscribe, update_setting,
+            get_modules, get_overview, get_settings, open_access_settings, prepare_cleanup, put_back, refresh_access,
+            start_scan, subscribe, update_setting,
         };
         use crate::testing::{Shell, caches, echo, recording_channel, scan, trial_home, until_finished};
 
@@ -490,6 +555,26 @@ mod tests {
 
             assert_eq!(modules, ["jetbrains", "temp", "dev-caches", "app-leftovers", "demo", "trial"]);
             assert_eq!(get_access_status(shell.engine()).access(&Capability::AllFiles), Access::Unknown);
+        }
+
+        #[test]
+        fn refresh_access_answers_the_new_status() {
+            let access = Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Denied)]));
+            let shell = Shell::with_access(Arc::<FakeAccess>::clone(&access));
+            let events = shell.engine().subscribe();
+
+            access.set(Capability::AllFiles, Access::Granted);
+            let status = refresh_access(shell.engine());
+
+            assert_eq!(status.access(&Capability::AllFiles), Access::Granted);
+            assert_eq!(events.try_iter().collect::<Vec<_>>(), [Event::AccessChanged { status }]);
+        }
+
+        #[test]
+        fn open_access_settings_for_a_capability_this_mac_has_is_accepted() {
+            let shell = Shell::with_access(Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Denied)])));
+
+            assert_eq!(open_access_settings(shell.engine(), Capability::AllFiles), Ok(()));
         }
     }
 }

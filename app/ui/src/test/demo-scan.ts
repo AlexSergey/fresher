@@ -1,6 +1,7 @@
 import type {
   Access,
   AccessStatus,
+  Capability,
   CategoryInfo,
   Coverage,
   DangerLevel,
@@ -19,16 +20,44 @@ import type {
 // A scan that saw everything: no guarded place left out, no folder unreadable.
 export const FULL_COVERAGE: Coverage = { notEntered: [], unreadable: [] };
 
+// A scan that could not read 312 folders Full Disk Access would open, and did not enter the Desktop.
+export const LIMITED_COVERAGE: Coverage = {
+  notEntered: [{ access: 'not-asked', capability: { kind: 'folder', value: 'desktop' } }],
+  unreadable: [{ folders: 312, reason: 'no-permission', unlockedBy: { kind: 'all-files' } }],
+};
+
+// The core's texts of the capabilities the limited coverage names.
+export const ACCESS_DICTIONARY: Dictionary = {
+  'core.access.all-files.how': '1. Click Open System Settings. 2. Turn on Fresher in the list. 3. Scan again.',
+  'core.access.all-files.missing': 'Some folders could not be read because Fresher does not have Full Disk Access.',
+  'core.access.all-files.name': 'Full Disk Access',
+  'core.access.all-files.unlocks': 'Lets Fresher see every folder on this Mac.',
+  'core.access.desktop.denied': 'Turn on Fresher under Files and Folders, then scan again.',
+  'core.access.desktop.description': 'macOS will ask you once.',
+  'core.access.desktop.how': '1. Click Let Fresher look there. 2. Scan again.',
+  'core.access.desktop.missing': 'Your Desktop was not looked at.',
+  'core.access.desktop.name': 'Desktop folder',
+  'core.access.desktop.unlocks': 'Lets Fresher measure what takes space on your Desktop.',
+  'core.access.removable-volume.denied': 'Turn on Removable Volumes for Fresher, then scan again.',
+  'core.access.removable-volume.how': '1. Add the drive to the folders to scan. 2. Scan again.',
+  'core.access.removable-volume.missing': 'The external drive was not looked at.',
+  'core.access.removable-volume.name': 'External drives',
+  'core.access.removable-volume.unlocks': 'Lets Fresher measure what takes space on a drive you added.',
+};
+
 // A category that needs nothing, so it is ready whatever the access.
 export const readyCategory = (id: string, danger: DangerLevel): CategoryInfo => ({
   availability: { kind: 'ready' },
   descriptor: { danger, id, needs: [] },
 });
 
-// What `get_access_status` answers when Full Disk Access is `access` (the core's `all-files` capability).
-export const allFiles = (access: Access): AccessStatus => ({
-  capabilities: [{ access, capability: { kind: 'all-files' }, note: null }],
+// What `get_access_status` answers with each capability of `states` in its state, and no other capability.
+export const accessStatus = (states: readonly (readonly [Capability, Access])[]): AccessStatus => ({
+  capabilities: states.map(([capability, access]) => ({ access, capability, note: null })),
 });
+
+// What `get_access_status` answers when Full Disk Access is `access` (the core's `all-files` capability).
+export const allFiles = (access: Access): AccessStatus => accessStatus([[{ kind: 'all-files' }, access]]);
 
 const finding = (id: number, category: string, name: string, bytes: number, danger: Finding['danger']): Finding => ({
   category,
@@ -37,7 +66,7 @@ const finding = (id: number, category: string, name: string, bytes: number, dang
   key: { identity: `/demo/${name}`, module: 'demo' },
   module: 'demo',
   reason: { args: {}, key: 'demo.finding.reason' },
-  removability: 'needs-administrator',
+  removability: 'removable',
   removal: { kind: 'move-to-trash', value: `/demo/${name}` },
   sizes: { allocated: bytes, completeness: 'complete', logical: bytes, reclaimable: bytes },
   subject: { kind: 'path', value: `/demo/${name}` },

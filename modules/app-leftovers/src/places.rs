@@ -62,6 +62,8 @@ pub enum PlacesError {
     OptionalDiffers { first: String, second: String },
     #[error("no row is a proof that an id belongs to an app")]
     NoProof,
+    #[error("the row `{id}` is neither offered nor a proof: it would only cost a walk")]
+    RowWithoutUse { id: String },
 }
 
 /// What a row's leftover is.
@@ -83,6 +85,9 @@ pub(crate) struct Row {
     pub(crate) suffix: Option<String>,
     pub(crate) proof: bool,
     pub(crate) optional: bool,
+    /// Its leftovers are offered (findings or left-out items); a row that is not offered is read only as a proof and
+    /// for the age of its id.
+    pub(crate) offered: bool,
 }
 
 /// Every row of the table, checked.
@@ -99,8 +104,8 @@ impl Places {
     /// A table read from `text` and checked against the module's `categories`: at least one row; row ids in kebab
     /// case, unique; each row in one of `categories`, and each of `categories` with a row; each row under a library
     /// place and never the group containers; `path` plain names then `*`; a suffix that is a dot and a plain name's
-    /// end; no two rows of one place with the same kind and suffix, and all of one place agreeing on `optional`;
-    /// at least one proof.
+    /// end; each row offered or a proof; no two rows of one place with the same kind and suffix, and all of one place
+    /// agreeing on `optional`; at least one proof.
     pub(crate) fn parse(text: &str, categories: &[(&'static str, DangerLevel)]) -> Result<Self, PlacesError> {
         let table: RawTable = toml::from_str(text).map_err(|error| PlacesError::Format(error.to_string()))?;
         if table.place.is_empty() {
@@ -186,6 +191,9 @@ fn check_row(raw: RawRow, categories: &[(&'static str, DangerLevel)]) -> Result<
     if let Some(suffix) = raw.suffix.as_deref().filter(|suffix| !is_suffix(suffix)) {
         return Err(PlacesError::BadSuffix { id, suffix: suffix.into() });
     }
+    if !raw.offered && !raw.proof {
+        return Err(PlacesError::RowWithoutUse { id });
+    }
     Ok(Row {
         id,
         category,
@@ -195,6 +203,7 @@ fn check_row(raw: RawRow, categories: &[(&'static str, DangerLevel)]) -> Result<
         suffix: raw.suffix,
         proof: raw.proof,
         optional: raw.optional,
+        offered: raw.offered,
     })
 }
 
@@ -273,6 +282,13 @@ struct RawRow {
     proof: bool,
     #[serde(default)]
     optional: bool,
+    #[serde(default = "offered_by_default")]
+    offered: bool,
+}
+
+/// A row's leftovers are offered unless it says `offered = false`.
+const fn offered_by_default() -> bool {
+    true
 }
 
 #[cfg(test)]

@@ -9,15 +9,14 @@ export type SettingsGroup =
   | { readonly descriptors: readonly SettingDescriptor[]; readonly kind: 'module'; readonly module: ModuleId };
 
 // The core's groups shown as rows; the ignored lists have a screen part of their own.
-type CoreRowsGroup = Exclude<SettingGroup, 'ignored' | 'module'>;
+type CoreRowsGroup = Exclude<SettingGroup, 'ignored' | 'module' | 'permissions'>;
 
-// The groups of rows in the screen's order: General and Scan, then each module group's modules, then (after the
-// Ignored group, which is not made of rows) Permissions. A group or module with no setting is left out.
+// The groups of rows in the screen's order: General and Scan, then each module group's modules. A group or module with
+// no setting is left out. Ignored and Permissions have parts of their own (the permission switches are shown there).
 export const settingsGroups = (
   descriptors: readonly SettingDescriptor[],
   modules: readonly ModuleInfo[],
 ): {
-  readonly after: readonly SettingsGroup[];
   readonly before: readonly SettingsGroup[];
   readonly modules: readonly InGroup<SettingsGroup>[];
 } => {
@@ -37,7 +36,6 @@ export const settingsGroups = (
   const groupOf = new Map(modules.map(({ group, id }) => [id, group] as const));
 
   return {
-    after: filled([core('permissions')]),
     before: filled([core('general'), core('scan')]),
     modules: inGroups(filled(modules.map(ofModule)), (group) =>
       group.kind === 'module' ? (groupOf.get(group.module) ?? '') : '',

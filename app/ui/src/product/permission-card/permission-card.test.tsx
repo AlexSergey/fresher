@@ -3,12 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PermissionCard } from './permission-card';
 
+const HOW = ['Open it.', 'Turn it on.'];
+const noop = (): void => undefined;
+
 describe('PermissionCard', () => {
   describe('negative cases', () => {
     it('the permission card never blocks the screen', () => {
       render(
         <>
-          <PermissionCard access="denied" onLearnMore={vi.fn()} />
+          <PermissionCard access="denied" how={HOW} onOpenSettings={noop}>
+            <p>Not seen.</p>
+          </PermissionCard>
           <button type="button">Scan</button>
         </>,
       );
@@ -25,23 +30,36 @@ describe('PermissionCard', () => {
       expect(scan).toHaveFocus();
     });
 
-    it('has no action unless one is given', () => {
-      render(<PermissionCard access="denied" />);
+    it('offers Reopen Fresher only when it is given', () => {
+      render(
+        <PermissionCard access="denied" how={HOW} onOpenSettings={noop}>
+          <p>Not seen.</p>
+        </PermissionCard>,
+      );
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reopen Fresher' })).not.toBeInTheDocument();
+      expect(screen.queryByText('If you turned it on, Fresher sees it after it reopens.')).not.toBeInTheDocument();
     });
   });
 
   describe('positive cases', () => {
     it('the permission card differs for denied and unknown', () => {
-      const { unmount } = render(<PermissionCard access="denied" />);
+      const { unmount } = render(
+        <PermissionCard access="denied" how={HOW} onOpenSettings={noop}>
+          <p>Not seen.</p>
+        </PermissionCard>,
+      );
       const denied = screen.getByText('Fresher cannot see every folder');
 
       // eslint-disable-next-line testing-library/no-node-access -- the tone is drawn, not named
       expect(denied.closest('[data-tone]')).toHaveAttribute('data-tone', 'warning');
       unmount();
 
-      render(<PermissionCard access="unknown" />);
+      render(
+        <PermissionCard access="unknown" how={HOW} onOpenSettings={noop}>
+          <p>Not seen.</p>
+        </PermissionCard>,
+      );
       const unknown = screen.getByText('Full Disk Access is not confirmed');
 
       // eslint-disable-next-line testing-library/no-node-access -- the tone is drawn, not named
@@ -49,19 +67,41 @@ describe('PermissionCard', () => {
       expect(screen.queryByText('Fresher cannot see every folder')).not.toBeInTheDocument();
     });
 
-    it('says the app still works with less', () => {
-      render(<PermissionCard access="denied" />);
+    it('shows its text and the numbered steps', () => {
+      render(
+        <PermissionCard access="denied" how={HOW} onOpenSettings={noop}>
+          <p>Not seen.</p>
+        </PermissionCard>,
+      );
 
-      expect(screen.getByText(/Everything else is scanned and cleaned as usual\./u)).toBeInTheDocument();
+      expect(screen.getByText('Not seen.')).toBeInTheDocument();
+      expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toStrictEqual(HOW);
     });
 
-    it('Learn more calls onLearnMore', () => {
-      const onLearnMore = vi.fn();
-      render(<PermissionCard access="unknown" onLearnMore={onLearnMore} />);
+    it('Open System Settings calls onOpenSettings', () => {
+      const onOpenSettings = vi.fn();
+      render(
+        <PermissionCard access="unknown" how={HOW} onOpenSettings={onOpenSettings}>
+          <p>Not seen.</p>
+        </PermissionCard>,
+      );
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn more' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Open System Settings' }));
 
-      expect(onLearnMore).toHaveBeenCalledOnce();
+      expect(onOpenSettings).toHaveBeenCalledOnce();
+    });
+
+    it('Reopen Fresher calls onReopen', () => {
+      const onReopen = vi.fn();
+      render(
+        <PermissionCard access="denied" how={HOW} onOpenSettings={noop} onReopen={onReopen}>
+          <p>Not seen.</p>
+        </PermissionCard>,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reopen Fresher' }));
+
+      expect(onReopen).toHaveBeenCalledOnce();
     });
   });
 });

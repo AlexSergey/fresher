@@ -6,7 +6,13 @@ import type { Finding } from '../../ipc/bindings.generated';
 import { setCoreDictionary } from '../../i18n';
 import { fakeFrames, fakeReducedMotion, recordAnimations } from '../../test/animation';
 import { BUSY } from '../../test/demo-scan';
-import { FINDING_DICTIONARY, HIGH_FINDING, LOW_FINDING, SAFE_FINDING } from '../../test/finding-fixtures';
+import {
+  ADMIN_FINDING,
+  FINDING_DICTIONARY,
+  HIGH_FINDING,
+  LOW_FINDING,
+  SAFE_FINDING,
+} from '../../test/finding-fixtures';
 import { largeScan } from '../../test/large-scan';
 import { fakeViewport } from '../../test/viewport';
 import { FindingList, type FindingListProps } from './finding-list';
@@ -125,9 +131,31 @@ describe('FindingList', () => {
 
       expect(onToggle).not.toHaveBeenCalled();
     });
+
+    it('Space on a row the app may not remove toggles nothing', () => {
+      const onToggle = vi.fn();
+      render(list({ onToggle, rowAt: () => ADMIN_FINDING, total: 1 }));
+
+      const [first] = rows();
+      act(() => {
+        first?.focus();
+      });
+      fireEvent.keyDown(first ?? document.body, { key: ' ' });
+
+      expect(onToggle).not.toHaveBeenCalled();
+    });
   });
 
   describe('positive cases', () => {
+    it("a row's Show in Finder reaches the list's handler", () => {
+      const onReveal = vi.fn();
+      render(list({ onReveal, rowAt: () => ADMIN_FINDING, total: 1 }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Show in Finder' }));
+
+      expect(onReveal).toHaveBeenCalledWith(ADMIN_FINDING);
+    });
+
     it('rows read title, level and size, under the column names', () => {
       render(list());
 

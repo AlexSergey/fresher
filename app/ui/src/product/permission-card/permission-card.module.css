@@ -1,0 +1,28 @@
+/* The card's body under the notice's title: the lines, the collapsible steps and the reopen row. */
+@layer components {
+  .body {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .body > :global(p) {
+    margin: 0;
+  }
+
+  .how > summary {
+    cursor: pointer;
+    font-weight: var(--type-body-strong-weight);
+  }
+
+  .steps {
+    margin: var(--space-1) 0 0;
+    padding-inline-start: var(--space-5);
+  }
+
+  .reopen {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+}

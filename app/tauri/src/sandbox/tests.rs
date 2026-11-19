@@ -302,6 +302,30 @@ mod negative {
         assert!(found(&engine).iter().all(|path| !path.starts_with(&documents)), "{:?}", found(&engine));
     }
 
+    /// Sandbox mode keeps its standing list: the guarded places of the sandbox's home and of the real home are never
+    /// opened, though its access knows no guarded place.
+    #[test]
+    fn a_sandbox_engine_still_avoids_the_places_of_both_homes() {
+        let world = World::new();
+        let sandbox_home = fs::canonicalize(world.sandbox().home()).unwrap();
+        let real_home = fs::canonicalize(world.real_home()).unwrap();
+        let guarded = [sandbox_home.join("Library/Containers/com.example.app"), real_home.join("Desktop")];
+        for place in &guarded {
+            fs::create_dir_all(place.join("fresher-trial-cache")).unwrap();
+            fs::write(place.join("fresher-trial-cache/blob.bin"), [0; 64]).unwrap();
+            fs::write(place.join(SANDBOX_MARKER), format!("{}\n", fresher_core::SANDBOX_SIGNATURE)).unwrap();
+        }
+        let engine = world.start();
+        let roots = SettingValue::Folders(vec!["~".into(), real_home.join("Desktop")]);
+        engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
+
+        scan(&engine);
+
+        let found = found(&engine);
+        assert!(!found.is_empty(), "the sandbox's own trial cache is found");
+        assert!(found.iter().all(|path| guarded.iter().all(|place| !path.starts_with(place))), "{found:?}");
+    }
+
     #[test]
     fn the_sandbox_engine_names_its_refusal() {
         let world = World::new();

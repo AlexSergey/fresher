@@ -16,17 +16,15 @@ use fresher_core::{
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 use fresher_macos::{
     MacChangeJournal, MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, io_policy, is_user_temp,
-    places_that_prompt, protection, user_temp_dir,
+    protection, user_temp_dir,
 };
 use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacInstalledApps, MacKnownFolders, MacMounts, MacRunningApps,
-    ProcessCommandRunner, SpotlightSearch, SystemClock,
+    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacInstalledApps, MacKnownFolders, MacMounts,
+    MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch, SystemClock, macos_version,
 };
-
-use crate::adapters::{NoSystemUi, UnknownAccess};
 
 /// Why the app could not start its engine.
 #[derive(Debug, thiserror::Error)]
@@ -127,6 +125,11 @@ pub(crate) fn engine(data_folder: impl Into<PathBuf>, home: &Path) -> Result<Eng
 }
 
 fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Result<Engine, ComposeError> {
+    assemble(normal(data_folder, home, policy)?)
+}
+
+/// What the normal engine is assembled from: the real ports of this Mac, after the process's IO policy is set.
+fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Result<Shared, ComposeError> {
     apply(policy)?;
     let folder = DataFolder::open(data_folder)?;
     let volumes: Arc<dyn Volumes> = Arc::new(MacVolumes::new());
@@ -147,11 +150,11 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
         Some(temp) => MacKnownFolders::new(home).with_user_temp(temp),
         None => MacKnownFolders::new(home),
     };
-    assemble(Shared {
+    Ok(Shared {
         folder,
         reader: Arc::new(MacFolderReader::new()),
-        // Until plan 006 decides with the capability state, the places that prompt are never opened (docs/hacks/).
-        avoid: places_that_prompt(home),
+        // No standing list: the engine's request carries the guarded places the capability state keeps closed.
+        avoid: Vec::new(),
         known_folders: Arc::new(known_folders),
         volumes,
         clock,
@@ -162,7 +165,7 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
             Arc::new(MacMounts),
         )),
         commands,
-        access: Arc::new(UnknownAccess),
+        access: Arc::new(MacAccess::new(home.to_path_buf(), macos_version(Path::new("/")))),
         cleanup,
         only: None,
     })
@@ -184,6 +187,7 @@ pub(crate) struct Shared {
     pub(crate) folder: DataFolder,
     /// The system's bulk reader; in sandbox mode seen through the sandbox's stated facts.
     pub(crate) reader: Arc<dyn FolderReader>,
+    /// The places no walk opens whatever the capability state: empty in the normal app, sandbox mode's list there.
     pub(crate) avoid: Vec<PathBuf>,
     pub(crate) known_folders: Arc<dyn KnownFolders>,
     pub(crate) volumes: Arc<dyn Volumes>,
@@ -227,13 +231,14 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         known_folders_anchor(&*known_folders),
         options,
     );
+    let system_ui = Arc::new(MacSystemUi::new(Arc::clone(&commands)));
     let ports = Ports {
         walk: Arc::new(walk),
         settings: Arc::new(FileSettingsStore::new(folder)),
         clock,
         commands,
         access,
-        system_ui: Arc::new(NoSystemUi),
+        system_ui,
         system: SystemPorts {
             known_folders: Arc::clone(&known_folders),
             apps: Arc::new(MacInstalledApps::new(known_folders, app_search)),
@@ -350,7 +355,37 @@ mod tests {
     mod negative {
         use std::path::Path;
 
-        use crate::compose::{ComposeError, IoPolicy, bundle_of, checked_user_temp, engine, engine_with};
+        use crate::compose::{
+            ComposeError, IoPolicy, MACOS_POLICY, bundle_of, checked_user_temp, engine, engine_with, normal,
+        };
+
+        #[test]
+        fn the_normal_engine_has_no_standing_avoid_list() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+
+            let shared = normal(folder.path(), home.path(), &MACOS_POLICY).unwrap();
+
+            assert_eq!(shared.avoid, Vec::<std::path::PathBuf>::new());
+        }
+
+        /// What keeps the default scan out instead: the normal access names the guarded places under `~` (the default
+        /// root, as the settings write it), and on a home where nothing is granted none of them is allowed, so the
+        /// engine's request avoids every one. The home is a temporary tree with no Full Disk Access candidate; nothing
+        /// is tried.
+        #[test]
+        fn the_normal_access_keeps_the_default_root_out_of_every_guarded_place() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            std::fs::create_dir(home.path().join("Desktop")).unwrap();
+
+            let shared = normal(folder.path(), home.path(), &MACOS_POLICY).unwrap();
+
+            let status = shared.access.status();
+            let places = shared.access.guarded_places(&[std::path::PathBuf::from("~")]);
+            assert_eq!(status.access(&fresher_core::Capability::AllFiles), fresher_core::Access::Unknown);
+            assert!(places.iter().any(|place| place.path == home.path().join("Desktop")), "{places:?}");
+            assert!(places.iter().any(|place| place.path == home.path().join("Library/Containers")), "{places:?}");
+            assert!(places.iter().all(|place| !status.access(&place.capability).allows()), "{places:?}");
+        }
 
         #[test]
         fn a_relative_data_folder_is_refused() {

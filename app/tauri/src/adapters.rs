@@ -1,13 +1,11 @@
-//! The app's own stand-ins for the core's ports, until the crates of later plans provide the real ones.
+//! The app's own stand-in for the core's access port, where the Mac's real access must not be asked.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use fresher_core::{
-    Access, AccessProbe, AccessStatus, Capability, CapabilityState, GuardedPlace, SystemUi, SystemUiError,
-};
+use fresher_core::{Access, AccessProbe, AccessStatus, Capability, CapabilityState, GuardedPlace};
 
 /// Answers `Unknown` for Full Disk Access and `NotAsked` for every other permission, knows no guarded place and
-/// never tries one, until plan 006/03 asks macOS (`docs/hacks/`).
+/// never tries one: sandbox mode's access, whose world is not the Mac's, and the app's tests' (`docs/hacks/`).
 #[derive(Debug)]
 pub(crate) struct UnknownAccess;
 
@@ -29,31 +27,17 @@ impl AccessProbe for UnknownAccess {
     }
 }
 
-/// Answers `Unsupported` to everything, until plan 006/03 opens System Settings and Finder (`docs/hacks/`).
-#[derive(Debug)]
-pub(crate) struct NoSystemUi;
-
-impl SystemUi for NoSystemUi {
-    fn open_access_settings(&self, _capability: &Capability) -> Result<(), SystemUiError> {
-        Err(SystemUiError::Unsupported)
-    }
-
-    fn reveal(&self, _path: &Path) -> Result<(), SystemUiError> {
-        Err(SystemUiError::Unsupported)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     mod positive {
         use std::path::PathBuf;
 
-        use fresher_core::{Access, AccessProbe, Capability, GuardedFolder, GuardedPlace, SystemUi, SystemUiError};
+        use fresher_core::{Access, AccessProbe, Capability, GuardedFolder, GuardedPlace};
 
-        use crate::adapters::{NoSystemUi, UnknownAccess};
+        use crate::adapters::UnknownAccess;
 
         #[test]
-        fn the_placeholders_know_nothing() {
+        fn the_placeholder_knows_nothing() {
             let roots = [PathBuf::from("~")];
             let access = UnknownAccess.status();
             assert_eq!(access.access(&Capability::AllFiles), Access::Unknown);
@@ -62,8 +46,6 @@ mod tests {
             let place = GuardedPlace { path: "/home/Desktop".into(), capability: Capability::AllFiles };
             assert_eq!(UnknownAccess.guarded_places(&roots), []);
             assert_eq!(UnknownAccess.try_place(&place), Access::Unknown);
-            assert_eq!(NoSystemUi.open_access_settings(&Capability::AllFiles), Err(SystemUiError::Unsupported));
-            assert_eq!(NoSystemUi.reveal(&place.path), Err(SystemUiError::Unsupported));
         }
     }
 }

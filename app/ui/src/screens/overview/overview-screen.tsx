@@ -8,7 +8,6 @@ import { Button } from '../../design/primitives/button/button';
 import { SegmentedControl } from '../../design/primitives/segmented-control/segmented-control';
 import { t } from '../../i18n';
 import { MeaningList } from '../../product/meaning-list/meaning-list';
-import { PermissionCard } from '../../product/permission-card/permission-card';
 import { ScanHero } from '../../product/scan-hero/scan-hero';
 import { explainedTone } from '../../product/storage-map/parts';
 import { StorageMap } from '../../product/storage-map/storage-map';
@@ -16,7 +15,9 @@ import { placeTop, useNavigation, useOverviewView } from '../../state/navigation
 import { checkedOf } from '../../state/selection';
 import { useStorageMeaning } from '../../state/storage';
 import { useCore, useCoreStore } from '../../state/store';
-import { useAccess } from '../permission/use-access';
+import { accessOfCategories, unavailableTotals } from '../permission/category-access';
+import { CoverageNotices } from '../permission/coverage-notices';
+import { useAccessStatus } from '../permission/use-access';
 import { countsOf, firstWithEntry } from '../settings/ignored-tab';
 import { RescanNotice } from '../settings/rescan-notice';
 import { useModules } from '../use-modules';
@@ -26,8 +27,8 @@ import { moduleProgress } from './module-progress';
 import styles from './overview-screen.module.css';
 import { phaseOf, scanFailure } from './phase';
 
-// "Where did my space go?": the scan hero, a notice when the scan is incomplete, the permission card when Full Disk
-// Access is denied, the map of each volume (the home's first, any other collapsed and shown by its map only), then
+// "Where did my space go?": the scan hero, a notice when the scan is incomplete, the notices of what a missing permission
+// kept the scan from seeing, the map of each volume (the home's first, any other collapsed and shown by its map only), then
 // the switch between the views: the home volume's view by meaning, its category cards largest first, or its view by
 // place, its folders largest first. Before the first scan, only the hero, what a scan does and the volume.
 // One control per action: the toolbar's Scan again only after a finished or partial scan; before the first scan the
@@ -36,7 +37,6 @@ export const OverviewScreen = (): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
   const modules = useModules();
-  const access = useAccess();
   const { scan, stop } = useScanActions();
   const status = useCore((state) => state.status);
   const overview = useCore((state) => state.overview);
@@ -47,6 +47,8 @@ export const OverviewScreen = (): JSX.Element => {
   const selection = useCore((state) => state.selection);
   const storageMap = useCore((state) => state.storageMap);
   const view = useOverviewView();
+  const accessStatus = useAccessStatus();
+  const categoryAccess = accessOfCategories(modules, accessStatus);
 
   const lastScan = overview?.lastScan ?? null;
   const phase = phaseOf(status, lastScan, outcome);
@@ -96,7 +98,7 @@ export const OverviewScreen = (): JSX.Element => {
           </Notice>
         ) : null}
         <RescanNotice />
-        {access === 'denied' ? <PermissionCard access="denied" /> : null}
+        <CoverageNotices />
         {volumes.map((volume, index) => (
           <StorageMap
             collapsible={index > 0}
@@ -123,6 +125,7 @@ export const OverviewScreen = (): JSX.Element => {
             </div>
             {view.kind === 'meaning' ? (
               <MeaningList
+                access={categoryAccess}
                 failure={meaning.failure}
                 found={overview.found}
                 groups={meaning.groups}
@@ -136,6 +139,7 @@ export const OverviewScreen = (): JSX.Element => {
                 scanning={scanning}
                 selected={(category) => checkedOf(selection, category)}
                 totals={totals}
+                unavailable={unavailableTotals(modules, totals, categoryAccess)}
               />
             ) : (
               <ByPlace at={view} />

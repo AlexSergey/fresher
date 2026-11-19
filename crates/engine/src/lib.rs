@@ -30,6 +30,7 @@ mod places;
 mod projects;
 mod registry;
 mod results;
+mod reveal;
 mod session;
 mod settings;
 mod state;

@@ -82,11 +82,14 @@ pub enum CommandError {
     /// A group no registered module belongs to.
     #[error("no module of group `{id}` is registered")]
     UnknownGroup { id: String },
+    /// A finding without a path of its own (a tool's object): there is nothing to show in Finder.
+    #[error("the finding has no path to reveal")]
+    NothingToReveal,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 26] = [
+    pub const CODES: [&str; 27] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -113,6 +116,7 @@ impl CommandError {
         "cannot-ignore",
         "unknown-volume",
         "unknown-group",
+        "nothing-to-reveal",
     ];
 
     /// The `code` the error is serialized with.
@@ -144,6 +148,7 @@ impl CommandError {
             Self::CannotIgnore => "cannot-ignore",
             Self::UnknownVolume => "unknown-volume",
             Self::UnknownGroup { .. } => "unknown-group",
+            Self::NothingToReveal => "nothing-to-reveal",
         }
     }
 
@@ -176,7 +181,8 @@ impl CommandError {
             | Self::UnknownCleanupItem
             | Self::NotInTrash
             | Self::CannotIgnore
-            | Self::UnknownVolume => text,
+            | Self::UnknownVolume
+            | Self::NothingToReveal => text,
         }
     }
 }
@@ -229,7 +235,8 @@ pub(crate) mod tests {
             | CommandError::NotInTrash
             | CommandError::CannotIgnore
             | CommandError::UnknownVolume
-            | CommandError::UnknownGroup { .. } => error,
+            | CommandError::UnknownGroup { .. }
+            | CommandError::NothingToReveal => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -258,6 +265,7 @@ pub(crate) mod tests {
             sample(CommandError::CannotIgnore),
             sample(CommandError::UnknownVolume),
             sample(CommandError::UnknownGroup { id: "debug".into() }),
+            sample(CommandError::NothingToReveal),
         ]
     }
 
@@ -369,6 +377,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
                 ]
             );
         }

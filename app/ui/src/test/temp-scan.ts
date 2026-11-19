@@ -192,12 +192,15 @@ export const TEMP_PLACES: Readonly<Record<string, PlaceView>> = {
 const named = (...keys: readonly string[]): Dictionary =>
   Object.fromEntries(keys.map((key) => [key, (coreTexts as Dictionary)[key] ?? '']));
 
-// The module's own texts, with the core's that the sidebar, the places and the ignore tabs show.
+// The module's own texts, with the core's that the sidebar, the places, the ignore tabs and the permissions show.
 export const TEMP_DICTIONARY: Dictionary = {
   ...SCRIPTS_DICTIONARY,
   ...FINDING_DICTIONARY,
   ...tempTexts,
   ...named(
+    'core.access.all-files.name',
+    'core.access.all-files.unlocks',
+    'core.access.state.granted',
     'core.group.system.description',
     'core.group.system.name',
     'core.ignore.groups.description',

@@ -6,6 +6,7 @@ import {
   cancelCleanup,
   cancelScan,
   CommandFailed,
+  COMMANDS,
   confirmCleanup,
   discardCleanup,
   failureOf,
@@ -22,19 +23,23 @@ import {
   getStorageMeaning,
   getStoragePlace,
   ignore,
+  openAccessSettings,
   pickFolder,
   prepareCleanup,
   putBack,
   quitAfterCleanup,
+  refreshAccess,
+  relaunch,
   resetSettings,
   restoreIgnored,
+  revealFinding,
   revealInTrash,
   startScan,
   subscribe,
   updateSetting,
 } from '.';
 import { DEMO_PLAN, HISTORY, MOVED_DETAIL } from '../test/cleanup-plan';
-import { BUSY, DEMO_SCAN, IDLE } from '../test/demo-scan';
+import { allFiles, BUSY, DEMO_SCAN, IDLE } from '../test/demo-scan';
 import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { mockCore, pushEvents, refuse, sampleStorageAnswers } from './mock';
 
@@ -104,6 +109,20 @@ describe('the IPC module', () => {
 
       expect(error).toBeInstanceOf(CommandFailed);
       expect(failureOf(error)).toEqual({ kind: 'refused', refusal: stale });
+    });
+
+    it('opens the settings only for a capability object, never a string', async () => {
+      // The IPC rejects arguments the command cannot read, as the core rejects a capability it does not know.
+      mockCore({
+        openAccessSettings: () => {
+          throw new Error('invalid args `capability` for command `open_access_settings`');
+        },
+      });
+
+      // @ts-expect-error -- a pane is named by its capability, never by an address or a string.
+      const error: unknown = await openAccessSettings('all-files').catch((failure: unknown) => failure);
+
+      expect(failureOf(error)).toEqual({ kind: 'unreachable' });
     });
 
     it('cannot push events before anything subscribed', () => {
@@ -218,6 +237,31 @@ describe('the IPC module', () => {
         { request: { cleanup: 3, items: null } },
         { item: { cleanup: 3, item: 0 } },
         {},
+      ]);
+    });
+
+    it('passes every access command its arguments by name', async () => {
+      const { answer, seen } = recorder();
+      const granted = allFiles('granted');
+      const desktop = { kind: 'folder', value: 'desktop' } as const;
+      mockCore({
+        openAccessSettings: answer(null),
+        refreshAccess: answer(granted),
+        relaunch: answer(null),
+        revealFinding: answer(null),
+      });
+
+      await expect(refreshAccess()).resolves.toEqual(granted);
+      await openAccessSettings(desktop);
+      await revealFinding(7);
+      await relaunch();
+
+      expect(seen).toStrictEqual([{}, { capability: desktop }, { finding: 7 }, {}]);
+      expect([COMMANDS.refreshAccess, COMMANDS.openAccessSettings, COMMANDS.revealFinding, COMMANDS.relaunch]).toEqual([
+        'refresh_access',
+        'open_access_settings',
+        'reveal_finding',
+        'relaunch',
       ]);
     });
 

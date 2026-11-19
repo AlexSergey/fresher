@@ -23,6 +23,41 @@
     color: var(--text-primary);
   }
 
+  /* The empty place of the checkbox (16 px) on a row that cannot be selected. */
+  .noCheckbox {
+    display: inline-block;
+    width: var(--space-4);
+  }
+
+  /* Why the app may not remove the item, and "Show in Finder": before the level column. */
+  .kept {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .removability {
+    display: inline-flex;
+    height: 20px;
+    align-items: center;
+    padding: 0 var(--space-1-5);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xs);
+    background-color: var(--surface-pressed);
+    color: var(--text-secondary);
+    font-size: var(--type-caption-size);
+    font-weight: var(--type-caption-weight);
+    gap: var(--space-1);
+    letter-spacing: var(--type-caption-tracking);
+    line-height: var(--type-caption-line);
+    outline: none;
+    white-space: nowrap;
+  }
+
+  .removability:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent-text);
+  }
+
   .external {
     overflow: hidden;
     color: var(--text-secondary);

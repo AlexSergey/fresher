@@ -76,10 +76,12 @@ pub enum CapabilityText {
     How,
     /// `missing`: the one sentence a section without it shows.
     Missing,
+    /// `denied`: what to do once the system refused it: where in the system's settings to turn it on.
+    Denied,
 }
 
 impl CapabilityText {
-    pub const ALL: [Self; 4] = [Self::Name, Self::Unlocks, Self::How, Self::Missing];
+    pub const ALL: [Self; 5] = [Self::Name, Self::Unlocks, Self::How, Self::Missing, Self::Denied];
 
     /// The last segment of the text's key.
     pub const fn segment(self) -> &'static str {
@@ -88,6 +90,7 @@ impl CapabilityText {
             Self::Unlocks => "unlocks",
             Self::How => "how",
             Self::Missing => "missing",
+            Self::Denied => "denied",
         }
     }
 }

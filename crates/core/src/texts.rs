@@ -269,6 +269,16 @@ mod tests {
         }
 
         #[test]
+        fn no_text_mentions_sudo() {
+            let texts = core_dictionary().unwrap();
+
+            for key in texts.keys() {
+                let text = texts.get(key.as_str()).unwrap();
+                assert!(!text.to_lowercase().contains("sudo"), "{key}: {text}");
+            }
+        }
+
+        #[test]
         fn every_new_code_has_its_text() {
             let texts = core_dictionary().unwrap();
 

@@ -55,42 +55,21 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **Why:** the scripts run on Node's own TypeScript support with no build; `node --test` needs no dependency.
 - **If cleaned up:** applying the Vitest rules to them reports every `node:test` import and `describe` call.
 
-## Places that prompt are avoided until plan 006
+## Sandbox mode avoids the places that prompt
 
-- **What:** the app's scanner has a standing avoid list: the home folder's places whose opening may raise a system
-  prompt (Desktop, Documents, Downloads, Pictures, Movies, Music, `Library/Containers`, `Library/Group Containers`,
-  `Library/Mobile Documents`, `Library/CloudStorage`, `Library/Calendars`, the address book folder). It is added to
-  every walk request's own `avoid` (the engine's request carries only the guarded places the access probe names: none
-  until plan 006/03); each place is reported as not scanned.
-- **Where:** `crates/macos/src/places.rs` (`places_that_prompt`), `app/tauri/src/compose.rs`
-  (`ScannerOptions::standing_avoid`); in sandbox mode (`app/tauri/src/sandbox.rs`) the places of both the sandbox's
-  home and the real home, so a scan root outside the sandbox raises no prompt either.
-- **Why:** a first scan must not raise a wall of system prompts; which places to open is decided by plan 006 with the
-  capability state, which then feeds the request's `avoid` and the standing list goes.
-- **If cleaned up:** removing the list before plan 006 makes the first scan raise a prompt for each protected folder.
-- **What it costs `app-leftovers`:** `Library/Containers` is never opened, so no container is offered as a removed
-  app's data and none proves an id; only support folders reach the High category, and an app that is not sandboxed
-  and never saved a window is not proven. Before plan 006 opens it, the helper list must cover every nested bundle
-  ([deferred](../deferred/app-leftovers-containers.md)).
-
-## Access answers Unknown until plan 006/03
-
-- **What:** `UnknownAccess` answers `Unknown` for Full Disk Access and `NotAsked` for every other permission, knows
-  no guarded place and never tries one, whatever macOS says.
-- **Where:** `app/tauri/src/adapters.rs` (`UnknownAccess`), `app/tauri/src/compose.rs`.
-- **Why:** asking macOS needs `fresher-macos::privacy` (plan 006/03); the UI must not claim access it cannot check.
-- **If cleaned up:** answering `Granted` or `Denied` without a probe shows the user a permission state that is not
-  true.
-
-## No system interface until plan 006/03
-
-- **What:** `NoSystemUi` answers `Unsupported` to every call: the app cannot open System Settings or show a file in
-  Finder yet, so `open_access_settings` is refused with `no-settings-pane` and `reveal_in_trash` with `internal`.
-- **Where:** `app/tauri/src/adapters.rs` (`NoSystemUi`), `app/tauri/src/compose.rs`.
-- **Why:** opening a settings pane with `/usr/bin/open` and the pane addresses measured per macOS version are plan
-  006/03; until then the engine's `SystemUi` port needs an implementation.
-- **If cleaned up:** removing it leaves the engine without its `SystemUi` port; a guessed pane address could open the
-  wrong pane.
+- **What:** in sandbox mode the scanner keeps a standing avoid list: the guarded places of both the sandbox's home and
+  the real home (Desktop, Documents, Downloads, Pictures, Movies, Music, `Library/Containers`,
+  `Library/Group Containers`, `Library/Mobile Documents`, `Library/CloudStorage`, `Library/Calendars`, the address book
+  folder), added to every walk request's own `avoid`; each place is reported as not scanned. Its access is the
+  stand-in `UnknownAccess` (Full Disk Access `Unknown`, every other permission `NotAsked`, no guarded place, never
+  tries one). The normal app has no standing list: `MacAccess` names the guarded places and the engine's request
+  carries the ones the capability state keeps closed.
+- **Where:** `app/tauri/src/sandbox.rs` (`compose`, `SandboxPorts::real`), `app/tauri/src/adapters.rs`
+  (`UnknownAccess`), `crates/macos/src/privacy/places.rs` (`places_that_prompt`).
+- **Why:** the sandbox's world is not the Mac's, so the Mac's access is never asked for it; and a scan root outside
+  the sandbox, such as the real home, must raise no system prompt (plan 006, agent's call 30).
+- **If cleaned up:** a sandbox scan of a root outside the sandbox raises real system prompts, and a sandbox shows the
+  Mac's permission state instead of its own.
 
 ## Development builds clean only in a sandbox folder
 

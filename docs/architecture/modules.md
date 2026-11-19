@@ -53,6 +53,12 @@ small `thiserror` error of its own: no panicking path.
   a protected or too-new item, an app that is open. It is not for an unreadable folder, a missing permission or a path
   no rule knows (the walk and the access status report those, and a rule that cannot tell what a path is does not
   claim it). The `Vec<NewFinding>` sink used by tests drops left-outs.
+- A category that cannot see everything without a permission, or cannot run without a tool, declares it:
+  `CategoryDescriptor::with_needs(vec![Need::sees_more(Capability::OtherAppsData)])` (`Need::required` when it cannot
+  run at all). A module whose category needs a tool gives its check with `ModuleDescriptor::with_tool_check(ToolCommand)`;
+  `with_tool_check` refuses a check no category needs, and the registry refuses a needed tool with no check
+  (`DescriptorError::MissingToolCheck`). The engine resolves the rest
+  ([`permissions.md`](./permissions.md)).
 - A category id is `<id>.<name>`; its five texts are found by convention: `<id>.<name>.name`, `.what`, `.made-by`,
   `.if-removed`, `.comes-back`.
 - A setting key is `<id>.<name>`, with `<id>.<name>.label` and `.description`. The settings schema adds the switch
@@ -184,11 +190,10 @@ table of nine rows) and every cache it recognizes and does not offer is a `left_
 a special entry inside, its app is open, the running apps could not be read).
 
 **`app-leftovers` is code with data tables, and the example of a module that decides per app**: its places
-(`places.toml`: nine places in `~/Library`, ten rows with a suffix, a kind, a category and whether the row proves an
-id) match only names shaped as a bundle id (`Interest::only_bundle_ids()`), and a name without the row's suffix is not
+(`places.toml`: eight places in `~/Library`, nine rows with a suffix, a kind, a category and whether the row proves an
+id; app containers are not read) match only names shaped as a bundle id (`Interest::only_bundle_ids()`), and a name without the row's suffix is not
 an id. The leftovers of one id are gathered in `on_match`; `finish` decides each id from all of them, in the rows of a
-pure function (`decide.rs`): a proof (a present saved state or container of the same id; an absent place never
-proves), no installed or running app with the id or a related id, every place seen in full (`cx.place_seen`), nothing
+pure function (`decide.rs`): a proof (a present saved state of the same id; an absent place never proves), no installed or running app with the id or a related id, every place seen in full (`cx.place_seen`), nothing
 changed within the days setting, and Spotlight last (`find_apps` with the id and its dot-prefixes, one call). Any
 doubt keeps all of the id's leftovers, each reported as a `left_out` with its reason. The exclusion table
 (`exclude.toml`) keeps `com.apple` and system components. Group Containers and launch agents are not places of the
@@ -236,6 +241,8 @@ A module ships only when every box is ticked:
       of [`../rules.md`](../rules.md)).
 - [ ] Every failure and left-out text is declared with `with_problems`, plain, and says what to do next.
 - [ ] An item the module recognized and does not offer is reported with `left_out`, never dropped.
+- [ ] Every category that cannot see everything without a permission declares it (`with_needs`), and a needed tool has
+      its `with_tool_check`.
 - [ ] Negative fixtures come first: a look-alike name, the current version of a versioned item, a symlink out of the
       root; each is not claimed.
 - [ ] The golden report `fixtures/golden/<id>.json` is written and reviewed.

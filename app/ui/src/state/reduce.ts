@@ -2,6 +2,7 @@ import type { Failure } from '../ipc';
 import type {
   AccessStatus,
   ByteSize,
+  Coverage,
   Dictionary,
   EngineStatus,
   Event,
@@ -42,6 +43,9 @@ export type CoreState = {
   readonly access: AccessStatus | null;
   // The cleanup from the review screen's button to its result (state/cleanup.ts).
   readonly cleanup: CleanupState;
+  // What the result on screen did not see (guarded places, unreadable folders): the followed scan's `scan-coverage`,
+  // or the last scan's coverage of a result restored from the overview. `null` while a scan runs or none is known.
+  readonly coverage: Coverage | null;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
   // The modules that finished in the followed scan, with how, and what each left out (counted by the engine).
@@ -83,6 +87,7 @@ type SeenScan = { readonly finished: boolean; readonly scan: ScanId };
 export const INITIAL_STATE: CoreState = {
   access: null,
   cleanup: NO_CLEANUP,
+  coverage: null,
   dictionary: null,
   failure: null,
   modules: [],
@@ -108,6 +113,26 @@ const markStale = (state: CoreState): CoreState => (state.stale ? state : { ...s
 
 const withCleanup = (state: CoreState, cleanup: CleanupState): CoreState =>
   cleanup === state.cleanup ? state : { ...state, cleanup };
+
+// The core forgets the previous scan's findings when a scan starts: nothing is counted until the next overview.
+const startScan = (state: CoreState, event: Extract<Event, { readonly type: 'scan-started' }>): CoreState => {
+  const status: EngineStatus = { scan: event.scan, state: 'scanning' };
+
+  return {
+    ...state,
+    coverage: null,
+    failure: null,
+    modules: [],
+    outcome: null,
+    overview: state.overview === null ? null : { ...state.overview, found: NOTHING, status, totals: [] },
+    progress: null,
+    scan: event.scan,
+    scanModules: event.modules,
+    selection: NOTHING_SELECTED,
+    stale: false,
+    status,
+  };
+};
 
 const reduceEvent = (state: CoreState, event: Event): CoreState => {
   // Every event of a scan belongs to one scan: one the UI does not follow is ignored.
@@ -140,31 +165,14 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
     case 'quit-requested':
       return state.quitAsked ? state : { ...state, quitAsked: true };
     case 'scan-coverage':
-      // The coverage of a scan has its notices in plan 006.
-      return state;
+      return follows(event.scan) ? { ...state, coverage: event.coverage } : state;
     case 'scan-finished':
       // The overview is always asked for once more at the end, so the last totals are the finished scan's.
       return follows(event.scan) ? markStale({ ...state, outcome: event.outcome, status: { state: 'idle' } }) : state;
     case 'scan-progress':
       return follows(event.scan) ? { ...state, progress: { bytes: event.bytes, entries: event.entries } } : state;
-    case 'scan-started': {
-      const status: EngineStatus = { scan: event.scan, state: 'scanning' };
-
-      // The core forgets the previous scan's findings when a scan starts: nothing is counted until the next overview.
-      return {
-        ...state,
-        failure: null,
-        modules: [],
-        outcome: null,
-        overview: state.overview === null ? null : { ...state.overview, found: NOTHING, status, totals: [] },
-        progress: null,
-        scan: event.scan,
-        scanModules: event.modules,
-        selection: NOTHING_SELECTED,
-        stale: false,
-        status,
-      };
-    }
+    case 'scan-started':
+      return startScan(state, event);
     case 'setting-changed': {
       // A change may hide or show findings (the ignore lists) or mark the last scan: the overview is asked for again.
       const settings = state.settings === null ? null : changeSetting(state.settings, event);
@@ -210,7 +218,10 @@ const loadOverview = (state: CoreState, overview: Overview): CoreState => {
   const last = overview.lastScan?.scan;
   const outdated = seen !== null && (!seen.finished || last === undefined || last < seen.scan);
 
-  return outdated ? state : { ...state, overview, status };
+  // A restored result has no `scan-coverage` event: its coverage comes with the overview.
+  return outdated
+    ? state
+    : { ...state, coverage: state.coverage ?? overview.lastScan?.coverage ?? null, overview, status };
 };
 
 // The next state: a pure function of the state and one action.

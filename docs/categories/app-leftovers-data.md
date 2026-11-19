@@ -4,17 +4,14 @@
 
 ## What it is
 
-The support folders and containers of apps that are no longer on this Mac. An app may have kept documents, databases
-or downloads here. Made by the apps themselves, while they were installed; each item names its app by its id, such as
+The support folders of apps that are no longer on this Mac. An app may have kept documents, databases or downloads
+here. Made by the apps themselves, while they were installed; each item names its app by its id, such as
 `com.example.App`.
 
 ## Where it lives
 
-Two places in `~/Library`, one finding per folder, named by the app's id:
-
-- `Application Support/<id>`;
-- `Containers/<id>`, the folder of a sandboxed app. Fresher does not open `Containers` until the plan that settles its
-  permission; until then only support folders are offered here.
+One place in `~/Library`, one finding per folder, named by the app's id: `Application Support/<id>`. An app's
+container (`Containers/<id>`) is not offered here (see the end of this page).
 
 ## What happens if you remove it
 
@@ -31,7 +28,7 @@ is claimed only when its name, without the row's suffix, is a bundle id (`com.ex
 | #  | Situation                                                                                               | Result                                  |
 | -- | ------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | 1  | the id is in the exclusion table (`com.apple.` and the ids shared frameworks write)                     | not claimed                             |
-| 2  | no leftover of the id proves an app (a saved state, or a container, which Fresher does not open yet)   | not claimed                             |
+| 2  | no leftover of the id proves an app (a saved state; a container does not count, see below)            | not claimed                             |
 | 3  | the installed apps cannot be listed                                                                     | left out: Fresher cannot tell           |
 | 4  | an installed app owns the id, or its id or a helper's is the id followed by a dot and more, or the reverse | not claimed                          |
 | 5  | the list of installed apps is partial                                                                   | left out: cannot be sure the app is gone |
@@ -46,7 +43,13 @@ is claimed only when its name, without the row's suffix, is a bundle id (`com.ex
 | 14 | otherwise                                                                                               | **offered**                             |
 
 Never offered: a name that is not an id (`Notes`, `Cookies.binarycookies`), anything of Apple's (`com.apple.`), group
-containers, launch agents, and the files of an app that is installed, open or found elsewhere. Matching is by id only,
-never by name. The items go to the Trash; the app runs no command, and an item a process holds open when you confirm is
-skipped. If the app is on a drive that is not connected now, nothing can find it: its files wait the days unchanged,
-each finding says to keep them in that case, and you confirm each.
+containers, launch agents, an app's container (it is not read, see below), and the files of an app that is installed,
+open or found elsewhere. Matching is by id only, never by name. The items go to the Trash; the app runs no command, and
+an item a process holds open when you confirm is skipped. If the app is on a drive that is not connected now, nothing
+can find it: its files wait the days unchanged, each finding says to keep them in that case, and you confirm each.
+
+Containers: Fresher does not read `Containers/<id>`, the folder of a sandboxed app, even when it may open
+`Containers`: a container neither proves its app nor is offered. An installed app's extension keeps its own container
+under its own id, which Fresher cannot always tie to the app, so a container could prove, and get offered, the files
+of an app that is still installed. An app proven only by its container is not found. The category needs no
+permission.

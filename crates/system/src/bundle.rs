@@ -108,7 +108,7 @@ pub(crate) fn bundles_in(folder: &Path) -> Vec<PathBuf> {
 }
 
 /// The file at `path` when it is a regular file of at most `MAX_PLIST` bytes; a link is not followed.
-fn read_capped(path: &Path) -> Option<Vec<u8>> {
+pub(crate) fn read_capped(path: &Path) -> Option<Vec<u8>> {
     let metadata = fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.len() > MAX_PLIST as u64 {
         return None;

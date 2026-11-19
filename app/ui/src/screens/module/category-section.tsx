@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX, Ref } from 'react';
+import { type CSSProperties, type JSX, type Ref, useId } from 'react';
 
 import type {
   CategoryDescriptor,
@@ -14,7 +14,9 @@ import { SizeText } from '../../design/data/size-text/size-text';
 import { TreeRow } from '../../design/data/tree-row/tree-row';
 import { Button } from '../../design/primitives/button/button';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
+import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { t, tText } from '../../i18n';
+import { failureOf, revealFinding } from '../../ipc';
 import { FindingList } from '../../product/finding-list/finding-list';
 import { levelName } from '../../product/finding-row/texts';
 import { LeftOutLines } from '../../product/left-out-lines/left-out-lines';
@@ -22,10 +24,14 @@ import { honestSize } from '../../product/sizes';
 import { checkedOf } from '../../state/selection';
 import { useCore, useCoreStore } from '../../state/store';
 import { useFindings } from '../../state/use-findings';
+import { type CategoryAccess } from '../permission/category-access';
 import { useIgnoreCommands } from '../settings/use-ignore-commands';
 import styles from './module-screen.module.css';
+import { UnavailableReason } from './unavailable-reason';
 
 export type CategorySectionProps = {
+  // Limited or unavailable, from the core's availability; absent for a ready category.
+  readonly access?: CategoryAccess | undefined;
   readonly category: CategoryDescriptor;
   readonly expanded: boolean;
   // What the module left out of this category in the last scan, as the engine counted it.
@@ -66,6 +72,11 @@ const CategoryFindings = ({
       }}
       label={t('ui.screen.module.items', { name: { kind: 'text', value: name } })}
       onRangeChange={onRangeChange}
+      onReveal={(finding) => {
+        revealFinding(finding.id).catch((error: unknown) => {
+          store.dispatch({ failure: failureOf(error), type: 'command-failed' });
+        });
+      }}
       onToggle={(finding) => {
         store.dispatch({ finding, type: 'toggle-finding' });
       }}
@@ -96,6 +107,7 @@ const About = ({ category }: { readonly category: CategoryId }): JSX.Element => 
 // neither box nor disclosure), what it is, Ignore (it leaves the results until it is restored in the settings), what
 // was left out of it, and its findings when expanded.
 export const CategorySection = ({
+  access,
   category,
   expanded,
   leftOut = [],
@@ -106,6 +118,8 @@ export const CategorySection = ({
 }: CategorySectionProps): JSX.Element => {
   const store = useCoreStore();
   const commands = useIgnoreCommands();
+  const reasonId = useId();
+  const unavailable = access?.kind === 'unavailable';
   const checked = useCore((state) => checkedOf(state.selection, category.id));
   const name = textOf(`${category.id}.name`);
   const named = { name: { kind: 'text', value: name } } as const;
@@ -113,14 +127,33 @@ export const CategorySection = ({
   const trailing = (
     <>
       <DangerBadge label={levelName(category.danger)} level={category.danger} />
-      <SizeText {...honestSize(total.sizes)} />
+      {access?.kind === 'limited' ? (
+        <Tooltip content={access.text}>
+          {(describedBy) => (
+            // A stop of its own, so the keyboard and a screen reader reach what was not seen.
+            // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip needs a focusable anchor
+            <span aria-describedby={describedBy} tabIndex={0}>
+              <SizeText {...honestSize(total.sizes)} />
+            </span>
+          )}
+        </Tooltip>
+      ) : (
+        <SizeText {...honestSize(total.sizes)} />
+      )}
     </>
   );
 
   return (
-    <section aria-label={name} className={styles.category} ref={ref}>
+    <section
+      aria-describedby={unavailable ? reasonId : undefined}
+      aria-label={name}
+      className={styles.category}
+      ref={ref}
+    >
       <div role="list">
-        {total.count === 0 ? (
+        {unavailable ? (
+          <ListRow disabled subtitle={t('ui.access.unavailable')} title={name} trailing={trailing} />
+        ) : total.count === 0 ? (
           // Only left-outs: nothing to select, nothing to show below.
           <ListRow subtitle={subtitle} title={name} trailing={trailing} />
         ) : (
@@ -144,6 +177,7 @@ export const CategorySection = ({
           />
         )}
       </div>
+      {unavailable ? <UnavailableReason id={reasonId} missing={access.missing} /> : null}
       <About category={category.id} />
       <div className={styles.ignore}>
         <Button
@@ -157,7 +191,7 @@ export const CategorySection = ({
         </Button>
       </div>
       <LeftOutLines counts={leftOut} />
-      {expanded && total.count > 0 ? (
+      {expanded && total.count > 0 && !unavailable ? (
         <div
           className={styles.findings}
           style={{ '--rows': Math.min(Math.max(total.count, 1), MAX_ROWS) } as CSSProperties}

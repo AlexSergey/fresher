@@ -316,6 +316,7 @@ describe('SettingsScreen', () => {
         'Scan',
         'Debug',
         'Ignored',
+        'Permissions',
         "Fresher's own data",
         'About',
       ]);

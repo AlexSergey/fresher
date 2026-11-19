@@ -10,6 +10,7 @@ import { createNavigation, type Navigation, placeTop } from '../../state/navigat
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import {
+  ACCESS_DICTIONARY,
   allFiles,
   BUSY,
   DEMO_DICTIONARY,
@@ -19,6 +20,7 @@ import {
   FIRST_BATCH,
   FULL_COVERAGE,
   IDLE,
+  LIMITED_COVERAGE,
   SCAN_STARTED,
 } from '../../test/demo-scan';
 import {
@@ -33,7 +35,12 @@ import { fakeViewport } from '../../test/viewport';
 import { AppProviders } from '../app-providers';
 import { OverviewScreen } from './overview-screen';
 
-const DICTIONARY = { ...DEMO_DICTIONARY, ...STORAGE_DICTIONARY, 'demo.error.failed': 'The demo folder vanished.' };
+const DICTIONARY = {
+  ...ACCESS_DICTIONARY,
+  ...DEMO_DICTIONARY,
+  ...STORAGE_DICTIONARY,
+  'demo.error.failed': 'The demo folder vanished.',
+};
 
 const PARTIAL: Overview = {
   ...DEMO_OVERVIEW,
@@ -519,12 +526,29 @@ describe('OverviewScreen', () => {
       expect(screen.getByRole('checkbox', { name: 'Select Example caches' })).toBeChecked();
     });
 
-    it('a denied access shows the permission card', async () => {
-      core({}, 'denied');
+    it('a denied access without a limited result shows no permission card', async () => {
+      const probed = vi.fn(() => allFiles('denied'));
+      core({ getAccessStatus: probed, getOverview: () => DEMO_OVERVIEW });
+
+      await renderOverview();
+
+      await waitFor(() => {
+        expect(probed).toHaveBeenCalledOnce();
+      });
+      expect(screen.queryByText('Fresher cannot see every folder')).toBeNull();
+    });
+
+    it('a result limited by Full Disk Access shows the permission card', async () => {
+      const limited: Overview = {
+        ...DEMO_OVERVIEW,
+        lastScan: { ...DEMO_OVERVIEW.lastScan, coverage: LIMITED_COVERAGE } as NonNullable<Overview['lastScan']>,
+      };
+      core({ getOverview: () => limited }, 'denied');
 
       await renderOverview();
 
       expect(await screen.findByText('Fresher cannot see every folder')).toBeInTheDocument();
+      expect(screen.getByText('312 folders could not be read.')).toBeInTheDocument();
     });
 
     it('Scan again starts a new scan after a scan', async () => {

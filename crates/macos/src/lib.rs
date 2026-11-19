@@ -19,7 +19,7 @@ pub mod fixtures;
 pub mod io_policy;
 mod journal;
 mod open_files;
-mod places;
+mod privacy;
 mod process;
 mod protection;
 pub mod sandbox_marker;
@@ -30,7 +30,10 @@ pub use bulk::MacFolderReader;
 pub use ffi::confstr::user_temp_dir;
 pub use journal::MacChangeJournal;
 pub use open_files::MacOpenFiles;
-pub use places::places_that_prompt;
+pub use privacy::{
+    Guard, OPEN, Pane, Probe, classify, fda_candidates, full_disk_access, guarded_places, open_args, pane_address,
+    pane_of, places_that_prompt, reveal_args, try_inside, try_place, volume_guard,
+};
 pub use process::{Process, current_user, peak_memory, running_processes};
 pub use protection::{is_user_temp, protection};
 pub use trash::MacTrash;

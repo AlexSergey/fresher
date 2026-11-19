@@ -100,7 +100,7 @@ const leftoversPage = async (page: Page): Promise<void> => {
   await page.goto('/');
   await page.getByRole('button', { exact: true, name: 'Scan' }).click();
   const nav = page.getByRole('button', { name: /^Removed apps' leftovers/ });
-  await expect(nav).toContainText('2.8 GB');
+  await expect(nav).toContainText('2.5 GB');
   await nav.click();
   await expect(page.getByRole('heading', { level: 1, name: "Removed apps' leftovers" })).toBeFocused();
   await expect(page.getByRole('region', { name: 'Caches of removed apps' })).toContainText('1 item left out (220 MB)');
@@ -209,6 +209,7 @@ test.describe('positive cases', () => {
 
     test('Full Disk Access denied', async ({ page }) => {
       await open(page, SCRIPTS.denied);
+      await scan(page, '2.6 GB');
       await expect(page.getByText('Fresher cannot see every folder')).toBeVisible();
 
       await looksTheSame(page, 'overview-access-denied.png');

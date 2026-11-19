@@ -84,3 +84,5 @@ Every type and port of the design, sections 2 and 3, for the fakes (02/02), the 
 - Regenerated: the bindings (`AccessStatus`, `CapabilityState`, `Capability`, `GuardedFolder`, `VolumeKind`,
   `Access`, `Need`, `NeedKind`; `CategoryDescriptor.needs`, `ModuleOutcome.unavailable`, the two errors). The UI's
   two test answers of `AccessStatus` use the new shape.
+- Final review: `CapabilityText` gains `Denied` (`core.access.<id>.denied`): where in the system's settings to turn a
+  refused capability on, shown by the notices and the Permissions group of 04.

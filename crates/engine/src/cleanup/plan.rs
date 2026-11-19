@@ -309,6 +309,22 @@ mod tests {
         }
 
         #[test]
+        fn a_category_selection_leaves_out_an_item_that_is_not_removable() {
+            let admin = fresher_core::Finding::new(
+                FindingId::new(2),
+                crate::testing::finding(&alpha(), "/home/b", crate::testing::bytes(1)),
+                Removability::NeedsAdministrator,
+            );
+            let findings = [found(1, &alpha(), "/home/a", 1), admin];
+
+            let selected = expand(&select(&[], &[("alpha.caches", &[])]), &findings).unwrap();
+
+            assert_eq!(selected, [1, 2], "the whole category is selected");
+            let needs_administrator = SkipReason::NotRemovable { removability: Removability::NeedsAdministrator };
+            assert_eq!(sorted(&findings, &[]), [(1, None), (2, Some(needs_administrator))]);
+        }
+
+        #[test]
         fn a_removal_that_is_not_its_subject_is_left_out() {
             let docker = ToolId::new("docker").unwrap();
             let brew = ToolId::new("brew").unwrap();

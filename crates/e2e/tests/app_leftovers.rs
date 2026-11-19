@@ -1,6 +1,7 @@
-//! The app-leftovers module end to end: a fixture sandbox's home with a removed app's leftovers in the ten forms, a
-//! sandboxed app proven by its container alone, an installed app's and Apple's files, and another module's cache and
-//! older IDE version beside them under `Library/Caches`; the real scanner (its reader seen through the facts lens),
+//! The app-leftovers module end to end: a fixture sandbox's home with a removed app's leftovers in the nine forms and
+//! its container, a sandboxed app with only a container and its caches (not claimed: the module reads no container,
+//! so nothing proves it), an installed app's and Apple's files, and another module's cache and older IDE version
+//! beside them under `Library/Caches`; the real scanner (its reader seen through the facts lens),
 //! the modules the app registers, the real settings file, scan cache and journal, and the real `DiskCleaner` reaching
 //! only inside the sandbox, with a fake Trash. The clock, the installed and open apps, Spotlight's answers and the
 //! change journal's answers are fakes a flow sets. The eleven flows of the design's section 6, "Core e2e"; flow 1's
@@ -46,22 +47,23 @@ mod flows {
 
     /// The removed app.
     const GONE_ID: &str = "com.example.Gone";
-    /// The removed app's ten leftovers, one per form, in the order `Flow::findings` sorts them.
-    const GONE: [(&str, &str); 10] = [
+    /// The removed app's nine leftovers, one per form, in the order `Flow::findings` sorts them.
+    const GONE: [(&str, &str); 9] = [
         (CACHES, "home/Library/Caches/com.example.Gone"),
         (CACHES, "home/Library/Logs/com.example.Gone"),
         (CACHES, "home/Library/Saved Application State/com.example.Gone.savedState"),
         (DATA, "home/Library/Application Support/com.example.Gone"),
-        (DATA, "home/Library/Containers/com.example.Gone"),
         (SETTINGS, "home/Library/Cookies/com.example.Gone.binarycookies"),
         (SETTINGS, "home/Library/HTTPStorages/com.example.Gone"),
         (SETTINGS, "home/Library/HTTPStorages/com.example.Gone.binarycookies"),
         (SETTINGS, "home/Library/Preferences/com.example.Gone.plist"),
         (SETTINGS, "home/Library/WebKit/com.example.Gone"),
     ];
-    /// The removed sandboxed app's two leftovers, proven by its container alone.
-    const BOXED: [(&str, &str); 2] =
-        [(CACHES, "home/Library/Caches/com.example.Boxed"), (DATA, "home/Library/Containers/com.example.Boxed")];
+    /// The removed sandboxed app's caches: nothing proves the app, so they are never claimed.
+    const BOXED_CACHES: &str = "home/Library/Caches/com.example.Boxed";
+    /// The two apps' containers, which the module does not read.
+    const CONTAINERS: [&str; 2] =
+        ["home/Library/Containers/com.example.Gone", "home/Library/Containers/com.example.Boxed"];
     /// The other modules' answers under `Library/Caches`: Yarn's cache and `WebStorm`'s older version.
     const YARN: (&str, &str) = ("dev-caches.yarn", "home/Library/Caches/Yarn");
     const WEBSTORM: (&str, &str) = ("jetbrains.caches", "home/Library/Caches/JetBrains/WebStorm2024.3");
@@ -94,7 +96,7 @@ mod flows {
 
     /// Every leftover of the home and the other modules' two answers.
     fn everything() -> Vec<(String, String)> {
-        with_others(&GONE.iter().chain(&BOXED).copied().collect::<Vec<_>>())
+        with_others(&GONE)
     }
 
     /// `leftovers` but those of `category`.
@@ -175,8 +177,8 @@ mod flows {
 
     /// Flow 1: Apps → Removed apps' leftovers offers the removed apps' leftovers beside the other modules' answers
     /// under `Library/Caches`; "Remove everything" selects the three categories and the plan names High; the
-    /// leftovers go to the Trash and the journal and come back byte for byte; the installed app's, Apple's and the
-    /// other modules' files stay.
+    /// leftovers go to the Trash and the journal and come back byte for byte; the containers, the installed app's,
+    /// Apple's and the other modules' files stay.
     pub(crate) fn scan_confirm_trash_and_put_back() -> Value {
         let flow = Flow::new();
         let events = flow.scan();
@@ -185,7 +187,7 @@ mod flows {
         assert_eq!(left_out(&events), []);
         let module = flow.engine.modules().into_iter().find(|module| module.id.as_str() == MODULE).unwrap();
         assert_eq!(module.group, ModuleGroup::Apps);
-        let leftovers: Vec<(&str, &str)> = GONE.iter().chain(&BOXED).copied().collect();
+        let leftovers: Vec<(&str, &str)> = GONE.to_vec();
         let before = contents_of(&flow, &leftovers.iter().map(|(_, path)| *path).collect::<Vec<_>>());
         assert!(before.iter().all(|files| !files.is_empty() && files.values().all(|bytes| !bytes.is_empty())));
         let kept = contents_of(&flow, &KEPT);
@@ -193,7 +195,7 @@ mod flows {
 
         let view = flow.engine.prepare_cleanup(&flow.choice("everything")).unwrap();
 
-        assert_eq!(view.summary.count, 12);
+        assert_eq!(view.summary.count, 9);
         assert_eq!(view.summary.highest, DangerLevel::High);
         let (cleanup, cleaned) = flow.clean(&view);
         let outcomes = flow.outcomes(&view, &cleaned);
@@ -202,9 +204,11 @@ mod flows {
         assert_eq!(outcomes.iter().map(|(path, _)| path.as_str()).collect::<Vec<_>>(), planned);
         assert!(outcomes.iter().all(|(_, outcome)| *outcome == ItemOutcome::Moved), "{outcomes:?}");
         assert!(planned.iter().all(|path| !flow.path(path).exists()));
-        assert_eq!(fs::read_dir(flow.sandbox.trash()).unwrap().count(), 12);
-        assert_eq!(flow.journal().iter().filter(|record| record["type"] == "item").count(), 12);
+        assert_eq!(fs::read_dir(flow.sandbox.trash()).unwrap().count(), 9);
+        assert_eq!(flow.journal().iter().filter(|record| record["type"] == "item").count(), 9);
         assert_eq!(contents_of(&flow, &KEPT), kept, "the installed app's, Apple's and the IDE in use's files stay");
+        assert!(CONTAINERS.iter().all(|path| flow.path(path).is_dir()), "the containers stay");
+        assert!(flow.path(BOXED_CACHES).is_dir(), "the caches of an app nothing proves stay");
         assert_eq!(flow.findings(), with_others(&[]), "the other modules' answers stay");
         let tree_after_cleanup = tree(&flow);
 
@@ -228,7 +232,8 @@ mod flows {
     }
 
     /// Flow 2: "Keep settings" selects the caches category alone and the plan names Safe; after the cleanup, a rescan
-    /// offers the settings and the data, not the caches.
+    /// claims nothing of the module: the saved state, the removed app's only proof, went with the caches, so its
+    /// settings and data stay unclaimed.
     pub(crate) fn keeping_settings_cleans_only_the_caches() {
         let flow = Flow::with(Setup { changed: vec![CLEANED.to_vec()], ..Setup::default() });
         flow.scan();
@@ -236,7 +241,7 @@ mod flows {
         let view = flow.engine.prepare_cleanup(&flow.choice("keep-settings")).unwrap();
 
         assert_eq!(view.summary.highest, DangerLevel::Safe);
-        let caches: Vec<(&str, &str)> = GONE.iter().chain(&BOXED).copied().filter(|(of, _)| *of == CACHES).collect();
+        let caches: Vec<(&str, &str)> = GONE.iter().copied().filter(|(of, _)| *of == CACHES).collect();
         let (_, cleaned) = flow.clean(&view);
         let outcomes = flow.outcomes(&view, &cleaned);
         assert_eq!(
@@ -247,8 +252,7 @@ mod flows {
 
         let events = flow.rescan();
 
-        let rest: Vec<(&str, &str)> = but(&GONE, CACHES).into_iter().chain(but(&BOXED, CACHES)).collect();
-        assert_eq!(flow.findings(), with_others(&rest));
+        assert_eq!(flow.findings(), with_others(&[]));
         assert_eq!(left_out(&events), []);
     }
 
@@ -263,7 +267,7 @@ mod flows {
 
         let events = flow.rescan();
 
-        assert_eq!(flow.findings(), with_others(&BOXED));
+        assert_eq!(flow.findings(), with_others(&[]));
         assert_eq!(left_out(&events), []);
     }
 
@@ -276,8 +280,8 @@ mod flows {
 
         let events = flow.scan();
 
-        assert_eq!(flow.findings(), with_others(&BOXED));
-        assert_eq!(left_out(&events), kept("running", (3, 2, 5)));
+        assert_eq!(flow.findings(), with_others(&[]));
+        assert_eq!(left_out(&events), kept("running", (3, 1, 5)));
 
         let events = flow.rescan();
 
@@ -294,7 +298,7 @@ mod flows {
         let events = flow.scan();
 
         assert_eq!(flow.findings(), with_others(&[]));
-        assert_eq!(left_out(&events), kept("used-recently", (4, 3, 5)));
+        assert_eq!(left_out(&events), kept("used-recently", (3, 1, 5)));
 
         clock.advance(Duration::from_secs(12 * DAY));
         let events = flow.rescan();
@@ -313,15 +317,15 @@ mod flows {
 
         let events = flow.scan();
 
-        assert_eq!(flow.findings(), with_others(&BOXED));
-        assert_eq!(left_out(&events), kept("installed-elsewhere", (3, 2, 5)));
+        assert_eq!(flow.findings(), with_others(&[]));
+        assert_eq!(left_out(&events), kept("installed-elsewhere", (3, 1, 5)));
 
         let installed = FakeInstalledApps::new(installed_apps()).failing_search("the index is off");
         flow.restart(Setup { installed, ..Setup::default() });
         let events = flow.scan();
 
         assert_eq!(flow.findings(), with_others(&[]));
-        assert_eq!(left_out(&events), kept("spotlight-unread", (4, 3, 5)));
+        assert_eq!(left_out(&events), kept("spotlight-unread", (3, 1, 5)));
     }
 
     /// Flow 7: `Library/Logs` cannot be read: every proven id is left out `scan-again` (the removed app's logs
@@ -338,23 +342,23 @@ mod flows {
         let events = flow.scan();
 
         assert_eq!(ours(&flow), []);
-        assert_eq!(left_out(&events), kept("scan-again", (3, 3, 5)));
+        assert_eq!(left_out(&events), kept("scan-again", (2, 1, 5)));
         assert_eq!(of_module(&flow, "dev-caches"), dev_caches);
         drop(unreadable);
         assert!(fs::read_dir(&logs).is_ok(), "the folder's mode is given back");
     }
 
-    /// Flow 8: the places that may prompt avoided, as the app composes them: the container-only app is not claimed,
-    /// and the removed app proven by its saved state is offered but for its container.
+    /// Flow 8: the places that may prompt avoided, as the app composes them: the module reads no container, so the
+    /// removed app proven by its saved state is offered as when the containers are seen, and the container-only app is
+    /// not claimed either way.
     pub(crate) fn containers_are_not_opened_until_asked() {
         let flow = Flow::with(Setup { avoid: Avoid::PlacesThatPrompt, ..Setup::default() });
 
         let events = flow.scan();
 
-        let seen: Vec<(&str, &str)> = GONE.iter().copied().filter(|(_, path)| !path.contains("Containers")).collect();
-        assert_eq!(flow.findings(), with_others(&seen));
+        assert_eq!(flow.findings(), with_others(&GONE));
         assert_eq!(left_out(&events), []);
-        assert!(flow.path(BOXED[1].1).is_dir() && flow.path(GONE[4].1).is_dir(), "the containers stay");
+        assert!(CONTAINERS.iter().all(|path| flow.path(path).is_dir()), "the containers stay");
     }
 
     /// Flow 9: a new engine on the same data folder restores the last scan at launch: every proven id is left out
@@ -369,7 +373,7 @@ mod flows {
 
         assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
         assert_eq!(ours(&flow), []);
-        assert_eq!(left_out(&restored), kept("scan-again", (4, 3, 5)));
+        assert_eq!(left_out(&restored), kept("scan-again", (3, 1, 5)));
 
         let events = flow.scan();
 
@@ -413,7 +417,7 @@ mod flows {
         assert!(all_totals.iter().any(|category| category == DATA));
         let found_bytes = |flow: &Flow| flow.engine.overview().unwrap().found.logical.bytes();
         let all_found = found_bytes(&flow);
-        let leftovers: Vec<(&str, &str)> = GONE.iter().chain(&BOXED).copied().collect();
+        let leftovers: Vec<(&str, &str)> = GONE.to_vec();
 
         flow.engine.ignore(&IgnoreTarget::Category { category: DATA.into() }).unwrap();
 
@@ -427,6 +431,52 @@ mod flows {
         assert_eq!(flow.findings(), everything());
         assert_eq!(totals(&flow), all_totals);
         assert_eq!(found_bytes(&flow), all_found);
+    }
+}
+
+/// What the module's categories can do with the access of a system: an engine on an empty home with the app's
+/// `app-leftovers` module only, its access the fake's states. `cfg(test)` lets Clippy's in-test allowances apply to
+/// these helpers, as the crate's other helper modules have it.
+#[cfg(test)]
+mod access {
+    use std::sync::Arc;
+
+    use fresher_core::{Access, Availability, Capability};
+    use fresher_engine::{Engine, Ports, Registry};
+    use fresher_module_app_leftovers::AppLeftoversModule;
+    use fresher_store::{DataFolder, FileSettingsStore};
+    use fresher_testing::{FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeSystemUi, NaiveWalk};
+
+    /// Sandbox mode's stand-in, as the app's `UnknownAccess` answers: Full Disk Access `Unknown`, every other
+    /// permission `NotAsked`.
+    pub(crate) fn unknown() -> FakeAccess {
+        let state = |capability| {
+            (capability, if capability == Capability::AllFiles { Access::Unknown } else { Access::NotAsked })
+        };
+        FakeAccess::with(&Capability::SYSTEM.map(state))
+    }
+
+    /// Each category of `app-leftovers` with its availability under `access`, in the module's order.
+    pub(crate) fn availability(access: FakeAccess) -> Vec<(String, Availability)> {
+        let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let mut registry = Registry::new().unwrap();
+        registry.register(Box::new(AppLeftoversModule::new().unwrap())).unwrap();
+        let ports = Ports {
+            walk: Arc::new(NaiveWalk::new(home.path())),
+            settings: Arc::new(FileSettingsStore::new(DataFolder::open(folder.path()).unwrap())),
+            clock: Arc::new(FakeClock::at(FIXTURE_NOW)),
+            commands: Arc::new(FakeCommandRunner::default()),
+            access: Arc::new(access),
+            system_ui: Arc::new(FakeSystemUi::default()),
+            system: fresher_testing::fake_system(home.path()),
+        };
+        let engine = Engine::new(registry, ports).unwrap();
+        let module = engine.modules().into_iter().next().unwrap();
+        module
+            .categories
+            .into_iter()
+            .map(|category| (category.descriptor.id().as_str().to_owned(), category.availability))
+            .collect()
     }
 }
 
@@ -477,6 +527,18 @@ mod negative {
     fn an_ignored_category_is_in_no_total_until_restored() {
         ignoring_the_data_keeps_the_rest();
     }
+
+    /// The module reads no container, so it needs no permission: under sandbox mode's stand-in (nothing granted)
+    /// every category is ready.
+    #[test]
+    fn without_data_from_other_apps_every_category_is_still_ready() {
+        use fresher_core::Availability;
+
+        let availability = crate::access::availability(crate::access::unknown());
+
+        assert_eq!(availability.len(), 3);
+        assert!(availability.iter().all(|(_, availability)| *availability == Availability::Ready), "{availability:?}");
+    }
 }
 
 mod positive {
@@ -491,7 +553,7 @@ mod positive {
     }
 
     #[test]
-    fn keeping_the_settings_cleans_the_caches_and_a_rescan_offers_the_rest() {
+    fn keeping_the_settings_cleans_the_caches_and_a_rescan_claims_nothing_without_the_proof() {
         keeping_settings_cleans_only_the_caches();
     }
 

@@ -85,7 +85,7 @@ pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Time
 pub use inside::Inside;
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
-pub use known_folder::{KnownFolder, KnownFolders};
+pub use known_folder::{KnownFolder, KnownFolders, expand_home};
 pub use left_out::{LeftOutCount, LeftOutItem};
 pub use module::{
     DescriptorError, FindingSink, Locales, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,

@@ -3,8 +3,8 @@ import type { DangerLevel, Dictionary, Finding } from '../ipc/bindings.generated
 import { DEMO_DICTIONARY, DEMO_FINDINGS } from './demo-scan';
 
 // Findings and texts for the finding rows, the selection bar and the confirmation: every danger level with its word
-// and sentence (as the core's dictionary has them), a long path, an external subject. Shared by the unit tests and
-// the stories.
+// and sentence (as the core's dictionary has them), a long path, an external subject, and a finding in each state the
+// app may not remove. Shared by the unit tests and the stories.
 
 export const FINDING_DICTIONARY: Dictionary = {
   ...DEMO_DICTIONARY,
@@ -14,6 +14,16 @@ export const FINDING_DICTIONARY: Dictionary = {
   'core.danger.medium.meaning': 'Can be restored, but not by itself. You may need to set something up again.',
   'core.danger.medium.name': 'Medium',
   'core.danger.safe.meaning': 'Comes back by itself when needed. Removing it costs only a little time.',
+  'core.removability.locked.how':
+    "This item is locked. Unlock it in Finder's Get Info window if you want to remove it.",
+  'core.removability.locked.name': 'Locked',
+  'core.removability.needs-administrator.how':
+    'Only an administrator can remove this. Show it in Finder and drag it to the Trash; macOS will ask for an administrator password.',
+  'core.removability.needs-administrator.name': 'Needs an administrator',
+  'core.removability.protected-by-system.how':
+    'macOS protects this item to keep the system working. Fresher shows it only so you know what takes the space.',
+  'core.removability.protected-by-system.name': 'Protected by macOS',
+  'core.removability.removable.name': 'Can be removed',
   'demo.caches.if-removed': 'The apps rebuild their caches the next time they need them.',
   'demo.downloads.if-removed': 'You download the installers again if you need them.',
   'demo.images.if-removed': 'Docker pulls the image again the next time a container needs it.',
@@ -87,3 +97,21 @@ export const PARTIAL_FINDING: Finding = {
   ...findingOf({ bytes: 640_000_000, id: 15, level: 'low', name: 'mail-downloads' }),
   sizes: { allocated: 640_000_000, completeness: 'partial', logical: 640_000_000, reclaimable: 640_000_000 },
 };
+
+export const ADMIN_FINDING: Finding = {
+  ...findingOf({ bytes: 3_100_000_000, id: 16, level: 'safe', name: 'shared-cache' }),
+  removability: 'needs-administrator',
+};
+
+export const LOCKED_FINDING: Finding = {
+  ...findingOf({ bytes: 210_000_000, id: 17, level: 'low', name: 'kept-installer.dmg' }),
+  removability: 'locked',
+};
+
+export const PROTECTED_FINDING: Finding = {
+  ...findingOf({ bytes: 980_000_000, id: 18, level: 'safe', name: 'system-cache' }),
+  removability: 'protected-by-system',
+};
+
+// A tool's object that needs an administrator: it has no place in Finder to show.
+export const ADMIN_EXTERNAL_FINDING: Finding = { ...EXTERNAL_FINDING, id: 19, removability: 'needs-administrator' };

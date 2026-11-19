@@ -4,7 +4,7 @@
 use fresher_core::DangerLevel;
 
 /// Every category, in the order the module lists them: caches, logs and saved state (Safe), settings and web data
-/// (Medium), then support folders and containers, where a sandboxed app keeps its documents (High).
+/// (Medium), then support folders, where an app may keep its documents (High).
 pub(crate) const CATEGORIES: [(&str, DangerLevel); 3] = [
     ("app-leftovers.caches", DangerLevel::Safe),
     ("app-leftovers.settings", DangerLevel::Medium),

@@ -49,6 +49,13 @@ const Hovered = (): JSX.Element => {
 export const stories = storiesOf('CategoryCard', {
   high: { render: card(VOLUMES, { share: 0.05 }), width: WIDTH },
   hover: { render: Hovered, width: WIDTH },
+  limited: {
+    render: card(
+      { ...CACHES, sizes: { ...CACHES.sizes, completeness: 'partial' } },
+      { access: { kind: 'limited', text: 'Some of it could not be seen: Full Disk Access.' } },
+    ),
+    width: WIDTH,
+  },
   low: { render: card(DOWNLOADS, { share: 0.25 }), width: WIDTH },
   medium: { render: card(IMAGES, { share: 0.14 }), width: WIDTH },
   mixed: { render: card(CACHES, { selected: 'mixed' }), width: WIDTH },
@@ -58,4 +65,11 @@ export const stories = storiesOf('CategoryCard', {
   },
   safe: { render: card(CACHES), width: WIDTH },
   selected: { render: card(CACHES, { selected: true }), width: WIDTH },
+  unavailable: {
+    render: card(
+      { ...IMAGES, count: 0, sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 } },
+      { access: { kind: 'unavailable', text: 'Docker is installed but not running. Start it, then scan again.' } },
+    ),
+    width: WIDTH,
+  },
 });

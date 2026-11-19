@@ -4,7 +4,8 @@
 //! It offers a leftover only when its name is a bundle id, the id is proven to be an app's, no installed or running
 //! app has it, Spotlight finds no app with it, and none of its files changed for the setting's days; everything
 //! else it recognized it keeps and reports as left out, with the reason. It never claims a name that is not an id,
-//! anything of `com.apple.`, group containers or launch agents, and it runs no command.
+//! anything of `com.apple.`, group containers or launch agents, and it runs no command. It does not read app
+//! containers: they neither prove an id nor are offered (see `places.toml`).
 
 #![forbid(unsafe_code)]
 
@@ -210,7 +211,8 @@ impl Module for AppLeftoversModule {
     }
 
     /// Decides the leftovers of the scan, id by id in order, once every place is walked: offered one by one, every
-    /// one left out with the reason, or not claimed. Spotlight is asked last, once per id that reaches it.
+    /// one left out with the reason, or not claimed; a leftover of a row that is not offered only takes part in the
+    /// decision. Spotlight is asked last, once per id that reaches it.
     fn finish(&self, cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError> {
         let by_id = self.gathered.take(cx.cancel());
         if by_id.is_empty() {
@@ -238,11 +240,17 @@ impl Module for AppLeftoversModule {
             if cx.cancel().is_cancelled() {
                 return Err(ModuleError::Cancelled);
             }
-            match decide_id(&id, &leftovers, self.places.rows(), &self.exclude, &facts, &mut search) {
+            let verdict = decide_id(&id, &leftovers, self.places.rows(), &self.exclude, &facts, &mut search);
+            // A leftover of a row that is not offered proves its id and counts for its age, and is never reported.
+            let shown: Vec<Leftover> = leftovers
+                .into_iter()
+                .filter(|leftover| self.places.row(leftover.row).is_some_and(|row| row.offered))
+                .collect();
+            match verdict {
                 IdVerdict::NotClaimed => {}
-                IdVerdict::LeftOut(reason) => self.leave_out(&leftovers, reason, out),
+                IdVerdict::LeftOut(reason) => self.leave_out(&shown, reason, out),
                 IdVerdict::Offer => {
-                    for leftover in &leftovers {
+                    for leftover in &shown {
                         match decide_item(leftover) {
                             ItemVerdict::LeftOut(reason) => self.leave_out(std::slice::from_ref(leftover), reason, out),
                             ItemVerdict::Offered => {

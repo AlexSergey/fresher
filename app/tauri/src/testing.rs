@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use fresher_cleaner::CleanerPorts;
 use fresher_core::{
-    ByteSize, CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock,
+    AccessProbe, ByteSize, CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock,
     CommandRunner, Confirmation, ConfirmedPlan, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match, PlanItem,
     PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Timestamp, TrashState,
     TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
@@ -18,7 +18,8 @@ use fresher_core::{
 use fresher_engine::{CleanupPorts, Engine, Ports};
 use fresher_store::{DataFolder, FileSettingsStore};
 use fresher_testing::{
-    FakeClock, FakeCommandRunner, FakeOpenFiles, FakeTrash, FakeVolumes, FixedDiskState, FixtureTree, NaiveWalk,
+    FakeClock, FakeCommandRunner, FakeOpenFiles, FakeSystemUi, FakeTrash, FakeVolumes, FixedDiskState, FixtureTree,
+    NaiveWalk,
 };
 use serde_json::{Value, json};
 use tauri::Manager;
@@ -26,7 +27,7 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::test::{MockRuntime, mock_app};
 use tempfile::TempDir;
 
-use crate::adapters::{NoSystemUi, UnknownAccess};
+use crate::adapters::UnknownAccess;
 use crate::compose::{cleanup, registry, user_temp};
 use crate::events::EventForwarder;
 
@@ -117,12 +118,17 @@ pub(crate) struct Shell {
 impl Shell {
     /// The app's modules with a walk that finds nothing.
     pub(crate) fn new() -> Self {
-        Self::with_walk(Arc::new(NoWalk), None, false)
+        Self::with_access(Arc::new(UnknownAccess))
+    }
+
+    /// As `new`, with `access` as the system's permissions in place of `UnknownAccess`.
+    pub(crate) fn with_access(access: Arc<dyn AccessProbe>) -> Self {
+        Self::with_walk(Arc::new(NoWalk), None, false, access)
     }
 
     /// The app's modules with a scan that runs until it is cancelled.
     pub(crate) fn held() -> Self {
-        Self::with_walk(Arc::new(HeldWalk), None, false)
+        Self::with_walk(Arc::new(HeldWalk), None, false, Arc::new(UnknownAccess))
     }
 
     /// The app's modules scanning `home` (a fixture tree, the only scan root) with the reference walk; a cleanup goes
@@ -137,14 +143,14 @@ impl Shell {
     }
 
     fn scanning(home: &Path, held: bool) -> Self {
-        let shell = Self::with_walk(Arc::new(NaiveWalk::new(home)), Some(home), held);
+        let shell = Self::with_walk(Arc::new(NaiveWalk::new(home)), Some(home), held, Arc::new(UnknownAccess));
         // The reference walk reads its roots as they are written: the default `~` is given as the home itself.
         let roots = SettingValue::Folders(vec![home.to_path_buf()]);
         shell.engine().update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
         shell
     }
 
-    fn with_walk(walk: Arc<dyn DiskWalk>, home: Option<&Path>, held: bool) -> Self {
+    fn with_walk(walk: Arc<dyn DiskWalk>, home: Option<&Path>, held: bool, access: Arc<dyn AccessProbe>) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let data = DataFolder::open(folder.path().join("data")).unwrap();
         let home = home.map_or_else(|| folder.path().join("home"), Path::to_path_buf);
@@ -171,8 +177,8 @@ impl Shell {
             settings: Arc::new(FileSettingsStore::new(data.clone())),
             clock,
             commands,
-            access: Arc::new(UnknownAccess),
-            system_ui: Arc::new(NoSystemUi),
+            access,
+            system_ui: Arc::new(FakeSystemUi::default()),
             system: fresher_testing::fake_system(&home),
         };
         let app = mock_app();

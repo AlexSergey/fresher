@@ -162,6 +162,7 @@ impl SandboxPorts {
             open_files: Arc::new(MacOpenFiles::new()),
             running: Arc::new(world.running_apps()),
             commands: Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT)),
+            // The Mac's access is never asked: the sandbox's world is not the Mac's (docs/hacks/).
             access: Arc::new(UnknownAccess),
             stated: world.stated(sandbox.path()),
         })
@@ -224,8 +225,9 @@ pub(crate) fn compose(
         journal: Arc::new(FileCleanupJournal::open(&data)),
         volumes: Arc::clone(&ports.volumes),
     };
-    // Neither home's places that prompt are opened: a scan root outside the sandbox, such as the real home, must
-    // raise no system prompt either (docs/hacks/).
+    // Sandbox mode keeps a standing avoid list, the guarded places of both homes: its access is a stand-in, since the
+    // sandbox's world is not the Mac's, and a scan root outside the sandbox, such as the real home, must raise no
+    // system prompt (docs/hacks/, "Sandbox mode avoids the places that prompt").
     let mut avoid = places_that_prompt(&home);
     avoid.extend(places_that_prompt(real_home));
     let engine = assemble(Shared {

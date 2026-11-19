@@ -40,24 +40,60 @@ export const AppProviders = ({ children, navigation, store }: AppProvidersProps)
 
   useEffect(() => findings.follow(store), [findings, store]);
 
+  // The modules carry each category's availability, worked out by the core from the access it has at the moment of the
+  // call: listed at start and again whenever the access changes. One request at a time; a change that comes while one
+  // is out asks once more after it. A failed refresh keeps the last good list.
   useEffect(() => {
     let current = true;
+    let loading = false;
+    let again = false;
+    let first = true;
+    let access = store.getState().access;
 
-    getModules().then(
-      (listed) => {
-        if (current) {
-          setModules(listed);
-        }
-      },
-      (error: unknown) => {
-        if (current) {
-          store.dispatch({ failure: failureOf(error), type: 'command-failed' });
-        }
-      },
-    );
+    const load = (): void => {
+      if (loading) {
+        again = true;
+
+        return;
+      }
+      loading = true;
+      getModules()
+        .then(
+          (listed) => {
+            if (current) {
+              setModules(listed);
+            }
+          },
+          (error: unknown) => {
+            if (current && first) {
+              store.dispatch({ failure: failureOf(error), type: 'command-failed' });
+            }
+          },
+        )
+        .finally(() => {
+          loading = false;
+          first = false;
+          if (current && again) {
+            again = false;
+            load();
+          }
+        });
+    };
+
+    load();
+    const unsubscribe = store.subscribe(() => {
+      const next = store.getState().access;
+
+      if (next !== access) {
+        access = next;
+        // The first answer of the status is no change of the access, but the modules were listed without it.
+        load();
+      }
+    });
 
     return (): void => {
       current = false;
+      unsubscribe();
     };
   }, [store]);
 

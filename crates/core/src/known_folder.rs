@@ -1,7 +1,8 @@
 //! The places where the system keeps things, by meaning: a module names a known folder, never an OS path.
 
+use std::ffi::OsStr;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -106,10 +107,31 @@ pub trait KnownFolders: Send + Sync {
     fn locate(&self, folder: KnownFolder) -> Option<PathBuf>;
 }
 
+/// `root` as the settings write it, its leading `~` component (`~` or `~/…`) filled in with `home`; any other root as
+/// given (`~user` and a `~` further in are not expanded). Pure: it opens nothing.
+pub fn expand_home(root: &Path, home: &Path) -> PathBuf {
+    let mut parts = root.components();
+    match parts.next() {
+        Some(Component::Normal(first)) if first == OsStr::new("~") => home.join(parts.as_path()),
+        _ => root.to_path_buf(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::KnownFolder;
+        use std::path::Path;
+
+        use crate::{KnownFolder, expand_home};
+
+        #[test]
+        fn only_a_leading_tilde_component_is_expanded() {
+            let home = Path::new("/Users/someone");
+
+            for root in ["/Volumes/Data", "~user/x", "a/~", "/~", "~x"] {
+                assert_eq!(expand_home(Path::new(root), home), Path::new(root), "{root}");
+            }
+        }
 
         #[test]
         fn only_the_temporary_folders_are_walked_places() {
@@ -129,8 +151,18 @@ mod tests {
 
     mod positive {
         use std::collections::BTreeSet;
+        use std::path::Path;
 
-        use crate::KnownFolder;
+        use crate::{KnownFolder, expand_home};
+
+        #[test]
+        fn a_leading_tilde_is_the_home() {
+            let home = Path::new("/Users/someone");
+
+            assert_eq!(expand_home(Path::new("~"), home), home);
+            assert_eq!(expand_home(Path::new("~/"), home), home);
+            assert_eq!(expand_home(Path::new("~/Documents/Projects"), home), home.join("Documents/Projects"));
+        }
 
         #[test]
         fn every_folder_has_one_name_and_reads_back_from_it() {

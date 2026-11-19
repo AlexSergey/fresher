@@ -67,7 +67,7 @@ export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {
   'core.storage.kind.external': 'external',
   'core.storage.kind.internal': 'internal',
   'core.storage.kind.network': 'network',
-  'core.storage.not-scanned.avoided': 'Not opened: opening it would make macOS ask you for access.',
+  'core.storage.not-scanned.avoided': 'Not opened: macOS guards it, and Fresher looks there only with your permission.',
   'core.storage.not-scanned.other-volume': 'On another disk, so it was not scanned with this folder.',
   'core.storage.not-scanned.others-folder': 'Belongs to another user of this Mac, so Fresher did not open it.',
   'core.storage.not-scanned.system-items': 'macOS keeps its own items here private, so Fresher never opens them.',

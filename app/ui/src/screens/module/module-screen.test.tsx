@@ -1,10 +1,19 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CategoryId, FindingsQuery, LeftOutCount, ModuleInfo, Overview } from '../../ipc/bindings.generated';
+import type {
+  AccessStatus,
+  Availability,
+  CategoryId,
+  FindingsQuery,
+  LeftOutCount,
+  ModuleInfo,
+  Overview,
+  Refusal,
+} from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, refuse, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -16,6 +25,8 @@ import {
   APP_LEFTOVERS_OVERVIEW,
 } from '../../test/app-leftovers-scan';
 import {
+  ACCESS_DICTIONARY,
+  allFiles,
   DEMO_DICTIONARY,
   DEMO_FINDINGS,
   DEMO_LEFT_OUT,
@@ -41,11 +52,13 @@ import { ModuleScreen } from './module-screen';
 const [DEMO] = DEMO_MODULES as readonly [ModuleInfo];
 
 const DICTIONARY = {
+  ...ACCESS_DICTIONARY,
   ...FINDING_DICTIONARY,
   ...DEMO_DICTIONARY,
   'demo.caches.comes-back': 'Yes, as the apps run.',
   'demo.caches.made-by': 'Apps that keep caches.',
   'demo.caches.what': 'Files apps keep to start faster.',
+  'demo.docker.note': 'Docker is installed but not running. Start it, then scan again.',
   'demo.downloads.comes-back': 'Only if you download them again.',
   'demo.downloads.made-by': 'Your browser.',
   'demo.downloads.what': 'Installers you downloaded.',
@@ -95,12 +108,12 @@ type Rendered = {
 };
 
 // The page inside the app's providers, once the core's dictionary has arrived.
-const renderPage = async (category?: CategoryId): Promise<Rendered> => {
+const renderPage = async (category?: CategoryId, module: ModuleInfo = DEMO): Promise<Rendered> => {
   const navigation = createNavigation();
   const store = createCoreStore();
   const page = (at?: CategoryId): React.JSX.Element => (
     <AppProviders navigation={navigation} store={store}>
-      <ModuleScreen category={at} module={DEMO} />
+      <ModuleScreen category={at} module={module} />
     </AppProviders>
   );
   const { rerender } = render(page(category));
@@ -672,6 +685,195 @@ describe('ModuleScreen on the removed apps scan', () => {
 
       expect(section(LEFTOVERS('caches.name'))).toHaveTextContent(LEFTOVERS('left-out.running'));
       expect(section(LEFTOVERS('settings.name'))).toHaveTextContent(LEFTOVERS('left-out.used-recently'));
+    });
+  });
+});
+
+const DOCKER = { kind: 'tool', value: 'docker' } as const;
+
+const DOCKER_NOTE = 'Docker is installed but not running. Start it, then scan again.';
+
+const DOCKER_STATUS: AccessStatus = {
+  capabilities: [{ access: 'denied', capability: DOCKER, note: { args: {}, key: 'demo.docker.note' } }],
+};
+
+// The demo module with its downloads in the given availability; its caches stay ready.
+const demoWith = (availability: Availability): ModuleInfo => ({
+  ...DEMO,
+  categories: [
+    DEMO.categories[0] as ModuleInfo['categories'][number],
+    { ...(DEMO.categories[1] as ModuleInfo['categories'][number]), availability },
+  ],
+});
+
+describe('ModuleScreen with limited and unavailable categories', () => {
+  describe('negative cases', () => {
+    it('an_unavailable_category_is_shown_disabled_not_hidden', async () => {
+      core({ getAccessStatus: () => DOCKER_STATUS, getOverview: () => IDLE });
+      const { store } = await renderPage(undefined, demoWith({ kind: 'unavailable', missing: [DOCKER] }));
+
+      scanned(store, [], { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) });
+
+      expect(section('Example downloads')).toBeInTheDocument();
+      expect(section('Example downloads')).toHaveAccessibleDescription(DOCKER_NOTE);
+    });
+
+    it('an_unavailable_category_cannot_be_selected', async () => {
+      core({ getAccessStatus: () => DOCKER_STATUS, getOverview: () => IDLE });
+      const { store } = await renderPage(undefined, demoWith({ kind: 'unavailable', missing: [DOCKER] }));
+      const dispatch = vi.spyOn(store, 'dispatch');
+
+      scanned(store, [], { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) });
+      dispatch.mockClear();
+
+      expect(within(section('Example downloads')).queryByRole('checkbox')).toBeNull();
+      expect(within(section('Example downloads')).queryByRole('button', { name: /Show the items/u })).toBeNull();
+      expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'toggle-category' }));
+    });
+
+    it('a_ready_category_shows_no_access_text', async () => {
+      core({ getAccessStatus: () => DOCKER_STATUS });
+      await renderPage(undefined, demoWith({ kind: 'unavailable', missing: [DOCKER] }));
+
+      expect(await screen.findByRole('region', { name: 'Example caches' })).not.toHaveAccessibleDescription();
+      expect(within(section('Example caches')).queryByText(DOCKER_NOTE)).toBeNull();
+    });
+
+    it('an_unavailable_module_page_is_not_an_empty_list', async () => {
+      core({ getAccessStatus: () => DOCKER_STATUS, getOverview: () => IDLE });
+      const module: ModuleInfo = { ...DEMO, categories: [] };
+      const { store } = await renderPage(undefined, module);
+
+      act(() => {
+        store.dispatch(SCAN_STARTED);
+        store.dispatch({
+          leftOut: [],
+          module: 'demo',
+          outcome: { kind: 'unavailable', missing: [DOCKER] },
+          scan: 1,
+          type: 'module-finished',
+        });
+        store.dispatch({ kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' });
+        store.dispatch({ overview: { ...DEMO_OVERVIEW, found: sized(0), totals: [] }, type: 'overview-loaded' });
+      });
+
+      expect(screen.queryByText('No findings in this module')).toBeNull();
+      expect(screen.getByText(DOCKER_NOTE)).toBeInTheDocument();
+    });
+  });
+
+  describe('positive cases', () => {
+    it('a_limited_category_shows_a_partial_size_and_why', async () => {
+      core({ getOverview: () => IDLE });
+      const missing = [{ kind: 'all-files' }] as const;
+      const { store } = await renderPage(undefined, demoWith({ kind: 'limited', missing: [...missing] }));
+
+      scanned(store, [], {
+        ...DEMO_OVERVIEW,
+        totals: [
+          ...DEMO_OVERVIEW.totals.slice(0, 1),
+          {
+            category: 'demo.downloads',
+            count: 1,
+            highestDanger: 'low',
+            sizes: { ...sized(750_000_000), completeness: 'partial' },
+          },
+        ],
+      });
+      const downloads = section('Example downloads');
+
+      expect(within(downloads).getByText(/at least 750 MB/u)).toBeInTheDocument();
+
+      fireEvent.focusIn(within(downloads).getByText(/at least 750 MB/u));
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent('Some of it could not be seen: Full Disk Access.');
+    });
+
+    it('an_unavailable_category_names_what_is_missing', async () => {
+      core({ getAccessStatus: () => allFiles('denied'), getOverview: () => IDLE });
+      const { store } = await renderPage(
+        undefined,
+        demoWith({ kind: 'unavailable', missing: [{ kind: 'all-files' }] }),
+      );
+
+      scanned(store, [], { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) });
+      const downloads = section('Example downloads');
+
+      expect(within(downloads).getByText('Not available')).toBeInTheDocument();
+      expect(within(downloads).getByText(/does not have Full Disk Access/u)).toBeInTheDocument();
+      expect(within(downloads).getByRole('button', { name: 'Open System Settings' })).toBeInTheDocument();
+    });
+
+    it('a_tool_category_shows_the_tools_note', async () => {
+      core({ getAccessStatus: () => DOCKER_STATUS, getOverview: () => IDLE });
+      const { store } = await renderPage(undefined, demoWith({ kind: 'unavailable', missing: [DOCKER] }));
+
+      scanned(store, [], { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) });
+
+      expect(within(section('Example downloads')).getByText(DOCKER_NOTE)).toBeInTheDocument();
+    });
+  });
+});
+
+// The demo findings with the editor cache owned by another user: the core says it needs an administrator.
+const WITH_ADMIN_ITEM = DEMO_FINDINGS.map((finding) =>
+  finding.id === 1 ? { ...finding, removability: 'needs-administrator' as const } : finding,
+);
+
+const NOTHING_TO_REVEAL: Refusal = {
+  error: { code: 'nothing-to-reveal' },
+  text: { args: {}, key: 'core.error.nothing-to-reveal' },
+};
+
+const coreWithAdminItem = (answers: Partial<CoreAnswers> = {}): void => {
+  core({
+    getFindings: (args) => pageOf(WITH_ADMIN_ITEM, (args as { readonly query: FindingsQuery }).query),
+    ...answers,
+  });
+};
+
+describe('ModuleScreen with an item that needs an administrator', () => {
+  describe('negative cases', () => {
+    it('the item cannot be ticked, but its size and level stay', async () => {
+      coreWithAdminItem();
+      await renderPage();
+
+      const row = await screen.findByRole('listitem', { name: /^Example: editor-cache/ });
+
+      expect(row).toHaveAccessibleName('Example: editor-cache, Safe, 1.5 GB, Needs an administrator');
+      expect(screen.queryByRole('checkbox', { name: 'Select Example: editor-cache' })).toBeNull();
+      expect(screen.getByRole('checkbox', { name: 'Select Example: browser-cache' })).toBeInTheDocument();
+    });
+
+    it('a refused Show in Finder is shown like the other command failures', async () => {
+      coreWithAdminItem({ revealFinding: refuse(NOTHING_TO_REVEAL) });
+      const { store } = await renderPage();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Show in Finder' }));
+
+      await vi.waitFor(() => {
+        expect(store.getState().failure).toStrictEqual({ kind: 'refused', refusal: NOTHING_TO_REVEAL });
+      });
+    });
+  });
+
+  describe('positive cases', () => {
+    it('Show in Finder asks the core to reveal the finding by its id, never its path', async () => {
+      const revealed: unknown[] = [];
+      coreWithAdminItem({
+        revealFinding: (args) => {
+          revealed.push(args);
+
+          return null;
+        },
+      });
+      await renderPage();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Show in Finder' }));
+
+      await vi.waitFor(() => {
+        expect(revealed).toStrictEqual([{ finding: 1 }]);
+      });
     });
   });
 });

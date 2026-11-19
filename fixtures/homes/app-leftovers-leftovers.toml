@@ -1,7 +1,7 @@
-# A home for the app-leftovers module whose leftovers are all offered: `com.example.Gone` in the ten forms of
-# `places.toml`, `com.example.Appx` (caches and a saved state) beside the installed `com.example.App`, and
-# `com.example.Boxed` with only a container and its caches. Every entry unchanged for 40 days, every file filled with
-# data.
+# A home for the app-leftovers module whose leftovers are all offered but `com.example.Boxed`'s: `com.example.Gone`
+# in every form of `places.toml` (and a container, which the module does not read), `com.example.Appx` (caches and a
+# saved state) beside the installed `com.example.App`, and `com.example.Boxed` with only a container and its caches,
+# so nothing proves it. Every entry unchanged for 40 days, every file filled with data.
 
 [[dir]]
 path = "Library/Caches/com.example.Gone"

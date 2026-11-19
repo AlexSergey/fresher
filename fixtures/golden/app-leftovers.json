@@ -236,47 +236,6 @@
         }
       },
       {
-        "app": "com.example.Boxed",
-        "category": "app-leftovers.caches",
-        "danger": "safe",
-        "key": {
-          "identity": "caches/com.example.Boxed",
-          "module": "app-leftovers"
-        },
-        "reason": {
-          "args": {
-            "days": {
-              "kind": "count",
-              "value": 30
-            }
-          },
-          "key": "app-leftovers.finding.reason"
-        },
-        "removal": {
-          "kind": "move-to-trash",
-          "value": "Library/Caches/com.example.Boxed"
-        },
-        "sizes": {
-          "allocated": 4096,
-          "completeness": "complete",
-          "logical": 4096,
-          "reclaimable": 4096
-        },
-        "subject": {
-          "kind": "path",
-          "value": "Library/Caches/com.example.Boxed"
-        },
-        "title": {
-          "args": {
-            "id": {
-              "kind": "text",
-              "value": "com.example.Boxed"
-            }
-          },
-          "key": "app-leftovers.title.caches"
-        }
-      },
-      {
         "app": "com.example.Gone",
         "category": "app-leftovers.caches",
         "danger": "safe",
@@ -315,88 +274,6 @@
             }
           },
           "key": "app-leftovers.title.caches"
-        }
-      },
-      {
-        "app": "com.example.Boxed",
-        "category": "app-leftovers.data",
-        "danger": "high",
-        "key": {
-          "identity": "container/com.example.Boxed",
-          "module": "app-leftovers"
-        },
-        "reason": {
-          "args": {
-            "days": {
-              "kind": "count",
-              "value": 30
-            }
-          },
-          "key": "app-leftovers.finding.reason"
-        },
-        "removal": {
-          "kind": "move-to-trash",
-          "value": "Library/Containers/com.example.Boxed"
-        },
-        "sizes": {
-          "allocated": 4096,
-          "completeness": "complete",
-          "logical": 4096,
-          "reclaimable": 4096
-        },
-        "subject": {
-          "kind": "path",
-          "value": "Library/Containers/com.example.Boxed"
-        },
-        "title": {
-          "args": {
-            "id": {
-              "kind": "text",
-              "value": "com.example.Boxed"
-            }
-          },
-          "key": "app-leftovers.title.container"
-        }
-      },
-      {
-        "app": "com.example.Gone",
-        "category": "app-leftovers.data",
-        "danger": "high",
-        "key": {
-          "identity": "container/com.example.Gone",
-          "module": "app-leftovers"
-        },
-        "reason": {
-          "args": {
-            "days": {
-              "kind": "count",
-              "value": 30
-            }
-          },
-          "key": "app-leftovers.finding.reason"
-        },
-        "removal": {
-          "kind": "move-to-trash",
-          "value": "Library/Containers/com.example.Gone"
-        },
-        "sizes": {
-          "allocated": 4096,
-          "completeness": "complete",
-          "logical": 4096,
-          "reclaimable": 4096
-        },
-        "subject": {
-          "kind": "path",
-          "value": "Library/Containers/com.example.Gone"
-        },
-        "title": {
-          "args": {
-            "id": {
-              "kind": "text",
-              "value": "com.example.Gone"
-            }
-          },
-          "key": "app-leftovers.title.container"
         }
       },
       {

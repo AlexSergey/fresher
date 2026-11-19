@@ -7,12 +7,17 @@
 # `kind`: "folder" or "file": a leftover of another kind here is not claimed.
 # `suffix`: what follows the id in the name (`.plist`); none when the name is the id.
 # `proof`: a leftover here proves the id belongs to an app. The system makes a saved state only for an app with
-#   windows, and a container only for a sandboxed app or extension; a command-line tool, a plugin or a framework also
-#   writes `Caches/<id>` and `Preferences/<id>.plist` and has no bundle to find, so an id with no proof is never
-#   offered.
-# `optional`: the place may be left unread or not scanned without keeping every id. `container` is optional: the app
-#   does not open `Library/Containers` until plan 006 settles its permission, and a sandboxed app keeps everything
-#   inside its container, so an unseen container hides no recent leftover of another place.
+#   windows; a command-line tool, a plugin or a framework also writes `Caches/<id>` and `Preferences/<id>.plist` and
+#   has no bundle to find, so an id with no proof is never offered.
+# `optional`: the place may be left unread or not scanned without keeping every id (default false).
+# `offered`: the row's leftovers are offered, as findings or left-out items (default true). A row that is not offered
+#   is still read: as a proof, and for the age of its id (a recent leftover keeps every leftover of the id). It must
+#   then be a proof, or it would only cost a walk.
+# App containers (`Library/Containers`) have no row: they neither prove an id nor are offered (plan 006, open question
+#   1, option (b)). An installed app's extension keeps its own container under its own id, which the helper list of
+#   the installed apps does not always reach, so a container could prove, and get offered, the files of an app still
+#   installed. A row comes back once that list covers every nested bundle of an installed app
+#   (docs/deferred/app-leftovers-containers.md), with its title in `locales/en.json`.
 # Group containers are left out on purpose (the user's decision): their ids name a developer, not an app.
 
 [[place]]
@@ -82,12 +87,3 @@ category = "app-leftovers.data"
 folder = "app-support"
 path = "*"
 kind = "folder"
-
-[[place]]
-id = "container"
-category = "app-leftovers.data"
-folder = "containers"
-path = "*"
-kind = "folder"
-proof = true
-optional = true

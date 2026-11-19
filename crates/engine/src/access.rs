@@ -194,6 +194,30 @@ mod tests {
         }
 
         #[test]
+        fn the_focus_re_check_runs_no_tool_check() {
+            let fixture = Fixture::new(walk()).module(docker_module());
+            let runner = std::sync::Arc::clone(&fixture.commands);
+            let engine = fixture.engine();
+
+            assert!(!engine.refresh_access());
+
+            assert_eq!(runner.calls(), Vec::<String>::new());
+            assert_eq!(engine.access_status().access(&docker()), Access::NotAsked);
+        }
+
+        #[test]
+        fn checking_again_without_a_change_sends_no_event() {
+            let commands = FakeCommandRunner::default().answering("docker info", "27.0");
+            let engine = Fixture::new(walk()).module(docker_module()).commands(commands).engine();
+            assert!(engine.check_access_again());
+            let events = engine.subscribe();
+
+            assert!(!engine.check_access_again());
+
+            assert_eq!(events.try_recv().ok(), None);
+        }
+
+        #[test]
         fn opening_settings_for_a_capability_this_system_lacks_is_refused() {
             let access = FakeAccess::with(&[(Capability::AllFiles, Access::Denied)]);
             let fixture = Fixture::new(ScriptedWalk::new()).access(access);
@@ -281,6 +305,22 @@ mod tests {
             assert!(engine.refresh_access());
             assert_eq!(engine.access_status().access(&Capability::AllFiles), Access::Granted);
             assert_eq!(events.try_recv().ok(), Some(Event::AccessChanged { status: engine.access_status() }));
+        }
+
+        #[test]
+        fn checking_again_runs_every_tool_check_and_sends_access_changed() {
+            let commands = FakeCommandRunner::default().answering("docker info", "27.0");
+            let fixture = Fixture::new(walk()).module(docker_module()).commands(commands);
+            let runner = Arc::clone(&fixture.commands);
+            let engine = fixture.engine();
+            let events = engine.subscribe();
+
+            assert!(engine.check_access_again());
+
+            assert_eq!(runner.calls(), ["docker info"]);
+            assert_eq!(engine.access_status().access(&docker()), Access::Granted);
+            assert_eq!(events.try_recv().ok(), Some(Event::AccessChanged { status: engine.access_status() }));
+            assert_eq!(events.try_recv().ok(), None);
         }
 
         #[test]

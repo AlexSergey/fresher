@@ -18,6 +18,13 @@ const card = (overrides: Partial<CategoryCardProps> = {}): CategoryCardProps => 
   ...overrides,
 });
 
+const LIMITED = { kind: 'limited', text: 'Some of it could not be seen: Full Disk Access.' } as const;
+
+const UNAVAILABLE = {
+  kind: 'unavailable',
+  text: 'Docker is installed but not running. Start it, then scan again.',
+} as const;
+
 const openButton = (): HTMLElement => screen.getByRole('button', { name: /^Open Example caches/u });
 
 // The share bar is decoration, without a role.
@@ -30,6 +37,43 @@ beforeEach(() => {
 
 describe('CategoryCard', () => {
   describe('negative cases', () => {
+    it('an unavailable category is shown disabled, not hidden', () => {
+      render(<CategoryCard {...card({ access: UNAVAILABLE })} />);
+
+      expect(openButton()).toHaveAttribute('aria-disabled', 'true');
+      expect(openButton()).not.toBeDisabled();
+    });
+
+    it('an unavailable category cannot be selected', () => {
+      const props = card({ access: UNAVAILABLE });
+      render(<CategoryCard {...props} />);
+
+      fireEvent.click(openButton());
+
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(props.onOpen).not.toHaveBeenCalled();
+      expect(props.onToggle).not.toHaveBeenCalled();
+    });
+
+    it('a ready category shows no access text', () => {
+      render(<CategoryCard {...card()} />);
+
+      expect(openButton()).not.toHaveAttribute('aria-disabled');
+      expect(screen.queryByText(UNAVAILABLE.text)).toBeNull();
+      expect(screen.queryByRole('tooltip')).toBeNull();
+    });
+
+    it('a limited category is not disabled', () => {
+      const props = card({ access: LIMITED });
+      render(<CategoryCard {...props} />);
+
+      fireEvent.click(openButton());
+
+      expect(openButton()).not.toHaveAttribute('aria-disabled');
+      expect(props.onOpen).toHaveBeenCalledOnce();
+      expect(screen.getByRole('checkbox')).toBeInTheDocument();
+    });
+
     it('a card never shows its level by colour alone', () => {
       render(<CategoryCard {...card({ total: VOLUMES })} />);
       const details = screen.getByRole('button', { name: /^Open Example volumes/u });
@@ -86,6 +130,31 @@ describe('CategoryCard', () => {
   });
 
   describe('positive cases', () => {
+    it('a limited category shows a partial size and says why on focus', () => {
+      render(
+        <CategoryCard
+          {...card({
+            access: LIMITED,
+            total: { ...CACHES, sizes: { ...CACHES.sizes, completeness: 'partial' } },
+          })}
+        />,
+      );
+
+      expect(within(openButton()).getByText(/at least 1\.8 GB/u)).toBeInTheDocument();
+
+      fireEvent.focusIn(openButton());
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent(LIMITED.text);
+      expect(openButton()).toHaveAccessibleDescription(LIMITED.text);
+    });
+
+    it('an unavailable category names what is missing and reads it as its description', () => {
+      render(<CategoryCard {...card({ access: UNAVAILABLE })} />);
+
+      expect(within(openButton()).getByText(UNAVAILABLE.text)).toBeInTheDocument();
+      expect(openButton()).toHaveAccessibleDescription(UNAVAILABLE.text);
+    });
+
     it('opens on click and Enter', () => {
       const props = card();
       render(<CategoryCard {...props} />);

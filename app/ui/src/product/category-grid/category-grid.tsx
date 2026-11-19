@@ -4,11 +4,13 @@ import type { CategoryId, CategoryTotal, Sizes } from '../../ipc/bindings.genera
 
 import { useFlipList } from '../../design/motion';
 import { t } from '../../i18n';
-import { CategoryCard } from '../category-card/category-card';
+import { type CardAccess, CategoryCard } from '../category-card/category-card';
 import styles from './category-grid.module.css';
 import { useCoalescedOrder } from './use-coalesced-order';
 
 export type CategoryGridProps = {
+  // The categories that are limited or unavailable and what that says; a category not in it is ready.
+  readonly access?: ReadonlyMap<CategoryId, CardAccess> | undefined;
   // Everything found: each card's share is its allocated size out of this one's.
   readonly found: Sizes;
   readonly onOpen: (category: CategoryId) => void;
@@ -28,6 +30,7 @@ const largestFirst = (totals: readonly CategoryTotal[]): readonly string[] =>
 // The category cards in a grid of one, two or three columns, as wide as its container allows. New cards enter
 // staggered; a card that changes place glides there.
 export const CategoryGrid = ({
+  access,
   found,
   onOpen,
   onToggle,
@@ -49,6 +52,7 @@ export const CategoryGrid = ({
           return total === undefined ? null : (
             <li className={styles.cell} key={category} ref={flip(category)} style={{ '--i': index } as CSSProperties}>
               <CategoryCard
+                access={access?.get(category)}
                 onOpen={() => {
                   onOpen(category);
                 }}

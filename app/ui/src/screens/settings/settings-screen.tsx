@@ -9,6 +9,7 @@ import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { t, tText } from '../../i18n';
 import { SettingsRow } from '../../product/settings-row/settings-row';
 import { useNavigation } from '../../state/navigation';
+import { PermissionsGroup } from '../permission/permissions-group';
 import { useAppInfo } from '../use-app-info';
 import { useModules } from '../use-modules';
 import { FileNotice, isReadOnly } from './file-notice';
@@ -59,7 +60,7 @@ export const SettingsScreen = (): JSX.Element => {
               view={view}
               {...(screen.kind === 'settings' && screen.tab !== undefined ? { opensOn: screen.tab } : {})}
             />
-            {groups.after.map((group) => rows(group, view))}
+            <PermissionsGroup settings={settings} view={view} />
           </>
         )}
         <OwnDataGroup headingId={ownDataId} readOnly={readOnly} />
@@ -72,7 +73,6 @@ export const SettingsScreen = (): JSX.Element => {
 // The heading of each of the core's groups of rows.
 const GROUP_HEADINGS = {
   general: 'ui.screen.settings.group.general',
-  permissions: 'ui.screen.settings.group.permissions',
   scan: 'ui.screen.settings.group.scan',
 } as const;
 

@@ -26,8 +26,7 @@ const PREFERENCES: usize = 3;
 const HTTP: usize = 4;
 const COOKIES: usize = 6;
 const SUPPORT: usize = 7;
-const CONTAINERS: usize = 8;
-const FOLDERS: [&str; 9] = [
+const FOLDERS: [&str; 8] = [
     "Caches",
     "Logs",
     "Saved Application State",
@@ -36,7 +35,6 @@ const FOLDERS: [&str; 9] = [
     "WebKit",
     "Cookies",
     "Application Support",
-    "Containers",
 ];
 
 /// Keeps everything the module reports, in order.
@@ -142,7 +140,7 @@ fn file(interest: usize, name: &str) -> Match {
     entry(interest, name, EntryKind::File, 40)
 }
 
-/// The leftovers of `id` in every place but the containers.
+/// The leftovers of `id` in every place.
 fn every_form(id: &str) -> Vec<Match> {
     vec![
         folder(CACHES, id),
@@ -157,7 +155,7 @@ fn every_form(id: &str) -> Vec<Match> {
     ]
 }
 
-/// The system and the walk a scan runs with: every place read but the containers, which are not scanned.
+/// The system and the walk a scan runs with: every place read.
 struct Scan {
     apps: Arc<Spotlight>,
     running: Arc<FakeRunningApps>,
@@ -174,8 +172,7 @@ impl Scan {
     }
 
     fn with_spotlight(spotlight: Spotlight) -> Self {
-        let mut places = vec![PlaceSeen::Read; FOLDERS.len()];
-        places[CONTAINERS] = PlaceSeen::NotScanned;
+        let places = vec![PlaceSeen::Read; FOLDERS.len()];
         Self { apps: Arc::new(spotlight), running: Arc::new(FakeRunningApps::default()), places }
     }
 
@@ -231,7 +228,9 @@ fn app(id: &str) -> fresher_core::InstalledApp {
 }
 
 mod negative {
-    use fresher_core::{BundleId, CancelToken, EntryKind, Match, Module as _, ModuleError, PlaceSeen};
+    use fresher_core::{
+        BundleId, CancelToken, EntryKind, KnownFolder, Match, Module as _, ModuleError, Pattern, PlaceSeen,
+    };
     use fresher_testing::{FakeInstalledApps, FakeRunningApps, running_app};
 
     use super::{
@@ -239,6 +238,21 @@ mod negative {
         every_form, file, folder,
     };
     use crate::AppLeftoversModule;
+
+    /// App containers neither prove an id nor are offered (plan 006, open question 1, option (b)): the module asks
+    /// the walk for nothing under them, nor needs the permission that guards them.
+    #[test]
+    fn the_containers_are_no_place_of_the_module_and_need_no_permission() {
+        let module = AppLeftoversModule::new().unwrap();
+
+        let containers = module
+            .interests()
+            .iter()
+            .filter(|interest| matches!(interest.pattern(), Pattern::Under(KnownFolder::Containers, _)))
+            .count();
+        assert_eq!(containers, 0);
+        assert!(module.descriptor().categories().iter().all(|category| category.needs().is_empty()));
+    }
 
     #[test]
     fn a_link_an_other_entry_the_wrong_kind_or_a_match_of_no_interest_is_not_claimed() {
@@ -382,9 +396,9 @@ mod negative {
 }
 
 mod positive {
-    use fresher_core::{BundleId, Inside, Match, Module as _, ModuleGroup, PlaceSeen, Removal, Subject, TextArg};
+    use fresher_core::{BundleId, Inside, Match, Module as _, ModuleGroup, Removal, Subject, TextArg};
 
-    use super::{CACHES, CONTAINERS, GONE, OTHER, SAVED_STATE, Scan, every_form, folder};
+    use super::{CACHES, GONE, OTHER, SAVED_STATE, Scan, every_form, folder};
     use crate::AppLeftoversModule;
 
     #[test]
@@ -403,7 +417,7 @@ mod positive {
             .map(|choice| (choice.name(), choice.categories().iter().map(|id| id.as_str()).collect()))
             .collect();
         assert_eq!(choices, [("everything", categories), ("keep-settings", vec!["app-leftovers.caches"])]);
-        assert_eq!(module.interests().len(), 9);
+        assert_eq!(module.interests().len(), 8);
     }
 
     #[test]
@@ -447,12 +461,11 @@ mod positive {
     fn the_same_matches_in_two_orders_give_the_same_answers() {
         let mut matches = every_form(GONE);
         matches.extend(every_form(OTHER));
-        matches.push(folder(CONTAINERS, "com.example.Boxed"));
         let forward = Scan::new().run(&matches);
         matches.reverse();
 
         assert_eq!(Scan::new().run(&matches), forward);
-        assert_eq!(forward.findings.len(), 19);
+        assert_eq!(forward.findings.len(), 18);
     }
 
     #[test]
@@ -469,16 +482,6 @@ mod positive {
     }
 
     #[test]
-    fn a_container_proves_an_id_once_containers_are_scanned() {
-        let scan = Scan::new().place(CONTAINERS, PlaceSeen::Read);
-
-        let recorded = scan.run(&[folder(CONTAINERS, GONE), folder(CACHES, GONE)]);
-
-        assert_eq!(recorded.identities(), ["caches/com.example.Gone", "container/com.example.Gone"]);
-        assert_eq!(recorded.findings[1].category().as_str(), "app-leftovers.data");
-    }
-
-    #[test]
     fn an_item_with_a_socket_inside_is_left_out_while_the_others_are_offered() {
         let cache = folder(CACHES, GONE);
         let socket = Match { inside: cache.inside.map(|inside| Inside { special: true, ..inside }), ..cache };
@@ -487,12 +490,5 @@ mod positive {
 
         assert_eq!(recorded.identities(), ["saved-state/com.example.Gone.savedState"]);
         assert_eq!(recorded.left_out(), [("app-leftovers.caches", "app-leftovers.left-out.special", 100)]);
-    }
-
-    #[test]
-    fn the_containers_left_unread_keep_nothing_since_they_are_optional() {
-        let recorded = Scan::new().place(CONTAINERS, PlaceSeen::Unread).run(&every_form(GONE));
-
-        assert_eq!((recorded.findings.len(), recorded.left_out.len()), (9, 0));
     }
 }

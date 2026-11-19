@@ -75,7 +75,7 @@ describe('PlaceList', () => {
         'Protected by macOS. Full Disk Access lets the next scan measure it.',
       );
       expect(rowNamed('Mobile Documents')).toHaveAccessibleDescription(
-        'Not opened: opening it would make macOS ask you for access.',
+        'Not opened: macOS guards it, and Fresher looks there only with your permission.',
       );
       expect(rowNamed('Backup')).toHaveAccessibleDescription(
         'On another disk, so it was not scanned with this folder.',

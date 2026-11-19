@@ -78,7 +78,7 @@ mod positive {
         let titles: BTreeSet<&str> = findings().map(|finding| finding.title().key().as_str()).collect();
 
         assert_eq!(reasons, BTreeSet::from(["app-leftovers.finding.reason"]));
-        assert_eq!(titles.len(), 10);
+        assert_eq!(titles.len(), 9);
     }
 
     #[test]

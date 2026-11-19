@@ -8,10 +8,11 @@ import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
 import { PermissionCard } from '../../product/permission-card/permission-card';
+import { accessOf } from '../../state/access';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { allFiles, BUSY, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
-import { useAccess } from './use-access';
+import { useAccessStatus, useCoverage } from './use-access';
 
 const core = (answers: Partial<CoreAnswers>): void => {
   mockCore({
@@ -25,14 +26,18 @@ const core = (answers: Partial<CoreAnswers>): void => {
 
 const answering = (access: Access): Partial<CoreAnswers> => ({ getAccessStatus: () => allFiles(access) });
 
-// What the overview does with the access (07/02): the card while Full Disk Access is missing.
+// What a screen does with the access: the card while Full Disk Access is missing.
 const Probe = (): JSX.Element => {
-  const access = useAccess();
+  const access = accessOf(useAccessStatus(), { kind: 'all-files' });
 
   return (
     <>
       <p>{`Access: ${access ?? 'asking'}`}</p>
-      {access === 'denied' || access === 'unknown' ? <PermissionCard access={access} /> : null}
+      {access === 'denied' || access === 'unknown' ? (
+        <PermissionCard access={access} how={[]} onOpenSettings={() => undefined}>
+          <p>Not seen.</p>
+        </PermissionCard>
+      ) : null}
     </>
   );
 };
@@ -48,7 +53,16 @@ const showProbe = (store: CoreStore = createCoreStore()): CoreStore => {
   return store;
 };
 
-describe('useAccess', () => {
+const StatusProbe = (): JSX.Element => {
+  const status = useAccessStatus();
+  const coverage = useCoverage();
+
+  return (
+    <p>{`Status: ${status?.capabilities.length ?? 'asking'}, coverage: ${coverage === null ? 'none' : 'known'}`}</p>
+  );
+};
+
+describe('useAccessStatus', () => {
   describe('negative cases', () => {
     it('an access-changed event of granted hides the permission card', async () => {
       core(answering('denied'));
@@ -91,6 +105,27 @@ describe('useAccess', () => {
 
       expect(await screen.findAllByText('Access: unknown')).toHaveLength(2);
       expect(asked).toBe(1);
+    });
+
+    it('gives the whole status and the coverage of the result on screen', async () => {
+      core(answering('granted'));
+
+      render(
+        <AppProviders store={createCoreStore()}>
+          <StatusProbe />
+        </AppProviders>,
+      );
+
+      expect(await screen.findByText('Status: 1, coverage: none')).toBeDefined();
+
+      act(() => {
+        pushEvents(
+          { modules: ['demo'], scan: 1, type: 'scan-started' },
+          { coverage: { notEntered: [], unreadable: [] }, scan: 1, type: 'scan-coverage' },
+        );
+      });
+
+      expect(screen.getByText('Status: 1, coverage: known')).toBeDefined();
     });
   });
 });

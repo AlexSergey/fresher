@@ -21,4 +21,6 @@
 - **Rule:** the app asks for Full Disk Access only when a scan needs it, and explains why in plain English; it works
   with reduced coverage without it and says what it could not see.
 - **Why:** trust; macOS shows the permission prompt to the user.
-- **Enforced by:** the shell (planned).
+- **Enforced by:** the engine's coverage step and its tests (a scan never enters a guarded place that is not granted
+  or opted into, and its result names what was not seen); the `Info.plist` test, which allows exactly five usage
+  descriptions (`app/tauri/tests/info_plist.rs`); review. How it works: [`../architecture/permissions.md`](../architecture/permissions.md).

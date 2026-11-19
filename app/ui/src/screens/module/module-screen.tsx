@@ -12,7 +12,7 @@ import type { ModuleViewProps } from '../../modules/registry';
 
 import { EmptyState } from '../../design/feedback/empty-state/empty-state';
 import { Notice } from '../../design/feedback/notice/notice';
-import { CircleCheck, Search } from '../../design/icons/icons';
+import { CircleCheck, Minus, Search } from '../../design/icons/icons';
 import { PageHeader } from '../../design/layout/page-header/page-header';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { Button } from '../../design/primitives/button/button';
@@ -23,6 +23,8 @@ import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { useNavigation } from '../../state/navigation';
 import { summarize } from '../../state/selection-summary';
 import { useCore, useCoreStore } from '../../state/store';
+import { accessOfCategories, type CategoryAccess, missingText } from '../permission/category-access';
+import { useAccessStatus } from '../permission/use-access';
 import { useIgnoreCommands } from '../settings/use-ignore-commands';
 import { hiddenBy } from '../use-ignored';
 import { moduleFound } from '../use-modules';
@@ -53,13 +55,25 @@ const nothingFound = ({ danger, id }: CategoryDescriptor): CategoryTotal => ({
   sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
 });
 
-// The module's categories that have findings or left-outs, largest first (ties keep the descriptor's order). An ignored
-// category's findings leave the totals; its left-outs, kept from the scan's events, leave with them.
+// The module page with nothing on it: an empty list, or when the module ended unavailable, why it could not look.
+const NothingToShow = ({ outcome }: { readonly outcome: ModuleOutcome | undefined }): JSX.Element => {
+  const status = useAccessStatus();
+
+  return outcome?.kind !== 'unavailable' ? (
+    <EmptyState icon={CircleCheck} text={t('ui.screen.module.empty.text')} title={t('ui.screen.module.empty.title')} />
+  ) : (
+    <EmptyState icon={Minus} text={missingText(outcome.missing, status)} title={t('ui.access.unavailable')} />
+  );
+};
+
+// The module's categories that have findings, left-outs or are unavailable, largest first (ties keep the descriptor's
+// order). An ignored category's findings leave the totals; its left-outs, kept from the scan's events, leave with them.
 const shownOf = (
   categories: readonly CategoryDescriptor[],
   totals: readonly CategoryTotal[],
   leftOut: readonly LeftOutCount[],
   ignored: readonly string[],
+  access: ReadonlyMap<CategoryId, CategoryAccess>,
 ): readonly Shown[] =>
   categories
     .flatMap((category) => {
@@ -69,7 +83,10 @@ const shownOf = (
         return [{ category, total }];
       }
 
-      const left = !ignored.includes(category.id) && leftOut.some((one) => one.category === category.id);
+      // An unavailable category is never silently absent.
+      const left =
+        !ignored.includes(category.id) &&
+        (access.get(category.id)?.kind === 'unavailable' || leftOut.some((one) => one.category === category.id));
 
       return left ? [{ category, total: nothingFound(category) }] : [];
     })
@@ -108,8 +125,10 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
   const found = moduleFound(module, overview);
   const totals = overview?.totals ?? [];
   const categories = module.categories.map(({ descriptor }) => descriptor);
+  const accessStatus = useAccessStatus();
+  const access = accessOfCategories([module], accessStatus);
   // The core hides a module's findings, so an ignored module shows none of its categories or left-outs.
-  const shown = hidden === undefined ? shownOf(categories, totals, leftOut, idsOf(ignoredCategories)) : [];
+  const shown = hidden === undefined ? shownOf(categories, totals, leftOut, idsOf(ignoredCategories), access) : [];
   const largest = shown.find((one) => one.total.count > 0)?.category.id;
   const present = category !== undefined && shown.some((one) => one.category.id === category);
 
@@ -186,17 +205,14 @@ export const ModuleScreen = ({ category, module }: ModuleViewProps): JSX.Element
         ) : (
           <ModuleSection found={found} module={module.id} nameless state={outcome ?? (scanning ? SCANNING : COMPLETED)}>
             {shown.length === 0 ? (
-              <EmptyState
-                icon={CircleCheck}
-                text={t('ui.screen.module.empty.text')}
-                title={t('ui.screen.module.empty.title')}
-              />
+              <NothingToShow outcome={outcome} />
             ) : (
               <>
                 <ModuleChoices module={module} totals={totals} />
                 <div className={styles.categories}>
                   {shown.map((one) => (
                     <CategorySection
+                      access={access.get(one.category.id)}
                       category={one.category}
                       expanded={expanded(one.category.id)}
                       key={one.category.id}

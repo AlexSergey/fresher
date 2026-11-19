@@ -126,13 +126,13 @@ fn used(stats: &libc::statfs, attributes: &VolumeAttributes) -> ByteSize {
 }
 
 /// Whether a mount of `flags` is on this Mac rather than over the network.
-const fn is_local(flags: u32) -> bool {
+pub(crate) const fn is_local(flags: u32) -> bool {
     flags & libc::MNT_LOCAL.cast_unsigned() != 0
 }
 
 /// `Network` when the mount is not local, whatever else is known; `Internal` only when the system says so: a volume
 /// it gives no answer for (a mounted disk image) is `External`.
-const fn kind_of(flags: u32, internal: Option<bool>) -> MountKind {
+pub(crate) const fn kind_of(flags: u32, internal: Option<bool>) -> MountKind {
     if !is_local(flags) {
         MountKind::Network
     } else if matches!(internal, Some(true)) {

@@ -164,7 +164,7 @@ const leftoversModule = (page: Page): Locator => page.getByRole('button', { name
 const openLeftovers = async (
   page: Page,
   script: typeof SCRIPTS.appLeftovers | typeof SCRIPTS.appLeftoversWithDevCaches = SCRIPTS.appLeftovers,
-  total = '2.8 GB',
+  total = '2.5 GB',
 ): Promise<void> => {
   await mockCore(page, script);
   await page.goto('/');
@@ -1041,11 +1041,11 @@ test.describe('positive cases', () => {
     await openLeftovers(page);
 
     await expect(page.getByRole('navigation').getByText('Apps', { exact: true })).toBeVisible();
-    await expect(leftoversModule(page)).toContainText('2.8 GB');
+    await expect(leftoversModule(page)).toContainText('2.5 GB');
     for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
       await expect(page.getByRole('region', { name })).toBeVisible();
     }
-    await expect(page.getByRole('region', { name: LEFTOVERS_DATA })).toContainText('2.1 GB');
+    await expect(page.getByRole('region', { name: LEFTOVERS_DATA })).toContainText('1.8 GB');
   });
 
   test('each removed-app category shows its danger and its five texts', async ({ page }) => {
@@ -1074,11 +1074,11 @@ test.describe('positive cases', () => {
     for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
       await expect(page.getByRole('checkbox', { name: `Select ${name}` })).toBeChecked();
     }
-    await expect(selectionBar(page)).toContainText('6 items selected');
+    await expect(selectionBar(page)).toContainText('5 items selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await expect(heading(page, 'Review')).toBeFocused();
     await removeButton(page).click();
-    const dialog = page.getByRole('dialog', { name: 'Move 6 items to the Trash?' });
+    const dialog = page.getByRole('dialog', { name: 'Move 5 items to the Trash?' });
     await expect(dialog).toContainText('High');
     await expect(dialog).toContainText(left('data.if-removed'));
   });
@@ -1137,6 +1137,6 @@ test.describe('positive cases', () => {
 
     const app = page.getByRole('list', { name: 'com.example.Gone' });
     await expect(app).toContainText('not installed');
-    await expect(app).toContainText('2.8 GB');
+    await expect(app).toContainText('2.5 GB');
   });
 });

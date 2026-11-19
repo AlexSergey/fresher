@@ -1,11 +1,11 @@
 # The home of the app-leftovers module's core end-to-end flows (crates/e2e/tests/app_leftovers.rs), laid out as a
 # sandbox lays out its home (`home/`); the flows add the rest of the sandbox's layout and its marker.
-# `com.example.Gone` has a leftover in each of the ten forms of `places.toml`, its container included;
-# `com.example.Boxed` only a container and its caches, so it is proven by its container alone. Every entry of a
-# leftover is unchanged for 40 days (its folder a `[[dir]]`, its files directly inside, each filled with data).
-# The installed `com.example.Editor`'s files and Apple's `com.apple.Safari`'s are never claimed. Beside them, a
-# `dev-caches` cache (Yarn's) and a `jetbrains` older version (WebStorm 2024.3, 2025.3 in use) under `Library/Caches`,
-# offered by their own modules.
+# `com.example.Gone` has a leftover in each of the nine forms of `places.toml`, and a container; `com.example.Boxed`
+# only a container and its caches. The module does not read containers, so nothing proves `com.example.Boxed` and it
+# is not claimed. Every entry of a leftover is unchanged for 40 days (its folder a `[[dir]]`, its files directly
+# inside, each filled with data). The installed `com.example.Editor`'s files and Apple's `com.apple.Safari`'s are
+# never claimed. Beside them, a `dev-caches` cache (Yarn's) and a `jetbrains` older version (WebStorm 2024.3, 2025.3
+# in use) under `Library/Caches`, offered by their own modules.
 
 [[dir]]
 path = "home/Library/Caches/com.example.Gone"
