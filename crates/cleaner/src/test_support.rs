@@ -254,7 +254,20 @@ pub(crate) struct Rig {
 
 impl Rig {
     pub(crate) fn new(toml: &str) -> Self {
-        let setup = Setup::new(toml);
+        Self::with(Setup::new(toml), Reach::Sandbox)
+    }
+
+    /// The tree of `toml` with no sandbox marker, and a cleaner that checks it and acts on nothing. The tool of
+    /// the tests (`docker`) is allowed, so a tool item reaches the stop before its act.
+    #[cfg(debug_assertions)]
+    pub(crate) fn dry_run(toml: &str) -> Self {
+        let mut rig = Self::with(Setup::new_without_sandbox(toml), Reach::DryRun(crate::DryRunToken::new()));
+        let docker = Capability::Tool(fresher_core::ToolId::new("docker").unwrap());
+        rig.setup.access = Setup::status(&[(docker, Access::Granted)]);
+        rig
+    }
+
+    fn with(setup: Setup, reach: Reach) -> Self {
         let trash = Arc::new(FakeTrash::new(setup.at(".Trash")));
         let open_files = Arc::new(FakeOpenFiles::default());
         let running = Arc::new(FakeRunningApps::default());
@@ -269,7 +282,7 @@ impl Rig {
             clock: Arc::clone(&clock) as Arc<dyn Clock>,
         };
         let home = setup.tree.root().to_path_buf();
-        let cleaner = DiskCleaner::new(Reach::Sandbox, setup.user, home, Protection::default(), ports);
+        let cleaner = DiskCleaner::new(reach, setup.user, home, Protection::default(), ports);
         Self { setup, trash, open_files, running, clock, runner, cleaner, roots }
     }
 

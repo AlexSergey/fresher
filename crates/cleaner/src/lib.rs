@@ -3,7 +3,8 @@
 //! [`DiskCleaner`] implements the core's `Cleaner` port: it checks each item of a plan right before it is acted on
 //! (the guard's eleven checks, failing closed), moves it to the Trash, empties it, deletes it permanently or runs its
 //! tool — only for a plan the user confirmed — and puts items back from the Trash. In a development build or a test it
-//! acts only below a sandbox folder ([`Reach`]). How it works and why: `docs/architecture/removal.md`.
+//! acts only below a sandbox folder; in a development build on the real Mac it checks and acts on nothing
+//! ([`Reach`]). How it works and why: `docs/architecture/removal.md`.
 
 #![forbid(unsafe_code)]
 
@@ -29,6 +30,8 @@ use fresher_core::{
 use crate::pipeline::Cleaning;
 
 pub use guard::Verified;
+#[cfg(debug_assertions)]
+pub use reach::DryRunToken;
 pub use reach::{Reach, RealDiskToken, SandboxError, SandboxFolder};
 
 /// The ports the cleaner acts through. The app gives the system's Trash to the cleaner and to nothing else.

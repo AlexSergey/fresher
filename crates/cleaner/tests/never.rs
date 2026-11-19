@@ -7,8 +7,9 @@
 //! execution removes only plan items or what is inside them, strictly inside the root, never protected, ignored, a
 //! hard-blocked folder or an ancestor of one; the outside folder and every protected subtree list exactly as before.
 //! The same holds for a permanent cleanup while a folder of the root is swapped for a link to the outside folder and
-//! back on another thread, and for the reach of one sandbox folder: nothing outside that folder ever goes. Failing
-//! seeds are kept in `never.proptest-regressions`.
+//! back on another thread, and for the reach of one sandbox folder: nothing outside that folder ever goes. A dry run
+//! (a development build on the real Mac, no marker anywhere) changes nothing at all and runs no tool. Failing seeds
+//! are kept in `never.proptest-regressions`.
 
 #[cfg(test)]
 mod model {
@@ -236,6 +237,20 @@ mod model {
             let user = fs::metadata(tree.root()).unwrap().uid();
             let reach = Reach::SandboxFolder(SandboxFolder::new(&path, user, &Protection::default()).unwrap());
             Self::within(tree, reach)
+        }
+
+        /// The bench whose cleaner checks the tree as the real disk and acts on nothing, with no valid sandbox marker
+        /// in the tree (the one the tree was built with is blanked: a wrong signature does not count) and the tool
+        /// allowed, so that every kind of item can reach its act.
+        #[cfg(debug_assertions)]
+        pub(crate) fn dry_run(tree: Tree) -> Self {
+            fs::write(tree.at(SCAN).join(SANDBOX_MARKER), b"").unwrap();
+            let mut bench = Self::within(tree, Reach::DryRun(fresher_cleaner::DryRunToken::new()));
+            let docker = fresher_core::Capability::Tool(ToolId::new("docker").unwrap());
+            bench.access = AccessStatus {
+                capabilities: vec![fresher_core::CapabilityState::new(docker, fresher_core::Access::Granted)],
+            };
+            bench
         }
 
         fn within(tree: Tree, reach: Reach) -> Self {
@@ -525,6 +540,32 @@ mod negative {
         }
     }
 
+    #[cfg(debug_assertions)]
+    proptest! {
+        /// A development build on the real Mac: whatever the tree, the plan and the method, every item passes or fails
+        /// its checks and nothing is moved, emptied, deleted or run.
+        #[test]
+        fn a_dry_run_changes_nothing_in_any_tree(entries in entries(), picks in picks(), permanent in any::<bool>()) {
+            let bench = Bench::dry_run(Tree::build(&entries));
+            let items = plan(&bench, &picks);
+            let before = bench.tree.listing();
+
+            for depth in [Depth::Quick, Depth::Full] {
+                bench.rehearse(&items, depth);
+            }
+            let method = if permanent { Method::Permanent } else { Method::Trash };
+            let done = bench.execute(items.clone(), method);
+
+            prop_assert_eq!(done.len(), items.len());
+            prop_assert_eq!(&bench.tree.listing(), &before, "a dry run changed the tree");
+            prop_assert!(bench.trash.moved().is_empty(), "a dry run moved something to the Trash");
+            prop_assert!(bench.runner.calls().is_empty(), "a dry run ran a tool");
+            for (item, done) in items.iter().zip(&done) {
+                prop_assert!(!acted(&done.outcome), "a dry run acted on {:?}: {:?}", item.action(), done.outcome);
+            }
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
@@ -572,6 +613,28 @@ mod positive {
         assert!(matches!(done[2].outcome, ItemOutcome::Skipped { .. }));
         assert!(!bench.tree.at("scan/a/x/f").exists());
         assert!(bench.tree.at("scan/home/y").is_dir());
+    }
+
+    /// The dry-run bench reaches the act: what the sandbox bench removes ends `DryRun`, the tool too.
+    #[test]
+    #[cfg(debug_assertions)]
+    fn the_dry_run_bench_ends_what_may_go_dry_run() {
+        let bench = Bench::dry_run(Tree::build(&[(1, vec![0], Leaf::File), (6, vec![1], Leaf::Folder)]));
+        let items = vec![
+            item(1, Action::Remove(bench.tree.at("scan/a/x/f"))),
+            item(2, Action::Empty(bench.tree.at("scan/home/y"))),
+            item(3, Action::Remove(bench.tree.at("scan/b/sys/local"))),
+            item(4, crate::model::tool()),
+        ];
+
+        let done = bench.execute(items, Method::Permanent);
+
+        let dry_run = ItemOutcome::Skipped { reason: SkipReason::DryRun };
+        assert_eq!(done[0].outcome, dry_run);
+        assert_eq!(done[1].outcome, dry_run);
+        assert!(matches!(done[2].outcome, ItemOutcome::Skipped { .. }) && done[2].outcome != dry_run);
+        assert_eq!(done[3].outcome, dry_run);
+        assert!(bench.tree.at("scan/a/x/f").exists() && bench.tree.at("scan/home/y/d").is_dir());
     }
 
     #[test]

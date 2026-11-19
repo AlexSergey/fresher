@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 // `npm run dev:sandbox -- <feature|path> [--real-trash]` (plan 007/02/04): starts the development build in sandbox mode.
 // A bare feature name means `sandbox/<feature>/`, generated first when it is missing; anything with a path separator is
-// a folder used as it is. The app itself checks the folder (app/tauri/src/sandbox.rs).
+// a folder used as it is. The app itself checks the folder (app/tauri/src/sandbox.rs). The run is recorded (`npm run dev`, plan 026).
 
 export type Command = {
   readonly args: readonly string[];
@@ -94,7 +94,7 @@ export const run = (commands: readonly Command[], spawn: Spawner): number => {
 const withoutUndefined = (env: Record<string, string | undefined>): Record<string, string> =>
   Object.fromEntries(Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined));
 
-const spawnReal: Spawner = (command) =>
+export const spawnReal: Spawner = (command) =>
   spawnSync(command.program, [...command.args], {
     env: withoutUndefined({ ...process.env, ...command.env }),
     stdio: 'inherit',

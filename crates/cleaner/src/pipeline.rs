@@ -110,7 +110,8 @@ pub(crate) fn rehearse(
 /// Acts on the confirmed plan's items one at a time, in plan order: the cancel token (once set, every remaining item
 /// is `NotReached`), the snapshot of open files taken again when `SNAPSHOT_AGE` has passed, every check with the
 /// folder walk, then the item's removal; `out` gets each item's end before the next one starts. A snapshot that cannot
-/// be taken skips every item from then on (`CheckFailed`): nothing is acted on without it.
+/// be taken skips every item from then on (`CheckFailed`): nothing is acted on without it. In a dry run every check
+/// still runs and every item that passes them ends `DryRun`: nothing is acted on.
 pub(crate) fn execute(
     cleaning: &Cleaning<'_>,
     plan: &ConfirmedPlan,
@@ -149,11 +150,15 @@ pub(crate) fn execute(
     if cancel.is_cancelled() { Ended::Cancelled } else { Ended::Completed }
 }
 
-/// One item: every check right before the act, then the removal its action and the plan's method call for.
+/// One item: every check right before the act, then the removal its action and the plan's method call for. A reach
+/// that does not act (the dry run) ends an item that passed every check `DryRun`, before any act: no tool runs,
+/// nothing is moved, emptied or deleted.
 fn act_on(item: &PlanItem, guard: &GuardContext<'_>, plan: &ConfirmedPlan, ports: &CleanerPorts) -> Removed {
     let act = plan.act();
     if let Action::Tool(command) = item.action() {
         return match verify_tool(command, guard) {
+            #[cfg(debug_assertions)]
+            Ok(()) if !guard.reach.acts() => Removed::ended(ItemOutcome::Skipped { reason: SkipReason::DryRun }),
             Ok(()) => run_tool(command, act, &*ports.commands),
             Err(reason) => Removed::ended(ItemOutcome::Skipped { reason }),
         };
@@ -163,6 +168,11 @@ fn act_on(item: &PlanItem, guard: &GuardContext<'_>, plan: &ConfirmedPlan, ports
         Err(Unverified::Skipped(reason)) => return Removed::ended(ItemOutcome::Skipped { reason }),
         Err(Unverified::Cancelled) => return Removed::ended(ItemOutcome::NotReached),
     };
+    #[cfg(debug_assertions)]
+    if !guard.reach.acts() {
+        drop(verified);
+        return Removed::ended(ItemOutcome::Skipped { reason: SkipReason::DryRun });
+    }
     let way = match plan.permanent() {
         Some(consent) => Way::Permanent(consent),
         None => Way::Trash(&*ports.trash),
@@ -180,9 +190,7 @@ mod tests {
 
     use crate::test_support::Rig;
 
-    fn rig() -> Rig {
-        Rig::new(
-            r#"
+    const TREE: &str = r#"
             [[file]]
             path = "home/a.bin"
             [[file]]
@@ -196,8 +204,27 @@ mod tests {
             [[symlink]]
             path = "home/cache/to-outside"
             target = "../../outside"
-            "#,
-        )
+            "#;
+
+    fn rig() -> Rig {
+        Rig::new(TREE)
+    }
+
+    /// The same tree with no sandbox marker, under a cleaner that checks and acts on nothing.
+    #[cfg(debug_assertions)]
+    fn dry_rig() -> Rig {
+        Rig::dry_run(TREE)
+    }
+
+    /// A file, a folder, a folder to empty and the tool: one of each act.
+    #[cfg(debug_assertions)]
+    fn every_act(rig: &Rig) -> Vec<Action> {
+        vec![
+            Action::Remove(rig.at("home/a.bin")),
+            Action::Remove(rig.at("home/cache")),
+            Action::Empty(rig.at("home/cache")),
+            tool(),
+        ]
     }
 
     fn tool() -> Action {
@@ -242,6 +269,93 @@ mod tests {
             assert_eq!(listing(rig.setup.tree.root()), before);
             assert_eq!(rig.trash.moved(), Vec::<std::path::PathBuf>::new());
             assert_eq!(rig.runner.calls(), Vec::<String>::new());
+        }
+
+        #[test]
+        #[cfg(debug_assertions)]
+        fn a_dry_run_moves_empties_deletes_and_runs_nothing() {
+            let rig = super::dry_rig();
+            let before = listing(rig.setup.tree.root());
+            let mut actions = super::every_act(&rig);
+            actions.push(Action::Remove(rig.at("home/cache/to-outside")));
+
+            for method in [Method::Trash, Method::Permanent] {
+                for item in rig.items(actions.clone()) {
+                    let (done, ended) = rig.execute(&[item], method, &CancelToken::new());
+
+                    assert_eq!(done[0].outcome, ItemOutcome::Skipped { reason: SkipReason::DryRun }, "{method:?}");
+                    assert_eq!(done[0].trashed, Vec::new());
+                    assert_eq!(ended, Ended::Completed);
+                }
+            }
+
+            assert_eq!(listing(rig.setup.tree.root()), before);
+            assert_eq!(rig.trash.moved(), Vec::<std::path::PathBuf>::new());
+            assert_eq!(rig.runner.calls(), Vec::<String>::new());
+        }
+
+        #[test]
+        #[cfg(debug_assertions)]
+        fn a_dry_run_still_skips_what_a_check_refuses() {
+            use fresher_core::{ToolCommand, ToolId};
+
+            let mut rig = super::dry_rig();
+            let forced =
+                ToolCommand::new(ToolId::new("docker").unwrap(), vec!["image".into(), "rm".into(), "--force".into()])
+                    .unwrap();
+            let items = rig.items(vec![
+                Action::Remove(rig.at("home/cache/to-outside/keep.txt")),
+                Action::Remove(rig.at("home/a.bin")),
+                Action::Remove(rig.at("home/b.bin")),
+                Action::Tool(forced),
+                Action::Remove(rig.at("home/c.bin")),
+            ]);
+            // Ignored and held open once the plan is made: each item passed its rehearsal.
+            rig.setup.protection = Protection::default().with_ignored(&[rig.at("home/a.bin")]).unwrap();
+            rig.open_files.hold(rig.at("home/b.bin"), "Preview");
+            let before = listing(rig.setup.tree.root());
+
+            let (done, _) = rig.execute(&items[..4], Method::Permanent, &CancelToken::new());
+            let home = vec![rig.at("home")];
+            let cx = fresher_core::CleanupContext { roots: &home, ..rig.cx() };
+            let plan = crate::test_support::confirmed(&rig.setup, &items[4..], Method::Permanent);
+            let mut outside = Vec::new();
+            rig.cleaner.execute(plan, &cx, &CancelToken::new(), &mut |item| outside.push(item.outcome));
+
+            let outcomes: Vec<_> = done.into_iter().map(|item| item.outcome).chain(outside).collect();
+            let skipped = |reason| ItemOutcome::Skipped { reason };
+            assert_eq!(
+                outcomes,
+                [
+                    skipped(SkipReason::ThroughLink),
+                    skipped(SkipReason::Ignored),
+                    skipped(SkipReason::InUse { app: "Preview".into() }),
+                    skipped(SkipReason::ForcedTool),
+                    // The root `c.bin` was planned under is no longer a scan root: removed since the plan was made.
+                    skipped(SkipReason::OutsideRoots),
+                ]
+            );
+            assert_eq!(listing(rig.setup.tree.root()), before);
+            assert_eq!(rig.runner.calls(), Vec::<String>::new());
+        }
+
+        #[test]
+        #[cfg(debug_assertions)]
+        fn a_cancelled_dry_run_leaves_the_rest_not_reached() {
+            let cancel = CancelToken::new();
+            let rig = super::dry_rig();
+            let items = rig.items(files(&rig));
+            let plan = crate::test_support::confirmed(&rig.setup, &items, Method::Trash);
+            let mut done = Vec::new();
+
+            let ended = rig.cleaner.execute(plan, &rig.cx(), &cancel, &mut |item| {
+                done.push(item.outcome);
+                cancel.cancel();
+            });
+
+            let dry_run = ItemOutcome::Skipped { reason: SkipReason::DryRun };
+            assert_eq!(done, [dry_run, ItemOutcome::NotReached, ItemOutcome::NotReached]);
+            assert_eq!(ended, Ended::Cancelled);
         }
 
         #[test]
@@ -533,7 +647,42 @@ mod tests {
         }
 
         #[test]
-        fn a_dry_run_reports_what_would_happen_with_the_folder_walk() {
+        #[cfg(debug_assertions)]
+        fn a_dry_run_rehearses_and_ends_every_item_dry_run_without_a_marker() {
+            let rig = super::dry_rig();
+            let roots = vec![rig.setup.tree.root().to_path_buf()];
+            let mut sandbox = super::dry_rig();
+            sandbox.cleaner.reach = crate::reach::Reach::Sandbox;
+            let actions = super::every_act(&rig);
+            let items: Vec<_> = (1..).zip(actions).map(|(id, action)| plan_item(id, action, 4096)).collect();
+
+            for depth in [Depth::Quick, Depth::Full] {
+                let rehearsed = rig.cleaner.rehearse(&roots, &items, &rig.cx(), depth);
+                assert!(rehearsed[..3].iter().all(|answer| matches!(answer, Rehearsal::Passed(Some(_)))), "{depth:?}");
+                assert_eq!(rehearsed[3], Rehearsal::Passed(None));
+            }
+            let sandboxed = sandbox.cleaner.rehearse(
+                &[sandbox.setup.tree.root().to_path_buf()],
+                &sandbox.items(super::every_act(&sandbox)),
+                &sandbox.cx(),
+                Depth::Full,
+            );
+            assert!(sandboxed.iter().all(|answer| *answer == Rehearsal::Skipped(SkipReason::NotInSandbox)));
+
+            let items = rig.items(super::every_act(&rig));
+            let (done, ended) = rig.execute(&items, Method::Trash, &CancelToken::new());
+
+            let seen: Vec<_> = done.iter().map(|item| (item.index, item.finding.get(), item.outcome.clone())).collect();
+            let dry_run = ItemOutcome::Skipped { reason: SkipReason::DryRun };
+            assert_eq!(
+                seen,
+                [(0, 1, dry_run.clone()), (1, 2, dry_run.clone()), (2, 3, dry_run.clone()), (3, 4, dry_run)]
+            );
+            assert_eq!(ended, Ended::Completed);
+        }
+
+        #[test]
+        fn a_full_rehearsal_reports_what_would_happen_with_the_folder_walk() {
             let rig = rig();
             let roots = vec![rig.setup.tree.root().to_path_buf()];
             let items = vec![plan_item(1, Action::Remove(rig.at("home/cache")), 4096)];

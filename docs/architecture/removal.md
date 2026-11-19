@@ -8,8 +8,8 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
 ## The crate and its one entry point
 
 - `DiskCleaner` implements the core's `Cleaner` port: `rehearse`, `execute`, `locate`, `put_back`. Nothing else of
-  the crate is public but its constructor's inputs (`Reach`, `RealDiskToken`, `CleanerPorts`) and the `Verified` type,
-  which only the guard can make.
+  the crate is public but its constructor's inputs (`Reach`, `RealDiskToken`, in debug builds `DryRunToken`,
+  `CleanerPorts`) and the `Verified` type, which only the guard can make.
 - `DiskCleaner::new(reach, user, home, protection, ports)`: the reach (below), the uid the app runs as, the home folder
   (a root written `~` or `~/…` is read under it), the system's protected places, and the ports it acts through
   (`Trash`, `OpenFiles`, `RunningApps`, `CommandRunner`, `Clock`). The app gives the system's Trash to the cleaner and
@@ -21,7 +21,8 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
 ## The flow
 
 1. **Rehearse** (`pipeline.rs`): the engine's plan builder asks for every check of every item (`Depth::Quick`, no
-   folder walk) and gets each item's identity or why it would be skipped. The dry run is the same with `Depth::Full`.
+   folder walk) and gets each item's identity or why it would be skipped. A full rehearsal is the same with
+   `Depth::Full`.
    A rehearsal holds an unconfirmed plan's items and no `Act`, so it cannot call a removal: the types say so.
 2. **Execute** (`pipeline.rs`): only a `ConfirmedPlan`, taken by value, so it runs once. Item by item in plan order,
    never in parallel: the cancel token (once set, every item left is `NotReached`), the snapshot of open files taken
@@ -31,14 +32,14 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
 
 ## Reach and the sandbox
 
-`Reach::RealDisk(RealDiskToken)` lets the cleaner act anywhere the other checks allow. `RealDiskToken::new` exists
-only under `cfg(not(debug_assertions))`, and `tests/reach.rs` fails when the token is named anywhere but its
-definition, the cleaner's re-export and `app/tauri/src/compose.rs`. Every debug build and every test is
-`Reach::Sandbox`: an item counts only when the scan root, or a folder between the root and the item (never the item
-itself), holds the sandbox marker `.fresher-sandbox` — a regular file of the user, opened through no link, whose first
-line is the core's `SANDBOX_SIGNATURE` — in a folder the system's protection does not refuse (never the home, a
-hard-blocked folder such as a mounted volume's root, or an ancestor of a protected place). A tool acts on the real
-system, so it never runs in the sandbox.
+`Reach::RealDisk(RealDiskToken)` lets the cleaner act anywhere the other checks allow. `RealDiskToken::new` exists only
+under `cfg(not(debug_assertions))`, and `tests/reach.rs` fails when the token is named anywhere but its definition, the
+cleaner's re-export and `app/tauri/src/compose.rs`; only a release build's composition makes it. A test is
+`Reach::Sandbox`, a sandbox folder (below) or the dry run (a development build on the real Mac answers "a dry run"): an item counts only when the scan root, or a folder between the root and
+the item (never the item itself), holds the sandbox marker `.fresher-sandbox` — a regular file of the user, opened
+through no link, whose first line is the core's `SANDBOX_SIGNATURE` — in a folder the system's protection does not
+refuse (never the home, a hard-blocked folder such as a mounted volume's root, or an ancestor of a protected place). A
+tool acts on the real system, so it never runs in the sandbox.
 
 The third form, `Reach::SandboxFolder(SandboxFolder)`, is sandbox mode (plan 007): one folder made by a sandbox
 generator. `SandboxFolder::new` takes the folder only when it is no link itself, made canonical, holds a valid marker of
@@ -49,6 +50,16 @@ with the sandbox home's (`Protection::joined`: a place either list refuses stays
 its own list's protected places). That joined list makes the sandbox's `home/` a whole folder, so the folder's marker,
 above it, would not count under `Reach::Sandbox`; `SandboxFolder` checks the folder against the real list once, when it
 is made. It never runs a tool, and it grants nothing a release build lacks.
+
+The fourth form, `Reach::DryRun(DryRunToken)`, exists in debug builds only: it is how far a development build outside a
+sandbox reaches. It admits what `RealDisk` admits (check 1), every later check runs on the real disk, and `act_on` then
+ends each item that passed them `SkipReason::DryRun` ("a dry run") before its act, for every action and method: nothing
+is moved, emptied or deleted, and no tool runs. Put back of an item in the Trash is refused `dry-run` before any check
+of its original path or any port. `DryRunToken::new` is made only by `app/tauri/src/compose.rs` and the cleaner's own
+tests (`tests/reach.rs` fails on any other place). Behind it the app gives such a build `DryRunTrash`
+(`app/tauri/src/dry_run.rs`), a Trash that refuses every call: the second wall. What a dry run cannot rehearse, since it
+stops before the act: an emptied folder's checks of its place and of each entry (they run inside the act), and the Trash
+port's own answers such as `NoTrash`.
 
 The app enters sandbox mode in its setup (`app/tauri/src/sandbox.rs`, compiled in debug builds only): a debug build
 started with `FRESHER_SANDBOX=<absolute path>` lives entirely in that folder — its `home/` is the home of the scan roots
@@ -64,14 +75,9 @@ the marker is opened with `O_NOFOLLOW_ANY` (no link in any component) and withou
 entry the folder lists (same volume and file id as its `lstat`), a regular file of the user, and start with the
 signature line. Off macOS no marker counts.
 
-**To clean in a development build**, use sandbox mode (`npm run dev:sandbox -- <feature>`, above). The manual way, in
-`npm run dev` without it: make a folder of its own (for example
-`~/fresher-sandbox`, never the home folder itself), write the signature as the first line of a `.fresher-sandbox`
-file in it, put the trial module's folders (`fresher-trial-cache`, `fresher-trial-kept`) right next to that file (the
-module claims them only there) and make the folder a scan root. The scan roots are read-only in the interface until
-plan 005, so they are set in `settings.json` (`core.scan.roots`) while the app is closed. Against any other folder the
-same build leaves every item out ("Development build: removal works only in a sandbox folder."); a marker without the
-signature counts as none.
+**To clean in a development build**, use sandbox mode (`npm run dev:sandbox -- <feature>`, above): it keeps the real
+removal inside the sandbox. `npm run dev` on the real Mac makes every cleanup a dry run, a folder with a valid marker
+included: each item is checked and ends "a dry run", and nothing on the disk changes.
 
 ## The guard
 
@@ -163,7 +169,8 @@ reachable from outside the crate (`remove/`).
 `locate` looks at each landed path without following a link: `InTrash` (its device, file id and kind), `Replaced`,
 `Gone`. `put_back` needs `InTrash`, then the original path must pass checks 1 to 4 today and its folder must open
 through no link on the root's volume; the `Trash` port moves it back and never replaces anything (`Occupied`,
-`NoParent`); afterwards the original path must hold the item.
+`NoParent`); afterwards the original path must hold the item. It is refused `dry-run` in a development build outside
+a sandbox.
 
 ## The threat model
 
@@ -177,7 +184,7 @@ through no link on the root's volume; the `Trash` port moves it back and never r
 | A file in use                                           | the open-files snapshot and the running apps by bundle id, both refreshed every 2 s; a failed listing of either acts on nothing | other users' processes' open files where no running app owns the item by name; withheld paths; a file opened or an app started after the snapshot | `guard/in_use.rs`, `guard/mod.rs`, `pipeline.rs` (refresh after two seconds, not before)                               |
 | Another volume inside a folder                          | the walk compares devices before any delete; the delete never descends into another volume     | nothing                                                                                  | `guard/walk.rs`, `paths.rs`, `pipeline.rs`, `remove/permanent.rs` (disk images mounted inside the fixture)             |
 | A wrong selection or rule                               | only a confirmed plan's items, re-checked; tools' arguments never forced                       | a harmless-looking wrong item, recoverable from the Trash                                | `never.rs`, `guard/mod.rs`                                                                                             |
-| A development accident                                  | `Reach::Sandbox` in every debug build and test; the token only in the release composition      | a release build run against the real disk, which is the product working                  | `reach.rs` and `tests/reach.rs`, `pipeline.rs` (no tool runs in the sandbox)                                            |
+| A development accident | `Reach::DryRun` in a development build (every check, no act; `DryRunTrash` behind it), `Reach::Sandbox` or a sandbox folder in tests and sandbox mode; the real-disk token only in the release composition | a release build run against the real disk, which is the product working | `reach.rs` and `tests/reach.rs`, `pipeline.rs` (a dry run acts on nothing), `tests/never.rs` (`a_dry_run_changes_nothing_in_any_tree`), `app/tauri/src/compose.rs` (`the_development_engine_moves_nothing_on_the_real_disk`) |
 | Reusing a check, or acting without a confirmation       | `Verified` consumed, not `Clone`, made only by the guard; removals private, each taking an `Act` | nothing                                                                                  | `tests/types.rs` with `tests/compile_fail/` (`verified_clone`, `verified_used_twice`, `verified_literal`, `remove_without_act`) |
 | A second deletion point                                 | the deletion lint (`std::fs`'s and `remove_at`), expected once; the system's calls in one file | nothing                                                                                  | `tests/deletion_point.rs`                                                                                              |
 

@@ -6,7 +6,7 @@
 ## What is postponed
 
 A debug panel in the development build (knobs for permissions, the clock and running apps) and a developer command
-line beyond the sandbox generator ("scan a folder", "explain a path", "print a dry run"). Plan 007 built the
+line beyond the sandbox generator ("scan a folder", "explain a path", "print a dry run"; the last is answered on the real Mac since plan 026: a development build's cleanups are dry runs, recorded and checked by `npm run dev-runs:check`; the panel and the rest of the command line stay postponed). Plan 007 built the
 generator, `npm run sandbox`, and `npm run sandbox:test`.
 
 ## Why

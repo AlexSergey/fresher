@@ -78,7 +78,11 @@ The app deletes files from a real person's disk. These rules hold in every versi
   strictly inside a folder that holds a valid marker, is no link (also named with a trailing slash) and is no
   protected or whole place of the real Mac, with the real and the sandbox protection lists joined, so it removes
   nothing the real list would keep. Tests: `crates/cleaner/tests/reach.rs`, `crates/core/src/cleanup/protection.rs`,
-  `app/tauri/tests/sandboxes.rs`.
+  `app/tauri/tests/sandboxes.rs`. A development build outside a sandbox has a fourth, the dry run (`Reach::DryRun`,
+  debug builds only): every check runs on the real disk and no item is acted on; it ends "a dry run". What it cannot
+  rehearse is what runs inside the act: an emptied folder's checks of its place and of each entry, and the Trash's own
+  answers such as `NoTrash`. Tests: `crates/cleaner/src/pipeline.rs`, `crates/cleaner/tests/never.rs`,
+  `app/tauri/src/compose.rs`.
 
 ## The user's own folders are hard-blocked
 

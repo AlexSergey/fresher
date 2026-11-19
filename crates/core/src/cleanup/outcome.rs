@@ -46,6 +46,8 @@ pub enum SkipReason {
     NotTheSubject,
     /// The tool's arguments ask it to force the removal.
     ForcedTool,
+    /// A development build on the real Mac: every check passed and nothing was done.
+    DryRun,
     /// A check could not tell (an error other than "not found"): fail closed.
     CheckFailed,
 }
@@ -72,6 +74,7 @@ pub enum SkipCode {
     Covered,
     NotTheSubject,
     ForcedTool,
+    DryRun,
     CheckFailed,
 }
 
@@ -96,6 +99,7 @@ impl SkipReason {
             Self::Covered => SkipCode::Covered,
             Self::NotTheSubject => SkipCode::NotTheSubject,
             Self::ForcedTool => SkipCode::ForcedTool,
+            Self::DryRun => SkipCode::DryRun,
             Self::CheckFailed => SkipCode::CheckFailed,
         }
     }
@@ -119,7 +123,7 @@ impl SkipReason {
 }
 
 impl SkipCode {
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::NotInSandbox,
         Self::OutsideRoots,
         Self::Protected,
@@ -138,6 +142,7 @@ impl SkipCode {
         Self::Covered,
         Self::NotTheSubject,
         Self::ForcedTool,
+        Self::DryRun,
         Self::CheckFailed,
     ];
 
@@ -182,6 +187,7 @@ impl SkipCode {
             Self::Covered => "covered",
             Self::NotTheSubject => "not-the-subject",
             Self::ForcedTool => "forced-tool",
+            Self::DryRun => "dry-run",
             Self::CheckFailed => "check-failed",
         }
     }
@@ -566,6 +572,7 @@ pub(crate) mod sample {
             | SkipReason::Covered
             | SkipReason::NotTheSubject
             | SkipReason::ForcedTool
+            | SkipReason::DryRun
             | SkipReason::CheckFailed => reason,
         };
         vec![
@@ -587,6 +594,7 @@ pub(crate) mod sample {
             sample(SkipReason::Covered),
             sample(SkipReason::NotTheSubject),
             sample(SkipReason::ForcedTool),
+            sample(SkipReason::DryRun),
             sample(SkipReason::CheckFailed),
         ]
     }
@@ -822,6 +830,16 @@ mod tests {
                     RecordedOutcome::NotReached,
                 ]
             );
+        }
+
+        #[test]
+        fn the_dry_run_skip_has_its_code_and_text_and_no_instruction() {
+            let reason = SkipReason::DryRun;
+
+            assert_eq!(reason.code(), SkipCode::DryRun);
+            assert_eq!(reason.text().key().as_str(), "core.cleanup.skip.dry-run");
+            assert_eq!(reason.how(), None);
+            assert_eq!(serde_json::to_value(&reason).unwrap(), json!({ "kind": "dry-run" }));
         }
 
         #[test]

@@ -15,6 +15,10 @@
 - **Why:** paths alone already reveal a lot about a person.
 - **Enforced by:** `fresher-store`, the only crate that touches the app's data folder (the app hands it the folder);
   the window runs `incognito`, so the webview writes no cookies, caches or storage to the disk (plan 002); review.
+- **Rule:** a development build started by `npm run dev` writes a record of each run (real paths of the Mac, never file
+  contents) to `NO_COMMIT/dev-runs/` of the repository, which git ignores; a release build has no such code.
+- **Enforced by:** `#[cfg(debug_assertions)]` on `app/tauri/src/dev_runs/`, the variable set only by `scripts/dev.ts`,
+  `.gitignore`, the tests of `compose.rs` (`a_release_build_ignores_the_dev_runs_variable`).
 
 ## Least permissions
 

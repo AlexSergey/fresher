@@ -695,7 +695,7 @@ export type LeftOut = { finding: FindingId, title: Text, reason: SkipReason, };
 /**
  * Why an item is left out of a plan or skipped by the cleaner: every check that can fail, each with its text.
  */
-export type SkipReason = { "kind": "not-in-sandbox" } | { "kind": "outside-roots" } | { "kind": "protected" } | { "kind": "whole-folder" } | { "kind": "ignored" } | { "kind": "through-link" } | { "kind": "vanished" } | { "kind": "other-volume" } | { "kind": "replaced" } | { "kind": "kind-changed" } | { "kind": "not-removable", removability: Removability, } | { "kind": "missing-capability", capability: Capability, } | { "kind": "in-use", app: string, } | { "kind": "grown" } | { "kind": "no-trash" } | { "kind": "covered" } | { "kind": "not-the-subject" } | { "kind": "forced-tool" } | { "kind": "check-failed" };
+export type SkipReason = { "kind": "not-in-sandbox" } | { "kind": "outside-roots" } | { "kind": "protected" } | { "kind": "whole-folder" } | { "kind": "ignored" } | { "kind": "through-link" } | { "kind": "vanished" } | { "kind": "other-volume" } | { "kind": "replaced" } | { "kind": "kind-changed" } | { "kind": "not-removable", removability: Removability, } | { "kind": "missing-capability", capability: Capability, } | { "kind": "in-use", app: string, } | { "kind": "grown" } | { "kind": "no-trash" } | { "kind": "covered" } | { "kind": "not-the-subject" } | { "kind": "forced-tool" } | { "kind": "dry-run" } | { "kind": "check-failed" };
 
 /**
  * What the confirmation showed the user, sent back by the UI with the plan's id: the count, the allocated bytes of
@@ -817,7 +817,7 @@ export type RecordedOutcome = { "kind": "moved" } | { "kind": "emptied", moved: 
 /**
  * A skip reason without its details: what the journal keeps and the history shows.
  */
-export type SkipCode = "not-in-sandbox" | "outside-roots" | "protected" | "whole-folder" | "ignored" | "through-link" | "vanished" | "other-volume" | "replaced" | "kind-changed" | "not-removable" | "missing-capability" | "in-use" | "grown" | "no-trash" | "covered" | "not-the-subject" | "forced-tool" | "check-failed";
+export type SkipCode = "not-in-sandbox" | "outside-roots" | "protected" | "whole-folder" | "ignored" | "through-link" | "vanished" | "other-volume" | "replaced" | "kind-changed" | "not-removable" | "missing-capability" | "in-use" | "grown" | "no-trash" | "covered" | "not-the-subject" | "forced-tool" | "dry-run" | "check-failed";
 
 /**
  * Where an item moved to the Trash is now.

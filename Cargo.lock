@@ -1245,6 +1245,7 @@ dependencies = [
  "fresher-store",
  "fresher-system",
  "fresher-testing",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",

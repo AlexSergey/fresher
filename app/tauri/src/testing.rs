@@ -8,12 +8,12 @@ use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use fresher_cleaner::CleanerPorts;
+use fresher_cleaner::{CleanerPorts, Reach};
 use fresher_core::{
     AccessProbe, ByteSize, CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock,
     CommandRunner, Confirmation, ConfirmedPlan, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match, PlanItem,
     PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Subtree, SubtreeQuery, Timestamp,
-    TrashState, TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
+    Trash, TrashState, TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports};
 use fresher_store::{DataFolder, FileSettingsStore};
@@ -123,6 +123,16 @@ pub(crate) struct Shell {
     folder: TempDir,
 }
 
+/// The Trash a shell's cleaner is given.
+#[derive(Clone, Copy)]
+enum ShellTrash {
+    /// A fake Trash in the shell's own folder ([`Shell::trash`]).
+    Fake,
+    /// The development build's Trash, which refuses every call.
+    #[cfg(debug_assertions)]
+    Refusing,
+}
+
 impl Shell {
     /// The app's modules with a walk that finds nothing.
     pub(crate) fn new() -> Self {
@@ -131,42 +141,69 @@ impl Shell {
 
     /// As `new`, with `access` as the system's permissions in place of `UnknownAccess`.
     pub(crate) fn with_access(access: Arc<dyn AccessProbe>) -> Self {
-        Self::with_walk(Arc::new(NoWalk), None, false, access)
+        Self::with_walk(Arc::new(NoWalk), None, false, access, Reach::Sandbox, ShellTrash::Fake)
     }
 
     /// The app's modules with a scan that runs until it is cancelled.
     pub(crate) fn held() -> Self {
-        Self::with_walk(Arc::new(HeldWalk), None, false, Arc::new(UnknownAccess))
+        Self::with_walk(Arc::new(HeldWalk), None, false, Arc::new(UnknownAccess), Reach::Sandbox, ShellTrash::Fake)
     }
 
     /// The app's modules scanning `home` (a fixture tree, the only scan root) with the reference walk; a cleanup goes
-    /// through the composition's cleaner and the journal, with a Trash in the shell's own folder.
+    /// through the composition's cleaner reaching only below a sandbox folder, and the journal, with a Trash in the
+    /// shell's own folder.
     pub(crate) fn cleaning(home: &Path) -> Self {
-        Self::scanning(home, false)
+        Self::scanning(home, false, Reach::Sandbox, ShellTrash::Fake)
     }
 
     /// As `cleaning`, with each cleanup held until it is cancelled.
     pub(crate) fn cleaning_held(home: &Path) -> Self {
-        Self::scanning(home, true)
+        Self::scanning(home, true, Reach::Sandbox, ShellTrash::Fake)
     }
 
-    fn scanning(home: &Path, held: bool) -> Self {
-        let shell = Self::with_walk(Arc::new(NaiveWalk::new(home)), Some(home), held, Arc::new(UnknownAccess));
+    /// As `cleaning`, with the reach of a development build (the dry run) and the fake Trash, so a test can see it
+    /// stays empty.
+    #[cfg(debug_assertions)]
+    pub(crate) fn dry_run(home: &Path) -> Self {
+        Self::scanning(home, false, crate::compose::reach(), ShellTrash::Fake)
+    }
+
+    /// As `cleaning`, with the development build's Trash, which refuses: the second wall alone.
+    #[cfg(debug_assertions)]
+    pub(crate) fn refusing_trash(home: &Path) -> Self {
+        Self::scanning(home, false, Reach::Sandbox, ShellTrash::Refusing)
+    }
+
+    fn scanning(home: &Path, held: bool, reach: Reach, trash: ShellTrash) -> Self {
+        let walk = Arc::new(NaiveWalk::new(home));
+        let shell = Self::with_walk(walk, Some(home), held, Arc::new(UnknownAccess), reach, trash);
         // The reference walk reads its roots as they are written: the default `~` is given as the home itself.
         let roots = SettingValue::Folders(vec![home.to_path_buf()]);
         shell.engine().update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
         shell
     }
 
-    fn with_walk(walk: Arc<dyn DiskWalk>, home: Option<&Path>, held: bool, access: Arc<dyn AccessProbe>) -> Self {
+    fn with_walk(
+        walk: Arc<dyn DiskWalk>,
+        home: Option<&Path>,
+        held: bool,
+        access: Arc<dyn AccessProbe>,
+        reach: Reach,
+        trash: ShellTrash,
+    ) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let data = DataFolder::open(folder.path().join("data")).unwrap();
         let home = home.map_or_else(|| folder.path().join("home"), Path::to_path_buf);
         fs::create_dir_all(&home).unwrap();
         let clock: Arc<dyn Clock> = Arc::new(FakeClock::at(1_700_000_000));
         let commands: Arc<dyn CommandRunner> = Arc::new(FakeCommandRunner::default());
+        let trash: Arc<dyn Trash> = match trash {
+            ShellTrash::Fake => Arc::new(FakeTrash::new(folder.path().join("trash"))),
+            #[cfg(debug_assertions)]
+            ShellTrash::Refusing => Arc::new(crate::dry_run::DryRunTrash),
+        };
         let cleaner = CleanerPorts {
-            trash: Arc::new(FakeTrash::new(folder.path().join("trash"))),
+            trash,
             open_files: Arc::new(FakeOpenFiles::default()),
             running: Arc::new(fresher_testing::FakeRunningApps::default()),
             commands: Arc::clone(&commands),
@@ -176,7 +213,7 @@ impl Shell {
         let disk = FakeVolumes::disk("Test disk", ByteSize::new(1_000), ByteSize::new(400), ByteSize::new(600));
         let volumes = Arc::new(FakeVolumes::default().with_space(&home, disk));
         // The test's home lies in the user's temporary folder: the real Mac's list carves it out, as the app's does.
-        let mut cleanup = cleanup(&home, user_temp().as_deref(), &data, cleaner, volumes).unwrap();
+        let mut cleanup = cleanup(&home, user_temp().as_deref(), &data, cleaner, volumes, reach).unwrap();
         if held {
             cleanup = CleanupPorts { cleaner: Arc::new(HeldCleaner(cleanup.cleaner)), ..cleanup };
         }
@@ -283,4 +320,26 @@ pub(crate) fn echo(view: &CleanupPlanView) -> Confirmation {
     let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
                        "highest": summary.highest, "method": "trash" });
     serde_json::from_value(echo).unwrap()
+}
+
+/// Every entry below `root`, sorted, with the length of each file (`None` for a folder): what a test compares before
+/// and after a cleanup that must change nothing.
+#[cfg(debug_assertions)]
+pub(crate) fn listing(root: &Path) -> Vec<(PathBuf, Option<u64>)> {
+    let mut entries = Vec::new();
+    let mut folders = vec![root.to_path_buf()];
+    while let Some(folder) = folders.pop() {
+        for entry in fs::read_dir(&folder).unwrap() {
+            let path = entry.unwrap().path();
+            let metadata = fs::symlink_metadata(&path).unwrap();
+            if metadata.is_dir() {
+                folders.push(path.clone());
+                entries.push((path, None));
+            } else {
+                entries.push((path, Some(metadata.len())));
+            }
+        }
+    }
+    entries.sort();
+    entries
 }

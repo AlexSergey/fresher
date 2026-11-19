@@ -22,3 +22,6 @@ would carry it.
 3. No file contents ever; the home folder shortened to `~` in anything written; a test that a written line holds no
    path outside `~`.
 4. The scan's phase timings as one typed record, shown with the scan's result.
+5. Plan 026 built a development-only record (`app/tauri/src/dev_runs/`): a new file per run never overwritten, an
+   append-only event file, an atomic snapshot, a core text in English. The opt-in log may reuse that writer; its privacy
+   decisions (the home shortened to `~`, no path outside it, the location) stay this item's.

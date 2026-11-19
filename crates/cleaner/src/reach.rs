@@ -1,5 +1,6 @@
 //! Check 1 of the guard: how far the cleaner reaches. A development build or a test acts only below a sandbox
-//! folder; the real disk needs a token that only a release build can make.
+//! folder; the real disk needs a token that only a release build can make. The fourth reach, the dry run, exists
+//! only in a development build: it admits what the real disk admits and acts on nothing.
 
 use std::ffi::OsString;
 use std::fs;
@@ -15,6 +16,9 @@ pub enum Reach {
     Sandbox,
     /// Only strictly inside one sandbox folder, checked when it was made: a development build in sandbox mode.
     SandboxFolder(SandboxFolder),
+    /// Anywhere the other checks allow, acting on nothing: a development build on the real Mac.
+    #[cfg(debug_assertions)]
+    DryRun(DryRunToken),
     /// Anywhere the other checks allow: the release app.
     RealDisk(RealDiskToken),
 }
@@ -27,6 +31,21 @@ pub struct RealDiskToken(());
 impl RealDiskToken {
     /// The token, in a release build only.
     #[cfg(not(debug_assertions))]
+    #[expect(clippy::new_without_default, reason = "a `Default` would be one more way to make the token")]
+    pub const fn new() -> Self {
+        Self(())
+    }
+}
+
+/// The licence to check the real disk without acting on it. Only a debug build can make one, and only the app's
+/// composition and the cleaner's tests name it (checked by `tests/reach.rs`).
+#[cfg(debug_assertions)]
+#[derive(Debug)]
+pub struct DryRunToken(());
+
+#[cfg(debug_assertions)]
+impl DryRunToken {
+    /// The token, in a debug build only.
     #[expect(clippy::new_without_default, reason = "a `Default` would be one more way to make the token")]
     pub const fn new() -> Self {
         Self(())
@@ -102,6 +121,8 @@ impl Reach {
     pub(crate) fn admits(&self, root: &Path, relative: &[OsString], user: u32, protection: &Protection) -> bool {
         match self {
             Self::RealDisk(_) => true,
+            #[cfg(debug_assertions)]
+            Self::DryRun(_) => true,
             Self::Sandbox => sandbox_folders(root, relative).any(|folder| holds_marker(&folder, user, protection)),
             Self::SandboxFolder(folder) => folder.admits(root, relative),
         }
@@ -109,12 +130,32 @@ impl Reach {
 
     /// Check 1 for a tool's item, which has no path: a tool acts on the real system, so never in the sandbox.
     pub(crate) const fn admits_tools(&self) -> bool {
-        matches!(self, Self::RealDisk(_))
+        match self {
+            Self::RealDisk(_) => true,
+            #[cfg(debug_assertions)]
+            Self::DryRun(_) => true,
+            Self::Sandbox | Self::SandboxFolder(_) => false,
+        }
     }
 
     /// Check 1 for a path the roots could not place: only the real disk lets it reach the later checks.
     pub(crate) const fn admits_unplaced(&self) -> bool {
-        matches!(self, Self::RealDisk(_))
+        match self {
+            Self::RealDisk(_) => true,
+            #[cfg(debug_assertions)]
+            Self::DryRun(_) => true,
+            Self::Sandbox | Self::SandboxFolder(_) => false,
+        }
+    }
+
+    /// Whether the cleaner makes the act once every check passed: never in a dry run. A release build has no dry run,
+    /// so neither this question nor the branches that ask it.
+    #[cfg(debug_assertions)]
+    pub(crate) const fn acts(&self) -> bool {
+        match self {
+            Self::DryRun(_) => false,
+            Self::Sandbox | Self::SandboxFolder(_) | Self::RealDisk(_) => true,
+        }
     }
 }
 
@@ -379,6 +420,16 @@ mod tests {
         }
 
         #[test]
+        #[cfg(debug_assertions)]
+        fn the_dry_run_reach_never_acts() {
+            let tree = boxed();
+
+            assert!(!Reach::DryRun(crate::reach::DryRunToken::new()).acts());
+            assert!(Reach::Sandbox.acts());
+            assert!(folder_reach(&tree).acts());
+        }
+
+        #[test]
         fn a_tool_is_never_admitted() {
             let tree = boxed();
 
@@ -433,6 +484,18 @@ mod tests {
             assert!(admits_in(&reach, &tree, "", "box/home/cache/a.bin"));
             assert!(admits_in(&reach, &tree, "box/home", "cache"));
             assert!(admits_in(&reach, &tree, "box", "home"));
+        }
+
+        #[test]
+        #[cfg(debug_assertions)]
+        fn the_dry_run_reach_admits_paths_tools_and_unplaced_paths_without_a_marker() {
+            let tree = tree();
+            let reach = Reach::DryRun(crate::reach::DryRunToken::new());
+
+            assert!(admits_in(&reach, &tree, "", "home/cache/a.bin"));
+            assert!(admits_in(&reach, &tree, "home", "cache"));
+            assert!(reach.admits_tools());
+            assert!(reach.admits_unplaced());
         }
 
         /// Through the guard, as sandbox mode composes it: the scan root is the sandbox's home, which the joined list

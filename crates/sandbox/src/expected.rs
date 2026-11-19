@@ -209,6 +209,7 @@ const fn code_name(code: SkipCode) -> &'static str {
         SkipCode::Covered => "covered",
         SkipCode::NotTheSubject => "not-the-subject",
         SkipCode::ForcedTool => "forced-tool",
+        SkipCode::DryRun => "dry-run",
         SkipCode::CheckFailed => "check-failed",
     }
 }
@@ -307,6 +308,7 @@ reason = "in-use"
                 SkipCode::Covered,
                 SkipCode::NotTheSubject,
                 SkipCode::ForcedTool,
+                SkipCode::DryRun,
                 SkipCode::CheckFailed,
             ] {
                 let text = format!("reason = \"{}\"", crate::expected::code_name(code));

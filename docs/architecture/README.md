@@ -79,9 +79,10 @@ Rules of the layout:
   at its single deletion point (enforced by Clippy's `disallowed-methods`; [`removal.md`](./removal.md)). The app
   gives the system's `Trash` to the cleaner and to nothing else; the engine reaches the cleaner only through the
   `Cleaner` port, with a confirmed plan.
-- A development build and every test get `Reach::Sandbox`: the cleaner acts only below a folder that holds the
-  sandbox marker; only a release build's composition makes the token for the real disk
-  ([`removal.md`](./removal.md), "Reach and the sandbox").
+- A test gets `Reach::Sandbox` (or a sandbox folder): the cleaner acts only below a folder that holds the sandbox
+  marker. A development build outside a sandbox gets `Reach::DryRun` — every check on the real disk, no act, each item
+  ends "a dry run" — and `DryRunTrash`, a Trash that refuses every call. Only a release build's composition makes the
+  token for the real disk ([`removal.md`](./removal.md), "Reach and the sandbox").
 - **Sandbox mode** (plan [007](../plans/007-safe-development/readme.md), a debug build only, `app/tauri/src/sandbox.rs`):
   `FRESHER_SANDBOX=<folder>` makes the composition (`sandbox_engine`) live entirely in a folder the sandbox generator
   made: its `home/` is `~` and the known folders (its `private/var/folders/xx/sandbox/T` and `private/tmp` the two
@@ -101,6 +102,11 @@ Rules of the layout:
   shows a banner naming the sandbox and listing what its world simulates (`Build::Sandbox.simulated`, a list of `Simulated`: running apps always, Spotlight,
   access and installs when the world states them: "Simulated: open apps, Spotlight, access, installs."; a development build outside one: "nothing
   can be removed outside a sandbox"; nothing in a release build). A release build has no such branch.
+- **The development run record** (plan [026](../plans/026-dev-run-record/readme.md), debug builds only,
+  `app/tauri/src/dev_runs/`): when `FRESHER_DEV_RUNS` names a folder (set by `npm run dev`), the composition begins a
+  run; the app subscribes it to the engine before the last scan is restored and wraps the generated invoke handler, so
+  every action the UI sends and every event but the scan's progress go to an append-only `.events.jsonl`, and a
+  snapshot `.json` is rewritten after each scan and cleanup. The core, the engine and the modules know nothing of it.
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
 - **The system's facts** (plan [009](../plans/009-system-knowledge/readme.md)): the engine's `Ports.system`
   (`SystemPorts`: known folders, installed apps, running apps, install records) becomes one lazy `SystemFacts` per scan, handed to
@@ -119,7 +125,7 @@ Rules of the layout:
 | Port             | Implemented by                                                                                                  | Fake for tests                                              |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | `Clock`          | `fresher-system`'s `SystemClock`; in sandbox mode its `StartedClock`, from the moment in `world.toml`           | `FakeClock`                                                 |
-| `Trash`          | `fresher-macos`'s `MacTrash` (the system's Trash call; put back by `renamex_np`)                                | `FakeTrash` (a Trash folder inside the fixture)             |
+| `Trash`          | `fresher-macos`'s `MacTrash` (the system's Trash call; put back by `renamex_np`); in a development build outside a sandbox `DryRunTrash` (refuses every call) | `FakeTrash` (a Trash folder inside the fixture)             |
 | `OpenFiles`      | `fresher-macos`'s `MacOpenFiles` (the user's own processes, `libproc`)                                          | `FakeOpenFiles`                                             |
 | `CommandRunner`  | `fresher-system`'s `ProcessCommandRunner` (`std::process`, no shell; a 60 s timeout; the caller's cancel token kills it) | `FakeCommandRunner`                                         |
 | `KnownFolders`   | `fresher-system`'s `MacKnownFolders` (the macOS layout of a home folder; opens nothing)                         | `FakeKnownFolders` (`home_layout` of a fixture root)        |
@@ -148,7 +154,8 @@ No database: the app keeps its own state in small plain files, with nothing to i
   passes it to `fresher-store` (`DataFolder::open`); the store never looks it up itself.
   A development build (`npm run dev`) runs with `app/tauri/tauri.dev.conf.json`: the identifier
   `io.github.alexsergey.fresher.dev`, so its data folder, single-instance lock and permission grants are separate; a
-  debug build with the release identifier refuses to start.
+  debug build with the release identifier refuses to start, and so does a build without debug assertions with the
+  development identifier (it would really remove and record nothing).
 - **`settings.json`**: `{ "format": "settings", "version": 1, "values": { "<key>": <value>, … } }`. Values are checked
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,

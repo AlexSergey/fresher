@@ -27,7 +27,8 @@ fn state(item: &TrashedItem) -> TrashState {
 
 /// Moves one item back: it must still be in the Trash; its original path must be inside a current root, in reach,
 /// not protected nor ignored, and its folder must open through no link on the root's volume; then the `Trash` port
-/// moves it, never replacing anything. Afterwards the original path must hold the item.
+/// moves it, never replacing anything. Afterwards the original path must hold the item. A reach that does not act
+/// (the dry run) refuses every item (`DryRun`) before any other check or port is called.
 pub(crate) fn put_back(cleaning: &Cleaning<'_>, item: &TrashedItem, cx: &CleanupContext<'_>) -> PutBackOutcome {
     match state(item) {
         TrashState::InTrash => {}
@@ -35,6 +36,10 @@ pub(crate) fn put_back(cleaning: &Cleaning<'_>, item: &TrashedItem, cx: &Cleanup
         TrashState::Replaced => return PutBackOutcome::Replaced,
     }
     let refused = |reason: SkipReason| PutBackOutcome::Refused { reason: reason.code() };
+    #[cfg(debug_assertions)]
+    if !cleaning.reach.acts() {
+        return refused(SkipReason::DryRun);
+    }
     let roots = cleaning.roots(cx.roots, cx.roots);
     let placed = match roots.place(&item.original) {
         Ok(placed) => placed,
@@ -75,17 +80,17 @@ mod tests {
 
     use crate::test_support::Rig;
 
-    fn rig() -> Rig {
-        Rig::new(
-            r#"
+    const TREE: &str = r#"
             [[file]]
             path = "home/cache/a.bin"
             [[file]]
             path = "home/cache/b.bin"
             [[dir]]
             path = "elsewhere"
-            "#,
-        )
+            "#;
+
+    fn rig() -> Rig {
+        Rig::new(TREE)
     }
 
     /// Moves `relative` of the rig to the Trash with a confirmed plan, and gives what was journalled.
@@ -194,6 +199,26 @@ mod tests {
             rig.setup.protection = Protection::default().with_ignored(&[rig.at("home/cache")]).unwrap();
 
             assert_eq!(rig.cleaner.put_back(&item, &rig.cx()), PutBackOutcome::Refused { reason: SkipCode::Ignored });
+        }
+
+        #[test]
+        #[cfg(debug_assertions)]
+        fn a_dry_run_puts_nothing_back() {
+            use fresher_core::{Trash as _, TrashedItem};
+
+            let rig = crate::test_support::Rig::dry_run(super::TREE);
+            let original = rig.at("home/cache/a.bin");
+            let held = fs::File::open(&original).unwrap();
+            let landed = rig.trash.move_to_trash(&original, &held).unwrap().at;
+            let identity = crate::guard::identity::of(&fs::symlink_metadata(&landed).unwrap());
+            let trashed = TrashedItem { original: original.clone(), landed: landed.clone(), identity };
+
+            let outcome = rig.cleaner.put_back(&trashed, &rig.cx());
+
+            assert_eq!(outcome, PutBackOutcome::Refused { reason: SkipCode::DryRun });
+            assert_eq!(rig.cleaner.locate(std::slice::from_ref(&trashed)), [TrashState::InTrash]);
+            assert!(landed.exists());
+            assert!(!original.exists());
         }
 
         #[test]

@@ -601,17 +601,36 @@ on when not asked, skipped when denied); the real home's places stay avoided wha
 
 `npm run dev:sandbox -- <feature|path> [--real-trash]` (`scripts/sandbox-dev.ts`) generates `sandbox/<feature>/` when it
 is missing (a path with a separator is used as it is) and starts the development build (`npm run dev`) with
-`FRESHER_SANDBOX` set to it. The app then lives entirely in the sandbox
+`FRESHER_SANDBOX` set to it; the run is recorded as `sandbox-<name>` (below). The app then lives entirely in the sandbox
 ([`architecture/removal.md`](./architecture/removal.md), "Reach and the sandbox"): the scan, the settings, the history
 and the Trash are the sandbox's, and the cleaner reaches only inside it; the walk's reader reports the facts of
 `world.toml`'s `[[entry]]` lines instead of the disk's. `--real-trash` moves items into the system's
 Trash instead of the sandbox's `home/.Trash`. A banner names the sandbox. A development build always runs as
 `io.github.alexsergey.fresher.dev` (`npm run dev` adds `app/tauri/tauri.dev.conf.json`; a debug build with the release
-identifier refuses to start), so its data and permission grants are apart from the release's. `npm run dev:sandbox` and
-`npm run dev` share that identifier, so single-instance hands a sandbox launch to a development window that is already
+identifier refuses to start, and so does a build without debug assertions with the development one), so its data and
+permission grants are apart from the release's. `npm run dev:sandbox` and `npm run dev` share that identifier, so single-instance hands a sandbox launch to a development window that is already
 running: that window keeps its own mode (its banner, or the lack of one, shows which) and the log warns; quit it first.
 Before a plan that adds or changes a module or a category is done, its finish runs `npm run dev:sandbox -- <feature>`
 and walks `EXPECTED.md` by hand.
+
+### The development run record
+
+`npm run dev` (`scripts/dev.ts`) starts the development build with `FRESHER_DEV_RUNS` (`NO_COMMIT/dev-runs/` of the
+repository), `FRESHER_BUILD_COMMIT` and `FRESHER_BUILD_DIRTY` set, and takes no argument. Each run writes a pair named
+with the start, the commit (`-dirty` when the tree has changes) and the mode (`sandbox-<name>` for `npm run
+dev:sandbox`): `.events.jsonl` (append-only) and `.json` (the snapshot, rewritten atomically after each scan and
+cleanup). The shape is in [`plans/026-dev-run-record/00-design.md`](./plans/026-dev-run-record/00-design.md), section
+2.5. A record is never overwritten (a collision gets `-2`, `-3`, ...). Only debug builds have it; a bare
+`tauri dev` and every test write nothing. `npm run dev` takes no argument; the bare `npm run tauri` script still
+forwards anything, but a build without debug assertions (`tauri dev --release`, or debug assertions turned off) that
+runs with the development identifier refuses to start, just as a debug build with the release identifier does
+(`app/tauri/src/identity.rs`). A development build on the real Mac makes every cleanup
+a dry run ([`architecture/removal.md`](./architecture/removal.md)).
+
+`npm run dev-runs:check -- <record.json>` (`scripts/dev-runs-check.ts`) checks every finding and every cleanup item of a
+record against the disk, read-only, and writes `<record>.check.md` beside it (never over an older report: `-2`, `-3`,
+...). The agent runs it on the record the user hands over; the list of what it answers is in
+[`manual-testing.md`](./manual-testing.md) section 2.0.
 
 ## Commands
 
@@ -627,7 +646,9 @@ and walks `EXPECTED.md` by hand.
 | `npm run test:e2e:ui`          | Playwright (needs `npx playwright install webkit chromium` once)                      |
 | `npm run bench`                | the scan benches on a generated tree, by hand ("Performance")                         |
 | `npm run sandbox -- <feature>` | writes the feature's case file into `sandbox/<feature>/` ("Sandboxes")                 |
+| `npm run dev`                  | the development build on the real Mac, recorded; every cleanup a dry run              |
 | `npm run dev:sandbox -- <feature>` | the development build in sandbox mode on `sandbox/<feature>/` (`--real-trash`) |
+| `npm run dev-runs:check -- <record.json>` | checks a development run record against the disk, writes `<record>.check.md` |
 | `npm run sandbox:test`         | the autotest of every case file of `fixtures/sandboxes/` ("Sandboxes")                |
 | `npm run build:e2e -w app/ui`  | the app and the gallery into `app/ui/dist-e2e/` (the e2e suite builds it itself)      |
 | `npm run test:perf -w app/ui`  | the performance spec, headed, by hand on a quiet Mac                                  |

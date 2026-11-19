@@ -22,7 +22,7 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `miniz_oxide`                  | 0.9.1   | MIT OR Zlib OR Apache-2.0 | scanner, store                                                                      |
 | `objc2`                        | 0.6.5   | MIT                       | macos                                                                               |
 | `objc2-foundation`             | 0.3.2   | MIT                       | macos                                                                               |
-| `serde`                        | 1.0.229 | MIT OR Apache-2.0         | core, e2e, module-app-leftovers, module-dev-caches, module-downloads, module-jetbrains, module-stale-projects, rules, sandbox, store, testing |
+| `serde`                        | 1.0.229 | MIT OR Apache-2.0         | app, core, e2e, module-app-leftovers, module-dev-caches, module-downloads, module-jetbrains, module-stale-projects, rules, sandbox, store, testing |
 | `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-app-leftovers, module-demo, module-dev-caches, module-downloads, module-jetbrains, module-stale-projects, module-temp, store, testing |
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
@@ -59,7 +59,8 @@ Never shipped: they build, test and check the code. `fresher-e2e` and `fresher-t
 `fresher-testing` and `fresher-sandbox` are also normal dependencies of `fresher-app`, used by its sandbox mode in
 debug builds only (`docs/hacks/README.md`, "The demo module linked in release builds"). As normal dependencies they
 bring their own (`tempfile`, `toml`, `libc`, `serde_json`) into the release build's dependency graph, though the code
-that uses them is compiled out of it.
+that uses them is compiled out of it. The app now names `serde`, `serde_json` and `tempfile` itself too, for the
+development run record (`app/tauri/src/dev_runs/`), compiled in debug builds only.
 
 ### Rust crates
 

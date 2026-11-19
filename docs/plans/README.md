@@ -70,4 +70,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 019 | [Uninstalled app leftovers](./019-uninstalled-app-leftovers/readme.md) | ✅ approved  | 0.1.0   | core, scanner, macos, system, engine, testing, modules, sandbox, e2e, app, app/ui, docs |
 | 020 | [Downloads and installers](./020-downloads/readme.md)               | 🔨 in progress | 0.1.0   | core, scanner, system, engine, testing, modules, sandbox, e2e, app, app/ui, docs |
 | 021 | [Stale projects](./021-stale-projects/readme.md)                    | 🔨 in progress | 0.1.0   | core, engine, scanner, modules, testing, sandbox, e2e, app, app/ui, docs |
-| 026 | [The development run record](./026-dev-run-record/readme.md)       | ✅ approved    | 0.1.0   | app, app/tauri, core, engine, cleaner, testing, scripts, docs |
+| 026 | [The development run record](./026-dev-run-record/readme.md)       | 🔨 in progress | 0.1.0   | app, app/tauri, app/ui, core, cleaner, store, scripts, docs |

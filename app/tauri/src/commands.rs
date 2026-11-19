@@ -183,6 +183,14 @@ mod tests {
         serde_json::from_value(json!({ "offset": 0, "limit": 10 })).unwrap()
     }
 
+    /// Both trial categories, picked whole: the folder to move to the Trash and the one to empty.
+    #[cfg(debug_assertions)]
+    fn both_trial_categories() -> fresher_core::CleanupSelection {
+        let selection = json!({ "findings": [], "categories": [
+            { "category": "trial.caches", "except": [] }, { "category": "trial.kept", "except": [] } ] });
+        serde_json::from_value(selection).unwrap()
+    }
+
     mod negative {
         use std::sync::Arc;
 
@@ -192,6 +200,8 @@ mod tests {
         };
         use fresher_testing::FakeAccess;
 
+        #[cfg(debug_assertions)]
+        use fresher_core::{ByteSize, PutBackOutcome, RecordedOutcome, SkipCode};
         use fresher_core::{CleanupId, LeftOut, SkipReason};
         use serde_json::json;
 
@@ -204,6 +214,8 @@ mod tests {
         use crate::testing::{
             Shell, caches, echo, is_scan_finished, recording_channel, scan, trial_home, until_finished,
         };
+        #[cfg(debug_assertions)]
+        use crate::testing::{is_cleanup_finished, listing};
 
         #[test]
         fn start_scan_twice_is_busy() {
@@ -305,7 +317,7 @@ mod tests {
         }
 
         #[test]
-        fn a_debug_build_cleans_nothing_outside_a_sandbox() {
+        fn the_sandbox_reach_cleans_nothing_outside_a_sandbox() {
             let tree = trial_home(false);
             let shell = Shell::cleaning(tree.root());
             scan(&shell);
@@ -317,6 +329,78 @@ mod tests {
             let reasons: Vec<&SkipReason> = view.left_out.iter().map(LeftOut::reason).collect();
             assert_eq!(view.summary.count, 0);
             assert_eq!(reasons, [&SkipReason::NotInSandbox, &SkipReason::NotInSandbox]);
+        }
+
+        /// The development build's reach on the trial folders beside a valid marker: every item is checked and
+        /// skipped as a dry run, the tree and the Trash are untouched, and nothing can be put back.
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_dry_run_through_the_commands_moves_nothing() {
+            let tree = trial_home(true);
+            let shell = Shell::dry_run(tree.root());
+            scan(&shell);
+            let before = listing(tree.root());
+            let events = shell.engine().subscribe();
+            let view = prepare_cleanup(shell.engine(), super::both_trial_categories()).unwrap();
+
+            let cleanup = confirm_cleanup(shell.engine(), echo(&view)).unwrap();
+
+            until_finished(&events, is_cleanup_finished);
+            assert_eq!(view.summary.count, 2);
+            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert_eq!(listing(tree.root()), before);
+            assert!(!shell.trash().exists());
+            let detail = get_cleanup(shell.engine(), cleanup).unwrap();
+            let outcomes: Vec<RecordedOutcome> = detail.items.iter().map(|item| item.outcome).collect();
+            assert_eq!(outcomes, [RecordedOutcome::Skipped { reason: SkipCode::DryRun }; 2]);
+            assert_eq!(
+                (detail.summary.moved.allocated, detail.summary.deleted.allocated),
+                (ByteSize::new(0), ByteSize::new(0))
+            );
+            assert_eq!(
+                (detail.summary.moved.logical, detail.summary.deleted.logical),
+                (ByteSize::new(0), ByteSize::new(0))
+            );
+
+            let request = json!({ "cleanup": cleanup, "items": [0, 1] });
+            let back = put_back(shell.engine(), serde_json::from_value(request).unwrap()).unwrap();
+
+            let answers: Vec<PutBackOutcome> = back.items.iter().map(|item| item.outcome).collect();
+            assert_eq!(answers, [PutBackOutcome::NotTrashed; 2]);
+            assert_eq!(listing(tree.root()), before);
+            assert!(!shell.trash().exists());
+        }
+
+        /// The second wall alone: the sandbox reach admits the trial folders beside a valid marker, and the refusing
+        /// Trash moves none of them.
+        #[cfg(debug_assertions)]
+        #[test]
+        fn the_refusing_trash_alone_moves_nothing_in_a_marked_sandbox() {
+            let tree = trial_home(true);
+            let shell = Shell::refusing_trash(tree.root());
+            scan(&shell);
+            let before = listing(tree.root());
+            let events = shell.engine().subscribe();
+            let view = prepare_cleanup(shell.engine(), super::both_trial_categories()).unwrap();
+
+            let cleanup = confirm_cleanup(shell.engine(), echo(&view)).unwrap();
+
+            until_finished(&events, is_cleanup_finished);
+            assert_eq!(view.summary.count, 2);
+            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert_eq!(listing(tree.root()), before);
+            assert!(!shell.trash().exists());
+            let items = get_cleanup(shell.engine(), cleanup).unwrap().items;
+            for item in &items {
+                assert!(!matches!(item.outcome, RecordedOutcome::Moved | RecordedOutcome::Deleted), "{item:?}");
+                if let RecordedOutcome::Emptied { moved, .. } = item.outcome {
+                    assert_eq!(moved, 0, "{item:?}");
+                }
+            }
+            let cache = items
+                .iter()
+                .find(|item| item.path.as_deref() == Some(&tree.root().join("sandbox/fresher-trial-cache")));
+            assert!(matches!(cache.map(|item| item.outcome), Some(RecordedOutcome::Failed { .. })), "{items:?}");
         }
 
         #[test]
@@ -438,6 +522,20 @@ mod tests {
             assert_eq!(back.unwrap().items[0].outcome, PutBackOutcome::PutBack);
             assert!(tree.root().join("sandbox/fresher-trial-cache/nested/blob.bin").exists());
             assert_eq!(get_cleanups(shell.engine(), first_page()).cleanups[0].in_trash, 0);
+        }
+
+        /// What the sandbox reach leaves out with no valid marker (`the_sandbox_reach_cleans_nothing_outside_a_sandbox`),
+        /// the dry run admits: it checks the real disk.
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_dry_run_plan_holds_what_the_sandbox_reach_leaves_out() {
+            let tree = trial_home(false);
+            let shell = Shell::dry_run(tree.root());
+            scan(&shell);
+
+            let view = prepare_cleanup(shell.engine(), super::both_trial_categories()).unwrap();
+
+            assert_eq!((view.summary.count, view.left_out.len()), (2, 0));
         }
 
         #[test]

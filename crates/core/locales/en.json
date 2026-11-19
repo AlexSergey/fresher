@@ -82,6 +82,7 @@
   "core.cleanup.skip.check-failed.how": "Try again in a moment.",
   "core.cleanup.skip.covered": "It is inside another item of this cleanup, so it goes with that one.",
   "core.cleanup.skip.forced-tool": "The tool would have been told to force the removal, so Fresher left it alone.",
+  "core.cleanup.skip.dry-run": "Development build: a dry run. It passed every check and was left where it is.",
   "core.cleanup.skip.grown": "It grew a lot since you reviewed it, so Fresher left it alone.",
   "core.cleanup.skip.grown.how": "Scan again and review it once more.",
   "core.cleanup.skip.ignored": "It is on your list of items to ignore.",

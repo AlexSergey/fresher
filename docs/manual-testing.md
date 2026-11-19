@@ -25,11 +25,13 @@ Read the step only when an item is not clear: each one is meant to be run from h
 ### Start the app
 
 - `npm run dev`: the development build on the real Mac. It always runs as `io.github.alexsergey.fresher.dev`, shows a
-  development banner and its cleaner reaches only a sandbox, so nothing on the real Mac can be removed.
+  development banner, makes every cleanup a dry run (every check runs, nothing is moved: each item ends "a dry run") and
+  records the run in `NO_COMMIT/dev-runs/`. It takes no argument.
 - `npm run dev:sandbox -- <name>`: the same build in sandbox mode on `sandbox/<name>/`. It generates the folder when it
   is missing, so a clean start is `rm -rf sandbox/<name> && npm run dev:sandbox -- <name>`. The banner names the
   sandbox; the scan, the settings, the history and the Trash are the sandbox's. `--real-trash` sends items to the
-  system's Trash instead of `sandbox/<name>/home/.Trash`.
+  system's Trash instead of `sandbox/<name>/home/.Trash`. It cleans for real inside the sandbox and is recorded too
+  (`..._sandbox-<name>.json`).
 - Both commands share one identifier and the app is single-instance: **quit the running window before starting
   another**, or the new launch is handed to the old window and keeps its mode (the banner shows which).
 - `sandbox/<name>/EXPECTED.md` is the checklist of a sandbox: one box per case, negatives first. Walk it in order:
@@ -53,8 +55,8 @@ Two known flakes are listed in section 6.
 
 ### Safety
 
-- A development build's cleaner reaches only a sandbox folder. On the real Mac `npm run dev` scans read-only and can
-  not remove anything; a release build (`npm run build`) can, and is used by hand only in sections 3 and 5.
+- A development build never moves anything outside a sandbox: on the real Mac a cleanup is a dry run. A release build
+  (`npm run build`) can, and is used by hand only in sections 3 and 5.
 - Every real-Mac command in this list is read-only (`ls`, `stat`, `du`, `mdls`, `mdfind`, `mdutil -s`, `plutil -p`,
   `log show`). The exceptions are marked: a pane address opened with `open`, `tccutil reset`, and one item that mounts a
   disk image.
@@ -193,11 +195,43 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] `npm run dev:sandbox -- cleanup-guards`: the case file of the removal refusals; its `EXPECTED.md` holds. It is
       the one sandbox with no plan step of its own, and 008's run (section 5) leans on its refusals.
 
-## 2. The real Mac, read-only
+## 2. The real Mac: one recorded run
 
-`npm run dev`, a scan of `~` only. A development build's cleaner reaches only a sandbox, so nothing here can remove
-anything. Do the scan once and keep the window open: items 2.1 to 2.6 compare that one result with the commands.
-Settings, Permissions, Downloads switched on for 2.6 (the system may ask: allow it); do that before the scan.
+`npm run dev` records everything you do in one file; the agent checks the file against the disk with
+`npm run dev-runs:check`. Do 2.0 once, then the by-hand items of 2.1 to 2.8: only what the disk cannot answer is left
+here. The record is in [`testing.md`](./testing.md#the-development-run-record); it holds real paths, lives in the
+git-ignored `NO_COMMIT/dev-runs/` and is never sent anywhere.
+
+### 2.0 The run ([026/03/03](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md))
+
+On the real home use the Trash removal only: never choose "Delete permanently" and never empty the Trash during this
+run.
+
+1. [ ] Quit any development window. Settings, Permissions: Downloads on (the system may ask: allow it). Note whether
+       the terminal has Full Disk Access (the record notes it too).
+2. [ ] `npm run dev`. **First check:** the window shows the development banner. If it does not, **stop: quit the app
+       without confirming anything** and tell the agent.
+3. [ ] Scan `~` once; wait for the end. **Second check, before any other cleanup:** select one small offered item,
+       Review, Confirm to the Trash: it must end "Development build: a dry run..." and still be where it was in Finder.
+       If it ends anything else, **stop: quit the app without confirming anything more** and tell the agent.
+4. [ ] On every module's page select everything offered; Review: the dialog names the count, the size and the highest
+       danger; Confirm to the Trash (not "Delete permanently"). Every item that passes its checks ends
+       "Development build: a dry run..."; an item a check refuses keeps its own reason; nothing is freed. Finder: two of
+       the offered folders are still where they were.
+5. [ ] Cleanups: the dry runs are listed; Put back answers that nothing went to the Trash.
+6. [ ] JetBrains (2.2), if an IDE is installed: open it, scan again, quit it, scan again (the record keeps all the
+       scans).
+7. [ ] Quit. Hand the agent the record: `ls -t NO_COMMIT/dev-runs/*_mac*.json | head -1`. The agent reads both the
+       `.json` and its `.events.jsonl`: actions after the last cleanup are only in the events.
+8. [ ] The agent runs `npm run dev-runs:check -- <that file>` and goes through `<file>.check.md` with you; each
+       difference is written in the conclusions of the step it belongs to (a module's 04/02 or 05/02, or 026/03/03).
+
+**What the record and the checker answer**, so you do not do it by hand: every offered path exists, is no link, is a
+file or a folder, is inside the roots and no protected or whole folder, and its size matches the disk; stale projects:
+the folder is an artifact or a Rust cache, no `src`, `.git`, `dist`, not in `~/Library`, an app or a hidden home folder,
+the project's folders and branches older than the days, the cache older than 7 days; downloads: first level of
+Downloads only; temporary files: in `T` or `/private/tmp`, unchanged for the days; the dry run moved nothing (per cleanup: every item `would-*`, `skipped`, `failed` or `not-reached`, none
+`moved`, `emptied`, `deleted` or `tool-done`).
 
 ### 2.1 Storage map ([012/06/02](./plans/012-storage-map/06-finish/02-run-and-conclusions.md))
 
@@ -224,19 +258,24 @@ diskutil apfs list | head -60
 
 ### 2.2 JetBrains ([016/04/02](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md))
 
+The agent reads from the record that the version in use is left out ("This is the version you use.") and that an open
+IDE's folders are left out with "The IDE is open..." in the second scan and offered again in the third.
+
 ```sh
 ls ~/Library/{Application\ Support,Caches,Logs}/JetBrains
 mdls -name kMDItemCFBundleIdentifier -name kMDItemVersion /Applications/<IDE>.app   # also ~/Applications for Toolbox
 ```
 
-- [ ] Every offered folder is older than an installed IDE that is not open; the version in use is left out with "This
-      is the version you use."
+- [ ] Every offered folder is older than an installed IDE that is not open (the checker has no JetBrains rule).
 - [ ] Each installed IDE's bundle id and version: the products table, the `-EAP` ids and the Toolbox app's id, the
       Toolbox folders, a folder's age as its own modification time, and the agent's calls 1, 2, 5, 6, 13, 14 and 19 are
       confirmed or corrected; `modules/jetbrains/products.toml`'s comment says which ids were seen.
-- [ ] Open an IDE, rescan: its folders are left out with "The IDE is open..."; quit it, rescan: offered again.
 
 ### 2.3 Temporary files ([017/04/02](./plans/017-temp-files/04-finish/02-run-and-conclusions.md))
+
+The checker does the place (in `T` or `/private/tmp`) and the age of every offered item. It does not read the owner
+or the flags, it does not know `TemporaryItems`, and it does not compare the left-out counts with anything: those are
+by hand below.
 
 ```sh
 getconf DARWIN_USER_TEMP_DIR; ls -ld /tmp /var /private/tmp /private/var/tmp
@@ -248,23 +287,24 @@ T=$(getconf DARWIN_USER_TEMP_DIR)
 find "$T" -mindepth 1 -maxdepth 1 -mtime +7 -exec stat -f '%Su %Sf %Sm %Sc %N' {} \;
 find "$T" -mindepth 1 -maxdepth 1 -ctime +7 | wc -l
 find "$T" /private/tmp -maxdepth 3 \( -type s -o -type p \) 2>/dev/null       # sockets and pipes
-du -sk "$T"/* 2>/dev/null | sort -rn | head -20
 lsof +D "$T" 2>/dev/null | awk '{print $1}' | sort | uniq -c | sort -rn | head
 ```
 
-- [ ] Every offered item is in your own `T` or `/private/tmp`, owned by you, with no flag, and its newest change
-      (`stat -f %Sc`, `%Sm` over its inside) more than 7 days old; nothing in `C/`, `0/`, `X/` or `TemporaryItems` is
-      claimed; the root-owned locked updater package is left out ("It belongs to the system or another user...").
-- [ ] The left-out counts match the commands' (young items, root's, sockets).
+- [ ] Every offered item is owned by you, with no flag (`stat -f '%Su %Sf'`); nothing in `C/`, `0/`, `X/` or
+      `TemporaryItems` is claimed; the root-owned locked updater package is left out ("It belongs to the system or
+      another user...").
+- [ ] The left-out counts in the record match the commands' (young items, root's, sockets).
+- [ ] The sweep's plists and log agree with the category's texts (the days, whether it runs at start).
 - [ ] Agent's calls 12 and 13: make a scratch file in `$TMPDIR`, move it to the Trash **with Finder** and use Finder's
       Put Back (it lands in `~/.Trash`); the sweep's log answers whether it runs at start. Correct the category's
       texts (`docs/categories/temp-old-files.md`, `modules/temp/locales/en.json`) if the Mac shows otherwise.
 
 ### 2.4 Developer caches ([018/04/02](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md))
 
+The checker compares every offered item's size with the disk; it has no dev-caches rule, so what each item is and what
+must never be claimed is by hand, with what only the tools can say.
+
 ```sh
-du -sh ~/.npm/_cacache ~/.gradle/caches ~/.cargo/registry/{cache,src} \
-  ~/Library/Caches/{Yarn,Homebrew/downloads,pip,go-build,CocoaPods} ~/Library/Developer/Xcode/DerivedData/* 2>/dev/null
 ls ~/.npm/_cacache ~/Library/Caches/Yarn ~/Library/Caches/Homebrew ~/Library/Caches/pip 2>/dev/null
 head -c 43 ~/.gradle/caches/CACHEDIR.TAG; echo; head -c 43 ~/.cargo/registry/CACHEDIR.TAG; echo
 ls ~/Library/Caches/go-build 2>/dev/null | head; ls ~/Library/Caches/CocoaPods 2>/dev/null
@@ -274,19 +314,20 @@ find ~/.npm/_cacache ~/.gradle/caches ~/.cargo/registry ! -user "$USER" 2>/dev/n
 find ~/.npm/_cacache ~/.gradle/caches ~/.cargo/registry \( -type s -o -type p \) 2>/dev/null | head
 ```
 
-- [ ] Every offered item is one of the table's places with its sign; its size matches `du`'s; nothing of Cargo's
-      `index`, `git` or `bin`, npm's `_npx` or `_logs`, Gradle's `wrapper`, or Homebrew's `api` is claimed.
+- [ ] Every offered item is one of the table's places with its sign; nothing of Cargo's `index`, `git` or `bin`, npm's
+      `_npx` or `_logs`, Gradle's `wrapper`, or Homebrew's `api` is claimed.
 - [ ] The facts "to verify" (design, research, agent's calls 2 and 3): Go's `README` and `trim.txt`, CocoaPods' `Pods`,
       pip's `http-v2`, derived data's `<project>-<28 lowercase letters>` and `info.plist`, Xcode's bundle id
       `com.apple.dt.Xcode`: on this Mac where the tool is there, otherwise from the tool's own documentation. Correct
       `modules/dev-caches/tools.toml`, `locales/en.json` and `docs/categories/dev-caches-*.md` where they differ.
 - [ ] One real cleanup with **Finder** (not the app): move `~/.npm/_cacache` to the Trash, run `npm install` in a
-      project (it makes the cache again), empty the Trash or put the folder back. Skip if you do not want to lose the
-      cache for a minute.
+      project (it makes the cache again); the old folder stays in the Trash (do not empty it during the run). Skip if
+      you do not want to lose the cache for a minute.
 
 ### 2.5 Uninstalled app leftovers ([019/04/02](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md))
 
-For each offered id `<id>`:
+The checker does not know the installed apps, so this one stays by hand. For each offered id `<id>` (the record lists
+them):
 
 ```sh
 mdfind "kMDItemCFBundleIdentifier == '<id>'c"
@@ -301,7 +342,7 @@ ls ~/Library/{Caches,Application\ Support,Preferences} | grep -c '\.'
 
 - [ ] Every offered id is no installed app (`mdfind` answers nothing, no bundle in the apps folders) and was an app's
       (its saved state or container is there); none starts with `com.apple.`; nothing under `Group Containers` is
-      offered; every size matches `du -sh`'s.
+      offered.
 - [ ] Count the ids with leftovers that the proof leaves out (named after an id, not installed, no saved state and no
       container): the number and two or three examples (invented ones, no real names) in the conclusions.
 - [ ] Shared frameworks' ids among the offered ones (an updater or a crash reporter that writes an id-named cache for
@@ -316,18 +357,16 @@ ls ~/Library/{Caches,Application\ Support,Preferences} | grep -c '\.'
 - [ ] A Time Machine or other backup disk attached (if you have one): what `mdutil -s` says of it, and that
       `app-leftovers` then keeps everything (known issue
       [an unindexed volume](./known-issues/app-unindexed-volume-turns-off-removed-app-detection.md)).
-- [ ] The module's `finish` time on the same scan, and the number of ids asked (up to three `mdfind` per id that
-      reaches the Spotlight row, plus one `mdutil -s` per volume): record both.
+- [ ] The module's `finish` time on the same scan (from the record), and the number of ids asked (up to three `mdfind`
+      per id that reaches the Spotlight row, plus one `mdutil -s` per volume): record both.
 - [ ] One real cleanup with **Finder**: install a small test app, open it (a window, so its saved state exists), quit,
       drag it to the Trash, move its leftovers to the Trash by hand, put it all back.
 
 ### 2.6 Downloads and installers ([020/05/02](./plans/020-downloads/05-finish/02-run-and-conclusions.md))
 
+The checker does the place (first level of Downloads) and the sizes. By hand, what the disk does not say:
+
 ```sh
-ls -la ~/Downloads | head -50
-for f in ~/Downloads/*.{crdownload,part,opdownload,partial}; do stat -f "%Sm %Sc %z %N" "$f"; done 2>/dev/null
-for f in ~/Downloads/*.{dmg,pkg}; do stat -f "%Sm %Sc %N" "$f"; done 2>/dev/null
-for app in /Applications/*.app; do stat -f "%Sc %N" "$app"; done | sort | tail -20
 ls /var/db/receipts/*.plist | while read -r r; do plutil -extract PackageFileName raw "$r"; done
 sw_vers -productVersion
 mdls -name kMDItemLastUsedDate -name kMDItemDateAdded ~/Downloads/<a file you opened lately>
@@ -335,10 +374,9 @@ xattr -l ~/Downloads/<the same file>
 ```
 
 - [ ] The first scan after switching Downloads on offers items: no second scan is needed (01/04).
-- [ ] Every offered item checked by hand: an unfinished download is old and its browser closed; an installer's app is
-      installed at the installer's version or newer (the app's About window) and was installed after the installer was
-      opened; a macOS installer is older than `sw_vers`; a big file is one you have not opened for 30 days. Nothing below
-      the first level of Downloads, nothing outside it.
+- [ ] An offered installer's app is installed at the installer's version or newer (the app's About window) and was
+      installed after the installer was opened; a macOS installer is older than `sw_vers`; a big file is one you have
+      not opened for 30 days; an unfinished download is old and its browser closed.
 - [ ] Count, without names, how many `.dmg`/`.pkg` files the name rule and the receipts prove and how many they leave
       out; two or three invented examples of what was missed, in the conclusions.
 - [ ] Facts "to verify": opening a file from Finder writes `com.apple.lastuseddate#PS` and moves its status change
@@ -355,27 +393,23 @@ xattr -l ~/Downloads/<the same file>
 
 ### 2.7 Stale projects ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md))
 
-`npm run dev`, a scan of `~` only. Compare with these read-only commands (`<project>` is one the scan offers or keeps):
+The checker does the folder kind, the paths kept out, the days of the project's folders and branches, and the sizes.
+By hand, what a Mac can show only after an action:
 
 ```sh
-find <project> \( -name node_modules -o -name target -o -name .git -o -name build -o -name .venv \) -prune \
-  -o -type d -print0 | xargs -0 stat -f "%m %N" | sort -n | tail -3
-find <project>/.git/refs/heads -type d -print0 | xargs -0 stat -f "%Sm %N"
-du -sh <project>/node_modules <project>/target 2>/dev/null
 du -sh target/debug/{deps,incremental,build} target/llvm-cov-target 2>/dev/null   # in this repository
+stat -f %Sm <folder of a file you save>                                           # before and after a one-line save
 ```
 
-- [ ] Every offered item checked: its project's newest folder and its `refs/heads` are older than the days (365); the
-      folder is the project's `node_modules`, `target`, `build`, `.gradle`, `.build`, `.dart_tool`, `.venv` or `venv`;
-      nothing under `~/Library`, an app, a hidden folder of the home or the home itself; no `src`, `.git`, `dist`.
 - [ ] Every project kept `recent` that you think is old: which folder or branch is new; kept `unread`: which folder
       was not read.
-- [ ] **This repository's `target/`**: what the Rust cache category offers and keeps, with sizes; the `du` line today
-      and again after a week of work — which part grows (decision 3.4).
+- [ ] **This repository's `target/`**: what the Rust cache category offers and keeps, with sizes (from the record); the
+      `du` line today and again after a week of work: which part grows (decision 3.4).
 - [ ] Facts to verify: an editor that saves in place moves no folder time (`stat -f %Sm` of the file's folder before
       and after a one-line save, in each editor you use); which git actions move `refs/heads` (commit, pull, merge,
-      checkout); does Finder browsing (a `.DS_Store`) move a project's time; a `node_modules` of hard links into a
-      shared store: the finding's size against `du`; a recompiling build moves `target/debug/incremental`'s times.
+      checkout; `stat -f "%Sm %N" <project>/.git/refs/heads`); does Finder browsing (a `.DS_Store`) move a project's
+      time; a `node_modules` of hard links into a shared store: the finding's size against `du`; a recompiling build
+      moves `target/debug/incremental`'s times.
 
 ### 2.8 Scan time on the real home (rule 4: within 5 %)
 
@@ -631,6 +665,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [020/01/02 suffixed names bench](./plans/020-downloads/01-core-prerequisites/02-suffixed-names.md)           | step done, bench re-run pending | 4             |
 | [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.7, 2.6, 2.8, 4 |
 | [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md) | pending | 1.8, 2.7, 2.8, 4 |
+| [026/03/03 run and conclusions](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md) | pending | 2.0 |
 | [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                         | deferred, due before release   | 5.1           |
 | [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                           | deferred, due before release   | 5.2           |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.9           |

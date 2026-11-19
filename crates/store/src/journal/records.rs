@@ -233,6 +233,7 @@ mirror!(
         Covered,
         NotTheSubject,
         ForcedTool,
+        DryRun,
         CheckFailed,
     }
 );
@@ -707,7 +708,7 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{CleanupId, PutBackOutcome, RecordedOutcome};
+        use fresher_core::{CleanupId, PutBackOutcome, RecordedOutcome, SkipCode};
 
         use crate::journal::records::{
             BeginLine, EndLine, ItemLine, Line, PutBackLine, VERSION, header_line, sample, to_line,
@@ -749,6 +750,18 @@ mod tests {
                 unreachable!("not a put back")
             };
             assert_eq!(line.into_record(), put_back);
+        }
+
+        #[test]
+        fn a_dry_run_skip_round_trips_through_the_journal() {
+            let mut item = sample::skipped(CleanupId::new(7), 0);
+            item.outcome = RecordedOutcome::Skipped { reason: SkipCode::DryRun };
+
+            let Line::Item(line) = read(&to_line(&Line::Item(ItemLine::new(&item))).unwrap()) else {
+                unreachable!("not an item")
+            };
+
+            assert_eq!(line.into_record(), item);
         }
 
         #[test]

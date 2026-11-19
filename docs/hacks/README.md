@@ -78,19 +78,18 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 
 ## Development builds clean only in a sandbox folder
 
-- **What:** the app's cleaner gets `Reach::Sandbox` in every debug build and in the app's tests: it removes an item
-  only below a folder that holds a valid `.fresher-sandbox` marker, never in the home folder itself; every other item
-  is left out with "Development build: removal works only in a sandbox folder." Only a release build gets
-  `Reach::RealDisk`.
-- **Where:** `app/tauri/src/compose.rs` (`reach`), `crates/cleaner/src/reach.rs`.
+- **What:** outside a sandbox, the app's cleaner gets `Reach::DryRun` in every debug build: every check runs on the
+  real disk and every item ends "a dry run", nothing is moved or deleted, and its Trash (`DryRunTrash`) refuses every
+  call. A test gets `Reach::Sandbox`, a sandbox folder or the dry run (a development build on the real Mac
+  answers "a dry run"). Under `Reach::Sandbox` an item is removed only below a folder that holds a valid
+  `.fresher-sandbox` marker, never in the home folder itself; every other item is left out with "Development build:
+  removal works only in a sandbox folder." Only a release build gets `Reach::RealDisk`.
+- **Where:** `app/tauri/src/compose.rs` (`reach`), `app/tauri/src/dry_run.rs`, `crates/cleaner/src/reach.rs`.
 - **Why:** a development build runs half-finished code against the developer's real disk; it must not be able to
-  remove anything a developer did not set aside for it (plan 008, goal 5). The token that allows the real disk can be
-  made only without `debug_assertions`, and a test of `fresher-cleaner` fails if it is made anywhere but in
-  `compose.rs`. To try a cleanup in `npm run tauri dev`, make a folder below the home with a `.fresher-sandbox` file
-  whose first line is the core's `SANDBOX_SIGNATURE`, put the `trial` module's folders (`fresher-trial-cache`,
-  `fresher-trial-kept`) right next to it, make the folder a scan root (in `settings.json` until plan 005 lets the
-  interface edit the roots) and scan ([`../architecture/removal.md`](../architecture/removal.md), "Reach and the
-  sandbox").
+  remove anything there (plan 008, goal 5; plan 026). The token that allows the real disk can be made only without
+  `debug_assertions`, and a test of `fresher-cleaner` fails if it is made anywhere but in `compose.rs`. To try a real
+  cleanup in a development build, use sandbox mode, below ([`../architecture/removal.md`](../architecture/removal.md),
+  "Reach and the sandbox").
 - **Sandbox mode:** a debug build started with `FRESHER_SANDBOX=<sandbox folder>` gets `Reach::SandboxFolder`
   instead: it removes only strictly inside that folder, while it holds its marker, with the real Mac's protection list
   joined with the sandbox home's, and moves items into the sandbox's `home/.Trash` (the system's Trash only with

@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
+#[cfg(debug_assertions)]
+use fresher_cleaner::DryRunToken;
 #[cfg(not(any(debug_assertions, test)))]
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
@@ -14,9 +16,11 @@ use fresher_core::{
     ModuleId, Protection, ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
+#[cfg(not(debug_assertions))]
+use fresher_macos::MacTrash;
 use fresher_macos::{
-    MacChangeJournal, MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, io_policy, is_user_temp,
-    protection, user_temp_dir,
+    MacChangeJournal, MacFolderReader, MacOpenFiles, MacVolumes, current_user, io_policy, is_user_temp, protection,
+    user_temp_dir,
 };
 use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
@@ -65,6 +69,10 @@ pub(crate) enum ComposeError {
     #[cfg(debug_assertions)]
     #[error("the trial module cannot be built: {0}")]
     Trial(#[from] fresher_module_trial::TrialError),
+    /// A development build asked to record its run where it cannot: it does not start rather than run unrecorded.
+    #[cfg(debug_assertions)]
+    #[error("the development run record is refused: {0}")]
+    DevRuns(#[from] crate::dev_runs::DevRunsRefusal),
 }
 
 /// The longest a rescan waits on the change journal before it scans in full: half the developer's warm full scan of
@@ -93,28 +101,63 @@ pub(crate) struct Start {
     pub(crate) data_folder: PathBuf,
     pub(crate) home: PathBuf,
     pub(crate) build: Build,
+    /// The development run record, when the launcher asked for one (`FRESHER_DEV_RUNS`).
+    #[cfg(debug_assertions)]
+    pub(crate) run: Option<crate::dev_runs::run::Run>,
 }
 
 /// The app's start: in a development build whose environment (read through `var`) names a sandbox in
 /// `FRESHER_SANDBOX`, the sandbox's engine, data folder and home (`data_folder` is then only protected); otherwise
-/// the engine of [`engine`] on `data_folder` and `home`. A release build reads no variable.
+/// the engine of [`engine`] on `data_folder` and `home`. In a development build whose environment names a folder in
+/// `FRESHER_DEV_RUNS`, the run's record begins there. A release build reads no variable.
 pub(crate) fn start(
     data_folder: PathBuf,
     home: PathBuf,
     #[cfg_attr(not(debug_assertions), expect(unused_variables, reason = "a release build has no sandbox mode"))]
     var: impl Fn(&str) -> Option<OsString>,
 ) -> Result<Start, ComposeError> {
+    // A bad record folder stops the start before any engine is made.
     #[cfg(debug_assertions)]
-    if let Some(mode) = crate::sandbox::SandboxMode::from_env(var)? {
+    let launch = crate::dev_runs::Launch::from_env(&var)?;
+    #[cfg(debug_assertions)]
+    if let Some(mode) = crate::sandbox::SandboxMode::from_env(&var)? {
         apply(&MACOS_POLICY)?;
         // The running apps come from the sandbox's world, never the Mac's: an app open on the Mac changes nothing.
         let (engine, sandbox) =
             crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
         let build = crate::sandbox::build(&sandbox)?;
-        return Ok(Start { engine, data_folder: sandbox.data_folder(), home: sandbox.home(), build });
+        let home = sandbox.home();
+        let run = begin_run(launch.as_ref(), &build, &home, &engine)?;
+        return Ok(Start { engine, data_folder: sandbox.data_folder(), home, build, run });
     }
     let engine = engine(&data_folder, &home)?;
-    Ok(Start { engine, data_folder, home, build: own_build() })
+    let build = own_build();
+    #[cfg(debug_assertions)]
+    let run = begin_run(launch.as_ref(), &build, &home, &engine)?;
+    Ok(Start {
+        engine,
+        data_folder,
+        home,
+        build,
+        #[cfg(debug_assertions)]
+        run,
+    })
+}
+
+/// The run's record of `build` on `engine`, when `launch` asks for one; the macOS version as `<major>.<minor>`.
+#[cfg(debug_assertions)]
+fn begin_run(
+    launch: Option<&crate::dev_runs::Launch>,
+    build: &Build,
+    home: &Path,
+    engine: &Engine,
+) -> Result<Option<crate::dev_runs::run::Run>, ComposeError> {
+    let Some(launch) = launch else {
+        return Ok(None);
+    };
+    let macos = macos_version(Path::new("/")).map(|version| format!("{}.{}", version.major, version.minor));
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    Ok(crate::dev_runs::run::Run::begin(launch, build, home, macos, clock, engine)?)
 }
 
 /// The kind of this build: a release build is never a development one.
@@ -140,16 +183,21 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let running: Arc<dyn RunningApps> = Arc::new(MacRunningApps::new());
     let commands: Arc<dyn CommandRunner> = Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT));
-    // The system's Trash goes to the cleaner and to nothing else.
+    // The system's Trash goes to the cleaner and to nothing else; a development build's cleaner gets a Trash that
+    // refuses.
+    #[cfg(debug_assertions)]
+    let trash = Arc::new(crate::dry_run::DryRunTrash);
+    #[cfg(not(debug_assertions))]
+    let trash = Arc::new(MacTrash::new());
     let cleaner = CleanerPorts {
-        trash: Arc::new(MacTrash::new()),
+        trash,
         open_files: Arc::new(MacOpenFiles::new()),
         running: Arc::clone(&running),
         commands: Arc::clone(&commands),
         clock: Arc::clone(&clock),
     };
     let user_temp = user_temp();
-    let cleanup = cleanup(home, user_temp.as_deref(), &folder, cleaner, Arc::clone(&volumes))?;
+    let cleanup = cleanup(home, user_temp.as_deref(), &folder, cleaner, Arc::clone(&volumes), reach())?;
     let known_folders: Arc<dyn KnownFolders> = match user_temp {
         Some(temp) => Arc::new(MacKnownFolders::new(home).with_user_temp(temp)),
         None => Arc::new(MacKnownFolders::new(home)),
@@ -256,7 +304,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
     Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup)?)
 }
 
-/// What a cleanup goes through: this build's cleaner, acting as the user who runs the app, kept from the protected
+/// What a cleanup goes through: a cleaner with `reach`, acting as the user who runs the app, kept from the protected
 /// places of `home` and `user_temp` (with the app's data `folder` and its bundle), over `ports`; the journal in
 /// `folder`; and the `volumes` whose space a cleanup measures.
 pub(crate) fn cleanup(
@@ -265,9 +313,10 @@ pub(crate) fn cleanup(
     folder: &DataFolder,
     ports: CleanerPorts,
     volumes: Arc<dyn Volumes>,
+    reach: Reach,
 ) -> Result<CleanupPorts, ComposeError> {
     let protection = real_protection(home, folder.path(), user_temp)?;
-    let cleaner = DiskCleaner::new(reach(), current_user(), home.to_path_buf(), protection, ports);
+    let cleaner = DiskCleaner::new(reach, current_user(), home.to_path_buf(), protection, ports);
     Ok(CleanupPorts { cleaner: Arc::new(cleaner), journal: Arc::new(FileCleanupJournal::open(folder)), volumes })
 }
 
@@ -310,8 +359,15 @@ const fn reach() -> Reach {
     Reach::RealDisk(RealDiskToken::new())
 }
 
-/// How far the cleaner of a development build or a test reaches: only below a sandbox folder (`docs/hacks/`).
-#[cfg(any(debug_assertions, test))]
+/// How far the cleaner of a development build reaches: the real disk, checked and never acted on
+/// (`docs/architecture/removal.md`).
+#[cfg(debug_assertions)]
+pub(crate) const fn reach() -> Reach {
+    Reach::DryRun(DryRunToken::new())
+}
+
+/// How far the cleaner of a release-mode test reaches: only below a sandbox folder, never the real disk.
+#[cfg(all(test, not(debug_assertions)))]
 const fn reach() -> Reach {
     Reach::Sandbox
 }
@@ -460,6 +516,84 @@ mod tests {
             assert_eq!(std::fs::read_dir(sandbox.path()).unwrap().count(), 0);
         }
 
+        /// The real composition of a development build (the real scanner, the real open-files check, the refusing
+        /// Trash, the dry-run reach) on the trial module's folders beside a valid marker, where the sandbox reach
+        /// would move them: the cleanup runs every check and changes nothing.
+        #[cfg(debug_assertions)]
+        #[test]
+        fn the_development_engine_moves_nothing_on_the_real_disk() {
+            use fresher_core::{RecordedOutcome, SettingUpdate, SettingValue, SkipCode};
+
+            use crate::testing::{
+                caches, echo, is_cleanup_finished, is_scan_finished, listing, trial_home, until_finished,
+            };
+
+            let (folder, tree) = (tempfile::tempdir().unwrap(), trial_home(true));
+            let engine = engine(folder.path(), tree.root()).unwrap();
+            let roots = SettingValue::Folders(vec![tree.root().to_path_buf()]);
+            engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
+            let events = engine.subscribe();
+            engine.start_scan(fresher_engine::ScanMode::Full).unwrap();
+            until_finished(&events, is_scan_finished);
+            let before = listing(tree.root());
+            let view = engine.prepare_cleanup(&caches()).unwrap();
+
+            let id = engine.confirm_cleanup(&echo(&view)).unwrap();
+
+            until_finished(&events, is_cleanup_finished);
+            assert!(view.summary.count > 0);
+            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert_eq!(listing(tree.root()), before);
+            let items = engine.cleanup(id).unwrap().items;
+            assert_eq!(items.len(), view.summary.count as usize);
+            for item in &items {
+                assert_eq!(item.outcome, RecordedOutcome::Skipped { reason: SkipCode::DryRun }, "{item:?}");
+            }
+        }
+
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_development_build_without_the_dev_runs_variable_begins_no_run() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), |_| None).unwrap();
+
+            assert!(start.run.is_none());
+        }
+
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_relative_dev_runs_folder_stops_the_start() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            let var = |name: &str| (name == "FRESHER_DEV_RUNS").then(|| "dev-runs".into());
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), var);
+
+            assert!(
+                matches!(start, Err(ComposeError::DevRuns(crate::dev_runs::DevRunsRefusal::NotAbsolute { .. }))),
+                "{start:?}"
+            );
+        }
+
+        /// Run by `cargo test --release`: a release build records nothing, whatever the environment says.
+        #[cfg(not(debug_assertions))]
+        #[test]
+        fn a_release_build_ignores_the_dev_runs_variable() {
+            let (folder, home, records) =
+                (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            let named = records.path().as_os_str().to_owned();
+            let var = |name: &str| match name {
+                "FRESHER_DEV_RUNS" => Some(named.clone()),
+                "FRESHER_BUILD_COMMIT" => Some("26e4cb0".into()),
+                _ => None,
+            };
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), var).unwrap();
+
+            assert_eq!(start.build, fresher_core::Build::Release);
+            assert_eq!(std::fs::read_dir(records.path()).unwrap().count(), 0);
+        }
+
         #[test]
         fn the_app_starts_when_access_times_cannot_be_left_alone() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
@@ -474,6 +608,32 @@ mod tests {
         use std::path::{Path, PathBuf};
 
         use crate::compose::{bundle_of, checked_user_temp, engine, user_temp};
+
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_development_build_reaches_the_real_disk_without_acting() {
+            assert!(matches!(crate::compose::reach(), fresher_cleaner::Reach::DryRun(_)));
+        }
+
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_development_build_with_the_variable_begins_one_record() {
+            let (folder, home, records) =
+                (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            let named = records.path().as_os_str().to_owned();
+            let var = |name: &str| (name == "FRESHER_DEV_RUNS").then(|| named.clone());
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), var).unwrap();
+
+            assert!(start.run.is_some());
+            let files: Vec<String> = std::fs::read_dir(records.path())
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+                .collect();
+            assert_eq!(files.len(), 2, "{files:?}");
+            assert_eq!(files.iter().filter(|name| name.ends_with("_mac.json")).count(), 1, "{files:?}");
+            assert_eq!(files.iter().filter(|name| name.ends_with("_mac.events.jsonl")).count(), 1, "{files:?}");
+        }
 
         #[test]
         fn the_user_temp_is_kept_inside_the_users_folders() {
