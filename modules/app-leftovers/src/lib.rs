@@ -15,10 +15,9 @@ mod exclude;
 mod gathered;
 mod name;
 mod places;
-mod settings;
 
 use fresher_core::{
-    BundleId, CategoryDescriptor, CategoryId, DescriptorError, EntryKind, FindingSink, IdError, Interest,
+    BundleId, CategoryDescriptor, CategoryId, DaySetting, DescriptorError, EntryKind, FindingSink, IdError, Interest,
     InterestError, LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,
     ModuleGroup, ModuleId, NewFinding, Removal, SettingError, Subject, Text, TextArg, TextKey, TextKeyError, Timestamp,
 };
@@ -33,6 +32,10 @@ use crate::places::{Form, Places};
 
 /// The category the choice `keep-settings` selects: the caches, logs and saved state alone.
 const CACHES: &str = "app-leftovers.caches";
+
+/// `app-leftovers.uninstalled-after-days`. Never fewer than a week: a removed app's files are not offered the day
+/// after.
+const UNINSTALLED_AFTER: DaySetting = DaySetting::new("uninstalled-after-days", 7, 3650, 30);
 
 /// Why the `app-leftovers` module could not be built (a bug in its own constants or tables).
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
@@ -98,7 +101,7 @@ impl AppLeftoversModule {
             })
             .collect::<Result<Vec<_>, _>>()?;
         let locales = Locales { en: include_str!("../locales/en.json") };
-        let settings = vec![settings::uninstalled_after_days_setting(id)?];
+        let settings = vec![UNINSTALLED_AFTER.descriptor(id)?];
         let choices =
             vec![ModuleChoice::new("everything", everything), ModuleChoice::new("keep-settings", keep_settings)];
         // A bad table fails here, when the module is built.
@@ -219,7 +222,7 @@ impl Module for AppLeftoversModule {
             return Ok(());
         }
         let system = cx.system();
-        let days = settings::uninstalled_after_days(cx.settings());
+        let days = UNINSTALLED_AFTER.days(cx.settings());
         let facts = Facts {
             installed: system.installed_apps().map_err(|_| NoSystem),
             complete: system.installed_apps_complete().is_ok(),

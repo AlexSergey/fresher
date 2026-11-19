@@ -122,7 +122,11 @@ fn check_group(descriptor: &ModuleDescriptor, development_build: bool) -> Result
         ModuleGroup::Debug if !development_build => {
             Err(RegistryError::DebugModule { id: descriptor.id().as_str().into() })
         }
-        ModuleGroup::System | ModuleGroup::Apps | ModuleGroup::Development | ModuleGroup::Debug => Ok(()),
+        ModuleGroup::System
+        | ModuleGroup::Apps
+        | ModuleGroup::Files
+        | ModuleGroup::Development
+        | ModuleGroup::Debug => Ok(()),
     }
 }
 

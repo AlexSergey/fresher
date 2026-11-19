@@ -19,7 +19,6 @@ modules/<id>/
 ├── rules.toml                 the rules, if the module has any (embedded with include_str!)
 ├── locales/en.json            every text the module shows, keys `<id>.…` only
 ├── src/lib.rs                 the descriptor and the `Module` implementation
-├── src/settings.rs            the module's settings and reading them, if it has any
 └── tests/                     contract.rs and the fixture tests, through fresher-testing
 fixtures/homes/<id>-*.toml     the fixture homes of its tests (negative ones first)
 fixtures/golden/<id>.json      its golden report
@@ -40,7 +39,7 @@ small `thiserror` error of its own: no panicking path.
 
 - A module names its group: `ModuleDescriptor::new(id, group, categories, settings, locales)`, a `ModuleGroup` of the
   core (`System` for what macOS and the user's apps keep for themselves, such as `temp`; `Apps` for what apps leave behind;
-  `Development`; `Debug` for
+  `Files`, shown as "Your files", for the user's own files, such as old installers; `Development`; `Debug` for
   the dev-only `demo` and `trial`, which the registry refuses in a release build), shown in that order. The screens
   show modules under their group's name (`core.group.<group>.name`, `.description`).
 - A module may offer choices of its categories: `ModuleDescriptor::with_choices(Vec<ModuleChoice>)`, each a kebab-case
@@ -62,7 +61,9 @@ small `thiserror` error of its own: no panicking path.
 - A category id is `<id>.<name>`; its five texts are found by convention: `<id>.<name>.name`, `.what`, `.made-by`,
   `.if-removed`, `.comes-back`.
 - A setting key is `<id>.<name>`, with `<id>.<name>.label` and `.description`. The settings schema adds the switch
-  `<id>.enabled` for every module; the module ships its label and description too.
+  `<id>.enabled` for every module; the module ships its label and description too. A module with an "unchanged
+  for N days" setting declares a `DaySetting` constant (name, range, default) and uses its `descriptor(id)` and
+  `days(cx.settings())`.
 - `NewFinding::new(&category, …)` starts at the category's danger level; `raise_danger` only goes up. A module that
   knows which app a finding belongs to says so with `for_app(bundle_id)`: the storage map counts the finding in that
   app's line (an id no installed app has is shown as an app no longer installed).
@@ -92,6 +93,17 @@ small `thiserror` error of its own: no panicking path.
   `.DS_Store`. A whole claim of `Caches/*` would otherwise swallow the places other modules claim; a literal beside it
   (`Caches/JetBrains/*`) still leads inside. Only for a `Pattern::Under` whose last segment is `*`
   (`InterestError::NoStarToShape` otherwise); the shape is part of the interest and of the matcher's fingerprint.
+- `Interest::only_suffixes(suffixes)` (plan [020](../plans/020-downloads/readme.md)) makes the last `*` match only a
+  name that ends with one of the suffixes and is longer than it, ASCII case ignored: with `.download` and `.app`,
+  `movie.download` and `Install macOS Sonoma.APP`, never `report.pdf`, `Projects` or `.download` itself. It is for a
+  whole claim of a few kinds of names in a folder of the user's (`Downloads/*`): claimed whole with a plain `*`, every
+  other folder there would be opaque to the storage map and to every other module. Each suffix is a dot and a name
+  whose parts between dots are not empty (`.tar.gz`), listed once (`InterestError::BadSuffix` otherwise), kept
+  lowercased (`Interest::name_suffixes()`); an interest takes one shape, bundle ids or suffixes
+  (`InterestError::TwoShapes`). The suffixes are part of the interest and of the fingerprint. A plain `*` of the same
+  place takes the name too, and so does a shaped one when the name is also shaped as a bundle id
+  (`trip.zip.download`): a folder that ends a `Whole` and an `Item` interest is summed whole and reported to both, the
+  `Item` hit with `Sizes::ZERO`. The cost is one suffix check for each name of such a folder that no literal took.
 - Two known folders lie outside the home: `UserTemp` (the user's own temporary folder,
   `/private/var/folders/<xx>/<hash>/T`) and `SharedTemp` (`/private/tmp`). While a registered module's interest is
   anchored in one, and no scan root holds it, the walk reads it as a place: a root of its own after the scan roots,
@@ -106,10 +118,12 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 | Ask                          | Answers                                                                                           |
 | ---------------------------- | ------------------------------------------------------------------------------------------------- |
 | `locate(KnownFolder)`        | where this system keeps the folder                                                                |
-| `installed_apps()`           | every installed app: bundle id, team id, name, version, build, path, its helpers' bundle ids      |
+| `installed_apps()`           | every installed app: bundle id, team id, name, version, build, path, its helpers' bundle ids, `changed`: when the bundle was last changed on disk (its status change time, whole seconds; `None` when unreadable) |
 | `find_apps(ids, cancel)`    | the bundles with one of the ids anywhere Spotlight knows them (a sandbox: its own apps); asked anew each call, after checking once per scan that Spotlight sees every mounted volume; an error when it cannot |
 | `installed_apps_complete()`  | the same, but an error when the listing could not read an apps folder, a folder in one or a bundle (`InstalledList::unread`) |
 | `running_apps()`             | the running apps (`RunningSet`); `owner_of(path)` names the running app a path is named after     |
+| `receipts()`                 | the installer receipts the system keeps (package file name, when installed); an error when the folder cannot be read; asked once per scan |
+| `system_version()`           | the version of the running macOS (`SystemVersion`, major and minor); an error when it cannot be read; asked once per scan |
 | `projects()`                 | the projects the walk found (root, kinds, artifact folders, last activity); `None` during the walk |
 
 - An app is identified by its bundle id and team id only (`BundleId` compares ignoring case), never by a loose name.
@@ -199,6 +213,18 @@ doubt keeps all of the id's leftovers, each reported as a `left_out` with its re
 (`exclude.toml`) keeps `com.apple` and system components. Group Containers and launch agents are not places of the
 module. A leftover that is a socket or not the user's is left out alone (`decide_item`), the rest of the id is offered.
 
+**`downloads` is code with data tables, and the example of a module whose categories need a guarded folder**: every
+category declares `Need::required(Capability::Folder(GuardedFolder::Downloads))`, so the module is unavailable, and
+nothing in `~/Downloads` is read, until the user allowed the folder; the engine then runs it in the scan that first
+tries the folder (`permissions.md`). It reads one folder's first level with two interests of the same place: an `Item`
+star for every file (`Claim::Item`, so the user's folders in Downloads stay open to the walk and to the storage map),
+and a `Whole` star that matches only the names with a suffix (`Interest::only_suffixes`: Safari's `.download` bundle
+and `.app`, held by `Info.plist` or `Contents`), summed whole. The suffix tables (browsers' unfinished suffixes with
+the app that writes each, the macOS installers' names), the decision (a pure function, `decide/`) and the texts are
+data and code of the crate; an installer is claimed only when a receipt or its name proves it is an installed app's at
+that version or older (`cx.system().receipts()`, `installed_apps()` with `changed`, `system_version()`), and the rest
+of what it recognizes is a `left_out` with its reason. A disk image is never mounted, an archive never expanded.
+
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.
 
@@ -234,6 +260,7 @@ A module ships only when every box is ticked:
       release build, `RegistryError::DebugModule`).
 - [ ] Every category is documented in [`../categories/`](../categories/README.md) as `<id>-<name>.md`, with the same
       danger level as its descriptor, and listed in the catalogue table.
+- [ ] A module with an "unchanged for N days" setting uses `DaySetting`, not its own copy.
 - [ ] Every category has its five texts; every setting, `<id>.enabled` included, its label and description.
 - [ ] A module with choices gives each its two texts (`<id>.choice.<name>.label` and `.description`), and each choice
       names categories of the module only.

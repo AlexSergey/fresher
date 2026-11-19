@@ -1,0 +1,41 @@
+# The unfinished downloads of browsers, one row per suffix.
+#
+# suffix       the end of the name, a dot and a plain name, matched with the case ignored.
+# kind         "file", or "bundle" for a folder that is summed whole (exactly one row is a bundle).
+# apps         the bundle ids of the apps that write it. They are only checked running: a wrong id weakens that guard
+#              alone, the days of the setting still hold. The ids and the writer of `.partial` are to be verified
+#              (plan 020, step 05/02).
+# placeholder  true when the browser keeps an empty file of the final name beside it. `.part`'s placeholder is that
+#              empty file; a bundle has none.
+
+[[suffix]]
+suffix = ".crdownload"
+kind = "file"
+apps = [
+  "com.google.Chrome",
+  "com.microsoft.edgemac",
+  "com.brave.Browser",
+  "com.vivaldi.Vivaldi",
+  "org.chromium.Chromium",
+]
+
+[[suffix]]
+suffix = ".part"
+kind = "file"
+apps = ["org.mozilla.firefox", "org.mozilla.firefoxdeveloperedition", "org.mozilla.nightly"]
+placeholder = true
+
+[[suffix]]
+suffix = ".opdownload"
+kind = "file"
+apps = ["com.operasoftware.Opera", "com.operasoftware.OperaGX"]
+
+[[suffix]]
+suffix = ".partial"
+kind = "file"
+apps = ["com.microsoft.edgemac"]
+
+[[suffix]]
+suffix = ".download"
+kind = "bundle"
+apps = ["com.apple.Safari", "com.apple.SafariTechnologyPreview"]

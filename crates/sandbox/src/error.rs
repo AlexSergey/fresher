@@ -61,6 +61,18 @@ pub enum CaseError {
     /// A `[[case.elsewhere]]` bundle id the app would not read.
     #[error("case \"{case}\": `{id}` of an app Spotlight finds elsewhere is not a bundle id")]
     ElsewhereBundleId { case: String, id: String },
+    /// An `access` key that is no guarded folder.
+    #[error("case \"{case}\": `access` names `{key}`: only the guarded folders desktop, documents and downloads")]
+    AccessKey { case: String, key: String },
+    /// A `macos` that is no version (`15.4`).
+    #[error("case \"{case}\": `macos` is {value:?}, not a macOS version such as \"15.4\"")]
+    MacosVersion { case: String, value: String },
+    /// A `[[case.receipt]]` whose package is not one plain file name ending in `.pkg`.
+    #[error("case \"{case}\": a receipt's `package` must be one plain file name ending in .pkg, not {package:?}")]
+    ReceiptPackage { case: String, package: String },
+    /// A `[[case.receipt]]` whose `installed` is not an age.
+    #[error("case \"{case}\": the receipt of {package} has `installed` {installed:?}, which is not an age")]
+    ReceiptInstalled { case: String, package: String, installed: String },
     /// Two cases write one path.
     #[error("case \"{case}\": the path {path} is also written by case \"{other}\"")]
     PathWrittenTwice { case: String, other: String, path: PathBuf },
@@ -133,6 +145,9 @@ pub enum SandboxError {
     /// Two case files write one path into one sandbox.
     #[error("the path {path} is written by both `{first}` and `{second}`")]
     PathWrittenTwice { path: PathBuf, first: String, second: String },
+    /// Two cases state different macOS versions: one sandbox has one.
+    #[error("the cases state two macOS versions, {first} and {second}; a sandbox has one")]
+    MacosVersions { first: String, second: String },
     /// A case file does not make one tree.
     #[error("{source}")]
     Case { source: CaseError },

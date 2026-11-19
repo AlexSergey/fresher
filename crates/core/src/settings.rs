@@ -2,6 +2,7 @@
 //! `SettingsStore` port's.
 
 mod core_schema;
+mod days;
 mod folders;
 pub(crate) mod schema;
 
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub use core_schema::{IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, SCAN_ROOTS};
+pub use days::DaySetting;
 pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
 
 use crate::{ModuleGroup, ModuleId, TextKey};

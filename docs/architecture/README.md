@@ -54,7 +54,7 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
 | `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
-| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `dev-caches` (the package managers', Go's and Xcode's caches); `app-leftovers` (the data of apps no longer installed, group Apps); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
+| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `dev-caches` (the package managers', Go's and Xcode's caches); `app-leftovers` (the data of apps no longer installed, group Apps); `downloads` (unfinished downloads, installers of installed apps, old macOS installers and big files not opened in `~/Downloads`, group Your files, only once the folder is allowed); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
 | `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos |
 | `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
@@ -98,12 +98,12 @@ Rules of the layout:
   generator wrote into `world.toml` and runs from there (`StartedClock`; the system's without one), so the case files'
   ages hold however long ago the sandbox was generated (plan 016); the process's IO policy is set
   only by the app's start, never by `sandbox_engine`, so the autotests run the same composition on fakes. The window
-  shows a banner naming the sandbox and saying "Open apps are simulated." ("Open apps and Spotlight are simulated."
-  when its world declares any of Spotlight's answers; a development build outside one: "nothing
+  shows a banner naming the sandbox and listing what its world simulates (`Build::Sandbox.simulated`, a list of `Simulated`: running apps always, Spotlight,
+  access and installs when the world states them: "Simulated: open apps, Spotlight, access, installs."; a development build outside one: "nothing
   can be removed outside a sandbox"; nothing in a release build). A release build has no such branch.
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
 - **The system's facts** (plan [009](../plans/009-system-knowledge/readme.md)): the engine's `Ports.system`
-  (`SystemPorts`: known folders, installed apps, running apps) becomes one lazy `SystemFacts` per scan, handed to
+  (`SystemPorts`: known folders, installed apps, running apps, install records) becomes one lazy `SystemFacts` per scan, handed to
   every module as `cx.system()`; the engine adds its own interests for the projects under `ModuleId::system()` and
   sets the projects before any `finish`. Nothing of it is written to disk.
 - The UI gets everything it shows (names, descriptions, sizes, danger levels, the text of a refusal) from the core, as
@@ -124,6 +124,7 @@ Rules of the layout:
 | `KnownFolders`   | `fresher-system`'s `MacKnownFolders` (the macOS layout of a home folder; opens nothing)                         | `FakeKnownFolders` (`home_layout` of a fixture root)        |
 | `InstalledApps`  | `fresher-system`'s `MacInstalledApps` (the apps folders and one below, the older JetBrains Toolbox's folder four below; an app link read where it points; `Info.plist`, code signature; what it cannot read in `unread`; `find` by bundle id through Spotlight, `mdfind`, or a sandbox's declared apps; `search_complete`: Spotlight knows the Finder and every mounted volume is indexed, `mdutil -s` through its own 10 s runner, a network volume never asked) | `FakeInstalledApps` (`partial`, `failing_search`), `installed_app` |
 | `RunningApps`    | `fresher-system`'s `MacRunningApps` (`fresher-macos`'s process table, each executable's bundles)                | `FakeRunningApps` (a script), `running_app`                 |
+| `InstallRecords` | `fresher-system`'s `MacInstallRecords` (the installer receipts in `/var/db/receipts`, read only; the version of macOS from its own version file) | `FakeInstallRecords`, `changed_at`                          |
 | `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
 | `CleanupJournal` | `fresher-store`'s `FileCleanupJournal`                                                                          | `MemoryCleanupJournal`                                      |
 | `DiskWalk`       | `fresher-scanner`'s `Scanner`, with the macOS reader in the app                                                 | `NaiveWalk` on a fixture tree                               |

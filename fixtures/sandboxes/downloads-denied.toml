@@ -1,0 +1,20 @@
+# The downloads module with access to Downloads denied: a world of its own. In `npm run sandbox -- all` the most
+# restrictive access wins, so Downloads is then denied for every case file
+# ([known issue](../../docs/known-issues/repo-sandbox-all-worlds-interact.md)).
+feature = "downloads-denied"
+module = "downloads"
+
+[[case]]
+name = "nothing in Downloads is read without access"
+kind = "negative"
+access = { downloads = "denied" }
+[[case.file]]
+path = "home/Downloads/denied.zip.crdownload"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Downloads/Denied-1.0.dmg"
+size = 4096
+age = "40d"
+changed = "40d"

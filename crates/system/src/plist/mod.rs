@@ -10,6 +10,12 @@ mod xml;
 #[cfg(test)]
 mod tests;
 
+/// The binary property list writer of this module's tests, for the tests of the readers that use it.
+#[cfg(test)]
+pub(crate) mod fixture {
+    pub(crate) use super::tests::writer::dict_of_strings;
+}
+
 use std::collections::BTreeMap;
 
 /// The largest property list read: 1 MiB.

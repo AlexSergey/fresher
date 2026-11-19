@@ -23,6 +23,8 @@ pub struct AppBundle {
     pub version: Option<String>,
     /// `CFBundleVersion`.
     pub build: Option<String>,
+    /// When the bundle was last changed, stated as an age (`"10d"`) the way a file's is; the bundle is written now.
+    pub changed: Option<String>,
 }
 
 impl AppBundle {
@@ -118,6 +120,7 @@ mod tests {
             name: "A & <B>".into(),
             version: None,
             build: None,
+            changed: None,
         }
     }
 

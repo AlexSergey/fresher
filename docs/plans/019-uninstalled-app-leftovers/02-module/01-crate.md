@@ -96,8 +96,9 @@ Deviations and calls:
   F7), so no `#[expect(dead_code)]` was needed.
 - `WalkedPlace` refuses every known folder outside `library`, `app-caches`, `app-support`, `preferences`, `logs`,
   `containers` and `saved-state` (F21); `GroupContainers` is its own variant.
-- The day setting's descriptor is a copy of `jetbrains`' (about 30 lines; a module may not depend on another). Deferred:
-  [`shared-day-setting.md`](../../../deferred/shared-day-setting.md), due at the third module with the setting (F16).
+- The day setting's descriptor is a copy of `jetbrains`' (about 30 lines; a module may not depend on another). Done later by plan 020
+  ([01/01](../../020-downloads/01-core-prerequisites/01-day-setting.md)): the shared `DaySetting` in
+  `crates/core/src/settings/days.rs` replaced the copies (F16).
 
 Tests: 33, negatives first, one for each error variant; the contract test went red on the three missing category docs and
 green after them. Clippy, fmt, `cargo machete` and `cargo deny` clean.

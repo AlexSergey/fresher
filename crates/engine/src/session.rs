@@ -45,11 +45,16 @@ pub(crate) struct Planned {
     pub(crate) settings: ModuleSettings,
 }
 
-/// Runs `plan` to its end: `ScanStarted`, the tool checks (`AccessChanged` when a tool's state changed), the guarded
-/// places decided (a place not allowed and not opted into is never touched), progress and findings, one
-/// `ModuleFinished` per module, the commit of the walk's state, `ScanCoverage`, `ScanFinished`. A module whose every
-/// category is unavailable is not run; the totals of a limited category are partial; an incomplete coverage ends the
-/// scan partial.
+/// Runs `plan` to its end. The tool checks run first, then the guarded places are decided (a place not allowed and
+/// not opted into is never touched; an opted-in one is tried) and the engine learns what the tries answered; only
+/// then is each module's availability decided, so a module needing a place runs in the scan that first tries it. A
+/// module whose every category is unavailable is not run; the totals of a limited category are partial; an
+/// incomplete coverage ends the scan partial.
+///
+/// The events, in order: `ScanStarted`; `AccessChanged` when a tool's state changed; `AccessChanged` when a try
+/// changed a state; the `ModuleFinished` of each module not run for what it lacks; then the walk's progress and
+/// findings, the other modules' `ModuleFinished`, `ScanCoverage` and `ScanFinished` (the walk's state committed
+/// before them).
 ///
 /// A module that panics is caught and counts as failed; any other panic still ends the scan `Partial` (see
 /// [`Output`]'s `Drop`), so the engine never stays `Scanning`. A cancelled or stopped walk is not committed: the
@@ -65,7 +70,6 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let first_id = begin(shared, plan);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
-    let (access, unavailable) = decide_access(shared, plan, cancel);
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
     // One scan's facts of the system, shared by every module and gathered only when one asks.
     let system = SystemFacts::new(&shared.ports.system);
@@ -93,13 +97,13 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         ignored: &plan.ignored,
     };
 
+    let (entry, unavailable) = decide_access(shared, plan, cancel);
     for (index, missing) in unavailable.into_iter().enumerate() {
         if let Some(missing) = missing {
             outcomes[index] = Some(output.module_finished(index, ids[index], ModuleOutcome::Unavailable { missing }));
         }
     }
 
-    let entry = decide_places(shared, plan, &access);
     let mut throttle = Throttle::default();
     let publish_progress = |progress: WalkProgress| {
         shared.bus.publish(&Event::ScanProgress { scan, entries: progress.entries, bytes: progress.bytes });
@@ -234,21 +238,36 @@ fn finish_modules(
     }
 }
 
-/// Checks the tools of the scan's modules (`AccessChanged` when a tool's state changed), then decides with the access
-/// what each module lacks to run at all (`None` when it can run) and which categories are limited.
+/// The tool checks, the guarded places (the engine learns what their tries answered), then what each module lacks:
+/// the places to avoid and the modules not run. An `AccessChanged` for the tools, then one for the places, each only
+/// when a state changed.
 fn decide_access(
     shared: &Shared,
     plan: &ScanPlan,
     cancel: &CancelToken,
-) -> (AccessStatus, Vec<Option<Vec<Capability>>>) {
+) -> (coverage::Entry, Vec<Option<Vec<Capability>>>) {
+    check_tools(shared, plan, cancel);
+    let entry = decide_places(shared, plan, &coverage::as_opted(&shared.access.status(), &plan.opt_ins));
+    if shared.access.learn(&entry.tried) {
+        shared.bus.publish(&Event::AccessChanged { status: shared.access.status() });
+    }
+    (entry, decide_modules(shared, plan))
+}
+
+/// Checks the tools of the scan's modules; `AccessChanged` when a tool's state changed.
+fn check_tools(shared: &Shared, plan: &ScanPlan, cancel: &CancelToken) {
     let checks = plan.modules.iter().flat_map(|planned| planned.module.descriptor().tool_checks());
     if shared.access.check_tools(checks, cancel) {
         shared.bus.publish(&Event::AccessChanged { status: shared.access.status() });
     }
-    let access = shared.access.status();
-    let unavailable = plan.modules.iter().map(|planned| unavailable(&*planned.module, &access)).collect();
+}
+
+/// Decides with the access as last learnt, as the switches allow it, what each module lacks to run at all (`None`
+/// when it can run) and which categories are limited.
+fn decide_modules(shared: &Shared, plan: &ScanPlan) -> Vec<Option<Vec<Capability>>> {
+    let access = coverage::as_opted(&shared.access.status(), &plan.opt_ins);
     lock_anyway(&shared.results).limit(limited(plan, &access));
-    (access, unavailable)
+    plan.modules.iter().map(|planned| unavailable(&*planned.module, &access)).collect()
 }
 
 /// The guarded places decided before the walk; a restore reads no disk, so it tries none.

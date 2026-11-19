@@ -7,15 +7,20 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
-use fresher_core::{AccessProbe, Build, Clock, CommandRunner, ModuleId, OpenFiles, RunningApps, Trash, Volumes};
+use fresher_core::{
+    AccessProbe, Build, Clock, CommandRunner, InstallRecords, InstalledApps, KnownFolders, ModuleId, OpenFiles,
+    RunningApps, Simulated, Trash, Volumes,
+};
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
     MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection,
 };
 use fresher_sandbox::{Sandbox, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
-use fresher_system::{AppSearch, COMMAND_TIMEOUT, DeclaredSearch, ProcessCommandRunner, StartedClock, SystemClock};
-use fresher_testing::{FactsLens, FakeTrash, StatedFacts};
+use fresher_system::{
+    AppSearch, COMMAND_TIMEOUT, DeclaredSearch, MacInstalledApps, ProcessCommandRunner, StartedClock, SystemClock,
+};
+use fresher_testing::{FactsLens, FakeTrash, StatedFacts, StatedInstalledApps};
 
 use crate::adapters::UnknownAccess;
 use crate::compose::{ComposeError, Shared, assemble, real_protection, user_temp};
@@ -125,8 +130,9 @@ impl SandboxMode {
 }
 
 /// What sandbox mode keeps real in the app, and the autotests replace by fakes: all of it is only read. The running
-/// apps are never the Mac's, the clock starts at the sandbox's own moment, and the facts the sandbox's entries state
-/// are read instead of the disk's: the app takes all three from the sandbox's world.toml.
+/// apps are never the Mac's, the clock starts at the sandbox's own moment, the access is the one its world states, the
+/// receipts and the macOS version are its world's, and the facts the sandbox's entries state are read instead of the
+/// disk's: the app takes all five from the sandbox's world.toml.
 #[derive(Clone)]
 pub struct SandboxPorts {
     pub clock: Arc<dyn Clock>,
@@ -135,6 +141,8 @@ pub struct SandboxPorts {
     pub running: Arc<dyn RunningApps>,
     pub commands: Arc<dyn CommandRunner>,
     pub access: Arc<dyn AccessProbe>,
+    /// The installer receipts and the macOS version its world states (`World::install_records`): never the Mac's.
+    pub installs: Arc<dyn InstallRecords>,
     /// What the walk's reader reports instead of the disk's, for the stated entries only (`World::stated`).
     pub stated: StatedFacts,
 }
@@ -146,26 +154,38 @@ impl std::fmt::Debug for SandboxPorts {
 }
 
 impl SandboxPorts {
-    /// The app's real ports, as a normal development build has them, but the running apps, the clock and the stated
-    /// facts: the sandbox's declared running apps (none without a `world.toml`), so an app open on the Mac never
-    /// changes what a sandbox shows, a clock that starts at the moment the sandbox was generated (the system's without
-    /// one), so its ages are the case files' however long ago it was generated, and the facts its entries state.
+    /// The app's real ports, as a normal development build has them, but the running apps, the clock, the access, the
+    /// installs and the stated facts: the sandbox's declared running apps (none without a `world.toml`), so an app open
+    /// on the Mac never changes what a sandbox shows, a clock that starts at the moment the sandbox was generated (the
+    /// system's without one), so its ages are the case files' however long ago it was generated, the access its world
+    /// states (a stand-in that knows nothing without one), the receipts and the macOS version its world states (none,
+    /// and a version that fails, without them: never the Mac's), and the facts its entries state.
     pub(crate) fn real(sandbox: &Sandbox) -> Result<Self, SandboxRefusal> {
         let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
         let clock: Arc<dyn Clock> = match world.now() {
             Some(start) => Arc::new(StartedClock::at(start)),
             None => Arc::new(SystemClock),
         };
+        // The Mac's access is never asked: the sandbox's world is not the Mac's (docs/hacks/).
+        let access = access_of(&world, &sandbox.home(), Arc::new(UnknownAccess));
         Ok(Self {
             clock,
             volumes: Arc::new(MacVolumes::new()),
             open_files: Arc::new(MacOpenFiles::new()),
             running: Arc::new(world.running_apps()),
             commands: Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT)),
-            // The Mac's access is never asked: the sandbox's world is not the Mac's (docs/hacks/).
-            access: Arc::new(UnknownAccess),
+            access,
+            installs: Arc::new(world.install_records()),
             stated: world.stated(sandbox.path()),
         })
+    }
+}
+
+/// The access sandbox mode answers in the sandbox whose home is `home`: the one `world` states, else `otherwise`.
+pub fn access_of(world: &World, home: &Path, otherwise: Arc<dyn AccessProbe>) -> Arc<dyn AccessProbe> {
+    match world.access(home) {
+        Some(stated) => Arc::new(stated),
+        None => otherwise,
     }
 }
 
@@ -200,6 +220,7 @@ pub(crate) fn compose(
     let ports = ports(&sandbox)?;
     let world = World::read(&sandbox).map_err(SandboxRefusal::World)?;
     let home = sandbox.home();
+    let known_folders: Arc<dyn KnownFolders> = Arc::new(sandbox.known_folders());
     let data = DataFolder::open(sandbox.data_folder())?;
     // Each list keeps its own carve-outs: the real Mac stays safe whatever a bug does, and the sandbox behaves like a
     // Mac (its `Documents` whole, its `.Trash` never touched, its own `T` carved out of its users' folders). The
@@ -227,14 +248,19 @@ pub(crate) fn compose(
     };
     // Sandbox mode keeps a standing avoid list, the guarded places of both homes: its access is a stand-in, since the
     // sandbox's world is not the Mac's, and a scan root outside the sandbox, such as the real home, must raise no
-    // system prompt (docs/hacks/, "Sandbox mode avoids the places that prompt").
-    let mut avoid = places_that_prompt(&home);
+    // system prompt (docs/hacks/, "Sandbox mode avoids the places that prompt"). The sandbox home's places of the
+    // folders its world states are left to the engine's coverage, as on a Mac; the real home's stay avoided whatever
+    // the world says.
+    let stated = world.stated_places(&home);
+    let mut avoid: Vec<PathBuf> =
+        places_that_prompt(&home).into_iter().filter(|place| !stated.contains(place)).collect();
     avoid.extend(places_that_prompt(real_home));
+    let apps = installed_apps(&world, sandbox.path(), Arc::clone(&known_folders), &ports.stated);
     let engine = assemble(Shared {
         folder: data,
         reader: Arc::new(FactsLens::new(MacFolderReader::new(), ports.stated)),
         avoid,
-        known_folders: Arc::new(sandbox.known_folders()),
+        known_folders,
         volumes: ports.volumes,
         clock: ports.clock,
         running: ports.running,
@@ -242,8 +268,8 @@ pub(crate) fn compose(
         access: ports.access,
         cleanup,
         only: mode.only,
-        // The sandbox's apps are its declared ones: Spotlight would answer the real Mac's.
-        app_search: AppSearch::Declared(app_search(&world, sandbox.path())),
+        apps,
+        installs: ports.installs,
     })?;
     Ok((engine, sandbox))
 }
@@ -254,15 +280,34 @@ fn app_search(world: &World, path: &Path) -> DeclaredSearch {
     DeclaredSearch { index_on: world.spotlight_on(), elsewhere: world.elsewhere_apps(path) }
 }
 
-/// The build the banner shows for `sandbox`: its folder, its open apps simulated, and Spotlight simulated when its
-/// world declares any of it (an app found elsewhere, or Spotlight off).
+/// The apps of the sandbox at `path`: the ones in its apps folders and its world's declared ones (Spotlight would
+/// answer the real Mac's), each with the change time the world states for its bundle.
+fn installed_apps(
+    world: &World,
+    path: &Path,
+    known_folders: Arc<dyn KnownFolders>,
+    stated: &StatedFacts,
+) -> Arc<dyn InstalledApps> {
+    let listed = MacInstalledApps::new(known_folders, AppSearch::Declared(app_search(world, path)));
+    Arc::new(StatedInstalledApps::new(Arc::new(listed), stated.clone()))
+}
+
+/// The build the banner shows for `sandbox`: its folder and what it simulates: its open apps always, Spotlight when
+/// its world declares any of it (an app found elsewhere, or Spotlight off), the access when its world states any, and
+/// the installs when it states the macOS version or a receipt.
 pub(crate) fn build(sandbox: &Sandbox) -> Result<Build, SandboxRefusal> {
     let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
-    Ok(Build::Sandbox {
-        path: sandbox.path().to_path_buf(),
-        simulated_running: true,
-        simulated_spotlight: world.declares_spotlight(),
-    })
+    let mut simulated = vec![Simulated::Running];
+    if world.declares_spotlight() {
+        simulated.push(Simulated::Spotlight);
+    }
+    if world.declares_access() {
+        simulated.push(Simulated::Access);
+    }
+    if world.declares_installs() {
+        simulated.push(Simulated::Installs);
+    }
+    Ok(Build::Sandbox { path: sandbox.path().to_path_buf(), simulated })
 }
 
 #[cfg(test)]

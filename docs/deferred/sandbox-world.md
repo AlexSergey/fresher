@@ -25,6 +25,21 @@ sandbox mode and the autotest search the sandbox's listed apps and these (`AppSe
 the banner says Spotlight is simulated when the world declares any of it. Open files, tools, access and the steps
 between scans stay deferred.
 
+**Partly taken by plan [020](../plans/020-downloads/readme.md)** (2026-11-19), the first module that needs a guarded
+folder: the access of the guarded folders. A case states `access = { downloads = "granted" }` (`desktop`, `documents`,
+`downloads`; `granted`, `denied`, `not-asked`; the most restrictive statement wins across cases); `world.toml` lists
+it (`[access]`), sandbox mode and the autotest answer access from it (`World::access`: the stated folders guarded
+under the sandbox's home, `not-asked` answering `granted` once the switch is on), and the standing avoid list no
+longer hides the sandbox home's places of the stated folders. Full Disk Access stays `Unknown` and other apps' data
+`NotAsked`; the real home's guarded places stay avoided. The banner lists what is simulated ("Simulated: open apps,
+Spotlight, access, installs.").
+
+Plan 020 also takes the installs: a case states `macos = "15.4"`, `[[case.receipt]]` (`package`, `installed`) and
+`[[case.app]] changed = "10d"` (an app's change time, which the generator cannot write because every bundle is
+written now); `world.toml` lists `macos` and `[[receipt]]`, sandbox mode and the autotest answer the receipts and
+the version from it (`World::install_records`, never the Mac's), and `StatedInstalledApps` puts the stated change on
+the installed app. Open files, tools and the steps between scans stay deferred.
+
 ## What is postponed
 
 Plan [007](../plans/007-safe-development/readme.md)'s former plan 06: a case file of `fixtures/sandboxes/` also
@@ -32,7 +47,7 @@ declares what is not files, and sandbox mode and the sandbox autotests serve it 
 built. The design is in plan 007's [`00-design.md`](../plans/007-safe-development/00-design.md), section 10. Until
 then, sandbox mode keeps volumes, open files, commands and access real and read-only, and the autotests use empty
 fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016), the
-stated file facts too (plan 017), and Spotlight's answers (plan 019).
+stated file facts too (plan 017), Spotlight's answers (plan 019), the access of the guarded folders and the installs (plan 020).
 
 ## What doing it needs
 

@@ -14,8 +14,8 @@ impl Matcher {
 }
 
 /// The hash of a canonical encoding: each interest's owner, local index, pattern (with its known folder and the shape
-/// of its last `*`), claim, siblings and held names, then each anchored interest's resolved segments. Every string and
-/// list is length-prefixed, so no two sets encode alike.
+/// of its last `*`, its suffixes for a suffixed one), claim, siblings and held names, then each anchored interest's
+/// resolved segments. Every string and list is length-prefixed, so no two sets encode alike.
 pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>)]) -> u64 {
     let mut bytes = Vec::new();
     for (index, interest) in interests.iter() {
@@ -25,11 +25,18 @@ pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>
         let (kind, folder, value) = match interest.pattern() {
             Pattern::FolderName(value) => (0, "", value),
             Pattern::Under(folder, value) if interest.matches_only_bundle_ids() => (4, folder.as_str(), value),
+            Pattern::Under(folder, value) if !interest.name_suffixes().is_empty() => (5, folder.as_str(), value),
             Pattern::Under(folder, value) => (1, folder.as_str(), value),
             Pattern::MarkerFile(value) => (2, "", value),
             Pattern::Extension(value) => (3, "", value),
         };
         bytes.push(kind);
+        if kind == 5 {
+            put_number(&mut bytes, interest.name_suffixes().len());
+            for suffix in interest.name_suffixes() {
+                put_bytes(&mut bytes, suffix.as_bytes());
+            }
+        }
         put_bytes(&mut bytes, folder.as_bytes());
         put_bytes(&mut bytes, value.as_bytes());
         bytes.push(match interest.claim() {
@@ -57,6 +64,13 @@ pub(super) fn fingerprint(interests: &InterestSet, anchors: &[(u32, Vec<Segment>
                 }
                 Segment::Any => bytes.push(1),
                 Segment::BundleId => bytes.push(2),
+                Segment::Suffixes(suffixes) => {
+                    bytes.push(3);
+                    put_number(&mut bytes, suffixes.len());
+                    for suffix in suffixes {
+                        put_bytes(&mut bytes, suffix);
+                    }
+                }
             }
         }
     }

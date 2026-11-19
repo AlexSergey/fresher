@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use fresher_core::{
-    AppIdError, BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, RunningApp, RunningApps,
-    SystemError, SystemPorts, TeamId,
+    AppIdError, BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, Receipt, RunningApp,
+    RunningApps, SystemError, SystemPorts, SystemVersion, TeamId, Timestamp,
 };
 
 use crate::FakeKnownFolders;
@@ -19,6 +19,7 @@ pub fn fake_system(home: &Path) -> SystemPorts {
         known_folders: Arc::new(FakeKnownFolders::home_layout(home)),
         apps: Arc::new(FakeInstalledApps::default()),
         running: Arc::new(FakeRunningApps::default()),
+        installs: Arc::new(FakeInstallRecords::default()),
     }
 }
 
@@ -32,7 +33,13 @@ pub fn installed_app(bundle_id: &str, name: &str, version: &str) -> Result<Insta
         build: None,
         path: PathBuf::from("/Applications").join(format!("{name}.app")),
         helpers: Vec::new(),
+        changed: None,
     })
+}
+
+/// `app` whose bundle was last changed `seconds` after the Unix epoch.
+pub fn changed_at(app: InstalledApp, seconds: u64) -> InstalledApp {
+    InstalledApp { changed: Some(Timestamp::from_secs(seconds)), ..app }
 }
 
 /// `app` signed by `team`.
@@ -191,12 +198,75 @@ impl RunningApps for FakeRunningApps {
     }
 }
 
+/// The installer receipts and the macOS version a test sets; counts the asks. By default no receipts and a failing
+/// version ("no version stated").
+#[derive(Debug)]
+pub struct FakeInstallRecords {
+    receipts: Result<Vec<Receipt>, SystemError>,
+    version: Result<SystemVersion, SystemError>,
+    calls: AtomicUsize,
+}
+
+impl FakeInstallRecords {
+    /// Answers `receipts`.
+    #[must_use]
+    pub fn with_receipts(self, receipts: Vec<Receipt>) -> Self {
+        Self { receipts: Ok(receipts), ..self }
+    }
+
+    /// Answers the macOS version `major.minor`.
+    #[must_use]
+    pub fn with_version(self, major: u16, minor: u16) -> Self {
+        Self { version: Ok(SystemVersion { major, minor }), ..self }
+    }
+
+    /// Answers an error for the macOS version.
+    #[must_use]
+    pub fn failing_version(self, reason: &str) -> Self {
+        Self { version: Err(SystemError { reason: reason.into() }), ..self }
+    }
+
+    /// Answers an error for the receipts.
+    #[must_use]
+    pub fn failing_receipts(self, reason: &str) -> Self {
+        Self { receipts: Err(SystemError { reason: reason.into() }), ..self }
+    }
+
+    /// How many times the receipts or the version were asked.
+    pub fn calls(&self) -> usize {
+        self.calls.load(Ordering::SeqCst)
+    }
+}
+
+impl Default for FakeInstallRecords {
+    /// No receipts and no version stated.
+    fn default() -> Self {
+        Self {
+            receipts: Ok(Vec::new()),
+            version: Err(SystemError { reason: "no version stated".into() }),
+            calls: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl InstallRecords for FakeInstallRecords {
+    fn receipts(&self) -> Result<Vec<Receipt>, SystemError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        self.receipts.clone()
+    }
+
+    fn system_version(&self) -> Result<SystemVersion, SystemError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        self.version.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{InstalledApps, InstalledList, RunningApps, SystemError};
+        use fresher_core::{InstallRecords, InstalledApps, InstalledList, RunningApps, SystemError};
 
-        use crate::{FakeInstalledApps, FakeRunningApps};
+        use crate::{FakeInstallRecords, FakeInstalledApps, FakeRunningApps};
 
         #[test]
         fn a_failing_fake_answers_its_error_every_time() {
@@ -208,6 +278,22 @@ mod tests {
                 assert_eq!(running.list(), Err(SystemError { reason: "no table".into() }));
             }
             assert_eq!((apps.calls(), running.calls()), (2, 2));
+        }
+
+        #[test]
+        fn the_default_install_records_have_no_receipts_and_no_version() {
+            let records = FakeInstallRecords::default();
+
+            assert_eq!(records.receipts(), Ok(Vec::new()));
+            assert_eq!(records.system_version(), Err(SystemError { reason: "no version stated".into() }));
+            assert_eq!(records.calls(), 2);
+        }
+
+        #[test]
+        fn failing_receipts_answer_their_error() {
+            let records = FakeInstallRecords::default().failing_receipts("no folder");
+
+            assert_eq!(records.receipts(), Err(SystemError { reason: "no folder".into() }));
         }
 
         #[test]
@@ -248,7 +334,10 @@ mod tests {
     mod positive {
         use fresher_core::{InstalledApps, InstalledList, RunningApps};
 
-        use crate::{FakeInstalledApps, FakeRunningApps, installed_app, running_app, signed_by};
+        use crate::{
+            FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, installed_app, running_app, signed_by,
+        };
+        use fresher_core::{InstallRecords, Receipt, SystemVersion, Timestamp};
 
         #[test]
         fn a_fake_system_has_the_home_layout_and_nothing_else() {
@@ -257,6 +346,17 @@ mod tests {
             assert_eq!(system.known_folders.locate(fresher_core::KnownFolder::Logs), Some("/home/Library/Logs".into()));
             assert_eq!(system.apps.list(), Ok(InstalledList::default()));
             assert_eq!(system.running.list(), Ok(Vec::new()));
+        }
+
+        #[test]
+        fn the_install_records_are_what_the_test_says() {
+            let receipt = Receipt { package_file: "Tool.pkg".into(), installed: Timestamp::from_secs(5) };
+            let records = FakeInstallRecords::default().with_receipts(vec![receipt.clone()]).with_version(15, 4);
+            let app = changed_at(installed_app("com.example.Tool", "Tool", "1").unwrap(), 9);
+
+            assert_eq!(records.receipts(), Ok(vec![receipt]));
+            assert_eq!(records.system_version(), Ok(SystemVersion { major: 15, minor: 4 }));
+            assert_eq!(app.changed, Some(Timestamp::from_secs(9)));
         }
 
         #[test]

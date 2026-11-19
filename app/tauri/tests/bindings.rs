@@ -22,8 +22,8 @@ mod support {
         Operation, OutcomeCounts, Overview, OwnData, PlanGroup, PlanId, PlanItemView, PlanSummary, PutBackItem,
         PutBackOutcome, PutBackReport, PutBackRequest, RecordedOutcome, Refusal, Removability, Removal, ScanId,
         ScanKind, ScanOutcome, SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingProblem,
-        SettingUpdate, SettingValue, SettingsFile, SettingsView, Sizes, SkipCode, SkipReason, StateId, Subject, Text,
-        TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashState, Unit, Unreadable, UnreadableCount,
+        SettingUpdate, SettingValue, SettingsFile, SettingsView, Simulated, Sizes, SkipCode, SkipReason, StateId,
+        Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashState, Unit, Unreadable, UnreadableCount,
         UnreadablePlace, VolumeKind,
     };
     use fresher_core::{
@@ -52,6 +52,7 @@ mod support {
         let mut declarations = vec![
             declaration::<AppInfo>(&config),
             declaration::<Build>(&config),
+            declaration::<Simulated>(&config),
             declaration::<Event>(&config),
             declaration::<Refusal>(&config),
             declaration::<CommandError>(&config),

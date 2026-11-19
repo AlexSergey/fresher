@@ -4,3 +4,7 @@ extend-exclude = ["*-lock.json", "Cargo.lock", "fixtures/", ".idea/", "app/tauri
 [default]
 # A short commit hash in backticks is not a word: `12541f6`.
 extend-ignore-re = ["`[0-9a-f]{7,40}`"]
+
+[default.extend-words]
+# A macOS version's name: `Install macOS Big Sur.app`.
+Sur = "Sur"

@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use fresher_core::{
     BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, SystemError,
+    Timestamp,
 };
 
 use crate::bundle::{bundle_team, helpers, is_bundle, read_bundle};
@@ -268,7 +269,14 @@ fn app(path: &Path) -> Option<InstalledApp> {
         build: bundle.build,
         path: path.to_path_buf(),
         helpers: helpers(path),
+        changed: changed(path),
     })
+}
+
+/// The bundle's status change time in whole seconds; `None` when its metadata cannot be read.
+fn changed(path: &Path) -> Option<Timestamp> {
+    let metadata = fs::symlink_metadata(path).ok()?;
+    Some(Timestamp::from_secs(u64::try_from(metadata.ctime()).ok()?))
 }
 
 fn entries(folder: &Path) -> io::Result<Vec<PathBuf>> {
@@ -460,6 +468,13 @@ mod tests {
         }
 
         #[test]
+        fn a_bundle_whose_status_change_cannot_be_read_has_no_change_time() {
+            let root = tempfile::tempdir().unwrap();
+
+            assert_eq!(crate::apps::changed(&root.path().join("Missing.app")), None);
+        }
+
+        #[test]
         fn a_bundle_whose_info_plist_cannot_be_read_is_unread() {
             let root = tempfile::tempdir().unwrap();
             app(root.path(), "App", "com.example.App");
@@ -567,6 +582,20 @@ mod tests {
         use super::{ids, list_of_home, listed, toolbox};
         use crate::bundle::fixture::{app, bundle};
         use crate::{MacInstalledApps, MacKnownFolders};
+
+        #[test]
+        fn an_installed_app_carries_its_bundles_status_change() {
+            use std::os::unix::fs::MetadataExt as _;
+
+            let root = tempfile::tempdir().unwrap();
+            let bundle = app(root.path(), "Zed", "com.example.Zed");
+            let status_change = std::fs::symlink_metadata(&bundle).unwrap().ctime();
+
+            let apps = listed(root.path());
+
+            let status_change = fresher_core::Timestamp::from_secs(u64::try_from(status_change).unwrap());
+            assert_eq!(apps[0].changed, Some(status_change));
+        }
 
         #[test]
         fn apps_in_the_folder_and_one_below_are_listed_by_path() {

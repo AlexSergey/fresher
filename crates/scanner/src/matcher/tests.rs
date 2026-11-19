@@ -102,6 +102,43 @@ mod negative {
         assert_eq!(matched(&tree, &set).iter().map(|found| found.0).collect::<Vec<_>>(), [0]);
     }
 
+    fn suffixed(path: &str, suffixes: &[&str]) -> fresher_core::Interest {
+        interest(Pattern::Under(KnownFolder::Home, path.into()), Claim::Whole, &[])
+            .only_suffixes(suffixes.iter().map(|&suffix| suffix.into()).collect())
+            .unwrap()
+    }
+
+    #[test]
+    fn a_suffixed_star_takes_no_name_without_its_suffix() {
+        let downloads = [suffixed("Downloads/*", &[".download", ".app"])];
+        let matcher = compile(&set_of(&downloads), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Downloads");
+        for name in [&b"report.pdf"[..], b"download", b".download", b".APP", b"movie.download.part", b"\xff.download"] {
+            assert!(matcher.entry(state, name, EntryKind::Folder).is_empty(), "{name:?}");
+            assert!(!matcher.child_state(state, name).is_live(), "{name:?}");
+        }
+        let tree = fixture(
+            "[[file]]\npath = \"Downloads/report.pdf\"\n[[dir]]\npath = \"Downloads/download\"\n\
+             [[dir]]\npath = \"Downloads/.download\"\n[[file]]\npath = \"Downloads/movie.download.part\"\n",
+        );
+        agrees_and_finds_nothing(&tree, &downloads);
+    }
+
+    #[test]
+    fn a_plain_name_hits_only_the_plain_star_beside_a_suffixed_one() {
+        let downloads = [
+            interest(Pattern::Under(KnownFolder::Home, "Downloads/*".into()), Claim::Item, &[]),
+            suffixed("Downloads/*", &[".download"]),
+        ];
+        let matcher = compile(&set_of(&downloads), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Downloads");
+        assert_eq!(matcher.entry(state, b"Projects", EntryKind::Folder).as_slice(), [0]);
+        let tree = fixture("[[dir]]\npath = \"Downloads/Projects/node_modules\"\n");
+        let set = set_of(&downloads);
+        assert_eq!(matched(&tree, &set), reference(&tree, &set));
+        assert_eq!(matched(&tree, &set).iter().map(|found| found.0).collect::<Vec<_>>(), [0]);
+    }
+
     #[test]
     fn an_anchor_that_does_not_resolve_matches_nothing() {
         let caches = [interest(Pattern::Under(KnownFolder::Home, "Library/Caches".into()), Claim::Item, &[])];
@@ -363,6 +400,85 @@ mod positive {
         assert_eq!(agrees("[[dir]]\npath = \"Caches/com.example.App/Data\"\n", &caches).len(), 3);
     }
 
+    fn suffixed(path: &str, claim: Claim, suffixes: &[&str]) -> fresher_core::Interest {
+        interest(Pattern::Under(KnownFolder::Home, path.into()), claim, &[])
+            .only_suffixes(suffixes.iter().map(|&suffix| suffix.into()).collect())
+            .unwrap()
+    }
+
+    #[test]
+    fn a_suffixed_star_matches_a_name_with_its_suffix_in_any_case() {
+        let toml = "[[dir]]\npath = \"Downloads/movie.download/data\"\n\
+                    [[dir]]\npath = \"Downloads/Install macOS Sonoma.APP/Contents\"\n\
+                    [[file]]\npath = \"Downloads/report.pdf\"\n";
+        let found = agrees(toml, &[suffixed("Downloads/*", Claim::Whole, &[".download", ".app"])]);
+        let paths: Vec<_> = found.iter().map(|found| found.1.clone()).collect();
+        assert_eq!(paths, [Path::new("Downloads/Install macOS Sonoma.APP"), Path::new("Downloads/movie.download")]);
+    }
+
+    #[test]
+    fn a_suffixed_name_hits_both_a_plain_and_a_suffixed_star() {
+        let downloads = [
+            interest(Pattern::Under(KnownFolder::Home, "Downloads/*".into()), Claim::Item, &[]),
+            suffixed("Downloads/*", Claim::Whole, &[".download"]),
+        ];
+        let matcher = compile(&set_of(&downloads), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Downloads");
+        assert_eq!(matcher.entry(state, b"movie.download", EntryKind::Folder).as_slice(), [0, 1]);
+        assert_eq!(agrees("[[dir]]\npath = \"Downloads/movie.download\"\n", &downloads).len(), 2);
+    }
+
+    #[test]
+    fn a_name_both_shaped_and_suffixed_hits_every_star_it_fits() {
+        let downloads = [
+            interest(Pattern::Under(KnownFolder::Home, "Downloads/*".into()), Claim::Item, &[]),
+            interest(Pattern::Under(KnownFolder::Home, "Downloads/*".into()), Claim::Item, &[])
+                .only_bundle_ids()
+                .unwrap(),
+            suffixed("Downloads/*", Claim::Item, &[".download"]),
+            suffixed("Downloads/*", Claim::Item, &[".zip.download", ".gz"]),
+            suffixed("Downloads/*", Claim::Item, &[".app"]),
+        ];
+        let matcher = compile(&set_of(&downloads), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Downloads");
+        let hits = |name: &[u8]| matcher.entry(state, name, EntryKind::Folder).as_slice().to_vec();
+        assert_eq!(hits(b"trip.zip.download"), [0, 1, 2, 3]);
+        assert_eq!(hits(b"Trip.ZIP.download"), [0, 1, 2, 3]);
+        assert_eq!(hits(b"my trip.zip.download"), [0, 2, 3]);
+        assert_eq!(hits(b"movie.download"), [0, 1, 2]);
+        assert_eq!(hits(b".zip.download"), [0, 2], "a name that is only a suffix is longer than the shorter one");
+        assert_eq!(hits(b"com.example.Tool"), [0, 1]);
+        assert_eq!(hits(b"com.example.App.app"), [0, 1, 4]);
+        assert_eq!(hits(b"a b"), [0]);
+        let toml = "[[dir]]\npath = \"Downloads/trip.zip.download\"\n[[dir]]\npath = \"Downloads/my trip.zip.download\"\n\
+                    [[dir]]\npath = \"Downloads/.zip.download\"\n[[file]]\npath = \"Downloads/x.tar.gz\"\n";
+        assert_eq!(agrees(toml, &downloads).len(), 4 + 3 + 2 + 3);
+    }
+
+    #[test]
+    fn a_literal_beside_a_suffixed_star_still_leads_inside() {
+        let downloads = [
+            suffixed("Downloads/*", Claim::Item, &[".app"]),
+            interest(Pattern::Under(KnownFolder::Home, "Downloads/Tools.app/Contents".into()), Claim::Item, &[]),
+        ];
+        let matcher = compile(&set_of(&downloads), Path::new("/home"));
+        let state = matcher.child_state(matcher.root_state(Path::new("/home")), b"Downloads");
+        assert_eq!(matcher.entry(state, b"Tools.app", EntryKind::Folder).as_slice(), [0]);
+        let tools = matcher.child_state(state, b"Tools.app");
+        assert_eq!(matcher.entry(tools, b"Contents", EntryKind::Folder).as_slice(), [1]);
+        let toml = "[[dir]]\npath = \"Downloads/Tools.app/Contents\"\n[[dir]]\npath = \"Downloads/Other.app\"\n";
+        let found = agrees(toml, &downloads);
+        let summary: Vec<_> = found.iter().map(|found| (found.0, found.1.clone())).collect();
+        assert_eq!(
+            summary,
+            [
+                (0, Path::new("Downloads/Other.app").to_path_buf()),
+                (0, Path::new("Downloads/Tools.app").to_path_buf()),
+                (1, Path::new("Downloads/Tools.app/Contents").to_path_buf()),
+            ]
+        );
+    }
+
     #[test]
     fn a_marker_file_matches_its_folder_and_a_tag_is_checked() {
         let interests = [
@@ -421,12 +537,22 @@ mod property {
 
     fn interests() -> impl Strategy<Value = Vec<Interest>> {
         let siblings = prop::collection::vec(prop::sample::select(&NAMES[..]), 0..3);
-        prop::collection::vec((pattern(), any::<bool>(), siblings, any::<bool>()), 1..6).prop_map(|specs| {
+        prop::collection::vec((pattern(), any::<bool>(), siblings, 0..5_u8), 1..6).prop_map(|specs| {
             specs
                 .into_iter()
-                .map(|(pattern, whole, siblings, shaped)| {
+                .map(|(pattern, whole, siblings, shape)| {
                     let plain = interest(pattern, if whole { Claim::Whole } else { Claim::Item }, &siblings);
-                    if shaped { plain.clone().only_bundle_ids().unwrap_or(plain) } else { plain }
+                    let suffixed = |suffixes: &[&str]| {
+                        plain.clone().only_suffixes(suffixes.iter().map(|&suffix| suffix.into()).collect())
+                    };
+                    let shaped = match shape {
+                        1 => plain.clone().only_bundle_ids(),
+                        2 => suffixed(&[".log"]),
+                        3 => suffixed(&[".GZ", ".json"]),
+                        4 => suffixed(&[".tar.gz"]),
+                        _ => Ok(plain.clone()),
+                    };
+                    shaped.unwrap_or(plain)
                 })
                 .collect()
         })
@@ -504,6 +630,21 @@ mod property {
         let print = |interest: Interest| compile(&set_of(&[interest]), home).fingerprint();
 
         assert_ne!(print(plain()), print(plain().only_bundle_ids().unwrap()));
+    }
+
+    #[test]
+    fn the_fingerprint_changes_with_the_suffixes() {
+        let plain = || interest(Pattern::Under(KnownFolder::Home, "Downloads/*".into()), Claim::Whole, &[]);
+        let suffixed =
+            |suffixes: &[&str]| plain().only_suffixes(suffixes.iter().map(|&suffix| suffix.into()).collect()).unwrap();
+        let home = Path::new("/Users/fixed");
+        let print = |interest: Interest| compile(&set_of(&[interest]), home).fingerprint();
+
+        assert_ne!(print(plain()), print(suffixed(&[".app"])));
+        assert_ne!(print(plain().only_bundle_ids().unwrap()), print(suffixed(&[".app"])));
+        assert_ne!(print(suffixed(&[".app"])), print(suffixed(&[".download"])));
+        assert_ne!(print(suffixed(&[".app", ".download"])), print(suffixed(&[".app.download"])));
+        assert_eq!(print(suffixed(&[".APP"])), print(suffixed(&[".app"])));
     }
 
     #[test]

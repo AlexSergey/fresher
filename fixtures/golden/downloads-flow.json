@@ -1,0 +1,48 @@
+{
+  "leftOut": [
+    [
+      "installers",
+      "not-older",
+      1
+    ],
+    [
+      "unfinished",
+      "recent",
+      1
+    ]
+  ],
+  "offered": [
+    [
+      "downloads.installers",
+      "home/Downloads/Firefox 133.0.dmg"
+    ],
+    [
+      "downloads.installers",
+      "home/Downloads/Tool-3.1.pkg"
+    ],
+    [
+      "downloads.large-untouched",
+      "home/Downloads/video.mov"
+    ],
+    [
+      "downloads.macos-installers",
+      "home/Downloads/Install macOS Sonoma.app"
+    ],
+    [
+      "downloads.safari-resumable",
+      "home/Downloads/trip.zip.download"
+    ],
+    [
+      "downloads.unfinished",
+      "home/Downloads/movie.mp4.crdownload"
+    ],
+    [
+      "downloads.unfinished",
+      "home/Downloads/video.mkv"
+    ],
+    [
+      "downloads.unfinished",
+      "home/Downloads/video.mkv.part"
+    ]
+  ]
+}

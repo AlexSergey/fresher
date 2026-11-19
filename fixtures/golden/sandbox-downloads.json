@@ -1,0 +1,702 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "downloads.installers",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/Example-2.0.dmg",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.macos-installers",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/Install macOS Sonoma.app",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.installers",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/Tool-3.1.pkg",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/movie.mp4.crdownload",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.large-untouched",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/old-backup.iso",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/song.flac",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/song.flac.part",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "downloads.safari-resumable",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Downloads/trip.zip.download",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.example.Example",
+      "category": "downloads.installers",
+      "danger": "low",
+      "logical": 4096,
+      "module": "downloads",
+      "subject": "home/Downloads/Example-2.0.dmg"
+    },
+    {
+      "app": null,
+      "category": "downloads.macos-installers",
+      "danger": "low",
+      "logical": 4096,
+      "module": "downloads",
+      "subject": "home/Downloads/Install macOS Sonoma.app"
+    },
+    {
+      "app": null,
+      "category": "downloads.installers",
+      "danger": "low",
+      "logical": 4096,
+      "module": "downloads",
+      "subject": "home/Downloads/Tool-3.1.pkg"
+    },
+    {
+      "app": null,
+      "category": "downloads.unfinished",
+      "danger": "low",
+      "logical": 4096,
+      "module": "downloads",
+      "subject": "home/Downloads/movie.mp4.crdownload"
+    },
+    {
+      "app": null,
+      "category": "downloads.large-untouched",
+      "danger": "high",
+      "logical": 2147483648,
+      "module": "downloads",
+      "subject": "home/Downloads/old-backup.iso"
+    },
+    {
+      "app": null,
+      "category": "downloads.unfinished",
+      "danger": "low",
+      "logical": 0,
+      "module": "downloads",
+      "subject": "home/Downloads/song.flac"
+    },
+    {
+      "app": null,
+      "category": "downloads.unfinished",
+      "danger": "low",
+      "logical": 4096,
+      "module": "downloads",
+      "subject": "home/Downloads/song.flac.part"
+    },
+    {
+      "app": null,
+      "category": "downloads.safari-resumable",
+      "danger": "medium",
+      "logical": 8192,
+      "module": "downloads",
+      "subject": "home/Downloads/trip.zip.download"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "downloads.installers",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "downloads.left-out.not-older"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "downloads.large-untouched",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "downloads.left-out.recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 2147483648,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "downloads.macos-installers",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "downloads.left-out.newer-macos"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "downloads.unfinished",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "downloads.left-out.recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Downloads/report.pdf",
+        "case": "a document is never claimed",
+        "path": [
+          "home/Downloads/report.pdf"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/report.pdf"
+          }
+        ]
+      },
+      {
+        "at": "home/Downloads/Holiday",
+        "case": "a folder of yours is never claimed",
+        "path": [
+          "home/Downloads/Holiday"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/Holiday"
+          }
+        ]
+      },
+      {
+        "at": "home/Downloads",
+        "case": "an unfinished Chrome download goes",
+        "path": [
+          "home/Downloads"
+        ],
+        "rows": [
+          {
+            "allocated": 8192,
+            "explained": 8192,
+            "logical": 8192,
+            "path": "home/Downloads/trip.zip.download"
+          },
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Downloads/Example-2.0.dmg"
+          },
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Downloads/Install macOS Sonoma.app"
+          },
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Downloads/Tool-3.1.pkg"
+          },
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Downloads/movie.mp4.crdownload"
+          },
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Downloads/song.flac.part"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/Copyable (1).dmg"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 2147483648,
+            "path": "home/Downloads/Films"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/Holiday"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/Install macOS Tahoe.app"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/Later.dmg"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/Sample-2.0.dmg"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/backup-2024.dmg"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 17,
+            "path": "home/Downloads/clip.mov.part"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/fresh.zip.crdownload"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 2147483648,
+            "path": "home/Downloads/old-backup.iso"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 2147483648,
+            "path": "home/Downloads/recent.iso"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Downloads/report.pdf"
+          },
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 0,
+            "path": "home/Downloads/song.flac"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 28672,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 4096,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 805273600,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 110,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Copyable.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Copyable.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 426,
+        "path": "Applications/Copyable.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Copyable.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Example.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Example.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 424,
+        "path": "Applications/Example.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Example.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Later.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Later.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 420,
+        "path": "Applications/Later.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Later.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Sample.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Sample.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Sample.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Sample.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Example-2.0.dmg"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Install macOS Sonoma.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Install macOS Sonoma.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Install macOS Sonoma.app/Contents/Info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Tool-3.1.pkg"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/movie.mp4.crdownload"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2147483648,
+        "path": "home/.Trash/old-backup.iso"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/.Trash/song.flac"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/song.flac.part"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/trip.zip.download"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/trip.zip.download/Info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/trip.zip.download/trip.zip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Downloads"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/Copyable (1).dmg"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Downloads/Films"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2147483648,
+        "path": "home/Downloads/Films/long.mov"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Downloads/Holiday"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/Holiday/photo.jpg"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Downloads/Install macOS Tahoe.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Downloads/Install macOS Tahoe.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/Install macOS Tahoe.app/Contents/Info.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/Later.dmg"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/Sample-2.0.dmg"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/backup-2024.dmg"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Downloads/clip.mov.part"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/fresh.zip.crdownload"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2147483648,
+        "path": "home/Downloads/recent.iso"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Downloads/report.pdf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/elsewhere"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1,
+        "path": "home/elsewhere/clip"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2529,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 6442516716
+  }
+}

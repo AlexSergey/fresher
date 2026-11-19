@@ -18,6 +18,7 @@ fn facts(apps: &Arc<FakeInstalledApps>) -> SystemFacts {
         known_folders: Arc::new(FakeKnownFolders::home_layout(Path::new("/home"))),
         apps: Arc::clone(apps) as _,
         running: Arc::new(FakeRunningApps::default()),
+        installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
     })
 }
 

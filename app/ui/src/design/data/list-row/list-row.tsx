@@ -37,8 +37,10 @@ export const ListRow = ({
   trailing,
   ...rest
 }: ListRowProps): JSX.Element => (
+  // eslint-disable-next-line jsx-a11y-x/role-supports-aria-props -- an inactive row is exempt from contrast (WCAG 1.4.3) only when it says it is disabled
   <div
     {...rest}
+    aria-disabled={disabled ? true : undefined}
     className={styles.row}
     data-disabled={disabled ? true : undefined}
     data-level={edgeLevel}

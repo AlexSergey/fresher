@@ -210,7 +210,7 @@ mod property {
 
     use crate::support::{
         AVOIDABLE, bundle_id_interests, canonical, every_interest, held_interests, place_interests, random_cache_tree,
-        random_items, random_tree, reference, scanner, set_of, tagged,
+        random_download_tree, random_items, random_tree, reference, scanner, set_of, suffixed_interests, tagged,
     };
 
     proptest! {
@@ -273,6 +273,31 @@ mod property {
             let root = canonical(folder.path());
             let locked = random_cache_tree(&root, &items);
             let interests: Vec<_> = bundle_id_interests()
+                .into_iter()
+                .zip(&chosen)
+                .filter(|(_, keep)| **keep)
+                .map(|(interest, _)| interest)
+                .collect();
+            let set = set_of(&interests);
+
+            let fast = scanner(Arc::new(MacFolderReader::new()), &root, &set, &[]);
+            let slow = reference(&root, &set, &[]);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            prop_assert_eq!(fast, slow);
+        }
+
+        #[test]
+        fn the_macos_reader_and_the_reference_agree_on_suffixed_names(
+            items in random_items(),
+            chosen in prop::collection::vec(any::<bool>(), 8),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            let locked = random_download_tree(&root, &items);
+            let interests: Vec<_> = suffixed_interests()
                 .into_iter()
                 .zip(&chosen)
                 .filter(|(_, keep)| **keep)

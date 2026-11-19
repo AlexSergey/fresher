@@ -151,6 +151,8 @@
   "core.group.debug.name": "Debug",
   "core.group.development.description": "Tools for building software: IDEs, package managers, containers and project folders.",
   "core.group.development.name": "Development",
+  "core.group.files.description": "Files you downloaded or keep yourself, such as old installers and big downloads.",
+  "core.group.files.name": "Your files",
   "core.group.system.description": "What macOS and your apps keep for themselves, such as temporary files.",
   "core.group.system.name": "System",
   "core.ignore.categories.description": "Fresher leaves these kinds of items out of the results and never removes them. Restore one to see it again.",

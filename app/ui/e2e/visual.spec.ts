@@ -106,6 +106,21 @@ const leftoversPage = async (page: Page): Promise<void> => {
   await expect(page.getByRole('region', { name: 'Caches of removed apps' })).toContainText('1 item left out (220 MB)');
 };
 
+// The downloads scan, on the module's page: five categories, a browser-open download and a recent big file left out.
+const downloadsPage = async (
+  page: Page,
+  script: typeof SCRIPTS.downloads | typeof SCRIPTS.downloadsUnavailable = SCRIPTS.downloads,
+  total = '15.8 GB',
+): Promise<void> => {
+  await mockCore(page, script);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  const nav = page.getByRole('button', { name: /^Downloads and installers/ });
+  await expect(nav).toContainText(total);
+  await nav.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Downloads and installers' })).toBeFocused();
+};
+
 // Settings, with the temporary files module's number field in view.
 const tempSettings = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.temp);
@@ -194,7 +209,7 @@ test.describe('positive cases', () => {
     test('the sandbox banner', async ({ page }) => {
       await open(page, SCRIPTS.sandboxed);
       await expect(page.getByRole('note')).toContainText(
-        'Sandbox · /Users/dev/sandboxes/trial · Open apps are simulated.',
+        'Sandbox · /Users/dev/sandboxes/trial · Simulated: open apps.',
       );
 
       await looksTheSame(page, 'banner-sandbox.png');
@@ -268,6 +283,20 @@ test.describe('positive cases', () => {
       await expect(page.getByRole('button', { name: 'Remove everything' })).toBeEnabled();
 
       await looksTheSame(page, 'module-page-app-leftovers.png');
+    });
+
+    test('the page of Downloads and installers with its five categories and left-out lines', async ({ page }) => {
+      await downloadsPage(page);
+      await expect(page.getByRole('region', { name: 'Unfinished downloads' })).toContainText('1 item left out (48 MB)');
+
+      await looksTheSame(page, 'module-page-downloads.png');
+    });
+
+    test('the page of Downloads and installers before Downloads is allowed', async ({ page }) => {
+      await downloadsPage(page, SCRIPTS.downloadsUnavailable, '0 bytes');
+      await expect(page.getByRole('button', { name: 'Let Fresher look there' }).first()).toBeVisible();
+
+      await looksTheSame(page, 'module-page-downloads-unavailable.png');
     });
 
     test('the page of Removed apps’ leftovers with Keep settings chosen', async ({ page }) => {

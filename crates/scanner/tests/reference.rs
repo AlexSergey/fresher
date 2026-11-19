@@ -171,13 +171,39 @@ mod positive {
     use std::fs;
     use std::sync::Arc;
 
-    use fresher_core::{CACHEDIR_SIGNATURE, EntryFacts, EntryKind, MarkerCheck};
+    use fresher_core::{CACHEDIR_SIGNATURE, Claim, EntryFacts, EntryKind, KnownFolder, MarkerCheck, Pattern, Sizes};
     use fresher_scanner::StdReader;
     use fresher_testing::FixtureTree;
 
     #[cfg(target_os = "macos")]
     use crate::support::LockedHome;
-    use crate::support::{SpecialHome, canonical, every_interest, facts_of, fixtures, reference, scanner, set_of};
+    use crate::support::{
+        SpecialHome, canonical, every_interest, facts_of, fixtures, interest, reference, scanner, set_of,
+    };
+
+    #[test]
+    fn a_folder_matched_whole_and_as_an_item_is_summed_and_reported_twice() {
+        let tree = FixtureTree::from_toml_str(
+            "[[file]]\npath = \"Downloads/Install.app/Contents/Info.plist\"\nsize = 5\n\
+             [[file]]\npath = \"Downloads/Install.app/Contents/MacOS/run\"\nsize = 7\n",
+        )
+        .unwrap();
+        let root = canonical(tree.root());
+        let downloads = |claim| interest(Pattern::Under(KnownFolder::Downloads, "*".into()), claim, &[]);
+        let set =
+            set_of(&[downloads(Claim::Whole).only_suffixes(vec![".app".into()]).unwrap(), downloads(Claim::Item)]);
+
+        let fast = scanner(Arc::new(StdReader::new()), &root, &set, &[]);
+
+        assert_eq!(fast, reference(&root, &set, &[]));
+        let bundle = root.join("Downloads/Install.app");
+        let hits: Vec<_> = fast.matches.iter().filter(|found| found.path == bundle).collect();
+        assert_eq!(hits.iter().map(|found| found.interest).collect::<Vec<_>>(), [0, 1]);
+        assert_eq!(hits[0].sizes.logical.bytes(), 12, "summed whole");
+        assert!(hits[0].inside.is_some());
+        assert_eq!((hits[1].sizes, hits[1].inside), (Sizes::ZERO, None));
+        assert_eq!(fast.matches.len(), 2, "nothing inside the whole claim is reported");
+    }
 
     #[test]
     fn a_pipe_and_a_socket_match_as_themselves() {
@@ -266,7 +292,7 @@ mod property {
 
     use crate::support::{
         AVOIDABLE, bundle_id_interests, canonical, every_interest, held_interests, place_interests, random_cache_tree,
-        random_items, random_tree, reference, scanner, set_of, tagged,
+        random_download_tree, random_items, random_tree, reference, scanner, set_of, suffixed_interests, tagged,
     };
 
     proptest! {
@@ -329,6 +355,31 @@ mod property {
             let root = canonical(folder.path());
             let locked = random_cache_tree(&root, &items);
             let interests: Vec<_> = bundle_id_interests()
+                .into_iter()
+                .zip(&chosen)
+                .filter(|(_, keep)| **keep)
+                .map(|(interest, _)| interest)
+                .collect();
+            let set = set_of(&interests);
+
+            let fast = scanner(Arc::new(StdReader::new()), &root, &set, &[]);
+            let slow = reference(&root, &set, &[]);
+            for folder in &locked {
+                let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o755));
+            }
+
+            prop_assert_eq!(fast, slow);
+        }
+
+        #[test]
+        fn the_scanner_and_the_reference_agree_on_suffixed_names(
+            items in random_items(),
+            chosen in prop::collection::vec(any::<bool>(), 8),
+        ) {
+            let folder = tempfile::tempdir().unwrap();
+            let root = canonical(folder.path());
+            let locked = random_download_tree(&root, &items);
+            let interests: Vec<_> = suffixed_interests()
                 .into_iter()
                 .zip(&chosen)
                 .filter(|(_, keep)| **keep)

@@ -12,6 +12,7 @@ pub struct Interest {
     siblings: Vec<String>,
     holds: Vec<String>,
     only_bundle_ids: bool,
+    suffixes: Vec<String>,
 }
 
 /// Where the walk looks. Names are single file or folder names; the path of `Under` is relative to its known folder.
@@ -50,8 +51,15 @@ pub enum InterestError {
     HoldsNotAnchored,
     #[error("an interest names {count} entries its folder holds; at most {MAX_HOLDS}")]
     TooManyHolds { count: usize },
-    #[error("only an interest anchored under a known folder whose path ends in `*` may match only bundle ids")]
+    #[error("only an interest anchored under a known folder whose path ends in `*` may match only some names")]
     NoStarToShape,
+    #[error(
+        "`{suffix}` is not a suffix an interest may match: a dot and a name, each part between dots not empty, \
+             listed once"
+    )]
+    BadSuffix { suffix: String },
+    #[error("an interest's last `*` matches either bundle ids or names with a suffix, not both")]
+    TwoShapes,
 }
 
 /// The most names an interest may look for in its matched folder: a hit carries them as a 64-bit mask.
@@ -68,7 +76,7 @@ impl Interest {
         for sibling in &siblings {
             check_name(sibling)?;
         }
-        Ok(Self { pattern, claim, siblings, holds: Vec::new(), only_bundle_ids: false })
+        Ok(Self { pattern, claim, siblings, holds: Vec::new(), only_bundle_ids: false, suffixes: Vec::new() })
     }
 
     /// This interest, with `names` the walk looks for in the matched folder's own listing (`index-v5`,
@@ -91,11 +99,44 @@ impl Interest {
     /// ([`is_bundle_id_shaped`](crate::is_bundle_id_shaped)): only for a `Pattern::Under` whose last segment is `*`.
     /// A whole claim of `Caches/*` would otherwise swallow the places other modules claim (`Caches/JetBrains`).
     pub fn only_bundle_ids(self) -> Result<Self, InterestError> {
+        self.check_star_to_shape()?;
+        if !self.suffixes.is_empty() {
+            return Err(InterestError::TwoShapes);
+        }
+        Ok(Self { only_bundle_ids: true, ..self })
+    }
+
+    /// This interest, its pattern's last `*` matching only a name that ends with one of `suffixes` and is longer than
+    /// it, ASCII case ignored (`.download` takes `movie.download` and `Movie.DOWNLOAD`, not `.download` itself): only
+    /// for a `Pattern::Under` whose last segment is `*`. A whole claim of `Downloads/*` would otherwise make every
+    /// folder of the user's there opaque to the storage map and to every other module; a plain `*` of the same place
+    /// takes the name too. Each suffix is a dot and a name whose parts between dots are not empty (`.app`,
+    /// `.tar.gz`), listed once; they are kept lowercased. A second call replaces the list.
+    pub fn only_suffixes(self, suffixes: Vec<String>) -> Result<Self, InterestError> {
+        self.check_star_to_shape()?;
+        if self.only_bundle_ids {
+            return Err(InterestError::TwoShapes);
+        }
+        if suffixes.is_empty() {
+            return Err(InterestError::BadSuffix { suffix: String::new() });
+        }
+        let mut lowered: Vec<String> = Vec::with_capacity(suffixes.len());
+        for suffix in suffixes {
+            let lower = suffix.to_ascii_lowercase();
+            if !is_suffix(&suffix) || lowered.contains(&lower) {
+                return Err(InterestError::BadSuffix { suffix });
+            }
+            lowered.push(lower);
+        }
+        Ok(Self { suffixes: lowered, ..self })
+    }
+
+    fn check_star_to_shape(&self) -> Result<(), InterestError> {
         let Pattern::Under(_, path) = &self.pattern else { return Err(InterestError::NoStarToShape) };
         if path.rsplit('/').next() != Some("*") {
             return Err(InterestError::NoStarToShape);
         }
-        Ok(Self { only_bundle_ids: true, ..self })
+        Ok(())
     }
 
     pub const fn pattern(&self) -> &Pattern {
@@ -119,6 +160,19 @@ impl Interest {
     pub const fn matches_only_bundle_ids(&self) -> bool {
         self.only_bundle_ids
     }
+
+    /// The suffixes, lowercased, one of which a name must end with for the pattern's last `*` to match it; empty when
+    /// the `*` is not shaped so.
+    pub fn name_suffixes(&self) -> &[String] {
+        &self.suffixes
+    }
+}
+
+/// Whether `suffix` is a dot followed by parts that are not empty, joined by dots, none holding `/` or `\0`.
+fn is_suffix(suffix: &str) -> bool {
+    suffix
+        .strip_prefix('.')
+        .is_some_and(|rest| !rest.contains(['/', '\0']) && rest.split('.').all(|part| !part.is_empty()))
 }
 
 fn check_name(name: &str) -> Result<(), InterestError> {
@@ -325,6 +379,45 @@ mod tests {
             assert!(!Interest::new(pattern, Claim::Whole, vec![]).unwrap().matches_only_bundle_ids());
         }
 
+        fn downloads(path: &str) -> Interest {
+            Interest::new(Pattern::Under(KnownFolder::Downloads, path.into()), Claim::Whole, vec![]).unwrap()
+        }
+
+        fn suffixes(list: &[&str]) -> Vec<String> {
+            list.iter().map(|&suffix| suffix.into()).collect()
+        }
+
+        #[test]
+        fn only_suffixes_refuses_a_pattern_without_a_last_star() {
+            let folder = Interest::new(Pattern::FolderName("Downloads".into()), Claim::Whole, vec![]).unwrap();
+            for interest in [folder, downloads("a/b")] {
+                assert_eq!(interest.only_suffixes(suffixes(&[".download"])), Err(InterestError::NoStarToShape));
+            }
+        }
+
+        #[test]
+        fn only_suffixes_refuses_an_empty_list_and_a_bad_suffix() {
+            assert_eq!(downloads("*").only_suffixes(vec![]), Err(InterestError::BadSuffix { suffix: String::new() }));
+            for bad in ["", "download", ".", ".a/b", ".a..b", ".a\0b", ".a.", ".app/"] {
+                let shaped = downloads("*").only_suffixes(suffixes(&[".app", bad]));
+                assert_eq!(shaped, Err(InterestError::BadSuffix { suffix: bad.into() }), "{bad:?}");
+            }
+        }
+
+        #[test]
+        fn only_suffixes_refuses_a_suffix_listed_twice() {
+            let twice = downloads("*").only_suffixes(suffixes(&[".app", ".APP"]));
+            assert_eq!(twice, Err(InterestError::BadSuffix { suffix: ".APP".into() }));
+        }
+
+        #[test]
+        fn an_interest_takes_only_one_shape() {
+            let suffixed = downloads("*").only_suffixes(suffixes(&[".app"])).unwrap();
+            assert_eq!(suffixed.only_bundle_ids(), Err(InterestError::TwoShapes));
+            let shaped = downloads("*").only_bundle_ids().unwrap();
+            assert_eq!(shaped.only_suffixes(suffixes(&[".app"])), Err(InterestError::TwoShapes));
+        }
+
         #[test]
         fn an_index_outside_the_set_has_no_owner() {
             let set = crate::InterestSet::new();
@@ -380,6 +473,22 @@ mod tests {
                 assert_eq!((shaped.pattern(), shaped.holds()), (plain.pattern(), plain.holds()), "{path}");
                 assert_ne!(shaped, plain, "the shape is part of the interest");
             }
+        }
+
+        #[test]
+        fn only_suffixes_keeps_its_suffixes_lowercased() {
+            let plain = Interest::new(Pattern::Under(KnownFolder::Downloads, "*".into()), Claim::Whole, vec![])
+                .unwrap()
+                .holding(vec!["Contents".into()])
+                .unwrap();
+
+            let suffixed = plain.clone().only_suffixes(vec![".Download".into(), ".tar.gz".into()]).unwrap();
+
+            assert_eq!(suffixed.name_suffixes(), [".download", ".tar.gz"]);
+            assert!(!suffixed.matches_only_bundle_ids());
+            assert_eq!((suffixed.pattern(), suffixed.holds()), (plain.pattern(), plain.holds()));
+            assert_eq!(plain.name_suffixes(), &[] as &[String]);
+            assert_ne!(suffixed, plain, "the suffixes are part of the interest");
         }
 
         #[test]

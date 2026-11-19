@@ -73,9 +73,13 @@ impl AccessProbe for FakeAccess {
         self.places.iter().filter(inside).cloned().collect()
     }
 
+    /// Records the try and, as the system's probe remembers every answer of its tries, sets the capability's state to
+    /// the answer, `Unknown` included.
     fn try_place(&self, place: &GuardedPlace) -> Access {
         lock(&self.tried).push(place.clone());
-        self.answers.get(&place.path).copied().unwrap_or(Access::Unknown)
+        let answer = self.answers.get(&place.path).copied().unwrap_or(Access::Unknown);
+        self.set(place.capability, answer);
+        answer
     }
 }
 
@@ -144,12 +148,13 @@ mod tests {
         }
 
         #[test]
-        fn try_place_on_an_unscripted_place_is_unknown() {
+        fn try_place_on_an_unscripted_place_is_unknown_and_remembered() {
             let tree = FixtureTree::from_toml_str("[[dir]]\npath = \"Desktop\"\n").unwrap();
-            let access = FakeAccess::with(&[]).home(tree.root()).guard("Desktop", DESKTOP);
+            let access = FakeAccess::with(&[(DESKTOP, Access::NotAsked)]).home(tree.root()).guard("Desktop", DESKTOP);
             let place = GuardedPlace { path: tree.root().join("Desktop"), capability: DESKTOP };
 
             assert_eq!(access.try_place(&place), Access::Unknown);
+            assert_eq!(access.status().access(&DESKTOP), Access::Unknown);
         }
 
         #[test]
@@ -211,6 +216,24 @@ mod tests {
 
             assert_eq!(answers, [Access::Denied, Access::Granted]);
             assert_eq!(access.tried(), [place("Documents", DOCUMENTS), place("Desktop", DESKTOP)]);
+        }
+
+        #[test]
+        fn a_granted_or_denied_try_is_remembered_in_the_status() {
+            let tree =
+                FixtureTree::from_toml_str("[[dir]]\npath = \"Desktop\"\n\n[[dir]]\npath = \"Documents\"\n").unwrap();
+            let access = FakeAccess::with(&[(DESKTOP, Access::NotAsked), (DOCUMENTS, Access::NotAsked)])
+                .home(tree.root())
+                .guard("Desktop", DESKTOP)
+                .guard("Documents", DOCUMENTS)
+                .answering("Desktop", Access::Granted)
+                .answering("Documents", Access::Denied);
+
+            access.try_place(&GuardedPlace { path: tree.root().join("Desktop"), capability: DESKTOP });
+            access.try_place(&GuardedPlace { path: tree.root().join("Documents"), capability: DOCUMENTS });
+
+            assert_eq!(access.status().access(&DESKTOP), Access::Granted);
+            assert_eq!(access.status().access(&DOCUMENTS), Access::Denied);
         }
 
         #[test]

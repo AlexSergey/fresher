@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
 use crate::{
-    BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, Project, RunningApps,
-    RunningSet, SystemError,
+    BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
+    Project, Receipt, RunningApps, RunningSet, SystemError, SystemVersion,
 };
 
 /// The ports of the system's facts, composed by the app (the macOS adapters) or a test (the fakes).
@@ -15,6 +15,7 @@ pub struct SystemPorts {
     pub known_folders: Arc<dyn KnownFolders>,
     pub apps: Arc<dyn InstalledApps>,
     pub running: Arc<dyn RunningApps>,
+    pub installs: Arc<dyn InstallRecords>,
 }
 
 impl fmt::Debug for SystemPorts {
@@ -31,6 +32,8 @@ pub struct SystemFacts {
     apps: OnceLock<Result<InstalledList, SystemError>>,
     running: OnceLock<Result<RunningSet, SystemError>>,
     search: OnceLock<Result<(), SystemError>>,
+    receipts: OnceLock<Result<Vec<Receipt>, SystemError>>,
+    version: OnceLock<Result<SystemVersion, SystemError>>,
     projects: OnceLock<Vec<Project>>,
 }
 
@@ -41,6 +44,8 @@ impl SystemFacts {
             apps: OnceLock::new(),
             running: OnceLock::new(),
             search: OnceLock::new(),
+            receipts: OnceLock::new(),
+            version: OnceLock::new(),
             projects: OnceLock::new(),
         }
     }
@@ -92,6 +97,19 @@ impl SystemFacts {
             Ok(running) => Ok(running),
             Err(error) => Err(error.clone()),
         }
+    }
+
+    /// The installer receipts, read on the first ask: the packages the system installed and when.
+    pub fn receipts(&self) -> Result<&[Receipt], SystemError> {
+        match self.receipts.get_or_init(|| self.ports.installs.receipts()) {
+            Ok(receipts) => Ok(receipts),
+            Err(error) => Err(error.clone()),
+        }
+    }
+
+    /// The version of the running macOS, read on the first ask.
+    pub fn system_version(&self) -> Result<SystemVersion, SystemError> {
+        self.version.get_or_init(|| self.ports.installs.system_version()).clone()
     }
 
     /// The projects the walk found; `None` while the walk runs (they are known before any module's `finish`).
@@ -148,10 +166,21 @@ pub(crate) fn nothing_known() -> SystemFacts {
         }
     }
 
+    impl InstallRecords for Nothing {
+        fn receipts(&self) -> Result<Vec<Receipt>, SystemError> {
+            Ok(Vec::new())
+        }
+
+        fn system_version(&self) -> Result<SystemVersion, SystemError> {
+            Ok(SystemVersion { major: 15, minor: 0 })
+        }
+    }
+
     SystemFacts::new(&SystemPorts {
         known_folders: Arc::new(Nothing),
         apps: Arc::new(Nothing),
         running: Arc::new(Nothing),
+        installs: Arc::new(Nothing),
     })
 }
 
@@ -162,8 +191,8 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use crate::{
-        BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, RunningApp,
-        RunningApps, SystemError, SystemPorts,
+        BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
+        Receipt, RunningApp, RunningApps, SystemError, SystemPorts, SystemVersion, Timestamp,
     };
 
     /// Counts the asks; answers one app and one running app, or an error; with `partial`, a bundle left unread; with
@@ -200,6 +229,7 @@ mod tests {
                 build: None,
                 path: "/Applications/App.app".into(),
                 helpers: Vec::new(),
+                changed: None,
             };
             let unread = if self.partial { vec![PathBuf::from("/Applications/Broken.app")] } else { Vec::new() };
             self.answer(InstalledList { apps: vec![app], unread })
@@ -225,11 +255,22 @@ mod tests {
         }
     }
 
+    impl InstallRecords for Counting {
+        fn receipts(&self) -> Result<Vec<Receipt>, SystemError> {
+            self.answer(vec![Receipt { package_file: "Tool.pkg".into(), installed: Timestamp::from_secs(7) }])
+        }
+
+        fn system_version(&self) -> Result<SystemVersion, SystemError> {
+            self.answer(SystemVersion { major: 15, minor: 4 })
+        }
+    }
+
     fn ports(counting: &Arc<Counting>) -> SystemPorts {
         SystemPorts {
             known_folders: Arc::clone(counting) as Arc<dyn KnownFolders>,
             apps: Arc::clone(counting) as Arc<dyn InstalledApps>,
             running: Arc::clone(counting) as Arc<dyn RunningApps>,
+            installs: Arc::clone(counting) as Arc<dyn InstallRecords>,
         }
     }
 
@@ -263,6 +304,19 @@ mod tests {
                 assert_eq!(facts.installed_apps(), Err(refused.clone()));
                 assert_eq!(facts.installed_apps_complete(), Err(refused.clone()));
                 assert_eq!(facts.running_apps().map(|set| set.owner_of(Path::new("/"))), Err(refused.clone()));
+            }
+            assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
+        }
+
+        #[test]
+        fn a_receipts_or_version_error_is_kept_and_answered_again() {
+            let counting = Arc::new(Counting { fails: true, ..Counting::default() });
+            let facts = SystemFacts::new(&ports(&counting));
+            let refused = SystemError { reason: "refused".into() };
+
+            for _ in 0..3 {
+                assert_eq!(facts.receipts(), Err(refused.clone()));
+                assert_eq!(facts.system_version(), Err(refused.clone()));
             }
             assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
         }
@@ -312,7 +366,7 @@ mod tests {
         use std::sync::atomic::Ordering;
 
         use super::{Counting, ports};
-        use crate::{BundleId, CancelToken, KnownFolder, SystemFacts};
+        use crate::{BundleId, CancelToken, KnownFolder, SystemFacts, SystemVersion};
 
         #[test]
         fn finding_apps_checks_the_search_once_and_asks_the_port_at_every_call() {
@@ -328,6 +382,18 @@ mod tests {
             }
             assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
             assert_eq!(counting.searched.load(Ordering::SeqCst), 1);
+        }
+
+        #[test]
+        fn receipts_and_the_version_are_asked_once_per_scan() {
+            let counting = Arc::new(Counting::default());
+            let facts = SystemFacts::new(&ports(&counting));
+
+            for _ in 0..2 {
+                assert_eq!(facts.receipts().unwrap().len(), 1);
+                assert_eq!(facts.system_version(), Ok(SystemVersion { major: 15, minor: 4 }));
+            }
+            assert_eq!(counting.asked.load(Ordering::SeqCst), 2);
         }
 
         #[test]

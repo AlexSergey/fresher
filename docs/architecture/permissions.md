@@ -60,9 +60,16 @@ Only `fresher-macos` and the adapters on top of it know what macOS guards. A mod
   volume by being a scan root (there is no switch for a volume). Then the scan tries the place (`try_place`) and the
   answer is remembered. With Full Disk Access granted they are `Granted` without being touched. Once macOS refused
   one, the notice and the Permissions row offer "Open System Settings" at its pane.
-- The walk is given the places it must not enter as its avoid list, built from the capability state: a guarded place
-  whose capability is not granted and not opted into is never opened. Sandbox mode is the exception: it keeps a
-  standing list of the guarded places of both homes ([`../hacks/README.md`](../hacks/README.md)).
+- A module whose category needs a guarded folder runs in the scan that first tries the folder: the engine learns the
+  answer of every try (`AccessChanged` when it changed a state) before it decides which modules can run. A restore
+  tries nothing and learns nothing.
+- The walk is given the places it must not enter as its avoid list, built from the capability state as the switches
+  allow it (`coverage::as_opted` in the engine, the same view that decides the modules' availability and the
+  modules listed for the UI): with Full Disk Access every guarded place may be entered; without it a place whose
+  switch is off is never opened, even when the system remembers an earlier grant (its capability stands as
+  `NotAsked`), and an opted-in place is entered when granted. The Permissions rows still show the system's state.
+  Sandbox mode is the exception: it keeps a standing list of the guarded places of both homes
+  ([`../hacks/README.md`](../hacks/README.md)).
 - Focus re-checks only the cheap OS permissions; tools are checked at the start of a scan and by "Check again".
 - A grant of Full Disk Access made while the app runs applies after a relaunch, so the card offers "Reopen Fresher"
   (the user's click; the engine is shut down first). The focus re-check still runs in case it applies at once.
@@ -76,6 +83,10 @@ anything itself.
 descriptor.with_needs(vec![Need::sees_more(Capability::OtherAppsData)])
 ```
 
+`downloads` is the first module whose categories all declare a required guarded folder
+(`Need::required(Capability::Folder(GuardedFolder::Downloads))`): it runs with Full Disk Access, or with the Downloads
+switch on and the folder granted; otherwise it is unavailable, and the scan that first tries the folder after the
+opt-in already runs it (plan [020](../plans/020-downloads/readme.md)).
 No module of the app declares a `SeesMore` need today: `app-leftovers` reads no app container (its
 [deferred item](../deferred/app-leftovers-containers.md) brings that back with the need). A tool is a need too
 (`Need::required(Capability::Tool(tool))`), and the module declares how to check it with
@@ -111,8 +122,14 @@ key, and `app/tauri/tests/info_plist.rs` checks it.
   (or the editor that started it): grant Full Disk Access to that app to see a real grant.
 - A stable local signing identity for development builds is part of plan
   [013](../plans/013-release/readme.md), step 01; until then, expect to grant again after a rebuild.
-- Sandbox mode answers access with a stand-in (`UnknownAccess`: `Unknown` for Full Disk Access, `NotAsked` for every
-  other capability), because the sandbox's world is not the Mac's; it never raises a prompt.
+- Sandbox mode never asks the Mac's access, because the sandbox's world is not the Mac's; it never raises a prompt.
+  When the sandbox's `world.toml` states `[access]`, it answers from it (Full Disk Access `Unknown`, a stated guarded
+  folder as stated, every other capability `NotAsked`; trying a stated folder answers `Granted` for `granted` and
+  `not-asked`, `Denied` for `denied`), and the sandbox home's places of the stated folders are no longer avoided: the
+  engine's coverage decides them as on a Mac, so a stated folder is read only with its switch on (the sandbox
+  autotest turns on the switch of every stated folder). Otherwise it answers with a stand-in (`UnknownAccess`:
+  `Unknown` for Full Disk Access, `NotAsked` for every other capability). The real home's guarded places stay avoided
+  either way.
 
 ### How to test each state
 

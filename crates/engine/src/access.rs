@@ -57,6 +57,28 @@ impl AccessView {
         changed
     }
 
+    /// Takes the answers of the guarded places tried in a scan: each capability's system state becomes its answer
+    /// (added when the probe did not list it). `true` when a state changed. The probe may remember its tries itself
+    /// (`MacAccess` does); the engine does not rely on it, so a module needing a place runs in the scan that tried it.
+    pub(crate) fn learn(&self, tried: &[(Capability, Access)]) -> bool {
+        let mut known = lock_anyway(&self.known);
+        let mut changed = false;
+        for &(capability, access) in tried {
+            match known.system.capabilities.iter_mut().find(|state| state.capability == capability) {
+                Some(state) if state.access == access => {}
+                Some(state) => {
+                    state.access = access;
+                    changed = true;
+                }
+                None => {
+                    known.system.capabilities.push(CapabilityState::new(capability, access));
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+
     /// Runs each check once: success → `Granted`; not installed → `Denied` with `core.access.tool.not-installed`; any
     /// other answer → `Denied` with `core.access.tool.not-ready`; a check stopped by `cancel` changes nothing. `true`
     /// when a state changed.
@@ -290,6 +312,7 @@ mod tests {
         use fresher_testing::{FakeAccess, FakeCommandRunner, SystemUiCall};
 
         use super::{docker, docker_id, docker_module, module_outcome, walk};
+        use crate::access::AccessView;
         use crate::testing::{Fixture, ScriptedWalk, TestModule, scan};
 
         #[test]
@@ -356,6 +379,19 @@ mod tests {
                 system_ui.calls(),
                 [SystemUiCall::OpenAccessSettings(Capability::AllFiles), SystemUiCall::OpenAccessSettings(desktop)]
             );
+        }
+
+        #[test]
+        fn learn_records_an_answer_the_probe_did_not_list() {
+            let downloads = Capability::Folder(GuardedFolder::Downloads);
+            let probe = Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Denied)]));
+            let view = AccessView::new(probe, Arc::new(FakeCommandRunner::default()), std::iter::empty());
+
+            assert!(view.learn(&[(downloads, Access::Granted)]));
+
+            assert_eq!(view.status().access(&downloads), Access::Granted);
+            assert_eq!(view.status().access(&Capability::AllFiles), Access::Denied);
+            assert!(!view.learn(&[(downloads, Access::Granted)]));
         }
 
         #[test]

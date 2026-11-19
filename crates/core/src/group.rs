@@ -14,6 +14,8 @@ pub enum ModuleGroup {
     System,
     /// What apps leave behind: the files of apps you removed.
     Apps,
+    /// Files you downloaded or keep yourself: old installers, big downloads.
+    Files,
     /// Tools for building software: IDEs, package managers, containers, project folders.
     Development,
     /// The dev-only modules of a development build (`demo`, `trial`); a release build refuses them.
@@ -22,7 +24,7 @@ pub enum ModuleGroup {
 
 impl ModuleGroup {
     /// Every group, in the screen's order.
-    pub const ALL: [Self; 4] = [Self::System, Self::Apps, Self::Development, Self::Debug];
+    pub const ALL: [Self; 5] = [Self::System, Self::Apps, Self::Files, Self::Development, Self::Debug];
 
     /// The group's name: `core.group.<group>.name`.
     pub fn name_key(self) -> TextKey {
@@ -34,11 +36,12 @@ impl ModuleGroup {
         TextKey::from_valid(format!("core.group.{}.description", self.as_str()))
     }
 
-    /// The group's serialized name: `system`, `apps`, `development`, `debug`.
+    /// The group's serialized name: `system`, `apps`, `files`, `development`, `debug`.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::System => "system",
             Self::Apps => "apps",
+            Self::Files => "files",
             Self::Development => "development",
             Self::Debug => "debug",
         }
@@ -89,7 +92,13 @@ mod tests {
         fn lists_every_group_once_with_system_first() {
             assert_eq!(
                 ModuleGroup::ALL,
-                [ModuleGroup::System, ModuleGroup::Apps, ModuleGroup::Development, ModuleGroup::Debug]
+                [
+                    ModuleGroup::System,
+                    ModuleGroup::Apps,
+                    ModuleGroup::Files,
+                    ModuleGroup::Development,
+                    ModuleGroup::Debug
+                ]
             );
         }
 
@@ -98,6 +107,14 @@ mod tests {
             assert!(ModuleGroup::System < ModuleGroup::Apps && ModuleGroup::Apps < ModuleGroup::Development);
             assert_eq!(ModuleGroup::parse("apps"), Some(ModuleGroup::Apps));
             assert_eq!(serde_json::from_str::<ModuleGroup>("\"apps\"").unwrap(), ModuleGroup::Apps);
+        }
+
+        #[test]
+        fn files_come_after_apps_and_before_development_and_read_back() {
+            assert!(ModuleGroup::Apps < ModuleGroup::Files && ModuleGroup::Files < ModuleGroup::Development);
+            assert_eq!(ModuleGroup::parse("files"), Some(ModuleGroup::Files));
+            assert_eq!(ModuleGroup::Files.name_key().as_str(), "core.group.files.name");
+            assert_eq!(serde_json::from_str::<ModuleGroup>("\"files\"").unwrap(), ModuleGroup::Files);
         }
     }
 }

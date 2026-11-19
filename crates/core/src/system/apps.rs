@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::{BundleId, CancelToken, SystemError, TeamId};
+use crate::{BundleId, CancelToken, SystemError, TeamId, Timestamp};
 
 /// An installed app, as its own bundle says.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,6 +20,9 @@ pub struct InstalledApp {
     pub path: PathBuf,
     /// The bundle ids of the helpers inside it (login items, services, extensions).
     pub helpers: Vec<BundleId>,
+    /// When the bundle was last changed on disk, in whole seconds (its status change time): copied in, replaced or
+    /// updated. `None` when it could not be read.
+    pub changed: Option<Timestamp>,
 }
 
 impl InstalledApp {
@@ -80,6 +83,7 @@ mod tests {
             build: None,
             path: "/Applications/App.app".into(),
             helpers: vec![BundleId::new("com.example.App.Helper").unwrap()],
+            changed: None,
         }
     }
 

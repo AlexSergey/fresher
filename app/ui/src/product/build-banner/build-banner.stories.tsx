@@ -11,8 +11,7 @@ export const stories = storiesOf('BuildBanner', {
         build={{
           kind: 'sandbox',
           path: '/Users/dev/sandboxes/trial',
-          simulatedRunning: true,
-          simulatedSpotlight: false,
+          simulated: ['running', 'spotlight', 'access'],
         }}
       />
     ),

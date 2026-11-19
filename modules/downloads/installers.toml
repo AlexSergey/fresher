@@ -1,0 +1,24 @@
+# The words an installer's file name may carry after the app's name. The rest of a name may hold only versions, plain
+# numbers and these words, so `notes-backup.dmg` is never taken for an installer. Lowercase ASCII letters and digits.
+
+words = [
+  "installer",
+  "install",
+  "setup",
+  "mac",
+  "macos",
+  "osx",
+  "darwin",
+  "universal",
+  "arm64",
+  "aarch64",
+  "x64",
+  "x86",
+  "amd64",
+  "intel",
+  "apple",
+  "silicon",
+  "latest",
+  "stable",
+  "release",
+]

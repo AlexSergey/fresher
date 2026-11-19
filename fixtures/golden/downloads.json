@@ -1,0 +1,548 @@
+{
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "downloads.installers",
+        "reason": "downloads.left-out.not-older",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "downloads.installers",
+        "reason": "downloads.left-out.not-older",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "downloads.macos-installers",
+        "reason": "downloads.left-out.newer-macos",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "reason": "downloads.left-out.browser-open",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "reason": "downloads.left-out.recent",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        }
+      },
+      {
+        "category": "downloads.safari-resumable",
+        "reason": "downloads.left-out.not-yours",
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 4608,
+          "reclaimable": 8192
+        }
+      },
+      {
+        "category": "downloads.large-untouched",
+        "reason": "downloads.left-out.recent",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2000000000,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "downloads.safari-resumable",
+        "reason": "downloads.left-out.special",
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 512,
+          "reclaimable": 4096
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "category": "downloads.installers",
+        "danger": "low",
+        "key": {
+          "identity": "installers/Example-2.0.pkg",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1766361600
+            }
+          },
+          "key": "downloads.reason.installer-receipt"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/Example-2.0.pkg"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/Example-2.0.pkg"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Example-2.0.pkg"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "app": "org.mozilla.firefox",
+        "category": "downloads.installers",
+        "danger": "low",
+        "key": {
+          "identity": "installers/Firefox 133.0.dmg",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Firefox"
+            },
+            "version": {
+              "kind": "text",
+              "value": "133.0"
+            }
+          },
+          "key": "downloads.reason.installer"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/Firefox 133.0.dmg"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/Firefox 133.0.dmg"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Firefox 133.0.dmg"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "app": "com.example.Tool",
+        "category": "downloads.installers",
+        "danger": "low",
+        "key": {
+          "identity": "installers/Tool.dmg",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Tool"
+            }
+          },
+          "key": "downloads.reason.installer-no-version"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/Tool.dmg"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/Tool.dmg"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Tool.dmg"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.large-untouched",
+        "danger": "high",
+        "key": {
+          "identity": "large-untouched/video.mov",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1732665600
+            },
+            "size": {
+              "kind": "size",
+              "value": 2000000000
+            }
+          },
+          "key": "downloads.reason.large-untouched"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/video.mov"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2000000000,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/video.mov"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "video.mov"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.macos-installers",
+        "danger": "low",
+        "key": {
+          "identity": "macos-installers/Install macOS Sonoma.app",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "running": {
+              "kind": "text",
+              "value": "15.1"
+            }
+          },
+          "key": "downloads.reason.macos-installer"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/Install macOS Sonoma.app"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/Install macOS Sonoma.app"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Install macOS Sonoma.app"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.safari-resumable",
+        "danger": "medium",
+        "key": {
+          "identity": "safari-resumable/trip.zip.download",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "downloads.reason.safari-resumable"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/trip.zip.download"
+        },
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 4608,
+          "reclaimable": 8192
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/trip.zip.download"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "trip.zip.download"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "key": {
+          "identity": "unfinished/doc.pdf.partial",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "downloads.reason.unfinished"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/doc.pdf.partial"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/doc.pdf.partial"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "doc.pdf.partial"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "key": {
+          "identity": "unfinished/movie.mp4.crdownload",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "downloads.reason.unfinished"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/movie.mp4.crdownload"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/movie.mp4.crdownload"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "movie.mp4.crdownload"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "key": {
+          "identity": "unfinished/song.flac.opdownload",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "downloads.reason.unfinished"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/song.flac.opdownload"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/song.flac.opdownload"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "song.flac.opdownload"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "key": {
+          "identity": "unfinished/video.mkv",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {},
+          "key": "downloads.reason.placeholder"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/video.mkv"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/video.mkv"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "video.mkv"
+            }
+          },
+          "key": "downloads.title"
+        }
+      },
+      {
+        "category": "downloads.unfinished",
+        "danger": "low",
+        "key": {
+          "identity": "unfinished/video.mkv.part",
+          "module": "downloads"
+        },
+        "reason": {
+          "args": {
+            "days": {
+              "kind": "count",
+              "value": 30
+            }
+          },
+          "key": "downloads.reason.unfinished"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Downloads/video.mkv.part"
+        },
+        "sizes": {
+          "allocated": 4096,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 4096
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Downloads/video.mkv.part"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "video.mkv.part"
+            }
+          },
+          "key": "downloads.title"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

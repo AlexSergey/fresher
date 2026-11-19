@@ -1,6 +1,6 @@
 # Downloads and installers
 
-**Since:** 2026-11-17 · **Plan:** [020](../plans/020-downloads/readme.md) (draft)
+**Since:** 2026-11-17 · **Plan:** [020](../plans/020-downloads/readme.md) (built; the runs by hand are open)
 
 ## Problem
 
@@ -30,3 +30,18 @@ A module of its own, "downloads and installers":
 
 Open questions: whether to look outside `~/Downloads` (the Desktop, a browser's chosen folder); how to read an
 installer's bundle id without mounting the image; the age for each kind.
+
+## Built by plan 020
+
+The module `downloads` (group Your files) reads `~/Downloads`, one level deep plus bundles, after the user allowed the
+folder: unfinished downloads (Low), Safari's resumable downloads (Medium), installers of installed apps (Low, proven by
+a receipt or by the name, at that version or older), old macOS installers (Low) and big files not opened for 30 days
+(High, a setting). A disk image is never mounted and an archive never expanded. Details:
+[`../categories/`](../categories/README.md), [`../architecture/modules.md`](../architecture/modules.md).
+
+## Still an idea
+
+- Folders outside `~/Downloads` (the Desktop, a browser's chosen folder).
+- Archives already expanded (a `.zip` beside its folder).
+- Reading a package's or an image's own contents to know its app, without mounting or running anything.
+- Copies of a download (`file (1).dmg`) stay with the [duplicate finder](./duplicate-finder.md).

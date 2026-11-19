@@ -12,6 +12,7 @@ fn system(apps: &Arc<FakeInstalledApps>, running: &Arc<FakeRunningApps>) -> Syst
         known_folders: Arc::new(FakeKnownFolders::home_layout(Path::new("/home"))),
         apps: Arc::clone(apps) as _,
         running: Arc::clone(running) as _,
+        installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
     }
 }
 

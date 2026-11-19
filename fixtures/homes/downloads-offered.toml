@@ -1,0 +1,100 @@
+# A home for the downloads module where every category is offered, nothing is open and the system is: Firefox 133.0
+# changed 10 days ago, `com.example.Tool` (no version) changed 10 days ago, a receipt of `Example-2.0.pkg` 10 days
+# ago, macOS 15.1. `video.mkv` is the empty file Firefox keeps beside its `.part`.
+
+[[file]]
+path = "Downloads/movie.mp4.crdownload"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/song.flac.opdownload"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/doc.pdf.partial"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/video.mkv.part"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/video.mkv"
+size = 0
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Downloads/trip.zip.download"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Downloads/trip.zip.download/Info.plist"
+size = 512
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/trip.zip.download/trip.zip"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Firefox 133.0.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Example-2.0.pkg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Tool.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[dir]]
+path = "Downloads/Install macOS Sonoma.app"
+age = "20d"
+changed = "20d"
+
+[[dir]]
+path = "Downloads/Install macOS Sonoma.app/Contents"
+age = "20d"
+changed = "20d"
+
+[[file]]
+path = "Downloads/Install macOS Sonoma.app/Contents/x"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/video.mov"
+size = 2000000000
+age = "400d"
+changed = "400d"

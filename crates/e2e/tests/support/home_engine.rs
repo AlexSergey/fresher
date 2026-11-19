@@ -14,8 +14,8 @@ use fresher_sandbox::Sandbox;
 use fresher_scanner::{Scanner, ScannerOptions, StdReader, known_folders_anchor};
 use fresher_store::{DataFolder, FileCleanupJournal, FileScanCache, FileSettingsStore};
 use fresher_testing::{
-    FactsLens, FakeAccess, FakeChangeJournal, FakeClock, FakeCommandRunner, FakeInstalledApps, FakeOpenFiles,
-    FakeRunningApps, FakeSystemUi, FakeTrash, FakeVolumes, StatedFacts,
+    FactsLens, FakeAccess, FakeChangeJournal, FakeClock, FakeCommandRunner, FakeInstallRecords, FakeInstalledApps,
+    FakeOpenFiles, FakeRunningApps, FakeSystemUi, FakeTrash, FakeVolumes, StatedFacts,
 };
 
 use super::home::user;
@@ -32,10 +32,24 @@ pub(crate) struct Parts {
     pub(crate) journal: FakeChangeJournal,
     pub(crate) installed: FakeInstalledApps,
     pub(crate) running: FakeRunningApps,
+    /// What the system says of its permissions; a flow keeps its handle to read what was tried.
+    pub(crate) access: Arc<FakeAccess>,
+    /// The install receipts and the macOS version.
+    pub(crate) installs: Arc<FakeInstallRecords>,
     /// The scanner's worker threads.
     pub(crate) threads: NonZeroUsize,
     /// The places no walk opens (the scanner's standing avoid).
     pub(crate) avoid: Vec<PathBuf>,
+}
+
+/// The access of a home that needs none: Full Disk Access `Unknown`, as sandbox mode stands in for it.
+pub(crate) fn unknown_access() -> Arc<FakeAccess> {
+    Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)]))
+}
+
+/// The installs of a home that needs none: no receipt, no version stated.
+pub(crate) fn no_installs() -> Arc<FakeInstallRecords> {
+    Arc::new(FakeInstallRecords::default())
 }
 
 /// The engine of `given` on `sandbox`, its reader stating `stated`, its cleaner meeting `open_files`.
@@ -62,6 +76,7 @@ pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<F
         known_folders: Arc::clone(&folders) as _,
         apps: Arc::new(given.installed),
         running: Arc::clone(&running) as _,
+        installs: given.installs,
     };
     let commands = Arc::new(FakeCommandRunner::default());
     let ports = Ports {
@@ -69,7 +84,7 @@ pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<F
         settings: Arc::new(FileSettingsStore::new(DataFolder::open(&data).unwrap())),
         clock: Arc::clone(&clock) as _,
         commands: Arc::clone(&commands) as _,
-        access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        access: given.access,
         system_ui: Arc::new(FakeSystemUi::default()),
         system,
     };

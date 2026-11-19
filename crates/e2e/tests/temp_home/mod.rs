@@ -30,7 +30,7 @@ use serde_json::json;
 
 use crate::support::fixtures;
 pub(crate) use home::Flow;
-use home_engine::Parts;
+use home_engine::{Parts, no_installs, unknown_access};
 
 /// The user's temporary folder and the shared one, relative to the sandbox.
 pub(crate) const USER_TEMP: &str = "private/var/folders/xx/sandbox/T";
@@ -135,6 +135,8 @@ fn parts(setup: Setup) -> Parts {
         journal: FakeChangeJournal::default(),
         installed: FakeInstalledApps::new(Vec::new()),
         running: FakeRunningApps::new(Vec::new()),
+        access: unknown_access(),
+        installs: no_installs(),
         threads: 1.try_into().unwrap(),
         avoid: Vec::new(),
     }

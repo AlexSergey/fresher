@@ -20,10 +20,23 @@ pub enum Build {
     Release,
     /// A development build on the real home folder; it removes nothing outside a sandbox.
     Development,
-    /// A development build living inside the sandbox folder `path`; `simulated_running` when the apps it sees open
-    /// are the sandbox's declared ones, not the Mac's; `simulated_spotlight` when its world declares what Spotlight
-    /// answers (an app found elsewhere, or Spotlight off).
-    Sandbox { path: PathBuf, simulated_running: bool, simulated_spotlight: bool },
+    /// A development build living inside the sandbox folder `path`; `simulated` lists what its world answers instead
+    /// of the Mac, in this order.
+    Sandbox { path: PathBuf, simulated: Vec<Simulated> },
+}
+
+/// A part of the Mac a sandbox's world answers instead of the real one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum Simulated {
+    /// The apps it sees open are the sandbox's declared ones, not the Mac's.
+    Running,
+    /// What Spotlight answers: an app found elsewhere, or Spotlight off.
+    Spotlight,
+    /// The access of the guarded folders.
+    Access,
+    /// The installer receipts and the macOS version.
+    Installs,
 }
 
 #[cfg(test)]
@@ -41,16 +54,17 @@ mod tests {
     }
 
     mod positive {
-        use crate::app_info::{AppInfo, Build};
+        use crate::app_info::{AppInfo, Build, Simulated};
 
         #[test]
         fn a_sandbox_build_serializes_with_its_folder() {
-            let build = Build::Sandbox { path: "/tmp/box".into(), simulated_running: true, simulated_spotlight: false };
+            let build =
+                Build::Sandbox { path: "/tmp/box".into(), simulated: vec![Simulated::Running, Simulated::Access] };
             let info = AppInfo { version: "0.1.0".into(), build };
             let json = serde_json::to_string(&info).unwrap();
             assert_eq!(
                 json,
-                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulatedRunning":true,"simulatedSpotlight":false}}"#
+                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"]}}"#
             );
         }
 

@@ -232,6 +232,7 @@ fn engine(fixture: &Path, data: &Path, apps: Apps) -> Engine {
         known_folders: Arc::clone(&folders) as _,
         apps: Arc::new(apps.installed),
         running: Arc::clone(&running) as _,
+        installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
     };
     let commands = Arc::new(FakeCommandRunner::default());
     let ports = Ports {

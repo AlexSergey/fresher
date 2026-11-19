@@ -211,6 +211,7 @@ impl Scan {
             known_folders: Arc::new(FakeKnownFolders::home_layout(Path::new("/home"))),
             apps: Arc::<Spotlight>::clone(&self.apps),
             running: Arc::<FakeRunningApps>::clone(&self.running),
+            installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let settings = SettingsSchema::new([module.descriptor()])

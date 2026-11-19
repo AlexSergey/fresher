@@ -2,14 +2,17 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::time::SystemTime;
 
-use fresher_core::{DangerLevel, SkipCode, Timestamp};
+use fresher_core::{Access, DangerLevel, GuardedFolder, SkipCode, Timestamp};
 use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
+use crate::world::folder_name;
 use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
-/// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, the facts its files state (which Finder never shows; times counted from `now`), its left-outs and where
-/// the storage map shows it; then the command that opens the app on the sandbox at `sandbox`.
+/// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
+/// it allows, refuses or has not been asked for, the facts its files state (which Finder never shows; times counted
+/// from `now`), its left-outs and where the storage map shows it; then the command that opens the app on the sandbox
+/// at `sandbox`.
 pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> String {
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
@@ -36,6 +39,16 @@ pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> 
                     text,
                     "  - Spotlight is off: it cannot be asked in this sandbox, for every case file in it."
                 );
+            }
+            for &(folder, access) in case.access() {
+                let _ = writeln!(text, "  - {}.", access_sentence(folder, access));
+            }
+            if let Some(version) = case.macos() {
+                let _ = writeln!(text, "  - The sandbox runs macOS {}.{}.", version.major, version.minor);
+            }
+            for (package, age) in case.receipts() {
+                let _ =
+                    writeln!(text, "  - Installer receipt: {package}, installed {age} before the sandbox was made.");
             }
             for (path, stated) in case.tree().stated(now).unwrap_or_default() {
                 let _ = writeln!(text, "  - `{}` stated: {}.", path.display(), stated_sentence(&stated, now));
@@ -78,6 +91,22 @@ fn installed(app: &AppBundle) -> String {
 /// crate has no dictionary to turn into the module's texts.
 fn left_out_sentence(left_out: &LeftOutExpectation) -> String {
     format!("Under '{}', {} left out: {}", left_out.category().as_str(), left_out.items(), left_out.reason().as_str())
+}
+
+/// What the sandbox answers for a guarded folder, in words.
+fn access_sentence(folder: GuardedFolder, access: Access) -> String {
+    let folder = folder_name(folder);
+    match access {
+        // A case states only the first three; the other two never reach a checklist and read as allowed and refused.
+        Access::Granted | Access::NotApplicable => {
+            format!("The sandbox allows {folder}; it is read once its switch in Settings → Permissions is on")
+        }
+        Access::Denied | Access::Unknown => format!("The sandbox refuses {folder}"),
+        Access::NotAsked => format!(
+            "The sandbox has not been asked for {folder}: turn its switch on in Settings → Permissions first, and \
+             the sandbox allows it"
+        ),
+    }
 }
 
 /// What a path states instead of having it, in words: its kind, owner, flags and times.
@@ -377,6 +406,41 @@ reason = "in-use"
                     "  - Found by Spotlight outside the apps folders: Far.",
                     "  - Spotlight is off: it cannot be asked in this sandbox, for every case file in it."
                 ]
+            );
+        }
+
+        #[test]
+        fn the_checklist_says_what_the_guarded_folders_allow() {
+            let access = "access = { downloads = \"granted\", desktop = \"denied\", documents = \"not-asked\" }\n";
+            let cases = CASES.replacen("kind = \"negative\"\n", &format!("kind = \"negative\"\n{access}"), 1);
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - The sandbox refuses Desktop.",
+                    "  - The sandbox has not been asked for Documents: turn its switch on in Settings → Permissions \
+                     first, and the sandbox allows it.",
+                    "  - The sandbox allows Downloads; it is read once its switch in Settings → Permissions is on.",
+                ]
+            );
+        }
+
+        #[test]
+        fn the_checklist_names_the_macos_version_and_the_receipts() {
+            let installs = "macos = \"15.4\"\n";
+            let cases = CASES.replacen("kind = \"negative\"\n", &format!("kind = \"negative\"\n{installs}"), 1);
+            let cases = format!("{cases}[[case.receipt]]\npackage = \"Tool-3.1.pkg\"\ninstalled = \"10d\"\n");
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert!(lines.contains(&"  - The sandbox runs macOS 15.4."), "{lines:?}");
+            assert!(
+                lines.contains(&"  - Installer receipt: Tool-3.1.pkg, installed 10d before the sandbox was made."),
+                "{lines:?}"
             );
         }
 

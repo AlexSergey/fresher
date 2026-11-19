@@ -1,6 +1,6 @@
 # The `all` sandbox's checklist is wrong where case files' worlds interact
 
-**Status:** open · **Updated:** 2026-11-18
+**Status:** open · **Updated:** 2026-11-19
 
 ## Symptom
 
@@ -9,7 +9,9 @@ file expects it. Where one file's installed or open apps change what another fil
 wrong: in the `all` sandbox, the app of the vendor that `jetbrains-unknown-app-open.toml` declares open keeps every
 folder of `jetbrains.toml`, and the one `jetbrains-unknown-app-installed.toml` installs keeps every removed IDE's data,
 so `jetbrains.toml`'s positives are not offered there; and `app-leftovers-spotlight-off.toml` turns Spotlight off for
-the whole sandbox, so `app-leftovers.toml`'s positives (and any module's that asks Spotlight) are kept there.
+the whole sandbox, so `app-leftovers.toml`'s positives (and any module's that asks Spotlight) are kept there. Access
+joins as Spotlight does: the most restrictive wins, so `downloads-denied.toml` denies Downloads for every case file of
+`all`, and `downloads.toml`'s positives are not offered there.
 
 ## Cause
 

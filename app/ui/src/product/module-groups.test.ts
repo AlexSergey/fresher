@@ -58,6 +58,16 @@ describe('modulesByGroup', () => {
       expect(grouped.map(({ group }) => group)).toStrictEqual(['system', 'apps', 'development']);
     });
 
+    it('puts Files after Apps and before Development', () => {
+      const grouped = modulesByGroup([
+        module('xcode', 'development'),
+        module('downloads', 'files'),
+        module('leftovers', 'apps'),
+      ]);
+
+      expect(grouped.map(({ group }) => group)).toStrictEqual(['apps', 'files', 'development']);
+    });
+
     it('keeps the registration order inside a group', () => {
       const grouped = modulesByGroup([
         module('node', 'development'),

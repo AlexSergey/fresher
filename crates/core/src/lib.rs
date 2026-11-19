@@ -49,7 +49,7 @@ pub use access::{
     Access, AccessStatus, Availability, Capability, CapabilityState, CapabilityText, GuardedFolder, GuardedPlace, Need,
     NeedKind, VolumeKind,
 };
-pub use app_info::{AppInfo, Build};
+pub use app_info::{AppInfo, Build, Simulated};
 pub use cachedir::{CACHEDIR_SIGNATURE, CACHEDIR_TAG, is_valid_cachedir_tag};
 pub use cancel::CancelToken;
 pub use category::{CategoryDescriptor, CategoryText};
@@ -98,9 +98,9 @@ pub use removability::{EntryFacts, Removability};
 pub use removal::{Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
-    IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, ModuleSettings, ResolvedSettings, SCAN_ROOTS,
-    SchemaError, SettingDescriptor, SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind, SettingProblem,
-    SettingValue, SettingsSchema, Unit,
+    DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, ModuleSettings, ResolvedSettings,
+    SCAN_ROOTS, SchemaError, SettingDescriptor, SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind,
+    SettingProblem, SettingValue, SettingsSchema, Unit,
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{
@@ -111,8 +111,8 @@ pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, Versio
 pub use subject::Subject;
 pub use system::is_bundle_id_shaped;
 pub use system::{
-    AppIdError, BundleId, InstalledApp, InstalledApps, InstalledList, Project, ProjectKind, RunningApp, RunningApps,
-    RunningSet, SystemError, SystemFacts, SystemPorts, TeamId,
+    AppIdError, BundleId, InstallRecords, InstalledApp, InstalledApps, InstalledList, Project, ProjectKind, Receipt,
+    RunningApp, RunningApps, RunningSet, SystemError, SystemFacts, SystemPorts, SystemVersion, TeamId,
 };
 pub use text::{DETAIL_ARG, Text, TextArg, TextKey, TextKeyError};
 pub use texts::core_dictionary;

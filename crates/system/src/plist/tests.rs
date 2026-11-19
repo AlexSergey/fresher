@@ -1,4 +1,4 @@
-mod writer;
+pub(super) mod writer;
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;

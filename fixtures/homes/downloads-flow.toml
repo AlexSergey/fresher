@@ -1,0 +1,133 @@
+# The home of the downloads module's core end-to-end flows (crates/e2e/tests/downloads.rs), laid out as a sandbox
+# lays out its home (`home/`); the flows add the rest of the sandbox's layout and its marker. `Downloads` holds one
+# item per category and per reason to keep: Chrome's `movie.mp4.crdownload` (40 days) and Opera's `Draft.iso.opdownload`
+# (20 days, within the setting's 30); Firefox's `video.mkv.part` with its empty placeholder; Safari's resumable
+# `trip.zip.download`; the installers of Firefox (installed since), of `Example` (newer than the Example installed
+# first, so kept until it is updated) and of the package `Tool-3.1.pkg` (a receipt proves it); a macOS installer; a
+# 2 GB file untouched for 400 days. `Project` is the user's own folder with a `node_modules` inside: it is no
+# download, and the walk still opens it. `Documents/keep.txt` is outside Downloads. Every entry of Downloads states
+# its age and status change.
+
+[[file]]
+path = "home/Downloads/movie.mp4.crdownload"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/Draft.iso.opdownload"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/video.mkv.part"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/video.mkv"
+size = 0
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/Downloads/trip.zip.download"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Downloads/trip.zip.download/Info.plist"
+size = 512
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/trip.zip.download/trip.zip"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/Firefox 133.0.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/Example-2.0.dmg"
+size = 4096
+age = "5d"
+changed = "5d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/Tool-3.1.pkg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[dir]]
+path = "home/Downloads/Install macOS Sonoma.app"
+age = "20d"
+changed = "20d"
+
+[[dir]]
+path = "home/Downloads/Install macOS Sonoma.app/Contents"
+age = "20d"
+changed = "20d"
+
+[[file]]
+path = "home/Downloads/Install macOS Sonoma.app/Contents/x"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/video.mov"
+size = 2000000000
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Downloads/Project"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Downloads/Project/node_modules"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "home/Downloads/Project/node_modules/left-pad"
+age = "400d"
+changed = "400d"
+
+[[file]]
+path = "home/Downloads/Project/node_modules/left-pad/index.js"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Downloads/Project/readme.txt"
+size = 512
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "home/Documents/keep.txt"
+size = 512
+fill = "data"

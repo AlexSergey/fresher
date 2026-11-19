@@ -63,6 +63,26 @@ pub(crate) fn bundle_id_interests() -> Vec<Interest> {
     ]
 }
 
+/// Interests at one place, `Downloads`, over the names of the random download trees: a suffixed `*` claimed whole and
+/// as an item, overlapping suffix sets (`.download` in two, `.gz` ending `.tar.gz`), a shaped and a plain `*` beside
+/// them, a literal, and a suffixed `*` below a plain one.
+pub(crate) fn suffixed_interests() -> Vec<Interest> {
+    let at = |path: &str, claim| interest(Pattern::Under(KnownFolder::Downloads, path.into()), claim, &[]);
+    let suffixed = |path: &str, claim, suffixes: &[&str]| {
+        at(path, claim).only_suffixes(suffixes.iter().map(|&suffix| suffix.into()).collect()).unwrap()
+    };
+    vec![
+        suffixed("*", Claim::Whole, &[".download", ".APP"]),
+        suffixed("*", Claim::Item, &[".download"]),
+        suffixed("*", Claim::Item, &[".gz"]),
+        suffixed("*", Claim::Item, &[".tar.gz", ".zip"]),
+        at("*", Claim::Item).only_bundle_ids().unwrap(),
+        at("*", Claim::Item),
+        at("a", Claim::Item),
+        suffixed("*/*", Claim::Item, &[".app"]),
+    ]
+}
+
 /// Anchored interests whose places lie on the ways the random trees build, at and below a folder claimed whole among
 /// them (`Library/Logs`), and outside the root.
 pub(crate) fn place_interests() -> Vec<Interest> {
@@ -351,6 +371,28 @@ pub(crate) fn random_tree(root: &Path, items: &[RandomItem]) -> Vec<PathBuf> {
 /// Names shaped as bundle ids and not, no two differing only in case.
 const CACHE_NAMES: [&str; 7] =
     ["com.example.App", "com.example.App.plist", "org.example-tool_2.x", "JetBrains", ".DS_Store", "Yarn", "a"];
+
+/// Names with and without the suffixes of [`suffixed_interests`], in either case, shaped as bundle ids and not, no two
+/// differing only in case.
+const DOWNLOAD_NAMES: [&str; 12] = [
+    "movie.download",
+    "Trip.ZIP.download",
+    ".download",
+    "Install macOS Sonoma.APP",
+    "com.example.App.app",
+    "a.TAR.gz",
+    "x.gz",
+    "Archive.ZIP",
+    "a",
+    "report.pdf",
+    "download",
+    "com.example.Tool",
+];
+
+/// Builds `items` under `root/Downloads` from `DOWNLOAD_NAMES`, as [`random_tree`] does.
+pub(crate) fn random_download_tree(root: &Path, items: &[RandomItem]) -> Vec<PathBuf> {
+    random_tree_of(&root.join("Downloads"), &DOWNLOAD_NAMES, items)
+}
 
 /// Builds `items` under `root/Library/Caches` from `CACHE_NAMES`, as [`random_tree`] does.
 pub(crate) fn random_cache_tree(root: &Path, items: &[RandomItem]) -> Vec<PathBuf> {

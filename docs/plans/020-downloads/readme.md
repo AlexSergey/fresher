@@ -1,129 +1,143 @@
 # 020 — Downloads and installers
 
-**Status:** 📝 draft · **Version:** 0.1.0 · **Date:** 2026-11-19 · **Modules:** core, macos, system, scanner, engine,
-testing, modules, sandbox, e2e, app, app/ui, docs
+**Status:** 🔨 in progress · **Version:** 0.1.0 · **Date:** 2026-11-19 ·
+**Modules:** core, scanner, system, engine, testing, modules, sandbox, e2e, app, app/ui, docs
 
-A one-file draft: the design in short, with the recommended decisions taken as agent's calls. Plans, steps and
-`00-design.md` are written when the draft is approved.
+Drafted on 2026-11-19 as one file and approved by the user the same day with its ten agent's calls, which became
+decisions ("start implementing, work autonomously, take the recommended decisions"). The design, its decisions and the
+agent's calls made while writing it from the code and from a read-only look at this Mac are in
+[`00-design.md`](./00-design.md); the macOS facts marked "to verify" are checked by hand in 05/02.
 
-## Intent
+## Goal
 
-The idea [Downloads and installers](../../ideas/downloads-and-installers.md): the Downloads folder collects what the
-user thinks of as temporary — downloads that never finished, installers of apps that are long installed, old macOS
-installers, big files downloaded once and forgotten. Nothing removes them, and together they take gigabytes. Plan
-[017](../017-temp-files/readme.md) kept them out of the temporary-files module on purpose (the user's decision of
-2026-11-17): they live among the user's own files, some can still be resumed, and the folder is guarded by macOS.
+The Downloads folder collects what the user thinks of as temporary and nothing removes: downloads that never finished,
+Safari downloads that were never resumed, installers of apps that are installed now, old macOS installers, big files
+downloaded once and forgotten. The module `downloads` (`fresher-module-downloads`, group **Your files**) reads
+`~/Downloads`, one level deep plus bundles, only once the user allowed the folder, and offers them in five categories:
+unfinished downloads (Low), Safari's resumable downloads (Medium), installers of installed apps (Low), old macOS
+installers (Low) and big files not opened for 30 days (a setting; High, the user's call). An installer is claimed only
+when its receipt or its name proves it is an installed app's, at that version or older; a disk image is never mounted,
+an installer never run. What the module recognizes and keeps is reported as left out with its reason. The idea:
+[downloads and installers](../../ideas/downloads-and-installers.md).
 
-## Goals
+The core first gains what the code lacks: the day setting once (a deferred item), a `*` that matches only names with
+a suffix (so the user's folders in Downloads stay open), an installed app's change time, the installer's receipts and
+the system's version, a module that needs a guarded folder running in the scan that first tries it, and the group
+**Your files**. The sandbox learns access, installs and an app's change time (a part of a deferred item). Tests at
+every level, as plans 016 to 019 did: unit, fixture, sandbox, core e2e, UI e2e, runs by hand.
 
-1. A new module `downloads` (`modules/downloads`, crate `fresher-module-downloads`) with five categories, each with a
-   danger level and a plain reason that says why this file was matched and what it costs to lose it.
-2. Nothing in Downloads is read before the user opted in to the folder (plan [006](../006-permissions/readme.md)); without
-   access the module is `Unavailable` and its notice says why and how to allow it.
-3. A file is claimed only with proof. An installer whose app cannot be identified without opening or running anything is
-   not claimed; a file that is only big and old is the user's call, never more.
-4. The day setting shared by every module that has one, once in the core (deferred item
-   [shared-day-setting](../../deferred/shared-day-setting.md), due now).
+Branch: `feat/020-downloads` (from `main` 5c61c57), squash-merged into `main` once when done
+([`../../workflow.md`](../../workflow.md)). Depends on plans [006](../006-permissions/readme.md),
+[008](../008-safe-removal/readme.md), [009](../009-system-knowledge/readme.md), [011](../011-diagnostics/readme.md),
+[012](../012-storage-map/readme.md), [015](../015-module-groups/readme.md) and
+[019](../019-uninstalled-app-leftovers/readme.md), all in `main`.
 
-## Non-goals
+## Plans
 
-- Mounting a disk image, expanding an archive or running an installer to find out what is inside.
-- Looking outside `~/Downloads` (the Desktop, a browser's custom folder): later, if users ask.
-- `Install macOS ….app` in `/Applications`: the apps folder is the [smart uninstaller](../../ideas/smart-uninstaller.md)'s
-  ground.
-- Archives (`.zip`, `.tar.gz`) whose content was already expanded next to them: a separate idea, it needs to compare
-  trees.
-- Duplicates of a download (`file (1).dmg`): the [duplicate finder](../../ideas/duplicate-finder.md).
+| #   | Plan                                                    | Status      | Depends on | What                                                                                                      |
+| --- | ------------------------------------------------------- | ----------- | ---------- | --------------------------------------------------------------------------------------------------------- |
+| 01  | [Core prerequisites](./01-core-prerequisites/readme.md) | ✔️ done | —          | the shared day setting, suffixed names, an app's change time and the install records, availability after the places, the group Your files |
+| 02  | [The sandbox's world](./02-sandbox-world/readme.md)     | ✔️ done     | 01         | access in the world and the banner; installs and an app's change time in the world                         |
+| 03  | [The module](./03-module/readme.md)                     | ✔️ done     | 01         | the crate, its tables and texts, the decision, fixtures, registration                                      |
+| 04  | [End to end](./04-end-to-end/readme.md)                 | ✔️ done     | 01, 02, 03 | the three case files, the core e2e flows, the UI                                                           |
+| 05  | [Finish](./05-finish/readme.md)                         | ✅ approved | all        | the docs, the runs by hand, the conclusions                                                                |
 
-## Design
+### Order and parallel work
 
-### Categories
+```
+01/01, 01/02, 01/05 ── 03/01 ──┐
+01/03 ─────────────────────────┴── 03/02 ── 03/03 ──┐
+01/04 ── 02/01 ──┬──────────────────────────────────┼── 04/01, 04/02, 04/03 ── 05/01 ── 05/02
+01/03 ───────────┴── 02/02 ─────────────────────────┘
+```
 
-| Category                         | What                                                                                                                     | Danger | Offered when                                                                                                   |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------- |
-| `downloads.unfinished`           | `.crdownload`, `.part` (with its empty placeholder of the final name, together or not at all), `.opdownload`, `.partial` | Low    | the browser that writes the suffix is not running, and unchanged for the module's days                        |
-| `downloads.safari-resumable`     | a `.download` bundle (its `Info.plist` and the partial data)                                                             | Medium | Safari is not running, and unchanged for the module's days; the reason says it can still be resumed           |
-| `downloads.installers`           | a `.dmg` or `.pkg` of an app that is installed (see "Proof")                                                             | Low    | proof holds, and the installed app is the same or newer than the installer                                    |
-| `downloads.macos-installers`     | `Install macOS <name>.app` in Downloads (12–15 GB each)                                                                  | Low    | the running macOS is the same version or newer than the installer's                                           |
-| `downloads.large-untouched`      | a file of at least 1 GB not opened for the module's days, not matched by any category above                             | High   | always "your call": the user's own file; the reason gives its size, kind and last opened date                 |
+- **Wave 1, in parallel**: 01/01 (`crates/core/src/settings/`, `modules/{jetbrains,app-leftovers,temp}/src/`),
+  01/02 (`crates/core/src/interest.rs`, `crates/scanner/src/matcher/`, `crates/scanner/benches/scan.rs`,
+  `crates/scanner/tests/reference.rs`, `crates/testing/src/naive_walk.rs`), 01/03 (`crates/core/src/system/`,
+  `crates/system/src/{apps,installs,lib}.rs`, `crates/testing/src/{system_fakes,run_module}.rs`, every
+  `SystemPorts {` and `InstalledApp {` site), 01/04 (`crates/engine/src/{session,coverage,access}.rs`) and 01/05
+  (`crates/core/src/group.rs`, `crates/core/locales/en.json`, `app/ui/src/product/module-groups.ts`, the bindings).
+- **Wave 2, in parallel**: 02/01 after 01/04 (`crates/sandbox/src/{case,world,expected}.rs`,
+  `crates/core/src/app_info.rs`, `app/tauri/src/{sandbox,adapters}.rs`, `app/tauri/tests/sandboxes/harness.rs`,
+  `app/ui/src/product/build-banner/`) and 03/01 after 01/01, 01/02 and 01/05 (`modules/downloads/` only, beside
+  the catalogue).
+- **Wave 3, in parallel**: 02/02 after 01/03 and 02/01 (the same sandbox files,
+  `crates/testing/src/{stated_apps,tree_description}.rs`, `app/tauri/src/compose.rs`) and 03/02 after 01/03 and 03/01
+  (`modules/downloads/src/` only).
+- **Wave 4**: 03/03 (fixtures, golden, registration).
+- **Wave 5, in parallel**: 04/01 (case files, `app/tauri/tests/sandboxes.rs`), 04/02 (`crates/e2e`) and 04/03
+  (`app/ui`).
+- **Wave 6**: 05.
 
-- The Low levels: everything here downloads again; an unfinished download loses only the part already fetched.
-- One setting, `downloads.older-than-days` (7–3650, 30 by default), through the shared day setting.
-- Every category `Need::required(Folder(Downloads))`. The walk stays inside `~/Downloads`, one level deep for files and
-  bundles; folders inside are not entered except to recognise a bundle.
+`crates/core/src/lib.rs`, `crates/testing/src/lib.rs` and `crates/core/locales/en.json` take lines from several wave
+1 steps: each step only adds its own, and a merge keeps both sides. 01/03 touches the 14 `SystemPorts {` sites and
+the 26 `InstalledApp {` sites, some of them in the modules 01/01 edits: when both run in parallel worktrees, the second
+merge keeps both sides.
 
-### Proof for an installer
+Which files each plan touches:
 
-- **`.pkg`**: the system's installer receipts (`/var/db/receipts/*.plist`, readable without rights) record the package
-  file name and the install date. A `.pkg` in Downloads whose file name equals a receipt's package file name, installed
-  after the file was downloaded, is proven. Read as files; `pkgutil` is not run. (To verify: the key name and that every
-  installer writes it.)
-- **`.dmg`**: the image is not opened. A `.dmg` is proven when its file name names exactly one installed app (the app's
-  name or the last part of its bundle id, then the end, a separator or a version — `Firefox 133.0.dmg`,
-  `docker.dmg`), and that app's bundle changed after the image was downloaded (it was installed or updated from it or
-  later). Two apps match, or none → not claimed.
-- The download date is the file's "date added" (birth time on APFS; the quarantine attribute's date when it is set).
-- An installer of an app that is not installed is the user's file and never claimed (not even as large-untouched: it is
-  excluded by name, so it is not offered as "big and old" by accident).
+| Plan | Owns                                                                                                                    | Shared files it touches                                                                                                                                                                 |
+| ---- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01   | `crates/core/src/settings/days.rs`, `crates/system/src/installs.rs`                                                     | `crates/core/src/{interest,group,lib}.rs`, `crates/core/src/system/`, `crates/core/locales/en.json`, `crates/scanner/src/matcher/`, `crates/scanner/{benches/scan.rs,tests/reference.rs}`, `crates/system/src/{apps,lib}.rs`, `crates/engine/src/{session,coverage,access,facts_tests}.rs`, `crates/engine/src/storage/`, `crates/testing/src/{naive_walk,system_fakes,run_module,lib}.rs`, `crates/e2e/tests/`, `modules/{jetbrains,app-leftovers,temp}/`, `app/tauri/src/compose.rs`, `app/ui/src/{ipc/bindings.generated.ts,product/module-groups.ts}`, `docs/architecture/`, `docs/deferred/` |
+| 02   | `crates/testing/src/stated_apps.rs`                                                                                     | `crates/sandbox/src/{case,world,expected}.rs`, `crates/testing/src/{tree_description,lib}.rs`, `crates/core/src/app_info.rs`, `app/tauri/src/{sandbox,compose,adapters}.rs`, `app/tauri/tests/sandboxes/harness.rs`, `app/ui/src/product/build-banner/`, `app/ui/src/locales/en.json`, `docs/testing.md`, `docs/hacks/README.md`, `docs/architecture/permissions.md`, `docs/deferred/` |
+| 03   | `modules/downloads/`, `fixtures/homes/downloads-*.toml`, `fixtures/golden/downloads.json`, `docs/categories/downloads-*.md` | root `Cargo.toml` (the member), `Cargo.lock`, `app/tauri/Cargo.toml`, `app/tauri/src/compose.rs` (`modules()`), `docs/categories/README.md`, `docs/dependencies.md`                       |
+| 04   | `fixtures/sandboxes/downloads*.toml`, `fixtures/golden/{sandbox-downloads*,downloads-flow}.json`, `fixtures/homes/downloads-flow.toml`, `crates/e2e/tests/{downloads.rs,downloads_home/}`, `app/ui/src/test/downloads-scan.ts` | `app/tauri/tests/sandboxes.rs`, `crates/e2e/Cargo.toml`, `app/ui/e2e/{core-mock.ts,flows.spec.ts,visual.spec.ts,axe.spec.ts}`, `app/ui/e2e/screenshots/`, `docs/testing.md`, `docs/known-issues/` |
+| 05   | —                                                                                                                       | `docs/` (architecture, testing, categories, ideas, plans README)                                                                                                                        |
 
-### Last opened
+`Cargo.lock`, `package-lock.json` and `bindings.generated.ts` are never merged by hand: regenerate them after a merge
+and run the checks.
 
-- `large-untouched` needs the last time a file was opened. APFS does not keep a reliable access time; Spotlight's "last
-  used" date is reliable when Spotlight indexes the folder. The `AppSearch` port of plan 019 grows one question (a
-  file's last used date); without an answer (Spotlight off, not indexed) the file is not claimed and the coverage says
-  why.
+## Acceptance
 
-### What this asks of the core and the sandbox
+- `npm run pre-push` passes on the branch's last commit; coverage stays at or above 90 % of lines in Rust and the UI;
+  `modules/downloads` itself at or above 90 %.
+- The scan bench moves by no more than 5 % with 01/02 (rule 4), written in its conclusions with a suffixed interest in
+  the bench; the scan of the developer's home stays within 5 % of `main`'s (05/02).
+- `jetbrains`, `app-leftovers` and `temp` keep their settings' keys, ranges and defaults; their tests and goldens pass
+  with the shared day setting, and the deferred item is removed.
+- The module's contract test passes with `Catalogue::Required`: five category files with the same dangers, every text
+  and every declared left-out reason used by a fixture run, every removal a matched path.
+- Nothing in Downloads is read unless the user allowed it: Full Disk Access, or the Downloads switch (the core e2e
+  asserts no `try_place` and no match before the opt-in, and none with the switch off after an earlier grant), and
+  the module runs in the first scan after the opt-in.
+- Nothing but a proven item can be offered: a document, a disk image of no installed app, a copy of an installer, a
+  link, a folder of the user's and anything below the first level are never claimed (the fixtures' and the case
+  files' negatives).
+- `npm run sandbox:test` passes for the three case files; each fails when a case's expectation (a danger, a left-out's
+  items, an access value) is changed on purpose (done once by hand per kind, written in 04/01).
+- `npm run test:e2e` passes with the nine core flows and the UI scenarios.
+- `npm run dev:sandbox -- downloads` (and the two other files): every line of `EXPECTED.md` holds by hand.
+- On the developer's Mac (`npm run dev`, Downloads allowed, scan only): every offered item checked by hand (05/02).
 
-- **The shared day setting** (plan 01): `fresher-core` gets the descriptor and the reader of a days setting with its
-  range and default; `jetbrains`, `app-leftovers` and `temp` use it, their copies and tests are removed.
-- **Installer receipts** (`fresher-system`, a new port `InstallerReceipts` with its fake in `fresher-testing`).
-- **The access part of the sandbox's world** (deferred item [sandbox-world](../../deferred/sandbox-world.md), item 2,
-  `access` only): a case states `access = { downloads = "denied" }`; sandbox mode and the autotest take the access
-  state from `world.toml` through `FakeAccess`, and the banner says access is simulated. Open files, tools and steps
-  stay deferred.
-- The sandbox lays out `Downloads/` in its home; its protection list keeps `Downloads` whole (it already is in the real
-  list).
+## Ideas and deferred items this touches
 
-## Plans (after approval)
+- [Downloads and installers](../../ideas/downloads-and-installers.md): becomes this plan; looking outside
+  `~/Downloads` stays there.
+- [Large files finder](../../ideas/large-files-finder.md): may reuse the large-untouched rule (the status change as
+  "not opened").
+- [Duplicate finder](../../ideas/duplicate-finder.md): copies of a download (`file (1).dmg`) are left to it.
+- [Smart uninstaller](../../ideas/smart-uninstaller.md): macOS installers in `/Applications` are left to it.
+- [The Trash holds the freed space](../../ideas/trash-holds-freed-space.md): installers are large; the result already
+  says "moved to the Trash".
+- A shared day setting in the core (a deferred item): done in 01/01; its file is removed.
+- [The sandbox world](../../deferred/sandbox-world.md): access, installs and an app's change time taken in 02; the
+  rest stays deferred.
 
-| #   | Plan                   | What                                                                                                                    |
-| --- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 01  | Core prerequisites     | the shared day setting (three modules moved to it); `InstallerReceipts` port, adapter, fake; Spotlight's last used date |
-| 02  | Sandbox world: access  | `access` in `world.toml`, `FakeAccess` in sandbox mode and the autotest, the banner                                     |
-| 03  | The module             | the five categories, the proof, settings, category files in `docs/categories/`, fixtures and the case files            |
-| 04  | End to end             | case files (`downloads.toml`, `downloads-denied.toml`, `downloads-browser-open.toml`), core e2e, UI e2e and baselines   |
-| 05  | Finish                 | the run by hand on the user's Mac and in the sandbox, conclusions                                                       |
+## Risks
 
-Depends on plans 006 (access), 008 (removal), 009 (installed and running apps), 015 (groups), 019 (`AppSearch`).
+- **The worst false positive is a High big file the user still needs**: it is offered only after 30 days without a
+  change or an open from Finder, the user confirms it with High shown, and it goes to the Trash.
+- **An installer of a newer version than the installed app** (agent's call 2): a migration or a system update moves
+  every app's change time at once, so the date check can pass; the version in the name catches most, the rest is Low
+  and downloads again.
+- **Few `.pkg` files proven by receipt** (agent's call 3): the name rule carries most of them.
+- **The browsers' ids and the macOS installers' names are data** (agent's call 15): a wrong id weakens one guard, the
+  days remain; a missing name keeps an installer.
+- **The trie's hot path** (01/02): the suffix check runs only for names under a node with a suffix branch; the bench
+  says.
+- **The first-scan order change in the engine** (01/04) touches every scan: the engine's coverage and access tests
+  run unchanged, plus the new ones.
 
-## Open questions
+## Conclusions
 
-None for the user; the calls below are waiting for a confirm or an overrule.
-
-## Agent's calls (to check)
-
-1. **Five categories, one module**, `downloads.large-untouched` included as High and "your call" rather than left for
-   the large-files finder: it answers "what is this old 8 GB file in Downloads" now, and the finder can reuse its last
-   used date later.
-2. **One day setting for the module** (30 days), not one per category.
-3. **Installers are Low**, not Medium as in the idea: the app is installed, and the installer downloads again; the
-   reason names the app and its version.
-4. **A `.dmg` is proven by its name and the app's change date**, never by mounting it; an ambiguous name is not
-   claimed. Some real installers will be missed (`install.dmg`), and that is accepted.
-5. **A `.pkg` is proven by the installer receipts**, read as files.
-6. **Only `~/Downloads`**, one level deep plus bundles.
-7. **`Install macOS ….app` only in Downloads**; the apps folder is left to the uninstaller.
-8. **The shared day setting is plan 01** and moves all three modules (`temp`'s range 7–30 included, through the range
-   parameter).
-9. **Only the access part of `sandbox-world`** is taken; open files, tools and steps stay deferred.
-10. **The size bar for large-untouched is 1 GB**, fixed for now (no setting).
-
-## Ideas this touches
-
-[Downloads and installers](../../ideas/downloads-and-installers.md) (becomes this plan),
-[large files finder](../../ideas/large-files-finder.md) (shares the last used date),
-[duplicate finder](../../ideas/duplicate-finder.md) (`file (1).dmg`, not here),
-[smart uninstaller](../../ideas/smart-uninstaller.md) (macOS installers in `/Applications`),
-[the Trash holds the freed space](../../ideas/trash-holds-freed-space.md) (installers are large: the result should say
-"moved to the Trash").
+Not written yet.

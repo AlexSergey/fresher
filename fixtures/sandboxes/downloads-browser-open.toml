@@ -1,0 +1,21 @@
+# The downloads module while a browser is open: its unfinished download is kept. A file of its own, since an open
+# browser is shared by every case of a file.
+feature = "downloads-browser-open"
+module = "downloads"
+
+[[case]]
+name = "an unfinished download of an open browser is kept"
+kind = "negative"
+access = { downloads = "granted" }
+[[case.running]]
+name = "Google Chrome"
+bundle-ids = ["com.google.Chrome"]
+[[case.file]]
+path = "home/Downloads/open.zip.crdownload"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.left-out]]
+category = "downloads.unfinished"
+reason = "downloads.left-out.browser-open"
+items = 1

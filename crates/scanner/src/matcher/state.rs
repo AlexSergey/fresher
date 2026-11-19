@@ -6,7 +6,7 @@ use std::path::{Component, Path};
 use fresher_core::is_bundle_id_shaped;
 
 use crate::matcher::Matcher;
-use crate::matcher::trie::{TrieIndex, TrieNode};
+use crate::matcher::trie::{TrieIndex, TrieNode, ends_with_suffix};
 
 /// The trie node of a folder, or none: a small `Copy` value that travels with each folder job. The trie is
 /// deterministic, so a folder stands at one node at most.
@@ -37,12 +37,19 @@ impl Matcher {
         })
     }
 
-    /// The state of the entry `name` in a folder at `state`: one lookup, and a check of the name's shape when no
-    /// literal took it and a shaped `*` leads from here.
+    /// The state of the entry `name` in a folder at `state`: one lookup, and when no literal took it, a check of the
+    /// name's suffixes when a suffixed `*` leads from here and of its shape when a shaped `*` does.
     pub(crate) fn child_state(&self, state: TrieState, name: &[u8]) -> TrieState {
         let Some(node) = self.trie_node(state) else { return TrieState::DEAD };
         if let Some(&next) = node.literal.get(name) {
             return TrieState(next);
+        }
+        if let Some(branch) = node.suffixed.iter().find(|branch| ends_with_suffix(name, &branch.suffix)) {
+            return match std::str::from_utf8(name) {
+                Err(_) => TrieState::DEAD,
+                Ok(_) if branch.shaped != branch.plain && is_bundle_id_shaped(name) => TrieState(branch.shaped),
+                Ok(_) => TrieState(branch.plain),
+            };
         }
         match (node.bundle_id, node.any) {
             (Some(next), _) if is_bundle_id_shaped(name) => TrieState(next),

@@ -71,6 +71,21 @@ import {
   DEV_CACHES_XCODE_OPEN_SCAN,
 } from '../src/test/dev-caches-scan';
 import {
+  DOWNLOADS_DICTIONARY,
+  DOWNLOADS_FINDINGS,
+  DOWNLOADS_GRANTED,
+  DOWNLOADS_MEANING,
+  DOWNLOADS_MODULES,
+  DOWNLOADS_NOT_ASKED,
+  DOWNLOADS_OVERVIEW,
+  DOWNLOADS_SCAN,
+  DOWNLOADS_SETTINGS,
+  DOWNLOADS_TOTALS,
+  DOWNLOADS_UNAVAILABLE_MODULES,
+  DOWNLOADS_UNAVAILABLE_OVERVIEW,
+  DOWNLOADS_UNAVAILABLE_SCAN,
+} from '../src/test/downloads-scan';
+import {
   JETBRAINS_DICTIONARY,
   JETBRAINS_FINDINGS,
   JETBRAINS_MEANING,
@@ -616,6 +631,31 @@ const sizedOf = (bytes: number): Overview['found'] => ({
   reclaimable: bytes,
 });
 
+// The cleanup of the findings `ids`: the categories in `gone` leave the totals, `waiting` bytes wait in the Trash.
+const downloadsCleanupOf = (ids: readonly number[], waiting: number, gone: readonly string[]): CleanupScript => {
+  const detail = movedDetailOf(planOf(DOWNLOADS_FINDINGS.filter(({ id }) => ids.includes(id))), 3, 1_735_819_200);
+
+  return {
+    after: {
+      ...DOWNLOADS_OVERVIEW,
+      found: sizedOf(15_795_000_000 - waiting),
+      totals: DOWNLOADS_TOTALS.filter(({ category }) => !gone.includes(category)),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting },
+  };
+};
+
+// What the downloads scripts answer before a scan: the module, its texts and settings, Downloads allowed.
+const DOWNLOADS_ANSWERS = {
+  ...ANSWERS,
+  getAccessStatus: DOWNLOADS_GRANTED,
+  getDictionary: { ...DOWNLOADS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: DOWNLOADS_MODULES,
+  getSettings: DOWNLOADS_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // Two modules at once: npm's cache of the developer caches module beside the removed app's findings.
 const [NPM_CACHE] = DEV_CACHES_FINDINGS as readonly [Finding];
 const WITH_DEV_CACHES_FINDINGS: readonly Finding[] = [NPM_CACHE, ...APP_LEFTOVERS_FINDINGS];
@@ -716,6 +756,28 @@ export const SCRIPTS = {
   },
   // A development build on the real home folder: the banner says nothing can be removed outside a sandbox.
   development: { answers: { ...ANSWERS, appInfo: { build: { kind: 'development' }, version: '0.1.0' } } },
+  // The downloads and installers scan, streamed at once; the cleanup moves the installers and the big file.
+  downloads: {
+    answers: DOWNLOADS_ANSWERS,
+    cleanup: downloadsCleanupOf([304, 305, 307], 2_565_000_000, ['downloads.installers', 'downloads.large-untouched']),
+    ignoring: true,
+    meaning: DOWNLOADS_MEANING,
+    scan: DOWNLOADS_SCAN,
+    scanned: DOWNLOADS_OVERVIEW,
+  },
+  // Downloads not allowed yet: the module could not look, every category says what it needs.
+  downloadsUnavailable: {
+    answers: { ...DOWNLOADS_ANSWERS, getAccessStatus: DOWNLOADS_NOT_ASKED, getModules: DOWNLOADS_UNAVAILABLE_MODULES },
+    scan: DOWNLOADS_UNAVAILABLE_SCAN,
+    scanned: DOWNLOADS_UNAVAILABLE_OVERVIEW,
+  },
+  // The same; the cleanup moves the unfinished download and its placeholder.
+  downloadsUnfinished: {
+    answers: DOWNLOADS_ANSWERS,
+    cleanup: downloadsCleanupOf([301, 302], 310_000_000, ['downloads.unfinished']),
+    scan: DOWNLOADS_SCAN,
+    scanned: DOWNLOADS_OVERVIEW,
+  },
   // The demo module fails after its first batch, and the scan with it.
   failed: { answers: ANSWERS, scan: DEMO_FAILED_SCAN, scanned: DEMO_FAILED },
   // The demo scan, streamed at once, with modules and groups that can be ignored and restored.
@@ -767,8 +829,7 @@ export const SCRIPTS = {
         build: {
           kind: 'sandbox',
           path: '/Users/dev/sandboxes/trial',
-          simulatedRunning: true,
-          simulatedSpotlight: false,
+          simulated: ['running'],
         },
         version: '0.1.0',
       },

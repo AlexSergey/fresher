@@ -103,6 +103,7 @@ impl Scan {
             known_folders: Arc::new(FakeKnownFolders::home_layout(Path::new("/home"))),
             apps: Arc::new(FakeInstalledApps::new(self.installed)),
             running: Arc::new(self.running),
+            installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
         });
         let (clock, commands, cancel) = (FakeClock::at(NOW), FakeCommandRunner::default(), CancelToken::new());
         let settings = settings(&module, self.stored);

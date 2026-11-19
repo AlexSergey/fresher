@@ -19,13 +19,13 @@ mod decide;
 mod name;
 mod places;
 mod products;
-mod settings;
 mod uninstalled;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, DangerLevel, DescriptorError, EntryKind, FindingSink, IdError, Interest,
-    InterestError, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
-    ModuleId, NewFinding, Removal, RunningSet, SettingError, Subject, Text, TextArg, TextKey, TextKeyError, Timestamp,
+    CategoryDescriptor, CategoryId, DangerLevel, DaySetting, DescriptorError, EntryKind, FindingSink, IdError,
+    Interest, InterestError, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError,
+    ModuleGroup, ModuleId, NewFinding, Removal, RunningSet, SettingError, Subject, Text, TextArg, TextKey,
+    TextKeyError, Timestamp,
 };
 
 use crate::decide::{Reason, Verdict, decide};
@@ -36,6 +36,9 @@ use crate::uninstalled::{Age, Gathered, Waiting, age};
 
 /// The category of the data of an IDE that is no longer installed (design, section 5).
 const UNINSTALLED: &str = "jetbrains.uninstalled";
+
+/// `jetbrains.uninstalled-after-days`. Never fewer than a week: a removed IDE's data is not offered the day after.
+const UNINSTALLED_AFTER: DaySetting = DaySetting::new("uninstalled-after-days", 7, 3650, 30);
 
 /// The keys of the reasons the module may give for keeping a folder it recognized (design, section 5).
 #[derive(Debug)]
@@ -183,7 +186,7 @@ impl JetBrainsModule {
         listed.sort_by_key(|category| category.id().as_str());
         let locales = Locales { en: include_str!("../locales/en.json") };
         let left_out = LeftOutKeys::new()?;
-        let settings = vec![settings::uninstalled_after_days_setting(id)?];
+        let settings = vec![UNINSTALLED_AFTER.descriptor(id)?];
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::Development, listed, settings, locales)?
             .with_problems(left_out.all())?;
         let interests = PLACES.into_iter().map(Place::interest).collect::<Result<_, _>>()?;
@@ -216,7 +219,7 @@ impl JetBrainsModule {
         // The folder name was read from this table when the folder was gathered.
         let Some(product) = self.products.by_folder(product) else { return };
         let now = Timestamp::from_system_time(cx.clock().now());
-        let days = settings::uninstalled_after_days(cx.settings());
+        let days = UNINSTALLED_AFTER.days(cx.settings());
         let age = if cx.is_restored() || !cx.is_walk_complete() {
             Age::Recent
         } else {

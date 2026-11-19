@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, SystemTime};
 
-use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, sandbox_engine};
+use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, access_of, sandbox_engine};
 use fresher_core::{
     Access, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, Confirmation, Event, Finding,
     FindingOrder, FindingsQuery, LeftOutCount, RecordedOutcome, SANDBOX_MARKER, Subject, TrashState, VolumeFacts,
@@ -19,7 +19,7 @@ use fresher_core::{
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_macos::{current_user, protection, user_temp_dir};
-use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, generate};
+use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, Sandbox, generate};
 use fresher_testing::{
     FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport,
 };
@@ -212,7 +212,7 @@ impl World {
         let tree = TreeReport::of(generated.sandbox.path()).map_err(|error| failure(name, error))?;
         let tree_size = sandbox_entries(&tree).iter().map(|entry| entry.logical_size).sum();
         let world = fresher_sandbox::World::read(&generated.sandbox).map_err(|error| failure(name, error))?;
-        let ports = fakes(tree_size, &world, generated.sandbox.path())
+        let ports = fakes(tree_size, &world, &generated.sandbox)
             .ok_or_else(|| failure(name, "the sandbox's world.toml holds no `now`"))?;
         let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), ports)
             .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
@@ -220,6 +220,14 @@ impl World {
             && !engine.modules().iter().any(|info| info.id.as_str() == id)
         {
             return Err(failure(name, format!("the app registers no module `{id}`")));
+        }
+        // The switch decides whether a guarded folder is read: the run turns on the switch of every stated folder,
+        // as the user would before scanning it.
+        for folder in world.stated_folders() {
+            let key = format!("core.access.{}", Capability::Folder(folder).id());
+            let update = json!({ "key": key, "value": { "kind": "switch", "value": true } });
+            let update = serde_json::from_value(update).map_err(|error| failure(name, error))?;
+            engine.update_setting(update).map_err(|error| failure(name, format!("{key}: {error:?}")))?;
         }
         Ok(engine)
     }
@@ -237,10 +245,10 @@ fn leak(id: &str) -> &'static str {
 }
 
 /// Fakes for every port sandbox mode keeps real: no clock, volume, open file, tool or permission of the machine, and
-/// the running apps, the moment and the stated facts of the sandbox's `world` (at `sandbox`), as sandbox mode takes
-/// them: the clock stands at the moment the sandbox was generated. The volume holds `tree_size` bytes of the sandbox's
-/// files. `None` when the world holds no moment.
-fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Path) -> Option<SandboxPorts> {
+/// the running apps, the moment, the access, the installs and the stated facts of the sandbox's `world` (at `sandbox`),
+/// as sandbox mode takes them: the clock stands at the moment the sandbox was generated. The volume holds `tree_size`
+/// bytes of the sandbox's files. `None` when the world holds no moment.
+fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Sandbox) -> Option<SandboxPorts> {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
     let now = world.now()?.duration_since(SystemTime::UNIX_EPOCH).ok()?;
     Some(SandboxPorts {
@@ -249,8 +257,13 @@ fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Path) -> Opti
         open_files: Arc::new(FakeOpenFiles::default()),
         running: Arc::new(world.running_apps()),
         commands: Arc::new(FakeCommandRunner::default()),
-        access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
-        stated: world.stated(sandbox),
+        access: access_of(
+            world,
+            &sandbox.home(),
+            Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        ),
+        installs: Arc::new(world.install_records()),
+        stated: world.stated(sandbox.path()),
     })
 }
 

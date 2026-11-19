@@ -32,7 +32,7 @@ use serde_json::{Value, json};
 
 use crate::support::fixtures;
 pub(crate) use home::Flow;
-use home_engine::Parts;
+use home_engine::{Parts, no_installs, unknown_access};
 
 /// Xcode's bundle id: the derived data projects are kept while it is open.
 pub(crate) const XCODE: &str = "com.apple.dt.Xcode";
@@ -108,6 +108,8 @@ fn parts(sandbox: &Sandbox, setup: Setup) -> Parts {
         journal: home_rescan::journal(sandbox, &setup.changed),
         installed: FakeInstalledApps::new(vec![xcode]),
         running: answers.fold(first, FakeRunningApps::then),
+        access: unknown_access(),
+        installs: no_installs(),
         threads: 2.try_into().unwrap(),
         avoid: Vec::new(),
     }

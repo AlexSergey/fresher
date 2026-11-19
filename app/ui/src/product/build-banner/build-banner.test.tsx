@@ -11,12 +11,8 @@ describe('BuildBanner', () => {
       expect(container).toBeEmptyDOMElement();
     });
 
-    it('a_sandbox_whose_open_apps_are_real_does_not_say_they_are_simulated', () => {
-      render(
-        <BuildBanner
-          build={{ kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: false, simulatedSpotlight: false }}
-        />,
-      );
+    it('a_sandbox_that_simulates_nothing_does_not_say_anything_is_simulated', () => {
+      render(<BuildBanner build={{ kind: 'sandbox', path: '/Users/dev/box', simulated: [] }} />);
 
       expect(screen.getByRole('note')).toHaveTextContent(/^Sandbox · \/Users\/dev\/box$/);
     });
@@ -24,35 +20,21 @@ describe('BuildBanner', () => {
 
   describe('positive cases', () => {
     it('the_sandbox_banner_names_its_folder_and_says_its_open_apps_are_simulated', () => {
-      render(
-        <BuildBanner
-          build={{ kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: true, simulatedSpotlight: false }}
-        />,
-      );
+      render(<BuildBanner build={{ kind: 'sandbox', path: '/Users/dev/box', simulated: ['running'] }} />);
 
-      expect(screen.getByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box · Open apps are simulated.');
+      expect(screen.getByRole('note')).toHaveTextContent(/^Sandbox · \/Users\/dev\/box · Simulated: open apps\.$/);
     });
 
-    it('the_sandbox_banner_says_its_open_apps_and_spotlight_are_simulated', () => {
+    it('the_sandbox_banner_lists_every_simulated_part_in_the_cores_order', () => {
       render(
         <BuildBanner
-          build={{ kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: true, simulatedSpotlight: true }}
+          build={{ kind: 'sandbox', path: '/Users/dev/box', simulated: ['running', 'spotlight', 'access', 'installs'] }}
         />,
       );
 
       expect(screen.getByRole('note')).toHaveTextContent(
-        'Sandbox · /Users/dev/box · Open apps and Spotlight are simulated.',
+        /^Sandbox · \/Users\/dev\/box · Simulated: open apps, Spotlight, access, installs\.$/,
       );
-    });
-
-    it('the_sandbox_banner_says_spotlight_alone_is_simulated', () => {
-      render(
-        <BuildBanner
-          build={{ kind: 'sandbox', path: '/Users/dev/box', simulatedRunning: false, simulatedSpotlight: true }}
-        />,
-      );
-
-      expect(screen.getByRole('note')).toHaveTextContent(/^Sandbox · \/Users\/dev\/box · Spotlight is simulated\.$/);
     });
 
     it('the_development_banner_says_nothing_can_be_removed', () => {

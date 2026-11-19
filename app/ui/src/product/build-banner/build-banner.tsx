@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 
 import type { UiKey } from '../../i18n/types';
-import type { Build } from '../../ipc/bindings.generated';
+import type { Build, Simulated } from '../../ipc/bindings.generated';
 
 import { t } from '../../i18n';
 import styles from './build-banner.module.css';
@@ -10,21 +10,26 @@ export type BuildBannerProps = { readonly build: Build };
 
 type SandboxBuild = Extract<Build, { readonly kind: 'sandbox' }>;
 
-// What the sandbox's banner says is simulated, as the core reports it.
-const sandboxText = (build: SandboxBuild): UiKey => {
-  if (build.simulatedRunning && build.simulatedSpotlight) {
-    return 'ui.build-banner.sandbox-simulated-running-spotlight';
-  }
-  if (build.simulatedRunning) {
-    return 'ui.build-banner.sandbox-simulated-running';
-  }
-
-  return build.simulatedSpotlight ? 'ui.build-banner.sandbox-simulated-spotlight' : 'ui.build-banner.sandbox';
+const SIMULATED_TEXT: Readonly<Record<Simulated, UiKey>> = {
+  access: 'ui.build-banner.simulated.access',
+  installs: 'ui.build-banner.simulated.installs',
+  running: 'ui.build-banner.simulated.running',
+  spotlight: 'ui.build-banner.simulated.spotlight',
 };
 
-// A thin, quiet strip above the window in a development build: which sandbox it lives in (and that its open apps and
-// Spotlight are the sandbox's, when the core says so), or that it removes nothing outside one. Nothing in a release
-// build.
+// The sandbox's banner: its folder and, when the core reports any, what is simulated, in the core's order.
+const sandboxText = (build: SandboxBuild): string => {
+  const path = { kind: 'text', value: build.path } as const;
+  if (build.simulated.length === 0) {
+    return t('ui.build-banner.sandbox', { path });
+  }
+  const parts = build.simulated.map((part) => t(SIMULATED_TEXT[part])).join(', ');
+
+  return t('ui.build-banner.sandbox-simulated', { parts: { kind: 'text', value: parts }, path });
+};
+
+// A thin, quiet strip above the window in a development build: which sandbox it lives in (and what of the Mac its
+// world simulates, when the core says so), or that it removes nothing outside one. Nothing in a release build.
 export const BuildBanner = ({ build }: BuildBannerProps): JSX.Element | null => {
   switch (build.kind) {
     case 'development':
@@ -38,7 +43,7 @@ export const BuildBanner = ({ build }: BuildBannerProps): JSX.Element | null => 
     case 'sandbox':
       return (
         <p className={styles.banner} role="note">
-          {t(sandboxText(build), { path: { kind: 'text', value: build.path } })}
+          {sandboxText(build)}
         </p>
       );
   }

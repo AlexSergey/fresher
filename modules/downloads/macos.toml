@@ -1,0 +1,39 @@
+# The macOS installers by bundle name and the version they install. The names were added from Apple's list; the names
+# after Tahoe and the exact bundle names are to be verified (plan 020, step 05/02). A missing name only keeps its
+# installer.
+
+[[installer]]
+name = "Install macOS High Sierra.app"
+version = "10.13"
+
+[[installer]]
+name = "Install macOS Mojave.app"
+version = "10.14"
+
+[[installer]]
+name = "Install macOS Catalina.app"
+version = "10.15"
+
+[[installer]]
+name = "Install macOS Big Sur.app"
+version = "11.0"
+
+[[installer]]
+name = "Install macOS Monterey.app"
+version = "12.0"
+
+[[installer]]
+name = "Install macOS Ventura.app"
+version = "13.0"
+
+[[installer]]
+name = "Install macOS Sonoma.app"
+version = "14.0"
+
+[[installer]]
+name = "Install macOS Sequoia.app"
+version = "15.0"
+
+[[installer]]
+name = "Install macOS Tahoe.app"
+version = "26.0"

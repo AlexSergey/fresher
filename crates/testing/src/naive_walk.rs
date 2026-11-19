@@ -433,13 +433,21 @@ fn matches(interest: &Interest, folders: &FakeKnownFolders, path: &Path, kind: E
                 let names: Vec<_> = relative.iter().filter_map(|name| name.to_str()).collect();
                 let segments: Vec<_> = pattern.split('/').collect();
                 let shaped = interest.matches_only_bundle_ids();
+                let suffixes = interest.name_suffixes();
                 names.len() == relative.iter().count()
                     && names.len() == segments.len()
                     && names.iter().zip(&segments).all(|(name, segment)| *segment == "*" || name == segment)
                     && (!shaped || names.last().is_some_and(|last| is_bundle_id_shaped(last.as_bytes())))
+                    && (suffixes.is_empty() || names.last().is_some_and(|last| has_suffix(last, suffixes)))
             })
         }),
     }
+}
+
+/// Whether `name` ends with one of `suffixes` (lowercase), ASCII case ignored, and is longer than it.
+fn has_suffix(name: &str, suffixes: &[String]) -> bool {
+    let name = name.to_ascii_lowercase();
+    suffixes.iter().any(|suffix| name.len() > suffix.len() && name.ends_with(suffix.as_str()))
 }
 
 /// The size of the entry itself: a file's or a socket's, pipe's or device's bytes; nothing for a folder or a link.

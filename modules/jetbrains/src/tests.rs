@@ -120,6 +120,7 @@ impl Scan {
             known_folders: Arc::new(FakeKnownFolders::home_layout(Path::new("/home"))),
             apps: Arc::clone(&self.installed) as Arc<dyn fresher_core::InstalledApps>,
             running: Arc::new(FakeRunningApps::new(self.running.clone())),
+            installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let settings = settings(module, self.stored);

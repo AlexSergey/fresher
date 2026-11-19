@@ -10,8 +10,8 @@ use std::time::Duration;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, FolderReader, KnownFolders, Module, ModuleId, Protection,
-    ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
+    AccessProbe, Build, Clock, CommandRunner, FolderReader, InstallRecords, InstalledApps, KnownFolders, Module,
+    ModuleId, Protection, ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 use fresher_macos::{
@@ -22,8 +22,8 @@ use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacInstalledApps, MacKnownFolders, MacMounts,
-    MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch, SystemClock, macos_version,
+    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacInstallRecords, MacInstalledApps, MacKnownFolders,
+    MacMounts, MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch, SystemClock, macos_version,
 };
 
 /// Why the app could not start its engine.
@@ -51,6 +51,8 @@ pub(crate) enum ComposeError {
     DevCaches(#[from] fresher_module_dev_caches::DevCachesError),
     #[error("the app-leftovers module cannot be built: {0}")]
     AppLeftovers(#[from] fresher_module_app_leftovers::AppLeftoversError),
+    #[error("the downloads module cannot be built: {0}")]
+    Downloads(#[from] fresher_module_downloads::DownloadsError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -146,24 +148,28 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
     };
     let user_temp = user_temp();
     let cleanup = cleanup(home, user_temp.as_deref(), &folder, cleaner, Arc::clone(&volumes))?;
-    let known_folders = match user_temp {
-        Some(temp) => MacKnownFolders::new(home).with_user_temp(temp),
-        None => MacKnownFolders::new(home),
+    let known_folders: Arc<dyn KnownFolders> = match user_temp {
+        Some(temp) => Arc::new(MacKnownFolders::new(home).with_user_temp(temp)),
+        None => Arc::new(MacKnownFolders::new(home)),
     };
     Ok(Shared {
         folder,
         reader: Arc::new(MacFolderReader::new()),
         // No standing list: the engine's request carries the guarded places the capability state keeps closed.
         avoid: Vec::new(),
-        known_folders: Arc::new(known_folders),
+        known_folders: Arc::clone(&known_folders),
         volumes,
         clock,
         running,
-        app_search: AppSearch::Spotlight(SpotlightSearch::new(
-            Arc::clone(&commands),
-            Arc::new(ProcessCommandRunner::new(INDEX_CHECK_TIMEOUT)),
-            Arc::new(MacMounts),
+        apps: Arc::new(MacInstalledApps::new(
+            known_folders,
+            AppSearch::Spotlight(SpotlightSearch::new(
+                Arc::clone(&commands),
+                Arc::new(ProcessCommandRunner::new(INDEX_CHECK_TIMEOUT)),
+                Arc::new(MacMounts),
+            )),
         )),
+        installs: Arc::new(MacInstallRecords::new("/")),
         commands,
         access: Arc::new(MacAccess::new(home.to_path_buf(), macos_version(Path::new("/")))),
         cleanup,
@@ -197,8 +203,11 @@ pub(crate) struct Shared {
     pub(crate) access: Arc<dyn AccessProbe>,
     pub(crate) cleanup: CleanupPorts,
     pub(crate) only: Option<ModuleId>,
-    /// Where an app is looked for beyond the apps folders: Spotlight on a Mac, the listed apps only in a sandbox.
-    pub(crate) app_search: AppSearch,
+    /// The installed apps: the apps folders and Spotlight on a Mac; in a sandbox its listed and declared apps, with the
+    /// change times its world states.
+    pub(crate) apps: Arc<dyn InstalledApps>,
+    /// The installer receipts and the macOS version: the Mac's, or the sandbox's world's.
+    pub(crate) installs: Arc<dyn InstallRecords>,
 }
 
 /// The engine both paths share: the real walk of the disk over `shared`, the app's modules and its settings file.
@@ -215,7 +224,8 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         access,
         cleanup,
         only,
-        app_search,
+        apps,
+        installs,
     } = shared;
     let options = ScannerOptions {
         standing_avoid: avoid,
@@ -239,11 +249,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         commands,
         access,
         system_ui,
-        system: SystemPorts {
-            known_folders: Arc::clone(&known_folders),
-            apps: Arc::new(MacInstalledApps::new(known_folders, app_search)),
-            running,
-        },
+        system: SystemPorts { known_folders: Arc::clone(&known_folders), apps, running, installs },
     };
     Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup)?)
 }
@@ -339,6 +345,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_temp::TempModule::new()?),
         Box::new(fresher_module_dev_caches::DevCachesModule::new()?),
         Box::new(fresher_module_app_leftovers::AppLeftoversModule::new()?),
+        Box::new(fresher_module_downloads::DownloadsModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -500,9 +507,9 @@ mod tests {
         fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             let expected: &[&str] = if cfg!(debug_assertions) {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers", "demo", "trial"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "demo", "trial"]
             } else {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads"]
             };
 
             let engine = engine(folder.path(), home.path()).unwrap();

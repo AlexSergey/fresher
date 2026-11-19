@@ -1,0 +1,92 @@
+# A home for the downloads module where nothing is the module's to claim, and nothing is kept either: a document, names
+# that are not an installer of an installed app, a link, a folder of the user's, an app run from Downloads, a bundle
+# that is not Safari's, and files just under the size of a big one. The 400-day files are old enough that only the
+# rule, not the age, decides. The module's system for this home: Firefox 133.0 installed and changed 10 days ago,
+# Apple's Notes installed, macOS 15.4.
+
+[[file]]
+path = "Downloads/report.pdf"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[file]]
+path = "Downloads/notes-backup.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/install.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Firefox (1).dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Notes.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[symlink]]
+path = "Downloads/movie.mp4.part"
+target = "elsewhere/x"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Downloads/photos"
+age = "400d"
+changed = "400d"
+
+[[file]]
+path = "Downloads/photos/big.mov"
+size = 2000000000
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Downloads/Example.app"
+age = "400d"
+changed = "400d"
+
+[[dir]]
+path = "Downloads/Example.app/Contents"
+age = "400d"
+changed = "400d"
+
+[[file]]
+path = "Downloads/Example.app/Contents/x"
+size = 4096
+age = "400d"
+changed = "400d"
+fill = "data"
+
+[[dir]]
+path = "Downloads/trip.download"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Downloads/trip.download/data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/almost.mov"
+size = 999999999
+age = "400d"
+changed = "400d"

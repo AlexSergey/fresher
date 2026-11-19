@@ -4,6 +4,7 @@ import { COMMANDS } from '../src/ipc';
 import { APP_LEFTOVERS_DICTIONARY } from '../src/test/app-leftovers-scan';
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
 import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
+import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
@@ -174,6 +175,34 @@ const openLeftovers = async (
   await expect(heading(page, left('enabled.label'))).toBeFocused();
 };
 
+// The downloads module's own texts, as its locale file has them.
+const dl = (key: string): string => DOWNLOADS_DICTIONARY[`downloads.${key}`] ?? '';
+
+const DL_UNFINISHED = dl('unfinished.name');
+const DL_SAFARI = dl('safari-resumable.name');
+const DL_INSTALLERS = dl('installers.name');
+const DL_MACOS = dl('macos-installers.name');
+const DL_LARGE = dl('large-untouched.name');
+
+const downloadsModule = (page: Page): Locator => page.getByRole('button', { name: /^Downloads and installers/ });
+
+// Scans a downloads script and opens the module's page.
+const openDownloads = async (
+  page: Page,
+  script:
+    | typeof SCRIPTS.downloads
+    | typeof SCRIPTS.downloadsUnavailable
+    | typeof SCRIPTS.downloadsUnfinished = SCRIPTS.downloads,
+  total = '15.8 GB',
+): Promise<void> => {
+  await mockCore(page, script);
+  await page.goto('/');
+  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await expect(downloadsModule(page)).toContainText(total);
+  await downloadsModule(page).click();
+  await expect(heading(page, dl('enabled.label'))).toBeFocused();
+};
+
 const choice = (page: Page, name: string): Locator => page.getByRole('button', { name: left(`choice.${name}.label`) });
 
 test.beforeEach(async ({ page }) => {
@@ -320,6 +349,38 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('220 MB');
+  });
+
+  test('the downloads module is unavailable until Downloads is allowed, and says how to allow it', async ({ page }) => {
+    await mockCore(page, SCRIPTS.downloadsUnavailable);
+    await page.goto('/');
+    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await downloadsModule(page).click();
+    await expect(heading(page, dl('enabled.label'))).toBeFocused();
+
+    for (const name of [DL_UNFINISHED, DL_SAFARI, DL_INSTALLERS, DL_MACOS, DL_LARGE]) {
+      const category = page.getByRole('region', { name });
+      await expect(category).toContainText('Not available');
+      await expect(category).toContainText('Your Downloads folder was not looked at.');
+      await expect(category.getByRole('checkbox')).toHaveCount(0);
+    }
+    await expect(page.getByRole('button', { name: 'Let Fresher look there' }).first()).toBeVisible();
+    await expect(selectionBar(page)).toHaveCount(0);
+  });
+
+  test('the left-out lines of downloads cannot be selected', async ({ page }) => {
+    await openDownloads(page);
+
+    await expect(page.getByRole('region', { name: DL_UNFINISHED })).toContainText(
+      `1 item left out (48 MB): ${dl('left-out.browser-open')}`,
+    );
+    await expect(page.getByRole('region', { name: DL_LARGE })).toContainText(
+      `1 item left out (1.2 GB): ${dl('left-out.recent')}`,
+    );
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await expect(selectionBar(page)).not.toContainText('1.2 GB');
   });
 
   test('a choice selects nothing outside its module', async ({ page }) => {
@@ -1125,6 +1186,99 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: left('enabled.label') })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: left('uninstalled-after-days.label') })).toHaveValue('30');
     await expect(page.getByText(left('uninstalled-after-days.description'))).toBeVisible();
+  });
+
+  test('downloads and installers show under Your files with their size', async ({ page }) => {
+    await openDownloads(page);
+
+    await expect(page.getByRole('navigation').getByText('Your files', { exact: true })).toBeVisible();
+    await expect(downloadsModule(page)).toContainText('15.8 GB');
+    for (const name of [DL_UNFINISHED, DL_SAFARI, DL_INSTALLERS, DL_MACOS, DL_LARGE]) {
+      await expect(page.getByRole('region', { name })).toBeVisible();
+    }
+    await expect(page.getByRole('region', { name: DL_MACOS })).toContainText('12.8 GB');
+  });
+
+  test('each downloads category shows its danger and its five texts', async ({ page }) => {
+    await openDownloads(page);
+
+    for (const [name, key, danger] of [
+      [DL_UNFINISHED, 'unfinished', 'Low'],
+      [DL_SAFARI, 'safari-resumable', 'Medium'],
+      [DL_INSTALLERS, 'installers', 'Low'],
+      [DL_MACOS, 'macos-installers', 'Low'],
+      [DL_LARGE, 'large-untouched', 'High'],
+    ] as const) {
+      const category = page.getByRole('region', { name });
+      await expect(category).toContainText(danger);
+      await expect(category).toContainText(dl(`${key}.what`));
+      await category.getByText('About this category').click();
+      for (const text of ['made-by', 'if-removed', 'comes-back']) {
+        await expect(category).toContainText(dl(`${key}.${text}`));
+      }
+    }
+  });
+
+  test('selecting the installers and the big files makes the review name High', async ({ page }) => {
+    await openDownloads(page);
+
+    await page.getByRole('checkbox', { name: `Select ${DL_INSTALLERS}` }).check();
+    await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+
+    await expect(selectionBar(page)).toContainText('3 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await expect(dialog).toContainText('High');
+    await expect(dialog).toContainText(dl('large-untouched.if-removed'));
+  });
+
+  test('the installers and the big file go to the Trash and come back from the Cleanups', async ({ page }) => {
+    await openDownloads(page);
+    await page.getByRole('checkbox', { name: `Select ${DL_INSTALLERS}` }).check();
+    await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 3 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: 'video.mov' });
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('an unfinished download goes to the Trash with its placeholder and comes back', async ({ page }) => {
+    await openDownloads(page, SCRIPTS.downloadsUnfinished);
+    await page.getByRole('checkbox', { name: `Select ${DL_UNFINISHED}` }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 2 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    await expect(items.getByRole('listitem')).toHaveCount(2);
+    const item = items.getByRole('listitem').filter({ hasText: 'movie.mp4.crdownload' });
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the switch and the days for downloads', async ({ page }) => {
+    await mockCore(page, SCRIPTS.downloads);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: dl('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('spinbutton', { name: dl('older-than-days.label') })).toHaveValue('30');
+    await expect(page.getByText(dl('older-than-days.description'))).toBeVisible();
   });
 
   test('a removed app’s line in the map is named by its id', async ({ page }) => {

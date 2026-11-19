@@ -66,7 +66,7 @@ cleanups of a hundred items through the real journal.
     and after), `MemoryCleanupJournal` (the journal in memory, or failing), `FakeCleaner` (records the `ExecutedPlan`
     the engine handed it).
   - `FakeAccess` (the state of each capability, the guarded places of a fixture home folder, scripted answers of
-    `try_place` and the places tried) and `FakeSystemUi` (records every pane opened and path revealed, or fails): the
+    `try_place`, which remember a `Granted` or `Denied` answer as the real probe does, and the places tried) and `FakeSystemUi` (records every pane opened and path revealed, or fails): the
     ports of permissions ([`architecture/permissions.md`](./architecture/permissions.md)); both in
     `crates/testing/src/fake_access.rs`.
   - `Swapper` swaps a folder for a link to another folder and back on its own thread until dropped, then puts the
@@ -131,7 +131,16 @@ cleanups of a hundred items through the real journal.
   names them); `tests/temp.rs` runs the `temp` module's flows on the real scanner, settings file and cleaner, two of
   them on real old modification times, a real socket and a real pipe, nothing stated; `tests/dev_caches.rs` runs the
   `dev-caches` module's flows the same way, with a scripted change journal so its rescans read only what it names;
-  `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
+  `tests/downloads.rs` runs the `downloads` module's flows on the real scanner, settings file, cache, journal and
+  cleaner over `fixtures/homes/downloads-flow.toml`, the access included: nothing is tried or read in Downloads before
+  the opt-in (`Unavailable`, `FakeAccess::tried()` empty, the coverage names the folder); the first scan after the
+  opt-in (the switch on, the try answering `Granted`) learns the access (`AccessChanged`) and offers in that same scan,
+  its report the golden `fixtures/golden/downloads-flow.json`; a denied folder keeps the module unavailable; scan,
+  confirm with High, Trash and put back byte for byte; a browser that quits, days that pass and an app that is
+  updated turn a left-out into an offer on a rescan; the storage map counts an installer in its app's line and opens
+  the user's folder; ignoring the big files; and Full Disk Access, which makes the module available without a try.
+  `FakeAccess` remembers a try that answered `Granted` or `Denied`, as the real probe does, so the cleanup's own access
+  check agrees with the scan. `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
   modules' caches under `Library/Caches` still theirs), with scripted installed and open apps, Spotlight's answers, the
   clock and the change journal, every rescan asserted to be one (`fixtures/golden/app-leftovers-flow.json`).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
@@ -307,13 +316,16 @@ path = "work"
 # CFBundleName, CFBundlePackageType APPL and, when given, CFBundleShortVersionString and CFBundleVersion; text
 # escaped) and an empty `Contents/MacOS/`. Unsigned: its team id reads as none. The path ends in `.app`; the bundle id
 # must be one the app reads (`BundleId::new`). `version` and `build` are optional. No text holds a control character,
-# and no other entry of the tree lies inside the bundle: the bundle writes its own contents.
+# and no other entry of the tree lies inside the bundle: the bundle writes its own contents. `changed` states the
+# bundle's status change as an age, as for a file; the bundle is written now, so a case says "installed 10 days ago"
+# this way (`StatedInstalledApps` puts it on the installed app).
 [[app]]
 path = "Applications/WebStorm.app"
 bundle-id = "com.jetbrains.WebStorm"
 name = "WebStorm"
 version = "2025.3.1"
 build = "WS-253.1"
+changed = "10d"
 ```
 
 `FixtureTree::from_toml(path)` builds it in a temporary folder that is removed when the tree is dropped;
@@ -342,8 +354,8 @@ the fake home `home/` with its Trash `home/.Trash/`, `Applications/`, `System/Ap
 `.fresher-data/`, the two temporary places laid out as on a Mac from `/` (`private/var/folders/xx/sandbox/T/` with
 `C/`, `0/` and `X/` beside it, and `private/tmp/`), every case's files, `EXPECTED.md`, the checklist of a run by hand
 (one checkbox per case, negatives first), and `world.toml`: `now`, the moment of the generation every age counts back
-from, the apps the cases declare open, what Spotlight answers (`spotlight = "off"`, `[[elsewhere]]`), and an
-`[[entry]]` per path whose files state facts (its path in the sandbox,
+from, the apps the cases declare open, what Spotlight answers (`spotlight = "off"`, `[[elsewhere]]`), what the guarded
+folders allow (`[access]`), the macOS version (`macos`) and the installer receipts (`[[receipt]]`), and an `[[entry]]` per path whose files state facts (its path in the sandbox,
 its times in seconds since the epoch, its owner, flags and kind). The sandbox's known folders `UserTemp` and
 `SharedTemp` are those two places, never the Mac's, and a list of its own protects them as the Mac's list protects
 the real ones (`Sandbox::places_protection`: every user's folders and `private/var/tmp` never, the sandbox's `T` carved
@@ -410,6 +422,21 @@ The case files:
   the autotest runs each alone and `npm run sandbox -- all` joins them for a look by hand only (there the unsigned
   files land in signed places), so no file writes a path another writes.
 
+- `downloads.toml`, `downloads-denied.toml` and `downloads-browser-open.toml`: the `downloads` module, offered from
+  `home/Downloads` only, with `access = { downloads = "granted" }` and `macos = "15.4"` in the first. A document, a
+  disk image of no installed app, a copy of an installer, a link named like a download, a folder of yours and a big file
+  inside one are never claimed; an unfinished download or a big file changed lately, an installer newer than the
+  installed app or downloaded after it, and an installer for a newer macOS are left out (`recent`, `not-older`,
+  `newer-macos`). An unfinished download (Chrome's, Firefox's with its empty placeholder), a Safari one at Medium, an
+  installer of an installed app, a package with its receipt, an old macOS installer and a big file untouched for a
+  long time (at High) go to the Trash. The big files are sparse: the map counts no blocks for them, and the harness
+  caps the fake volume's used space to what it holds. The second denies access: nothing in Downloads is read. The
+  third runs with Chrome open: its unfinished download is left out (`browser-open`). Denied access and an open browser
+  are worlds of their own; in `npm run sandbox -- all` the most restrictive access wins, so Downloads is then denied for
+  every case file ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)). The autotest does not opt in to
+  Downloads in Settings, so a `not-asked` answer turning granted after the opt-in is not proven there but in the core
+  e2e (`tests/downloads.rs`, below); a case file cannot opt in.
+
 - `temp.toml`: the `temp` module, in the sandbox's two temporary places, with stated facts for what the disk cannot
   make. A fresh file, a folder unpacked with old modification times, an old folder with one file changed a day ago,
   an old file read a day ago, six days, a future time, an open app's items (also a hidden one), the system's and
@@ -425,8 +452,10 @@ A case file's paths are its own across every case file, so `npm run sandbox -- a
 in its `case_files!`, run one at a time (the nextest test group `sandboxes`, `.config/nextest.toml`); a scan or a
 cleanup not over within 180 s fails, naming the last event seen. The case file is generated into a temporary folder (the "real" home and data folder are
 temporary too), run through the app's own sandbox composition (`sandbox_engine`) with fakes for the clock (standing at
-the generated sandbox's `now`), volumes, open files, commands and access, the running apps of the generated sandbox's
-`world.toml` and its stated facts (as sandbox mode takes them), and only the case file's `module` registered. Every negative must not
+the generated sandbox's `now`), volumes, open files and commands, the running apps of the generated sandbox's
+`world.toml`, its access (a fake that knows nothing when it states none), its receipts and macOS version, and its
+stated facts (as sandbox mode takes
+them), and only the case file's `module` registered. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
 `after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. After the scan and before
@@ -504,7 +533,24 @@ finds outside the apps folders: sandbox mode and the autotest answer it at `<san
 which is never written or read. `spotlight = "off"` on a case (the only value) means Spotlight cannot be asked, so no
 app's absence can be proven; it holds for the whole sandbox, so a file with Spotlight off is a world of its own.
 Both go to `world.toml` (`spotlight = "off"`, `[[elsewhere]]`) only when a case declares them; sandbox mode's
-search answers the sandbox's listed apps and these, never the Mac's Spotlight. `EXPECTED.md`
+search answers the sandbox's listed apps and these, never the Mac's Spotlight. `access = { downloads = "granted" }` on
+a case states what a guarded folder allows: the keys are `desktop`, `documents` and `downloads` (any other is
+refused), the values `granted`, `denied` and `not-asked`. When two cases state one folder differently, the most
+restrictive wins (`denied`, then `not-asked`, then `granted`), as `spotlight = "off"` does, so `npm run sandbox -- all`
+stays valid; `world.toml` writes `[access]` only when a case states any. Sandbox mode and the autotest then answer
+access from it (`World::access`): Full Disk Access `unknown`, a stated folder as stated, every other permission
+`not-asked`; each stated folder is guarded at `home/<Folder>`, and trying it answers `granted` for `granted` and
+`not-asked` (the simulated prompt is accepted once the folder's switch in Settings → Permissions is on), `denied` for
+`denied`. As on a Mac without Full Disk Access, a stated folder is read only with its switch on, `granted` too; the
+autotest turns on the switch of every stated folder. Without `[access]` they answer the stand-in that knows nothing,
+as before. `macos = "15.4"` on a case states the macOS version (a version that does not parse is refused; two cases
+stating different versions make `all` refuse, naming both), and each `[[case.receipt]]` (`package`, one plain file name
+ending `.pkg`; `installed`, an age) an installer receipt installed that long before the sandbox was made; `world.toml`
+writes `macos` and `[[receipt]]` only when stated. Sandbox mode and the autotest answer receipts and version from it
+(`World::install_records`), never the Mac's: a world that states no version answers an error, "the sandbox states no
+macOS version". `[[case.app]] changed = "10d"` states an app's change time, which `StatedInstalledApps` puts on the
+installed app in sandbox mode and the autotest. `EXPECTED.md` names the version and each receipt. `EXPECTED.md` says which folders
+a case allows, refuses or has not been asked for (and, for `not-asked`, that the switch is turned on first). `EXPECTED.md`
 lists a case's apps under it ("Installed: WebStorm 2025.3.1 (open)", "Open, not installed: CLion", "Found by Spotlight
 outside the apps folders: Far", and "Spotlight is off" for a case that turns it off) and its left-outs
 ("Under 'trial.caches', 2 left out: trial.error.failed"; the generator has no dictionary, so the category and the reason
@@ -527,7 +573,9 @@ golden report holds the map's parts and, for every `at`, the folders the view we
 The sandbox's home, `home/`, stands for the user's home: its own places that prompt (`Documents`, `Desktop`, …) are not
 scanned, as on the real Mac before access is granted (plan 006). A case file therefore puts its positive cases under
 `home/Library` or in a folder of its own in `home/`, never under those places; a negative may use them to show the
-scan keeps out.
+scan keeps out. The exception is a folder the world states `access` for: the standing avoid list then leaves its
+place in `home/` to the engine's coverage, which decides it as on a Mac (walked when granted, tried once its switch is
+on when not asked, skipped when denied); the real home's places stay avoided whatever the world says.
 
 ### Sandbox mode
 

@@ -1,7 +1,13 @@
 import type { ModuleGroup, ModuleInfo } from '../ipc/bindings.generated';
 
 // The core's order of the groups; a group a newer core adds comes after them, in the order its modules arrive.
-const GROUP_ORDER: readonly string[] = ['system', 'apps', 'development', 'debug'] satisfies readonly ModuleGroup[];
+const GROUP_ORDER: readonly string[] = [
+  'system',
+  'apps',
+  'files',
+  'development',
+  'debug',
+] satisfies readonly ModuleGroup[];
 
 export type InGroup<T> = {
   // A `ModuleGroup`, or the key of one this build does not know yet.

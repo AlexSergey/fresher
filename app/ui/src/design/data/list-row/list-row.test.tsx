@@ -79,6 +79,7 @@ describe('ListRow', () => {
       expect(selected).toHaveAttribute('data-selected');
       expect(selected).toHaveAttribute('data-level', 'high');
       expect(disabled).toHaveAttribute('data-disabled');
+      expect(disabled).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('carries its place in a virtual list and its tab stop', () => {

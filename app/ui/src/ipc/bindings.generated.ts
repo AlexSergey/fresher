@@ -9,7 +9,12 @@ export type AppInfo = { version: string, build: Build, };
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
  */
-export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulatedRunning: boolean, simulatedSpotlight: boolean, };
+export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulated: Array<Simulated>, };
+
+/**
+ * A part of the Mac a sandbox's world answers instead of the real one.
+ */
+export type Simulated = "running" | "spotlight" | "access" | "installs";
 
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
@@ -136,7 +141,7 @@ export type CategoryTotal = { category: CategoryId, count: number, sizes: Sizes,
  * The named group a module belongs to; the sidebar and the overview show modules under it. The order of the variants
  * is the screen's order, `Debug` last.
  */
-export type ModuleGroup = "system" | "apps" | "development" | "debug";
+export type ModuleGroup = "system" | "apps" | "files" | "development" | "debug";
 
 /**
  * A module as the UI sees it: what the generic module page renders.

@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use fresher_core::{Access, AccessProbe, AccessStatus, Capability, CapabilityState, GuardedPlace};
 
 /// Answers `Unknown` for Full Disk Access and `NotAsked` for every other permission, knows no guarded place and
-/// never tries one: sandbox mode's access, whose world is not the Mac's, and the app's tests' (`docs/hacks/`).
+/// never tries one: sandbox mode's stand-in when its world states no access (the Mac's is never asked), and the app's
+/// tests' (`docs/hacks/`).
 #[derive(Debug)]
 pub(crate) struct UnknownAccess;
 

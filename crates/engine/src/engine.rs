@@ -16,7 +16,7 @@ use fresher_core::{
 
 use crate::access::AccessView;
 use crate::cleanup::{self, Pending};
-use crate::coverage::{OPT_INS, opt_in_key};
+use crate::coverage;
 use crate::error::{EngineError, lock, lock_anyway};
 use crate::places::walked_places;
 use crate::results::{Filter, Results};
@@ -300,9 +300,11 @@ impl Engine {
         Ok(())
     }
 
-    /// The registered modules for the UI, in registration order, each category with its availability.
+    /// The registered modules for the UI, in registration order, each category with its availability as the
+    /// switches of the guarded places allow it.
     pub fn modules(&self) -> Vec<ModuleInfo> {
-        self.shared.registry.modules(&self.shared.access.status())
+        let opted_in = coverage::opted_in(&lock_anyway(&self.shared.settings));
+        self.shared.registry.modules(&coverage::as_opted(&self.shared.access.status(), &opted_in))
     }
 
     /// Every problem the registered modules declare: the reasons a module may give for leaving an item out.
@@ -440,7 +442,7 @@ impl Engine {
         let modules = modules
             .map(|module| Planned { module: Arc::clone(module), settings: settings.module(module.descriptor().id()) })
             .collect();
-        let opt_ins = OPT_INS.into_iter().filter(|&capability| settings.core_switch(&opt_in_key(capability))).collect();
+        let opt_ins = coverage::opted_in(&settings);
         let roots = settings.scan_roots();
         let protection = self.shared.cleanup.as_ref().map(|cleanup| cleanup.cleaner.protection()).unwrap_or_default();
         let places = walked_places(

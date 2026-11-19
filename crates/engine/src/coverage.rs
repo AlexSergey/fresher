@@ -5,12 +5,14 @@
 use std::path::PathBuf;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, Capability, Coverage, GuardedFolder, NotEntered, Unreadable, UnreadableCount,
-    WalkSummary,
+    Access, AccessProbe, AccessStatus, Capability, CapabilityState, Coverage, GuardedFolder, NotEntered, Unreadable,
+    UnreadableCount, WalkSummary,
 };
 
+use crate::settings::Settings;
+
 /// The capabilities a core switch opts into, `core.access.<id>`; a volume is opted into by being a scan root.
-pub(crate) const OPT_INS: [Capability; 4] = [
+const OPT_INS: [Capability; 4] = [
     Capability::Folder(GuardedFolder::Desktop),
     Capability::Folder(GuardedFolder::Documents),
     Capability::Folder(GuardedFolder::Downloads),
@@ -18,19 +20,48 @@ pub(crate) const OPT_INS: [Capability; 4] = [
 ];
 
 /// The key of the switch that opts into `capability`.
-pub(crate) fn opt_in_key(capability: Capability) -> String {
+fn opt_in_key(capability: Capability) -> String {
     format!("core.access.{}", capability.id())
 }
 
-/// What the walk must not enter, and why, once per capability.
+/// The capabilities whose switch is on in `settings`.
+pub(crate) fn opted_in(settings: &Settings) -> Vec<Capability> {
+    OPT_INS.into_iter().filter(|&capability| settings.core_switch(&opt_in_key(capability))).collect()
+}
+
+/// The access the app acts on: the one place that decides whether a guarded place may be read, for the walk and for
+/// the modules' availability alike. Every-file access allows every guarded place, switch or not. Without it the
+/// switch decides: a capability the user did not opt into stands as `NotAsked` even when the system would allow it
+/// (a grant remembered from before its switch was turned off), so its places are not entered and a category that
+/// requires it is unavailable.
+pub(crate) fn as_opted(status: &AccessStatus, opted_in: &[Capability]) -> AccessStatus {
+    if status.access(&Capability::AllFiles) == Access::Granted {
+        return status.clone();
+    }
+    let not_opted = |state: &CapabilityState| {
+        state.access == Access::Granted && OPT_INS.contains(&state.capability) && !opted_in.contains(&state.capability)
+    };
+    let capabilities =
+        status
+            .capabilities
+            .iter()
+            .map(|state| {
+                if not_opted(state) { CapabilityState::new(state.capability, Access::NotAsked) } else { state.clone() }
+            })
+            .collect();
+    AccessStatus { capabilities }
+}
+
+/// What the walk must not enter, and why, once per capability; and every answer a try gave, once per capability.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct Entry {
     pub(crate) avoid: Vec<PathBuf>,
     pub(crate) not_entered: Vec<NotEntered>,
+    pub(crate) tried: Vec<(Capability, Access)>,
 }
 
-/// Decides every guarded place under `roots`. With every file allowed nothing is tried; a capability is tried at most
-/// once, and its answer stands for its other places.
+/// Decides every guarded place under `roots`, with `status` as [`as_opted`] gives it. With every file allowed nothing
+/// is tried; a capability is tried at most once, and its answer stands for its other places.
 pub(crate) fn before_walk(
     probe: &dyn AccessProbe,
     status: &AccessStatus,
@@ -53,7 +84,6 @@ fn decide(
     may_try: impl Fn(Capability) -> bool,
 ) -> Entry {
     let all_files = status.access(&Capability::AllFiles) == Access::Granted;
-    let mut tried: Vec<(Capability, Access)> = Vec::new();
     let mut entry = Entry::default();
     for place in probe.guarded_places(roots) {
         let capability = place.capability;
@@ -62,11 +92,11 @@ fn decide(
             continue;
         }
         let access = if may_try(capability) {
-            if let Some(&(_, answer)) = tried.iter().find(|(tried, _)| *tried == capability) {
+            if let Some(&(_, answer)) = entry.tried.iter().find(|(tried, _)| *tried == capability) {
                 answer
             } else {
                 let answer = probe.try_place(&place);
-                tried.push((capability, answer));
+                entry.tried.push((capability, answer));
                 answer
             }
         } else {
@@ -106,12 +136,53 @@ pub(crate) fn after_walk(not_entered: Vec<NotEntered>, summary: Option<&WalkSumm
 
 #[cfg(test)]
 mod tests {
-    use fresher_core::{Capability, Event, GuardedFolder};
+    use fresher_core::{Access, Capability, DangerLevel, Event, GuardedFolder, ModuleId, ModuleOutcome, Need};
+    use fresher_testing::FakeAccess;
 
-    use crate::testing::{MemorySettings, ScriptedWalk};
+    use crate::testing::{MemorySettings, ScriptedWalk, TestModule, TestModuleBuilder, bytes};
 
     const DESKTOP: Capability = Capability::Folder(GuardedFolder::Desktop);
     const DOCUMENTS: Capability = Capability::Folder(GuardedFolder::Documents);
+    const DOWNLOADS: Capability = Capability::Folder(GuardedFolder::Downloads);
+    const DOWNLOADS_SWITCH: &str = "core.access.downloads";
+
+    /// A module whose only category needs Downloads; it wants the folder `Old` inside it.
+    fn downloads_module() -> TestModuleBuilder {
+        TestModule::builder("downloads")
+            .needing("downloads.old", DangerLevel::Low, vec![Need::required(DOWNLOADS)])
+            .folder("Old")
+    }
+
+    /// A walk that finds `Old` inside the fixture home's Downloads.
+    fn downloads_walk() -> ScriptedWalk {
+        ScriptedWalk::new().folder("Old", "/home/Downloads/Old", bytes(10))
+    }
+
+    /// Downloads not asked yet, guarded at `/home/Downloads`; trying it answers `answer`.
+    fn downloads_access(answer: Access) -> FakeAccess {
+        FakeAccess::with(&[(Capability::AllFiles, Access::Denied), (DOWNLOADS, Access::NotAsked)])
+            .home("/home")
+            .guard("Downloads", DOWNLOADS)
+            .answering("Downloads", answer)
+    }
+
+    fn downloads_outcome(events: &[Event]) -> Option<ModuleOutcome> {
+        let id = ModuleId::new("downloads").unwrap();
+        events.iter().find_map(|event| match event {
+            Event::ModuleFinished { module, outcome, .. } if *module == id => Some(outcome.clone()),
+            _ => None,
+        })
+    }
+
+    fn access_changes(events: &[Event]) -> Vec<&fresher_core::AccessStatus> {
+        events
+            .iter()
+            .filter_map(|event| match event {
+                Event::AccessChanged { status } => Some(status),
+                _ => None,
+            })
+            .collect()
+    }
 
     /// The settings with the scan root `/home` and the switches `on` turned on.
     fn opted_into(on: &[&str]) -> MemorySettings {
@@ -135,11 +206,16 @@ mod tests {
         use std::path::PathBuf;
 
         use fresher_core::{
-            Access, Capability, Coverage, NotEntered, ScanOutcome, Unreadable, UnreadableCount, VolumeKind,
+            Access, Availability, Capability, Coverage, ModuleOutcome, NotEntered, ScanOutcome, Unreadable,
+            UnreadableCount, VolumeKind,
         };
-        use fresher_testing::FakeAccess;
+        use fresher_testing::{FakeAccess, FakeCommandRunner};
 
-        use super::{DESKTOP, DOCUMENTS, coverage_event, opted_into, walk};
+        use super::{
+            DESKTOP, DOCUMENTS, DOWNLOADS, DOWNLOADS_SWITCH, access_changes, coverage_event, downloads_access,
+            downloads_module, downloads_outcome, downloads_walk, opted_into, walk,
+        };
+        use crate::access::AccessView;
         use crate::coverage::after_walk;
         use crate::testing::{Fixture, scan, wait_for_finish};
 
@@ -161,6 +237,33 @@ mod tests {
             assert_eq!(*avoided.lock().unwrap(), [vec![PathBuf::from("/home/Desktop")]]);
             let not_entered = vec![NotEntered { capability: DESKTOP, access: Access::NotAsked }];
             assert_eq!(coverage_event(&events), Some(&Coverage { not_entered, unreadable: vec![] }));
+        }
+
+        #[test]
+        fn a_granted_place_whose_switch_is_off_is_neither_walked_nor_offered() {
+            let module = downloads_module();
+            let seen = module.seen();
+            let access = FakeAccess::with(&[(Capability::AllFiles, Access::Denied), (DOWNLOADS, Access::Granted)])
+                .home("/home")
+                .guard("Downloads", DOWNLOADS);
+            let walk = downloads_walk();
+            let avoided = walk.avoided();
+            let fixture = Fixture::new(walk).module(module).access(access).settings(opted_into(&[]));
+            let probe = std::sync::Arc::clone(&fixture.access);
+            let engine = fixture.engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(probe.tried(), []);
+            assert_eq!(*avoided.lock().unwrap(), [vec![PathBuf::from("/home/Downloads")]]);
+            let missing = vec![DOWNLOADS];
+            assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Unavailable { missing: missing.clone() }));
+            assert_eq!(seen.lock().unwrap().len(), 0);
+            let not_entered = vec![NotEntered { capability: DOWNLOADS, access: Access::NotAsked }];
+            assert_eq!(coverage_event(&events), Some(&Coverage { not_entered, unreadable: vec![] }));
+            let listed = engine.modules().into_iter().find(|module| module.id.as_str() == "downloads").unwrap();
+            assert_eq!(listed.categories[0].availability, Availability::Unavailable { missing });
+            assert_eq!(engine.access_status().access(&DOWNLOADS), Access::Granted, "the system's state is shown");
         }
 
         #[test]
@@ -271,15 +374,85 @@ mod tests {
         fn a_walk_with_no_summary_counts_no_unreadable_folder() {
             assert_eq!(after_walk(vec![], None), Coverage::default());
         }
+
+        #[test]
+        fn a_place_that_is_not_opted_in_teaches_nothing() {
+            let module = downloads_module();
+            let seen = module.seen();
+            let fixture = Fixture::new(downloads_walk())
+                .module(module)
+                .access(downloads_access(Access::Granted))
+                .settings(opted_into(&[]));
+            let probe = std::sync::Arc::clone(&fixture.access);
+            let engine = fixture.engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(probe.tried(), []);
+            assert!(access_changes(&events).is_empty(), "{events:?}");
+            assert_eq!(engine.access_status().access(&DOWNLOADS), Access::NotAsked);
+            assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Unavailable { missing: vec![DOWNLOADS] }));
+            assert_eq!(seen.lock().unwrap().len(), 0);
+            let view = AccessView::new(probe, std::sync::Arc::new(FakeCommandRunner::default()), std::iter::empty());
+            assert!(!view.learn(&[]));
+        }
+
+        #[test]
+        fn a_restore_learns_nothing_even_opted_in() {
+            let fixture = Fixture::new(downloads_walk())
+                .module(downloads_module())
+                .access(downloads_access(Access::Granted))
+                .settings(opted_into(&[DOWNLOADS_SWITCH]));
+            let probe = std::sync::Arc::clone(&fixture.access);
+            let engine = fixture.engine();
+            let events = engine.subscribe();
+
+            engine.restore().unwrap();
+
+            let events = wait_for_finish(&events);
+            assert_eq!(probe.tried(), []);
+            assert!(access_changes(&events).is_empty(), "{events:?}");
+            assert_eq!(engine.access_status().access(&DOWNLOADS), Access::NotAsked);
+            assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Unavailable { missing: vec![DOWNLOADS] }));
+        }
+
+        #[test]
+        fn a_denied_try_keeps_the_module_unavailable() {
+            let module = downloads_module();
+            let seen = module.seen();
+            let walk = downloads_walk();
+            let avoided = walk.avoided();
+            let fixture = Fixture::new(walk)
+                .module(module)
+                .access(downloads_access(Access::Denied))
+                .settings(opted_into(&[DOWNLOADS_SWITCH]));
+            let probe = std::sync::Arc::clone(&fixture.access);
+            let engine = fixture.engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(probe.tried().len(), 1);
+            assert_eq!(engine.access_status().access(&DOWNLOADS), Access::Denied);
+            assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Unavailable { missing: vec![DOWNLOADS] }));
+            assert_eq!(seen.lock().unwrap().len(), 0);
+            assert_eq!(*avoided.lock().unwrap(), [vec![PathBuf::from("/home/Downloads")]]);
+            let not_entered = vec![NotEntered { capability: DOWNLOADS, access: Access::Denied }];
+            assert_eq!(coverage_event(&events).map(|coverage| &coverage.not_entered), Some(&not_entered));
+        }
     }
 
     mod positive {
         use std::path::PathBuf;
 
-        use fresher_core::{Access, Capability, Coverage, Event, ScanOutcome, Unreadable, UnreadableCount};
+        use fresher_core::{
+            Access, Capability, Coverage, Event, ModuleOutcome, ScanOutcome, Unreadable, UnreadableCount,
+        };
         use fresher_testing::FakeAccess;
 
-        use super::{DESKTOP, DOCUMENTS, coverage_event, opted_into, walk};
+        use super::{
+            DESKTOP, DOCUMENTS, DOWNLOADS, DOWNLOADS_SWITCH, access_changes, coverage_event, downloads_access,
+            downloads_module, downloads_outcome, downloads_walk, opted_into, walk,
+        };
         use crate::testing::{Fixture, scan};
 
         #[test]
@@ -357,6 +530,55 @@ mod tests {
             let sent = coverage_event(&events).cloned();
             assert!(matches!(tail[1], Event::ScanCoverage { .. }), "{tail:?}");
             assert_eq!(engine.overview().unwrap().last_scan.map(|last| last.coverage), sent);
+        }
+
+        #[test]
+        fn a_module_needing_an_opted_in_folder_runs_in_the_scan_that_first_tries_it() {
+            let module = downloads_module();
+            let seen = module.seen();
+            let fixture = Fixture::new(downloads_walk())
+                .module(module)
+                .access(downloads_access(Access::Granted))
+                .settings(opted_into(&[DOWNLOADS_SWITCH]));
+            let probe = std::sync::Arc::clone(&fixture.access);
+            let engine = fixture.engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(probe.tried().iter().map(|place| place.capability).collect::<Vec<_>>(), [DOWNLOADS]);
+            assert_eq!(
+                seen.lock().unwrap().iter().map(|found| found.path.clone()).collect::<Vec<_>>(),
+                [PathBuf::from("/home/Downloads/Old")]
+            );
+            assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Completed));
+            let changes = access_changes(&events);
+            assert_eq!(changes.len(), 1, "{events:?}");
+            assert_eq!(changes[0].access(&DOWNLOADS), Access::Granted);
+            let learnt = events.iter().position(|event| matches!(event, Event::AccessChanged { .. }));
+            let finished = events.iter().position(|event| matches!(event, Event::ModuleFinished { .. }));
+            assert!(learnt.is_some() && learnt < finished, "{events:?}");
+            assert_eq!(engine.access_status().access(&DOWNLOADS), Access::Granted);
+        }
+
+        #[test]
+        fn a_second_scan_tries_nothing_again() {
+            let module = downloads_module();
+            let seen = module.seen();
+            let fixture = Fixture::new(downloads_walk())
+                .module(module)
+                .access(downloads_access(Access::Granted))
+                .settings(opted_into(&[DOWNLOADS_SWITCH]));
+            let probe = std::sync::Arc::clone(&fixture.access);
+            let engine = fixture.engine();
+            scan(&engine);
+
+            let events = scan(&engine);
+
+            assert_eq!(probe.tried().len(), 1);
+            assert!(access_changes(&events).is_empty(), "{events:?}");
+            assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Completed));
+            assert_eq!(seen.lock().unwrap().len(), 2);
+            assert_eq!(coverage_event(&events), Some(&Coverage::default()));
         }
 
         #[test]

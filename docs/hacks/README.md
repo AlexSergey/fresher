@@ -60,12 +60,17 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **What:** in sandbox mode the scanner keeps a standing avoid list: the guarded places of both the sandbox's home and
   the real home (Desktop, Documents, Downloads, Pictures, Movies, Music, `Library/Containers`,
   `Library/Group Containers`, `Library/Mobile Documents`, `Library/CloudStorage`, `Library/Calendars`, the address book
-  folder), added to every walk request's own `avoid`; each place is reported as not scanned. Its access is the
-  stand-in `UnknownAccess` (Full Disk Access `Unknown`, every other permission `NotAsked`, no guarded place, never
-  tries one). The normal app has no standing list: `MacAccess` names the guarded places and the engine's request
-  carries the ones the capability state keeps closed.
+  folder), added to every walk request's own `avoid`; each place is reported as not scanned. The sandbox home's places
+  of the guarded folders its `world.toml` states `access` for are left out of that list: the engine's coverage
+  decides them as on a Mac. The real home's places stay on it whatever the world says. Its access is the world's when
+  it states any (`World::access`: Full Disk Access `Unknown`, a stated folder as stated, every other permission
+  `NotAsked`, the stated folders guarded under the sandbox's home), else the stand-in `UnknownAccess` (Full Disk Access
+  `Unknown`, every other permission `NotAsked`, no guarded place, never tries one). The normal app has no standing
+  list: `MacAccess` names the guarded places and the engine's request carries the ones the capability state keeps
+  closed.
 - **Where:** `app/tauri/src/sandbox.rs` (`compose`, `SandboxPorts::real`), `app/tauri/src/adapters.rs`
-  (`UnknownAccess`), `crates/macos/src/privacy/places.rs` (`places_that_prompt`).
+  (`UnknownAccess`), `crates/sandbox/src/world.rs` (`World::access`, `World::stated_places`),
+  `crates/macos/src/privacy/places.rs` (`places_that_prompt`).
 - **Why:** the sandbox's world is not the Mac's, so the Mac's access is never asked for it; and a scan root outside
   the sandbox, such as the real home, must raise no system prompt (plan 006, agent's call 30).
 - **If cleaned up:** a sandbox scan of a root outside the sandbox raises real system prompts, and a sandbox shows the

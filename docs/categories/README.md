@@ -17,9 +17,9 @@ confirmation screen, and the confirmation names the highest level among the sele
 | Level      | Meaning                                                                                          | Examples                                                                   |
 | ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | app caches, logs, Xcode derived data, a removed app's caches               |
-| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, `node_modules`, Docker build cache                 |
+| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, `node_modules`, Docker build cache, an unfinished download |
 | **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, old iOS simulators, unused Docker images |
-| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder |
+| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder, a big download you have not opened |
 
 The levels are final for a category in its default form; a rule may raise (never lower) a level for a specific finding,
 for example a `node_modules` of a project touched yesterday.
@@ -71,6 +71,11 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `app-leftovers.caches` | Safe | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-caches.md`](./app-leftovers-caches.md) |
 | `app-leftovers.settings` | Medium | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-settings.md`](./app-leftovers-settings.md) |
 | `app-leftovers.data` | High | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-data.md`](./app-leftovers-data.md) |
+| `downloads.unfinished` | Low | none (the module's code, `modules/downloads`) | [`downloads-unfinished.md`](./downloads-unfinished.md) |
+| `downloads.safari-resumable` | Medium | none (the module's code, `modules/downloads`) | [`downloads-safari-resumable.md`](./downloads-safari-resumable.md) |
+| `downloads.installers` | Low | none (the module's code, `modules/downloads`) | [`downloads-installers.md`](./downloads-installers.md) |
+| `downloads.macos-installers` | Low | none (the module's code, `modules/downloads`) | [`downloads-macos-installers.md`](./downloads-macos-installers.md) |
+| `downloads.large-untouched` | High | none (the module's code, `modules/downloads`) | [`downloads-large-untouched.md`](./downloads-large-untouched.md) |
 | `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |
 
 The next ones (`node_modules`, Docker) come with the plans that implement their rules.

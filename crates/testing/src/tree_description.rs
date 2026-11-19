@@ -175,9 +175,9 @@ impl TreeDescription {
         self.markers.iter().map(|spec| spec.path.as_path())
     }
 
-    /// The facts the tree states instead of making them (docs/testing.md, "Fixture homes"), its folders', its files'
-    /// then its links', relative to its root as written; times counted back from `now`. An entry that states nothing is
-    /// left out.
+    /// The facts the tree states instead of making them (docs/testing.md, "Fixture homes"), its folders', its files',
+    /// its links' then its app bundles' (`changed` only), relative to its root as written; times counted back from
+    /// `now`. An entry that states nothing is left out.
     pub fn stated(&self, now: SystemTime) -> Result<Vec<(PathBuf, Stated)>, FixtureError> {
         let dirs = self
             .dirs
@@ -188,8 +188,9 @@ impl TreeDescription {
         });
         let no_flags = BTreeSet::new();
         let links = self.symlinks.iter().map(|link| (&link.path, link.changed.as_deref(), None, None, &no_flags, None));
+        let apps = self.apps.iter().map(|app| (&app.path, app.changed.as_deref(), None, None, &no_flags, None));
         let mut stated = Vec::new();
-        for (path, changed, accessed, owner, flags, kind) in dirs.chain(files).chain(links) {
+        for (path, changed, accessed, owner, flags, kind) in dirs.chain(files).chain(links).chain(apps) {
             let stamp = |offset: Option<&str>| -> Result<Option<Timestamp>, FixtureError> {
                 Ok(time_of(path, offset, None, now)?.map(Timestamp::from_system_time))
             };
@@ -278,6 +279,7 @@ impl TreeDescription {
         }
         for app in &self.apps {
             app.check()?;
+            check_stated_times(&app.path, &[app.changed.as_deref()])?;
         }
         let entries = (self.dirs.iter().map(|spec| &spec.path))
             .chain(self.files.iter().map(|spec| &spec.path))
@@ -360,6 +362,15 @@ fn check_stated_times(path: &Path, ages: &[Option<&str>]) -> Result<(), FixtureE
     Ok(())
 }
 
+/// The time `age` (`"10d"`, `"3h"`, `"90s"`, or `"-2d"` after) is counted back from `now`; `None` when it is not an
+/// age.
+pub fn time_at_age(age: &str, now: SystemTime) -> Option<SystemTime> {
+    match parse_age(age)? {
+        Age::Before(duration) => now.checked_sub(duration),
+        Age::After(duration) => now.checked_add(duration),
+    }
+}
+
 /// The time an entry is given: its age counted back from `now`, or its `modified` seconds; `None` for neither.
 fn time_of(
     path: &Path,
@@ -368,14 +379,9 @@ fn time_of(
     now: SystemTime,
 ) -> Result<Option<SystemTime>, FixtureError> {
     Ok(match (age, modified) {
-        (Some(age), _) => Some(
-            parse_age(age)
-                .and_then(|age| match age {
-                    Age::Before(duration) => now.checked_sub(duration),
-                    Age::After(duration) => now.checked_add(duration),
-                })
-                .ok_or_else(|| FixtureError::InvalidAge { path: path.to_path_buf() })?,
-        ),
+        (Some(age), _) => {
+            Some(time_at_age(age, now).ok_or_else(|| FixtureError::InvalidAge { path: path.to_path_buf() })?)
+        }
         (None, Some(seconds)) => Some(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)),
         (None, None) => None,
     })
@@ -576,6 +582,16 @@ mod tests {
             let error = parse("[[dir]]\npath = \"a\"\nage = \"1d\"\nmodified = 5\n").unwrap_err();
 
             assert!(matches!(error, FixtureError::AgeWithModified { .. }));
+        }
+
+        #[test]
+        fn an_apps_changed_that_is_not_an_age_is_refused() {
+            let app = "[[app]]\npath = \"Applications/Tool.app\"\nbundle-id = \"com.example.Tool\"\nname = \"Tool\"\n";
+            for changed in ["soon", "10", "d"] {
+                let error = TreeDescription::from_toml_str(&format!("{app}changed = \"{changed}\"\n")).unwrap_err();
+
+                assert!(matches!(error, FixtureError::InvalidAge { .. }), "{changed}: {error}");
+            }
         }
 
         #[test]
@@ -784,6 +800,20 @@ mod tests {
                         }
                     ),
                 ]
+            );
+        }
+
+        #[test]
+        fn an_apps_changed_is_stated_for_its_bundle() {
+            let text = "[[app]]\npath = \"Applications/Tool.app\"\nbundle-id = \"com.example.Tool\"\nname = \"Tool\"\n\
+                        changed = \"10d\"\n\
+                        [[app]]\npath = \"Applications/Other.app\"\nbundle-id = \"com.example.Other\"\nname = \"Other\"\n";
+            let tree = TreeDescription::from_toml_str(text).unwrap();
+
+            let changed = Some(Timestamp::from_system_time(now() - Duration::from_hours(10 * 24)));
+            assert_eq!(
+                tree.stated(now()).unwrap(),
+                [(PathBuf::from("Applications/Tool.app"), Stated { changed, ..Stated::default() })]
             );
         }
 

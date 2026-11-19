@@ -15,7 +15,8 @@ use fresher_core::{
 use fresher_engine::{Engine, ScanMode};
 use fresher_sandbox::{CaseFile, Sandbox, generate};
 use fresher_testing::{
-    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeRunningApps, FakeVolumes, StatedFacts,
+    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeInstallRecords, FakeOpenFiles, FakeRunningApps,
+    FakeVolumes, StatedFacts,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -101,6 +102,34 @@ fn user(folder: &Path) -> u32 {
     fs::metadata(folder).unwrap().uid()
 }
 
+/// A sandbox generated from `cases`, an app that says it was installed 10 days ago and an installer receipt among them.
+const INSTALLS: &str = r#"
+feature = "installs"
+
+[[case]]
+name = "an app and a receipt with an age"
+kind = "negative"
+macos = "15.4"
+[[case.app]]
+path = "Applications/Tool.app"
+bundle-id = "com.example.Tool"
+name = "Tool"
+changed = "10d"
+[[case.receipt]]
+package = "Tool-3.1.pkg"
+installed = "10d"
+"#;
+
+/// The sandbox of [`INSTALLS`], generated at `FIXTURE_NOW`.
+fn installs_sandbox() -> (TempDir, Sandbox) {
+    let folder = tempfile::tempdir().unwrap();
+    let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
+    generate(&[CaseFile::parse(INSTALLS).unwrap()], folder.path(), now, &Protection::default(), user(folder.path()))
+        .unwrap();
+    let sandbox = Sandbox::open(folder.path(), user(folder.path())).unwrap();
+    (folder, sandbox)
+}
+
 /// Fakes for every port sandbox mode keeps real: no clock, volume, open file, running app or tool of the machine.
 fn fakes() -> SandboxPorts {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
@@ -111,6 +140,7 @@ fn fakes() -> SandboxPorts {
         running: Arc::new(FakeRunningApps::default()),
         commands: Arc::new(FakeCommandRunner::default()),
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        installs: Arc::new(FakeInstallRecords::default()),
         stated: StatedFacts::new(),
     }
 }
@@ -123,6 +153,51 @@ fn start_stated(world: &World) -> Engine {
         Ok(SandboxPorts { stated: stated.stated(sandbox.path()), ..fakes() })
     };
     compose(&mode, &world.real_home(), &world.real_data(), ports).unwrap().0
+}
+
+/// Writes `[access]` with `downloads = "granted"` into the world's `world.toml`, as a case stating it would.
+fn grant_downloads(world: &World) {
+    let sandbox = world.sandbox();
+    let text = fs::read_to_string(sandbox.world()).unwrap() + "\n[access]\ndownloads = \"granted\"\n";
+    fs::write(sandbox.world(), text).unwrap();
+}
+
+/// Sandbox mode on the world's sandbox with the access its `world.toml` states, as the real ports take it.
+fn start_with_access(world: &World) -> Engine {
+    let mode = SandboxMode::new(world.folder.path(), SandboxTrash::Sandbox);
+    let ports = |sandbox: &Sandbox| {
+        let read = fresher_sandbox::World::read(sandbox).map_err(super::SandboxRefusal::World)?;
+        let access = super::access_of(&read, &sandbox.home(), fakes().access);
+        Ok(SandboxPorts { access, ..fakes() })
+    };
+    compose(&mode, &world.real_home(), &world.real_data(), ports).unwrap().0
+}
+
+/// Writes `home/Downloads/x` into the sandbox, large enough to be its own node of the scan.
+fn download(world: &World) -> PathBuf {
+    let downloads = world.sandbox().home().join("Downloads");
+    fs::create_dir_all(&downloads).unwrap();
+    fs::write(downloads.join("x"), vec![1_u8; 2 << 20]).unwrap();
+    downloads.join("x")
+}
+
+/// Whether the last scan's disk state has a node at `path`.
+fn has_node(engine: &Engine, path: &Path) -> bool {
+    engine.disk_state().unwrap().is_some_and(|state| state.find(path).is_some())
+}
+
+/// A full scan, waited for: its coverage.
+fn scan_coverage(engine: &Engine) -> fresher_core::Coverage {
+    let events = engine.subscribe();
+    engine.start_scan(ScanMode::Full).unwrap();
+    let mut coverage = None;
+    until(&events, |event| {
+        if let Event::ScanCoverage { coverage: seen, .. } = event {
+            coverage = Some(seen.clone());
+        }
+        matches!(event, Event::ScanFinished { .. })
+    });
+    coverage.unwrap()
 }
 
 /// The removability of every `trial` finding, by path.
@@ -181,7 +256,7 @@ fn clean(engine: &Engine, view: &CleanupPlanView) {
 }
 
 /// Waits for the first event that `is_last`; fails after 30 s instead of hanging.
-fn until(events: &Receiver<Event>, is_last: impl Fn(&Event) -> bool) {
+fn until(events: &Receiver<Event>, mut is_last: impl FnMut(&Event) -> bool) {
     while !is_last(&events.recv_timeout(Duration::from_secs(30)).unwrap()) {}
 }
 
@@ -326,6 +401,38 @@ mod negative {
         assert!(found.iter().all(|path| guarded.iter().all(|place| !path.starts_with(place))), "{found:?}");
     }
 
+    /// A world granting Downloads opens the sandbox home's, never the real home's: a scan root there finds nothing.
+    #[test]
+    fn the_real_homes_guarded_places_stay_avoided_whatever_the_world() {
+        let world = World::new();
+        super::grant_downloads(&world);
+        let downloads = fs::canonicalize(world.real_home()).unwrap().join("Downloads");
+        fs::create_dir_all(downloads.join("fresher-trial-cache")).unwrap();
+        fs::write(downloads.join("fresher-trial-cache/blob.bin"), [0; 64]).unwrap();
+        fs::write(downloads.join(SANDBOX_MARKER), format!("{}\n", fresher_core::SANDBOX_SIGNATURE)).unwrap();
+        let engine = super::start_with_access(&world);
+        let roots = SettingValue::Folders(vec!["~".into(), downloads.clone()]);
+        engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
+
+        scan(&engine);
+
+        assert!(!found(&engine).is_empty(), "the sandbox's own trial cache is found");
+        assert!(found(&engine).iter().all(|path| !path.starts_with(&downloads)), "{:?}", found(&engine));
+        assert!(!super::has_node(&engine, &downloads.join("fresher-trial-cache")));
+    }
+
+    #[test]
+    fn a_world_without_access_keeps_the_sandbox_homes_downloads_avoided() {
+        let world = World::new();
+        let x = super::download(&world);
+        let engine = super::start_with_access(&world);
+
+        scan(&engine);
+
+        assert!(super::has_node(&engine, &world.sandbox().home().join("work")), "the walk ran");
+        assert!(!super::has_node(&engine, &x));
+    }
+
     #[test]
     fn the_sandbox_engine_names_its_refusal() {
         let world = World::new();
@@ -415,7 +522,9 @@ mod negative {
 mod positive {
     use std::fs;
 
-    use fresher_core::{SettingUpdate, SettingValue};
+    use std::sync::Arc;
+
+    use fresher_core::{SettingUpdate, SettingValue, Simulated};
 
     use super::{SANDBOX_MARKER, World, clean, env, found, prepare, scan};
     use crate::sandbox::{SandboxMode, SandboxTrash};
@@ -442,7 +551,7 @@ mod positive {
         assert_eq!(crate::sandbox::app_search(&declared, sandbox.path()), fresher_system::DeclaredSearch::listed());
         assert!(matches!(
             crate::sandbox::build(&sandbox).unwrap(),
-            fresher_core::Build::Sandbox { simulated_spotlight: false, .. }
+            fresher_core::Build::Sandbox { simulated, .. } if simulated == [Simulated::Running]
         ));
     }
 
@@ -461,8 +570,86 @@ mod positive {
         assert_eq!(search, fresher_system::DeclaredSearch { index_on: false, elsewhere: vec![(far, answered)] });
         assert!(matches!(
             crate::sandbox::build(&sandbox).unwrap(),
-            fresher_core::Build::Sandbox { simulated_running: true, simulated_spotlight: true, .. }
+            fresher_core::Build::Sandbox { simulated, .. } if simulated == [Simulated::Running, Simulated::Spotlight]
         ));
+    }
+
+    #[test]
+    fn a_world_granting_downloads_lets_the_walk_into_the_sandbox_downloads() {
+        let world = World::new();
+        super::grant_downloads(&world);
+        let x = super::download(&world);
+        let engine = super::start_with_access(&world);
+
+        let coverage = super::scan_coverage(&engine);
+
+        assert!(super::has_node(&engine, &x), "the walk entered home/Downloads");
+        let downloads = fresher_core::Capability::Folder(fresher_core::GuardedFolder::Downloads);
+        assert!(coverage.not_entered.iter().all(|not| not.capability != downloads), "{coverage:?}");
+    }
+
+    #[test]
+    fn the_banner_lists_access_when_the_world_states_it() {
+        let world = World::new();
+        super::grant_downloads(&world);
+
+        let build = crate::sandbox::build(&world.sandbox()).unwrap();
+
+        assert_eq!(
+            build,
+            fresher_core::Build::Sandbox {
+                path: world.sandbox().path().to_path_buf(),
+                simulated: vec![Simulated::Running, Simulated::Access],
+            }
+        );
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+        assert_eq!(
+            ports.access.status().access(&fresher_core::Capability::Folder(fresher_core::GuardedFolder::Downloads)),
+            fresher_core::Access::Granted
+        );
+    }
+
+    #[test]
+    fn sandbox_mode_sees_an_apps_stated_change() {
+        let (_folder, sandbox) = super::installs_sandbox();
+        let world = fresher_sandbox::World::read(&sandbox).unwrap();
+        let ports = crate::sandbox::SandboxPorts::real(&sandbox).unwrap();
+
+        let apps =
+            crate::sandbox::installed_apps(&world, sandbox.path(), Arc::new(sandbox.known_folders()), &ports.stated);
+
+        let listed = apps.list().unwrap().apps;
+        assert_eq!(listed.len(), 1);
+        let ten_days = fresher_testing::FIXTURE_NOW - 10 * 24 * 3600;
+        assert_eq!(listed[0].changed, Some(fresher_core::Timestamp::from_secs(ten_days)));
+    }
+
+    #[test]
+    fn the_banner_lists_installs_when_the_world_states_them() {
+        let (_folder, sandbox) = super::installs_sandbox();
+
+        let build = crate::sandbox::build(&sandbox).unwrap();
+
+        assert_eq!(
+            build,
+            fresher_core::Build::Sandbox {
+                path: sandbox.path().to_path_buf(),
+                simulated: vec![Simulated::Running, Simulated::Installs],
+            }
+        );
+        let ports = crate::sandbox::SandboxPorts::real(&sandbox).unwrap();
+        assert_eq!(ports.installs.system_version(), Ok(fresher_core::SystemVersion { major: 15, minor: 4 }));
+        assert_eq!(ports.installs.receipts().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_world_stating_no_installs_never_asks_the_macs() {
+        let world = World::new();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        assert!(ports.installs.system_version().is_err());
+        assert_eq!(ports.installs.receipts().unwrap(), []);
     }
 
     #[test]
@@ -539,10 +726,7 @@ mod positive {
         let sandbox = world.sandbox();
         assert_eq!((start.data_folder, start.home), (sandbox.data_folder(), sandbox.home()));
         let canonical = fs::canonicalize(world.folder.path()).unwrap();
-        assert_eq!(
-            start.build,
-            fresher_core::Build::Sandbox { path: canonical, simulated_running: true, simulated_spotlight: false }
-        );
+        assert_eq!(start.build, fresher_core::Build::Sandbox { path: canonical, simulated: vec![Simulated::Running] });
         assert!(!world.real_data().exists());
     }
 

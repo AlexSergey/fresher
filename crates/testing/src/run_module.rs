@@ -10,8 +10,8 @@ use fresher_core::{
 use serde_json::{Value, json};
 
 use crate::{
-    FakeAccess, FakeClock, FakeCommandRunner, FakeInstalledApps, FakeKnownFolders, FakeRunningApps, FakeSystemUi,
-    FixtureTree, NaiveWalk,
+    FakeAccess, FakeClock, FakeCommandRunner, FakeInstallRecords, FakeInstalledApps, FakeKnownFolders, FakeRunningApps,
+    FakeSystemUi, FixtureTree, NaiveWalk,
 };
 
 /// The ports a module runs with in a test: a stopped clock, a table of command answers, the stored settings, a cancel
@@ -31,6 +31,8 @@ pub struct Ports {
     pub apps: Arc<FakeInstalledApps>,
     /// Nothing running by default.
     pub running: Arc<FakeRunningApps>,
+    /// No receipts and no stated macOS version by default.
+    pub installs: Arc<FakeInstallRecords>,
     /// `None`: the home layout under the fixture tree's root.
     pub known_folders: Option<FakeKnownFolders>,
     /// The scan is restored from the cache (`ModuleContext::is_restored`); a walked one by default.
@@ -67,6 +69,7 @@ impl Ports {
             system_ui: FakeSystemUi::default(),
             apps: Arc::default(),
             running: Arc::default(),
+            installs: Arc::default(),
             known_folders: None,
             restored: false,
             order: MatchOrder::Walked,
@@ -107,6 +110,7 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         known_folders: Arc::new(known_folders.clone()),
         apps: Arc::clone(&ports.apps) as _,
         running: Arc::clone(&ports.running) as _,
+        installs: Arc::clone(&ports.installs) as _,
     });
     let cx = ModuleContext::new(&ports.clock, &ports.commands, &system, &settings, &ports.cancel);
     let cx = if ports.restored { cx.restored() } else { cx };

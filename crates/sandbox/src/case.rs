@@ -1,11 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 use fresher_core::{
-    BundleId, CategoryDescriptor, CategoryId, DangerLevel, IdError, ModuleId, RunningApp, SkipCode, TextKey,
+    Access, BundleId, Capability, CategoryDescriptor, CategoryId, DangerLevel, GuardedFolder, IdError, ModuleId,
+    RunningApp, SkipCode, SystemVersion, TextKey,
 };
-use fresher_testing::{AppBundle, TreeDescription};
-use serde::Deserialize;
+use fresher_testing::{AppBundle, TreeDescription, time_at_age};
+use serde::{Deserialize, Serialize};
 
 use crate::CaseError;
 
@@ -38,6 +40,12 @@ pub struct Case {
     elsewhere: Vec<(String, BundleId)>,
     /// `spotlight = "off"`: Spotlight cannot be asked in the case's sandbox.
     spotlight_off: bool,
+    /// What the guarded folders allow, in the order of [`GuardedFolder`]; a folder the case does not state is absent.
+    access: Vec<(GuardedFolder, Access)>,
+    /// The macOS version the case states (`macos = "15.4"`).
+    macos: Option<SystemVersion>,
+    /// The installer receipts of `[[case.receipt]]`: the package's file name and the age it was installed at.
+    receipts: Vec<(String, String)>,
     expect: Option<Expectation>,
     map: Option<MapExpectation>,
     left_out: Vec<LeftOutExpectation>,
@@ -104,14 +112,16 @@ struct RawCaseFile {
     cases: Vec<RawCase>,
 }
 
-// Its files are every key but `name`, `kind`, `spotlight`, `expect`, `map`, `left-out`, `running` and `elsewhere`
-// (`[[case.running]]` and `[[case.elsewhere]]`, taken out first), read as a `TreeDescription`, which refuses an unknown
-// one; each `[[case.app]]` loses its `running` first.
+// Its files are every key but `name`, `kind`, `spotlight`, `access`, `macos`, `expect`, `map`, `left-out`, `running`,
+// `elsewhere` and `receipt` (`[[case.running]]`, `[[case.elsewhere]]` and `[[case.receipt]]`, taken out first), read as
+// a `TreeDescription`, which refuses an unknown one; each `[[case.app]]` loses its `running` first.
 #[derive(Deserialize)]
 struct RawCase {
     name: String,
     kind: CaseKind,
     spotlight: Option<RawSpotlight>,
+    access: Option<BTreeMap<String, RawAccess>>,
+    macos: Option<String>,
     expect: Option<RawExpectation>,
     map: Option<RawMap>,
     #[serde(default, rename = "left-out")]
@@ -162,11 +172,56 @@ struct RawElsewhere {
     bundle_id: String,
 }
 
+/// A `[[case.receipt]]`: an installer receipt of the sandbox's Mac; its package and age are checked once read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawReceipt {
+    package: String,
+    installed: String,
+}
+
 /// `spotlight`: the only value is `off`; Spotlight is on when a case says nothing.
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 enum RawSpotlight {
     Off,
+}
+
+/// What a guarded folder allows, as a case file and `world.toml` write it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum RawAccess {
+    Granted,
+    Denied,
+    NotAsked,
+}
+
+impl RawAccess {
+    /// The state it stands for.
+    pub(crate) const fn access(self) -> Access {
+        match self {
+            Self::Granted => Access::Granted,
+            Self::Denied => Access::Denied,
+            Self::NotAsked => Access::NotAsked,
+        }
+    }
+
+    /// The value of `state`; `None` for a state no case can write.
+    pub(crate) const fn of(state: Access) -> Option<Self> {
+        match state {
+            Access::Granted => Some(Self::Granted),
+            Access::Denied => Some(Self::Denied),
+            Access::NotAsked => Some(Self::NotAsked),
+            Access::Unknown | Access::NotApplicable => None,
+        }
+    }
+}
+
+/// The guarded folder an `access` key names (its capability's id: `desktop`, `documents`, `downloads`).
+pub(crate) fn guarded_folder(key: &str) -> Option<GuardedFolder> {
+    [GuardedFolder::Desktop, GuardedFolder::Documents, GuardedFolder::Downloads]
+        .into_iter()
+        .find(|&folder| Capability::Folder(folder).id() == key)
 }
 
 #[derive(Clone, Copy, Deserialize)]
@@ -309,6 +364,7 @@ impl Case {
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
         let running_elsewhere = take_running_elsewhere(&name, &mut raw.files)?;
         let elsewhere = take_elsewhere(&name, &mut raw.files)?;
+        let receipts = take_receipts(&name, &mut raw.files)?;
         let tree: TreeDescription = toml::Value::Table(raw.files)
             .try_into()
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
@@ -332,6 +388,19 @@ impl Case {
         let left_out =
             raw.left_out.into_iter().map(|raw| PendingLeftOut::from_raw(&name, raw)).collect::<Result<_, _>>()?;
         let spotlight_off = matches!(raw.spotlight, Some(RawSpotlight::Off));
+        let access = raw
+            .access
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(key, value)| match guarded_folder(&key) {
+                Some(folder) => Ok((folder, value.access())),
+                None => Err(CaseError::AccessKey { case: name.clone(), key }),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let macos = raw
+            .macos
+            .map(|value| SystemVersion::parse(&value).ok_or(CaseError::MacosVersion { case: name.clone(), value }))
+            .transpose()?;
         let case = Self {
             name,
             kind: raw.kind,
@@ -340,6 +409,9 @@ impl Case {
             running_elsewhere,
             elsewhere,
             spotlight_off,
+            access,
+            macos,
+            receipts,
             expect: None,
             map,
             left_out: vec![],
@@ -380,6 +452,21 @@ impl Case {
     /// Whether the case says `spotlight = "off"`: then Spotlight cannot be asked in the whole sandbox.
     pub const fn spotlight_off(&self) -> bool {
         self.spotlight_off
+    }
+
+    /// What the case states the guarded folders allow; empty when it states nothing.
+    pub fn access(&self) -> &[(GuardedFolder, Access)] {
+        &self.access
+    }
+
+    /// The macOS version the case states; `None` when it states none.
+    pub const fn macos(&self) -> Option<SystemVersion> {
+        self.macos
+    }
+
+    /// The case's `[[case.receipt]]`: each package's file name and the age it was installed at (`"10d"`).
+    pub fn receipts(&self) -> &[(String, String)] {
+        &self.receipts
     }
 
     /// The expectation of a positive case; a negative case has none.
@@ -598,6 +685,32 @@ fn take_elsewhere(case: &str, files: &mut toml::Table) -> Result<Vec<(String, Bu
             let id = BundleId::new(entry.bundle_id.as_str())
                 .map_err(|_| CaseError::ElsewhereBundleId { case: case.into(), id: entry.bundle_id.clone() })?;
             Ok((entry.name, id))
+        })
+        .collect()
+}
+
+/// `true` for a package file name: one plain file name with something before `.pkg`.
+pub(crate) fn is_pkg_name(name: &str) -> bool {
+    is_bundle_name(name) && name.strip_suffix(".pkg").is_some_and(|stem| !stem.is_empty())
+}
+
+/// Removes `[[case.receipt]]` from the case's files and checks each: a package that is one plain file name ending in
+/// `.pkg`, and an age it was installed at.
+fn take_receipts(case: &str, files: &mut toml::Table) -> Result<Vec<(String, String)>, CaseError> {
+    let Some(entries) = files.remove("receipt") else { return Ok(Vec::new()) };
+    let entries: Vec<RawReceipt> =
+        entries.try_into().map_err(|source| CaseError::Files { case: case.into(), source: Box::new(source) })?;
+    entries
+        .into_iter()
+        .map(|entry| {
+            if !is_pkg_name(&entry.package) {
+                return Err(CaseError::ReceiptPackage { case: case.into(), package: entry.package });
+            }
+            if time_at_age(&entry.installed, SystemTime::UNIX_EPOCH + Duration::from_secs(1 << 40)).is_none() {
+                let (package, installed) = (entry.package, entry.installed);
+                return Err(CaseError::ReceiptInstalled { case: case.into(), package, installed });
+            }
+            Ok((entry.package, entry.installed))
         })
         .collect()
 }
@@ -1065,6 +1178,57 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn an_access_key_other_than_a_guarded_folder_is_refused() {
+            for key in ["all-files", "other-apps-data", "x"] {
+                let text = file(&[&NEGATIVE.replace("kind =", &format!("access = {{ {key} = \"granted\" }}\nkind ="))]);
+
+                let error = refused(&text);
+
+                assert!(
+                    matches!(&error, CaseError::AccessKey { case, key: found }
+                        if case.starts_with("a trial folder") && found == key),
+                    "{key}: {error}"
+                );
+                assert!(error.to_string().contains("only the guarded folders desktop, documents and downloads"));
+            }
+        }
+
+        #[test]
+        fn a_macos_version_that_does_not_parse_is_refused() {
+            for value in ["\"\"", "\"x\"", "\"15.x\"", "15"] {
+                let text = file(&[&NEGATIVE.replace("kind =", &format!("macos = {value}\nkind ="))]);
+
+                let error = refused(&text);
+
+                assert!(matches!(&error, CaseError::MacosVersion { .. } | CaseError::Parse { .. }), "{value}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_receipt_that_is_not_a_plain_pkg_name_is_refused() {
+            for package in ["a/b.pkg", "x.dmg", ".pkg", "..", "Tool.pkg/"] {
+                let receipt = format!("[[case.receipt]]\npackage = \"{package}\"\ninstalled = \"10d\"\n");
+                let error = refused(&file(&[&format!("{NEGATIVE}{receipt}")]));
+
+                assert!(matches!(error, CaseError::ReceiptPackage { .. }), "{package}: {error}");
+            }
+            let without = "[[case.receipt]]\npackage = \"Tool.pkg\"\n";
+            assert!(matches!(refused(&file(&[&format!("{NEGATIVE}{without}")])), CaseError::Files { .. }));
+            let late = "[[case.receipt]]\npackage = \"Tool.pkg\"\ninstalled = \"soon\"\n";
+            let error = refused(&file(&[&format!("{NEGATIVE}{late}")]));
+            assert!(matches!(error, CaseError::ReceiptInstalled { .. }), "{error}");
+        }
+
+        #[test]
+        fn an_access_value_other_than_the_three_is_refused() {
+            for value in ["\"yes\"", "true"] {
+                let text = file(&[&NEGATIVE.replace("kind =", &format!("access = {{ downloads = {value} }}\nkind ="))]);
+
+                assert!(matches!(refused(&text), CaseError::Parse { .. }), "{value}");
+            }
+        }
+
+        #[test]
         fn a_left_out_with_no_items_is_refused() {
             let text = file(&[&format!("{NEGATIVE}{}", left_out("trial.caches", "trial.error.failed", 0))]);
 
@@ -1134,7 +1298,7 @@ after-cleanup = "in-trash"
         use std::path::Path;
         use std::time::{Duration, SystemTime};
 
-        use fresher_core::{DangerLevel, ModuleId, SkipCode};
+        use fresher_core::{Access, DangerLevel, GuardedFolder, ModuleId, SkipCode, SystemVersion};
         use fresher_testing::FIXTURE_NOW;
 
         use super::{NEGATIVE, cache, file, left_out, trial_categories, trial_problems, with_app};
@@ -1285,6 +1449,51 @@ after-cleanup = "in-trash"
 
             assert_eq!(parsed.cases()[0].elsewhere(), []);
             assert!(!parsed.cases()[0].spotlight_off());
+        }
+
+        #[test]
+        fn access_parses_per_folder() {
+            let access = "access = { downloads = \"granted\", desktop = \"denied\", documents = \"not-asked\" }\n";
+            let text = file(&[&NEGATIVE.replace("kind =", &format!("{access}kind ="))]);
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            assert_eq!(
+                parsed.cases()[0].access(),
+                [
+                    (GuardedFolder::Desktop, Access::Denied),
+                    (GuardedFolder::Documents, Access::NotAsked),
+                    (GuardedFolder::Downloads, Access::Granted),
+                ]
+            );
+        }
+
+        #[test]
+        fn macos_and_receipts_parse() {
+            let receipt = "[[case.receipt]]\npackage = \"Tool-3.1.pkg\"\ninstalled = \"10d\"\n\
+                           [[case.receipt]]\npackage = \"Other.pkg\"\ninstalled = \"-2h\"\n";
+            let text = file(&[&format!("{}{receipt}", NEGATIVE.replace("kind =", "macos = \"15.4\"\nkind ="))]);
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            assert_eq!(parsed.cases()[0].macos(), Some(SystemVersion { major: 15, minor: 4 }));
+            let expected = [("Tool-3.1.pkg".to_owned(), "10d".to_owned()), ("Other.pkg".to_owned(), "-2h".to_owned())];
+            assert_eq!(parsed.cases()[0].receipts(), expected);
+        }
+
+        #[test]
+        fn a_case_that_states_no_installs_has_none() {
+            let parsed = CaseFile::parse(&file(&[NEGATIVE])).unwrap();
+
+            assert_eq!(parsed.cases()[0].macos(), None);
+            assert_eq!(parsed.cases()[0].receipts(), []);
+        }
+
+        #[test]
+        fn a_case_that_states_no_access_has_none() {
+            let parsed = CaseFile::parse(&file(&[NEGATIVE])).unwrap();
+
+            assert_eq!(parsed.cases()[0].access(), []);
         }
 
         #[test]

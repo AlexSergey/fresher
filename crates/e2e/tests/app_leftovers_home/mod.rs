@@ -36,7 +36,7 @@ use serde_json::{Value, json};
 
 use crate::support::fixtures;
 pub(crate) use home::Flow;
-use home_engine::Parts;
+use home_engine::{Parts, no_installs, unknown_access};
 
 /// The module's id.
 pub(crate) const MODULE: &str = "app-leftovers";
@@ -152,6 +152,8 @@ fn parts(sandbox: &Sandbox, setup: Setup) -> Parts {
         journal: home_rescan::journal(sandbox, &setup.changed),
         installed: setup.installed,
         running: setup.running,
+        access: unknown_access(),
+        installs: no_installs(),
         threads: 2.try_into().unwrap(),
         avoid,
     }

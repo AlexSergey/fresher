@@ -26,6 +26,7 @@ mod naive_places;
 mod naive_walk;
 mod run_module;
 mod special_files;
+mod stated_apps;
 mod swapper;
 mod system_fakes;
 mod tree_description;
@@ -48,7 +49,11 @@ pub use large_tree::{Expected, LargeTree, TreeSpec};
 pub use naive_walk::NaiveWalk;
 pub use run_module::{HarnessError, MatchOrder, ModuleRun, Ports, run_module};
 pub use special_files::make_pipe;
+pub use stated_apps::StatedInstalledApps;
 pub use swapper::Swapper;
-pub use system_fakes::{FakeInstalledApps, FakeRunningApps, fake_system, installed_app, running_app, signed_by};
-pub use tree_description::{FIXTURE_NOW, TreeDescription};
+pub use system_fakes::{
+    FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, fake_system, installed_app, running_app,
+    signed_by,
+};
+pub use tree_description::{FIXTURE_NOW, TreeDescription, time_at_age};
 pub use tree_report::{EntryKind, TreeEntry, TreeReport};

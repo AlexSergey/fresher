@@ -1,0 +1,306 @@
+# The downloads module: what a browser left half-finished and the installers of apps already installed, offered from
+# `home/Downloads` only. The file states `access = { downloads = "granted" }` and `macos = "15.4"` on its first case;
+# the world joins them for every case. Installed apps are shared by every case (each case has its own app). The big
+# files are sparse (the map counts no blocks for them), so their cases check the offer and the Trash.
+# Denied access and an open browser are worlds of their own (`downloads-denied.toml`,
+# `downloads-browser-open.toml`).
+#
+# Every entry states its age and status change (40 days, 400, or 3 or 5 for a recent one); positives' small files
+# are filled with data.
+feature = "downloads"
+module = "downloads"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a document is never claimed"
+kind = "negative"
+access = { downloads = "granted" }
+macos = "15.4"
+[[case.file]]
+path = "home/Downloads/report.pdf"
+size = 4096
+age = "400d"
+changed = "400d"
+[case.map]
+part = "your-folders"
+at = "home/Downloads/report.pdf"
+
+[[case]]
+name = "a disk image of no installed app is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Downloads/backup-2024.dmg"
+size = 4096
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "a copy of an installer is never claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Copyable.app"
+bundle-id = "com.example.Copyable"
+name = "Copyable"
+version = "1.0"
+changed = "10d"
+[[case.file]]
+path = "home/Downloads/Copyable (1).dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+
+[[case]]
+name = "a link named like a download is never claimed"
+kind = "negative"
+[[case.symlink]]
+path = "home/Downloads/clip.mov.part"
+target = "../elsewhere/clip"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/elsewhere/clip"
+size = 1
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[case]]
+name = "a folder of yours is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Downloads/Holiday/photo.jpg"
+size = 4096
+age = "400d"
+changed = "400d"
+[case.map]
+part = "your-folders"
+at = "home/Downloads/Holiday"
+
+[[case]]
+name = "a big file inside a folder of yours is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Downloads/Films/long.mov"
+size = 2147483648
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "an unfinished download changed lately is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Downloads/fresh.zip.crdownload"
+size = 4096
+age = "3d"
+changed = "3d"
+[[case.left-out]]
+category = "downloads.unfinished"
+reason = "downloads.left-out.recent"
+items = 1
+
+[[case]]
+name = "an installer newer than the installed app is kept"
+kind = "negative"
+[[case.app]]
+path = "Applications/Sample.app"
+bundle-id = "com.example.Sample"
+name = "Sample"
+version = "1.0"
+changed = "10d"
+[[case.file]]
+path = "home/Downloads/Sample-2.0.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+[[case.left-out]]
+category = "downloads.installers"
+reason = "downloads.left-out.not-older"
+items = 1
+
+[[case]]
+name = "an installer downloaded after the app was installed is kept"
+kind = "negative"
+[[case.app]]
+path = "Applications/Later.app"
+bundle-id = "com.example.Later"
+name = "Later"
+version = "3.0"
+changed = "30d"
+[[case.file]]
+path = "home/Downloads/Later.dmg"
+size = 4096
+age = "5d"
+changed = "5d"
+[[case.left-out]]
+category = "downloads.installers"
+reason = "downloads.left-out.not-older"
+items = 1
+
+[[case]]
+name = "an installer for a newer macOS is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Downloads/Install macOS Tahoe.app/Contents/Info.plist"
+size = 4096
+age = "40d"
+changed = "40d"
+[[case.left-out]]
+category = "downloads.macos-installers"
+reason = "downloads.left-out.newer-macos"
+items = 1
+
+[[case]]
+name = "a big file opened lately is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Downloads/recent.iso"
+size = 2147483648
+age = "400d"
+changed = "3d"
+[[case.left-out]]
+category = "downloads.large-untouched"
+reason = "downloads.left-out.recent"
+items = 1
+
+# Then the positive cases. The empty file beside an unfinished Firefox download is its placeholder: it is offered only
+# because `song.flac.part`, the previous case's file, is in the same folder.
+
+[[case]]
+name = "an unfinished Chrome download goes"
+kind = "positive"
+[[case.file]]
+path = "home/Downloads/movie.mp4.crdownload"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Downloads/movie.mp4.crdownload"
+category = "downloads.unfinished"
+danger = "low"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+
+[[case]]
+name = "an unfinished Firefox download goes"
+kind = "positive"
+[[case.file]]
+path = "home/Downloads/song.flac.part"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Downloads/song.flac.part"
+category = "downloads.unfinished"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "the empty file beside an unfinished Firefox download goes with it"
+kind = "positive"
+[[case.file]]
+path = "home/Downloads/song.flac"
+size = 0
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Downloads/song.flac"
+category = "downloads.unfinished"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a Safari download goes, at Medium"
+kind = "positive"
+[[case.dir]]
+path = "home/Downloads/trip.zip.download"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Downloads/trip.zip.download/Info.plist"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Downloads/trip.zip.download/trip.zip"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Downloads/trip.zip.download"
+category = "downloads.safari-resumable"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an installer of an installed app goes"
+kind = "positive"
+[[case.app]]
+path = "Applications/Example.app"
+bundle-id = "com.example.Example"
+name = "Example"
+version = "2.0"
+changed = "10d"
+[[case.file]]
+path = "home/Downloads/Example-2.0.dmg"
+size = 4096
+fill = "data"
+age = "20d"
+changed = "20d"
+[case.expect]
+item = "home/Downloads/Example-2.0.dmg"
+category = "downloads.installers"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a package with its receipt goes"
+kind = "positive"
+[[case.file]]
+path = "home/Downloads/Tool-3.1.pkg"
+size = 4096
+fill = "data"
+age = "20d"
+changed = "20d"
+[[case.receipt]]
+package = "Tool-3.1.pkg"
+installed = "10d"
+[case.expect]
+item = "home/Downloads/Tool-3.1.pkg"
+category = "downloads.installers"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an old macOS installer goes"
+kind = "positive"
+[[case.file]]
+path = "home/Downloads/Install macOS Sonoma.app/Contents/Info.plist"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Downloads/Install macOS Sonoma.app"
+category = "downloads.macos-installers"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a big file untouched for a long time goes, at High"
+kind = "positive"
+[[case.file]]
+path = "home/Downloads/old-backup.iso"
+size = 2147483648
+age = "400d"
+changed = "400d"
+[case.expect]
+item = "home/Downloads/old-backup.iso"
+category = "downloads.large-untouched"
+danger = "high"
+after-cleanup = "in-trash"

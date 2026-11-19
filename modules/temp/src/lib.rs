@@ -8,18 +8,21 @@
 
 mod decide;
 mod names;
-mod settings;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, Claim, DangerLevel, DescriptorError, FindingSink, IdError, Interest, InterestError,
-    KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
-    ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text, TextArg, TextKey, TextKeyError, Timestamp,
+    CategoryDescriptor, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink, IdError, Interest,
+    InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError,
+    ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text, TextArg, TextKey, TextKeyError,
+    Timestamp,
 };
 
 use crate::decide::{Item, NoSystem, Reason, Scan, Verdict, decide};
 
 /// The category of the old temporary items (design, section 7).
 const OLD_FILES: &str = "temp.old-files";
+
+/// `temp.older-than-days`. The check can only become stricter: never fewer than a week.
+const OLDER_THAN: DaySetting = DaySetting::new("older-than-days", 7, 30, 7);
 
 /// The keys of the reasons the module may give for keeping an item (design, section 8).
 #[derive(Debug)]
@@ -137,7 +140,7 @@ impl TempModule {
         let id = ModuleId::new("temp")?;
         let category = CategoryDescriptor::new(CategoryId::new(id, OLD_FILES)?, DangerLevel::Safe);
         let locales = Locales { en: include_str!("../locales/en.json") };
-        let settings = vec![settings::older_than_days_setting(id)?];
+        let settings = vec![OLDER_THAN.descriptor(id)?];
         let left_out = LeftOutKeys::new()?;
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::System, vec![category.clone()], settings, locales)?
             .with_problems(left_out.all())?;
@@ -179,7 +182,7 @@ impl Module for TempModule {
         let scan = Scan {
             restored: cx.is_restored(),
             now: Timestamp::from_system_time(cx.clock().now()),
-            days: settings::older_than_days(cx.settings()),
+            days: OLDER_THAN.days(cx.settings()),
             running: system.running_apps().map_err(|_| NoSystem),
         };
         match decide(&item, &scan) {

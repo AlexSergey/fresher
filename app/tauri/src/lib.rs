@@ -20,7 +20,9 @@ use tauri::Manager;
 
 /// Sandbox mode, for the autotests of the sandboxes: debug builds only.
 #[cfg(debug_assertions)]
-pub use sandbox::{SandboxEngineError, SandboxMode, SandboxPorts, SandboxRefusal, SandboxTrash, sandbox_engine};
+pub use sandbox::{
+    SandboxEngineError, SandboxMode, SandboxPorts, SandboxRefusal, SandboxTrash, access_of, sandbox_engine,
+};
 
 /// Builds and runs the app until its window is closed; a second launch brings that window forward instead.
 pub fn run() -> Result<(), tauri::Error> {

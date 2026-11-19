@@ -115,12 +115,14 @@ impl Rule {
         let interest =
             compile_look(spec.look, recognize.sibling.iter().cloned().collect()).map_err(|error| match error {
                 InterestError::OutsideFolder { .. } => RuleError::PathOutOfFolder { rule: id.clone() },
-                // A rule names no held entries and shapes no `*`: the last three cannot come from `Interest::new`.
+                // A rule names no held entries and shapes no `*`: the last five cannot come from `Interest::new`.
                 InterestError::EmptyName
                 | InterestError::NotAName { .. }
                 | InterestError::HoldsNotAnchored
                 | InterestError::TooManyHolds { .. }
-                | InterestError::NoStarToShape => bad_pattern(),
+                | InterestError::NoStarToShape
+                | InterestError::BadSuffix { .. }
+                | InterestError::TwoShapes => bad_pattern(),
             })?;
         if let Pattern::Under(_, path) = interest.pattern()
             && path.split('/').any(|segment| Glob::new(segment).is_none())

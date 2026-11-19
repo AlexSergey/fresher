@@ -55,7 +55,7 @@ impl Writer {
 }
 
 /// A binary property list whose top-level object is a dictionary of ASCII strings.
-pub(super) fn dict_of_strings(entries: &[(&str, &str)]) -> Vec<u8> {
+pub(crate) fn dict_of_strings(entries: &[(&str, &str)]) -> Vec<u8> {
     let mut writer = Writer::default();
     let pairs = entries.iter().map(|(key, value)| (writer.ascii(key), writer.ascii(value))).collect();
     let top = writer.add(Object::Dict(pairs));

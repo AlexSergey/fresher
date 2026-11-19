@@ -20,9 +20,16 @@ const MIB: u64 = 1024 * 1024;
 const CAPACITY: u64 = 1024 * MIB;
 
 /// The fake volume the sandbox is on: 1 GiB, the files of the tree and 64 MiB more used, 256 MiB free, so the
-/// remainder and Free are the same on every machine.
+/// remainder and Free are the same on every machine. The tree's size is capped to what the volume can hold: a sparse
+/// file of a case file (2 GB) counts its logical size but takes no block.
 pub(crate) fn sandbox_disk(tree_size: u64) -> DiskSpace {
-    FakeVolumes::disk("Sandbox", ByteSize::new(CAPACITY), ByteSize::new(tree_size + 64 * MIB), ByteSize::new(256 * MIB))
+    let room = CAPACITY - 64 * MIB - 256 * MIB;
+    FakeVolumes::disk(
+        "Sandbox",
+        ByteSize::new(CAPACITY),
+        ByteSize::new(tree_size.min(room) + 64 * MIB),
+        ByteSize::new(256 * MIB),
+    )
 }
 
 /// Checks the map of the scanned sandbox and every case's `[case.map]`; the report of the map's parts and of the place

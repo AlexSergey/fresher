@@ -395,7 +395,7 @@ mod tests {
         };
         use fresher_testing::FakeAccess;
 
-        use fresher_core::{Build, PutBackOutcome, TrashState};
+        use fresher_core::{Build, PutBackOutcome, Simulated, TrashState};
         use serde_json::json;
         use tauri::Manager;
 
@@ -443,19 +443,12 @@ mod tests {
         #[test]
         fn app_info_is_the_crate_version_and_the_managed_build() {
             let shell = Shell::new();
-            shell.app.manage(Build::Sandbox {
-                path: "/tmp/box".into(),
-                simulated_running: true,
-                simulated_spotlight: false,
-            });
+            shell.app.manage(Build::Sandbox { path: "/tmp/box".into(), simulated: vec![Simulated::Running] });
 
             let info = app_info(shell.app.state::<Build>());
 
             assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
-            assert_eq!(
-                info.build,
-                Build::Sandbox { path: "/tmp/box".into(), simulated_running: true, simulated_spotlight: false }
-            );
+            assert_eq!(info.build, Build::Sandbox { path: "/tmp/box".into(), simulated: vec![Simulated::Running] });
         }
 
         #[test]
@@ -553,7 +546,7 @@ mod tests {
 
             let modules: Vec<_> = get_modules(shell.engine()).into_iter().map(|module| module.id.as_str()).collect();
 
-            assert_eq!(modules, ["jetbrains", "temp", "dev-caches", "app-leftovers", "demo", "trial"]);
+            assert_eq!(modules, ["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "demo", "trial"]);
             assert_eq!(get_access_status(shell.engine()).access(&Capability::AllFiles), Access::Unknown);
         }
 

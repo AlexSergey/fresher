@@ -1,0 +1,96 @@
+# A home for the downloads module with one item per reason to keep it. With its system (Chrome open, Firefox 133.0
+# changed 10 days ago, Docker changed 20 days ago, macOS 15.4): `a.crdownload` is Chrome's and Chrome is open;
+# `b.opdownload` changed 3 days ago; `Firefox 140.0.dmg` is newer than the Firefox installed, which only the version
+# shows (it is 20 days old, so the app was changed after it); `Docker.dmg` is older than Docker's change; the macOS
+# installer is for a version newer than 15.4; `recent.mov` changed 3 days ago; `s.download` holds a socket (stated: a
+# socket's path is too long to make here); `f.download` holds the system's file (stated).
+
+[[file]]
+path = "Downloads/a.crdownload"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/b.opdownload"
+size = 4096
+age = "3d"
+changed = "3d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Firefox 140.0.dmg"
+size = 4096
+age = "20d"
+changed = "20d"
+fill = "data"
+
+[[file]]
+path = "Downloads/Docker.dmg"
+size = 4096
+age = "5d"
+changed = "5d"
+fill = "data"
+
+[[dir]]
+path = "Downloads/Install macOS Tahoe.app"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Downloads/Install macOS Tahoe.app/Contents"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Downloads/Install macOS Tahoe.app/Contents/x"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/recent.mov"
+size = 2000000000
+age = "3d"
+changed = "3d"
+
+[[dir]]
+path = "Downloads/s.download"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Downloads/s.download/Info.plist"
+size = 512
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/s.download/x.sock"
+size = 0
+age = "40d"
+changed = "40d"
+kind = "socket"
+
+[[dir]]
+path = "Downloads/f.download"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Downloads/f.download/Info.plist"
+size = 512
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "Downloads/f.download/data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+owner = "system"

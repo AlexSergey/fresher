@@ -55,10 +55,14 @@ impl Matcher {
                         matcher.interests.push(InterestFacts::default());
                         continue;
                     };
-                    if interest.matches_only_bundle_ids()
-                        && let Some(last @ Segment::Any) = segments.last_mut()
-                    {
-                        *last = Segment::BundleId;
+                    if let Some(last @ Segment::Any) = segments.last_mut() {
+                        if interest.matches_only_bundle_ids() {
+                            *last = Segment::BundleId;
+                        } else if !interest.name_suffixes().is_empty() {
+                            *last = Segment::Suffixes(
+                                interest.name_suffixes().iter().map(|suffix| suffix.as_bytes().into()).collect(),
+                            );
+                        }
                     }
                     trie.insert(&segments, id);
                     anchors.push((id, segments));
