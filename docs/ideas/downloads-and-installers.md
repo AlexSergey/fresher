@@ -21,6 +21,10 @@ A module of its own, "downloads and installers":
 - **Old installers of installed apps**: a `.dmg` or `.pkg` whose app (by bundle id inside the image or the package, if
   it can be read without mounting or running anything) is installed at the same or a newer version — Medium at first;
   an installer of an app that is not installed is the user's file and never offered.
+- **Large downloads untouched for a long time**: any big file in Downloads not opened for a number of days — "your
+  call", never pre-selected, since it is the user's own file and only the user knows if it is still needed.
+- **Old macOS installers**: `Install macOS <name>.app` in `/Applications` or Downloads, kept after an upgrade, about
+  12–15 GB each — Medium, offered when the installed system is the same or newer.
 - **Downloads is protected by the system's privacy prompt**: the module reads it only after the user granted access
   (plan [006](../plans/006-permissions/readme.md)); without it, nothing is claimed and the access status says why.
 
