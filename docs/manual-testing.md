@@ -160,8 +160,9 @@ them in this order because the first ones teach the screens used by the rest.
 
 ### 1.7 Downloads and installers ([020/05/02](./plans/020-downloads/05-finish/02-run-and-conclusions.md))
 
-- [ ] `rm -rf sandbox/downloads && npm run dev:sandbox -- downloads`. The banner says access and installs are
-      simulated. Scan; walk `EXPECTED.md`: negatives not offered (the document, the disk image of no app, the copy, the
+- [ ] `rm -rf sandbox/downloads && npm run dev:sandbox -- downloads`. First turn on Settings → Permissions →
+      Downloads (without Full Disk Access the switch decides, even for a granted folder: 020's decision 12). The banner
+      says access and installs are simulated. Scan; walk `EXPECTED.md`: negatives not offered (the document, the disk image of no app, the copy, the
       link, the folder of yours, the big file inside it); left-out lines read as written (changed lately, newer than the
       installed app, downloaded after it, a newer macOS, opened lately); each positive at its danger (unfinished Low
       with the placeholder, Safari Medium, installers Low, the macOS installer Low, the big file High); the installer
@@ -173,7 +174,21 @@ them in this order because the first ones teach the screens used by the rest.
       the way to allow it; nothing offered; the coverage names Downloads.
 - [ ] `npm run dev:sandbox -- downloads-browser-open`: the left-out line names the open browser.
 
-### 1.8 Also worth one look (no pending step)
+### 1.8 Stale projects ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/stale-projects && npm run dev:sandbox -- stale-projects`. Scan; walk `EXPECTED.md`, negatives
+      first: nothing of a negative is offered (the source, `.git`, `dist`, `.next`, the loose `node_modules`, the link,
+      the home's own `node_modules`, the hidden folder's and the app bundle's projects, a project inside another's
+      `build/`); left-out lines read as written (the project or the folder changed lately, a build used it this week);
+      each positive at its danger (packages and build output Low, the Python environment Medium, the Rust caches Low);
+      the monorepo's package reads "shop · packages/web/node_modules"; each reason names a date and a command.
+- [ ] The storage map: the offered folders in the explained part; `home/Code/kept-source/src` in your folders; the
+      browse view opens `home/Code/old-tool/target` (not one opaque entry).
+- [ ] Select everything: Review names Medium; confirm: items land in `home/.Trash`; Cleanups → put back. The link's
+      target in `home/elsewhere/modules` is untouched.
+- [ ] Ignore the build-output category, then the module; restore.
+
+### 1.9 Also worth one look (no pending step)
 
 - [ ] `npm run dev:sandbox -- cleanup-guards`: the case file of the removal refusals; its `EXPECTED.md` holds. It is
       the one sandbox with no plan step of its own, and 008's run (section 5) leans on its refusals.
@@ -338,7 +353,31 @@ xattr -l ~/Downloads/<the same file>
       list. Correct the tables, texts and `docs/categories/downloads-*.md` where they differ.
 - [ ] One real cleanup with **Finder**: an old installer of an installed app moved to the Trash and put back.
 
-### 2.7 Scan time on the real home (rule 4: within 5 %)
+### 2.7 Stale projects ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md))
+
+`npm run dev`, a scan of `~` only. Compare with these read-only commands (`<project>` is one the scan offers or keeps):
+
+```sh
+find <project> \( -name node_modules -o -name target -o -name .git -o -name build -o -name .venv \) -prune \
+  -o -type d -print0 | xargs -0 stat -f "%m %N" | sort -n | tail -3
+find <project>/.git/refs/heads -type d -print0 | xargs -0 stat -f "%Sm %N"
+du -sh <project>/node_modules <project>/target 2>/dev/null
+du -sh target/debug/{deps,incremental,build} target/llvm-cov-target 2>/dev/null   # in this repository
+```
+
+- [ ] Every offered item checked: its project's newest folder and its `refs/heads` are older than the days (365); the
+      folder is the project's `node_modules`, `target`, `build`, `.gradle`, `.build`, `.dart_tool`, `.venv` or `venv`;
+      nothing under `~/Library`, an app, a hidden folder of the home or the home itself; no `src`, `.git`, `dist`.
+- [ ] Every project kept `recent` that you think is old: which folder or branch is new; kept `unread`: which folder
+      was not read.
+- [ ] **This repository's `target/`**: what the Rust cache category offers and keeps, with sizes; the `du` line today
+      and again after a week of work — which part grows (decision 3.4).
+- [ ] Facts to verify: an editor that saves in place moves no folder time (`stat -f %Sm` of the file's folder before
+      and after a one-line save, in each editor you use); which git actions move `refs/heads` (commit, pull, merge,
+      checkout); does Finder browsing (a `.DS_Store`) move a project's time; a `node_modules` of hard links into a
+      shared store: the finding's size against `du`; a recompiling build moves `target/debug/incremental`'s times.
+
+### 2.8 Scan time on the real home (rule 4: within 5 %)
 
 Scan time is compared once per module generation, not per plan; do it with the baseline worktrees of section 4.2, since
 `main` already holds every module. Quit all other apps, scan `~` three times in each build (the first warms the cache;
@@ -353,6 +392,7 @@ use the later two and the median), same build kind, same state of the Mac.
       `4ad2282`.
 - [ ] Plan 020 ([020/05/02](./plans/020-downloads/05-finish/02-run-and-conclusions.md)): `main` against `70447c5`, with
       Downloads allowed in both.
+- [ ] Plan 021 ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)): `main` against `c2bdd44` (the commit before plan 021).
 
 ## 3. Permissions and probes (plan 006)
 
@@ -450,7 +490,8 @@ rebuilds the bench). Run the same command in each, back to back with 4.1, and re
 git worktree add NO_COMMIT/bench-base f76e1c1       # plan 015, before any real module
 (cd NO_COMMIT/bench-base && FRESHER_BENCH_TREE=large npm run bench 2>&1 | tee $OLDPWD/NO_COMMIT/bench-f76e1c1.txt)
 git worktree remove --force NO_COMMIT/bench-base
-# repeat with 645e04b (before 018), 4ad2282 (before 019, after 018), 70447c5 (before 020, after 019)
+# repeat with 645e04b (before 018), 4ad2282 (before 019, after 018), 70447c5 (before 020, after 019),
+# c2bdd44 (before 021, after 020)
 ```
 
 - [ ] **Plan 018** ([018/04/02](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)): `main` against
@@ -465,6 +506,8 @@ git worktree remove --force NO_COMMIT/bench-base
       [020/05/02](./plans/020-downloads/05-finish/02-run-and-conclusions.md)): `main` against `70447c5`, the suffixed
       interest (`Data/*` with `.download` and `.app`). Earlier: `matcher/entry` +0.6 %, `scan/full` 1 thread -0.8 %,
       12 threads -1.0 %; 24 to 48 threads varied by 10 %.
+- [ ] **Plan 021** ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)): `main` against `c2bdd44`; the new `subtrees` group's time (earlier: `subtrees/projects/small`
+      11.6 µs on a busy Mac) and `scan/full` unchanged within 5 %.
 - [ ] For every bench group, compare medians (criterion prints `change:`): within rule 4's 5 %? Write the table of
       groups (`matcher/entry`, `scan/full` at 1 and 12 threads, `scan/restore`, the state bench's tree heap) with the
       load average beside it. A bar that fails is not raised quietly: stop and tell the agent.
@@ -581,15 +624,16 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [011/03/01 docs and conclusions](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)               | pending, in progress           | 1.1           |
 | [012/06/02 run and conclusions](./plans/012-storage-map/06-finish/02-run-and-conclusions.md)                 | pending                        | 1.2, 2.1      |
 | [015/03/02 run and conclusions](./plans/015-module-groups/03-finish/02-run-and-conclusions.md)               | pending, in progress           | 1.1           |
-| [016/04/02 runs and conclusions](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.3, 2.2, 2.7 |
-| [017/04/02 runs and conclusions](./plans/017-temp-files/04-finish/02-run-and-conclusions.md)                 | pending, in progress           | 1.4, 2.3, 2.7 |
-| [018/04/02 runs and conclusions](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)           | pending                        | 1.5, 2.4, 2.7, 4 |
-| [019/04/02 runs and conclusions](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md)  | pending                        | 1.6, 2.5, 2.7, 4 |
+| [016/04/02 runs and conclusions](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.3, 2.2, 2.8 |
+| [017/04/02 runs and conclusions](./plans/017-temp-files/04-finish/02-run-and-conclusions.md)                 | pending, in progress           | 1.4, 2.3, 2.8 |
+| [018/04/02 runs and conclusions](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)           | pending                        | 1.5, 2.4, 2.8, 4 |
+| [019/04/02 runs and conclusions](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md)  | pending                        | 1.6, 2.5, 2.8, 4 |
 | [020/01/02 suffixed names bench](./plans/020-downloads/01-core-prerequisites/02-suffixed-names.md)           | step done, bench re-run pending | 4             |
-| [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.7, 2.6, 2.7, 4 |
+| [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.7, 2.6, 2.8, 4 |
+| [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md) | pending | 1.8, 2.7, 2.8, 4 |
 | [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                         | deferred, due before release   | 5.1           |
 | [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                           | deferred, due before release   | 5.2           |
-| Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.8           |
+| Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.9           |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and
 the numbers written under it, on `main`. Then tell the agent: a plan moves to done only when you have looked at its
