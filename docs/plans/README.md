@@ -71,3 +71,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 020 | [Downloads and installers](./020-downloads/readme.md)               | 🔨 in progress | 0.1.0   | core, scanner, system, engine, testing, modules, sandbox, e2e, app, app/ui, docs |
 | 021 | [Stale projects](./021-stale-projects/readme.md)                    | 🔨 in progress | 0.1.0   | core, engine, scanner, modules, testing, sandbox, e2e, app, app/ui, docs |
 | 026 | [The development run record](./026-dev-run-record/readme.md)       | 🔨 in progress | 0.1.0   | app, app/tauri, app/ui, core, cleaner, store, scripts, docs |
+| 027 | [The scan screen](./027-scan-screen/readme.md)                     | ✅ approved    | 0.1.0   | app/ui, app/tauri, core, sandbox, e2e, docs |

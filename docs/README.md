@@ -11,6 +11,7 @@ All documentation of the repository lives here.
 | [`dependencies.md`](./dependencies.md)      | every dependency and tool, with its version and licence              |
 | [`testing.md`](./testing.md)                | test bars and kinds of tests                                         |
 | [`manual-testing.md`](./manual-testing.md)  | one checklist of every run by hand, in order, with commands          |
+| [`manual-testing/`](./manual-testing/)      | the user's feedback from each session of runs by hand, by date       |
 | [`architecture/`](./architecture/README.md) | crates, layers, data flow, the snapshot database                     |
 | [`categories/`](./categories/README.md)     | the cleanup categories and their danger levels                       |
 | [`restrictions/`](./restrictions/README.md) | hard constraints, with the reason and where each is enforced         |
