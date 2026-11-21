@@ -1,5 +1,6 @@
 import { type JSX, useRef } from 'react';
 
+import type { MenuItem } from '../../design/primitives/menu/menu';
 import type { Finding, Refusal } from '../../ipc/bindings.generated';
 
 import { VirtualList } from '../../design/data/virtual-list/virtual-list';
@@ -15,6 +16,8 @@ export type FindingListProps = {
   readonly isSelected: (finding: Finding) => boolean;
   // The list's accessible name.
   readonly label: string;
+  // The items of a loaded row's settings menu; without it the rows have no menu.
+  readonly menuOf?: (finding: Finding) => readonly MenuItem[];
   // The rows rendered changed: load their pages. "Try again" asks for the last range again.
   readonly onRangeChange: (first: number, last: number) => void;
   // "Show in Finder" on a row the app may not remove; without it the rows offer no button.
@@ -62,6 +65,7 @@ export const FindingList = ({
   failure,
   isSelected,
   label,
+  menuOf,
   onRangeChange,
   onReveal,
   onToggle,
@@ -120,9 +124,11 @@ export const FindingList = ({
           <FindingRow
             {...row}
             finding={finding}
+            menu={finding === undefined ? undefined : menuOf?.(finding)}
             onReveal={onReveal}
             onToggle={onToggle}
             selected={finding !== undefined && isSelected(finding)}
+            withMenu={menuOf !== undefined}
           />
         )}
         rowHeight={ROW_HEIGHT}
@@ -131,7 +137,11 @@ export const FindingList = ({
   })();
 
   return (
-    <div aria-busy={loading || undefined} className={`${styles.frame ?? ''} ${findingRowsClass}`}>
+    <div
+      aria-busy={loading || undefined}
+      className={`${styles.frame ?? ''} ${findingRowsClass}`}
+      data-menu={menuOf === undefined ? undefined : ''}
+    >
       {failure === null && total !== 0 ? <Header /> : null}
       <div className={styles.body}>{body}</div>
     </div>

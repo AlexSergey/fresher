@@ -19,6 +19,15 @@ import {
 import { FindingRow, type FindingRowProps, findingRowsClass } from './finding-row';
 import styles from './finding-row.stories.module.css';
 
+const MENU: FindingRowProps['menu'] = [
+  {
+    description: 'Hides it from the results and never removes it. You can restore it in Settings.',
+    key: 'ignore-item',
+    label: 'Ignore this item',
+    onSelect: () => undefined,
+  },
+];
+
 const ignore = (): void => undefined;
 
 // One row in a list's frame, as a finding list shows it.
@@ -30,7 +39,11 @@ const row = (
     setCoreDictionary(FINDING_DICTIONARY);
 
     return (
-      <div className={`${styles.frame ?? ''} ${findingRowsClass}`} role="list">
+      <div
+        className={`${styles.frame ?? ''} ${findingRowsClass}`}
+        data-menu-open={props.menuOpen === true ? '' : undefined}
+        role="list"
+      >
         <FindingRow finding={finding} onReveal={ignore} onToggle={ignore} selected={false} {...props} />
       </div>
     );
@@ -53,4 +66,7 @@ export const stories = storiesOf('FindingRow', {
   safe: row(SAFE_FINDING),
   selected: row(SAFE_FINDING, { selected: true }),
   'selected-high': row(HIGH_FINDING, { selected: true }),
+  'with-empty-menu': row(SAFE_FINDING, { menu: [] }),
+  'with-menu': row(SAFE_FINDING, { menu: MENU }),
+  'with-menu-open': row(SAFE_FINDING, { menu: MENU, menuOpen: true }),
 });

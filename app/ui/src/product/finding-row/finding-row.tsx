@@ -8,7 +8,9 @@ import { DangerBadge } from '../../design/data/danger-badge/danger-badge';
 import { ListRow } from '../../design/data/list-row/list-row';
 import { PathText } from '../../design/data/path-text/path-text';
 import { SizeText } from '../../design/data/size-text/size-text';
+import { Settings } from '../../design/icons/icons';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
+import { Menu, type MenuItem } from '../../design/primitives/menu/menu';
 import { Skeleton } from '../../design/primitives/skeleton/skeleton';
 import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { t, tText } from '../../i18n';
@@ -21,10 +23,16 @@ export type FindingRowProps = Forced &
   Partial<VirtualRowProps> & {
     // `undefined` while its page loads: the row is a skeleton of the same height.
     readonly finding: Finding | undefined;
+    // The items of the row's settings menu; without any the row has no menu.
+    readonly menu?: readonly MenuItem[] | undefined;
+    // The menu starts open, without taking the focus: for the gallery.
+    readonly menuOpen?: boolean | undefined;
     // "Show in Finder" on a row the app may not remove; without it the row offers no button.
     readonly onReveal?: ((finding: Finding) => void) | undefined;
     readonly onToggle: (finding: Finding) => void;
     readonly selected: boolean;
+    // A skeleton row keeps the menu column's room when its list has menus.
+    readonly withMenu?: boolean;
   };
 
 // The class of a frame of finding rows: their height (52 px) and the widths of the level and size columns.
@@ -43,7 +51,13 @@ const SubjectText = ({ subject }: { readonly subject: Subject }): JSX.Element =>
   );
 
 // The row of a page still loading: skeleton lines where the title, the subject and the values will be.
-const LoadingRow = ({ row }: { readonly row: Forced & Partial<VirtualRowProps> }): JSX.Element => (
+const LoadingRow = ({
+  row,
+  withMenu,
+}: {
+  readonly row: Forced & Partial<VirtualRowProps>;
+  readonly withMenu: boolean;
+}): JSX.Element => (
   <div {...row} aria-label={t('ui.finding-list.loading')} className={styles.loading} role="listitem">
     <span className={styles.lines}>
       <span className={styles.title}>
@@ -63,6 +77,7 @@ const LoadingRow = ({ row }: { readonly row: Forced & Partial<VirtualRowProps> }
         <Skeleton shape="line" />
       </span>
     </span>
+    {withMenu ? <span aria-hidden="true" className={styles.menu} /> : null}
   </div>
 );
 
@@ -70,12 +85,22 @@ const LoadingRow = ({ row }: { readonly row: Forced & Partial<VirtualRowProps> }
 // path, its danger level and its size. Its accessible name reads title, level and size; its description is the
 // reason, which the level's badge also shows in a tooltip. A selected High row lights its edge in High's colour.
 // A finding the core says the app may not remove keeps its level and size but has no checkbox and is never shown
-// selected; its removability's word stands before the level, with what the user can do on demand.
-export const FindingRow = ({ finding, onReveal, onToggle, selected, ...row }: FindingRowProps): JSX.Element => {
+// selected; its removability's word stands before the level, with what the user can do on demand. With `menu`, a
+// settings button ends the row; it is a tab stop only in the list's focused row.
+export const FindingRow = ({
+  finding,
+  menu,
+  menuOpen,
+  onReveal,
+  onToggle,
+  selected,
+  withMenu = false,
+  ...row
+}: FindingRowProps): JSX.Element => {
   const reasonId = useId();
 
   if (finding === undefined) {
-    return <LoadingRow row={row} />;
+    return <LoadingRow row={row} withMenu={withMenu} />;
   }
 
   const title = tText(finding.title);
@@ -141,6 +166,20 @@ export const FindingRow = ({ finding, onReveal, onToggle, selected, ...row }: Fi
           <span className={styles.value}>
             <SizeText {...size} />
           </span>
+          {menu === undefined ? null : (
+            <span aria-hidden={menu.length === 0 ? true : undefined} className={styles.menu}>
+              {menu.length === 0 ? null : (
+                <Menu
+                  defaultOpen={menuOpen}
+                  icon={Settings}
+                  items={menu}
+                  label={t('ui.finding-list.options', { title: { kind: 'text', value: title } })}
+                  // The menu lives only in the list's roving model: the list gives the row its tabIndex.
+                  tabIndex={row.tabIndex ?? -1}
+                />
+              )}
+            </span>
+          )}
         </>
       }
     />

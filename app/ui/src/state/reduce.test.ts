@@ -80,6 +80,12 @@ describe('reduce', () => {
       expect(state.selection).not.toBe(NOTHING_SELECTED);
     });
 
+    it('a setting outside the ignore lists keeps the count of ignore changes', () => {
+      const state = run([changed('demo.count', { kind: 'number', value: 3 })]);
+
+      expect(state.ignoreChanges).toBe(0);
+    });
+
     it('a new scan clears the left-outs', () => {
       const state = run([started, moduleDone, { modules: ['demo'], scan: 2, type: 'scan-started' }]);
 
@@ -371,6 +377,13 @@ describe('reduce', () => {
     it('a setting-changed event of an ignore list drops the selection', () => {
       const state = run([PICKED, changed('core.ignore.modules', { kind: 'ids', value: ['demo'] })]);
 
+      expect(state.selection).toBe(NOTHING_SELECTED);
+    });
+
+    it('a change of an ignore list counts one ignore change and clears the selection', () => {
+      const state = run([PICKED, changed('core.ignore.items', { kind: 'ids', value: ['a'] })]);
+
+      expect(state.ignoreChanges).toBe(1);
       expect(state.selection).toBe(NOTHING_SELECTED);
     });
 

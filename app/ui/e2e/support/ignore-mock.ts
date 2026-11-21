@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type {
+  Finding,
   HiddenModule,
   IgnoredEntry,
   IgnoreTarget,
@@ -12,23 +13,33 @@ import type {
 import { COMMANDS } from '../../src/ipc';
 import { CLEANUP_HOOKS } from './cleanup-mock';
 
-// The ignore commands of the mocked core: the module and group lists kept in the tab's session storage (so a reload of
+// The ignore commands of the mocked core: the module, group and path lists kept in the tab's session storage (so a reload of
 // the page keeps them), the settings and the overview answered with them, `setting-changed` sent after each change.
 export const IGNORE_HOOK = '__fresherIgnoreInvoke';
 
+// The page's name of the function that answers the ignored paths, for `get_findings` to leave them out.
+export const IGNORED_PATHS_HOOK = '__fresherIgnoredPaths';
+
 const STORE = 'fresher.mock.ignore';
 
-type Lists = { categories: string[]; groups: string[]; modules: string[] };
+type Lists = { categories: string[]; groups: string[]; modules: string[]; paths: string[] };
 
 type Setup = {
   readonly commands: typeof COMMANDS;
+  // The path of every finding that has one, by its id: what an Ignore of a finding records.
+  readonly findingPaths: Readonly<Record<number, string>>;
   readonly hook: string;
+  readonly pathsHook: string;
   readonly send: string;
   readonly store: string;
 };
 
 // Adds the ignore commands to the mocked core of `core-mock.ts`, which calls the hook with the answers it holds.
-export const mockIgnore = async (page: Page): Promise<void> => {
+export const mockIgnore = async (page: Page, findings: readonly Finding[]): Promise<void> => {
+  const findingPaths = Object.fromEntries(
+    findings.flatMap((finding) => (finding.subject.kind === 'path' ? [[finding.id, finding.subject.value]] : [])),
+  );
+
   await page.addInitScript(
     (setup: Setup) => {
       const scope = globalThis as unknown as Record<string, unknown>;
@@ -37,9 +48,14 @@ export const mockIgnore = async (page: Page): Promise<void> => {
         try {
           const saved = JSON.parse(sessionStorage.getItem(setup.store) ?? 'null') as null | Partial<Lists>;
 
-          return { categories: saved?.categories ?? [], groups: saved?.groups ?? [], modules: saved?.modules ?? [] };
+          return {
+            categories: saved?.categories ?? [],
+            groups: saved?.groups ?? [],
+            modules: saved?.modules ?? [],
+            paths: saved?.paths ?? [],
+          };
         } catch {
-          return { categories: [], groups: [], modules: [] };
+          return { categories: [], groups: [], modules: [], paths: [] };
         }
       };
       const lists = load();
@@ -50,18 +66,19 @@ export const mockIgnore = async (page: Page): Promise<void> => {
           // The page keeps the lists in memory.
         }
       };
-      const changed = (key: string, value: readonly string[]): void => {
+      const changed = (key: string, kind: 'ids' | 'paths', value: readonly string[]): void => {
         const send = scope[setup.send] as ((events: readonly unknown[]) => void) | undefined;
 
-        send?.([{ key, type: 'setting-changed', value: { kind: 'ids', value } }]);
+        send?.([{ key, type: 'setting-changed', value: { kind, value } }]);
       };
-      const toggle = (list: string[], key: string, id: string, on: boolean): void => {
+      const toggle = (list: string[], key: string, id: string, on: boolean, kind: 'ids' | 'paths' = 'ids'): void => {
         const next = on ? [...list.filter((one) => one !== id), id] : list.filter((one) => one !== id);
 
         list.splice(0, list.length, ...next);
         save();
-        changed(key, list);
+        changed(key, kind, list);
       };
+      scope[setup.pathsHook] = (): readonly string[] => lists.paths;
 
       const settingsOf = (view: SettingsView): SettingsView => ({
         ...view,
@@ -70,6 +87,7 @@ export const mockIgnore = async (page: Page): Promise<void> => {
           'core.ignore.categories': { kind: 'ids', value: lists.categories },
           'core.ignore.groups': { kind: 'ids', value: lists.groups },
           'core.ignore.modules': { kind: 'ids', value: lists.modules },
+          'core.ignore.paths': { kind: 'paths', value: lists.paths },
         },
       });
 
@@ -103,6 +121,7 @@ export const mockIgnore = async (page: Page): Promise<void> => {
             categories: lists.categories.length,
             groups: lists.groups.length,
             modules: lists.modules.length,
+            paths: lists.paths.length,
           },
           totals,
         };
@@ -115,6 +134,14 @@ export const mockIgnore = async (page: Page): Promise<void> => {
           toggle(lists.groups, 'core.ignore.groups', entry.group, on);
         } else if (entry.kind === 'module') {
           toggle(lists.modules, 'core.ignore.modules', entry.module, on);
+        } else if (entry.kind === 'path') {
+          toggle(lists.paths, 'core.ignore.paths', entry.path, on, 'paths');
+        } else {
+          const path = setup.findingPaths[entry.finding];
+
+          if (path !== undefined) {
+            toggle(lists.paths, 'core.ignore.paths', path, on, 'paths');
+          }
         }
       };
 
@@ -143,6 +170,13 @@ export const mockIgnore = async (page: Page): Promise<void> => {
         }
       };
     },
-    { commands: COMMANDS, hook: IGNORE_HOOK, send: CLEANUP_HOOKS.send, store: STORE } satisfies Setup,
+    {
+      commands: COMMANDS,
+      findingPaths,
+      hook: IGNORE_HOOK,
+      pathsHook: IGNORED_PATHS_HOOK,
+      send: CLEANUP_HOOKS.send,
+      store: STORE,
+    } satisfies Setup,
   );
 };

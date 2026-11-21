@@ -203,6 +203,21 @@ describe('the findings source', () => {
       expect(core.asked).toHaveLength(1);
     });
 
+    it('an overview change alone keeps the cached pages until the throttled refresh', async () => {
+      const core = coreByHand();
+      const clock = createFakeClock();
+      const source = sourceOf(core.getFindings, clock);
+      const store = storeOfScan();
+      source.follow(store);
+      source.ensure(LARGEST, 0, 10);
+      await answerAll(core);
+      store.dispatch({ overview: scanning(), type: 'overview-loaded' });
+      store.dispatch({ overview: scanning(), type: 'overview-loaded' });
+
+      expect(source.held()).toBe(100);
+      expect(core.asked).toHaveLength(2);
+    });
+
     it('stops refreshing once it no longer follows the store', async () => {
       const core = coreByHand();
       const clock = createFakeClock();
@@ -262,6 +277,21 @@ describe('the findings source', () => {
 
       expect(source.rowAt(LARGEST, 0)).toEqual(second);
       expect(source.total(LARGEST)).toBe(999);
+    });
+
+    it('an ignore change drops every cached page and asks for the rows on screen at once', async () => {
+      const core = coreByHand();
+      const source = sourceOf(core.getFindings);
+      const store = storeOfScan();
+      source.follow(store);
+      source.ensure(LARGEST, 0, 10);
+      await answerAll(core);
+
+      store.dispatch({ key: 'core.ignore.paths', type: 'setting-changed', value: { kind: 'paths', value: ['/x'] } });
+
+      expect(source.held()).toBe(0);
+      expect(core.asked).toHaveLength(2);
+      expect(core.asked[1]?.query.offset).toBe(0);
     });
 
     it('the pages in view are refreshed at most twice a second during a scan', async () => {

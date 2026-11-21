@@ -36,9 +36,9 @@ const PAGE: readonly Finding[] = [
 
 const SELECTED = new Set([HIGH_FINDING.id, SAFE_FINDING.id]);
 
-type Shown = Pick<FindingListProps, 'failure' | 'rowAt' | 'total'> & { readonly scrollTo?: number };
+type Shown = Pick<FindingListProps, 'failure' | 'menuOf' | 'rowAt' | 'total'> & { readonly scrollTo?: number };
 
-const List = ({ failure, rowAt, scrollTo = 0, total }: Shown): JSX.Element => {
+const List = ({ failure, menuOf, rowAt, scrollTo = 0, total }: Shown): JSX.Element => {
   const frameRef = useRef<HTMLDivElement>(null);
 
   setCoreDictionary(FINDING_DICTIONARY);
@@ -58,6 +58,7 @@ const List = ({ failure, rowAt, scrollTo = 0, total }: Shown): JSX.Element => {
         failure={failure}
         isSelected={(finding) => SELECTED.has(finding.id)}
         label="Example caches"
+        {...(menuOf === undefined ? {} : { menuOf })}
         onRangeChange={ignore}
         onToggle={ignore}
         rowAt={rowAt}
@@ -85,4 +86,19 @@ export const stories = storiesOf('FindingList', {
   'hundred-thousand-middle': shown(() => <Large />),
   loading: shown(() => <List failure={null} rowAt={() => undefined} total={undefined} />),
   page: shown(() => <List failure={null} rowAt={(index) => PAGE[index]} total={PAGE.length} />),
+  'page-with-menu': shown(() => (
+    <List
+      failure={null}
+      menuOf={() => [
+        {
+          description: 'Hides it from the results and never removes it. You can restore it in Settings.',
+          key: 'ignore-item',
+          label: 'Ignore this item',
+          onSelect: ignore,
+        },
+      ]}
+      rowAt={(index) => PAGE[index]}
+      total={PAGE.length}
+    />
+  )),
 });

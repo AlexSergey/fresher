@@ -392,7 +392,10 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
 - `design/` imports `design/` and React; only `design/icons/` imports `lucide-react`. Never `product/`, `screens/`,
   `state/`, `ipc/` or `i18n/`.
 - The design layer's `primitives/menu/` (a button's menu of actions, with the keyboard and focus handled) stands beside
-  `primitives/tooltip/`; the card's settings menu is built on it.
+  `primitives/tooltip/`; the card's settings menu is built on it, and so is a finding row's (`Menu.tabIndex` keeps
+  a trigger out of the tab order when its row is not the list's focused row). The virtual list has one tab stop on its
+  rows and the focused row's controls follow it; the arrow, Home, End, Page and Space keys act only from the row
+  itself, a key on a control inside a row is the control's.
 - `product/` imports `design/`, `i18n/` and types from `ipc/bindings.generated` (`import type`). Never `ipc/index`,
   `state/` or `screens/`: it takes its data by props.
 - `screens/` imports everything above, `state/` and `ipc/`.
@@ -421,7 +424,9 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   volumes keep their map block (`product/storage-map/`), drawn in the core's order.
 - **Lists are paged**: `state/findings.ts` keeps at most 10 pages of 100 findings per app, least recently used
   dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. A category's details ask the core
-  for `FindingsQuery.order: largest`.
+  for `FindingsQuery.order: largest`. The pages start again on an ignore change (`CoreState.ignoreChanges`, bumped by
+  a `core.ignore.*` setting change) as on a cleanup's removal, so an ignored row leaves at once and a restore brings
+  it back.
 - **Selection** (`state/selection.ts`): findings, and whole categories minus the findings ticked off in them; the
   action `choose { categories, within }` drops the module's own selection and selects the categories of a module
   choice that hold a finding ("Remove everything", "Keep settings"), touching nothing outside the module; emptied
@@ -445,7 +450,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
 - **Modules by group**: Settings lists modules under their group (`product/module-groups.ts`, texts
   `core.group.<group>.name`); the sidebar lists no module. A module is ignored from a card's settings menu and
   restored in Settings → Ignored.
-- **A category's details** (`screens/category/`): the category's findings, its left-out lines, and the choices of its
+- **A category's details** (`screens/category/`): the category's findings (each with a path has a settings menu,
+  "Ignore this item"; a tool's object has none, and Review's rows have none), its left-out lines, and the choices of its
   module ("Remove everything", "Keep settings"); the level heading reads "Danger level". It replaced the module pages.
 - **Settings → Ignored** (`screens/settings/ignored-group.tsx`) has three tabs, "Ignored groups", "Ignored
   modules" and "Ignored items" (plan 005's categories and paths), each with its count; the tabs are the design

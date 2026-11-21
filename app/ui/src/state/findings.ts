@@ -201,17 +201,18 @@ export const createFindingsSource = (
     },
     failure: (view) => failures.get(keyOf(view)) ?? null,
     follow: (store): (() => void) => {
-      let { overview, removed, scan } = store.getState();
+      let { ignoreChanges, overview, removed, scan } = store.getState();
 
       const unsubscribe = store.subscribe(() => {
         const state = store.getState();
 
         if (state.scan !== scan) {
-          ({ overview, removed, scan } = state);
+          ({ ignoreChanges, overview, removed, scan } = state);
           reset();
-        } else if (state.removed !== removed) {
-          // A cleanup removed findings: every page after them moved, so the rows on screen are asked for at once.
-          ({ overview, removed } = state);
+        } else if (state.removed !== removed || state.ignoreChanges !== ignoreChanges) {
+          // A cleanup removed findings or an ignore list changed: every page after them moved, so the rows on screen
+          // are asked for at once.
+          ({ ignoreChanges, overview, removed } = state);
           reset();
           refresh();
         } else if (state.overview !== overview) {

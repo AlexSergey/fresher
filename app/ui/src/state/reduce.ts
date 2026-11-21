@@ -48,6 +48,8 @@ export type CoreState = {
   readonly coverage: Coverage | null;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
+  // How many times an ignore list changed in this session: the finding pages start again (state/findings.ts).
+  readonly ignoreChanges: number;
   // The modules that finished in the followed scan, with how, and what each left out (counted by the engine).
   readonly modules: readonly {
     readonly leftOut: readonly LeftOutCount[];
@@ -90,6 +92,7 @@ export const INITIAL_STATE: CoreState = {
   coverage: null,
   dictionary: null,
   failure: null,
+  ignoreChanges: 0,
   modules: [],
   outcome: null,
   overview: null,
@@ -178,9 +181,11 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
       const settings = state.settings === null ? null : changeSetting(state.settings, event);
 
       // The core drops the pending plan when an ignore list changes, so the selection goes with it.
-      const selection = event.key.startsWith('core.ignore.') ? NOTHING_SELECTED : state.selection;
+      if (event.key.startsWith('core.ignore.')) {
+        return markStale({ ...state, ignoreChanges: state.ignoreChanges + 1, selection: NOTHING_SELECTED, settings });
+      }
 
-      return markStale({ ...state, selection, settings });
+      return markStale({ ...state, settings });
     }
   }
 };

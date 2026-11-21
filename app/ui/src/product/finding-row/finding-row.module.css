@@ -8,6 +8,14 @@
     --size-row: var(--size-finding-row);
     --finding-row-level-width: 88px;
     --finding-row-size-width: 80px;
+    --finding-row-menu-width: var(--size-control-small);
+  }
+
+  /* The settings menu's button, after the size; the header and the loading rows keep its room. */
+  .menu {
+    display: inline-flex;
+    width: var(--finding-row-menu-width);
+    flex: none;
   }
 
   .level {

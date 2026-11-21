@@ -127,7 +127,7 @@ import {
   TEMP_SETTINGS,
 } from '../src/test/temp-scan';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
-import { IGNORE_HOOK, mockIgnore } from './support/ignore-mock';
+import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
 
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
@@ -195,6 +195,7 @@ type ByCommand = {
   readonly getStoragePlace: string;
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
+  readonly ignoredPathsHook: string;
   readonly ignoreHook: string;
   readonly interval: null | number;
   readonly overviewOf: string;
@@ -215,6 +216,16 @@ type ByCommand = {
 
 // The page's name of the function that answers `get_findings` from the script's findings, in Node.
 const PAGE_OF = '__fresherPageOf';
+
+// A finding is ignored when its path is an ignored path or lies inside one.
+const isIgnored = ({ subject }: Finding, ignored: readonly string[]): boolean => {
+  if (subject.kind !== 'path') {
+    return false;
+  }
+  const { value } = subject;
+
+  return ignored.some((path) => value === path || value.startsWith(`${path}/`));
+};
 
 // The page's name of the function that answers `get_overview` from the findings streamed so far, in Node.
 const OVERVIEW_OF = '__fresherOverviewOf';
@@ -243,7 +254,9 @@ const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Rea
 // held scan runs is refused as busy, as the engine does; `cancel_scan` ends a held scan with `stop`. An answered
 // `update_setting` sends its `setting-changed` event. `get_findings`, unless the script answers or refuses it, pages
 // through the findings streamed so far by module, category, order, offset and limit, as the engine does. A scan paced
-// by `interval` streams its events one by one and is busy until its last.
+// by `interval` streams its events one by one and is busy until its last. With `ignoring`, `get_findings` leaves out a
+// finding whose path is ignored or inside an ignored path, and its total with it; the overview's category totals are not
+// recomputed for an ignored item (a simplification: the core's own e2e proves them).
 export const mockCore = async (page: Page, script: CoreScript = {}): Promise<void> => {
   const findings = (script.scan ?? []).flatMap((event) => (event.type === 'findings-added' ? event.findings : []));
   const setup: ByCommand = {
@@ -259,6 +272,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     getStoragePlace: COMMANDS.getStoragePlace,
     hold: script.hold ?? null,
     hooks: CLEANUP_HOOKS,
+    ignoredPathsHook: IGNORED_PATHS_HOOK,
     ignoreHook: IGNORE_HOOK,
     interval: script.interval ?? null,
     overviewOf: OVERVIEW_OF,
@@ -276,8 +290,11 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     updateSetting: COMMANDS.updateSetting,
   };
 
-  await page.exposeFunction(PAGE_OF, (query: FindingsQuery, streamed: number) =>
-    pageOf(findings.slice(0, streamed), query),
+  await page.exposeFunction(PAGE_OF, (query: FindingsQuery, streamed: number, ignored: readonly string[]) =>
+    pageOf(
+      findings.slice(0, streamed).filter((finding) => !isIgnored(finding, ignored)),
+      query,
+    ),
   );
   await page.exposeFunction(EVENT_AT, (at: number) => JSON.stringify(script.scan?.[at] ?? null));
   await page.exposeFunction(OVERVIEW_OF, (streamed: number) => scanningOverviewOf(findings.slice(0, streamed)));
@@ -443,12 +460,18 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
         const query = args.query as FindingsQuery;
         // Exposed by Playwright: it calls `pageOf` in Node and resolves with its answer.
         const findingsOf = (
-          globalThis as unknown as Record<string, (query: FindingsQuery, streamed: number) => Promise<unknown>>
+          globalThis as unknown as Record<
+            string,
+            (query: FindingsQuery, streamed: number, ignored: readonly string[]) => Promise<unknown>
+          >
         )[core.pageOf];
+        const ignoredPaths = (globalThis as unknown as Record<string, (() => readonly string[]) | undefined>)[
+          core.ignoredPathsHook
+        ];
 
         return findingsOf === undefined
           ? Promise.resolve({ findings: [], offset: query.offset, total: 0 })
-          : findingsOf(query, streamed);
+          : findingsOf(query, streamed, ignoredPaths?.() ?? []);
       }
       if (!(command in answers)) {
         return Promise.reject(new Error(`The core has no answer for "${command}"`));
@@ -483,7 +506,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     });
   }, setup);
   if (script.ignoring === true) {
-    await mockIgnore(page);
+    await mockIgnore(page, findings);
   }
   if (script.cleanup !== undefined) {
     await mockCleanup(page, findings, script.cleanup);

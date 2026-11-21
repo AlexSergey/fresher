@@ -20,12 +20,14 @@ export type MenuProps = {
   readonly items: readonly MenuItem[];
   // The trigger's accessible name.
   readonly label: string;
+  // -1 keeps the trigger out of the tab order: a list's row that is not its tab stop.
+  readonly tabIndex?: -1 | 0;
 };
 
 // A button that opens a short list of actions, in a portal on <body>, placed by the component. The focus rests on one
 // item at a time (arrows, Home and End move it, Enter or Space chooses). Choosing closes the menu, gives the focus back
 // to the trigger, then calls the item; Escape does the same without a choice; Tab and a pointer down outside close it.
-export const Menu = ({ defaultOpen = false, icon, items, label }: MenuProps): JSX.Element => {
+export const Menu = ({ defaultOpen = false, icon, items, label, tabIndex = 0 }: MenuProps): JSX.Element => {
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -171,6 +173,7 @@ export const Menu = ({ defaultOpen = false, icon, items, label }: MenuProps): JS
         onKeyDown={onTriggerKeyDown}
         ref={triggerRef}
         size="small"
+        tabIndex={tabIndex}
       />
       {open
         ? createPortal(

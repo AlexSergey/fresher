@@ -81,6 +81,9 @@ them in this order because the first ones teach the screens used by the rest.
   4. `npm run dev` (quit the sandbox window first): the development banner, no sandbox name; the data folder is the
      development one (`ls ~/Library/Application\ Support/io.github.alexsergey.fresher.dev`).
   5. The release-build part of this step is in section 5.
+  6. On a category's details, ignore one item from its row's menu, by pointer and then by keyboard: the row leaves and
+     the focus stays in the list; Settings, Ignored, Ignored items lists the path; Restore brings the row back
+     without a rescan; a cleanup prepared after the ignore does not list the item.
 - [ ] **Plan 011, problems and reasons** ([011/03/01](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)).
   1. `npm run dev` (the demo module): scan; the demo category shows "1 item left out (150 MB): The app that made it is
      open. Quit the app, then scan again."

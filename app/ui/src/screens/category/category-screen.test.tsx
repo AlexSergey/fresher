@@ -78,10 +78,32 @@ const NOTHING_TO_REVEAL: Refusal = {
   text: { args: {}, key: 'core.error.nothing-to-reveal' },
 };
 
+// What the core says when a scan replaced the finding the user chose to ignore.
+const UNKNOWN_FINDING: Refusal = {
+  error: { code: 'unknown-finding', id: 1 },
+  text: { args: {}, key: 'core.error.unknown-finding' },
+};
+
 // The demo findings with the editor cache owned by another user: the core says it needs an administrator.
 const WITH_ADMIN_ITEM = DEMO_FINDINGS.map((finding) =>
   finding.id === 1 ? { ...finding, removability: 'needs-administrator' as const } : finding,
 );
+
+// The demo findings with the editor cache an object of a tool: it has no path to ignore.
+const WITH_TOOL_ITEM = DEMO_FINDINGS.map((finding) =>
+  finding.id === 1
+    ? { ...finding, subject: { kind: 'external' as const, value: { id: 'editor', tool: DOCKER.value } } }
+    : finding,
+);
+
+const withToolItem: CoreAnswers['getFindings'] = (args) =>
+  pageOf(WITH_TOOL_ITEM, (args as { readonly query: FindingsQuery }).query);
+
+// The overview of a scan that found no caches any more.
+const WITHOUT_CACHES: Overview = {
+  ...DEMO_OVERVIEW,
+  totals: DEMO_OVERVIEW.totals.filter((total) => total.category !== 'demo.caches'),
+};
 
 const withAdminItem: CoreAnswers['getFindings'] = (args) =>
   pageOf(WITH_ADMIN_ITEM, (args as { readonly query: FindingsQuery }).query);
@@ -237,6 +259,56 @@ describe('CategoryScreen', () => {
         expect(store.getState().failure).toStrictEqual({ kind: 'refused', refusal: NOTHING_TO_REVEAL });
       });
     });
+    it("a tool's object has no row menu", async () => {
+      core({ getFindings: withToolItem });
+      await renderDetails('demo.caches');
+
+      await screen.findByRole('listitem', { name: /^Example: editor-cache/u });
+
+      expect(screen.queryByRole('button', { name: 'Options for Example: editor-cache' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Options for Example: browser-cache' })).toBeInTheDocument();
+    });
+
+    it('a refused ignore keeps the row and shows the failure', async () => {
+      core({ ignore: refuse(UNKNOWN_FINDING) });
+      const { store } = await renderDetails('demo.caches');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Options for Example: editor-cache' }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Ignore this item' }));
+
+      await vi.waitFor(() => {
+        expect(store.getState().failure).toStrictEqual({ kind: 'refused', refusal: UNKNOWN_FINDING });
+      });
+      expect(screen.getByRole('listitem', { name: /^Example: editor-cache/u })).toBeInTheDocument();
+    });
+
+    it('a scan starting on the details does not move the focus to Back to Scan', async () => {
+      core();
+      const { store } = await renderDetails('demo.caches');
+      await screen.findByRole('listitem', { name: /^Example: editor-cache/u });
+      document.body.focus();
+
+      act(() => {
+        store.dispatch(SCAN_STARTED);
+      });
+
+      expect(screen.getByRole('button', { name: 'Back to Scan' })).not.toHaveFocus();
+    });
+
+    it('the focus stays where it is when the list empties without the focus in it', async () => {
+      core();
+      const { store } = await renderDetails('demo.caches');
+      await screen.findByRole('listitem', { name: /^Example: editor-cache/u });
+      const scan = screen.getByRole('button', { name: 'Scan' });
+      scan.focus();
+
+      act(() => {
+        store.dispatch({ overview: WITHOUT_CACHES, type: 'overview-loaded' });
+      });
+
+      expect(scan).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Back to Scan' })).not.toHaveFocus();
+    });
   });
 
   describe('positive cases', () => {
@@ -340,6 +412,49 @@ describe('CategoryScreen', () => {
       await vi.waitFor(() => {
         expect(revealed).toStrictEqual([{ finding: 1 }]);
       });
+    });
+
+    it('Ignore this item asks the core to ignore that finding', async () => {
+      const ignored: unknown[] = [];
+      core({
+        ignore: (args) => {
+          ignored.push(args);
+
+          return null;
+        },
+      });
+      await renderDetails('demo.caches');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Options for Example: editor-cache' }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Ignore this item' }));
+
+      await vi.waitFor(() => {
+        expect(ignored).toStrictEqual([{ target: { finding: 1, kind: 'finding' } }]);
+      });
+    });
+
+    it('the menu item carries its sentence', async () => {
+      core();
+      await renderDetails('demo.caches');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Options for Example: editor-cache' }));
+
+      expect(await screen.findByRole('menuitem', { name: 'Ignore this item' })).toHaveAccessibleDescription(
+        'Hides it, and everything inside it, from the results and never removes it. You can restore it in Settings.',
+      );
+    });
+
+    it('when the last row leaves, the focus goes to Back to Scan', async () => {
+      core();
+      const { store } = await renderDetails('demo.caches');
+      const options = await screen.findByRole('button', { name: 'Options for Example: editor-cache' });
+      options.focus();
+
+      act(() => {
+        store.dispatch({ overview: WITHOUT_CACHES, type: 'overview-loaded' });
+      });
+
+      expect(screen.getByRole('button', { name: 'Back to Scan' })).toHaveFocus();
     });
   });
 });

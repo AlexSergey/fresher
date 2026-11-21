@@ -186,7 +186,9 @@ cleanups of a hundred items through the real journal.
   cleanup); `flows.spec.ts` walks select → review → confirm to the Trash → progress → result → Cleanups → put back,
   the permanent path, Stop mid-cleanup, the items left out, a refused plan and the quit question;
   its ignore part (`e2e/support/ignore-mock.ts`, `SCRIPTS.ignoring`) answers `ignore` and `restore_ignored` for
-  modules, groups and items and keeps the lists for the session; `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
+  modules, groups and items (`ignore` with a finding, `restore_ignored` with a path) and keeps the lists for the
+  session; `get_findings` leaves out the findings at or inside an ignored path, but the category totals are not
+  recomputed; `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
   reference engine (the app runs in WebKit on macOS); Chromium runs too. The suite runs on `npm run build:e2e` (the
   app and the gallery in `dist-e2e/`), served with the app's production CSP; every spec checks that the policy
   refused nothing. The screenshots are compared only on the developer's Mac, by the pre-push checks: the CI runner has
@@ -195,7 +197,9 @@ cleanups of a hundred items through the real journal.
   Tab skips buttons. When the runner has the developer's macOS version, CI can compare the screenshots again.
 - **The Scan screen's flows** (`e2e/scan.spec.ts`, `e2e/flows.spec.ts`): the ring and the legend highlight each other
   and the legend's "i" opens the core's description; a card's settings menu opens, closes on Escape and works by
-  keyboard (Ignore category, Ignore module); a zone's Select all ticks only that zone; a card's Details opens the
+  keyboard (Ignore category, Ignore module); a finding row's menu on a category's details closes on Escape,
+  ignores one item by keyboard (the row leaves and the focus goes to its neighbour), Restore in Settings brings it
+  back, and Review's rows have no menu; a zone's Select all ticks only that zone; a card's Details opens the
   category's details with every finding; the selection bar shows on Scan and on the details; the short window's
   sidebar scrolls to Settings (`e2e/layout.spec.ts`).
 - **The gallery** (`app/ui/gallery.html`, `src/gallery/`): every component in every state, each `*.stories.tsx`

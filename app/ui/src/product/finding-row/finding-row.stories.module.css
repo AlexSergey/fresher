@@ -3,4 +3,9 @@
   .frame {
     display: grid;
   }
+
+  /* Room under the row for its open menu, which hangs below it. */
+  .frame[data-menu-open] {
+    padding-bottom: 110px;
+  }
 }

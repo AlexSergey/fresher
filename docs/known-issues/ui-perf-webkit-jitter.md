@@ -9,6 +9,11 @@ the idle calibration reads 19 ms, or on a single frame over 50 ms in "dialog ope
 reference Mac while plan 027 was checked: once on the branch (three soft failures in the 50,000-finding scan and the
 transitions), once on `main` (the scan test). A rerun with the same code passes with every row at 19 ms or less.
 
+On 2026-11-21, while plan 028 was checked, the same rows failed three times in a row on both plan 027's head
+(951a8e79) and the branch ("a category's details after a scan" p95 21 to 24 ms against an idle row of 19, one frame
+over 50 ms; "re-sort of 12 cards" 21 ms): the Mac was in a noisy spell and the base fails identically, so the code is
+not the cause.
+
 ## Cause
 
 WebKit's frame clock counts whole milliseconds and jitters ([`perf.spec.ts`](../../app/ui/e2e/perf.spec.ts), the

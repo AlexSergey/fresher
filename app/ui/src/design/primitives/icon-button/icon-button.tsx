@@ -21,6 +21,7 @@ export type IconButtonProps = Forced & {
   readonly onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
   readonly ref?: Ref<HTMLButtonElement>;
   readonly size?: ButtonSize;
+  readonly tabIndex?: -1 | 0;
   readonly variant?: 'ghost' | 'secondary';
 };
 
@@ -33,6 +34,7 @@ export const IconButton = ({
   onKeyDown,
   ref,
   size = 'medium',
+  tabIndex,
   variant = 'ghost',
   ...forced
 }: IconButtonProps): JSX.Element => (
@@ -48,6 +50,7 @@ export const IconButton = ({
         onClick={onClick}
         onKeyDown={onKeyDown}
         ref={ref}
+        tabIndex={tabIndex}
         type="button"
       >
         <Icon icon={icon} />

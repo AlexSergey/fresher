@@ -57,8 +57,9 @@ const slotOf = (target: EventTarget | null): HTMLElement | null =>
 const rowOf = (slot: Element): Element | null => slot.firstElementChild?.firstElementChild ?? null;
 
 // A long list that renders only the rows in view and an overscan of 6 around them, each placed by its index. One tab
-// stop, moved by the arrows, Home, End and Page Up and Down; Space toggles the focused row. A row whose index changes
-// glides from its old place; rows new in view (not scrolled into it) fade and rise in with the stagger.
+// stop, moved by the arrows, Home, End and Page Up and Down; Space toggles the focused row; a key on a control inside a
+// row is the control's. A row whose index changes glides from its old place; rows new in view (not scrolled into it)
+// fade and rise in with the stagger.
 export const VirtualList = <T,>({
   count,
   getItem,
@@ -150,16 +151,18 @@ export const VirtualList = <T,>({
       return;
     }
 
+    const row = slot === null ? null : rowOf(slot);
+
+    // Only the row itself: a control inside it handles its own keys.
+    if (row === null || row !== event.target) {
+      return;
+    }
+
     if (event.key === ' ') {
-      const row = slot === null ? null : rowOf(slot);
+      event.preventDefault();
 
-      // Only the row itself: a control inside it handles its own Space.
-      if (slot !== null && row !== null && row === event.target) {
-        event.preventDefault();
-
-        if (!row.hasAttribute('data-disabled')) {
-          onToggle?.(Number(slot.dataset.index));
-        }
+      if (slot !== null && !row.hasAttribute('data-disabled')) {
+        onToggle?.(Number(slot.dataset.index));
       }
 
       return;

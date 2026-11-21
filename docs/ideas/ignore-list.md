@@ -4,13 +4,16 @@
 
 **Taken by plan [005](../plans/005-settings/readme.md)** (2026-11-16): a category is ignored by its id and an item by its
 path; ignored things leave every answer and are never removed; the settings list them with Restore; no expiry, and an
-ignore holds while the path is the same. The Ignore button on a single item is
-[deferred](../deferred/ignore-an-item-button.md).
+ignore holds while the path is the same. The Ignore button on a single item was taken by
+[plan 028](../plans/028-ignore-item/readme.md).
 
 **Taken by plan [015](../plans/015-module-groups/readme.md)** (2026-11-17): a whole module and a whole group of
 modules can be ignored, from the module's page and from Settings (three tabs: groups, modules, items); an ignored
-module stays in the sidebar, dimmed, and is restored without a rescan. The Ignore button on a single item stays
-[deferred](../deferred/ignore-an-item-button.md).
+module stays in the sidebar, dimmed, and is restored without a rescan. The Ignore button on a single item was taken by
+[plan 028](../plans/028-ignore-item/readme.md).
+
+**Taken by plan [028](../plans/028-ignore-item/readme.md)** (2026-11-21): a single item is ignored from its row's
+settings menu on a category's details, and restored in Settings → Ignored → Ignored items.
 
 ## Problem
 

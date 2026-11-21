@@ -161,6 +161,25 @@ describe('VirtualList', () => {
       expect(onToggle).not.toHaveBeenCalled();
     });
 
+    it('an arrow on a control inside a row does not move the list', () => {
+      render(
+        list({
+          count: 3,
+          renderRow: (_index, item, props) => (
+            <ListRow {...props} leading={<button type="button">Pick</button>} title={item ?? ''} />
+          ),
+        }),
+      );
+      const [pick] = screen.getAllByRole('button', { name: 'Pick' });
+
+      act(() => {
+        pick?.focus();
+      });
+      press('ArrowDown');
+
+      expect(pick).toHaveFocus();
+    });
+
     it('keys on an empty list do nothing', () => {
       const onToggle = vi.fn();
       render(list({ count: 0, onToggle }));

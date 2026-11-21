@@ -3,13 +3,15 @@ import { expect, type Page, test } from '@playwright/test';
 import type {
   CleanupPlanView,
   CleanupsPage,
+  Event,
+  Finding,
   FindingsPage,
   FindingsQuery,
   Overview,
 } from '../src/ipc/bindings.generated';
 
 import { COMMANDS } from '../src/ipc';
-import { GRANTED, IDLE } from '../src/test/demo-scan';
+import { DEMO_FINDINGS, DEMO_SCAN, GRANTED, IDLE } from '../src/test/demo-scan';
 import { largeScan } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
 import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
@@ -65,7 +67,33 @@ const getOverview = (page: Page): Promise<Overview> =>
     return (await internals?.invoke(command, {})) as Overview;
   }, COMMANDS.getOverview);
 
+const DEMO_QUERY: FindingsQuery = { category: 'demo.caches', limit: 10, module: 'demo', offset: 0, order: 'largest' };
+
+const idsOf = (answered: FindingsPage): readonly number[] => answered.findings.map((finding) => finding.id);
+
+// The demo scan with a finding inside the editor cache and a sibling whose name only starts the same.
+const [FIRST_FINDING] = DEMO_FINDINGS as readonly [(typeof DEMO_FINDINGS)[number]];
+const INSIDE: Finding = { ...FIRST_FINDING, id: 9, subject: { kind: 'path', value: '/demo/editor-cache/inner' } };
+const SIBLING: Finding = { ...FIRST_FINDING, id: 10, subject: { kind: 'path', value: '/demo/editor-cache-old' } };
+const NESTED_SCAN: readonly Event[] = [
+  ...DEMO_SCAN.slice(0, 3),
+  { findings: [INSIDE, SIBLING], scan: 1, type: 'findings-added' },
+  ...DEMO_SCAN.slice(3),
+];
+
 test.describe('negative cases', () => {
+  test('a finding outside the ignored paths stays', async ({ page }) => {
+    await mockCore(page, SCRIPTS.ignoring);
+    await page.goto('/');
+    await scanButton(page).click();
+
+    await call(page, COMMANDS.ignore, { target: { finding: 1, kind: 'finding' } });
+    const answered = await getFindings(page, DEMO_QUERY);
+
+    expect(idsOf(answered)).toStrictEqual([3]);
+    expect(answered.total).toBe(1);
+  });
+
   test('has no findings before a scan', async ({ page }) => {
     await mockCore(page, { answers, scan: SCAN.events });
     await page.goto('/');
@@ -75,6 +103,33 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('an ignored path takes a finding inside it, not a sibling that shares its start', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.ignoring, scan: NESTED_SCAN });
+    await page.goto('/');
+    await scanButton(page).click();
+
+    await call(page, COMMANDS.ignore, { target: { finding: 1, kind: 'finding' } });
+    const answered = await getFindings(page, DEMO_QUERY);
+
+    expect(idsOf(answered)).toStrictEqual([10, 3]);
+    expect(answered.total).toBe(2);
+  });
+
+  test('an ignored path leaves get_findings with what is inside it, and a restore brings it back', async ({ page }) => {
+    await mockCore(page, SCRIPTS.ignoring);
+    await page.goto('/');
+    await scanButton(page).click();
+
+    await call(page, COMMANDS.ignore, { target: { finding: 1, kind: 'finding' } });
+    const hidden = await getFindings(page, DEMO_QUERY);
+    await call(page, COMMANDS.restoreIgnored, { entry: { kind: 'path', path: '/demo/editor-cache' } });
+    const restored = await getFindings(page, DEMO_QUERY);
+
+    expect(idsOf(hidden)).toStrictEqual([3]);
+    expect(hidden.total).toBe(1);
+    expect(restored).toEqual(pageOf(DEMO_FINDINGS, DEMO_QUERY));
+  });
+
   test('pages through the findings of the scan by category and order', async ({ page }) => {
     await mockCore(page, { answers, scan: SCAN.events, scanned: SCAN.overview });
     await page.goto('/');

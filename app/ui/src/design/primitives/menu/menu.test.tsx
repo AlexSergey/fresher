@@ -33,6 +33,24 @@ describe('Menu', () => {
       expect(trigger).toHaveAttribute('aria-expanded', 'false');
     });
 
+    it('a trigger with tabIndex -1 is out of the tab order but still opens on a click', () => {
+      render(
+        <Menu
+          icon={Settings}
+          items={[{ key: 'a', label: 'Ignore', onSelect: vi.fn() }]}
+          label="Options"
+          tabIndex={-1}
+        />,
+      );
+      const trigger = screen.getByRole('button', { name: 'Options' });
+
+      expect(trigger).toHaveAttribute('tabindex', '-1');
+
+      fireEvent.click(trigger);
+
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
     it('closes on Escape and gives the focus back to the trigger', () => {
       const trigger = setup();
       fireEvent.click(trigger);

@@ -1,4 +1,4 @@
-import { type CSSProperties, type JSX, useId } from 'react';
+import { type CSSProperties, type JSX, useId, useLayoutEffect, useRef } from 'react';
 
 import type { CategoryId, LeftOutCount, ModuleInfo } from '../../ipc/bindings.generated';
 
@@ -69,6 +69,19 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
   const named = { name: { kind: 'text', value: name } } as const;
   const count = total?.count ?? 0;
   const ownLeftOut = leftOut.filter((one) => one.category === category);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const previousCountRef = useRef(count);
+
+  // The last row left (it was ignored, not a scan starting): the focus fell to the page, so it goes to the screen's
+  // first control.
+  useLayoutEffect(() => {
+    const focused = document.activeElement;
+
+    if (!scanning && previousCountRef.current > 0 && count === 0 && (focused === null || focused === document.body)) {
+      backRef.current?.focus();
+    }
+    previousCountRef.current = count;
+  }, [count, scanning]);
 
   return (
     <>
@@ -88,6 +101,7 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
             onClick={() => {
               navigation.navigate({ from: category, kind: 'scan' });
             }}
+            ref={backRef}
             variant="ghost"
           >
             {t('ui.screen.category.back')}

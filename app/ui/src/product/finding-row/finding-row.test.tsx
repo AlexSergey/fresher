@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { MenuItem } from '../../design/primitives/menu/menu';
+
 import { setCoreDictionary } from '../../i18n';
 import {
   ADMIN_EXTERNAL_FINDING,
@@ -20,12 +22,45 @@ const inList = (row: React.JSX.Element): void => {
   render(<div role="list">{row}</div>);
 };
 
+const MENU = (onSelect: () => void): readonly MenuItem[] => [
+  { description: 'Hides it and never removes it.', key: 'ignore', label: 'Ignore this item', onSelect },
+];
+
 beforeEach(() => {
   setCoreDictionary(FINDING_DICTIONARY);
 });
 
 describe('FindingRow', () => {
   describe('negative cases', () => {
+    it('has no menu without items', () => {
+      inList(<FindingRow finding={SAFE_FINDING} onToggle={vi.fn()} selected={false} tabIndex={0} />);
+
+      expect(screen.queryByRole('button', { name: /^Options for/ })).not.toBeInTheDocument();
+    });
+
+    it('a row with an empty menu keeps the menu column and exposes no button', () => {
+      const { container } = render(
+        <div role="list">
+          <FindingRow finding={SAFE_FINDING} menu={[]} onToggle={vi.fn()} selected={false} tabIndex={0} />
+        </div>,
+      );
+
+      expect(screen.queryByRole('button', { name: /^Options for/ })).not.toBeInTheDocument();
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- the placeholder is hidden decoration with no role
+      expect(container.querySelector('[aria-hidden="true"][class*="menu"]')).toBeInTheDocument();
+    });
+
+    it('the menu button of a row that is not the tab stop is out of the tab order', () => {
+      inList(
+        <FindingRow finding={SAFE_FINDING} menu={MENU(vi.fn())} onToggle={vi.fn()} selected={false} tabIndex={-1} />,
+      );
+
+      expect(screen.getByRole('button', { name: 'Options for Example: editor-cache' })).toHaveAttribute(
+        'tabindex',
+        '-1',
+      );
+    });
+
     it('a row whose page is loading is a skeleton, not an empty row', () => {
       inList(<FindingRow finding={undefined} onToggle={vi.fn()} selected={false} tabIndex={0} />);
 
@@ -117,6 +152,29 @@ describe('FindingRow', () => {
   });
 
   describe('positive cases', () => {
+    it('the menu button of the focused row is reached with Tab and named after the finding', () => {
+      inList(
+        <FindingRow finding={SAFE_FINDING} menu={MENU(vi.fn())} onToggle={vi.fn()} selected={false} tabIndex={0} />,
+      );
+
+      expect(screen.getByRole('button', { name: 'Options for Example: editor-cache' })).toHaveAttribute(
+        'tabindex',
+        '0',
+      );
+    });
+
+    it('choosing an item calls it once', () => {
+      const onSelect = vi.fn();
+      inList(
+        <FindingRow finding={SAFE_FINDING} menu={MENU(onSelect)} onToggle={vi.fn()} selected={false} tabIndex={0} />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example: editor-cache' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ignore this item' }));
+
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
     it('reads title, level and size, and the reason as its description', () => {
       inList(<FindingRow finding={SAFE_FINDING} onToggle={vi.fn()} selected={false} />);
 

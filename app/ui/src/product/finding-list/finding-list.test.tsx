@@ -57,6 +57,12 @@ afterEach(() => {
 
 describe('FindingList', () => {
   describe('negative cases', () => {
+    it('rows have no menu without menuOf', () => {
+      render(list());
+
+      expect(screen.queryByRole('button', { name: /^Options for/ })).not.toBeInTheDocument();
+    });
+
     it('a row whose page is loading is a skeleton, not an empty row', () => {
       render(list({ rowAt: (index) => (index === 0 ? HIGH_FINDING : undefined), total: 40 }));
 
@@ -147,6 +153,18 @@ describe('FindingList', () => {
   });
 
   describe('positive cases', () => {
+    it('every loaded row gets the items of menuOf', () => {
+      const onSelect = vi.fn();
+      render(list({ menuOf: () => [{ key: 'ignore', label: 'Ignore this item', onSelect }] }));
+
+      expect(screen.getAllByRole('button', { name: /^Options for/ })).toHaveLength(FINDINGS.length);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example: editor-cache' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ignore this item' }));
+
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
     it("a row's Show in Finder reaches the list's handler", () => {
       const onReveal = vi.fn();
       render(list({ onReveal, rowAt: () => ADMIN_FINDING, total: 1 }));

@@ -471,6 +471,33 @@ test.describe('negative cases', () => {
     await expect(cards(page)).toHaveCount(2);
     await expect(page.getByText(/you ignored/u)).toHaveCount(0);
   });
+
+  test("the row's menu closes on Escape and ignores nothing", async ({ page }) => {
+    await openIgnoring(page);
+    await openDetails(page, 'Example caches');
+    const options = page.getByRole('button', { name: 'Options for Example: editor-cache' });
+
+    await options.click();
+    await expect(page.getByRole('menuitem', { name: 'Ignore this item' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(options).toBeFocused();
+    await expect(page.getByRole('list', { name: 'The items of Example caches' }).getByRole('listitem')).toHaveCount(2);
+    const recorded = await page.evaluate(() => sessionStorage.getItem('fresher.mock.ignore'));
+    expect(JSON.parse(recorded ?? 'null')).toBeNull();
+  });
+
+  test("Review's rows have no menu", async ({ page }) => {
+    await openTemp(page);
+    await page.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
+
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+
+    await expect(heading(page, 'Review')).toBeFocused();
+    await expect(page.getByRole('list', { name: `The items of ${TEMP_CATEGORY}` })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Options for / })).toHaveCount(0);
+  });
 });
 
 test.describe('positive cases', () => {
@@ -485,6 +512,57 @@ test.describe('positive cases', () => {
     await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
     const recorded = await page.evaluate(() => sessionStorage.getItem('fresher.mock.ignore'));
     expect(JSON.parse(recorded ?? 'null')).toMatchObject({ categories: ['demo.caches'] });
+  });
+
+  test('Ignore this item takes the row out of the details and the focus to the next row', async ({ page }) => {
+    await openIgnoring(page);
+    await openDetails(page, 'Example caches');
+    const list = page.getByRole('list', { name: 'The items of Example caches' });
+
+    await page.getByRole('button', { name: 'Options for Example: editor-cache' }).click();
+    await page.getByRole('menuitem', { name: 'Ignore this item' }).click();
+
+    await expect(list.getByRole('listitem')).toHaveCount(1);
+    await expect(list).not.toContainText('Example: editor-cache');
+    await expect(list.getByRole('listitem')).toBeFocused();
+    const recorded = await page.evaluate(() => sessionStorage.getItem('fresher.mock.ignore'));
+    expect(JSON.parse(recorded ?? 'null')).toMatchObject({ paths: ['/demo/editor-cache'] });
+  });
+
+  test('Settings lists the ignored item by its path and Restore brings its row back', async ({ page }) => {
+    await openIgnoring(page);
+    await openDetails(page, 'Example caches');
+    await page.getByRole('button', { name: 'Options for Example: editor-cache' }).click();
+    await page.getByRole('menuitem', { name: 'Ignore this item' }).click();
+    const list = page.getByRole('list', { name: 'The items of Example caches' });
+    await expect(list.getByRole('listitem')).toHaveCount(1);
+
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored items/ }).click();
+    const restore = page.getByRole('button', { name: 'Restore /demo/editor-cache' });
+    await expect(restore).toBeVisible();
+    await restore.click();
+    await expect(page.getByText('Nothing is ignored.')).toBeVisible();
+    await navScan(page).click();
+    await openDetails(page, 'Example caches');
+
+    await expect(list.getByRole('listitem')).toHaveCount(2);
+    await expect(list).toContainText('Example: editor-cache');
+  });
+
+  test("ignoring one item by keyboard alone: Tab to the row's menu, ArrowDown, Enter", async ({ page }) => {
+    await openIgnoring(page);
+    await openDetails(page, 'Example caches');
+    const list = page.getByRole('list', { name: 'The items of Example caches' });
+
+    await tabTo(page, page.getByRole('button', { name: 'Options for Example: editor-cache' }));
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem', { name: 'Ignore this item' })).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(list.getByRole('listitem')).toHaveCount(1);
+    await expect(list).not.toContainText('Example: editor-cache');
+    await expect(list.getByRole('listitem')).toBeFocused();
   });
 
   test("the card's menu works by keyboard alone", async ({ page }) => {
