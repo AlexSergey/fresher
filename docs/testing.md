@@ -156,10 +156,20 @@ cleanups of a hundred items through the real journal.
   skipped in use, the project's link stays a link after the cleanup, the sizes of each category, scan, confirm with
   Medium, Trash and put back byte for byte (`fixtures/golden/local-ai-models-flow.json`), and a restore at launch that
   offers the same models.
+  `tests/unused_toolchains.rs` runs the `unused-toolchains` module's flows alone over
+  `fixtures/homes/unused-toolchains-flow.toml` (rustup's default, a moving channel, an old toolchain, a dated nightly and
+  one a project's `rust-toolchain.toml` names; nvm's default, the newest Node version and an old one; no stored
+  settings, so the flow turns the Node switch on through `update_setting`): the default, the channel, the pinned
+  toolchain and nvm's default and newest are never offered, a `.nvmrc` written between two scans keeps its version on
+  the rescan, a version with its `bin/node` held open is skipped in use, the sizes of each category, scan, confirm with
+  Medium, Trash and put back byte for byte, `settings.toml` and the pins untouched
+  (`fixtures/golden/unused-toolchains-flow.json`), and a restore at launch that reads the pins again (a pin changed
+  since moves the offer from one toolchain to another).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
   pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
-  `app_leftovers_home`, `local_ai_models_home`) share one harness there, one file per concern: `home.rs` (the sandbox's layout and the
-  `Flow`), `home_engine.rs` (the engine assembled from the parts a home gives: its modules, its fakes, its avoid list),
+  `app_leftovers_home`, `local_ai_models_home`, `unused_toolchains_home`) share one harness there, one file per
+  concern: `home.rs` (the sandbox's layout and the `Flow`), `home_engine.rs` (the engine assembled from the parts a home
+  gives: its modules, its fakes, its avoid list),
   `home_scan.rs` (the scans and the findings), `home_rescan.rs` (the scripted change journal and a scan that must be a
   rescan) and `home_cleanup.rs` (the cleanup, the outcomes, the journal's records and the relative report); each home
   keeps only its module's own.
@@ -318,6 +328,8 @@ target = "Library/Caches/com.example.editor/Cache.db"
 # `fill = "data"` writes real bytes of a fixed pattern instead of a sparse file, so freed space can be measured
 # (at most 64 MiB a file and 512 MiB a description; a larger one is refused). `fill = "cachedir-tag"` writes a valid
 # cache directory tag (its standard signature line, then a comment), never with a `size` or a `kind`.
+# `text = "..."` writes the file's bytes as UTF-8 (at most 4096, the small-file reader's limit; its size is theirs),
+# never with a `size`, a `fill` or a `kind`: a pin, a manager's settings file or a pointer a module reads in `finish`.
 [[file]]
 path = "Library/Caches/com.example.editor/old.bin"
 size = 1048576
@@ -389,8 +401,10 @@ folders allow (`[access]`), the macOS version (`macos`) and the installer receip
 its times in seconds since the epoch, its owner, flags and kind). The sandbox's known folders `UserTemp` and
 `SharedTemp` are those two places, never the Mac's, and a list of its own protects them as the Mac's list protects
 the real ones (`Sandbox::places_protection`: every user's folders and `private/var/tmp` never, the sandbox's `T` carved
-out and kept whole, its `TemporaryItems` never, `private/tmp` whole); the Mac's lists never carve the sandbox's `T`. Sandbox mode's clock starts at that `now`, and the autotest's clock stands at it. `all` writes every case file into one sandbox, joins their worlds, and refuses a path two of them
-write.
+out and kept whole, its `TemporaryItems` never, `private/tmp` whole); the Mac's lists never carve the sandbox's
+`T`. Sandbox mode's clock starts at that `now`, and the autotest's clock stands at it. `all` writes every case file
+into one sandbox, joins their worlds, and leaves out whole a file that writes a path an earlier file wrote (named on
+stderr and in `EXPECTED.md`).
 
 - It refuses a folder that is not empty and holds no valid marker, and a folder the real Mac's protection list
   refuses (the home itself, a protected place or an ancestor of one).
@@ -487,6 +501,25 @@ The case files:
   `home/Code` is dated once, in the first positive, because a negative owns every folder above its paths and none may
   own the folder holding another case's offer.
 
+- `unused-toolchains.toml`, `unused-toolchains-unknown.toml`, `unused-toolchains-off.toml` and
+  `unused-toolchains-documents-denied.toml`: the `unused-toolchains` module, with access to Desktop, Documents and
+  Downloads granted in the first (the module needs them, since its pins may be there) and the Node switch on. Rustup's
+  default and its override, a moving channel, a toolchain a project's `rust-toolchain.toml` (in Documents too), a legacy
+  `rust-toolchain` or a `.tool-versions` names, a linked toolchain and a folder off the shape, nvm's default, the newest
+  Node version, an alias and its chain, a project's `.nvmrc` (in Documents too) and a `.node-version` are never
+  offered; a toolchain holding a socket is left out (`special`); an old toolchain and a dated nightly go to the Trash as
+  Low, an old Node version (and one only a pin inside `node_modules` names) as Medium. The second has no rustup settings
+  (`default-unknown`) and an nvm pin nothing resolves (`pin-unknown`); the third has the Node switch off (no Node
+  version offered or left out, a toolchain still goes); the fourth denies Documents (the module is not run, nothing is
+  offered). The settings and the access are shared by every case of a file and rustup's and nvm's pointer files sit
+  at fixed places, so each world is a file of its own, and they write the same `home/.rustup/settings.toml` and
+  `home/.nvm/alias/default`: `npm run sandbox -- all` orders the case files by file name without `.toml` (so a base
+  file precedes its variants) and leaves out whole a file that writes a path an earlier file wrote, naming it on
+  stderr and in `EXPECTED.md`; each runs by name. In `all` the main file is written but the module does not
+  run there: `downloads-denied.toml` denies Downloads for every case file and the module needs it; a run by hand uses
+  the feature's own sandbox
+  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+
 - `temp.toml`: the `temp` module, in the sandbox's two temporary places, with stated facts for what the disk cannot
   make. A fresh file, a folder unpacked with old modification times, an old folder with one file changed a day ago,
   an old file read a day ago, six days, a future time, an open app's items (also a hidden one), the system's and
@@ -496,7 +529,9 @@ The case files:
   the home are never claimed, nor the target of a link; an old file, an old folder, your old item in `private/tmp`,
   an installed app's folder, seven days and one second, and an old link (as itself) go to the Trash.
 
-A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox.
+A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox;
+a file that writes a path an earlier file wrote is left out of `all` whole, named on stderr and in `EXPECTED.md`, and is
+written by name (`npm run sandbox -- <name>`).
 
 `npm run sandbox:test` (`app/tauri/tests/sandboxes.rs`) is the autotest of every case file, one `#[test]` each, listed
 in its `case_files!`, run one at a time (the nextest test group `sandboxes`, `.config/nextest.toml`); a scan or a
@@ -627,6 +662,16 @@ scanned, as on the real Mac before access is granted (plan 006). A case file the
 scan keeps out. The exception is a folder the world states `access` for: the standing avoid list then leaves its
 place in `home/` to the engine's coverage, which decides it as on a Mac (walked when granted, tried once its switch is
 on when not asked, skipped when denied); the real home's places stay avoided whatever the world says.
+
+A case file may also have a file-level `[settings]` table, beside `feature` and `module`: the values of the
+modules' settings, by key `<module>.<name>` in kebab case, each a bool, an integer or a string
+(`"unused-toolchains.node-versions" = true`). A module's off-by-default switch is turned on this way. Like
+`[[case.running]]` the table is shared by every case of the file. The generator writes it into the sandbox's data
+folder's settings file, in the format the app's store reads, before the app starts (none is written when no file has the
+table), and the autotest runs the engine on it: a key the registered modules do not know or a value of the wrong kind
+fails the run, naming the key. In `npm run sandbox -- all`, two files that set one key to different values are
+refused, as a path written twice is. A settings file left from an earlier run, or written by the app, stays when the
+sandbox is regenerated; `rm -rf sandbox/<feature>` resets it.
 
 ### Sandbox mode
 

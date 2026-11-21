@@ -13,7 +13,7 @@ use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
     AccessProbe, Build, Clock, CommandRunner, FolderReader, InstallRecords, InstalledApps, KnownFolders, Module,
-    ModuleId, Protection, ProtectionError, RunningApps, SchemaError, SystemPorts, Volumes,
+    ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 #[cfg(not(debug_assertions))]
@@ -61,6 +61,8 @@ pub(crate) enum ComposeError {
     StaleProjects(#[from] fresher_module_stale_projects::StaleProjectsError),
     #[error("the local-ai-models module cannot be built: {0}")]
     LocalAiModels(#[from] fresher_module_local_ai_models::LocalAiModelsError),
+    #[error("the unused-toolchains module cannot be built: {0}")]
+    UnusedToolchains(#[from] fresher_module_unused_toolchains::UnusedToolchainsError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -285,6 +287,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         ..ScannerOptions::default()
     };
     let journal = MacChangeJournal::new().with_time_limit(JOURNAL_TIME_LIMIT);
+    let system = system_ports(Arc::clone(&known_folders), apps, running, installs, &reader);
     let walk = Scanner::new(
         reader,
         volumes,
@@ -301,9 +304,21 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         commands,
         access,
         system_ui,
-        system: SystemPorts { known_folders: Arc::clone(&known_folders), apps, running, installs },
+        system,
     };
     Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup)?)
+}
+
+/// The system's ports, whose small files are read through `reader`, the walk's own (in sandbox mode the sandbox's
+/// stated lens over it), so a module reads a file as the walk would.
+fn system_ports(
+    known_folders: Arc<dyn KnownFolders>,
+    apps: Arc<dyn InstalledApps>,
+    running: Arc<dyn RunningApps>,
+    installs: Arc<dyn InstallRecords>,
+    reader: &Arc<dyn FolderReader>,
+) -> SystemPorts {
+    SystemPorts { known_folders, apps, running, installs, files: Arc::new(ReaderFiles(Arc::clone(reader))) }
 }
 
 /// What a cleanup goes through: a cleaner with `reach`, acting as the user who runs the app, kept from the protected
@@ -408,6 +423,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_downloads::DownloadsModule::new()?),
         Box::new(fresher_module_stale_projects::StaleProjectsModule::new()?),
         Box::new(fresher_module_local_ai_models::LocalAiModelsModule::new()?),
+        Box::new(fresher_module_unused_toolchains::UnusedToolchainsModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -421,12 +437,47 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
 
 #[cfg(test)]
 mod tests {
+    /// The system's ports of a home at `home` whose files are read through the sandbox's stated lens, as the sandbox's
+    /// engine reads them: the file `.nvmrc` stated changed at a fixed time.
+    fn lens_system(home: &std::path::Path) -> fresher_core::SystemFacts {
+        use std::sync::Arc;
+
+        use fresher_core::{FolderReader, Timestamp};
+        use fresher_macos::MacFolderReader;
+        use fresher_testing::{
+            FactsLens, FakeInstallRecords, FakeInstalledApps, FakeKnownFolders, FakeRunningApps, Stated, StatedFacts,
+        };
+
+        let mut stated = StatedFacts::new();
+        stated.insert(home.join(".nvmrc"), Stated { changed: Some(Timestamp::from_secs(7)), ..Stated::default() });
+        let reader: Arc<dyn FolderReader> = Arc::new(FactsLens::new(MacFolderReader::new(), stated));
+        let ports = super::system_ports(
+            Arc::new(FakeKnownFolders::home_layout(home)),
+            Arc::new(FakeInstalledApps::default()),
+            Arc::new(FakeRunningApps::default()),
+            Arc::new(FakeInstallRecords::default()),
+            &reader,
+        );
+        fresher_core::SystemFacts::new(&ports)
+    }
+
     mod negative {
         use std::path::Path;
 
         use crate::compose::{
             ComposeError, IoPolicy, MACOS_POLICY, bundle_of, checked_user_temp, engine, engine_with, normal,
         };
+
+        #[test]
+        fn the_systems_small_files_never_follow_a_link_through_the_lens() {
+            let home = tempfile::tempdir().unwrap();
+            std::fs::write(home.path().join("target"), "20\n").unwrap();
+            std::os::unix::fs::symlink(home.path().join("target"), home.path().join(".nvmrc")).unwrap();
+
+            let facts = super::lens_system(home.path());
+
+            assert_eq!(facts.small_file(home.path(), ".nvmrc"), fresher_core::SmallFile::NotAFile);
+        }
 
         #[test]
         fn the_normal_engine_has_no_standing_avoid_list() {
@@ -612,6 +663,16 @@ mod tests {
 
         use crate::compose::{bundle_of, checked_user_temp, engine, user_temp};
 
+        #[test]
+        fn the_systems_small_files_read_a_file_of_the_home_through_the_lens() {
+            let home = tempfile::tempdir().unwrap();
+            std::fs::write(home.path().join(".nvmrc"), "20\n").unwrap();
+
+            let facts = super::lens_system(home.path());
+
+            assert_eq!(facts.small_file(home.path(), ".nvmrc"), fresher_core::SmallFile::Text("20\n".into()));
+        }
+
         #[cfg(debug_assertions)]
         #[test]
         fn a_development_build_reaches_the_real_disk_without_acting() {
@@ -681,11 +742,21 @@ mod tests {
                     "downloads",
                     "stale-projects",
                     "local-ai-models",
+                    "unused-toolchains",
                     "demo",
                     "trial",
                 ]
             } else {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects", "local-ai-models"]
+                &[
+                    "jetbrains",
+                    "temp",
+                    "dev-caches",
+                    "app-leftovers",
+                    "downloads",
+                    "stale-projects",
+                    "local-ai-models",
+                    "unused-toolchains",
+                ]
             };
 
             let engine = engine(folder.path(), home.path()).unwrap();

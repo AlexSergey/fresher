@@ -195,10 +195,17 @@ test.describe('positive cases', () => {
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)', 'category-details-downloads.png'],
       ['staleProjects', 'Packages of old projects', '2 items left out', 'category-details-stale-projects.png'],
       ['localAiModels', 'Hugging Face models', '1 item left out (300 MB)', 'category-details-local-ai-models.png'],
+      [
+        'unusedToolchains',
+        'Unused Node versions (nvm)',
+        '1 item left out (110 MB)',
+        'category-details-unused-toolchains.png',
+      ],
     ] as const) {
       test(`of ${category}, with its left-out lines`, async ({ page }) => {
         await detailsAfter(page, SCRIPTS[script], category);
         await expect(details(page)).toContainText(line);
+        await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
 
         await looksTheSame(page, file);
       });
@@ -224,6 +231,13 @@ test.describe('positive cases', () => {
       await expect(page.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
 
       await looksTheSame(page, 'category-details-downloads-unavailable.png');
+    });
+
+    test('of an unused toolchains category before Documents is allowed', async ({ page }) => {
+      await detailsAfter(page, SCRIPTS.unusedToolchainsNoDocuments, 'Unused Rust toolchains');
+      await expect(page.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
+
+      await looksTheSame(page, 'category-details-unused-toolchains-unavailable.png');
     });
 
     test('of the caches of removed apps with Keep settings chosen', async ({ page }) => {

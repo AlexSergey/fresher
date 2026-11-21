@@ -221,6 +221,14 @@ impl World {
         {
             return Err(failure(name, format!("the app registers no module `{id}`")));
         }
+        // The case file's `[settings]` were stored before the app started: a key the registered modules do not know or
+        // a value of the wrong kind comes back as a problem of the stored settings.
+        let view =
+            engine.settings().map_err(|error| failure(name, format!("the settings cannot be read: {error:?}")))?;
+        if let Some(problem) = view.problems.first() {
+            let (key, problem) = (problem.key(), format!("{problem:?}"));
+            return Err(failure(name, format!("the setting `{key}` of the case file is refused: {problem}")));
+        }
         // The switch decides whether a guarded folder is read: the run turns on the switch of every stated folder,
         // as the user would before scanning it.
         for folder in world.stated_folders() {

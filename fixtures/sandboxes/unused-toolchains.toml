@@ -1,0 +1,246 @@
+# The unused-toolchains module: the old Rust toolchains rustup keeps and the Node versions nvm keeps that nothing points
+# at, offered one folder at a time. Toolchain and version folders hold one small `bin/` file filled with data;
+# pins and the managers' pointer files are `text`. Settings and access are shared by every case of a file, so
+# rustup's `settings.toml` and nvm's `alias/default` are written by one case each and every other case runs beside
+# them, and the first case states the access: the module needs Desktop, Documents and Downloads, where its pins may
+# be. The default and its override, a moving channel, a project's pin (in Documents too), an alias and its chain,
+# nvm's default, the newest Node version, a linked toolchain and a folder off the shape are never offered; a toolchain
+# holding a socket is left out (`special`); an old toolchain goes to the Trash as Low and an old Node version as
+# Medium. The worlds without rustup's settings, with the switch off and with Documents denied are the next files'.
+feature = "unused-toolchains"
+module = "unused-toolchains"
+
+[settings]
+"unused-toolchains.node-versions" = true
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "rustup's default and its override are never offered"
+kind = "negative"
+access = { desktop = "granted", documents = "granted", downloads = "granted" }
+[[case.file]]
+path = "home/.rustup/settings.toml"
+text = "default_toolchain = \"1.80.0-aarch64-apple-darwin\"\n\n[overrides]\n\"/Users/someone/work/old\" = \"nightly-2024-04-01-aarch64-apple-darwin\"\n"
+[[case.file]]
+path = "home/.rustup/toolchains/1.80.0-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.rustup/toolchains/nightly-2024-04-01-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a moving channel is never offered"
+kind = "negative"
+[[case.file]]
+path = "home/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.rustup/toolchains/nightly-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a toolchain a project's rust-toolchain.toml names is never offered, in Documents too"
+kind = "negative"
+[[case.file]]
+path = "home/Documents/dev/pinned/Cargo.toml"
+text = "[package]\nname = \"pinned\"\n"
+[[case.file]]
+path = "home/Documents/dev/pinned/rust-toolchain.toml"
+text = "[toolchain]\nchannel = \"1.79\"\n"
+[[case.file]]
+path = "home/.rustup/toolchains/1.79.0-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a legacy rust-toolchain file keeps its toolchain"
+kind = "negative"
+[[case.file]]
+path = "home/Code/legacy/rust-toolchain"
+text = "nightly-2024-03-01\n"
+[[case.file]]
+path = "home/.rustup/toolchains/nightly-2024-03-01-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a .tool-versions keeps its toolchain and its Node version"
+kind = "negative"
+[[case.file]]
+path = "home/Code/asdf/.tool-versions"
+text = "rust 1.77.2\nnodejs 18.19.0\n"
+[[case.file]]
+path = "home/.rustup/toolchains/1.77.2-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.nvm/versions/node/v18.19.0/bin/node"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a linked toolchain and a folder off the shape are never offered"
+kind = "negative"
+[[case.symlink]]
+path = "home/.rustup/toolchains/dev"
+target = "../../Code/rust/build/stage1"
+[[case.file]]
+path = "home/Code/rust/build/stage1/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.rustup/toolchains/my-custom/bin/rustc"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "nvm's default and the newest Node version are never offered"
+kind = "negative"
+[[case.file]]
+path = "home/.nvm/alias/default"
+text = "20\n"
+[[case.file]]
+path = "home/.nvm/versions/node/v20.11.0/bin/node"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.nvm/versions/node/v22.1.0/bin/node"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "an alias chain keeps its version"
+kind = "negative"
+[[case.file]]
+path = "home/.nvm/alias/myproj"
+text = "lts/hydrogen\n"
+[[case.file]]
+path = "home/.nvm/alias/lts/hydrogen"
+text = "v18.20.0\n"
+[[case.file]]
+path = "home/.nvm/versions/node/v18.20.0/bin/node"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a project's .nvmrc keeps its version, in Documents too"
+kind = "negative"
+[[case.file]]
+path = "home/Documents/dev/web/package.json"
+text = "{\"name\": \"web\"}\n"
+[[case.file]]
+path = "home/Documents/dev/web/.nvmrc"
+text = "16\n"
+[[case.file]]
+path = "home/.nvm/versions/node/v16.20.2/bin/node"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a .node-version keeps its version"
+kind = "negative"
+[[case.file]]
+path = "home/Code/app2/.node-version"
+text = "v19.9.0\n"
+[[case.file]]
+path = "home/.nvm/versions/node/v19.9.0/bin/node"
+size = 4096
+fill = "data"
+
+
+[[case]]
+name = "a toolchain with a socket inside is kept"
+kind = "negative"
+[[case.file]]
+path = "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin/lib/s"
+kind = "socket"
+[[case.left-out]]
+category = "unused-toolchains.rust"
+reason = "unused-toolchains.left-out.special"
+items = 1
+
+
+# Then the positive cases.
+
+
+[[case]]
+name = "an old toolchain nothing points at goes"
+kind = "positive"
+[[case.file]]
+path = "home/.rustup/toolchains/1.70.0-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.rustup/toolchains/1.70.0-aarch64-apple-darwin"
+category = "unused-toolchains.rust"
+danger = "low"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/.rustup/toolchains/1.70.0-aarch64-apple-darwin"
+
+
+[[case]]
+name = "a dated nightly nothing points at goes"
+kind = "positive"
+[[case.file]]
+path = "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin"
+category = "unused-toolchains.rust"
+danger = "low"
+after-cleanup = "in-trash"
+
+
+[[case]]
+name = "a pin inside node_modules keeps nothing"
+kind = "positive"
+[[case.file]]
+path = "home/Code/web3/package.json"
+text = "{\"name\": \"web3\"}\n"
+[[case.file]]
+path = "home/Code/web3/node_modules/dep/.nvmrc"
+text = "14\n"
+[[case.file]]
+path = "home/.nvm/versions/node/v14.21.3/bin/node"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.nvm/versions/node/v14.21.3"
+category = "unused-toolchains.node"
+danger = "medium"
+after-cleanup = "in-trash"
+
+
+[[case]]
+name = "an old Node version nothing points at goes, at Medium"
+kind = "positive"
+[[case.file]]
+path = "home/.nvm/versions/node/v12.22.12/bin/node"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.nvm/versions/node/v12.22.12"
+category = "unused-toolchains.node"
+danger = "medium"
+after-cleanup = "in-trash"

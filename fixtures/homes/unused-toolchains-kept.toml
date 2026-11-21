@@ -1,0 +1,197 @@
+# A home for the unused-toolchains module where each version it would offer is kept by a blocking condition: a
+# toolchain and a Node version with a socket inside (stated), and one with a file carrying the user's lock (stated).
+# The defaults are known and name the newest versions. Every folder is a dated `[[dir]]`.
+
+[[dir]]
+path = ".rustup"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/stable-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/stable-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.60.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.60.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.60.0-aarch64-apple-darwin/run"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.61.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.61.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.61.0-aarch64-apple-darwin/lib"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/alias"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v22.1.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v22.1.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.17.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.17.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.17.0/run"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.18.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.18.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.18.0/lib"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/settings.toml"
+text = "default_toolchain = \"stable-aarch64-apple-darwin\"\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+size = 300
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.60.0-aarch64-apple-darwin/bin/rustc"
+size = 300
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.60.0-aarch64-apple-darwin/run/listener"
+size = 0
+age = "40d"
+changed = "40d"
+kind = "socket"
+
+[[file]]
+path = ".rustup/toolchains/1.61.0-aarch64-apple-darwin/bin/rustc"
+size = 300
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.61.0-aarch64-apple-darwin/lib/not-yours"
+size = 100
+fill = "data"
+age = "40d"
+changed = "40d"
+flags = ["user-lock"]
+
+[[file]]
+path = ".nvm/alias/default"
+text = "v22.1.0\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v22.1.0/bin/node"
+size = 500
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v14.17.0/bin/node"
+size = 500
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v14.17.0/run/listener"
+size = 0
+age = "40d"
+changed = "40d"
+kind = "socket"
+
+[[file]]
+path = ".nvm/versions/node/v14.18.0/bin/node"
+size = 500
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v14.18.0/lib/not-yours"
+size = 100
+fill = "data"
+age = "40d"
+changed = "40d"
+flags = ["user-lock"]

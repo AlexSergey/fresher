@@ -54,6 +54,10 @@ pub enum FixtureError {
     KindWithFill { path: PathBuf },
     #[error("the file {path} is a cache directory tag and has a `size`: the tag's content sets it")]
     TagWithSize { path: PathBuf },
+    #[error("the file {path} has a `text` and a `{field}`: the text sets the size and the content")]
+    TextWith { path: PathBuf, field: &'static str },
+    #[error("the file {path} has a `text` of more than 4096 bytes: a small file is read whole")]
+    TextTooLong { path: PathBuf },
 }
 
 impl FixtureTree {

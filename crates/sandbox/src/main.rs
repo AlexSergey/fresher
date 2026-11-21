@@ -11,7 +11,7 @@ use std::process::ExitCode;
 use std::time::SystemTime;
 
 use fresher_core::{Protection, ProtectionError};
-use fresher_sandbox::{CaseFile, generate};
+use fresher_sandbox::{CaseFile, generate_leaving_out, without_clashes};
 
 const USAGE: &str = "usage: fresher-sandbox generate <feature|all> [--into <dir>]";
 /// The identifiers of the release app and of the development build: both data folders are protected like the app's
@@ -40,13 +40,22 @@ fn run(args: impl Iterator<Item = OsString>) -> Result<(), String> {
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
     let repository = fs::canonicalize(&repository).map_err(|error| format!("{}: {error}", repository.display()))?;
     let files = case_files(&repository.join("fixtures").join("sandboxes"), &command.feature)?;
+    let (files, left_out) = if command.feature == "all" {
+        without_clashes(files).map_err(|error| error.to_string())?
+    } else {
+        (files, Vec::new())
+    };
+    for file in &left_out {
+        report_left_out(&file.feature, &file.first, &file.path);
+    }
     let into = command.into.unwrap_or_else(|| repository.join("sandbox").join(&command.feature));
     // The binary's one home lookup: only for the real Mac's protection list, which keeps the sandbox off the home.
     #[expect(clippy::disallowed_methods, reason = "the home folder is looked up once per binary, here")]
     let home = std::env::home_dir().ok_or("the home folder is unknown")?;
     let protection = real_protection(&home).map_err(|error| error.to_string())?;
-    let generated = generate(&files, &into, SystemTime::now(), &protection, fresher_macos::current_user())
-        .map_err(|error| error.to_string())?;
+    let generated =
+        generate_leaving_out(&files, &left_out, &into, SystemTime::now(), &protection, fresher_macos::current_user())
+            .map_err(|error| error.to_string())?;
     report(&files, generated.sandbox.path(), &generated.strangers);
     Ok(())
 }
@@ -85,7 +94,8 @@ fn case_files(fixtures: &Path, feature: &str) -> Result<Vec<CaseFile>, String> {
             .map(|entry| entry.path())
             .filter(|path| path.extension().is_some_and(|extension| extension == "toml"))
             .collect();
-        paths.sort();
+        // By file stem, so a base file precedes its `-variant` files, whose clashes `all` then leaves out.
+        paths.sort_by(|a, b| a.file_stem().cmp(&b.file_stem()));
         paths
     } else {
         let mut name = Path::new(feature).components();
@@ -116,6 +126,15 @@ fn report(files: &[CaseFile], sandbox: &Path, strangers: &[PathBuf]) {
             println!("  {}", stranger.display());
         }
     }
+}
+
+#[expect(clippy::print_stderr, reason = "the command's warning")]
+fn report_left_out(feature: &str, first: &str, path: &Path) {
+    eprintln!(
+        "fresher-sandbox: `{feature}` is left out of `all`: it writes {}, which `{first}` writes too; \
+         write it by name: npm run sandbox -- {feature}",
+        path.display()
+    );
 }
 
 #[expect(clippy::print_stderr, reason = "the command's error")]
@@ -215,6 +234,21 @@ mod tests {
             let features: Vec<_> = all.iter().map(fresher_sandbox::CaseFile::feature).collect();
             assert_eq!(features, ["guards", "trial"]);
             assert_eq!(one[0].feature(), "trial");
+        }
+
+        /// `trial-off.toml` sorts before `trial.toml` by full name; by stem the base file comes first.
+        #[test]
+        fn all_puts_a_base_file_before_its_variants() {
+            let fixtures = tempfile::tempdir().unwrap();
+            for feature in ["trial-off", "trial", "trial-denied"] {
+                fs::write(fixtures.path().join(format!("{feature}.toml")), CASE_FILE.replace("trial", feature))
+                    .unwrap();
+            }
+
+            let all = case_files(fixtures.path(), "all").unwrap();
+
+            let features: Vec<_> = all.iter().map(fresher_sandbox::CaseFile::feature).collect();
+            assert_eq!(features, ["trial", "trial-denied", "trial-off"]);
         }
     }
 }

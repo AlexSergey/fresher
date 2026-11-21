@@ -14,8 +14,10 @@ workspace = true
 fresher-core = { path = "../core" }
 # The real Mac's protection list and user for the binary only.
 fresher-macos = { path = "../macos" }
+fresher-store = { path = "../store" }
 fresher-testing = { path = "../testing" }
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 

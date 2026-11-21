@@ -2,7 +2,7 @@
 //! fake Trash, fake external commands, fake volumes and change journal, an in-memory scan cache, fake open files, an
 //! in-memory cleanup journal, a fake cleaner, a fixed disk state, fake access and system interface, the reference
 //! walk, named pipes, a folder swapped for a link in a race, the facts a tree states and the lens that reports them
-//! over a real reader, and the module harness and contract checks.
+//! over a real reader, the small-file readers, and the module harness and contract checks.
 //!
 //! A test never touches the real home folder: it builds a [`FixtureTree`] in a temporary folder and gives the code
 //! under test that folder as its only root (docs/testing.md). A module's tests run it with [`run_module`] and check it
@@ -25,6 +25,7 @@ mod large_tree;
 mod naive_places;
 mod naive_walk;
 mod run_module;
+mod small_files;
 mod special_files;
 mod stated_apps;
 mod swapper;
@@ -48,6 +49,7 @@ pub use known_folders::FakeKnownFolders;
 pub use large_tree::{Expected, LargeTree, TreeSpec};
 pub use naive_walk::NaiveWalk;
 pub use run_module::{HarnessError, MatchOrder, ModuleRun, Ports, run_module};
+pub use small_files::{DiskFiles, NoFiles};
 pub use special_files::make_pipe;
 pub use stated_apps::StatedInstalledApps;
 pub use swapper::Swapper;

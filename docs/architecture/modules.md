@@ -9,7 +9,8 @@ describes each removal as data. This page is the pattern every module plan follo
 [017](../plans/017-temp-files/readme.md)) the example of a module that judges each item by its age and refuses it by
 its kind and owner, and `dev-caches` (`modules/dev-caches/`, plan
 [018](../plans/018-developer-caches/readme.md)) the example of a module with a data table of places and signs, and `local-ai-models` (`modules/local-ai-models/`, plan
-[023](../plans/023-local-ai-models/readme.md)) the example of a module with one finding per model, named from its folder. Set up by plan
+[023](../plans/023-local-ai-models/readme.md)) the example of a module with one finding per model, named from its folder, and `unused-toolchains` (`modules/unused-toolchains`, plan
+[024](../plans/024-unused-toolchains/readme.md)) the example of a module that reads small files and judges each version by what points at it. Set up by plan
 [002/06](../plans/002-base-architecture/06-module-kit/readme.md).
 
 ## The crate
@@ -126,6 +127,7 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 | `receipts()`                 | the installer receipts the system keeps (package file name, when installed); an error when the folder cannot be read; asked once per scan |
 | `system_version()`           | the version of the running macOS (`SystemVersion`, major and minor); an error when it cannot be read; asked once per scan |
 | `projects()`                 | the projects the walk found: root, kinds, artifact folders and Rust caches with their sizes and last change, and the last activity; `None` during the walk |
+| `small_file(folder, name)`   | a text file of at most 4 KiB, read whole at every call through the walk's reader (a regular file only, never a link); `Missing`, `NotAFile`, `TooLong`, `NotText`, `Unreadable` otherwise. Only for a file the module's own matches showed: a name its anchored interest holds, the marker of its marker match, or a file it matched |
 
 - An app is identified by its bundle id and team id only (`BundleId` compares ignoring case), never by a loose name.
   `BundleId::names(name)` tells whether a folder's or a file's name is named after the id: the whole name, or the id
@@ -146,6 +148,10 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 - In tests, `run_module`'s `Ports` carry `apps: FakeInstalledApps`, `running: FakeRunningApps` and the known folders
   (by default laid out under the fixture root); `installed_app("com.example.Editor", "Editor", "2026.3")` makes one
   up.
+- In tests, `small_file` reads the fixture tree on the disk: `fake_system` and `run_module` give `DiskFiles` (the
+  standard library: a regular file only, never through a link; `Ports::files` replaces it), and the hand-built ports
+  of the other tests give `NoFiles` (every file `Unreadable`). The app reads through the scanner's own reader (in
+  sandbox mode the sandbox's stated lens over it), with the same no-follow call the walk uses for `CACHEDIR.TAG`.
 - A module that returns an error, or panics, ends `ModuleFinished { Failed }` alone: the engine catches the panic
   (`catch_unwind`; the release profile unwinds), the other modules finish and the scan ends `Partial`.
 
@@ -261,6 +267,27 @@ model is offered with the date it was last opened or changed in its reason. A fi
 (Hugging Face's cache has no index beside its folders, and a tool never runs in a sandbox). Ollama's store is not
 claimed: one finding per model needs the walk to read its manifests and one removal of several paths, so it is
 [deferred](../deferred/ollama-models.md).
+
+**`unused-toolchains` is code with a data table, and the example of a module that reads small files**: each manager is a
+row of `toolchains.toml` (rustup, nvm: the versions' place under the home, the shape of a version's folder name, the
+manager's own pointer places, the pin files and, for the shared `.tool-versions`, the keys it reads, the category and
+the module's switch, if any), checked when the module is built. A version folder is a whole claim (summed, so the
+storage map shows it), the manager's pointer files are item claims (rustup's `settings.toml` through a folder holding
+it, nvm's alias files), and every pin file name is a marker claim found anywhere in the scanned folders (an item claim
+makes nothing opaque). `finish` reads the files its matches showed, through `cx.system().small_file` (the pointer and
+pin files, each at most 4 KiB, never a link, never kept or logged), and skips a pin inside a project's artifact folder
+(`cx.system().projects()`: `node_modules/<dep>/.nvmrc` is a dependency's own file). The files' formats are read by pure
+parsers (`pointers/`): every pointer is a reference that resolves to the version folders it keeps, to nothing, or to
+"cannot tell", which blocks the manager's offers. The decision is a pure function (`decide.rs`, a table of twelve rows
+checked in order): a row whose switch is off is decided with no pointers and no file of it is read; the manager's
+default, a rustup moving channel, the newest installed Node version (a linked version folder counts as installed, as
+nvm counts it) and any version a known reference keeps are never reported, and a version that would be offered but for
+a blocking condition (a special entry, not the user's, a walk that did not read every folder, a default or a pin that
+could not be read) is a `left_out` with its reason. Every category needs Desktop, Documents and Downloads
+(`Need::required`), where projects live. The Node switch is off by default, and a case file's `[settings]` turns it
+on in the sandbox. The removal is the version's folder moved to the Trash, never the manager's own command (nvm is a
+shell function, and neither command can run in a sandbox). The other managers are
+[deferred](../deferred/other-toolchain-versions.md), each for the fact it needs.
 
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.

@@ -137,6 +137,20 @@ import {
   TEMP_SCAN,
   TEMP_SETTINGS,
 } from '../src/test/temp-scan';
+import {
+  UNUSED_TOOLCHAINS_DEFAULT_SETTINGS,
+  UNUSED_TOOLCHAINS_DICTIONARY,
+  UNUSED_TOOLCHAINS_FINDINGS,
+  UNUSED_TOOLCHAINS_MODULES,
+  UNUSED_TOOLCHAINS_NO_DOCUMENTS_MODULES,
+  UNUSED_TOOLCHAINS_NO_DOCUMENTS_OVERVIEW,
+  UNUSED_TOOLCHAINS_NO_DOCUMENTS_SCAN,
+  UNUSED_TOOLCHAINS_NOT_ASKED,
+  UNUSED_TOOLCHAINS_OVERVIEW,
+  UNUSED_TOOLCHAINS_SCAN,
+  UNUSED_TOOLCHAINS_SETTINGS,
+  UNUSED_TOOLCHAINS_TOTALS,
+} from '../src/test/unused-toolchains-scan';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
 
@@ -751,6 +765,32 @@ const LOCAL_AI_MODELS_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The cleanup of the first Rust toolchain: the Rust toolchains stay with one, 1.2 GB wait.
+const unusedToolchainsCleanup = (): CleanupScript => {
+  const detail = movedDetailOf(planOf(UNUSED_TOOLCHAINS_FINDINGS.filter(({ id }) => id === 601)), 3, 1_735_819_200);
+
+  return {
+    after: {
+      ...UNUSED_TOOLCHAINS_OVERVIEW,
+      found: sizedOf(UNUSED_TOOLCHAINS_OVERVIEW.found.logical - 1_200_000_000),
+      totals: UNUSED_TOOLCHAINS_TOTALS.map((total) =>
+        total.category === 'unused-toolchains.rust' ? { ...total, count: 1, sizes: sizedOf(1_500_000_000) } : total,
+      ),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 1_200_000_000 },
+  };
+};
+
+// What the unused toolchains scripts answer before a scan: the module, its texts and settings.
+const UNUSED_TOOLCHAINS_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...UNUSED_TOOLCHAINS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: UNUSED_TOOLCHAINS_MODULES,
+  getSettings: UNUSED_TOOLCHAINS_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // Two modules at once: npm's cache of the developer caches module beside the removed app's findings.
 const [NPM_CACHE] = DEV_CACHES_FINDINGS as readonly [Finding];
 const WITH_DEV_CACHES_FINDINGS: readonly Finding[] = [NPM_CACHE, ...APP_LEFTOVERS_FINDINGS];
@@ -972,4 +1012,23 @@ export const SCRIPTS = {
   },
   // The demo scan held before its first event: the core runs it, the app does not know yet.
   unannounced: { answers: ANSWERS, hold: 0, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
+  // The unused toolchains scan, streamed at once, with the Node switch on; the cleanup moves a Rust toolchain.
+  unusedToolchains: {
+    answers: UNUSED_TOOLCHAINS_ANSWERS,
+    cleanup: unusedToolchainsCleanup(),
+    ignoring: true,
+    scan: UNUSED_TOOLCHAINS_SCAN,
+    scanned: UNUSED_TOOLCHAINS_OVERVIEW,
+  },
+  // Documents not allowed yet, the Node switch at its default, off: the module could not look.
+  unusedToolchainsNoDocuments: {
+    answers: {
+      ...UNUSED_TOOLCHAINS_ANSWERS,
+      getAccessStatus: UNUSED_TOOLCHAINS_NOT_ASKED,
+      getModules: UNUSED_TOOLCHAINS_NO_DOCUMENTS_MODULES,
+      getSettings: UNUSED_TOOLCHAINS_DEFAULT_SETTINGS,
+    },
+    scan: UNUSED_TOOLCHAINS_NO_DOCUMENTS_SCAN,
+    scanned: UNUSED_TOOLCHAINS_NO_DOCUMENTS_OVERVIEW,
+  },
 } as const satisfies Readonly<Record<string, CoreScript>>;

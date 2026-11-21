@@ -52,6 +52,7 @@ fn groups(state: &FixedDiskState, apps: Vec<InstalledApp>, findings: &[Finding],
         apps: Arc::new(FakeInstalledApps::new(apps)),
         running: Arc::new(FakeRunningApps::default()),
         installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+        files: Arc::new(fresher_testing::NoFiles),
     });
     let places = AppPlaces::of(state, &facts);
     let shares = Shares::of(state, ignored);
@@ -554,6 +555,7 @@ mod property {
                 apps: Arc::new(FakeInstalledApps::new(apps.collect())),
                 running: Arc::new(FakeRunningApps::default()),
                 installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+                files: Arc::new(fresher_testing::NoFiles),
             });
             let ignored = Ignored {
                 categories: CATEGORIES.iter().zip(&ignored_categories).filter(|&(_, &on)| on).map(|(id, _)| (*id).to_owned()).collect(),

@@ -1,0 +1,33 @@
+# The managers whose versions the module offers (plan 024, design section 3), one row per manager, in the order of
+# the module's interests. Only the default places are read: no environment variable, profile or editor setting.
+# `id`: the row's id, kebab case: the start of its findings' identities.
+# `manager`: "rustup" or "nvm": how its pointers and pins are read, by code.
+# `versions`: where the versions are, relative to the home, plain names; the last name is `*`, one folder a version.
+# `shape`: how a version's folder is named: "rustup-toolchain" (`<channel>[-<date>]-<triple>`) or "node-version"
+#   (`v<major>.<minor>.<patch>`).
+# `pointers`: the manager's own files that point at a version: `place` (relative to the home, plain names, `*` matches
+#   one name) and, for a folder that is itself the sign, `holds`: the one name it must hold.
+# `pins`: the files a project keeps that pin a version, found anywhere scanned: `name` (one file name) and, for the
+#   shared `.tool-versions`, `keys`: the tools of the file this manager reads, each once.
+# `category`: the module's category of every version of the row.
+# `switch`: the module's setting (the name after `unused-toolchains.`) that must be on for the row's versions to be
+#   claimed; none when the row is always on.
+
+[[row]]
+id = "rustup"
+manager = "rustup"
+versions = ".rustup/toolchains/*"
+shape = "rustup-toolchain"
+pointers = [{ place = ".rustup", holds = "settings.toml" }]
+pins = [{ name = "rust-toolchain.toml" }, { name = "rust-toolchain" }, { name = ".tool-versions", keys = ["rust"] }]
+category = "unused-toolchains.rust"
+
+[[row]]
+id = "nvm"
+manager = "nvm"
+versions = ".nvm/versions/node/*"
+shape = "node-version"
+pointers = [{ place = ".nvm/alias/*" }, { place = ".nvm/alias/lts/*" }]
+pins = [{ name = ".nvmrc" }, { name = ".node-version" }, { name = ".tool-versions", keys = ["nodejs", "node"] }]
+category = "unused-toolchains.node"
+switch = "node-versions"

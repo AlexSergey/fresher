@@ -26,6 +26,7 @@ fresher-module-local-ai-models = { path = "../../modules/local-ai-models" }
 fresher-module-stale-projects = { path = "../../modules/stale-projects" }
 fresher-module-temp = { path = "../../modules/temp" }
 fresher-module-trial = { path = "../../modules/trial" }
+fresher-module-unused-toolchains = { path = "../../modules/unused-toolchains" }
 fresher-sandbox = { path = "../sandbox" }
 fresher-scanner = { path = "../scanner" }
 fresher-store = { path = "../store" }

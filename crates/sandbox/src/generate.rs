@@ -1,16 +1,17 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
-use fresher_core::{Protection, SANDBOX_MARKER, SANDBOX_SIGNATURE};
+use fresher_core::{Protection, SANDBOX_MARKER, SANDBOX_SIGNATURE, SettingsStore as _, StoredSettings};
+use fresher_store::{DataFolder, FileSettingsStore};
 use fresher_testing::{FixtureError, TreeDescription};
 
 use crate::expected::checklist;
 use crate::layout::{CHECKLIST, DATA_FOLDER, PARTS, WORLD, canonical_folder, holds_marker};
-use crate::{CaseFile, Sandbox, SandboxError, World};
+use crate::{CaseFile, Sandbox, SandboxError, World, merged_settings};
 
 /// What a run of the generator made: the sandbox and the entries in it the generator did not make.
 #[derive(Debug)]
@@ -37,7 +38,57 @@ pub fn generate(
     real_protection: &Protection,
     user: u32,
 ) -> Result<Generated, SandboxError> {
+    generate_leaving_out(files, &[], into, now, real_protection, user)
+}
+
+/// A case file `all` leaves out whole, because it writes a path an earlier file wrote.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeftOutFile {
+    /// The feature of the file that is left out.
+    pub feature: String,
+    /// The feature of the earlier file that wrote the path.
+    pub first: String,
+    /// The path both write, relative to the sandbox.
+    pub path: PathBuf,
+}
+
+/// Splits `files` (in the order `all` writes them) into the files that fit one sandbox and the files left out whole,
+/// each one writing a path an earlier kept file wrote. The kept files write no path twice.
+///
+/// # Errors
+///
+/// A [`SandboxError::Case`] when a file does not make one tree.
+pub fn without_clashes(files: Vec<CaseFile>) -> Result<(Vec<CaseFile>, Vec<LeftOutFile>), SandboxError> {
+    let mut written: HashMap<PathBuf, String> = HashMap::new();
+    let (mut kept, mut left_out) = (Vec::new(), Vec::new());
+    for file in files {
+        let own = file.tree().map_err(|source| SandboxError::Case { source })?;
+        let clash = own.paths().filter_map(|path| written.get(path).map(|first| (path, first))).min();
+        if let Some((path, first)) = clash {
+            left_out.push(LeftOutFile { feature: file.feature().into(), first: first.clone(), path: path.into() });
+            continue;
+        }
+        written.extend(own.paths().map(|path| (path.to_path_buf(), file.feature().to_owned())));
+        kept.push(file);
+    }
+    Ok((kept, left_out))
+}
+
+/// [`generate`] for case files [`without_clashes`] left some out of: `EXPECTED.md` names each left-out file.
+///
+/// # Errors
+///
+/// As [`generate`].
+pub fn generate_leaving_out(
+    files: &[CaseFile],
+    left_out: &[LeftOutFile],
+    into: &Path,
+    now: SystemTime,
+    real_protection: &Protection,
+    user: u32,
+) -> Result<Generated, SandboxError> {
     let tree = merged_tree(files)?;
+    let settings = merged_settings(files).map_err(|source| SandboxError::Case { source })?;
     let sandbox = Sandbox::at(target(into, real_protection, user)?);
     let own = own_paths(&tree);
     refuse_shared_files(sandbox.path(), &own)?;
@@ -49,10 +100,33 @@ pub fn generate(
         FixtureError::PathThroughLink { path } => SandboxError::ThroughLink { path },
         source => SandboxError::Tree { source },
     })?;
-    write_plain(&sandbox.checklist(), &checklist(files, sandbox.path(), now))?;
+    write_plain(&sandbox.checklist(), &checklist(files, left_out, sandbox.path(), now))?;
     write_plain(&sandbox.world(), &World::of(files, now)?.text()?)?;
+    write_settings(&sandbox, settings)?;
     let strangers = strangers(sandbox.path(), &own)?;
     Ok(Generated { sandbox, strangers })
+}
+
+/// Writes the case files' `[settings]` into the settings file of the sandbox's data folder, in the app's own format,
+/// before the app starts. Nothing is written when no file has any.
+fn write_settings(sandbox: &Sandbox, settings: BTreeMap<String, toml::Value>) -> Result<(), SandboxError> {
+    if settings.is_empty() {
+        return Ok(());
+    }
+    let values = settings.into_iter().filter_map(|(key, value)| Some((key, stored(&value)?))).collect();
+    let refused = |reason: String| SandboxError::Settings { reason };
+    let folder = DataFolder::open(sandbox.data_folder()).map_err(|error| refused(error.to_string()))?;
+    FileSettingsStore::new(folder).save(&StoredSettings { values }).map_err(|error| refused(error.to_string()))
+}
+
+/// A setting's value as the settings file keeps it: a plain JSON value; `None` for a kind no case file may write.
+fn stored(value: &toml::Value) -> Option<serde_json::Value> {
+    match value {
+        toml::Value::Boolean(on) => Some((*on).into()),
+        toml::Value::Integer(number) => Some((*number).into()),
+        toml::Value::String(text) => Some(text.as_str().into()),
+        _ => None,
+    }
 }
 
 /// Refuses a regular file among the generator's own paths that has more names than the generator gives it: rewriting
@@ -289,7 +363,21 @@ name = "Mine"
         use fresher_core::{Protection, SANDBOX_MARKER};
 
         use super::{TRIAL, now, run, trial, user};
-        use crate::{CaseFile, SandboxError, generate};
+        use crate::{CaseFile, SandboxError, generate, generate_leaving_out, without_clashes};
+
+        #[test]
+        fn a_setting_two_files_set_differently_is_refused_before_anything_is_written() {
+            let set = |feature: &str, value: u8| {
+                let text = format!("feature = \"{feature}\"\n[settings]\n\"demo.count\" = {value}\n");
+                CaseFile::parse(&text).unwrap()
+            };
+            let folder = tempfile::tempdir().unwrap();
+
+            let error = run(&[set("one", 1), set("two", 2)], &folder.path().join("sandbox")).unwrap_err();
+
+            assert!(matches!(error, SandboxError::Case { .. }), "{error}");
+            assert!(!folder.path().join("sandbox").exists());
+        }
 
         #[test]
         fn a_non_empty_folder_without_a_marker_is_refused() {
@@ -417,6 +505,34 @@ name = "Mine"
         }
 
         #[test]
+        fn a_file_that_clashes_with_an_earlier_one_is_left_out_whole_and_named() {
+            let other = CaseFile::parse(&TRIAL.replace("feature = \"trial\"", "feature = \"other\"")).unwrap();
+            let folder = tempfile::tempdir().unwrap();
+
+            let (kept, left_out) = without_clashes(vec![trial(), other]).unwrap();
+            let strangers = generate_leaving_out(
+                &kept,
+                &left_out,
+                folder.path(),
+                now(),
+                &Protection::default(),
+                user(std::env::temp_dir().as_path()),
+            )
+            .unwrap()
+            .strangers;
+
+            let features: Vec<&str> = kept.iter().map(CaseFile::feature).collect();
+            assert_eq!(features, ["trial"]);
+            assert_eq!(left_out.len(), 1);
+            assert_eq!((left_out[0].feature.as_str(), left_out[0].first.as_str()), ("other", "trial"));
+            assert_eq!(strangers.len(), 0);
+            let checklist = fs::read_to_string(folder.path().join("EXPECTED.md")).unwrap();
+            assert!(checklist.contains("`other` is not in this sandbox"), "{checklist}");
+            assert!(checklist.contains("npm run sandbox -- other"), "{checklist}");
+            assert!(!checklist.contains("## other"), "{checklist}");
+        }
+
+        #[test]
         fn all_refuses_two_features_writing_one_path() {
             let other = CaseFile::parse(&TRIAL.replace("feature = \"trial\"", "feature = \"other\"")).unwrap();
             let folder = tempfile::tempdir().unwrap();
@@ -433,11 +549,48 @@ name = "Mine"
         use std::fs;
         use std::os::unix::fs::MetadataExt as _;
 
-        use fresher_core::{KnownFolder, KnownFolders, SANDBOX_MARKER, SANDBOX_SIGNATURE};
+        use fresher_core::{KnownFolder, KnownFolders, SANDBOX_MARKER, SANDBOX_SIGNATURE, SettingsStore as _};
+        use fresher_store::{DataFolder, FileSettingsStore};
         use fresher_testing::{EntryKind, TreeReport};
+        use serde_json::json;
 
-        use super::{apps, run, trial, user};
+        use super::{TRIAL, apps, run, trial, user};
         use crate::Sandbox;
+        use crate::without_clashes;
+
+        #[test]
+        fn files_that_write_different_paths_are_all_kept() {
+            let (kept, left_out) = without_clashes(vec![trial(), apps()]).unwrap();
+
+            assert_eq!(kept.len(), 2);
+            assert_eq!(left_out.len(), 0);
+        }
+
+        #[test]
+        fn settings_are_written_in_the_format_the_stores_reads() {
+            let folder = tempfile::tempdir().unwrap();
+            let into = folder.path().join("sandbox");
+            let text =
+                format!("{TRIAL}[settings]\n\"demo.count\" = 3\n\"demo.deep\" = true\n\"demo.mode\" = \"few\"\n");
+            let file = crate::CaseFile::parse(&text).unwrap();
+
+            run(&[file], &into).unwrap();
+
+            let data = DataFolder::open(fs::canonicalize(&into).unwrap().join(".fresher-data")).unwrap();
+            let stored = FileSettingsStore::new(data).load().unwrap();
+            let expected = json!({ "demo.count": 3, "demo.deep": true, "demo.mode": "few" });
+            assert_eq!(serde_json::to_value(stored).unwrap(), expected);
+        }
+
+        #[test]
+        fn a_case_file_without_settings_writes_no_settings_file() {
+            let folder = tempfile::tempdir().unwrap();
+            let into = folder.path().join("sandbox");
+
+            run(&[trial()], &into).unwrap();
+
+            assert!(!into.join(".fresher-data").join("settings.json").exists());
+        }
 
         #[test]
         fn a_case_file_becomes_its_sandbox() {

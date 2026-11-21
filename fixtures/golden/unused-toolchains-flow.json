@@ -1,0 +1,782 @@
+{
+  "journal": [
+    {
+      "format": "cleanup-journal",
+      "version": 1
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "items": [
+        {
+          "action": "remove",
+          "category": "unused-toolchains.node",
+          "danger": "medium",
+          "key": "nvm/v14.21.3",
+          "path": "~/home/.nvm/versions/node/v14.21.3",
+          "reason": {
+            "args": {
+              "command": {
+                "kind": "text",
+                "value": "nvm install 14.21.3"
+              },
+              "date": {
+                "kind": "date",
+                "value": 1763769600
+              },
+              "size": {
+                "kind": "size",
+                "value": 4000
+              }
+            },
+            "key": "unused-toolchains.reason.node"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4000,
+            "reclaimable": 4096
+          }
+        },
+        {
+          "action": "remove",
+          "category": "unused-toolchains.rust",
+          "danger": "low",
+          "key": "rustup/1.60.0-aarch64-apple-darwin",
+          "path": "~/home/.rustup/toolchains/1.60.0-aarch64-apple-darwin",
+          "reason": {
+            "args": {
+              "command": {
+                "kind": "text",
+                "value": "rustup toolchain install 1.60.0-aarch64-apple-darwin"
+              },
+              "date": {
+                "kind": "date",
+                "value": 1763769600
+              },
+              "size": {
+                "kind": "size",
+                "value": 1000
+              }
+            },
+            "key": "unused-toolchains.reason.rust"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 1000,
+            "reclaimable": 4096
+          }
+        },
+        {
+          "action": "remove",
+          "category": "unused-toolchains.rust",
+          "danger": "low",
+          "key": "rustup/nightly-2023-06-01-aarch64-apple-darwin",
+          "path": "~/home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin",
+          "reason": {
+            "args": {
+              "command": {
+                "kind": "text",
+                "value": "rustup toolchain install nightly-2023-06-01-aarch64-apple-darwin"
+              },
+              "date": {
+                "kind": "date",
+                "value": 1763769600
+              },
+              "size": {
+                "kind": "size",
+                "value": 2000
+              }
+            },
+            "key": "unused-toolchains.reason.rust"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 2000,
+            "reclaimable": 4096
+          }
+        }
+      ],
+      "method": "trash",
+      "roots": [
+        "~"
+      ],
+      "space": [],
+      "type": "begin"
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/v14.21.3",
+          "original": "~/home/.nvm/versions/node/v14.21.3"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/1.60.0-aarch64-apple-darwin",
+          "original": "~/home/.rustup/toolchains/1.60.0-aarch64-apple-darwin"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/nightly-2023-06-01-aarch64-apple-darwin",
+          "original": "~/home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin"
+        }
+      ],
+      "type": "item"
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "ended": "completed",
+      "space": [],
+      "type": "end"
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    }
+  ],
+  "leftOut": [],
+  "outcomes": [
+    [
+      "home/.nvm/versions/node/v14.21.3",
+      {
+        "kind": "moved"
+      }
+    ],
+    [
+      "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin",
+      {
+        "kind": "moved"
+      }
+    ],
+    [
+      "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin",
+      {
+        "kind": "moved"
+      }
+    ]
+  ],
+  "plan": {
+    "groups": [
+      {
+        "action": "remove",
+        "category": "unused-toolchains.rust",
+        "items": [
+          {
+            "danger": "low",
+            "path": "~/home/.rustup/toolchains/1.60.0-aarch64-apple-darwin",
+            "reason": {
+              "args": {
+                "command": {
+                  "kind": "text",
+                  "value": "rustup toolchain install 1.60.0-aarch64-apple-darwin"
+                },
+                "date": {
+                  "kind": "date",
+                  "value": 1763769600
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 1000
+                }
+              },
+              "key": "unused-toolchains.reason.rust"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 1000,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "name": {
+                  "kind": "text",
+                  "value": "1.60.0-aarch64-apple-darwin"
+                }
+              },
+              "key": "unused-toolchains.title.rust"
+            }
+          },
+          {
+            "danger": "low",
+            "path": "~/home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin",
+            "reason": {
+              "args": {
+                "command": {
+                  "kind": "text",
+                  "value": "rustup toolchain install nightly-2023-06-01-aarch64-apple-darwin"
+                },
+                "date": {
+                  "kind": "date",
+                  "value": 1763769600
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 2000
+                }
+              },
+              "key": "unused-toolchains.reason.rust"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 2000,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "name": {
+                  "kind": "text",
+                  "value": "nightly-2023-06-01-aarch64-apple-darwin"
+                }
+              },
+              "key": "unused-toolchains.title.rust"
+            }
+          }
+        ],
+        "summary": {
+          "count": 2,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 8192,
+            "completeness": "complete",
+            "logical": 3000,
+            "reclaimable": 8192
+          }
+        }
+      },
+      {
+        "action": "remove",
+        "category": "unused-toolchains.node",
+        "items": [
+          {
+            "danger": "medium",
+            "path": "~/home/.nvm/versions/node/v14.21.3",
+            "reason": {
+              "args": {
+                "command": {
+                  "kind": "text",
+                  "value": "nvm install 14.21.3"
+                },
+                "date": {
+                  "kind": "date",
+                  "value": 1763769600
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 4000
+                }
+              },
+              "key": "unused-toolchains.reason.node"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 4000,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "name": {
+                  "kind": "text",
+                  "value": "v14.21.3"
+                }
+              },
+              "key": "unused-toolchains.title.node"
+            }
+          }
+        ],
+        "summary": {
+          "count": 1,
+          "highest": "medium",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4000,
+            "reclaimable": 4096
+          }
+        }
+      }
+    ],
+    "leftOut": [],
+    "permanentAvailable": true,
+    "plan": 1,
+    "summary": {
+      "count": 3,
+      "highest": "medium",
+      "irreversible": 0,
+      "sizes": {
+        "allocated": 12288,
+        "completeness": "complete",
+        "logical": 7000,
+        "reclaimable": 12288
+      }
+    }
+  },
+  "putBack": {
+    "items": [
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      }
+    ]
+  },
+  "treeAfterCleanup": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/1.60.0-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/1.60.0-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1000,
+        "path": ".Trash/1.60.0-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/nightly-2023-06-01-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/nightly-2023-06-01-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2000,
+        "path": ".Trash/nightly-2023-06-01-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/v14.21.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/v14.21.3/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4000,
+        "path": ".Trash/v14.21.3/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/alias"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3,
+        "path": ".nvm/alias/default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v20.11.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v20.11.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 500,
+        "path": ".nvm/versions/node/v20.11.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v22.1.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v22.1.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 600,
+        "path": ".nvm/versions/node/v22.1.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup"
+      },
+      {
+        "kind": "file",
+        "logical_size": 50,
+        "path": ".rustup/settings.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/1.79.0-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/1.79.0-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1500,
+        "path": ".rustup/toolchains/1.79.0-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/nightly-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/nightly-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 400,
+        "path": ".rustup/toolchains/nightly-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/stable-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/stable-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 300,
+        "path": ".rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Documents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Documents/dev"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Documents/dev/app"
+      },
+      {
+        "kind": "file",
+        "logical_size": 80,
+        "path": "Documents/dev/app/main.rs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 29,
+        "path": "Documents/dev/app/rust-toolchain.toml"
+      }
+    ],
+    "total_logical_size": 10462
+  },
+  "treeAfterPutBack": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/alias"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3,
+        "path": ".nvm/alias/default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v14.21.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v14.21.3/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4000,
+        "path": ".nvm/versions/node/v14.21.3/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v20.11.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v20.11.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 500,
+        "path": ".nvm/versions/node/v20.11.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v22.1.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".nvm/versions/node/v22.1.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 600,
+        "path": ".nvm/versions/node/v22.1.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup"
+      },
+      {
+        "kind": "file",
+        "logical_size": 50,
+        "path": ".rustup/settings.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/1.60.0-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/1.60.0-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1000,
+        "path": ".rustup/toolchains/1.60.0-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/1.79.0-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/1.79.0-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1500,
+        "path": ".rustup/toolchains/1.79.0-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2000,
+        "path": ".rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/nightly-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/nightly-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 400,
+        "path": ".rustup/toolchains/nightly-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/stable-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".rustup/toolchains/stable-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 300,
+        "path": ".rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Documents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Documents/dev"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Documents/dev/app"
+      },
+      {
+        "kind": "file",
+        "logical_size": 80,
+        "path": "Documents/dev/app/main.rs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 29,
+        "path": "Documents/dev/app/rust-toolchain.toml"
+      }
+    ],
+    "total_logical_size": 10462
+  }
+}

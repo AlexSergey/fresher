@@ -110,6 +110,15 @@ pub enum CaseError {
     /// `[case.map]`'s `at` is not one of the case's paths or their folders.
     #[error("case \"{case}\": the map's `at` {at} is not one of the case's paths or their folders")]
     MapAtOutsideTheCase { case: String, at: PathBuf },
+    /// A `[settings]` key that is not `<module>.<name>` in kebab case.
+    #[error("the setting `{key}` is not a key `<module>.<name>` in kebab case")]
+    SettingKey { key: String },
+    /// A `[settings]` value that is not a bool, an integer or a string.
+    #[error("the setting `{key}` must be a bool, an integer or a string")]
+    SettingValue { key: String },
+    /// Two case files set one setting to different values: a sandbox has one value.
+    #[error("the setting `{key}` is set to different values by two case files; a sandbox has one")]
+    SettingTwice { key: String },
     /// The cases together break a check of the tree, such as the fill cap of a sandbox.
     #[error("the cases do not make one sandbox: {source}")]
     Sandbox { source: FixtureError },
@@ -154,6 +163,9 @@ pub enum SandboxError {
     /// The cases' files could not be written.
     #[error("cannot write the cases: {source}")]
     Tree { source: FixtureError },
+    /// The case files' settings could not be written into the data folder's settings file.
+    #[error("cannot write the settings of the cases: {reason}")]
+    Settings { reason: String },
     /// The sandbox's `world.toml` is not of the world's format or names an app the app would not read.
     #[error("{path} is not a valid world: {reason}")]
     World { path: PathBuf, reason: String },

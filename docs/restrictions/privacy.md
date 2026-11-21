@@ -15,6 +15,12 @@
 - **Why:** paths alone already reveal a lot about a person.
 - **Enforced by:** `fresher-store`, the only crate that touches the app's data folder (the app hands it the folder);
   the window runs `incognito`, so the webview writes no cookies, caches or storage to the disk (plan 002); review.
+- **Rule:** a module may read the contents of a small text file its own matches showed (a pointer or a version file of
+  a developer tool): at most 4 KiB, a regular file only, never through a link, read anew at each call; its bytes are
+  never logged, stored in the scan cache or the data folder, or sent anywhere.
+- **Enforced by:** the contract of `SystemFacts::small_file` (`SmallFiles`, one bounded no-follow read) and its tests;
+  that a module reads only files its matches showed is a rule of review
+  ([`../architecture/modules.md`](../architecture/modules.md)).
 - **Rule:** a development build started by `npm run dev` writes a record of each run (real paths of the Mac, never file
   contents) to `NO_COMMIT/dev-runs/` of the repository, which git ignores; a release build has no such code.
 - **Enforced by:** `#[cfg(debug_assertions)]` on `app/tauri/src/dev_runs/`, the variable set only by `scripts/dev.ts`,

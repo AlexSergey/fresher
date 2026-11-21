@@ -1,5 +1,6 @@
-//! What the app knows of the system, shared by every module: the installed and running apps, and the projects the
-//! walk found. The ports are implemented in `fresher-system`; the fakes are in `fresher-testing`.
+//! What the app knows of the system, shared by every module: the installed and running apps, the projects the walk
+//! found, and the small files a module's matches showed. The ports are implemented in `fresher-system`; the fakes are
+//! in `fresher-testing`.
 
 mod apps;
 mod facts;
@@ -8,6 +9,7 @@ mod ids;
 mod installs;
 mod projects;
 mod running;
+mod small_file;
 
 pub use apps::{InstalledApp, InstalledApps, InstalledList};
 pub use facts::{SystemFacts, SystemPorts};
@@ -16,6 +18,7 @@ pub use ids::{AppIdError, BundleId, TeamId, is_bundle_id_shaped};
 pub use installs::{InstallRecords, Receipt, SystemVersion};
 pub use projects::{Artifact, LastChange, Project, ProjectKind};
 pub use running::{RunningApp, RunningApps, RunningSet};
+pub use small_file::{ReaderFiles, SMALL_FILE_LIMIT, SmallFile, SmallFiles};
 
 #[cfg(test)]
 pub(crate) use facts::nothing_known;

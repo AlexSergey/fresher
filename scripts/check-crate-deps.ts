@@ -60,7 +60,7 @@ const TABLE: ReadonlyMap<string, Allowed> = new Map<string, Allowed>([
   ['fresher-engine', ['fresher-core']],
   ['fresher-macos', ['fresher-core']],
   ['fresher-rules', ['fresher-core']],
-  ['fresher-sandbox', ['fresher-core', 'fresher-macos', 'fresher-testing']],
+  ['fresher-sandbox', ['fresher-core', 'fresher-macos', 'fresher-store', 'fresher-testing']],
   ['fresher-scanner', ['fresher-core', 'fresher-macos']],
   ['fresher-store', ['fresher-core']],
   ['fresher-system', ['fresher-core', 'fresher-macos']],

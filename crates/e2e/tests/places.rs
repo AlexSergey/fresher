@@ -209,6 +209,7 @@ mod home {
                 apps: Arc::new(FakeInstalledApps::new(Vec::new())),
                 running: Arc::clone(&running) as _,
                 installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+                files: Arc::new(fresher_testing::DiskFiles),
             },
         };
         let cleaner_ports = CleanerPorts {

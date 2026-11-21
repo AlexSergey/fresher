@@ -130,6 +130,7 @@ impl System {
             apps: Arc::<FakeInstalledApps>::clone(&self.apps),
             running: Arc::<FakeRunningApps>::clone(&self.running),
             installs: Arc::<FakeInstallRecords>::clone(&self.installs),
+            files: Arc::new(fresher_testing::NoFiles),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let settings = SettingsSchema::new([module.descriptor()])

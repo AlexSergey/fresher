@@ -77,6 +77,7 @@ pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<F
         apps: Arc::new(given.installed),
         running: Arc::clone(&running) as _,
         installs: given.installs,
+        files: Arc::new(fresher_testing::DiskFiles),
     };
     let commands = Arc::new(FakeCommandRunner::default());
     let ports = Ports {

@@ -215,10 +215,36 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] `npm run dev:sandbox -- cleanup-guards`: the case file of the removal refusals; its `EXPECTED.md` holds. It is
       the one sandbox with no plan step of its own, and 008's run (section 5) leans on its refusals.
 
+### 1.11 Unused toolchain versions ([024/04/02](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md))
+
+The module has no page of its own (plan 027): its two categories are cards on Scan and screens of the category Details.
+
+- [ ] `rm -rf sandbox/unused-toolchains && npm run dev:sandbox -- unused-toolchains`. Scan; walk `EXPECTED.md`,
+      negatives first: nothing a pointer keeps is offered (rustup's default and override, the moving channels, the
+      toolchains pinned in `Documents/dev/pinned`, `Code/legacy` and `Code/asdf`, the link, `my-custom`, nvm's default
+      and newest, the alias chain, the `.nvmrc` in `Documents/dev/web`, the `.node-version`); the socket case reads as
+      kept with its reason on the category's Details; each positive is offered in its category at its danger (Rust Low,
+      Node Medium); titles read `Rust 1.70.0-aarch64-apple-darwin` and `Node v12.22.12`; each reason names a date and
+      the command.
+- [ ] Settings: the Node versions switch is on (the case file's settings). Turn it off, scan again: no Node version is
+      offered, the toolchains still are. Turn it back on.
+- [ ] The storage map: the offered versions in the explained part; the pins' folders still open in your folders.
+- [ ] Select everything: Review names Medium; confirm to the Trash: the version folders land in `home/.Trash`;
+      `settings.toml`, the alias files and every pin are untouched. Cleanups, put back: the folders are back.
+- [ ] `rm -rf sandbox/unused-toolchains-unknown && npm run dev:sandbox -- unused-toolchains-unknown`:
+      the toolchain is kept "could not read which version is the default"; the Node version is kept "a version
+      file could not be read".
+- [ ] `rm -rf sandbox/unused-toolchains-off && npm run dev:sandbox -- unused-toolchains-off`:
+      the switch is off in Settings; no Node version; the toolchain goes.
+- [ ] `rm -rf sandbox/unused-toolchains-documents-denied && npm run dev:sandbox -- unused-toolchains-documents-denied`:
+      Scan's cards of the two categories say they need Documents,
+      and their Details screen offers "Let Fresher look there"; nothing is offered.
+- [ ] Ignore the Rust category from its card's menu on Scan, then the module; restore both in Settings, Ignored.
+
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
-`npm run dev-runs:check`. Do 2.0 once, then the by-hand items of 2.1 to 2.9: only what the disk cannot answer is left
+`npm run dev-runs:check`. Do 2.0 once, then the by-hand items of 2.1 to 2.10: only what the disk cannot answer is left
 here. The record is in [`testing.md`](./testing.md#the-development-run-record); it holds real paths, lives in the
 git-ignored `NO_COMMIT/dev-runs/` and is never sent anywhere.
 
@@ -469,6 +495,29 @@ use the later two and the median), same build kind, same state of the Mac.
       Downloads allowed in both.
 - [ ] Plan 021 ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)): `main` against `c2bdd44` (the commit before plan 021).
 
+### 2.10 Unused toolchain versions ([024/04/02](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md))
+
+`npm run dev`, a scan of `~` with Full Disk Access (a dry run on the real Mac); turn the Node switch on and scan again.
+Compare with these read-only commands:
+
+```sh
+rustup toolchain list; cat ~/.rustup/settings.toml
+ls ~/.rustup/toolchains ~/.nvm/versions/node 2>/dev/null; ls -R ~/.nvm/alias 2>/dev/null
+du -sh ~/.rustup/toolchains/* ~/.nvm/versions/node/* 2>/dev/null
+find ~ -xdev \( -name rust-toolchain.toml -o -name rust-toolchain -o -name .nvmrc -o -name .node-version \
+  -o -name .tool-versions \) -not -path '*/node_modules/*' -not -path '*/Library/*' 2>/dev/null
+find ~ -xdev \( -name .nvmrc -o -name .node-version \) -type l 2>/dev/null
+```
+
+- [ ] Every offered version checked by hand: not the default, not an override or alias, not named by any pin the
+      `find` lists; its size against `du`.
+- [ ] Nothing offered outside the two places; no moving channel, no newest Node version.
+- [ ] Facts to verify: whether the walk is complete on this Mac (if every version is left out `partial-scan`, write the
+      numbers and open a deferred item); a removed toolchain comes back with `rustup toolchain install <name>` while
+      `update-hashes/<name>` remains (in a throwaway `RUSTUP_HOME`, never the real one); linked pins (the second
+      `find`): how many, and whether they block nvm's offers. Correct the table, the texts and
+      `docs/categories/unused-toolchains-*.md` where they differ.
+
 ## 3. Permissions and probes (plan 006)
 
 Plan 006 is built on documentation answers; this section turns them into measured ones
@@ -710,6 +759,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                         | deferred, due before release   | 5.1           |
 | [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                           | deferred, due before release   | 5.2           |
 | [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)            | pending                        | 1.9, 2.8      |
+| [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)            | pending                        | 1.11, 2.10 |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

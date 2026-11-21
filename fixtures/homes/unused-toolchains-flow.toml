@@ -1,0 +1,211 @@
+# The home of the unused-toolchains flows: rustup with its default (stable), a moving channel (nightly), an old
+# toolchain and a dated nightly nothing names, and 1.79.0, named by the `rust-toolchain.toml` of a project in
+# Documents/dev; nvm with its default alias (20), the newest version (22.1.0) and an old one (14.21.3). Offered: 1.60.0,
+# nightly-2023-06-01 (Low) and 14.21.3 (Medium, once the flow turns the Node switch on through the settings store; a
+# fixture holds no settings). Every folder is a dated `[[dir]]`.
+
+[[dir]]
+path = "home/.rustup"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/stable-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/stable-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/nightly-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/nightly-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/1.79.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.rustup/toolchains/1.79.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/alias"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node/v20.11.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node/v20.11.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node/v22.1.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node/v22.1.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node/v14.21.3"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/.nvm/versions/node/v14.21.3/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/Documents"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/Documents/dev"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "home/Documents/dev/app"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.rustup/settings.toml"
+text = "default_toolchain = \"stable-aarch64-apple-darwin\"\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+size = 300
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.rustup/toolchains/nightly-aarch64-apple-darwin/bin/rustc"
+size = 400
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin/bin/rustc"
+size = 1000
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin/rustc"
+size = 2000
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.rustup/toolchains/1.79.0-aarch64-apple-darwin/bin/rustc"
+size = 1500
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.nvm/versions/node/v20.11.0/bin/node"
+size = 500
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.nvm/versions/node/v22.1.0/bin/node"
+size = 600
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.nvm/versions/node/v14.21.3/bin/node"
+size = 4000
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/.nvm/alias/default"
+text = "20\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Documents/dev/app/rust-toolchain.toml"
+text = "[toolchain]\nchannel = \"1.79\"\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Documents/dev/app/main.rs"
+size = 80
+fill = "data"
+age = "40d"
+changed = "40d"

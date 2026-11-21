@@ -17,8 +17,11 @@ mod generate;
 mod layout;
 mod world;
 
-pub use case::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
+pub use case::{
+    AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName,
+    merged_settings,
+};
 pub use error::{CaseError, SandboxError};
-pub use generate::{Generated, generate};
+pub use generate::{Generated, LeftOutFile, generate, generate_leaving_out, without_clashes};
 pub use layout::Sandbox;
 pub use world::World;

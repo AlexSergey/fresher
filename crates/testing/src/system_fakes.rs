@@ -10,16 +10,18 @@ use fresher_core::{
     RunningApps, SystemError, SystemPorts, SystemVersion, TeamId, Timestamp,
 };
 
-use crate::FakeKnownFolders;
 use crate::fakes::lock;
+use crate::{DiskFiles, FakeKnownFolders};
 
-/// The system of a fixture home: its known folders laid out under `home`, no app installed, nothing running.
+/// The system of a fixture home: its known folders laid out under `home`, no app installed, nothing running, its files
+/// read from the disk.
 pub fn fake_system(home: &Path) -> SystemPorts {
     SystemPorts {
         known_folders: Arc::new(FakeKnownFolders::home_layout(home)),
         apps: Arc::new(FakeInstalledApps::default()),
         running: Arc::new(FakeRunningApps::default()),
         installs: Arc::new(FakeInstallRecords::default()),
+        files: Arc::new(DiskFiles),
     }
 }
 

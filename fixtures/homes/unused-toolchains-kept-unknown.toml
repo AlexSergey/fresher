@@ -1,0 +1,129 @@
+# A home for the unused-toolchains module that cannot tell what is used: no rustup settings.toml (the default is unknown,
+# so every toolchain is kept) and a .nvmrc naming an LTS alias nothing defines (a pin it cannot read, so every Node
+# version but the newest is kept). Every folder is a dated `[[dir]]`.
+
+[[dir]]
+path = ".rustup"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.70.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.70.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v12.22.12"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v12.22.12/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.21.3"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v14.21.3/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v22.1.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v22.1.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code/web"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.70.0-aarch64-apple-darwin/bin/rustc"
+size = 300
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin/bin/rustc"
+size = 300
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v12.22.12/bin/node"
+size = 500
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v14.21.3/bin/node"
+size = 600
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v22.1.0/bin/node"
+size = 700
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Code/web/.nvmrc"
+text = "lts/unknown\n"
+age = "40d"
+changed = "40d"

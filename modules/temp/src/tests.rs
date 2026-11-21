@@ -104,6 +104,7 @@ impl Scan {
             apps: Arc::new(FakeInstalledApps::new(self.installed)),
             running: Arc::new(self.running),
             installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+            files: Arc::new(fresher_testing::NoFiles),
         });
         let (clock, commands, cancel) = (FakeClock::at(NOW), FakeCommandRunner::default(), CancelToken::new());
         let settings = settings(&module, self.stored);

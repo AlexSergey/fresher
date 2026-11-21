@@ -1,0 +1,21 @@
+# The unused-toolchains module with access to Documents denied: a world of its own. In `npm run sandbox -- all` the most
+# restrictive access wins, so Documents is then denied for every case file
+# ([known issue](../../docs/known-issues/repo-sandbox-all-worlds-interact.md)).
+feature = "unused-toolchains-documents-denied"
+module = "unused-toolchains"
+
+[[case]]
+name = "nothing is offered without access to Documents"
+kind = "negative"
+access = { documents = "denied" }
+[[case.file]]
+path = "home/.rustup/settings.toml"
+text = "default_toolchain = \"stable-aarch64-apple-darwin\"\n"
+[[case.file]]
+path = "home/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.rustup/toolchains/1.73.0-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"

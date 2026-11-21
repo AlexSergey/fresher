@@ -145,6 +145,7 @@ impl Scan {
             apps: Arc::new(FakeInstalledApps::default()),
             running: Arc::new(FakeRunningApps::default()),
             installs: Arc::new(FakeInstallRecords::default()),
+            files: Arc::new(fresher_testing::NoFiles),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let values = self

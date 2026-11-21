@@ -121,6 +121,7 @@ impl Scan {
             apps: Arc::clone(&self.installed) as Arc<dyn fresher_core::InstalledApps>,
             running: Arc::new(FakeRunningApps::new(self.running.clone())),
             installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+            files: Arc::new(fresher_testing::NoFiles),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let settings = settings(module, self.stored);

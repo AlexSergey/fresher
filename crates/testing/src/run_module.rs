@@ -4,14 +4,14 @@ use std::sync::Arc;
 
 use fresher_core::{
     CancelToken, DiskWalk, FindingSink, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, NewFinding, PlaceSeen, ProjectFinder, SchemaError, SettingsSchema, StoredSettings, SystemFacts,
-    SystemPorts, WalkError, WalkMode, WalkRequest, WalkSummary,
+    ModuleOutcome, NewFinding, PlaceSeen, ProjectFinder, SchemaError, SettingsSchema, SmallFiles, StoredSettings,
+    SystemFacts, SystemPorts, WalkError, WalkMode, WalkRequest, WalkSummary,
 };
 use serde_json::{Value, json};
 
 use crate::{
-    FakeAccess, FakeClock, FakeCommandRunner, FakeInstallRecords, FakeInstalledApps, FakeKnownFolders, FakeRunningApps,
-    FakeSystemUi, FixtureTree, NaiveWalk,
+    DiskFiles, FakeAccess, FakeClock, FakeCommandRunner, FakeInstallRecords, FakeInstalledApps, FakeKnownFolders,
+    FakeRunningApps, FakeSystemUi, FixtureTree, NaiveWalk,
 };
 
 /// The ports a module runs with in a test: a stopped clock, a table of command answers, the stored settings, a cancel
@@ -35,6 +35,8 @@ pub struct Ports {
     pub installs: Arc<FakeInstallRecords>,
     /// `None`: the home layout under the fixture tree's root.
     pub known_folders: Option<FakeKnownFolders>,
+    /// `None`: the fixture tree's files read from the disk ([`DiskFiles`]).
+    pub files: Option<Arc<dyn SmallFiles>>,
     /// The scan is restored from the cache (`ModuleContext::is_restored`); a walked one by default.
     pub restored: bool,
     /// The order the module receives the matches in: the walk's by default.
@@ -71,6 +73,7 @@ impl Ports {
             running: Arc::default(),
             installs: Arc::default(),
             known_folders: None,
+            files: None,
             restored: false,
             order: MatchOrder::Walked,
             avoid: Vec::new(),
@@ -112,6 +115,7 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         apps: Arc::clone(&ports.apps) as _,
         running: Arc::clone(&ports.running) as _,
         installs: Arc::clone(&ports.installs) as _,
+        files: ports.files.clone().unwrap_or_else(|| Arc::new(DiskFiles)),
     });
     let cx = ModuleContext::new(&ports.clock, &ports.commands, &system, &settings, &ports.cancel);
     let cx = if ports.restored { cx.restored() } else { cx };

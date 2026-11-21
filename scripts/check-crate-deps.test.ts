@@ -174,8 +174,14 @@ describe('findViolations', () => {
     it('allows fresher-sandbox its edges, and the app and e2e to depend on it', () => {
       assert.deepEqual(
         check(
+          crate('fresher-store', [normal('fresher-core')]),
           crate('fresher-testing', [normal('fresher-core')]),
-          crate('fresher-sandbox', [normal('fresher-core'), normal('fresher-macos'), normal('fresher-testing')]),
+          crate('fresher-sandbox', [
+            normal('fresher-core'),
+            normal('fresher-macos'),
+            normal('fresher-store'),
+            normal('fresher-testing'),
+          ]),
           crate('fresher-app', [normal('fresher-sandbox')]),
           crate('fresher-e2e', [dev('fresher-sandbox')]),
         ),

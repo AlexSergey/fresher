@@ -1,0 +1,239 @@
+{
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "leftOut": [
+    {
+      "category": "unused-toolchains.node",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "unused-toolchains.left-out.pin-unknown"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    },
+    {
+      "category": "unused-toolchains.rust",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "unused-toolchains.left-out.default-unknown"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 20480,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67100968,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738184920,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 126,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/alias"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3,
+        "path": "home/.nvm/alias/default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v13.14.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v13.14.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.nvm/versions/node/v13.14.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v20.11.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v20.11.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.nvm/versions/node/v20.11.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup/toolchains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup/toolchains/1.71.0-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup/toolchains/1.71.0-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.rustup/toolchains/1.71.0-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/odd"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12,
+        "path": "home/Code/odd/.nvmrc"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 12584
+  }
+}

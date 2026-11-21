@@ -659,6 +659,7 @@ mod tests {
                     "downloads",
                     "stale-projects",
                     "local-ai-models",
+                    "unused-toolchains",
                     "demo",
                     "trial"
                 ]

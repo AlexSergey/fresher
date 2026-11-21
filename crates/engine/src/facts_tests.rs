@@ -13,6 +13,7 @@ fn system(apps: &Arc<FakeInstalledApps>, running: &Arc<FakeRunningApps>) -> Syst
         apps: Arc::clone(apps) as _,
         running: Arc::clone(running) as _,
         installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+        files: Arc::new(fresher_testing::NoFiles),
     }
 }
 

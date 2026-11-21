@@ -4,7 +4,7 @@ use std::time::{Duration, SystemTime};
 
 use fresher_core::{
     Access, BundleId, Capability, CategoryDescriptor, CategoryId, DangerLevel, GuardedFolder, IdError, ModuleId,
-    RunningApp, SkipCode, SystemVersion, TextKey,
+    RunningApp, SettingKey, SkipCode, SystemVersion, TextKey,
 };
 use fresher_testing::{AppBundle, TreeDescription, time_at_age};
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,8 @@ use crate::CaseError;
 pub struct CaseFile {
     feature: String,
     module: Option<ModuleId>,
+    /// The file's `[settings]`: the values of the modules' settings, shared by every case of the file.
+    settings: BTreeMap<String, toml::Value>,
     cases: Vec<Case>,
 }
 
@@ -108,6 +110,8 @@ pub enum AfterCleanup {
 struct RawCaseFile {
     feature: String,
     module: Option<String>,
+    #[serde(default)]
+    settings: BTreeMap<String, toml::Value>,
     #[serde(default, rename = "case")]
     cases: Vec<RawCase>,
 }
@@ -239,6 +243,7 @@ impl CaseFile {
         if let Some(module) = &raw.module {
             ModuleId::check(module).map_err(|source| CaseError::Module { module: module.clone(), source })?;
         }
+        check_settings(&raw.settings)?;
         let mut names = HashSet::new();
         let mut written: HashMap<PathBuf, String> = HashMap::new();
         let mut seen_positive = false;
@@ -280,7 +285,7 @@ impl CaseFile {
                 Ok(case)
             })
             .collect::<Result<_, CaseError>>()?;
-        Ok(Self { feature: raw.feature, module, cases })
+        Ok(Self { feature: raw.feature, module, settings: raw.settings, cases })
     }
 
     /// Checks every expectation against the categories and the declared problems of the modules: the category
@@ -354,6 +359,37 @@ impl CaseFile {
     pub fn cases(&self) -> &[Case] {
         &self.cases
     }
+
+    /// The file's `[settings]` by key (`<module>.<name>`): a bool, an integer or a string; empty when the file has
+    /// none. Every case of the file runs with them.
+    pub const fn settings(&self) -> &BTreeMap<String, toml::Value> {
+        &self.settings
+    }
+}
+
+/// The `[settings]` of several case files as one table; a key two files set to different values is refused, as a
+/// path written twice is.
+pub fn merged_settings(files: &[CaseFile]) -> Result<BTreeMap<String, toml::Value>, CaseError> {
+    let mut merged = BTreeMap::new();
+    for (key, value) in files.iter().flat_map(|file| &file.settings) {
+        if merged.insert(key.clone(), value.clone()).is_some_and(|first| first != *value) {
+            return Err(CaseError::SettingTwice { key: key.clone() });
+        }
+    }
+    Ok(merged)
+}
+
+/// Every key is `<module>.<name>` in kebab case and every value a bool, an integer or a string.
+fn check_settings(settings: &BTreeMap<String, toml::Value>) -> Result<(), CaseError> {
+    for (key, value) in settings {
+        if SettingKey::new(key.as_str()).is_err() {
+            return Err(CaseError::SettingKey { key: key.clone() });
+        }
+        if !matches!(value, toml::Value::Boolean(_) | toml::Value::Integer(_) | toml::Value::String(_)) {
+            return Err(CaseError::SettingValue { key: key.clone() });
+        }
+    }
+    Ok(())
 }
 
 impl Case {
@@ -845,10 +881,43 @@ after-cleanup = "in-trash"
 
     mod negative {
         use super::{NEGATIVE, cache, file, left_out, positive, trial_categories, trial_problems, with_app};
-        use crate::{CaseError, CaseFile, MapPartName};
+        use crate::{CaseError, CaseFile, MapPartName, merged_settings};
 
         fn refused(text: &str) -> CaseError {
             CaseFile::parse(text).unwrap_err()
+        }
+
+        #[test]
+        fn a_setting_key_off_the_shape_is_refused() {
+            for key in ["demo", "Demo.count", "demo.Count", "demo..count", "demo.count_two", ".count", "demo.count."] {
+                let text = format!("{}[settings]\n\"{key}\" = 3\n", file(&[NEGATIVE]));
+
+                let error = refused(&text);
+
+                assert!(matches!(&error, CaseError::SettingKey { key: found } if found == key), "{key}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_setting_value_that_is_no_bool_integer_or_string_is_refused() {
+            for value in ["1.5", "[1]", "{ a = 1 }", "1979-05-27"] {
+                let text = format!("{}[settings]\n\"demo.count\" = {value}\n", file(&[NEGATIVE]));
+
+                let error = refused(&text);
+
+                assert!(matches!(&error, CaseError::SettingValue { key } if key == "demo.count"), "{value}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_setting_set_twice_in_all_is_refused() {
+            let set =
+                |value: &str| CaseFile::parse(&format!("{}[settings]\n\"demo.count\" = {value}\n", file(&[NEGATIVE])));
+            let (first, second) = (set("3").unwrap(), set("4").unwrap());
+
+            let error = merged_settings(&[first, second]).unwrap_err();
+
+            assert!(matches!(&error, CaseError::SettingTwice { key } if key == "demo.count"), "{error}");
         }
 
         #[test]
@@ -1302,7 +1371,54 @@ after-cleanup = "in-trash"
         use fresher_testing::FIXTURE_NOW;
 
         use super::{NEGATIVE, cache, file, left_out, trial_categories, trial_problems, with_app};
-        use crate::{AfterCleanup, Case, CaseFile, CaseKind, MapPartName};
+        use crate::{AfterCleanup, Case, CaseFile, CaseKind, MapPartName, merged_settings};
+
+        #[test]
+        fn settings_are_read_for_every_case_of_the_file() {
+            let text = format!(
+                "{}[settings]\n\"demo.count\" = 3\n\"unused-toolchains.node-versions\" = true\n\"demo.mode\" = \"few\"\n",
+                file(&[NEGATIVE, &cache("low")])
+            );
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            let settings: Vec<_> = parsed.settings().iter().map(|(key, value)| (key.as_str(), value.clone())).collect();
+            assert_eq!(
+                settings,
+                [
+                    ("demo.count", toml::Value::Integer(3)),
+                    ("demo.mode", toml::Value::String("few".into())),
+                    ("unused-toolchains.node-versions", toml::Value::Boolean(true)),
+                ]
+            );
+            assert_eq!(parsed.cases().len(), 2);
+        }
+
+        #[test]
+        fn a_case_files_text_comes_with_the_tree_description() {
+            let case = "[[case]]\nname = \"a pin\"\nkind = \"negative\"\n[[case.file]]\npath = \"home/p/.nvmrc\"\ntext = \"20\\n\"\n";
+
+            let parsed = CaseFile::parse(&file(&[case])).unwrap();
+
+            assert_eq!(parsed.cases()[0].tree().files().count(), 1);
+        }
+
+        #[test]
+        fn a_file_without_settings_has_none() {
+            let parsed = CaseFile::parse(&file(&[NEGATIVE])).unwrap();
+
+            assert!(parsed.settings().is_empty());
+        }
+
+        #[test]
+        fn merged_files_that_agree_on_a_setting_keep_it_once() {
+            let text = format!("{}[settings]\n\"demo.count\" = 3\n", file(&[NEGATIVE]));
+            let (first, second) = (CaseFile::parse(&text).unwrap(), CaseFile::parse(&text).unwrap());
+
+            let merged = merged_settings(&[first, second]).unwrap();
+
+            assert_eq!(merged.len(), 1);
+        }
 
         #[test]
         fn left_out_expectations_add_up_per_category_and_reason() {

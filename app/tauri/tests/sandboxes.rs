@@ -213,6 +213,32 @@ mod negative {
         assert!(failure.problem.contains("expected Explained"), "{failure}");
     }
 
+    /// A `demo` case file with this `[settings]` table.
+    fn demo_settings(settings: &str) -> String {
+        format!("{}[settings]\n{settings}", demo_file(&demo_left_out("demo.left-out.open", 1)))
+    }
+
+    #[test]
+    fn a_setting_no_module_has_fails_naming_its_key() {
+        let failure = run("unknown-setting", &demo_settings("\"demo.nothing\" = 3\n")).unwrap_err();
+
+        assert!(failure.problem.contains("demo.nothing"), "{failure}");
+    }
+
+    #[test]
+    fn a_setting_of_the_wrong_kind_fails_naming_its_key() {
+        let failure = run("wrong-kind", &demo_settings("\"demo.count\" = \"many\"\n")).unwrap_err();
+
+        assert!(failure.problem.contains("demo.count"), "{failure}");
+    }
+
+    #[test]
+    fn a_setting_off_the_shape_is_refused_with_the_case_file() {
+        let failure = run("off-shape", &demo_settings("\"count\" = 3\n")).unwrap_err();
+
+        assert!(failure.problem.contains("count"), "{failure}");
+    }
+
     #[test]
     fn a_refused_case_file_names_the_file() {
         let failure = run("unreadable", "feature = 1\n").unwrap_err();
@@ -248,6 +274,10 @@ mod positive {
         storage_map => "storage-map",
         temp => "temp",
         trial => "trial",
+        unused_toolchains => "unused-toolchains",
+        unused_toolchains_documents_denied => "unused-toolchains-documents-denied",
+        unused_toolchains_off => "unused-toolchains-off",
+        unused_toolchains_unknown => "unused-toolchains-unknown",
     }
 
     /// A module whose findings are made up rather than read from the disk: no sandbox can show them.
@@ -287,6 +317,24 @@ mod positive {
         assert_eq!(left_out.len(), 1);
         assert_eq!(left_out[0]["category"], "demo.caches");
         assert_eq!(left_out[0]["items"], 1);
+    }
+
+    /// `demo.count` set by the case file changes how many example findings the demo module shows.
+    #[test]
+    fn a_case_file_setting_reaches_the_module() {
+        let findings = |settings: &str| {
+            let text = format!(
+                "feature = \"demo\"\nmodule = \"demo\"\n[[case]]\nname = \"a plain file\"\nkind = \"negative\"\n\
+                 [[case.file]]\npath = \"home/plain/note.txt\"\nsize = 4096\n\
+                 [[case.left-out]]\ncategory = \"demo.caches\"\nreason = \"demo.left-out.open\"\nitems = 1\n{settings}"
+            );
+            run("count", &text).unwrap()["findings"].as_array().unwrap().len()
+        };
+
+        let (default, set) = (findings(""), findings("[settings]\n\"demo.count\" = 3\n"));
+
+        assert_ne!(default, set);
+        assert_eq!(set, 3);
     }
 
     /// The harness's own run of a passing case file, apart from the files of `fixtures/sandboxes/`.

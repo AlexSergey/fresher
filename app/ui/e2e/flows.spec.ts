@@ -9,6 +9,7 @@ import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { LOCAL_AI_MODELS_DICTIONARY } from '../src/test/local-ai-models-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
+import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
 import {
   cardNames,
@@ -211,6 +212,25 @@ const AI_LM_STUDIO = ai('lm-studio.name');
 const openLocalAiModels = (
   page: Page,
   script: typeof SCRIPTS.localAiModels | typeof SCRIPTS.localAiModelsLmStudioOpen = SCRIPTS.localAiModels,
+): Promise<void> => scanned(page, script);
+
+// The unused toolchains module's own texts, as its locale file has them.
+const ut = (key: string): string => {
+  const value = UNUSED_TOOLCHAINS_DICTIONARY[`unused-toolchains.${key}`];
+  if (value === undefined) {
+    throw new Error(`no text unused-toolchains.${key}`);
+  }
+
+  return value;
+};
+
+const UT_RUST = ut('rust.name');
+const UT_NODE = ut('node.name');
+
+// Scans the unused toolchains script.
+const openUnusedToolchains = (
+  page: Page,
+  script: typeof SCRIPTS.unusedToolchains | typeof SCRIPTS.unusedToolchainsNoDocuments = SCRIPTS.unusedToolchains,
 ): Promise<void> => scanned(page, script);
 
 const choice = (page: Page, name: string): Locator => page.getByRole('button', { name: left(`choice.${name}.label`) });
@@ -465,6 +485,34 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select all ${AI_HF_MODELS}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('300 MB');
+  });
+
+  test('a Node version not owned by you is kept and cannot be selected', async ({ page }) => {
+    await openUnusedToolchains(page);
+
+    await openDetails(page, UT_NODE);
+
+    await expect(details(page)).toContainText(`1 item left out (110 MB): ${ut('left-out.not-yours')}`);
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select all ${UT_NODE}` }).check();
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await expect(selectionBar(page)).not.toContainText('110 MB');
+  });
+
+  test('without access to Documents the unused toolchains categories say what they need', async ({ page }) => {
+    await openUnusedToolchains(page, SCRIPTS.unusedToolchainsNoDocuments);
+
+    for (const name of [UT_RUST, UT_NODE]) {
+      await openDetails(page, name);
+      const category = details(page);
+      await expect(category.getByRole('region', { name: 'Not available' })).toContainText(
+        'Your Documents folder was not looked at.',
+      );
+      await expect(category.getByRole('checkbox')).toHaveCount(0);
+      await expect(category.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
+    }
+    await expect(selectionBar(page)).toHaveCount(0);
   });
 
   test('a choice selects nothing outside its module', async ({ page }) => {
@@ -1660,5 +1708,89 @@ test.describe('positive cases', () => {
 
     await expect(page.getByRole('switch', { name: ai('enabled.label') })).toBeChecked();
     await expect(page.getByText(ai('enabled.description'))).toBeVisible();
+  });
+
+  test('unused toolchain versions show on Scan with their size', async ({ page }) => {
+    await openUnusedToolchains(page);
+
+    for (const name of [UT_RUST, UT_NODE]) {
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
+    }
+    await expect(cards(page).filter({ hasText: UT_RUST })).toContainText('2.7 GB');
+    await expect(cards(page).filter({ hasText: UT_NODE })).toContainText('90 MB');
+  });
+
+  test('each unused toolchains category shows its danger and its four texts', async ({ page }) => {
+    await openUnusedToolchains(page);
+
+    for (const [name, key, danger] of [
+      [UT_RUST, 'rust', 'Low'],
+      [UT_NODE, 'node', 'Medium'],
+    ] as const) {
+      await openDetails(page, name);
+      const category = details(page);
+      await expect(category).toContainText(danger);
+      for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+        await expect(category).toContainText(ut(`${key}.${text}`));
+      }
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
+    }
+  });
+
+  test('a toolchain’s finding names the version, the date and the command', async ({ page }) => {
+    await openUnusedToolchains(page);
+
+    await openDetails(page, UT_RUST);
+
+    const items = details(page);
+    await expect(items).toContainText('Rust 1.70.0-aarch64-apple-darwin');
+    await expect(items).toContainText('Mar 10, 2024');
+    await expect(items).toContainText('rustup toolchain install nightly-2023-06-01-aarch64-apple-darwin');
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, UT_NODE);
+    await expect(details(page)).toContainText('Node v12.22.12');
+    await expect(details(page)).toContainText('nvm install 12.22.12');
+  });
+
+  test('selecting a Node version makes the review name Medium', async ({ page }) => {
+    await openUnusedToolchains(page);
+
+    await page.getByRole('checkbox', { name: `Select ${UT_NODE}` }).check();
+
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await expect(dialog).toContainText('Medium');
+    await expect(dialog).toContainText(ut('node.if-removed'));
+  });
+
+  test('a Rust toolchain goes to the Trash and comes back from the Cleanups', async ({ page }) => {
+    await openUnusedToolchains(page);
+    await openDetails(page, UT_RUST);
+    await page.getByRole('checkbox', { name: /Select Rust 1\.70\.0/ }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 1 item to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: '1.70.0-aarch64-apple-darwin' });
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the Node versions switch off by default', async ({ page }) => {
+    await mockCore(page, SCRIPTS.unusedToolchainsNoDocuments);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: ut('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: ut('node-versions.label') })).not.toBeChecked();
+    await expect(page.getByText(ut('node-versions.description'))).toBeVisible();
   });
 });

@@ -5,7 +5,7 @@ use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _, symlink};
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use fresher_core::Timestamp;
+use fresher_core::{SMALL_FILE_LIMIT, Timestamp};
 use serde::Deserialize;
 
 use crate::app_bundle::AppBundle;
@@ -86,6 +86,9 @@ struct FileSpec {
     flags: BTreeSet<StatedFlag>,
     /// A socket or a pipe, stated: written as a plain file. Never with `fill`.
     kind: Option<StatedKind>,
+    /// The file's bytes as UTF-8, at most [`SMALL_FILE_LIMIT`] of them; its size is theirs. Never with `size`, `fill`
+    /// or `kind`.
+    text: Option<String>,
 }
 
 /// What a file holds: nothing (sparse, costs no disk), real bytes of a fixed pattern, or a valid cache directory tag.
@@ -303,6 +306,10 @@ impl TreeDescription {
         for file in &self.files {
             check_time(&file.path, file.age.as_deref(), file.modified)?;
             check_stated_times(&file.path, &[file.changed.as_deref(), file.accessed.as_deref()])?;
+            if let Some(text) = &file.text {
+                check_text(file, text)?;
+                filled = filled.saturating_add(text.len() as u64);
+            }
             if file.kind.is_some() && file.fill.is_some() {
                 return Err(FixtureError::KindWithFill { path: file.path.clone() });
             }
@@ -318,6 +325,18 @@ impl TreeDescription {
         }
         Ok(())
     }
+}
+
+/// A file's `text` comes alone and fits the small-file reader.
+fn check_text(file: &FileSpec, text: &str) -> Result<(), FixtureError> {
+    let with = [("size", file.size != 0), ("fill", file.fill.is_some()), ("kind", file.kind.is_some())];
+    if let Some((field, _)) = with.into_iter().find(|(_, given)| *given) {
+        return Err(FixtureError::TextWith { path: file.path.clone(), field });
+    }
+    if text.len() > SMALL_FILE_LIMIT {
+        return Err(FixtureError::TextTooLong { path: file.path.clone() });
+    }
+    Ok(())
 }
 
 /// An age before "now", `"30d"`, `"12h"` or `"90s"`, or after it with a leading `-` (`"-2d"`).
@@ -393,18 +412,22 @@ fn create_file(folder: &Path, spec: &FileSpec, now: SystemTime) -> Result<(), Fi
     create_parent(&path)?;
     let create_error = |source| FixtureError::Create { path: path.clone(), source };
     let mut file = File::create(&path).map_err(create_error)?;
-    match spec.fill.unwrap_or_default() {
-        Fill::Sparse => file.set_len(spec.size).map_err(create_error)?,
-        // Sized first, so every write lands inside the file: a file grown by appends can keep blocks the file
-        // system reserved past its end, under load even after the sync, and a walk would read them. Synced, so
-        // the blocks are allocated before a walk reads the file's size on disk.
-        Fill::Data => file
-            .set_len(spec.size)
-            .and_then(|()| write_pattern(&mut file, spec.size))
-            .and_then(|()| file.sync_all())
-            .map_err(create_error)?,
-        Fill::CachedirTag => {
-            file.write_all(CACHEDIR_TAG_CONTENT).and_then(|()| file.sync_all()).map_err(create_error)?;
+    if let Some(text) = &spec.text {
+        file.write_all(text.as_bytes()).and_then(|()| file.sync_all()).map_err(create_error)?;
+    } else {
+        match spec.fill.unwrap_or_default() {
+            Fill::Sparse => file.set_len(spec.size).map_err(create_error)?,
+            // Sized first, so every write lands inside the file: a file grown by appends can keep blocks the file
+            // system reserved past its end, under load even after the sync, and a walk would read them. Synced, so
+            // the blocks are allocated before a walk reads the file's size on disk.
+            Fill::Data => file
+                .set_len(spec.size)
+                .and_then(|()| write_pattern(&mut file, spec.size))
+                .and_then(|()| file.sync_all())
+                .map_err(create_error)?,
+            Fill::CachedirTag => {
+                file.write_all(CACHEDIR_TAG_CONTENT).and_then(|()| file.sync_all()).map_err(create_error)?;
+            }
         }
     }
     if let Some(time) = modified {
@@ -571,6 +594,24 @@ mod tests {
         }
 
         #[test]
+        fn text_with_a_size_a_fill_or_a_kind_is_refused() {
+            for (field, line) in [("size", "size = 3"), ("fill", "fill = \"data\""), ("kind", "kind = \"pipe\"")] {
+                let error = parse(&format!("[[file]]\npath = \"a\"\ntext = \"x\"\n{line}\n")).unwrap_err();
+
+                assert!(matches!(error, FixtureError::TextWith { field: found, .. } if found == field), "{field}");
+            }
+        }
+
+        #[test]
+        fn text_over_four_kilobytes_is_refused() {
+            let long = "a".repeat(4097);
+
+            let error = parse(&format!("[[file]]\npath = \"a\"\ntext = \"{long}\"\n")).unwrap_err();
+
+            assert!(matches!(error, FixtureError::TextTooLong { .. }), "{error}");
+        }
+
+        #[test]
         fn an_entry_that_states_nothing_is_not_stated() {
             let tree = parse("[[file]]\npath = \"a\"\nage = \"3d\"\n[[dir]]\npath = \"b\"\nflags = []\n").unwrap();
 
@@ -732,6 +773,19 @@ mod tests {
                 built += 1;
             }
             assert!(built >= 8);
+        }
+
+        #[test]
+        fn text_is_written_byte_for_byte() {
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[toolchain]\nchannel = \"1.85\"\n# \u{43f}\u{440}\u{438}\u{432}\u{435}\u{442}\n";
+            let toml = format!("[[file]]\npath = \"a/rust-toolchain.toml\"\ntext = {text:?}\n");
+
+            TreeDescription::from_toml_str(&toml).unwrap().build_at(folder.path(), now()).unwrap();
+
+            let path = folder.path().join("a/rust-toolchain.toml");
+            assert_eq!(std::fs::read(&path).unwrap(), text.as_bytes());
+            assert_eq!(std::fs::metadata(&path).unwrap().len(), text.len() as u64);
         }
 
         #[test]

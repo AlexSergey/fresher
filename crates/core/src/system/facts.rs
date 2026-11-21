@@ -1,13 +1,15 @@
 //! One scan's view of the system: each fact gathered on the first ask and kept until the scan ends.
 
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use crate::{
     BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
     Project, Receipt, RunningApps, RunningSet, SystemError, SystemVersion,
 };
+
+use super::small_file::{SMALL_FILE_LIMIT, SmallFile, SmallFiles, judge};
 
 /// The ports of the system's facts, composed by the app (the macOS adapters) or a test (the fakes).
 #[derive(Clone)]
@@ -16,6 +18,8 @@ pub struct SystemPorts {
     pub apps: Arc<dyn InstalledApps>,
     pub running: Arc<dyn RunningApps>,
     pub installs: Arc<dyn InstallRecords>,
+    /// The reader of the small files a module's matches showed.
+    pub files: Arc<dyn SmallFiles>,
 }
 
 impl fmt::Debug for SystemPorts {
@@ -112,6 +116,14 @@ impl SystemFacts {
         self.version.get_or_init(|| self.ports.installs.system_version()).clone()
     }
 
+    /// The file `name` in `folder`, read whole when it is a regular text file of at most `SMALL_FILE_LIMIT` bytes.
+    /// Read anew at every call; nothing is kept, logged or written; a link is never followed. A module reads only a
+    /// file its own matches showed: a name its anchored interest holds, the marker of its marker match, or a file it
+    /// matched.
+    pub fn small_file(&self, folder: &Path, name: &str) -> SmallFile {
+        judge(self.ports.files.head(folder, name, SMALL_FILE_LIMIT + 1))
+    }
+
     /// The projects the walk found; `None` while the walk runs (they are known before any module's `finish`).
     pub fn projects(&self) -> Option<&[Project]> {
         self.projects.get().map(Vec::as_slice)
@@ -135,9 +147,23 @@ impl fmt::Debug for SystemFacts {
     }
 }
 
-/// Facts of a system that knows nothing: no folder, no app, nothing running (the core's own tests).
+/// Facts of a system that knows nothing: no folder, no app, nothing running, no file readable (the core's own tests).
 #[cfg(test)]
 pub(crate) fn nothing_known() -> SystemFacts {
+    struct NoFiles;
+
+    impl SmallFiles for NoFiles {
+        fn head(&self, _folder: &Path, _name: &str, _limit: usize) -> Result<Vec<u8>, crate::ReadError> {
+            Err(crate::ReadError::Failed)
+        }
+    }
+
+    nothing_known_but(Arc::new(NoFiles))
+}
+
+/// Facts of a system that knows nothing but the small files `files` reads (the core's own tests).
+#[cfg(test)]
+pub(crate) fn nothing_known_but(files: Arc<dyn SmallFiles>) -> SystemFacts {
     #[derive(Debug)]
     struct Nothing;
 
@@ -182,18 +208,19 @@ pub(crate) fn nothing_known() -> SystemFacts {
         apps: Arc::new(Nothing),
         running: Arc::new(Nothing),
         installs: Arc::new(Nothing),
+        files,
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use crate::{
         BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
-        Receipt, RunningApp, RunningApps, SystemError, SystemPorts, SystemVersion, Timestamp,
+        ReadError, Receipt, RunningApp, RunningApps, SmallFiles, SystemError, SystemPorts, SystemVersion, Timestamp,
     };
 
     /// Counts the asks; answers one app and one running app, or an error; with `partial`, a bundle left unread; with
@@ -266,12 +293,21 @@ mod tests {
         }
     }
 
+    struct NoFiles;
+
+    impl SmallFiles for NoFiles {
+        fn head(&self, _folder: &Path, _name: &str, _limit: usize) -> Result<Vec<u8>, ReadError> {
+            Err(ReadError::Failed)
+        }
+    }
+
     fn ports(counting: &Arc<Counting>) -> SystemPorts {
         SystemPorts {
             known_folders: Arc::clone(counting) as Arc<dyn KnownFolders>,
             apps: Arc::clone(counting) as Arc<dyn InstalledApps>,
             running: Arc::clone(counting) as Arc<dyn RunningApps>,
             installs: Arc::clone(counting) as Arc<dyn InstallRecords>,
+            files: Arc::new(NoFiles),
         }
     }
 

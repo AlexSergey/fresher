@@ -107,6 +107,7 @@ mod tests {
             apps: Arc::new(FakeInstalledApps::default()),
             running: Arc::new(FakeRunningApps::default()),
             installs: Arc::new(FakeInstallRecords::default()),
+            files: Arc::new(fresher_testing::NoFiles),
         })
     }
 

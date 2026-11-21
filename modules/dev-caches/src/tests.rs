@@ -159,6 +159,7 @@ impl Scan {
             apps: Arc::new(FakeInstalledApps::new(Vec::new())),
             running: Arc::<FakeRunningApps>::clone(&self.running),
             installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
+            files: Arc::new(fresher_testing::NoFiles),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let settings = SettingsSchema::new([module.descriptor()])

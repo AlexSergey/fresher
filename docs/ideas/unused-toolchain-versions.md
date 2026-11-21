@@ -2,6 +2,14 @@
 
 **Since:** 2026-11-15 · **Proposed by:** the agent
 
+Taken up by plan [024](../plans/024-unused-toolchains/readme.md) and built (2026-11-21): the rustup toolchains (Low) and the nvm
+Node versions (Medium, behind the switch "Node versions (nvm)", off by default as the user asked) that nothing on the
+Mac points at, one finding per version, moved to the Trash. Python, Java, Android, fnm, volta and asdf's or mise's own
+installs are [deferred](../deferred/other-toolchain-versions.md). The open questions are answered there: the Trash wins
+over the managers' commands; Gradle's JDKs and AVDs go with the deferred item. A module now reads a manager's pointer
+files and the projects' pins through a small-file reader of the core (`small_file`, at most 4 KiB, never a link), as
+this idea proposed.
+
 ## Problem
 
 The case that started the project — every old WebStorm version left on disk — happens with language toolchains too.

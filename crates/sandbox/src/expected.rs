@@ -5,6 +5,7 @@ use std::time::SystemTime;
 use fresher_core::{Access, DangerLevel, GuardedFolder, SkipCode, Timestamp};
 use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
+use crate::generate::LeftOutFile;
 use crate::world::folder_name;
 use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
 
@@ -12,8 +13,8 @@ use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectat
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
 /// it allows, refuses or has not been asked for, the facts its files state (which Finder never shows; times counted
 /// from `now`), its left-outs and where the storage map shows it; then the command that opens the app on the sandbox
-/// at `sandbox`.
-pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> String {
+/// at `sandbox`. A case file left out of the sandbox is named after them, with the path it clashed on.
+pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &Path, now: SystemTime) -> String {
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
     );
@@ -59,6 +60,18 @@ pub(crate) fn checklist(files: &[CaseFile], sandbox: &Path, now: SystemTime) -> 
             if let Some(map) = case.map() {
                 let _ = writeln!(text, "  - {}.", map_sentence(map));
             }
+        }
+    }
+    if !left_out.is_empty() {
+        text.push_str("\n## Case files left out\n\n");
+        for file in left_out {
+            let LeftOutFile { feature, first, path } = file;
+            let _ = writeln!(
+                text,
+                "- `{feature}` is not in this sandbox: it writes `{}`, which `{first}` writes too; write it by name: \
+                 `npm run sandbox -- {feature}`.",
+                path.display()
+            );
         }
     }
     let _ = write!(text, "\n## Open the app on it\n\n```sh\nnpm run dev:sandbox -- {}\n```\n", sandbox.display());
@@ -266,7 +279,7 @@ reason = "in-use"
 
         #[test]
         fn a_negative_names_only_its_top_paths() {
-            let text = checklist(&[CaseFile::parse(CASES).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             assert!(text.contains(
                 "never offered: `home/work/fresher-trial-cache2`, `home/other.bin`; still there after the cleanup."
@@ -329,7 +342,7 @@ reason = "in-use"
                  accessed = \"-2h\"\n[[case.dir]]\npath = \"private/tmp/theirs\"\nowner = \"other-user\"\nchanged = \"90s\"\n",
             );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             for line in [
                 "  - `private/tmp/theirs` stated: owned by another user, changed 90 seconds ago.",
@@ -352,7 +365,7 @@ reason = "in-use"
                     "after-cleanup = \"in-trash\"\n[case.map]\npart = \"explained\"\n",
                 );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> =
                 text.lines().filter(|line| line.starts_with("- [ ] ") || line.starts_with("  - ")).collect();
@@ -377,7 +390,7 @@ reason = "in-use"
                  name = \"Plain\"\n[[case.running]]\nname = \"CLion\"\nbundle-ids = [\"com.jetbrains.CLion\"]\n",
             );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert_eq!(
@@ -399,7 +412,7 @@ reason = "in-use"
                 )
                 .replace("kind = \"negative\"\n", "kind = \"negative\"\nspotlight = \"off\"\n");
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert_eq!(
@@ -416,7 +429,7 @@ reason = "in-use"
             let access = "access = { downloads = \"granted\", desktop = \"denied\", documents = \"not-asked\" }\n";
             let cases = CASES.replacen("kind = \"negative\"\n", &format!("kind = \"negative\"\n{access}"), 1);
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert_eq!(
@@ -436,7 +449,7 @@ reason = "in-use"
             let cases = CASES.replacen("kind = \"negative\"\n", &format!("kind = \"negative\"\n{installs}"), 1);
             let cases = format!("{cases}[[case.receipt]]\npackage = \"Tool-3.1.pkg\"\ninstalled = \"10d\"\n");
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert!(lines.contains(&"  - The sandbox runs macOS 15.4."), "{lines:?}");
@@ -454,7 +467,7 @@ reason = "in-use"
                  reason = \"trial.error.failed\"\nitems = 2\n",
             );
 
-            let text = checklist(&[CaseFile::parse(&cases).unwrap()], Path::new("/sandbox"), super::now());
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
             assert_eq!(lines, ["  - Under 'trial.caches', 2 left out: trial.error.failed."]);
@@ -462,7 +475,8 @@ reason = "in-use"
 
         #[test]
         fn the_checklist_lists_every_case_negatives_first() {
-            let text = checklist(&[CaseFile::parse(CASES).unwrap()], Path::new("/tmp/sandbox/trial"), super::now());
+            let text =
+                checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/tmp/sandbox/trial"), super::now());
 
             let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("- [ ] ")).collect();
             assert_eq!(

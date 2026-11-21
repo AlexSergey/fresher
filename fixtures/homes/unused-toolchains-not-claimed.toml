@@ -1,0 +1,402 @@
+# A home for the unused-toolchains module where nothing is offered or left out: rustup's default and override, the
+# moving channels, a name off the shape, a linked toolchain, and versions kept by a project's toolchain file (beside a
+# Cargo.toml), the legacy one-line file and a .tool-versions; nvm's default, an alias to an LTS alias, the newest
+# version, versions kept by .nvmrc, .node-version and .tool-versions, and a folder off the Node shape. Every folder is a
+# dated `[[dir]]`: an undated one counts as changed now.
+
+[[dir]]
+path = ".rustup"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.80.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.80.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-2024-04-01-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-2024-04-01-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/stable-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/stable-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/my-custom"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/my-custom/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.79.0-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.79.0-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-2024-03-01-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/nightly-2024-03-01-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.77.2-aarch64-apple-darwin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".rustup/toolchains/1.77.2-aarch64-apple-darwin/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code/my-toolchain"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code/my-toolchain/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Documents"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Documents/dev"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Documents/dev/pinned"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code/legacy"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code/asdf"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/alias"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/alias/lts"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v20.11.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v20.11.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v22.1.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v22.1.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v18.20.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v18.20.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v16.20.2"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v16.20.2/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v19.9.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v19.9.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v18.19.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/v18.19.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/18.1.0"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".nvm/versions/node/18.1.0/bin"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Documents/dev/web"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "Code/app2"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/settings.toml"
+text = "default_toolchain = \"1.80.0-aarch64-apple-darwin\"\n\n[overrides]\n\"/Users/someone/work/old\" = \"nightly-2024-04-01-aarch64-apple-darwin\"\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.80.0-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/nightly-2024-04-01-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/nightly-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/my-custom/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.79.0-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/nightly-2024-03-01-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".rustup/toolchains/1.77.2-aarch64-apple-darwin/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Code/my-toolchain/bin/rustc"
+size = 300
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Documents/dev/pinned/rust-toolchain.toml"
+text = "[toolchain]\nchannel = \"1.79\"\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Documents/dev/pinned/Cargo.toml"
+text = "[package]\nname = \"pinned\"\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Code/legacy/rust-toolchain"
+text = "nightly-2024-03-01\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Code/asdf/.tool-versions"
+text = "rust 1.77.2\nnodejs 18.19.0\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/alias/default"
+text = "20\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/alias/myproj"
+text = "lts/hydrogen\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/alias/lts/hydrogen"
+text = "v18.20.0\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v20.11.0/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v22.1.0/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v18.20.0/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v16.20.2/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v19.9.0/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/v18.19.0/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".nvm/versions/node/18.1.0/bin/node"
+size = 500
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Documents/dev/web/.nvmrc"
+text = "16\n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Code/app2/.node-version"
+text = "19\n"
+age = "40d"
+changed = "40d"
+
+[[symlink]]
+path = ".rustup/toolchains/dev"
+target = "../../Code/my-toolchain"
+age = "40d"
+changed = "40d"

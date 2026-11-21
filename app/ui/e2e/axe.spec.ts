@@ -206,10 +206,12 @@ test.describe('positive cases', () => {
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)'],
       ['staleProjects', 'Packages of old projects', '2 items left out (1.3 GB)'],
       ['localAiModels', 'Hugging Face models', '1 item left out (300 MB)'],
+      ['unusedToolchains', 'Unused Node versions (nvm)', '1 item left out (110 MB)'],
     ] as const) {
       test(`the details of ${category}, with its left-out lines`, async ({ page }) => {
         await detailsAfter(page, SCRIPTS[script], category);
         await expect(details(page)).toContainText(line);
+        await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
 
         expect(await violations(page)).toStrictEqual([]);
       });
@@ -226,6 +228,13 @@ test.describe('positive cases', () => {
       await expect(page.locator('[data-card]').filter({ hasText: "Gradle's caches" })).toBeVisible();
       await expect(leftOut).not.toContainText("Gradle's caches");
       await leftOut.scrollIntoViewIfNeeded();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the details of an unused toolchains category before Documents is allowed', async ({ page }) => {
+      await detailsAfter(page, SCRIPTS.unusedToolchainsNoDocuments, 'Unused Rust toolchains');
+      await expect(page.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });

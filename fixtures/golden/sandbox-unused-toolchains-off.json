@@ -1,0 +1,234 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "unused-toolchains.rust",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.rustup/toolchains/1.72.0-aarch64-apple-darwin",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "unused-toolchains.rust",
+      "danger": "low",
+      "logical": 4096,
+      "module": "unused-toolchains",
+      "subject": "home/.rustup/toolchains/1.72.0-aarch64-apple-darwin"
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 4096,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 20480,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67101002,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738180790,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 122,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/1.72.0-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/1.72.0-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/1.72.0-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/alias"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3,
+        "path": "home/.nvm/alias/default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v11.15.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v11.15.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.nvm/versions/node/v11.15.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v20.11.0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.nvm/versions/node/v20.11.0/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.nvm/versions/node/v20.11.0/bin/node"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup"
+      },
+      {
+        "kind": "file",
+        "logical_size": 50,
+        "path": "home/.rustup/settings.toml"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup/toolchains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup/toolchains/stable-aarch64-apple-darwin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.rustup/toolchains/stable-aarch64-apple-darwin/bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 16714
+  }
+}
