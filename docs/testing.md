@@ -215,7 +215,9 @@ cleanups of a hundred items through the real journal.
   (WebKit, where the budget is held: p95 ≤ 17 ms or the idle page's p95, no frame over 50 ms, at most about 60 list
   rows) and `perf-chromium` (reports long tasks and the JS heap). It streams a 50,000-finding scan, changes screens,
   scrolls 100,000 rows and checks the bundle's gzipped size; run it on a quiet Mac when a change touches the lists,
-  the scan's screens or motion, and write the numbers in the plan's conclusions. `test:e2e` never runs it.
+  the scan's screens or motion, and write the numbers in the plan's conclusions. A plan that touches none of them
+  (a module, a core rule, docs) does not run it and its steps do not list it (the user's decision of 2026-11-21).
+  `test:e2e` never runs it.
 
 ## Performance
 
@@ -224,7 +226,9 @@ is `perf.spec.ts`, above): `npm run bench` (`cargo bench -p fresher-scanner --be
 live in `crates/scanner/benches/scan.rs`, grouped as `matcher/*`, `scan/*` (the full scan by thread count, the rescan
 with nothing changed and after 1 000 changed folders, the restore: the cache decoded and the matches emitted), `cache/*`
 (encode, decode, fit to the cap) and `state/*` (largest files, search by name); after each group the bench prints the
-process's peak memory (`fresher_macos::peak_memory`, bytes).
+process's peak memory (`fresher_macos::peak_memory`, bytes). They are run only by a plan that changes the walk itself
+(the scanner, the engine's scan path, the cache), not by a plan that adds a module or a category (the user's decision
+of 2026-11-21).
 
 They run on a generated tree (`LargeTree` in `crates/testing`): a seeded shape of folders, sparse files (declared sizes
 cost no data blocks), hard links, `node_modules`-like dependency trees and folders tagged with `CACHEDIR.TAG`. Two
