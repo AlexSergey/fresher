@@ -6,6 +6,10 @@ step's `## Conclusions`, on `main`). Items already done and written down are not
 
 Read the step only when an item is not clear: each one is meant to be run from here.
 
+Plans 027, 028, 023, 024, 029 and 030 were squash-merged into `main` on 2026-11-21 before their walks, at the user's
+request; they stay 🔨 until their items here (1.9, 1.11 to 1.14, 2.8, 2.10 to 2.12) are run and written down. The agent's
+calls taken while building them are in each plan's `00-design.md`.
+
 ## 0. Before you start
 
 ### Prerequisites
@@ -276,6 +280,16 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] `npm run dev:sandbox -- app-leftovers`: the installed Editor's caches are offered by "Caches of your apps", and
       that file's negatives read "never offered by `app-leftovers`", which still holds.
 - [ ] Ignore one cache, then the category, then the module; restore each.
+
+### 1.14 The scan screen and ignoring one item ([027/04/02](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md), [028/02/02](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md))
+
+- [ ] `rm -rf sandbox/trial && npm run dev:sandbox -- trial` (and `app-leftovers` for the choices). Walk the boxes of 027/04/02 "By the user": the sidebar,
+      the ring and its legend, the cards in danger zones, Details and Back, the selection bar, Review's zones, the
+      sandbox's Trash in the banner and the result.
+- [ ] On a category's Details, walk the boxes of 028/02/02 "By the user": the row's menu, the focus after an ignore,
+      the keyboard path, Restore from Settings, Review without the item.
+- [ ] Known flaky in the autotests, not a defect of the app: the chromium screenshot
+      `category-details-app-leftovers-chosen` fails now and then in the full run and passes alone.
 
 ## 2. The real Mac: one recorded run
 
@@ -840,6 +854,8 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)            | pending                        | 1.11, 2.10 |
 | [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)            | pending                        | 1.12, 2.11 |
 | [030/03/02 runs and conclusions](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md)      | pending                        | 1.13, 2.12    |
+| [027/04/02 checks and the walk](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md)           | pending                        | 1.14          |
+| [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)            | pending                        | 1.14          |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and
