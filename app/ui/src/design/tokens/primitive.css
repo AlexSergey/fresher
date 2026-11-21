@@ -33,6 +33,13 @@
     --red-600: #d9363e;
     --red-700: #c42a30;
 
+    /* The muted hues of the neutral parts of a disk: no light, each at least 3:1 on the raised surface. */
+    --slate-400: #7d8696;
+    --slate-500: #646b78;
+    --plum-400: #8f7fa8;
+    --teal-400: #5f9590;
+    --stone-400: #9d9180;
+
     --white: #fff;
     --white-a0: rgb(255 255 255 / 0%);
     --white-a3-5: rgb(255 255 255 / 3.5%);

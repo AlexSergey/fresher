@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { type JSX, useRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { useKeepFocus } from './keep-focus';
+import { focusCard, useKeepFocus } from './keep-focus';
 
 type Props = { readonly active?: boolean; readonly scanning: boolean };
 
@@ -15,7 +15,7 @@ const Screen = ({ active = true, scanning }: Props): JSX.Element => {
   return (
     <>
       <div ref={ref}>
-        <h1>Overview</h1>
+        <h1>Scan</h1>
         {scanning ? (
           <button key="stop" type="button">
             Stop
@@ -58,7 +58,7 @@ describe('useKeepFocus', () => {
       rerender(<Screen active={false} scanning />);
       await settle();
 
-      expect(screen.getByRole('heading', { name: 'Overview' })).not.toHaveFocus();
+      expect(screen.getByRole('heading', { name: 'Scan' })).not.toHaveFocus();
     });
   });
 
@@ -70,7 +70,44 @@ describe('useKeepFocus', () => {
       rerender(<Screen scanning />);
       await settle();
 
-      expect(screen.getByRole('heading', { name: 'Overview' })).toHaveFocus();
+      expect(screen.getByRole('heading', { name: 'Scan' })).toHaveFocus();
+    });
+  });
+});
+
+describe('focusCard', () => {
+  const Cards = (): JSX.Element => (
+    <div data-testid="screen">
+      <h1>Scan</h1>
+      <ul>
+        <li data-category="a.one">
+          <input aria-label="Select one" type="checkbox" />
+          <button type="button">Details of one</button>
+          <button type="button">Options of one</button>
+        </li>
+      </ul>
+    </div>
+  );
+
+  describe('negative cases', () => {
+    it('says no and moves nothing when the card is not on the screen', () => {
+      render(<Cards />);
+
+      expect(focusCard(screen.getByTestId('screen'), 'a.gone')).toBe(false);
+      expect(document.body).toHaveFocus();
+    });
+
+    it('says no when there is no screen', () => {
+      expect(focusCard(null, 'a.one')).toBe(false);
+    });
+  });
+
+  describe('positive cases', () => {
+    it("focuses the card's Details button", () => {
+      render(<Cards />);
+
+      expect(focusCard(screen.getByTestId('screen'), 'a.one')).toBe(true);
+      expect(screen.getByRole('button', { name: 'Details of one' })).toHaveFocus();
     });
   });
 });

@@ -21,6 +21,10 @@ then (decision 9), and **before plan 016**. Depends on plans [002](../002-base-a
 [003](../003-base-ui/readme.md), [005](../005-settings/readme.md) and [012](../012-storage-map/readme.md) (done or
 merged).
 
+**Since plan 027 (2026-11-20)** the module pages and the sidebar's module groups are gone: a module is ignored from
+its card's settings menu on the Scan screen and restored in Settings → Ignored, and a category's details replace its
+section of the module page.
+
 ## Plans
 
 | #   | Plan                                                  | Status                                  | Depends on | What                                                                                         |

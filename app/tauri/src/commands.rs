@@ -479,7 +479,7 @@ mod tests {
         };
         use fresher_testing::FakeAccess;
 
-        use fresher_core::{Build, PutBackOutcome, Simulated, TrashState};
+        use fresher_core::{Build, PutBackOutcome, SandboxTrashAt, Simulated, TrashState};
         use serde_json::json;
         use tauri::Manager;
 
@@ -541,12 +541,17 @@ mod tests {
         #[test]
         fn app_info_is_the_crate_version_and_the_managed_build() {
             let shell = Shell::new();
-            shell.app.manage(Build::Sandbox { path: "/tmp/box".into(), simulated: vec![Simulated::Running] });
+            let build = Build::Sandbox {
+                path: "/tmp/box".into(),
+                simulated: vec![Simulated::Running],
+                trash: SandboxTrashAt::System.text(),
+            };
+            shell.app.manage(build.clone());
 
             let info = app_info(shell.app.state::<Build>());
 
             assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
-            assert_eq!(info.build, Build::Sandbox { path: "/tmp/box".into(), simulated: vec![Simulated::Running] });
+            assert_eq!(info.build, build);
         }
 
         #[test]

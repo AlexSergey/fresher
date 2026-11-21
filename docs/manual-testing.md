@@ -92,9 +92,10 @@ them in this order because the first ones teach the screens used by the rest.
   4. A tool's failure is not reachable by hand yet: the UI e2e screenshot of a failed item with "Details" stands in.
   5. The autotests of section 0 are the "checks" of this step.
 - [ ] **Plan 015, module groups** ([015/03/02](./plans/015-module-groups/03-finish/02-run-and-conclusions.md)).
-  1. `npm run dev:sandbox -- trial`: the sidebar shows the group Debug with `demo` and `trial`; scan.
-  2. Settings, Ignored groups, Debug on: the sidebar and the overview update at once, nothing of the two is offered in
-     Review. Off: everything is back with no rescan. Repeat with the module `trial` alone and with Restore from its page.
+  1. `npm run dev:sandbox -- trial`: scan; Scan's cards of `demo` and `trial` sit in their danger zones.
+  2. Settings, Ignored groups, Debug on: Scan updates at once, nothing of the two is offered in
+     Review. Off: everything is back with no rescan. Repeat with the module `trial` alone (Ignore module from a card's
+     settings menu) and restore it in Settings, Ignored modules.
   3. Quit and open again: the ignored lists are kept. A cleanup prepared before an ignore is refused after it.
   4. `EXPECTED.md` of `trial` walked as in 007: nothing changed in what is offered.
   5. On the real Mac, `npm run dev` shows the group tabs. They read well with VoiceOver (Cmd-F5) and answer the arrow
@@ -104,7 +105,7 @@ them in this order because the first ones teach the screens used by the rest.
 ### 1.2 The storage map ([012/06/02](./plans/012-storage-map/06-finish/02-run-and-conclusions.md))
 
 - [ ] `rm -rf sandbox/storage-map && npm run dev:sandbox -- storage-map`; every line of `EXPECTED.md` holds,
-      including the map's lines (both views: by meaning and by place).
+      including the map's lines (the ring and its legend; the legend's "i" explains each part).
 - [ ] Ignore and restore a category: its bytes move to "Your folders" and back, the total unchanged, no rescan.
 - [ ] During a scan: "Explained" grows as findings arrive; "Explained" plus "Not scanned yet" stays the used space;
       at the end the full map replaces it in one move. Quit and reopen: the restored map shows at once.
@@ -118,7 +119,7 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] Select every positive, confirm: the Medium level and the settings' sentence are on the confirmation; the folders
       land in `sandbox/jetbrains/home/.Trash`; Cleanups, put back: they return. Repeat with `--real-trash`: Finder's Put
       Back restores them.
-- [ ] Ignore the module, then the group Development, from Settings and from the module's page; restore.
+- [ ] Ignore the module, then the group Development, from Settings and from a card's settings menu (Ignore module); restore in Settings, Ignored.
 - [ ] The two extra case files also run clean: `npm run dev:sandbox -- jetbrains-unknown-app-installed` and
       `jetbrains-unknown-app-open` (their `EXPECTED.md` lists the expected left-outs; not in the step's list, but each has
       its autotest and a look costs a minute).
@@ -154,7 +155,7 @@ them in this order because the first ones teach the screens used by the rest.
       container); left-out lines read as written (running, changed lately, elsewhere, a socket, the system's file); each
       positive offered at its danger (caches Safe, settings Medium, support folder High); the support folder counts in
       its id's line of the map, "no longer installed".
-- [ ] On the module's page: **Keep settings** selects only the caches and Review names Safe; **Remove everything**
+- [ ] On the details of a card of the module (Details): **Keep settings** selects only the caches and Review names Safe; **Remove everything**
       selects the three categories and Review names High. Confirm: items land in `home/.Trash`; put back. The link's
       target in `home/elsewhere/Linked`, the group container and the container are untouched.
 - [ ] Ignore the data category, then the module; restore.
@@ -172,7 +173,7 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] Select everything: Review names High; confirm: items land in `home/.Trash`; put back. The link's target in
       `home/elsewhere/clip` is untouched.
 - [ ] Ignore the large-untouched category, then the module; restore.
-- [ ] `npm run dev:sandbox -- downloads-denied`: the module's page shows the notice that Downloads is not allowed, with
+- [ ] `npm run dev:sandbox -- downloads-denied`: the card's Details show the notice that Downloads is not allowed, with
       the way to allow it; nothing offered; the coverage names Downloads.
 - [ ] `npm run dev:sandbox -- downloads-browser-open`: the left-out line names the open browser.
 
@@ -214,7 +215,7 @@ run.
 3. [ ] Scan `~` once; wait for the end. **Second check, before any other cleanup:** select one small offered item,
        Review, Confirm to the Trash: it must end "Development build: a dry run..." and still be where it was in Finder.
        If it ends anything else, **stop: quit the app without confirming anything more** and tell the agent.
-4. [ ] On every module's page select everything offered; Review: the dialog names the count, the size and the highest
+4. [ ] On Scan, press Select all in each danger zone; Review: the dialog names the count, the size and the highest
        danger; Confirm to the Trash (not "Delete permanently"). Every item that passes its checks ends
        "Development build: a dry run..."; an item a check refuses keeps its own reason; nothing is freed. Finder: two of
        the offered folders are still where they were.
@@ -246,9 +247,9 @@ diskutil apfs list | head -60
       `/System/Volumes/VM`; Free the available space.
 - [ ] "Outside the scanned folders" lists its reasons, with the unreadable folders' count and the permission.
 - [ ] The purgeable note is there, at least zero.
-- [ ] By meaning: the apps with their data folders, the Trash, the categories with their selection, "more under apps"
-      where part of a category sits under apps, the system lines. By place: opening the home descends where one folder
-      holds 90 % of its parent; each row says what is explained.
+- [ ] The ring's legend: the cleanable part split into the four danger levels with the sizes of the cards in the zones
+      below, Free as the gap, the system parts; the "i" of each row reads right, and hovering a segment and its row
+      highlights both. (The by-meaning rows and the view by place are gone from the UI since plan 027.)
 - [ ] The `Shares::of` time and heap on your home, restored from the app's cache. Reference: the generated LARGE tree
       gave 3.9 ms and 625 226 bytes; budget 50 ms and 5 MB. Where the number is shown (a debug log line) is in the
       step; record time and bytes.

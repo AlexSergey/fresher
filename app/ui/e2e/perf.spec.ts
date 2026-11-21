@@ -10,6 +10,7 @@ import type { CategoryTotal, ModuleInfo, Overview } from '../src/ipc/bindings.ge
 import { readyCategory } from '../src/test/demo-scan';
 import { largeScan } from '../src/test/large-scan';
 import { type CoreScript, mockCore, releaseScan, SCRIPTS } from './core-mock';
+import { navScan, scanButton } from './support/cards';
 import { beginSample, endSample, type Sample, sampleFrames, settle } from './support/frames';
 
 // The performance budget of plan 003 (docs/plans/003-base-ui/00-design.md, "Performance budget"), measured on the
@@ -209,7 +210,7 @@ const calibrate = (context: BrowserContext): Promise<readonly Row[]> =>
   measureRuns(context, async (page) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Scan' })).toBeVisible();
     await settle(page);
 
     return {
@@ -253,10 +254,8 @@ const sampleOf = async (page: Page, act: () => Promise<void>): Promise<Measured>
 const heading = (page: Page, name: string): ReturnType<Page['getByRole']> =>
   page.getByRole('heading', { level: 1, name });
 
-const cards = (page: Page): ReturnType<Page['getByRole']> => page.getByRole('button', { name: /^Open / });
-
-const scanButton = (page: Page): ReturnType<Page['getByRole']> =>
-  page.getByRole('button', { exact: true, name: 'Scan' });
+const cards = (page: Page): ReturnType<Page['getByRole']> =>
+  page.locator('section[data-level]').getByRole('heading', { level: 3 });
 
 // The scan's 196 batches take about ten seconds.
 const SCAN_TIMEOUT = 60_000;
@@ -268,30 +267,29 @@ test.describe('positive cases', () => {
     const overview = await measureRuns(context, async (page) => {
       await mockCore(page, STREAMED);
       await page.goto('/');
-      await expect(heading(page, 'Overview')).toBeVisible();
+      await expect(heading(page, 'Scan')).toBeVisible();
       await settle(page);
 
       return {
-        'scan, overview': await sampleOf(page, async () => {
+        'scan, scan screen': await sampleOf(page, async () => {
           await scanButton(page).click();
           await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible({ timeout: SCAN_TIMEOUT });
           await expect(cards(page)).toHaveCount(12);
         }),
       };
     });
-    const modulePage = await measureRuns(context, async (page) => {
+    const details = await measureRuns(context, async (page) => {
       await mockCore(page, STREAMED);
       await page.goto('/');
-      await page.getByRole('button', { name: /^Demo module/ }).click();
-      await expect(heading(page, 'Demo module')).toBeFocused();
+      await scanButton(page).click();
+      await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible({ timeout: SCAN_TIMEOUT });
       await settle(page);
 
       return {
-        'scan, module page': await sampleOf(page, async () => {
-          await scanButton(page).click();
-          await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible();
-          await expect(scanButton(page)).toBeVisible({ timeout: SCAN_TIMEOUT });
-          // The largest category is expanded and its rows have loaded.
+        "screen, a category's details after a scan": await sampleOf(page, async () => {
+          await page.getByRole('button', { name: 'Details' }).first().click();
+          await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+          // The category's rows have loaded.
           await expect(
             page
               .getByRole('list', { name: /^The items of / })
@@ -301,7 +299,7 @@ test.describe('positive cases', () => {
         }),
       };
     });
-    const rows = [...(await calibrate(context)), ...overview, ...modulePage];
+    const rows = [...(await calibrate(context)), ...overview, ...details];
 
     await report(testInfo, { rows, title: 'scan', version: context.browser()?.version() ?? '' });
     expectWithinBudget(testInfo, rows);
@@ -315,9 +313,13 @@ test.describe('positive cases', () => {
       await expect(cards(page)).toHaveCount(2);
       await settle(page);
 
-      const toModule = await sampleOf(page, async () => {
-        await page.getByRole('button', { name: /^Demo module/ }).click();
-        await expect(heading(page, 'Demo module')).toBeFocused();
+      const toDetails = await sampleOf(page, async () => {
+        await page
+          .locator('[data-card]')
+          .filter({ hasText: 'Example caches' })
+          .getByRole('button', { name: 'Details' })
+          .click();
+        await expect(heading(page, 'Example caches')).toBeFocused();
       });
       const selectionBar = await sampleOf(page, async () => {
         await page.getByRole('checkbox', { name: 'Select Example: browser-cache' }).check();
@@ -334,16 +336,16 @@ test.describe('positive cases', () => {
         await page.getByRole('button', { name: 'Settings' }).click();
         await expect(heading(page, 'Settings')).toBeFocused();
       });
-      const toOverview = await sampleOf(page, async () => {
-        await page.getByRole('button', { name: 'Overview' }).click();
-        await expect(heading(page, 'Overview')).toBeFocused();
+      const toScan = await sampleOf(page, async () => {
+        await navScan(page).click();
+        await expect(heading(page, 'Scan')).toBeFocused();
       });
 
       return {
-        'screen, module → review': toReview,
-        'screen, overview → module': toModule,
+        'screen, details → review': toReview,
         'screen, review → settings': toSettings,
-        'screen, settings → overview': toOverview,
+        'screen, scan → details': toDetails,
+        'screen, settings → scan': toScan,
         'selection bar appears': selectionBar,
       };
     });
@@ -352,13 +354,14 @@ test.describe('positive cases', () => {
       await page.goto('/');
       await scanButton(page).click();
       await expect(cards(page)).toHaveCount(12);
-      await expect(cards(page).first()).toHaveAccessibleName('Open Example group 12');
+      // The first zone holds groups 4, 8 and 12 (by their danger): its largest card leads before the re-sort.
+      await expect(cards(page).first()).toHaveText('Example group 12');
       await settle(page);
 
       return {
         're-sort of 12 cards': await sampleOf(page, async () => {
           await releaseScan(page);
-          await expect(cards(page).first()).toHaveAccessibleName('Open Example group 1');
+          await expect(cards(page).first()).toHaveText('Example group 4');
         }),
       };
     });

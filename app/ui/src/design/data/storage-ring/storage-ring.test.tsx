@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -16,6 +16,11 @@ const SEGMENTS: readonly Segment[] = [
   { key: 'logs', label: 'Logs', size: '3 GB', tone: 'low', value: 3 },
 ];
 
+const WITH_FREE: readonly Segment[] = [
+  ...SEGMENTS,
+  { key: 'free', label: 'Free', size: '37 GB', tone: 'free', value: 37 },
+];
+
 const ring = (props: Partial<StorageRingProps> = {}): StorageRingProps => ({
   label: 'Space found',
   segments: SEGMENTS,
@@ -29,6 +34,7 @@ const ring = (props: Partial<StorageRingProps> = {}): StorageRingProps => ({
 const arcs = (): readonly Element[] => [...document.querySelectorAll('[data-ring="arcs"] [data-tone]')];
 const track = (): Element | null => document.querySelector('[data-ring="arcs"] [data-track]');
 const sweep = (): Element | null => document.querySelector('[data-sweep]');
+const gapLabelNode = (): Element | null => document.querySelector('[data-gap-label]');
 const sheen = (): Element | null => document.querySelector('[data-sheen]');
 /* eslint-enable testing-library/no-node-access */
 
@@ -105,6 +111,28 @@ describe('StorageRing', () => {
 
       expect(screen.getByRole('button', { name: 'Scan' })).toBeInTheDocument();
     });
+
+    it('no gap label without gapLabel, or without a free segment', () => {
+      const { rerender } = render(<StorageRing {...ring({ segments: WITH_FREE })} />);
+
+      expect(gapLabelNode()).toBeNull();
+
+      rerender(<StorageRing {...ring({ gapLabel: 'Free' })} />);
+
+      expect(gapLabelNode()).toBeNull();
+    });
+
+    it('a free segment is not drawn as an arc', () => {
+      render(<StorageRing {...ring({ segments: WITH_FREE })} />);
+
+      expect(arcs()).toHaveLength(3);
+    });
+
+    it('no arc is dimmed while nothing is highlighted', () => {
+      render(<StorageRing {...ring()} />);
+
+      expect(arcs().filter((arc) => arc.hasAttribute('data-dimmed'))).toHaveLength(0);
+    });
   });
 
   describe('positive cases', () => {
@@ -152,6 +180,35 @@ describe('StorageRing', () => {
       rerender(<StorageRing {...ring({ state: 'partial' })} />);
 
       expect(sheen()).not.toBeNull();
+    });
+
+    it('puts the label at the free slot, hidden from assistive technology', () => {
+      render(<StorageRing {...ring({ gapLabel: 'Free', segments: WITH_FREE })} />);
+
+      expect(gapLabelNode()).toHaveTextContent('Free');
+      expect(gapLabelNode()).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('pointer enter and leave on an arc call onHighlight with its key and null', () => {
+      const calls: (null | string)[] = [];
+
+      render(<StorageRing {...ring({ onHighlight: (key) => calls.push(key) })} />);
+      const [first] = arcs();
+
+      fireEvent.pointerEnter(first as Element);
+      fireEvent.pointerLeave(first as Element);
+
+      expect(calls).toStrictEqual(['xcode', null]);
+    });
+
+    it('a highlighted key dims every other arc, and marks the free label', () => {
+      const { rerender } = render(<StorageRing {...ring({ highlighted: 'docker' })} />);
+
+      expect(arcs().map((arc) => arc.hasAttribute('data-dimmed'))).toStrictEqual([true, false, true]);
+
+      rerender(<StorageRing {...ring({ gapLabel: 'Free', highlighted: 'free', segments: WITH_FREE })} />);
+
+      expect(gapLabelNode()).toHaveAttribute('data-highlighted');
     });
   });
 });

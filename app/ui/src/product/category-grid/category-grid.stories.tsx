@@ -7,7 +7,10 @@ import { CategoryGrid } from './category-grid';
 const grid = withTexts((): JSX.Element => (
   <CategoryGrid
     found={DEMO_TOTALS_FOUND}
-    onOpen={() => undefined}
+    label="Categories"
+    moduleOf={() => ({ id: 'demo', name: 'Demo module' })}
+    onDetails={() => undefined}
+    onIgnore={() => undefined}
     onToggle={() => undefined}
     scanning={false}
     selected={(category) => category === 'demo.caches'}

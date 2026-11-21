@@ -285,6 +285,22 @@ mod negative {
     }
 
     #[test]
+    fn the_real_trash_names_no_sandbox_path() {
+        let world = World::new();
+
+        let build = crate::sandbox::build(&world.sandbox(), crate::sandbox::SandboxTrash::Real).unwrap();
+
+        assert!(
+            matches!(
+                &build,
+                fresher_core::Build::Sandbox { trash, .. }
+                    if trash.key().as_str() == "core.build.trash.system" && trash.args().is_empty()
+            ),
+            "{build:?}"
+        );
+    }
+
+    #[test]
     fn a_folder_without_a_marker_does_not_start() {
         let world = World::new();
         fs::rename(world.folder.path().join(SANDBOX_MARKER), world.real.path().join(SANDBOX_MARKER)).unwrap();
@@ -524,10 +540,29 @@ mod positive {
 
     use std::sync::Arc;
 
-    use fresher_core::{SettingUpdate, SettingValue, Simulated};
+    use fresher_core::{SandboxTrashAt, SettingUpdate, SettingValue, Simulated};
 
     use super::{SANDBOX_MARKER, World, clean, env, found, prepare, scan};
     use crate::sandbox::{SandboxMode, SandboxTrash};
+
+    #[test]
+    fn the_own_trash_names_its_folder() {
+        let world = World::new();
+        let sandbox = world.sandbox();
+
+        let build = crate::sandbox::build(&sandbox, SandboxTrash::Sandbox).unwrap();
+
+        // The folder the Trash port of `compose` is given, where `a_cleanup_lands_in_the_sandbox_trash` finds items.
+        let folder = fresher_core::TextArg::Path(sandbox.trash());
+        assert!(
+            matches!(
+                &build,
+                fresher_core::Build::Sandbox { trash, .. }
+                    if trash.key().as_str() == "core.build.trash.sandbox" && trash.args().get("path") == Some(&folder)
+            ),
+            "{build:?}"
+        );
+    }
 
     #[test]
     fn the_real_ports_take_the_sandboxs_declared_running_apps() {
@@ -550,7 +585,7 @@ mod positive {
 
         assert_eq!(crate::sandbox::app_search(&declared, sandbox.path()), fresher_system::DeclaredSearch::listed());
         assert!(matches!(
-            crate::sandbox::build(&sandbox).unwrap(),
+            crate::sandbox::build(&sandbox, SandboxTrash::Sandbox).unwrap(),
             fresher_core::Build::Sandbox { simulated, .. } if simulated == [Simulated::Running]
         ));
     }
@@ -569,7 +604,7 @@ mod positive {
         let answered = sandbox.path().join("Volumes/Elsewhere/Far.app");
         assert_eq!(search, fresher_system::DeclaredSearch { index_on: false, elsewhere: vec![(far, answered)] });
         assert!(matches!(
-            crate::sandbox::build(&sandbox).unwrap(),
+            crate::sandbox::build(&sandbox, SandboxTrash::Sandbox).unwrap(),
             fresher_core::Build::Sandbox { simulated, .. } if simulated == [Simulated::Running, Simulated::Spotlight]
         ));
     }
@@ -593,13 +628,14 @@ mod positive {
         let world = World::new();
         super::grant_downloads(&world);
 
-        let build = crate::sandbox::build(&world.sandbox()).unwrap();
+        let build = crate::sandbox::build(&world.sandbox(), SandboxTrash::Sandbox).unwrap();
 
         assert_eq!(
             build,
             fresher_core::Build::Sandbox {
                 path: world.sandbox().path().to_path_buf(),
                 simulated: vec![Simulated::Running, Simulated::Access],
+                trash: SandboxTrashAt::Sandbox(&world.sandbox().trash()).text(),
             }
         );
         let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
@@ -628,13 +664,14 @@ mod positive {
     fn the_banner_lists_installs_when_the_world_states_them() {
         let (_folder, sandbox) = super::installs_sandbox();
 
-        let build = crate::sandbox::build(&sandbox).unwrap();
+        let build = crate::sandbox::build(&sandbox, SandboxTrash::Sandbox).unwrap();
 
         assert_eq!(
             build,
             fresher_core::Build::Sandbox {
                 path: sandbox.path().to_path_buf(),
                 simulated: vec![Simulated::Running, Simulated::Installs],
+                trash: SandboxTrashAt::Sandbox(&sandbox.trash()).text(),
             }
         );
         let ports = crate::sandbox::SandboxPorts::real(&sandbox).unwrap();
@@ -726,7 +763,11 @@ mod positive {
         let sandbox = world.sandbox();
         assert_eq!((start.data_folder, start.home), (sandbox.data_folder(), sandbox.home()));
         let canonical = fs::canonicalize(world.folder.path()).unwrap();
-        assert_eq!(start.build, fresher_core::Build::Sandbox { path: canonical, simulated: vec![Simulated::Running] });
+        let trash = SandboxTrashAt::Sandbox(&sandbox.trash()).text();
+        assert_eq!(
+            start.build,
+            fresher_core::Build::Sandbox { path: canonical, simulated: vec![Simulated::Running], trash }
+        );
         assert!(!world.real_data().exists());
     }
 

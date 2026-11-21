@@ -12,7 +12,6 @@ import type {
   CleanupsPage,
   CleanupsQuery,
   Confirmation,
-  Descent,
   Dictionary,
   Event,
   FindingId,
@@ -22,10 +21,8 @@ import type {
   IgnoreTarget,
   MeaningGroup,
   ModuleInfo,
-  NodeId,
   Overview,
   OwnData,
-  PlaceView,
   PlanId,
   PutBackReport,
   PutBackRequest,
@@ -163,10 +160,6 @@ export const getStorageMap = (): Promise<StorageMap> => call('getStorageMap');
 // The by-meaning groups of the volume at index `volume` of the map.
 export const getStorageMeaning = (volume: number): Promise<readonly MeaningGroup[]> =>
   call('getStorageMeaning', { volume });
-
-// One page of a place of the last scan, largest first: opened through its single-child folders, or at the node asked.
-export const getStoragePlace = (node: NodeId, descent: Descent, offset: number, limit: number): Promise<PlaceView> =>
-  call('getStoragePlace', { descent, limit, node, offset });
 
 export const getDictionary = (locale: string): Promise<Dictionary> => call('getDictionary', { locale });
 

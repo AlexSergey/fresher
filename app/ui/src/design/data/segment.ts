@@ -11,9 +11,11 @@ export type Segment = {
   readonly value: number;
 };
 
-// The colour of a part: a danger level keeps its colour; the neutral tones carry no light (goal, section 6): `plain`
-// (your folders) a quiet graphite, `system` a darker graphite, `free` an outline with no fill, `unknown` hatched.
-export type Tone = 'free' | 'plain' | 'system' | 'unknown' | Level;
+// The colour of a part: a danger level keeps its colour; every part of a disk has a muted hue of its own, with no light
+// (goal, section 6): your folders, macOS, swap and sleep, another volume, the disk's own space; `free` is an outline
+// with no fill, `unknown` hatched.
+export type Tone =
+  'disk-own' | 'free' | 'mac-os' | 'other-volume' | 'swap-and-sleep' | 'unknown' | 'your-folders' | Level;
 
 // A chart's accessible name: the caller's name for the whole, then every drawn segment with its size.
 export const chartLabel = (name: string, segments: readonly Segment[]): string => {

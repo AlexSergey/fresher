@@ -5,6 +5,8 @@ import type { Forced } from '../forced';
 import styles from './checkbox.module.css';
 
 export type CheckboxProps = Forced & {
+  // The id of another text that says more, read after the description: a heading the checkbox acts for.
+  readonly 'aria-describedby'?: string;
   // `mixed` when some, not all, of what it stands for is chosen.
   readonly checked: 'mixed' | boolean;
   // A second line under the label, linked to the input as its description.
@@ -20,6 +22,7 @@ export type CheckboxProps = Forced & {
 
 // A real checkbox, visually replaced: the input stays the focus and click target, a box with a drawn mark shows it.
 export const Checkbox = ({
+  'aria-describedby': describedBy,
   checked,
   description,
   disabled = false,
@@ -46,7 +49,9 @@ export const Checkbox = ({
       <span className={styles.control}>
         <input
           {...forced}
-          aria-describedby={description === undefined ? undefined : descriptionId}
+          aria-describedby={
+            [description === undefined ? undefined : descriptionId, describedBy].filter(Boolean).join(' ') || undefined
+          }
           checked={checked === true}
           className={styles.input}
           disabled={disabled}

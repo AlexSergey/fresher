@@ -1,58 +1,32 @@
 import { createContext, use, useSyncExternalStore } from 'react';
 
-import type { CategoryId, CleanupId, Descent, ModuleId, NodeId, NodeInfo } from '../ipc/bindings.generated';
-
-export type Navigation = {
-  readonly getOverviewView: () => OverviewView;
-  readonly getScreen: () => Screen;
-  readonly navigate: (screen: Screen) => void;
-  readonly showOverviewView: (view: OverviewView) => void;
-  readonly subscribe: (listener: () => void) => () => void;
-};
-
-// How the overview shows the space, kept for the session: by meaning, or by place at a folder of a volume.
-export type OverviewView = PlaceAt | { readonly kind: 'meaning' };
-
-// The folder the place view has open: `node` (`null`: the volume's first root, or its roots when it holds several),
-// opened through its single-child folders or exactly at it, under `trail`, the folders the user came down through.
-export type PlaceAt = {
-  readonly descent: Descent;
-  readonly kind: 'place';
-  readonly node: NodeId | null;
-  readonly trail: readonly NodeInfo[];
-  readonly volume: number;
-};
-
-// The place view at the top of volume `volume`.
-export const placeTop = (volume: number): PlaceAt => ({
-  descent: 'through',
-  kind: 'place',
-  node: null,
-  trail: [],
-  volume,
-});
+import type { CategoryId, CleanupId } from '../ipc/bindings.generated';
 
 // The tabs of Settings' Ignored section.
 export type IgnoredTab = 'groups' | 'items' | 'modules';
 
-// The screen the app shows; no router: the app frame renders the one that is current. A module's page may be opened
-// at one of its categories (from the overview's cards): the page scrolls to it and expands it. `cleanups` is the
-// history of cleanups, `cleanup` one of them. Settings may be opened on a tab of its Ignored section.
+export type Navigation = {
+  readonly getScreen: () => Screen;
+  readonly navigate: (screen: Screen) => void;
+  readonly subscribe: (listener: () => void) => () => void;
+};
+
+// The screen the app shows; no router: the app frame renders the one that is current. `category` is a category's
+// details, opened from its card on Scan; Scan's `from` is the category whose details the user comes back from, so the
+// focus returns to that card. `cleanups` is the history of cleanups, `cleanup` one of them.
+// Settings may be opened on a tab of its Ignored section.
 export type Screen =
-  | { readonly category?: CategoryId; readonly kind: 'module'; readonly module: ModuleId }
+  | { readonly category: CategoryId; readonly kind: 'category' }
   | { readonly cleanup: CleanupId; readonly kind: 'cleanup' }
+  | { readonly from?: CategoryId; readonly kind: 'scan' }
   | { readonly kind: 'cleanups' }
-  | { readonly kind: 'overview' }
   | { readonly kind: 'review' }
   | { readonly kind: 'settings'; readonly tab?: IgnoredTab };
 
-const OVERVIEW: Screen = { kind: 'overview' };
-
-const BY_MEANING: OverviewView = { kind: 'meaning' };
+const START: Screen = { kind: 'scan' };
 
 export const createNavigation = (): Navigation => {
-  let screen: Screen = OVERVIEW;
-  let overviewView: OverviewView = BY_MEANING;
+  let screen: Screen = START;
   const listeners = new Set<() => void>();
 
   const changed = (): void => {
@@ -62,14 +36,9 @@ export const createNavigation = (): Navigation => {
   };
 
   return {
-    getOverviewView: () => overviewView,
     getScreen: () => screen,
     navigate: (next): void => {
       screen = next;
-      changed();
-    },
-    showOverviewView: (view): void => {
-      overviewView = view;
       changed();
     },
     subscribe: (listener): (() => void) => {
@@ -82,10 +51,10 @@ export const createNavigation = (): Navigation => {
   };
 };
 
-// The screen to show: a module screen of a module the core no longer lists (`modules`, `null` while they are not
-// known yet) falls back to the overview.
-export const screenToShow = (screen: Screen, modules: null | readonly ModuleId[]): Screen =>
-  screen.kind === 'module' && modules !== null && !modules.includes(screen.module) ? OVERVIEW : screen;
+// The screen to show: the details of a category no module the core lists has (`categories`, every listed module's,
+// `null` while they are not known yet) fall back to Scan.
+export const screenToShow = (screen: Screen, categories: null | readonly CategoryId[]): Screen =>
+  screen.kind === 'category' && categories !== null && !categories.includes(screen.category) ? START : screen;
 
 export const NavigationContext = createContext<Navigation | null>(null);
 
@@ -99,16 +68,9 @@ export const useNavigation = (): Navigation => {
   return navigation;
 };
 
-// The current screen, among the modules the core lists; the component renders again when it changes.
-export const useScreen = (modules: null | readonly ModuleId[]): Screen => {
+// The current screen, among the categories of the modules the core lists; the component renders again when it changes.
+export const useScreen = (categories: null | readonly CategoryId[]): Screen => {
   const navigation = useNavigation();
 
-  return screenToShow(useSyncExternalStore(navigation.subscribe, navigation.getScreen), modules);
-};
-
-// How the overview shows the space; the component renders again when it changes.
-export const useOverviewView = (): OverviewView => {
-  const navigation = useNavigation();
-
-  return useSyncExternalStore(navigation.subscribe, navigation.getOverviewView);
+  return screenToShow(useSyncExternalStore(navigation.subscribe, navigation.getScreen), categories);
 };

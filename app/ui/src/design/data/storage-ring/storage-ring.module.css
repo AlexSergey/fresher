@@ -38,13 +38,21 @@
     animation: storage-ring-grow var(--duration-slow) var(--ease-standard) backwards;
     fill: none;
     stroke: var(--level-safe-fg);
+    opacity: 1;
+    pointer-events: stroke;
     stroke-linecap: round;
     stroke-width: var(--ring-stroke);
     transform-box: fill-box;
     transform-origin: center;
     transition:
+      opacity var(--duration-fast) var(--ease-standard),
       stroke-dashoffset var(--duration-slow) var(--ease-standard),
       transform var(--duration-slow) var(--ease-standard);
+  }
+
+  /* Another part is highlighted (in the legend or on the ring): this one steps back. */
+  .arc[data-dimmed] {
+    opacity: 0.35;
   }
 
   .arc[data-cap='square'] {
@@ -63,12 +71,24 @@
     stroke: var(--level-high-fg);
   }
 
-  .arc[data-tone='plain'] {
-    stroke: var(--tone-plain);
+  .arc[data-tone='your-folders'] {
+    stroke: var(--part-your-folders);
   }
 
-  .arc[data-tone='system'] {
-    stroke: var(--tone-system);
+  .arc[data-tone='mac-os'] {
+    stroke: var(--part-mac-os);
+  }
+
+  .arc[data-tone='swap-and-sleep'] {
+    stroke: var(--part-swap-and-sleep);
+  }
+
+  .arc[data-tone='other-volume'] {
+    stroke: var(--part-other-volume);
+  }
+
+  .arc[data-tone='disk-own'] {
+    stroke: var(--part-disk-own);
   }
 
   .arc[data-tone='free'] {
@@ -109,13 +129,38 @@
     );
   }
 
+  /* A ring with a label at its gap leaves room for it round the band. */
+  .ring[data-labelled] {
+    margin: var(--space-6);
+  }
+
+  .gapLabel {
+    position: absolute;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    pointer-events: none;
+    transition: color var(--duration-fast) var(--ease-standard);
+    white-space: nowrap;
+  }
+
+  .gapLabel[data-highlighted] {
+    color: var(--text-primary);
+  }
+
   .centre {
     position: absolute;
     display: grid;
     padding: var(--ring-stroke);
     inset: 0;
     place-items: center;
+    pointer-events: none;
     text-align: center;
+  }
+
+  /* The centre covers the band: only a control in it takes the pointer, so the arcs under it can be hovered. */
+  .centre :is(button, a, input, select, textarea) {
+    pointer-events: auto;
   }
 
   /* Reduced motion: an arc that moves its start jumps there; it does not turn. */
@@ -123,10 +168,18 @@
     :root:not([data-motion='full']) .arc {
       transition: stroke-dashoffset var(--duration-slow) var(--ease-standard);
     }
+
+    :root:not([data-motion='full']) .gapLabel {
+      transition: none;
+    }
   }
 
   :root[data-motion='reduced'] .arc {
     transition: stroke-dashoffset var(--duration-slow) var(--ease-standard);
+  }
+
+  :root[data-motion='reduced'] .gapLabel {
+    transition: none;
   }
 
   /* Increased contrast: no glow. */

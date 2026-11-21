@@ -1,6 +1,9 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { MenuItem } from '../../design/primitives/menu/menu';
 import type { CategoryTotal } from '../../ipc/bindings.generated';
 
 import { setCoreDictionary } from '../../i18n';
@@ -9,8 +12,27 @@ import { CategoryCard, type CategoryCardProps } from './category-card';
 
 const [CACHES, , , VOLUMES] = DEMO_TOTALS as readonly [CategoryTotal, CategoryTotal, CategoryTotal, CategoryTotal];
 
+// Vitest empties a CSS import, so the stylesheet is read from the disk.
+const css = readFileSync(path.join(import.meta.dirname, 'category-card.module.css'), 'utf8');
+
+const MENU: readonly MenuItem[] = [
+  {
+    description: 'Hides it from the results and never removes it.',
+    key: 'ignore-category',
+    label: 'Ignore this category',
+    onSelect: vi.fn(),
+  },
+  {
+    description: 'Hides everything this module finds.',
+    key: 'ignore-module',
+    label: 'Ignore Demo module',
+    onSelect: vi.fn(),
+  },
+];
+
 const card = (overrides: Partial<CategoryCardProps> = {}): CategoryCardProps => ({
-  onOpen: vi.fn(),
+  menu: MENU,
+  onDetails: vi.fn(),
   onToggle: vi.fn(),
   selected: false,
   share: 0.5,
@@ -25,7 +47,7 @@ const UNAVAILABLE = {
   text: 'Docker is installed but not running. Start it, then scan again.',
 } as const;
 
-const openButton = (): HTMLElement => screen.getByRole('button', { name: /^Open Example caches/u });
+const detailsButton = (): HTMLElement => screen.getByRole('button', { name: 'Details' });
 
 // The share bar is decoration, without a role.
 // eslint-disable-next-line testing-library/no-node-access -- found by its marker
@@ -37,70 +59,58 @@ beforeEach(() => {
 
 describe('CategoryCard', () => {
   describe('negative cases', () => {
-    it('an unavailable category is shown disabled, not hidden', () => {
-      render(<CategoryCard {...card({ access: UNAVAILABLE })} />);
+    it('has no button for its body', () => {
+      render(<CategoryCard {...card()} />);
 
-      expect(openButton()).toHaveAttribute('aria-disabled', 'true');
-      expect(openButton()).not.toBeDisabled();
+      expect(
+        screen.getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent),
+      ).toStrictEqual(['Details', 'Options for Example caches']);
+      expect(screen.getByRole('heading', { level: 3, name: 'Example caches' })).toBeInTheDocument();
     });
 
-    it('an unavailable category cannot be selected', () => {
+    it('does not move on hover', () => {
+      expect(css).not.toContain('translateY');
+      expect(css).not.toContain('--scale-press-card');
+    });
+
+    it('an unavailable card has no checkbox but keeps Details and the menu', () => {
       const props = card({ access: UNAVAILABLE });
       render(<CategoryCard {...props} />);
 
-      fireEvent.click(openButton());
-
       expect(screen.queryByRole('checkbox')).toBeNull();
-      expect(props.onOpen).not.toHaveBeenCalled();
+      expect(screen.getByText(UNAVAILABLE.text)).toBeInTheDocument();
+      expect(detailsButton()).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Options for Example caches' })).toBeInTheDocument();
+
+      fireEvent.click(detailsButton());
+
+      expect(props.onDetails).toHaveBeenCalledOnce();
       expect(props.onToggle).not.toHaveBeenCalled();
     });
 
-    it('a ready category shows no access text', () => {
+    it('a ready card shows no access text', () => {
       render(<CategoryCard {...card()} />);
 
-      expect(openButton()).not.toHaveAttribute('aria-disabled');
       expect(screen.queryByText(UNAVAILABLE.text)).toBeNull();
-      expect(screen.queryByRole('tooltip')).toBeNull();
+      expect(screen.queryByText(LIMITED.text)).toBeNull();
     });
 
-    it('a limited category is not disabled', () => {
-      const props = card({ access: LIMITED });
-      render(<CategoryCard {...props} />);
-
-      fireEvent.click(openButton());
-
-      expect(openButton()).not.toHaveAttribute('aria-disabled');
-      expect(props.onOpen).toHaveBeenCalledOnce();
-      expect(screen.getByRole('checkbox')).toBeInTheDocument();
-    });
-
-    it('a card never shows its level by colour alone', () => {
-      render(<CategoryCard {...card({ total: VOLUMES })} />);
-      const details = screen.getByRole('button', { name: /^Open Example volumes/u });
-
-      expect(within(details).getByText('High')).toBeInTheDocument();
-      // eslint-disable-next-line testing-library/no-node-access -- the level's icon is decorative, without a role
-      expect(details.querySelectorAll('svg')).not.toHaveLength(0);
-    });
-
-    it('names the card from what it shows, with nothing read twice', () => {
-      render(<CategoryCard {...card()} />);
-
-      // Label in Name (WCAG 2.5.3): an `aria-label` would hide the visible text from the name.
-      expect(openButton()).not.toHaveAttribute('aria-label');
-      expect(openButton()).not.toHaveAttribute('aria-describedby');
-      expect(openButton().textContent.match(/Example caches/gu)).toHaveLength(2);
-      expect(openButton()).not.toHaveAccessibleName(/Example caches.*Example caches/u);
-    });
-
-    it('the checkbox does not open the category', () => {
+    it('the checkbox does not open the details', () => {
       const props = card();
       render(<CategoryCard {...props} />);
 
       fireEvent.click(screen.getByRole('checkbox', { name: 'Select Example caches' }));
 
-      expect(props.onOpen).not.toHaveBeenCalled();
+      expect(props.onDetails).not.toHaveBeenCalled();
       expect(props.onToggle).toHaveBeenCalledOnce();
+    });
+
+    it('a card never shows its level by colour alone', () => {
+      render(<CategoryCard {...card({ total: VOLUMES })} />);
+
+      expect(screen.getByText('High')).toBeInTheDocument();
+      // eslint-disable-next-line testing-library/no-node-access -- the level's icon is decorative, without a role
+      expect(document.querySelectorAll('svg')).not.toHaveLength(0);
     });
 
     it('a zero share draws no bar', () => {
@@ -124,13 +134,37 @@ describe('CategoryCard', () => {
         />,
       );
 
-      expect(within(openButton()).getByText('Size not known')).toBeInTheDocument();
-      expect(within(openButton()).queryByText(/bytes/u)).not.toBeInTheDocument();
+      expect(screen.getByText('Size not known')).toBeInTheDocument();
+      expect(screen.queryByText(/bytes/u)).not.toBeInTheDocument();
     });
   });
 
   describe('positive cases', () => {
-    it('a limited category shows a partial size and says why on focus', () => {
+    it('Details calls onDetails, described by the name', () => {
+      const props = card();
+      render(<CategoryCard {...props} />);
+
+      expect(detailsButton()).toHaveAccessibleDescription('Example caches');
+
+      fireEvent.click(detailsButton());
+
+      expect(props.onDetails).toHaveBeenCalledOnce();
+    });
+
+    it('the menu offers Ignore this category and Ignore <module>, each with its sentence', () => {
+      render(<CategoryCard {...card()} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example caches' }));
+
+      expect(screen.getByRole('menuitem', { name: 'Ignore this category' })).toHaveAccessibleDescription(
+        'Hides it from the results and never removes it.',
+      );
+      expect(screen.getByRole('menuitem', { name: 'Ignore Demo module' })).toHaveAccessibleDescription(
+        'Hides everything this module finds.',
+      );
+    });
+
+    it('a limited card keeps its partial size and says why', () => {
       render(
         <CategoryCard
           {...card({
@@ -140,31 +174,23 @@ describe('CategoryCard', () => {
         />,
       );
 
-      expect(within(openButton()).getByText(/at least 1\.8 GB/u)).toBeInTheDocument();
-
-      fireEvent.focusIn(openButton());
-
-      expect(screen.getByRole('tooltip')).toHaveTextContent(LIMITED.text);
-      expect(openButton()).toHaveAccessibleDescription(LIMITED.text);
+      expect(screen.getByText(/at least 1\.8 GB/u)).toBeInTheDocument();
+      expect(screen.getByText(LIMITED.text)).toBeInTheDocument();
+      expect(screen.getByRole('checkbox')).toBeInTheDocument();
     });
 
-    it('an unavailable category names what is missing and reads it as its description', () => {
-      render(<CategoryCard {...card({ access: UNAVAILABLE })} />);
+    it("shows the whole category's size", () => {
+      render(<CategoryCard {...card()} />);
 
-      expect(within(openButton()).getByText(UNAVAILABLE.text)).toBeInTheDocument();
-      expect(openButton()).toHaveAccessibleDescription(UNAVAILABLE.text);
+      expect(document.body).toHaveTextContent(/1\.8 GB.*2 items/u);
     });
 
-    it('opens on click and Enter', () => {
-      const props = card();
-      render(<CategoryCard {...props} />);
+    it('shows the name, what it is and its level', () => {
+      render(<CategoryCard {...card()} />);
 
-      fireEvent.click(openButton());
-
-      expect(props.onOpen).toHaveBeenCalledOnce();
-      // A native button: the browser turns Enter and Space into a click.
-      expect(openButton()).toHaveAttribute('type', 'button');
-      expect(openButton().tagName).toBe('BUTTON');
+      expect(screen.getByText('Example caches')).toBeInTheDocument();
+      expect(screen.getByText(/Example data: made-up cache folders/u)).toBeInTheDocument();
+      expect(screen.getByText('Safe')).toBeInTheDocument();
     });
 
     it('selects with the checkbox and Space', () => {
@@ -177,14 +203,6 @@ describe('CategoryCard', () => {
 
       expect(props.onToggle).toHaveBeenCalledOnce();
       expect(checkbox.tagName).toBe('INPUT');
-    });
-
-    it('reads the category: its name, what it is, its level, size and count', () => {
-      render(<CategoryCard {...card()} />);
-
-      expect(openButton()).toHaveAccessibleName(
-        /^Open Example caches Example data: made-up cache folders.* Safe 1\.8 GB 2 items$/u,
-      );
     });
 
     it('a selected or mixed card shows its checkbox state', () => {
@@ -201,12 +219,6 @@ describe('CategoryCard', () => {
       render(<CategoryCard {...card({ share: 0.25 })} />);
 
       expect(shareBar()?.style.getPropertyValue('--share')).toBe('0.25');
-    });
-
-    it('renders its actions', () => {
-      render(<CategoryCard {...card({ actions: <button type="button">Ignore</button> })} />);
-
-      expect(screen.getByRole('button', { name: 'Ignore' })).toBeInTheDocument();
     });
   });
 });

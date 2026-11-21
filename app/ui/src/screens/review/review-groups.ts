@@ -1,6 +1,7 @@
 import type { CategoryId, CategoryTotal, DangerLevel, Finding, FindingId, Sizes } from '../../ipc/bindings.generated';
 import type { Picked, Selection } from '../../state/selection';
 
+import { ZONE_ORDER } from '../../product/danger-zone/zones';
 import { NOTHING_SELECTED } from '../../state/selection';
 import { summarize } from '../../state/selection-summary';
 
@@ -58,3 +59,12 @@ export const reviewGroups = (selection: Selection, totals: readonly CategoryTota
     .filter((group) => group !== null)
     .toSorted((a, b) => b.sizes.allocated - a.sizes.allocated || a.category.localeCompare(b.category));
 };
+
+export type ReviewZone = { readonly groups: readonly ReviewGroup[]; readonly level: DangerLevel };
+
+// The groups by their highest level, in the zones' order (the safest first); an empty zone is left out, and each
+// zone keeps its groups in the order given (largest first).
+export const reviewZones = (groups: readonly ReviewGroup[]): readonly ReviewZone[] =>
+  ZONE_ORDER.map((level) => ({ groups: groups.filter((group) => group.highest === level), level })).filter(
+    (zone) => zone.groups.length > 0,
+  );

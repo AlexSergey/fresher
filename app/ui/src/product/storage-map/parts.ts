@@ -26,15 +26,15 @@ export const partDescription = (kind: PartKind): string => textOf(`${keyOf(kind)
 // A reason of the remainder, in the core's words.
 export const reasonText = (reason: RemainderReason): string => textOf(`core.storage.reason.${reason.kind}`);
 
-// The colour of a part: Explained by the highest danger level of its categories, your folders plain, the system's
-// parts system, what is not measured (or not yet) unknown, Free free.
-const partTone = (kind: PartKind, explained: Tone): Tone => {
+// The colour of a part: Explained by the highest danger level of its categories, every other part of a disk its own
+// tone, what is not measured (or not yet) unknown, Free free.
+export const partTone = (kind: PartKind, explained: Tone): Tone => {
   switch (kind.kind) {
     case 'disk-own':
     case 'mac-os':
     case 'other-volume':
     case 'swap-and-sleep':
-      return 'system';
+      return kind.kind;
     case 'explained':
       return explained;
     case 'free':
@@ -43,7 +43,7 @@ const partTone = (kind: PartKind, explained: Tone): Tone => {
     case 'remainder':
       return 'unknown';
     case 'your-folders':
-      return 'plain';
+      return 'your-folders';
   }
 };
 

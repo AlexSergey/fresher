@@ -14,6 +14,7 @@ import { Button } from '../../design/primitives/button/button';
 import { VisuallyHidden } from '../../design/primitives/visually-hidden/visually-hidden';
 import { t, tText } from '../../i18n';
 import { ConfirmDialog } from '../../product/confirm-dialog/confirm-dialog';
+import { DangerZone } from '../../product/danger-zone/danger-zone';
 import { levelMeaning, levelName } from '../../product/finding-row/texts';
 import { honestSize } from '../../product/sizes';
 import { confirm, discard, prepare } from '../../state/cleanup-actions';
@@ -22,7 +23,7 @@ import { summarize } from '../../state/selection-summary';
 import { useCore, useCoreStore } from '../../state/store';
 import { CleanupPanel } from './cleanup-panel';
 import { ReviewGroupSection } from './review-group';
-import { reviewGroups } from './review-groups';
+import { reviewGroups, reviewZones } from './review-groups';
 import styles from './review-screen.module.css';
 
 type SummaryProps = {
@@ -61,15 +62,16 @@ const Summary = ({ checking, count, highest, onRemove, removeRef, sizes }: Summa
   </section>
 );
 
-// "What exactly am I about to remove?": the selection's summary, then the selection grouped by category, largest
-// first, each with what it costs; every row can be unticked here. With nothing selected, the way back to the overview.
+// "What exactly am I about to remove?": the selection's summary, then the selection in danger zones (the safest
+// first), each grouped by category, largest first, each with what it costs; every row can be unticked here. With
+// nothing selected, the way back to Scan.
 export const ReviewScreen = (): JSX.Element => {
   const store = useCoreStore();
   const { navigate } = useNavigation();
   const selection = useCore((state) => state.selection);
   const totals = useCore((state) => state.overview?.totals ?? NO_TOTALS);
   const summary = useMemo(() => summarize(selection, totals), [selection, totals]);
-  const groups = useMemo(() => reviewGroups(selection, totals), [selection, totals]);
+  const zones = useMemo(() => reviewZones(reviewGroups(selection, totals)), [selection, totals]);
   // The confirmation and a refusal give the focus back here: a click does not focus a button in WebKit.
   const removeRef = useRef<HTMLButtonElement>(null);
   const cleanup = useCore((state) => state.cleanup);
@@ -93,7 +95,7 @@ export const ReviewScreen = (): JSX.Element => {
             action={{
               label: t('ui.screen.review.empty.action'),
               onClick: () => {
-                navigate({ kind: 'overview' });
+                navigate({ kind: 'scan' });
               },
             }}
             icon={ListChecks}
@@ -148,8 +150,14 @@ export const ReviewScreen = (): JSX.Element => {
           removeRef={removeRef}
           sizes={summary.sizes}
         />
-        {groups.map((group) => (
-          <ReviewGroupSection group={group} key={`${group.rows.kind}:${group.category}`} onToggle={toggle} />
+        {zones.map((zone) => (
+          <DangerZone key={zone.level} level={zone.level}>
+            <div className={styles.zoneGroups}>
+              {zone.groups.map((group) => (
+                <ReviewGroupSection group={group} key={`${group.rows.kind}:${group.category}`} onToggle={toggle} />
+              ))}
+            </div>
+          </DangerZone>
         ))}
       </div>
       {cleanup.kind === 'confirming' ? (

@@ -49,7 +49,7 @@ pub use access::{
     Access, AccessStatus, Availability, Capability, CapabilityState, CapabilityText, GuardedFolder, GuardedPlace, Need,
     NeedKind, VolumeKind,
 };
-pub use app_info::{AppInfo, Build, Simulated};
+pub use app_info::{AppInfo, Build, SandboxTrashAt, Simulated};
 pub use cachedir::{CACHEDIR_SIGNATURE, CACHEDIR_TAG, is_valid_cachedir_tag};
 pub use cancel::CancelToken;
 pub use category::{CategoryDescriptor, CategoryText};

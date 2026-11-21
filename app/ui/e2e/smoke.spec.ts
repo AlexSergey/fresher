@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
+import { navScan, scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
 test.beforeEach(async ({ page }) => {
@@ -24,7 +25,7 @@ test.describe('negative cases', () => {
     await mockCore(page, SCRIPTS.refused);
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Scan' }).click();
+    await scanButton(page).click();
 
     await expect(page.getByRole('region', { name: 'Notifications' })).toContainText(
       'The app is already running a scan. Wait for it to finish, or cancel it.',
@@ -33,21 +34,22 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
-  test('opens on the overview with the modules in the sidebar', async ({ page }) => {
+  test('opens on Scan, current in the sidebar', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Demo module/ })).toContainText('—');
+    await expect(page.getByRole('heading', { level: 1, name: 'Scan' })).toBeVisible();
+    await expect(navScan(page)).toHaveAttribute('aria-current', 'page');
   });
 
-  test("streams a scan into the module's size", async ({ page }) => {
+  test('streams a scan into the size it found', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Scan' }).click();
+    await scanButton(page).click();
 
-    await expect(page.getByRole('button', { name: /^Demo module/ })).toContainText('2.6 GB');
+    await expect(page.getByText('2.6 GB').first()).toBeAttached();
+    await expect(page.locator('[data-card]')).toHaveCount(2);
   });
 
   test('a nav item shows its screen and moves the focus to its heading', async ({ page }) => {

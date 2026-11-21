@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
+import { scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { motionOff } from './support/motion';
 
@@ -61,8 +62,8 @@ const firstCard = (page: Page): Locator => page.locator('[data-card]').first();
 const scanned = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.demo);
   await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(page.getByRole('button', { name: /^Open / })).toHaveCount(2);
+  await scanButton(page).click();
+  await expect(page.getByRole('button', { name: 'Details' })).toHaveCount(2);
   await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
   await page.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur();
@@ -126,12 +127,16 @@ test.describe('positive cases', () => {
       expect(borders[1]).toBeGreaterThan(borders[0] ?? 1);
     });
 
-    test('the overview and a card', async ({ page }) => {
+    test('the Scan screen and a card', async ({ page }) => {
       await scanned(page);
       // Checked before the pictures: a screenshot adds a style of its own.
       await expectNoCspViolation(page);
 
-      await expect(page).toHaveScreenshot('contrast-overview.png');
+      await expect(page).toHaveScreenshot('contrast-scan.png');
+      // Scrolled to the top of the window, clear of the selection bar that floats at its bottom.
+      await firstCard(page).evaluate((card) => {
+        card.scrollIntoView({ block: 'start' });
+      });
       await expect(firstCard(page)).toHaveScreenshot('contrast-card.png');
     });
   });

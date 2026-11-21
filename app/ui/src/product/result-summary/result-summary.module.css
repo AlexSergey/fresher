@@ -107,6 +107,11 @@
     color: var(--text-primary);
   }
 
+  /* A sandbox's Trash folder is a long path: it wraps anywhere rather than widening the summary. */
+  .trashNote {
+    overflow-wrap: anywhere;
+  }
+
   .skipped {
     display: grid;
     width: 100%;

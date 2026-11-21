@@ -14,7 +14,7 @@ const WithSections = (): JSX.Element => (
   <div className={styles.stage}>
     <Sidebar footer={<NavItem icon={Settings} label="Settings" onClick={noop} />} label="Screens">
       <NavSection>
-        <NavItem active icon={LayoutGrid} label="Overview" onClick={noop} />
+        <NavItem active icon={LayoutGrid} label="Scan" onClick={noop} />
         <NavItem icon={ListChecks} label="Review" onClick={noop} trailing={<Badge count={12} label="12 items" />} />
       </NavSection>
       <NavSection title="Modules">
@@ -25,6 +25,21 @@ const WithSections = (): JSX.Element => (
   </div>
 );
 
+// A frame 360 px high with five sections: the sections scroll under the strip, the footer after them.
+const Short = (): JSX.Element => (
+  <div className={`${styles.stage} ${styles.short}`}>
+    <Sidebar footer={<NavItem icon={Settings} label="Settings" onClick={noop} />} label="Screens">
+      {['Library', 'Modules', 'Tools', 'History', 'Help'].map((title) => (
+        <NavSection key={title} title={title}>
+          <NavItem icon={Search} label={`${title} first`} onClick={noop} />
+          <NavItem icon={Trash2} label={`${title} second`} onClick={noop} />
+        </NavSection>
+      ))}
+    </Sidebar>
+  </div>
+);
+
 export const stories = storiesOf('Sidebar', {
+  short: { render: Short, width: 232 },
   'with-sections-and-a-count': { render: WithSections, width: 232 },
 });

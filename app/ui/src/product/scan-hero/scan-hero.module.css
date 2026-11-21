@@ -1,6 +1,6 @@
 /*
- * The scan hero: the ring on the left, the stat tiles, the usage bar and the scan's progress on the right, over the
- * ambient light. In the ring's centre the Scan button (with its static Iris glow) and the found size share one cell,
+ * The scan hero: the volume's caption, then the ring on the left, the legend and the scan's progress on the right, over
+ * the ambient light. In the ring's centre the Scan button (with its static Iris glow) and the found size share one cell,
  * so the button fades out where the number fades in.
  */
 @layer components {
@@ -9,8 +9,27 @@
     isolation: isolate;
   }
 
-  .layout {
+  .body {
     position: relative;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .volume {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-callout-size);
+    line-height: var(--type-callout-line);
+  }
+
+  .note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .layout {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -22,12 +41,6 @@
     min-width: 280px;
     flex: 1;
     gap: var(--space-6);
-  }
-
-  .stats {
-    display: grid;
-    gap: var(--space-4);
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .centre {

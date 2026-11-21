@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
+import { openDetails, scanButton, scanFinished } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { motionOff } from './support/motion';
 
@@ -45,14 +46,12 @@ const brokenNumbers = (page: Page): Promise<readonly string[]> =>
 const scrollsSideways = (page: Page): Promise<boolean> =>
   page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
 
-const moduleNav = (page: Page): ReturnType<Page['getByRole']> => page.getByRole('button', { name: /^Demo module/ });
-
 const scanned = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.demo);
   await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(moduleNav(page)).toContainText('2.6 GB');
-  await expect(page.getByRole('button', { name: /^Open / })).toHaveCount(2);
+  await scanButton(page).click();
+  await scanFinished(page);
+  await expect(page.getByRole('button', { name: 'Details' })).toHaveCount(2);
 };
 
 test.beforeEach(async ({ page }) => {
@@ -78,7 +77,7 @@ for (const zoom of [125, 150]) {
     };
 
     test.describe('negative cases', () => {
-      test('the overview cuts no text, breaks no number and does not scroll sideways', async ({
+      test('the Scan screen cuts no text, breaks no number and does not scroll sideways', async ({
         browserName,
         page,
       }) => {
@@ -87,23 +86,22 @@ for (const zoom of [125, 150]) {
         expect(await cutText(page)).toStrictEqual([]);
         expect(await brokenNumbers(page)).toStrictEqual([]);
         expect(await scrollsSideways(page)).toBe(false);
-        await photograph(page, browserName, 'overview');
+        await photograph(page, browserName, 'scan');
       });
 
-      test('the module page cuts no text, breaks no number and does not scroll sideways', async ({
+      test("a category's details cut no text, break no number and do not scroll sideways", async ({
         browserName,
         page,
       }) => {
         await scanned(page);
-        await page.getByRole('button', { name: 'Open Example caches' }).click();
-        const caches = page.getByRole('region', { name: 'Example caches' });
-        await caches.getByRole('checkbox', { name: 'Select Example: browser-cache' }).check();
+        await openDetails(page, 'Example caches');
+        await page.getByRole('checkbox', { name: 'Select Example: browser-cache' }).check();
         await expect(page.getByRole('region', { name: 'Selection' })).toContainText('1 item selected');
 
         expect(await cutText(page)).toStrictEqual([]);
         expect(await brokenNumbers(page)).toStrictEqual([]);
         expect(await scrollsSideways(page)).toBe(false);
-        await photograph(page, browserName, 'module-page');
+        await photograph(page, browserName, 'category-details');
       });
 
       test('the cleanups cut no text, break no number and do not scroll sideways', async ({ browserName, page }) => {

@@ -14,6 +14,16 @@ export const focusHeading = (element: HTMLElement | null): void => {
   heading.focus({ preventScroll: true });
 };
 
+// Focuses the Details button of a category's card on the screen: the first button of the card. False when the card is
+// not there (ignored, or nothing found now).
+export const focusCard = (element: HTMLElement | null, category: string): boolean => {
+  const details = element?.querySelector<HTMLElement>(`[data-category="${CSS.escape(category)}"] button`) ?? null;
+
+  details?.focus({ preventScroll: true });
+
+  return details !== null;
+};
+
 const dropped = (): boolean => document.activeElement === null || document.activeElement === document.body;
 
 // While `active`: when the element that had the focus leaves the screen with it (Scan turns into Stop, a scan ends,

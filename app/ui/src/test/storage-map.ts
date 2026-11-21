@@ -1,7 +1,5 @@
 import type { CategoryTotal, MapPart, MeaningGroup, PartKind, PlaceView, StorageMap } from '../ipc/bindings.generated';
 
-import { DESCENT, HOME } from '../product/place-list/story-data';
-
 const GB = 1_000_000_000;
 
 const part = (kind: PartKind, gigabytes: number, reclaimable = 0): MapPart => ({
@@ -49,19 +47,16 @@ export const SAMPLE_MEANING: readonly MeaningGroup[] = SAMPLE_PARTS.map((sample)
 
 export const EMPTY_PLACE: PlaceView = { offset: 0, path: [], rows: [], total: 0 };
 
-// The demo volume's root by place after the scan: the place list's home, its folders largest first.
-export const DEMO_PLACE: PlaceView = { offset: 0, path: [...HOME.path], rows: [...HOME.rows], total: HOME.rows.length };
-
-// The demo volume's Library opened: the descent into an app's container.
-export const DEMO_DESCENT: PlaceView = {
-  offset: 0,
-  path: [...DESCENT.path],
-  rows: [...DESCENT.rows],
-  total: DESCENT.rows.length,
-};
-
 // The core's texts of the storage map (crates/core/locales/en.json, `core.storage.*`), for the tests and the stories.
 export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {
+  'core.danger.high.meaning': 'May hold the only copy of your data. Removing it can lose work.',
+  'core.danger.high.zone': 'High risk',
+  'core.danger.low.meaning': 'Comes back when needed, but that takes time or a download.',
+  'core.danger.low.zone': 'Low risk',
+  'core.danger.medium.meaning': 'Can be restored, but not by itself. You may need to set something up again.',
+  'core.danger.medium.zone': 'Medium risk',
+  'core.danger.safe.meaning': 'Comes back by itself when needed. Removing it costs only a little time.',
+  'core.danger.safe.zone': 'Safe to remove',
   'core.storage.changed':
     'The disk changed during the scan, so some numbers are a little off. Scan again for exact numbers.',
   'core.storage.kind.external': 'external',
@@ -96,8 +91,7 @@ export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {
     'make it smaller.',
   'core.storage.part.swap-and-sleep.name': 'Swap and sleep image',
   'core.storage.part.your-folders.description':
-    'Files Fresher looked at but does not recognise. Fresher never suggests removing them; open a folder to see what ' +
-    'is inside.',
+    'Files Fresher looked at but does not recognise. Fresher never suggests removing them.',
   'core.storage.part.your-folders.name': 'Your folders',
   'core.storage.place.trash.description': 'You get this space back when you empty the Trash.',
   'core.storage.place.trash.name': 'Trash',

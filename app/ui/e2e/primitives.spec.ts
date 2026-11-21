@@ -109,4 +109,20 @@ test.describe('positive cases', () => {
 
     await expect(page.getByRole('radio', { name: 'Name' })).toBeFocused();
   });
+
+  test('Space that chooses a menu item leaves the menu closed, however the engine releases it', async ({ page }) => {
+    await openStory(page, 'Menu/closed');
+    const trigger = page.getByRole('button', { name: 'Options for Caches' });
+    const clicks = await countClicks(trigger);
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'Ignore this category' })).toBeFocused();
+    await page.keyboard.press('Space');
+
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(await clicks()).toBe(1);
+  });
 });

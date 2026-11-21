@@ -4,6 +4,7 @@ export type { LucideIcon as IconShape } from 'lucide-react';
 export {
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -18,7 +19,6 @@ export {
   Minus,
   // The danger levels escalate in shape: Safe, Low, Medium, High.
   OctagonAlert,
-  Package,
   Plus,
   RotateCw,
   Search,

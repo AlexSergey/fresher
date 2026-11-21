@@ -18,6 +18,12 @@
     gap: var(--space-1-5);
   }
 
+  /* A long token name breaks inside its swatch instead of running into the next one. */
+  .swatch .name {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
   .chip {
     height: 48px;
     border: 1px solid var(--border-subtle);

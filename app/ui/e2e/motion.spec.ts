@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
+import { scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
 // The system's "Reduce motion" (Playwright's emulation, motion not forced off) in the real engines: a scan stands
@@ -62,7 +63,7 @@ const arrival = async (page: Page): Promise<Arrival> => {
 const scanning = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.live);
   await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await scanButton(page).click();
   await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
   await expect(page.locator('[data-sweep]')).toBeAttached();
 };

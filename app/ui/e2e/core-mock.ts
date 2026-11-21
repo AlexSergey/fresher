@@ -34,6 +34,7 @@ import {
   movedDetailOf,
   planOf,
 } from '../src/test/cleanup-plan';
+import { DEMO_DESCENT, DEMO_PLACE } from '../src/test/demo-place';
 import {
   ACCESS_DICTIONARY,
   BUSY,
@@ -96,6 +97,7 @@ import {
 } from '../src/test/jetbrains-scan';
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
+import { BUILD_DICTIONARY, sandboxBuild } from '../src/test/sandbox-build';
 import {
   STALE_PROJECTS_DICTIONARY,
   STALE_PROJECTS_FINDINGS,
@@ -106,12 +108,10 @@ import {
   STALE_PROJECTS_TOTALS,
 } from '../src/test/stale-projects-scan';
 import {
-  DEMO_DESCENT,
   DEMO_MAP_COMPLETE,
   DEMO_MAP_NO_SCAN,
   DEMO_MAP_SCANNING,
   DEMO_MEANING_SCANNING,
-  DEMO_PLACE,
   EMPTY_PLACE,
   meaningFor,
   STORAGE_DICTIONARY,
@@ -854,18 +854,12 @@ export const SCRIPTS = {
   readOnly: { answers: { ...ANSWERS, getSettings: SETTINGS_READ_ONLY } },
   // The core refuses every scan as busy.
   refused: { answers: ANSWERS, refusals: { startScan: BUSY } },
-  // A development build in a sandbox: the banner names its folder and says its open apps are simulated.
+  // A development build in a sandbox: the banner names its folder and its Trash, and says its open apps are simulated.
   sandboxed: {
     answers: {
       ...ANSWERS,
-      appInfo: {
-        build: {
-          kind: 'sandbox',
-          path: '/Users/dev/sandboxes/trial',
-          simulated: ['running'],
-        },
-        version: '0.1.0',
-      },
+      appInfo: { build: sandboxBuild(['running']), version: '0.1.0' },
+      getDictionary: { ...ANSWERS.getDictionary, ...BUILD_DICTIONARY },
     },
   },
   // Settings of every kind.

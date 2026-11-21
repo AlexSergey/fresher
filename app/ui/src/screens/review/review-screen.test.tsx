@@ -21,6 +21,8 @@ import {
 import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW } from '../../test/demo-scan';
 import { FINDING_DICTIONARY, HIGH_FINDING } from '../../test/finding-fixtures';
 import { pageOf } from '../../test/page-of';
+import { BUILD_DICTIONARY, sandboxBuild } from '../../test/sandbox-build';
+import { STORAGE_DICTIONARY } from '../../test/storage-map';
 import { fakeViewport } from '../../test/viewport';
 import { AppProviders } from '../app-providers';
 import { ReviewScreen } from './review-screen';
@@ -48,7 +50,7 @@ type Rendered = {
   readonly store: CoreStore;
 };
 
-// The selection bar beside the screen, fed by the same store: what the module page shows for the same selection.
+// The selection bar beside the screen, fed by the same store: what the overview shows for the same selection.
 const Bar = (): React.JSX.Element => {
   const selection = useCore((state) => state.selection);
   const overview = useCore((state) => state.overview);
@@ -77,7 +79,12 @@ const renderReview = async (
   mockCore({
     ...sampleStorageAnswers,
     ...Object.fromEntries(Object.entries(cleanup).map(([key, answer]) => [key, recorded(key as CommandKey, answer)])),
-    getDictionary: recorded('getDictionary', () => ({ ...FINDING_DICTIONARY, ...CLEANUP_DICTIONARY })),
+    getDictionary: recorded('getDictionary', () => ({
+      ...FINDING_DICTIONARY,
+      ...CLEANUP_DICTIONARY,
+      ...BUILD_DICTIONARY,
+      ...STORAGE_DICTIONARY,
+    })),
     getFindings: recorded('getFindings', (args) => pageOf(FINDINGS, (args as { query: FindingsQuery }).query)),
     getModules: recorded('getModules', () => DEMO_MODULES),
     getOverview: recorded('getOverview', () => OVERVIEW),
@@ -136,7 +143,7 @@ const pickCategory =
   };
 
 const groupNames = (): readonly string[] =>
-  screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+  screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
 
 const summaryRegion = (): HTMLElement => screen.getByRole('region', { name: 'What you are about to remove' });
 
@@ -156,6 +163,21 @@ afterEach(async () => {
 
 describe('ReviewScreen', () => {
   describe('negative cases', () => {
+    it('has no Select all: everything listed is already selected', async () => {
+      await renderReview(pickCategory('demo.downloads'));
+
+      expect(screen.queryByRole('checkbox', { name: 'Select all' })).toBeNull();
+    });
+
+    it('shows no warning icon on a Safe zone', async () => {
+      await renderReview(pickCategory('demo.caches'));
+
+      const title = screen.getByRole('heading', { level: 2, name: 'Safe to remove' });
+
+      // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
+      expect(title.parentElement?.querySelector('svg')).toBeNull();
+    });
+
     it('an empty selection shows the empty state, with a way back to the overview', async () => {
       const { navigation } = await renderReview(() => undefined);
 
@@ -164,9 +186,9 @@ describe('ReviewScreen', () => {
       expect(screen.queryByRole('button', { name: 'Move to Trash…' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Clear selection' })).toBeNull();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Go to the overview' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Go to Scan' }));
 
-      expect(navigation.getScreen()).toStrictEqual({ kind: 'overview' });
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'scan' });
     });
 
     it('cancel discards the plan', async () => {
@@ -237,7 +259,7 @@ describe('ReviewScreen', () => {
         pickFinding(HIGH_FINDING)(store);
         pickCategory('demo.downloads')(store);
       });
-      expect(groupNames()).toStrictEqual(['Example projects', 'Example downloads']);
+      expect(groupNames()).toStrictEqual(['Example downloads', 'Example projects']);
 
       await untick('old-project');
 
@@ -249,7 +271,7 @@ describe('ReviewScreen', () => {
 
       await untick('installer.dmg');
 
-      expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0);
+      expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
       expect(screen.getByText('Nothing is selected')).toBeInTheDocument();
     });
 
@@ -266,13 +288,31 @@ describe('ReviewScreen', () => {
   });
 
   describe('positive cases', () => {
-    it('groups follow size order and show what is lost', async () => {
+    it('a selection across Safe and High shows two zones, High with its warning and meaning', async () => {
+      await renderReview((store) => {
+        pickCategory('demo.caches')(store);
+        pickFinding(HIGH_FINDING)(store);
+      });
+
+      const zones = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+      const high = screen.getByRole('region', { name: 'High risk' });
+
+      expect(zones).toStrictEqual(['Safe to remove', 'High risk']);
+      expect(within(high).getByText(FINDING_DICTIONARY['core.danger.high.meaning'] ?? '')).toBeInTheDocument();
+      const title = screen.getByRole('heading', { level: 2, name: 'High risk' });
+
+      // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
+      expect(title.parentElement?.querySelector('svg')).not.toBeNull();
+      expect(within(high).getByRole('region', { name: 'Example projects' })).toBeInTheDocument();
+    });
+
+    it('groups follow the zones, then size order, and show what is lost', async () => {
       await renderReview((store) => {
         pickCategory('demo.downloads', 'demo.caches')(store);
         pickFinding(HIGH_FINDING)(store);
       });
 
-      expect(groupNames()).toStrictEqual(['Example projects', 'Example caches', 'Example downloads']);
+      expect(groupNames()).toStrictEqual(['Example caches', 'Example downloads', 'Example projects']);
       for (const category of ['demo.projects', 'demo.caches', 'demo.downloads']) {
         expect(screen.getByText(FINDING_DICTIONARY[`${category}.if-removed`] ?? '')).toBeInTheDocument();
       }
@@ -399,9 +439,31 @@ describe('ReviewScreen', () => {
       });
 
       expect(cancelCleanup).toHaveBeenCalledOnce();
-      expect(navigation.getScreen()).toStrictEqual({ kind: 'overview' });
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'scan' });
       expect(store.getState().cleanup).toStrictEqual({ kind: 'idle' });
       expect(store.getState().selection.categories.size).toBe(0);
+    });
+
+    it("a sandbox build's finished Trash cleanup says where the sandbox's Trash is", async () => {
+      const { store } = await renderReview(pickCategory('demo.caches'), false, {
+        ...CLEANUP,
+        appInfo: () => ({ build: sandboxBuild(), version: '0.1.0' }),
+      });
+      await openConfirmation();
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      await screen.findByText('Moving 1 of 3 to the Trash…');
+      const events = cleanupEventsOf(DEMO_PLAN, MOVED_REPORT);
+      act(() => {
+        store.dispatch(events.started);
+        store.dispatch(events.finished);
+      });
+
+      const result = screen.getByRole('region', { name: 'Moved to the Trash' });
+      expect(
+        await within(result).findByText(
+          "Cleanups move items to the sandbox's Trash: /Users/dev/sandboxes/trial/home/.Trash",
+        ),
+      ).toBeInTheDocument();
     });
 
     it('Clear selection empties the selection', async () => {

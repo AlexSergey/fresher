@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { JSX, KeyboardEventHandler, Ref } from 'react';
 
 import type { Forced } from '../forced';
 
@@ -10,11 +10,16 @@ import { Tooltip } from '../tooltip/tooltip';
 import styles from './icon-button.module.css';
 
 export type IconButtonProps = Forced & {
+  readonly 'aria-controls'?: string | undefined;
+  readonly 'aria-expanded'?: boolean;
+  readonly 'aria-haspopup'?: 'menu';
   readonly disabled?: boolean;
   readonly icon: IconShape;
   // The accessible name, and the text of its tooltip.
   readonly label: string;
   readonly onClick?: () => void;
+  readonly onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
+  readonly ref?: Ref<HTMLButtonElement>;
   readonly size?: ButtonSize;
   readonly variant?: 'ghost' | 'secondary';
 };
@@ -25,6 +30,8 @@ export const IconButton = ({
   icon,
   label,
   onClick,
+  onKeyDown,
+  ref,
   size = 'medium',
   variant = 'ghost',
   ...forced
@@ -39,6 +46,8 @@ export const IconButton = ({
         data-variant={variant}
         disabled={disabled}
         onClick={onClick}
+        onKeyDown={onKeyDown}
+        ref={ref}
         type="button"
       >
         <Icon icon={icon} />

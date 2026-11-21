@@ -1,0 +1,15 @@
+/* The menu's stories: its trigger on a stage tall enough for the menu below it, or one as tall as the window, its trigger at the bottom, that sends it above. */
+@layer components {
+  .stage {
+    display: flex;
+    height: 176px;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: var(--space-2);
+  }
+
+  .bottom {
+    height: calc(100vh - var(--space-8));
+    align-items: flex-end;
+  }
+}

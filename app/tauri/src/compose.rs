@@ -125,7 +125,7 @@ pub(crate) fn start(
         // The running apps come from the sandbox's world, never the Mac's: an app open on the Mac changes nothing.
         let (engine, sandbox) =
             crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
-        let build = crate::sandbox::build(&sandbox)?;
+        let build = crate::sandbox::build(&sandbox, mode.trash())?;
         let home = sandbox.home();
         let run = begin_run(launch.as_ref(), &build, &home, &engine)?;
         return Ok(Start { engine, data_folder: sandbox.data_folder(), home, build, run });

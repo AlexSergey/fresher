@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
+import { scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { nextFrames } from './support/frames';
 import { motionOff } from './support/motion';
@@ -175,20 +176,26 @@ test.describe('negative cases', () => {
   test('a screen change never drops the focus', async ({ page }) => {
     await mockCore(page, SCRIPTS.cleaning);
     await page.goto('/');
-    await expect(heading(page, 'Overview')).toBeVisible();
+    await expect(heading(page, 'Scan')).toBeVisible();
 
-    const scan = page.getByRole('button', { exact: true, name: 'Scan' });
+    const scan = scanButton(page);
     await scan.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('button', { name: /^Open Example caches/ })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Example caches' })).toBeVisible();
     expect(await focusKept(page)).toBe(true);
 
+    await page.getByRole('button', { name: 'Details' }).first().focus();
+    await page.keyboard.press('Enter');
+    await expect(heading(page, 'Example caches')).toBeFocused();
+    await page.getByRole('button', { name: 'Back to Scan' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(heading(page, 'Scan')).toBeFocused();
+
     for (const [nav, name] of [
-      [/^Demo module/, 'Demo module'],
       [/^Review/, 'Review'],
       ['Cleanups', 'Cleanups'],
       ['Settings', 'Settings'],
-      ['Overview', 'Overview'],
+      ['Scan', 'Scan'],
     ] as const) {
       await page.getByRole('navigation').getByRole('button', { name: nav }).focus();
       await page.keyboard.press('Enter');
@@ -199,7 +206,7 @@ test.describe('negative cases', () => {
   test('stopping a scan by keyboard does not drop the focus', async ({ page }) => {
     await mockCore(page, SCRIPTS.live);
     await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).focus();
+    await scanButton(page).focus();
     await page.keyboard.press('Enter');
     const stop = page.getByRole('button', { name: 'Stop' });
     await expect(stop).toBeVisible();
@@ -233,7 +240,7 @@ test.describe('positive cases', () => {
   test('the confirmation opened by keyboard starts on Cancel and gives the focus back', async ({ page }) => {
     await mockCore(page, SCRIPTS.cleaning);
     await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await scanButton(page).click();
     await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
     await page
       .getByRole('navigation')
@@ -249,28 +256,6 @@ test.describe('positive cases', () => {
 
     await expect(dialog).toHaveCount(0);
     await expect(remove).toBeFocused();
-  });
-
-  test('the view by place opens a folder with Enter and goes back up by its breadcrumb', async ({ page }) => {
-    await mockCore(page, SCRIPTS.demo);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(page.getByRole('button', { name: /^Open Example caches/ })).toBeVisible();
-    await page.getByRole('radio', { name: 'By place' }).click();
-
-    await page
-      .getByRole('list', { name: 'Inside home' })
-      .getByRole('listitem', { name: /^Library,/ })
-      .focus();
-    await page.keyboard.press('Enter');
-    const back = page.getByRole('button', { name: 'Back to home' });
-    await expect(back).toBeVisible();
-    expect(await focusKept(page)).toBe(true);
-
-    await back.focus();
-    await page.keyboard.press('Enter');
-    await expect(page.getByRole('list', { name: 'Inside home' })).toBeVisible();
-    await expect(back).toHaveCount(0);
   });
 
   test('the Ignored tabs are one tab stop, the arrow keys move between them and Space turns a switch', async ({

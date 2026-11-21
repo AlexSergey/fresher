@@ -5,6 +5,7 @@ import type { CategoryTotal } from '../../ipc/bindings.generated';
 
 import { setCoreDictionary } from '../../i18n';
 import { fakeReducedMotion, recordAnimations, setMotion } from '../../test/animation';
+import { cardOf } from '../../test/cards';
 import { DEMO_TOTALS, DEMO_TOTALS_FOUND, STORY_DICTIONARY } from '../scan-hero/story-data';
 import { CategoryGrid, type CategoryGridProps } from './category-grid';
 
@@ -23,7 +24,10 @@ const placeCellsInOrder = (): void => {
 
 const props = (overrides: Partial<CategoryGridProps> = {}): CategoryGridProps => ({
   found: DEMO_TOTALS_FOUND,
-  onOpen: vi.fn(),
+  label: 'Categories',
+  moduleOf: () => ({ id: 'demo', name: 'Demo module' }),
+  onDetails: vi.fn(),
+  onIgnore: vi.fn(),
   onToggle: vi.fn(),
   scanning: false,
   selected: () => false,
@@ -42,11 +46,10 @@ const sized = (category: string, allocated: number): CategoryTotal => {
   };
 };
 
-const names = (): readonly string[] =>
+const names = (): readonly (null | string)[] =>
   within(screen.getByRole('list', { name: 'Categories' }))
-    .getAllByRole('button', { name: /^Open / })
-    // The card's visible name, which its accessible name already reads as "Open …".
-    .map((button) => within(button).getAllByText(/./u, { selector: '[aria-hidden="true"]' })[0]?.textContent ?? '');
+    .getAllByRole('heading', { level: 3 })
+    .map((heading) => heading.textContent);
 
 const wait = (ms: number): void => {
   act(() => {
@@ -136,6 +139,15 @@ describe('CategoryGrid', () => {
       expect(animations).toHaveLength(0);
     });
 
+    it('offers no module item when the module is not known', () => {
+      render(<CategoryGrid {...props({ moduleOf: () => null })} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example caches' }));
+
+      expect(screen.getByRole('menuitem', { name: 'Ignore this category' })).toBeInTheDocument();
+      expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    });
+
     it('a category of no size has no share bar', () => {
       render(
         <CategoryGrid {...props({ found: { allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 } })} />,
@@ -166,17 +178,53 @@ describe('CategoryGrid', () => {
       expect(volumes?.keyframes[0]).toStrictEqual({ transform: 'translate(0px, 300px)' });
     });
 
-    it('opens and selects a card by its category', () => {
-      const onOpen = vi.fn();
+    it('details and selecting go by the category', () => {
+      const onDetails = vi.fn();
       const onToggle = vi.fn();
-      render(<CategoryGrid {...props({ onOpen, onToggle, selected: (category) => category === 'demo.images' })} />);
+      render(<CategoryGrid {...props({ onDetails, onToggle, selected: (category) => category === 'demo.images' })} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /^Open Example downloads/u }));
+      fireEvent.click(within(cardOf('Example downloads')).getByRole('button', { name: 'Details' }));
       fireEvent.click(screen.getByRole('checkbox', { name: 'Select Example caches' }));
 
-      expect(onOpen).toHaveBeenCalledWith('demo.downloads');
+      expect(onDetails).toHaveBeenCalledWith('demo.downloads');
       expect(onToggle).toHaveBeenCalledWith('demo.caches');
       expect(screen.getByRole('checkbox', { name: 'Select Example images' })).toBeChecked();
+    });
+
+    it('each menu item calls onIgnore with its target', () => {
+      const onIgnore = vi.fn();
+      render(<CategoryGrid {...props({ onIgnore })} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example caches' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ignore this category' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example caches' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ignore Demo module' }));
+
+      expect(onIgnore.mock.calls).toStrictEqual([
+        [{ category: 'demo.caches', kind: 'category' }],
+        [{ kind: 'module', module: 'demo' }],
+      ]);
+    });
+
+    it('rebuilds the module sentence when the dictionary arrives later', () => {
+      setCoreDictionary({ ...STORY_DICTIONARY, 'core.ignore.modules.description': '' });
+      // The same handlers on both renders: only the dictionary differs.
+      const same = props();
+      const { rerender } = render(<CategoryGrid {...same} />);
+
+      setCoreDictionary(STORY_DICTIONARY);
+      rerender(<CategoryGrid {...same} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example caches' }));
+
+      expect(screen.getByRole('menuitem', { name: 'Ignore Demo module' })).toHaveAccessibleDescription(
+        'Hides everything this module finds and never cleans it.',
+      );
+    });
+
+    it('names the list by its label', () => {
+      render(<CategoryGrid {...props({ label: 'Safe to remove' })} />);
+
+      expect(screen.getByRole('list', { name: 'Safe to remove' })).toBeInTheDocument();
     });
   });
 });

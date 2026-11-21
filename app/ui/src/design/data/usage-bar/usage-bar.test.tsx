@@ -42,14 +42,14 @@ describe('UsageBar', () => {
 
     it('a tiny segment keeps its legend row', () => {
       const tiny: readonly Segment[] = [
-        { key: 'big', label: 'Big', size: '99 GB', tone: 'plain', value: 1000 },
-        { key: 'tiny', label: 'Tiny', size: '1 MB', tone: 'system', value: 1 },
+        { key: 'big', label: 'Big', size: '99 GB', tone: 'your-folders', value: 1000 },
+        { key: 'tiny', label: 'Tiny', size: '1 MB', tone: 'mac-os', value: 1 },
       ];
 
       render(<UsageBar label="Space found" legend segments={tiny} total={1001} />);
 
       expect(screen.getByText('Tiny')).toBeInTheDocument();
-      expect(parts().filter((part) => part.dataset.tone === 'system')).toHaveLength(1);
+      expect(parts().filter((part) => part.dataset.tone === 'mac-os')).toHaveLength(1);
     });
 
     it('free has no fill', () => {
@@ -82,9 +82,11 @@ describe('UsageBar', () => {
     });
 
     it('each tone is drawn with its token', () => {
-      for (const tone of ['plain', 'system', 'unknown'] as const) {
-        expect(css).toMatch(new RegExp(`\\[data-tone='${tone}'\\][^}]*var\\(--tone-${tone}\\)`, 'u'));
+      for (const tone of ['your-folders', 'mac-os', 'swap-and-sleep', 'other-volume', 'disk-own'] as const) {
+        expect(css).toMatch(new RegExp(`\\[data-tone='${tone}'\\][^}]*var\\(--part-${tone}\\)`, 'u'));
       }
+
+      expect(css).toMatch(/\[data-tone='unknown'\][^}]*var\(--tone-unknown\)/u);
     });
 
     it("the bar's label lists every segment", () => {

@@ -23,6 +23,10 @@ Depends on plans [002](../002-base-architecture/readme.md), [003](../003-base-ui
 [007](../007-safe-development/readme.md) is built in parallel; this plan's case file (05) waits for it to be merged into
 `main`.
 
+**Since plan 027 (2026-11-20)** the home volume's map is the Scan screen's ring and legend; the separate map block of
+the home volume, the view by place and the rows of the view by meaning are gone from the UI. Other volumes keep their
+map block. The core's queries stay; see [`../../deferred/place-queries-without-ui.md`](../../deferred/place-queries-without-ui.md).
+
 ## Plans
 
 | #   | Plan                                                    | Status                            | Depends on   | What                                                                                       |
@@ -124,8 +128,8 @@ a whole-branch review of plans 01 to 04 and 06/01 led to one fix wave and a re-r
   UI 926 tests, lines 97.83 %. `npm run test:e2e` 223 passed. No version bump (0.1.0).
 - **Left**: 06/02, the run by hand on the real Mac and
   in the sandbox (with the `Shares::of` measurement on the developer's home), waits for the user. The deferred items
-  [roots without an explained line](../../deferred/roots-explained-line.md) and
-  [a way up from the meaning view](../../deferred/way-up-from-meaning.md). Parked minors of the final re-review: the
+  roots without an explained line and a way up from the meaning view (both folded into
+  [the place queries without a UI](../../deferred/place-queries-without-ui.md) by plan 027). Parked minors of the final re-review: the
   one-render crumbs in the view by place have no test, and the UI sums sizes for "more under apps" (the core does not
   give that sum).
 - **For the user to check**: the design's agent's calls, and the list below.

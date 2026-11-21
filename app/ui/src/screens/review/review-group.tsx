@@ -93,7 +93,7 @@ export const ReviewGroupSection = ({ group, onToggle }: ReviewGroupSectionProps)
   return (
     <section aria-label={name} className={styles.group}>
       <header className={styles.groupHeader}>
-        <h2 className={styles.groupName}>{name}</h2>
+        <h3 className={styles.groupName}>{name}</h3>
         <DangerBadge label={levelName(group.highest)} level={group.highest} size="small" />
         <span className={styles.groupCount}>
           {t('ui.screen.review.count', { count: { kind: 'count', value: group.count } })}

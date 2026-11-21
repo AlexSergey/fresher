@@ -44,14 +44,29 @@
     background-color: var(--level-high-fg);
   }
 
-  .segment[data-tone='plain'],
-  .dot[data-tone='plain'] {
-    background-color: var(--tone-plain);
+  .segment[data-tone='your-folders'],
+  .dot[data-tone='your-folders'] {
+    background-color: var(--part-your-folders);
   }
 
-  .segment[data-tone='system'],
-  .dot[data-tone='system'] {
-    background-color: var(--tone-system);
+  .segment[data-tone='mac-os'],
+  .dot[data-tone='mac-os'] {
+    background-color: var(--part-mac-os);
+  }
+
+  .segment[data-tone='swap-and-sleep'],
+  .dot[data-tone='swap-and-sleep'] {
+    background-color: var(--part-swap-and-sleep);
+  }
+
+  .segment[data-tone='other-volume'],
+  .dot[data-tone='other-volume'] {
+    background-color: var(--part-other-volume);
+  }
+
+  .segment[data-tone='disk-own'],
+  .dot[data-tone='disk-own'] {
+    background-color: var(--part-disk-own);
   }
 
   .segment[data-tone='free'],

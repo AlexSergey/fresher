@@ -15,10 +15,26 @@ const [CACHES, DOWNLOADS, IMAGES, VOLUMES] = DEMO_TOTALS as readonly [
   CategoryTotal,
 ];
 
+const MENU: CategoryCardProps['menu'] = [
+  {
+    description: 'Hides it from the results and never removes it. You can restore it in Settings.',
+    key: 'ignore-category',
+    label: 'Ignore this category',
+    onSelect: () => undefined,
+  },
+  {
+    description: 'Hides everything this module finds and never cleans it.',
+    key: 'ignore-module',
+    label: 'Ignore Demo module',
+    onSelect: () => undefined,
+  },
+];
+
 const card = (total: CategoryTotal, overrides: Partial<CategoryCardProps> = {}): (() => JSX.Element) =>
   withTexts(() => (
     <CategoryCard
-      onOpen={() => undefined}
+      menu={MENU}
+      onDetails={() => undefined}
       onToggle={() => undefined}
       selected={false}
       share={0.6}
@@ -27,7 +43,7 @@ const card = (total: CategoryTotal, overrides: Partial<CategoryCardProps> = {}):
     />
   ));
 
-// The card as a resting pointer would show it: lifted, its border brighter, the spotlight at its centre.
+// The card as a resting pointer would show it: its border brighter, the spotlight at its centre.
 const Hovered = (): JSX.Element => {
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -58,12 +74,17 @@ export const stories = storiesOf('CategoryCard', {
   },
   low: { render: card(DOWNLOADS, { share: 0.25 }), width: WIDTH },
   medium: { render: card(IMAGES, { share: 0.14 }), width: WIDTH },
+  // The menu is drawn on <body>, under the card: the story leaves it room inside the photographed frame.
+  'menu-open': {
+    render: withTexts(() => <div style={{ paddingBottom: 140 }}>{card(CACHES, { menuOpen: true })()}</div>),
+    width: WIDTH,
+  },
   mixed: { render: card(CACHES, { selected: 'mixed' }), width: WIDTH },
   'partial-size': {
     render: card({ ...CACHES, sizes: { ...CACHES.sizes, completeness: 'partial' } }),
     width: WIDTH,
   },
-  safe: { render: card(CACHES), width: WIDTH },
+  rest: { render: card(CACHES), width: WIDTH },
   selected: { render: card(CACHES, { selected: true }), width: WIDTH },
   unavailable: {
     render: card(

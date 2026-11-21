@@ -5,7 +5,7 @@ import type { Screen } from '../state/navigation';
 import { usePresence } from '../design/motion';
 import { DURATION } from '../design/tokens/motion';
 import styles from './app-frame.module.css';
-import { focusHeading, useKeepFocus } from './keep-focus';
+import { focusCard, focusHeading, useKeepFocus } from './keep-focus';
 
 export type ScreenStackProps = {
   // The screen itself, inside its `ScrollArea`.
@@ -19,18 +19,18 @@ type Layer = { readonly arrived: boolean; readonly key: string; readonly open: b
 
 const FADE_OUT: readonly Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
 
-// The screens of one kind share one scroll position: a module's page keeps its own, whatever category it opened at.
+// The screens of one kind share one scroll position; a category's details and a cleanup keep their own.
 export const screenKey = (screen: Screen): string => {
   switch (screen.kind) {
+    case 'category':
+      return `category:${screen.category}`;
     case 'cleanup':
       return `cleanup:${String(screen.cleanup)}`;
     case 'cleanups':
-    case 'overview':
     case 'review':
+    case 'scan':
     case 'settings':
       return screen.kind;
-    case 'module':
-      return `module:${screen.module}`;
   }
 };
 
@@ -53,10 +53,16 @@ const ScreenLayer = ({ children, layer, onGone }: ScreenLayerProps): JSX.Element
   }, [mounted]);
 
   useEffect(() => {
-    if (layer.open && layer.arrived) {
+    if (!layer.open || !layer.arrived) {
+      return;
+    }
+
+    const from = layer.screen.kind === 'scan' ? layer.screen.from : undefined;
+
+    if (from === undefined || !focusCard(ref.current, from)) {
       focusHeading(ref.current);
     }
-  }, [layer.open, layer.arrived, ref]);
+  }, [layer.open, layer.arrived, layer.screen, ref]);
 
   if (!mounted) {
     return null;

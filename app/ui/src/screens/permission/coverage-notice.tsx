@@ -49,7 +49,7 @@ export const CoverageNotice = ({ current, entry, id }: CoverageNoticeProps): JSX
 
   if (current === 'granted') {
     return (
-      <Notice action={{ label: t('ui.screen.overview.scan-again'), onClick: scan }} title={name} tone="info">
+      <Notice action={{ label: t('ui.screen.scan.scan-again'), onClick: scan }} title={name} tone="info">
         {lines}
       </Notice>
     );

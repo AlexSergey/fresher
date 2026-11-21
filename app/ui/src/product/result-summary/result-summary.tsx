@@ -23,6 +23,8 @@ export type ResultSummaryProps = {
   readonly problems: readonly ResultProblem[];
   // The core's report: every figure shown is its own.
   readonly report: CleanupReport;
+  // Where the moved items are, when the build says it (a sandbox's own Trash); shown after a move to the Trash only.
+  readonly trashNote?: string;
 };
 
 // An item that was not removed: the title the confirmation showed (`null` when it is not known) and why.
@@ -39,7 +41,13 @@ const countArg = (value: number): { readonly count: { readonly kind: 'count'; re
 });
 
 // What happened besides the removal: how many a tool removed, how a stopped cleanup ended.
-const Notes = ({ report }: { readonly report: CleanupReport }): JSX.Element => {
+const Notes = ({
+  report,
+  trashNote,
+}: {
+  readonly report: CleanupReport;
+  readonly trashNote: string | undefined;
+}): JSX.Element => {
   const { counts, ended, measured, method } = report;
   const size = { kind: 'size', value: measured ?? 0 } as const;
 
@@ -56,6 +64,7 @@ const Notes = ({ report }: { readonly report: CleanupReport }): JSX.Element => {
           ? t('ui.result.unmeasured')
           : t(method === 'trash' ? 'ui.result.measured-trash' : 'ui.result.measured', { size })}
       </p>
+      {method === 'trash' && trashNote !== undefined ? <p className={styles.trashNote}>{trashNote}</p> : null}
     </div>
   );
 };
@@ -71,6 +80,7 @@ export const ResultSummary = ({
   onShowInTrash,
   problems,
   report,
+  trashNote,
 }: ResultSummaryProps): JSX.Element => {
   const motion = useMotion();
   const titleId = useId();
@@ -128,7 +138,7 @@ export const ResultSummary = ({
       <p className={styles.method}>
         {trash ? t('ui.result.moved', countArg(removed)) : t('ui.result.deleted', countArg(removed))}
       </p>
-      <Notes report={report} />
+      <Notes report={report} trashNote={trashNote} />
       {problems.length === 0 ? null : (
         <div className={styles.skipped}>
           <p className={styles.skippedTitle} id={problemsId}>

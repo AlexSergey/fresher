@@ -10,8 +10,8 @@ const EIGHT_TOTAL = EIGHT.reduce((sum, { value }) => sum + value, 0);
 const VOLUME: readonly Segment[] = [
   { key: 'xcode', label: 'Xcode', size: '38 GB', tone: 'safe', value: 38 },
   { key: 'docker', label: 'Docker', size: '22 GB', tone: 'medium', value: 22 },
-  { key: 'plain', label: 'Your folders', size: '120 GB', tone: 'plain', value: 120 },
-  { key: 'system', label: 'macOS and swap', size: '60 GB', tone: 'system', value: 60 },
+  { key: 'your-folders', label: 'Your folders', size: '120 GB', tone: 'your-folders', value: 120 },
+  { key: 'mac-os', label: 'macOS and swap', size: '60 GB', tone: 'mac-os', value: 60 },
   { key: 'unknown', label: 'Not scanned yet', size: '40 GB', tone: 'unknown', value: 40 },
   { key: 'free', label: 'Free', size: '220 GB', tone: 'free', value: 220 },
 ];

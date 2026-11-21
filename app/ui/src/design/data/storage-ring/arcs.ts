@@ -3,6 +3,8 @@ import type { Segment, Tone } from '../segment';
 // One segment's arc on the ring, in degrees clockwise from the top: where it starts and how far it is drawn. A gap
 // of GAP follows every arc, except an arc that is the whole circle.
 export type Arc = {
+  // Whether the arc is drawn: the slot of the free segment is left empty, as the gap where the ring does not close.
+  readonly drawn: boolean;
   readonly key: string;
   readonly start: number;
   readonly sweep: number;
@@ -37,14 +39,14 @@ const slotsOf = (shares: readonly number[]): readonly number[] => {
 };
 
 // The arcs of the segments, in their order: each arc and the gap after it take the segment's share of the total, the
-// arc at least MIN_SWEEP; nothing goes past the full circle. A segment of 0 or less is not drawn; one segment that is
-// the whole total is the whole circle.
+// arc at least MIN_SWEEP; nothing goes past the full circle. The free segment takes its slot like any other but is not
+// drawn. A segment of 0 or less is not drawn; one segment that is the whole total is the whole circle.
 export const arcsOf = (segments: readonly Segment[], total: number): readonly Arc[] => {
   const drawn = total > 0 ? segments.filter(({ value }) => value > 0) : [];
   const [only] = drawn;
 
   if (drawn.length === 1 && only !== undefined && only.value >= total) {
-    return [{ key: only.key, start: 0, sweep: FULL, tone: only.tone }];
+    return [{ drawn: only.tone !== 'free', key: only.key, start: 0, sweep: FULL, tone: only.tone }];
   }
 
   const slots = slotsOf(drawn.map(({ value }) => (value / total) * FULL));
@@ -59,7 +61,7 @@ export const arcsOf = (segments: readonly Segment[], total: number): readonly Ar
       break;
     }
 
-    arcs.push({ key, start, sweep: slot - GAP, tone });
+    arcs.push({ drawn: tone !== 'free', key, start, sweep: slot - GAP, tone });
     start += slot;
   }
 

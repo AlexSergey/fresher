@@ -58,3 +58,4 @@ When an issue is fixed, its file stays with the status `fixed` and a link to the
 | [A category whose items are all left out shows "0 bytes / 0 items"](./ui-category-all-left-out-shows-zero.md) | ui | open | Xcode build data while Xcode is open: the zero totals sit beside the left-out line; the UI change is deferred |
 | [The "Reopen Fresher" button is forgotten when its card is rebuilt](./ui-reopen-button-state-is-local.md) | ui | open | the button's state is the component's; after a remount the user clicks Open System Settings again |
 | [The UI keeps every finding of a scan in memory](./ui-findings-kept-in-memory.md)         | ui      | fixed  | the store held every streamed finding; it keeps totals now, lists are paged (plan 003/05)         |
+| [The WebKit perf specs fail at times by one to three milliseconds](./ui-perf-webkit-jitter.md) | ui | open | the frame clock counts whole milliseconds and jitters; a rerun with the same code passes |

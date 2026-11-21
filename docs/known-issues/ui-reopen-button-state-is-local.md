@@ -5,7 +5,7 @@
 ## Symptom
 
 After "Open System Settings" on the Full Disk Access card or row, "Reopen Fresher" appears beside it. When the card
-is rebuilt (the user leaves the overview or the settings screen and comes back, or a new scan replaces the notice),
+is rebuilt (the user leaves Scan or the settings screen and comes back, or a new scan replaces the notice),
 the button is gone until "Open System Settings" is clicked again.
 
 ## Cause

@@ -162,6 +162,34 @@ describe('StorageMap', () => {
       expect(widths.reduce((sum, width) => sum + width, 0)).toBeCloseTo(100, 1);
     });
 
+    it('every part is drawn in its own tone, Explained in the one passed', () => {
+      const kinds = ['your-folders', 'mac-os', 'swap-and-sleep', 'disk-own', 'free'] as const;
+
+      renderMap(
+        withParts([
+          part({ kind: 'explained' }, 10),
+          ...kinds.slice(0, 3).map((kind) => part({ kind }, 5)),
+          part({ kind: 'other-volume', name: 'Backups' }, 5),
+          ...kinds.slice(3).map((kind) => part({ kind }, 5)),
+        ]),
+      );
+
+      const tones = [
+        // eslint-disable-next-line testing-library/no-node-access -- the segments are decoration with no role to query by
+        ...screen.getByRole('img', { name: /^Space on Macintosh HD/u }).querySelectorAll<HTMLElement>('[data-tone]'),
+      ].map((segment) => segment.dataset.tone);
+
+      expect(tones).toStrictEqual([
+        'low',
+        'your-folders',
+        'mac-os',
+        'swap-and-sleep',
+        'other-volume',
+        'disk-own',
+        'free',
+      ]);
+    });
+
     it('a partial part shows a plus', () => {
       renderMap(withParts([part({ kind: 'your-folders' }, 42, 'partial'), part({ kind: 'free' }, 8)]));
 

@@ -5,4 +5,8 @@
     margin: calc(-1 * var(--space-6));
     background: var(--surface-sidebar);
   }
+
+  .short {
+    height: 360px;
+  }
 }

@@ -30,7 +30,7 @@ and each group is copied once").
 
 ## Options left
 
-- Plan 003 (the module page, `FindingList`): the store keeps per-category totals from the events and fetches the
+- Plan 003 (a category's details, `FindingList`): the store keeps per-category totals from the events and fetches the
   findings a screen shows with `get_findings`, page by page; the events no longer carry a copy of every finding into
   the store.
 - If the events must keep feeding a list: keep each group's findings in chunks (one array per batch), so a batch adds

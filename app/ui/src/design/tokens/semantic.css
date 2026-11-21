@@ -61,9 +61,13 @@
     --level-high-border: var(--red-400-a32);
     --level-high-glow: var(--red-400-a40);
 
-    /* The neutral tones of a part of a whole (a map's bar and ring): graphite, no light. `free` is an outline only. */
-    --tone-plain: var(--gray-500);
-    --tone-system: var(--gray-600);
+    /* The parts of a disk (a map's bar and ring): muted hues, no light; each at least 3:1 on the raised surface.
+       `free` is an outline only, `unknown` is hatched. */
+    --part-your-folders: var(--slate-400);
+    --part-mac-os: var(--plum-400);
+    --part-swap-and-sleep: var(--teal-400);
+    --part-other-volume: var(--stone-400);
+    --part-disk-own: var(--slate-500);
     --tone-free-outline: var(--gray-500);
     --tone-unknown-stroke: var(--gray-600);
     --tone-unknown: repeating-linear-gradient(135deg, var(--gray-600) 0 2px, var(--gray-700) 2px 4px);

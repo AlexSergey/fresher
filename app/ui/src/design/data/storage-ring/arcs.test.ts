@@ -49,6 +49,25 @@ describe('arcsOf', () => {
 
       expect(arcsOf(many, 100)).toHaveLength(80);
     });
+
+    it('draws nothing for a free segment', () => {
+      const arcs = arcsOf([segment('a', 60), segment('free', 40, 'free')], 100);
+
+      expect(arcs.filter(({ drawn }) => drawn).map(({ key }) => key)).toStrictEqual(['a']);
+      expect(arcs.find(({ key }) => key === 'free')?.drawn).toBe(false);
+    });
+
+    it('a single free segment draws no arc', () => {
+      const arcs = arcsOf([segment('free', 100, 'free')], 100);
+
+      expect(arcs.some(({ drawn }) => drawn)).toBe(false);
+    });
+
+    it('never passes the full circle with a free slot among tiny arcs', () => {
+      const arcs = arcsOf([segment('a', 1), segment('free', 1, 'free'), segment('b', 1), segment('c', 100)], 103);
+
+      expect(taken(arcs)).toBeLessThanOrEqual(360 + 1e-9);
+    });
   });
 
   describe('positive cases', () => {
@@ -66,7 +85,9 @@ describe('arcsOf', () => {
     });
 
     it('one segment that is the whole total is the whole circle', () => {
-      expect(arcsOf([segment('a', 100)], 100)).toStrictEqual([{ key: 'a', start: 0, sweep: 360, tone: 'safe' }]);
+      expect(arcsOf([segment('a', 100)], 100)).toStrictEqual([
+        { drawn: true, key: 'a', start: 0, sweep: 360, tone: 'safe' },
+      ]);
     });
 
     it('keeps the order and the tones of the segments', () => {
@@ -77,6 +98,24 @@ describe('arcsOf', () => {
         ['b', 'safe'],
         ['c', 'medium'],
       ]);
+    });
+
+    it('leaves the free slot where it falls, the next arc after it', () => {
+      const arcs = arcsOf([segment('a', 25), segment('free', 25, 'free'), segment('b', 50)], 100);
+
+      expect(arcs.map(({ key, start }) => [key, start])).toStrictEqual([
+        ['a', 0],
+        ['free', 90],
+        ['b', 180],
+      ]);
+    });
+
+    it('a ring of parts and free closes only with the gap', () => {
+      const arcs = arcsOf([segment('a', 40), segment('b', 20), segment('free', 40, 'free')], 100);
+      const drawnSweeps = arcs.filter(({ drawn }) => drawn).reduce((sum, { sweep }) => sum + sweep, 0);
+      const freeSlot = (arcs.find(({ drawn }) => !drawn)?.sweep ?? 0) + GAP;
+
+      expect(drawnSweeps + 2 * GAP + freeSlot).toBeCloseTo(360, 9);
     });
   });
 });

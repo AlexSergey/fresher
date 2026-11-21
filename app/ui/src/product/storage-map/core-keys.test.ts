@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { MountKind, NodeInfo, PartKind, RemainderReason } from '../../ipc/bindings.generated';
+import type { DangerLevel, MountKind, PartKind, RemainderReason } from '../../ipc/bindings.generated';
 
 import core from '../../../../../crates/core/locales/en.json';
 import { setCoreDictionary, tText } from '../../i18n';
-import { notScannedText } from '../place-list/folder-row';
+import { STORAGE_DICTIONARY } from '../../test/storage-map';
 import { partDescription, partName, reasonText } from './parts';
 
 // Every kind of part, the remainder both inside and outside the scan; an other volume without a name of its own.
@@ -27,16 +27,6 @@ const REASONS: readonly RemainderReason[] = [
   { kind: 'changed-during-scan' },
 ];
 
-const NOT_SCANNED: readonly NonNullable<NodeInfo['notScanned']>[] = [
-  { kind: 'unreadable', value: 'no-permission' },
-  { kind: 'unreadable', value: 'guarded' },
-  { kind: 'unreadable', value: 'failed' },
-  { kind: 'avoided' },
-  { kind: 'other-volume' },
-  { kind: 'others-folder' },
-  { kind: 'system-items' },
-];
-
 // Every kind the bindings know, so a new one fails the lists above until it is added.
 const PART_KINDS: Readonly<Record<PartKind['kind'], true>> = {
   'disk-own': true,
@@ -56,6 +46,8 @@ const REASON_KINDS: Readonly<Record<RemainderReason['kind'], true>> = {
   unreadable: true,
 };
 
+const LEVELS: readonly DangerLevel[] = ['safe', 'low', 'medium', 'high'];
+
 const MOUNTS: readonly MountKind[] = ['internal', 'external', 'network'];
 
 // The keys the storage map names as written.
@@ -66,22 +58,11 @@ const NAMED = [
   'core.place.user-temp.name',
   'core.place.shared-temp.name',
   ...MOUNTS.map((mount) => `core.storage.kind.${mount}`),
+  ...LEVELS.flatMap((level) => [`core.danger.${level}.zone`, `core.danger.${level}.meaning`]),
 ];
 
 // A missing key reads as the key itself.
 const isKey = (text: null | string): boolean => text === null || text.startsWith('core.');
-
-const folderOf = (notScanned: NodeInfo['notScanned']): NodeInfo => ({
-  files: 0,
-  folders: 0,
-  id: { index: 0, state: 1 },
-  kind: 'folder',
-  modified: null,
-  name: 'folder',
-  notScanned,
-  owner: null,
-  sizes: { allocated: 0, completeness: 'unknown', logical: 0, reclaimable: 0 },
-});
 
 beforeEach(() => {
   setCoreDictionary(core);
@@ -110,8 +91,12 @@ describe("the storage map's keys in the core's dictionary", () => {
       expect(REASONS.map(reasonText).filter(isKey)).toStrictEqual([]);
     });
 
-    it('every reason a folder was not scanned has a text', () => {
-      expect(NOT_SCANNED.map((reason) => notScannedText(folderOf(reason))).filter(isKey)).toStrictEqual([]);
+    it("the texts the tests and the gallery use are the core's", () => {
+      const different = Object.entries(STORAGE_DICTIONARY).filter(
+        ([key, text]) => key in core && core[key as keyof typeof core] !== text,
+      );
+
+      expect(different.map(([key]) => key)).toStrictEqual([]);
     });
 
     it('every key named as written is there', () => {

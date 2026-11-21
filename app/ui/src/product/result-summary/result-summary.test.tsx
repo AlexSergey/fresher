@@ -29,6 +29,8 @@ const PROBLEMS: ResultSummaryProps['problems'] = [
   { outcome: { kind: 'skipped', reason: { kind: 'vanished' } }, title: null },
 ];
 
+const TRASH_NOTE = "Cleanups move items to the sandbox's Trash: /Users/dev/box/home/.Trash";
+
 const renderSummary = (props: Partial<ResultSummaryProps> = {}): ReturnType<typeof render> =>
   render(
     <ResultSummary
@@ -145,6 +147,18 @@ describe('ResultSummary', () => {
       expect(screen.queryByRole('button', { name: 'See this cleanup' })).toBeNull();
     });
 
+    it('a permanent cleanup shows no trash note, even when one is given', () => {
+      renderSummary({ report: DELETED_REPORT, trashNote: TRASH_NOTE });
+
+      expect(screen.queryByText(TRASH_NOTE)).toBeNull();
+    });
+
+    it('a trash cleanup without a trash note shows none', () => {
+      renderSummary();
+
+      expect(screen.queryByText(/sandbox/u)).toBeNull();
+    });
+
     it('shows no list when every item was removed', () => {
       renderSummary();
 
@@ -153,6 +167,12 @@ describe('ResultSummary', () => {
   });
 
   describe('positive cases', () => {
+    it('a trash cleanup shows its trash note under its lines', () => {
+      renderSummary({ trashNote: TRASH_NOTE });
+
+      expect(screen.getByText(TRASH_NOTE)).toBeInTheDocument();
+    });
+
     it('the size reaches its value', () => {
       const frames = fakeFrames();
       renderSummary();

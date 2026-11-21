@@ -2,26 +2,25 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { type JSX } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ModuleId } from '../ipc/bindings.generated';
+import type { CategoryId } from '../ipc/bindings.generated';
 
 import {
   createNavigation,
   type Navigation,
   NavigationContext,
-  placeTop,
   screenToShow,
   useNavigation,
   useScreen,
 } from './navigation';
 
 // The current screen, and a button that opens the review, as a screen of the app would.
-const Current = ({ modules }: { readonly modules: null | readonly ModuleId[] }): JSX.Element => {
-  const shown = useScreen(modules);
+const Current = ({ categories }: { readonly categories: null | readonly CategoryId[] }): JSX.Element => {
+  const shown = useScreen(categories);
   const { navigate } = useNavigation();
 
   return (
     <>
-      <p>{shown.kind === 'module' ? `module ${shown.module}` : shown.kind}</p>
+      <p>{shown.kind === 'category' ? `category ${shown.category}` : shown.kind}</p>
       <button
         onClick={() => {
           navigate({ kind: 'review' });
@@ -34,10 +33,10 @@ const Current = ({ modules }: { readonly modules: null | readonly ModuleId[] }):
   );
 };
 
-const renderScreen = (navigation: Navigation, modules: null | readonly ModuleId[] = ['demo']): void => {
+const renderScreen = (navigation: Navigation, categories: null | readonly CategoryId[] = ['demo.caches']): void => {
   render(
     <NavigationContext value={navigation}>
-      <Current modules={modules} />
+      <Current categories={categories} />
     </NavigationContext>,
   );
 };
@@ -47,20 +46,23 @@ describe('navigation', () => {
     it('refuses to be read outside its context', () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      expect(() => render(<Current modules={null} />)).toThrow('useScreen needs a NavigationContext');
+      expect(() => render(<Current categories={null} />)).toThrow('useScreen needs a NavigationContext');
     });
 
-    it('a module screen of an unknown module falls back to the overview', () => {
+    it('a category screen of a category no listed module has falls back to the scan screen', () => {
       const navigation = createNavigation();
-      navigation.navigate({ kind: 'module', module: 'gone' });
+      navigation.navigate({ category: 'gone.category', kind: 'category' });
 
       renderScreen(navigation);
 
-      expect(screen.getByText('overview')).toBeInTheDocument();
+      expect(screen.getByText('scan')).toBeInTheDocument();
     });
 
-    it('keeps a module screen while the modules are not known yet', () => {
-      expect(screenToShow({ kind: 'module', module: 'demo' }, null)).toEqual({ kind: 'module', module: 'demo' });
+    it('keeps a category screen while the modules are not known yet', () => {
+      expect(screenToShow({ category: 'demo.caches', kind: 'category' }, null)).toEqual({
+        category: 'demo.caches',
+        kind: 'category',
+      });
     });
 
     it('stops telling a listener that unsubscribed', () => {
@@ -76,30 +78,15 @@ describe('navigation', () => {
   });
 
   describe('positive cases', () => {
-    it('starts on the overview', () => {
-      expect(createNavigation().getScreen()).toEqual({ kind: 'overview' });
+    it('starts on the scan screen', () => {
+      expect(createNavigation().getScreen()).toEqual({ kind: 'scan' });
     });
 
-    it('starts by meaning and keeps the chosen view of the overview across screens', () => {
-      const navigation = createNavigation();
-      expect(navigation.getOverviewView()).toEqual({ kind: 'meaning' });
-
-      navigation.showOverviewView(placeTop(0));
-      navigation.navigate({ kind: 'settings' });
-      navigation.navigate({ kind: 'overview' });
-
-      expect(navigation.getOverviewView()).toEqual(placeTop(0));
-    });
-
-    it('keeps the folder the place view has open across screens', () => {
-      const navigation = createNavigation();
-      const opened = { ...placeTop(0), descent: 'stay', node: { index: 4, state: 1 } } as const;
-
-      navigation.showOverviewView(opened);
-      navigation.navigate({ kind: 'settings' });
-      navigation.navigate({ kind: 'overview' });
-
-      expect(navigation.getOverviewView()).toStrictEqual(opened);
+    it('keeps a category screen of a category a listed module has', () => {
+      expect(screenToShow({ category: 'demo.caches', kind: 'category' }, ['demo.caches'])).toEqual({
+        category: 'demo.caches',
+        kind: 'category',
+      });
     });
 
     it('navigate changes the screen', () => {
@@ -107,9 +94,9 @@ describe('navigation', () => {
       renderScreen(navigation);
 
       act(() => {
-        navigation.navigate({ kind: 'module', module: 'demo' });
+        navigation.navigate({ category: 'demo.caches', kind: 'category' });
       });
-      expect(screen.getByText('module demo')).toBeInTheDocument();
+      expect(screen.getByText('category demo.caches')).toBeInTheDocument();
 
       act(() => {
         navigation.navigate({ kind: 'settings' });

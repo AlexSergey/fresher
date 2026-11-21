@@ -11,6 +11,7 @@ import { ResultSummary } from '../../product/result-summary/result-summary';
 import { showInTrash, stop } from '../../state/cleanup-actions';
 import { useNavigation } from '../../state/navigation';
 import { useCoreStore } from '../../state/store';
+import { useAppInfo } from '../use-app-info';
 import styles from './review-screen.module.css';
 
 type CleanupPanelProps = {
@@ -21,6 +22,9 @@ type CleanupPanelProps = {
 export const CleanupPanel = ({ cleanup }: CleanupPanelProps): JSX.Element => {
   const store = useCoreStore();
   const { navigate } = useNavigation();
+  const build = useAppInfo()?.build;
+  // A sandbox's cleanups do not go to the Trash the user knows: the result says where they went, in the core's words.
+  const trashNote = build?.kind === 'sandbox' ? { trashNote: tText(build.trash) } : {};
 
   return (
     <>
@@ -43,7 +47,7 @@ export const CleanupPanel = ({ cleanup }: CleanupPanelProps): JSX.Element => {
             <ResultSummary
               onDone={() => {
                 store.dispatch({ type: 'cleanup-dismissed' });
-                navigate({ kind: 'overview' });
+                navigate({ kind: 'scan' });
               }}
               onSeeCleanup={() => {
                 store.dispatch({ type: 'cleanup-dismissed' });
@@ -54,6 +58,7 @@ export const CleanupPanel = ({ cleanup }: CleanupPanelProps): JSX.Element => {
               }}
               problems={cleanup.problems}
               report={cleanup.report}
+              {...trashNote}
             />
           )}
         </Surface>

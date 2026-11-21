@@ -14,6 +14,7 @@ const PALETTE: readonly (readonly string[])[] = [
   ['--gray-700', '--gray-600', '--gray-500', '--gray-400', '--gray-300', '--gray-100'],
   ['--iris-300', '--iris-400', '--iris-500', '--iris-600', '--iris-700'],
   ['--green-400', '--cyan-400', '--amber-400', '--red-400', '--red-600', '--red-700'],
+  ['--part-your-folders', '--part-mac-os', '--part-swap-and-sleep', '--part-other-volume', '--part-disk-own'],
   ['--white-a4', '--white-a6', '--white-a10', '--white-a16', '--white-a36'],
 ];
 

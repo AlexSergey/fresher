@@ -299,7 +299,11 @@ mod tests {
         #[test]
         fn a_sandbox_mode_is_named_by_its_folder() {
             for (path, label) in [("/x/sandbox/trial", "sandbox-trial"), ("/x/my box!", "sandbox-my-box-")] {
-                let build = Build::Sandbox { path: PathBuf::from(path), simulated: Vec::new() };
+                let build = Build::Sandbox {
+                    path: PathBuf::from(path),
+                    simulated: Vec::new(),
+                    trash: fresher_core::SandboxTrashAt::System.text(),
+                };
 
                 assert_eq!(Mode::of(&build).unwrap().label(), label, "{path}");
             }

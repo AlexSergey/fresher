@@ -11,8 +11,9 @@ export type SidebarProps = {
   readonly label: string;
 };
 
-// The sidebar's content: the strip the traffic lights sit in (a drag region), the sections, a footer. One indicator
-// per sidebar slides under the active item; it is placed from the item's offset after every render.
+// The sidebar's content: the strip the traffic lights sit in (a drag region), then a scroll container with the
+// sections and a footer, so a short window never hides an item. One indicator per sidebar slides under the active
+// item; it is placed from the item's offset in the scroll container after every render.
 export const Sidebar = ({ children, footer, label }: SidebarProps): JSX.Element => {
   const navRef = useRef<HTMLElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
@@ -52,9 +53,11 @@ export const Sidebar = ({ children, footer, label }: SidebarProps): JSX.Element 
   return (
     <nav aria-label={label} className={styles.sidebar} ref={navRef}>
       <div className={styles.strip} data-tauri-drag-region />
-      <span aria-hidden="true" className={styles.indicator} data-nav-indicator ref={indicatorRef} />
-      <div className={styles.sections}>{children}</div>
-      {footer === undefined ? null : <div className={styles.footer}>{footer}</div>}
+      <div className={styles.scroll}>
+        <span aria-hidden="true" className={styles.indicator} data-nav-indicator ref={indicatorRef} />
+        <div className={styles.sections}>{children}</div>
+        {footer === undefined ? null : <div className={styles.footer}>{footer}</div>}
+      </div>
     </nav>
   );
 };

@@ -1,7 +1,9 @@
 import type { JSX } from 'react';
 
+import type { Text } from '../../ipc/bindings.generated';
+
 import { stories as storiesOf } from '../../gallery/story';
-import { setCoreDictionary } from '../../i18n';
+import { setCoreDictionary, tText } from '../../i18n';
 import {
   CLEANUP_DICTIONARY,
   DELETED_REPORT,
@@ -13,6 +15,7 @@ import {
   UNMEASURED_REPORT,
 } from '../../test/cleanup-plan';
 import { DEMO_DICTIONARY } from '../../test/demo-scan';
+import { BUILD_DICTIONARY, SANDBOX_TRASH } from '../../test/sandbox-build';
 import { ResultSummary, type ResultSummaryProps } from './result-summary';
 import styles from './result-summary.stories.module.css';
 
@@ -25,10 +28,12 @@ const PROBLEMS: ResultSummaryProps['problems'] = SKIPPED_OUTCOMES.flatMap((outco
   outcome.kind === 'skipped' ? [{ outcome, title: TITLES[index] ?? null }] : [],
 );
 
-const summary = (props: Partial<ResultSummaryProps>): (() => JSX.Element) =>
+// A summary with `props`; with `trash`, the trash note a sandbox build gives, in the core's words.
+const summary = (props: Partial<ResultSummaryProps>, trash?: Text): (() => JSX.Element) =>
   function Story(): JSX.Element {
     // Each story reads the demo texts; set here, so a story shown alone has them whatever else the gallery loads.
-    setCoreDictionary({ ...DEMO_DICTIONARY, ...CLEANUP_DICTIONARY });
+    setCoreDictionary({ ...DEMO_DICTIONARY, ...CLEANUP_DICTIONARY, ...BUILD_DICTIONARY });
+    const note = trash === undefined ? {} : { trashNote: tText(trash) };
 
     return (
       <div className={styles.stage}>
@@ -39,6 +44,7 @@ const summary = (props: Partial<ResultSummaryProps>): (() => JSX.Element) =>
           problems={[]}
           report={MOVED_REPORT}
           {...props}
+          {...note}
         />
       </div>
     );
@@ -50,4 +56,6 @@ export const stories = storiesOf('ResultSummary', {
   'not-measured': { render: summary({ report: UNMEASURED_REPORT }), surface: 'raised', width: 560 },
   'some-skipped': { render: summary({ problems: PROBLEMS, report: SKIPPED_REPORT }), surface: 'raised', width: 560 },
   stopped: { render: summary({ report: STOPPED_REPORT }), surface: 'raised', width: 560 },
+  // A sandbox build's cleanup to the Trash says where its Trash is, in the core's words.
+  'trash-in-sandbox': { render: summary({}, SANDBOX_TRASH), surface: 'raised', width: 560 },
 });

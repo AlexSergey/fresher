@@ -25,7 +25,6 @@
     --distance-3: 16px;
 
     --scale-press: 0.97;
-    --scale-press-card: 0.99;
     --scale-enter: 0.98;
 
     /* A child's delay is calc(min(var(--i), var(--stagger-steps)) * var(--stagger)). */
@@ -46,7 +45,6 @@
       --distance-2: 0px;
       --distance-3: 0px;
       --scale-press: 1;
-      --scale-press-card: 1;
       --scale-enter: 1;
       --stagger: 0ms;
       --loop-state: paused;
@@ -62,7 +60,6 @@
     --distance-2: 0px;
     --distance-3: 0px;
     --scale-press: 1;
-    --scale-press-card: 1;
     --scale-enter: 1;
     --stagger: 0ms;
     --loop-state: paused;

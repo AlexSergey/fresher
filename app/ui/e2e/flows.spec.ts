@@ -9,6 +9,16 @@ import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
+import {
+  cardNames,
+  details,
+  detailsOf,
+  fromCardMenu,
+  navScan,
+  openDetails,
+  scanButton,
+  scanFinished,
+} from './support/cards';
 import { releaseCleanup, requestQuit } from './support/cleanup-mock';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
@@ -29,7 +39,9 @@ const tabTo = async (page: Page, target: Locator): Promise<void> => {
 
 const heading = (page: Page, name: string): Locator => page.getByRole('heading', { level: 1, name });
 
-const cards = (page: Page): Locator => page.getByRole('button', { name: /^Open / });
+const cards = (page: Page): Locator => page.locator('[data-card]');
+
+const zone = (page: Page, name: string): Locator => page.getByRole('region', { name });
 
 const selectionBar = (page: Page): Locator => page.getByRole('region', { name: 'Selection' });
 
@@ -42,20 +54,18 @@ const QUIT = 'A cleanup is running. Stop after the current item and quit?';
 // Scans, ticks both categories and opens the review: the demo plan's three findings.
 const reviewAll = async (page: Page): Promise<void> => {
   await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await scanButton(page).click();
   await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
   await page.getByRole('checkbox', { name: 'Select Example downloads' }).check();
-  await page.getByRole('button', { name: /^Review/ }).click();
+  await selectionBar(page).getByRole('button', { name: 'Review' }).click();
   await expect(heading(page, 'Review')).toBeFocused();
 };
-
-const demoModule = (page: Page): Locator => page.getByRole('button', { name: /^Demo module/ });
 
 // Scans the demo, then opens Settings (the Ignored tabs).
 const openIgnoring = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.ignoring);
   await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+  await scanButton(page).click();
   await expect(cards(page)).toHaveCount(2);
 };
 
@@ -71,19 +81,18 @@ const JB = {
 // The module's own texts, as its locale file has them.
 const jb = (key: string): string => JETBRAINS_DICTIONARY[`jetbrains.${key}`] ?? '';
 
-const jetbrainsModule = (page: Page): Locator => page.getByRole('button', { name: /^JetBrains IDEs/ });
-
-// Scans the JetBrains script and opens the module's page.
-const openJetbrains = async (page: Page): Promise<void> => {
-  await mockCore(page, SCRIPTS.jetbrains);
+// Scans `script` and waits on the overview for its end.
+const scanned = async (page: Page, script: (typeof SCRIPTS)[keyof typeof SCRIPTS]): Promise<void> => {
+  await mockCore(page, script);
   await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(jetbrainsModule(page)).toContainText('1.7 GB');
-  await jetbrainsModule(page).click();
-  await expect(heading(page, 'JetBrains IDEs')).toBeFocused();
+  await scanButton(page).click();
+  await scanFinished(page);
 };
 
-// Ticks WebStorm's three categories on the module's page and opens the review.
+// Scans the JetBrains script.
+const openJetbrains = (page: Page): Promise<void> => scanned(page, SCRIPTS.jetbrains);
+
+// Ticks WebStorm's three categories on their cards and opens the review.
 const reviewWebStorm = async (page: Page): Promise<void> => {
   await openJetbrains(page);
   for (const name of [JB.caches, JB.logs, JB.settings]) {
@@ -97,8 +106,6 @@ const reviewWebStorm = async (page: Page): Promise<void> => {
 const tmp = (key: string): string => TEMP_DICTIONARY[`temp.${key}`] ?? '';
 
 const TEMP_CATEGORY = tmp('old-files.name');
-
-const tempModule = (page: Page): Locator => page.getByRole('button', { name: /^Temporary files/ });
 
 // Counts the setting updates the page sends to the core from here on.
 const recordUpdates = (page: Page): Promise<void> =>
@@ -119,15 +126,8 @@ const recordUpdates = (page: Page): Promise<void> =>
 const sentUpdates = (page: Page): Promise<number> =>
   page.evaluate(() => (globalThis as unknown as { __updates: { sent: number } }).__updates.sent);
 
-// Scans the temporary files script and opens the module's page.
-const openTemp = async (page: Page): Promise<void> => {
-  await mockCore(page, SCRIPTS.temp);
-  await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(tempModule(page)).toContainText('837 MB');
-  await tempModule(page).click();
-  await expect(heading(page, 'Temporary files')).toBeFocused();
-};
+// Scans the temporary files script.
+const openTemp = (page: Page): Promise<void> => scanned(page, SCRIPTS.temp);
 
 // The developer caches module's own texts, as its locale file has them.
 const dev = (key: string): string => DEV_CACHES_DICTIONARY[`dev-caches.${key}`] ?? '';
@@ -137,21 +137,11 @@ const CARGO = dev('cargo.name');
 const GRADLE = dev('gradle.name');
 const XCODE_DATA = dev('xcode-derived-data.name');
 
-const devCachesModule = (page: Page): Locator => page.getByRole('button', { name: /^Developer caches/ });
-
-// Scans a developer caches script (Xcode closed unless said) and opens the module's page.
-const openDevCaches = async (
+// Scans a developer caches script (Xcode closed unless said).
+const openDevCaches = (
   page: Page,
   script: typeof SCRIPTS.devCaches | typeof SCRIPTS.devCachesXcodeOpen = SCRIPTS.devCaches,
-  total = '17.2 GB',
-): Promise<void> => {
-  await mockCore(page, script);
-  await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(devCachesModule(page)).toContainText(total);
-  await devCachesModule(page).click();
-  await expect(heading(page, 'Developer caches')).toBeFocused();
-};
+): Promise<void> => scanned(page, script);
 
 // The removed apps module's own texts, as its locale file has them.
 const left = (key: string): string => APP_LEFTOVERS_DICTIONARY[`app-leftovers.${key}`] ?? '';
@@ -160,21 +150,11 @@ const LEFTOVERS_CACHES = left('caches.name');
 const LEFTOVERS_SETTINGS = left('settings.name');
 const LEFTOVERS_DATA = left('data.name');
 
-const leftoversModule = (page: Page): Locator => page.getByRole('button', { name: /^Removed apps' leftovers/ });
-
-// Scans a removed apps script and opens the module's page.
-const openLeftovers = async (
+// Scans a removed apps script.
+const openLeftovers = (
   page: Page,
   script: typeof SCRIPTS.appLeftovers | typeof SCRIPTS.appLeftoversWithDevCaches = SCRIPTS.appLeftovers,
-  total = '2.5 GB',
-): Promise<void> => {
-  await mockCore(page, script);
-  await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(leftoversModule(page)).toContainText(total);
-  await leftoversModule(page).click();
-  await expect(heading(page, left('enabled.label'))).toBeFocused();
-};
+): Promise<void> => scanned(page, script);
 
 // The downloads module's own texts, as its locale file has them.
 const dl = (key: string): string => DOWNLOADS_DICTIONARY[`downloads.${key}`] ?? '';
@@ -185,24 +165,14 @@ const DL_INSTALLERS = dl('installers.name');
 const DL_MACOS = dl('macos-installers.name');
 const DL_LARGE = dl('large-untouched.name');
 
-const downloadsModule = (page: Page): Locator => page.getByRole('button', { name: /^Downloads and installers/ });
-
-// Scans a downloads script and opens the module's page.
-const openDownloads = async (
+// Scans a downloads script.
+const openDownloads = (
   page: Page,
   script:
     | typeof SCRIPTS.downloads
     | typeof SCRIPTS.downloadsUnavailable
     | typeof SCRIPTS.downloadsUnfinished = SCRIPTS.downloads,
-  total = '15.8 GB',
-): Promise<void> => {
-  await mockCore(page, script);
-  await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(downloadsModule(page)).toContainText(total);
-  await downloadsModule(page).click();
-  await expect(heading(page, dl('enabled.label'))).toBeFocused();
-};
+): Promise<void> => scanned(page, script);
 
 // The old-projects module's own texts, as its locale file has them.
 const sp = (key: string): string => {
@@ -219,17 +189,8 @@ const SP_BUILD = sp('build-output.name');
 const SP_PYTHON = sp('python-environments.name');
 const SP_RUST = sp('rust-build-cache.name');
 
-const staleProjectsModule = (page: Page): Locator => page.getByRole('button', { name: /^Old projects/ });
-
-// Scans the old-projects script and opens the module's page.
-const openStaleProjects = async (page: Page): Promise<void> => {
-  await mockCore(page, SCRIPTS.staleProjects);
-  await page.goto('/');
-  await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-  await expect(staleProjectsModule(page)).toContainText('6.6 GB');
-  await staleProjectsModule(page).click();
-  await expect(heading(page, sp('enabled.label'))).toBeFocused();
-};
+// Scans the old-projects script.
+const openStaleProjects = (page: Page): Promise<void> => scanned(page, SCRIPTS.staleProjects);
 
 const choice = (page: Page, name: string): Locator => page.getByRole('button', { name: left(`choice.${name}.label`) });
 
@@ -242,19 +203,32 @@ test.afterEach(async ({ page }) => {
 });
 
 test.describe('negative cases', () => {
-  test('nothing ignored shows no ignored line on the overview and no note on the module page', async ({ page }) => {
+  test('nothing ignored shows no ignored line on the overview', async ({ page }) => {
     await openIgnoring(page);
 
     await expect(page.getByText(/you ignored is left out/)).toHaveCount(0);
-    await demoModule(page).click();
-    await expect(page.getByText('You ignore this module.')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Ignore this module' })).toBeVisible();
+    await expect(cardNames(page)).toHaveText(['Example caches', 'Example downloads']);
+  });
+
+  test("Back from a category's details returns to the overview with the selection kept", async ({ page }) => {
+    await scanned(page, SCRIPTS.demo);
+    await page.getByRole('checkbox', { name: 'Select Example downloads' }).check();
+    await openDetails(page, 'Example caches');
+    await details(page).getByRole('checkbox', { name: 'Select Example: browser-cache' }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+
+    await expect(detailsOf(page, 'Example caches')).toBeFocused();
+    await expect(page.getByRole('checkbox', { name: 'Select Example downloads' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Select Example caches' })).toBeChecked({ indeterminate: true });
+    await expect(selectionBar(page)).toContainText('2 items selected');
   });
 
   test('a second Scan while the core runs one shows its refusal', async ({ page }) => {
     await mockCore(page, SCRIPTS.unannounced);
     await page.goto('/');
-    const scan = page.getByRole('button', { exact: true, name: 'Scan' });
+    const scan = scanButton(page);
 
     await scan.click();
     await scan.click();
@@ -286,10 +260,12 @@ test.describe('negative cases', () => {
 
   test('the folders of an open IDE are not offered as items, only counted on a line', async ({ page }) => {
     await openJetbrains(page);
+    await openDetails(page, JB.settings);
 
-    const settings = page.getByRole('region', { name: JB.settings });
+    const settings = details(page);
     await expect(settings).toContainText('1 item');
     await expect(settings).toContainText(`2 items left out (600 MB): ${jb('left-out.running')}`);
+    await expect(settings.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
   });
 
   test('caches and logs alone are confirmed as Safe, with no Medium and no settings warning', async ({ page }) => {
@@ -326,13 +302,28 @@ test.describe('negative cases', () => {
 
   test('the left-out lines of the temporary files are not items: nothing on them can be selected', async ({ page }) => {
     await openTemp(page);
+    await openDetails(page, TEMP_CATEGORY);
 
-    const category = page.getByRole('region', { name: TEMP_CATEGORY });
+    const category = details(page);
     await expect(category).toContainText(`4,712 items left out (790 MB): ${tmp('left-out.recent')}`);
     await expect(category.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await category.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
+    await category.getByRole('checkbox', { name: `Select all ${TEMP_CATEGORY}` }).check();
     await expect(selectionBar(page)).toContainText('5 items selected');
     await expect(selectionBar(page)).not.toContainText('4,712');
+  });
+
+  test('Select all of the Safe zone ticks nothing in the other zones', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await scanButton(page).click();
+    await expect(cards(page)).toHaveCount(2);
+
+    await zone(page, 'Safe to remove').getByRole('checkbox', { name: 'Select all' }).check();
+
+    await expect(page.getByRole('checkbox', { name: 'Select Example caches' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Select Example downloads' })).not.toBeChecked();
+    await expect(zone(page, 'Low risk').getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
+    await expect(selectionBar(page)).toContainText('2 items selected');
   });
 
   test('a value of 6 days is refused with a message and the saved value stays 7', async ({ page }) => {
@@ -350,178 +341,299 @@ test.describe('negative cases', () => {
   });
 
   test('the left-out lines of developer caches cannot be selected', async ({ page }) => {
-    await openDevCaches(page, SCRIPTS.devCachesXcodeOpen, '12.9 GB');
+    await openDevCaches(page, SCRIPTS.devCachesXcodeOpen);
+    // Xcode's build data, all left out while Xcode is open, has no card: it is listed as found but left out.
+    await expect(cards(page).filter({ hasText: XCODE_DATA })).toHaveCount(0);
+    const leftOut = page.getByRole('region', { name: 'Found, but left out' });
+    await expect(leftOut).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
+    await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
+    await openDetails(page, XCODE_DATA);
+    await expect(details(page)).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
+    await expect(details(page)).toContainText('Everything found here was left out: the lines above say why.');
+    await expect(details(page).getByRole('checkbox')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, GRADLE);
 
-    const data = page.getByRole('region', { name: XCODE_DATA });
-    await expect(data).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
-    await expect(page.getByRole('region', { name: GRADLE })).toContainText(
-      `1 item left out (35 MB): ${dev('left-out.not-yours')}`,
-    );
+    await expect(details(page)).toContainText(`1 item left out (35 MB): ${dev('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await expect(data.getByRole('checkbox')).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select ${GRADLE}` }).check();
+    await page.getByRole('checkbox', { name: `Select all ${GRADLE}` }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('4.3 GB');
   });
 
   test('the left-out lines of removed apps cannot be selected', async ({ page }) => {
     await openLeftovers(page);
+    await openDetails(page, LEFTOVERS_SETTINGS);
+    await expect(details(page)).toContainText(`1 item left out (3 MB): ${left('left-out.used-recently')}`);
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, LEFTOVERS_CACHES);
 
-    await expect(page.getByRole('region', { name: LEFTOVERS_CACHES })).toContainText(
-      `1 item left out (220 MB): ${left('left-out.running')}`,
-    );
-    await expect(page.getByRole('region', { name: LEFTOVERS_SETTINGS })).toContainText(
-      `1 item left out (3 MB): ${left('left-out.used-recently')}`,
-    );
+    await expect(details(page)).toContainText(`1 item left out (220 MB): ${left('left-out.running')}`);
+    await expect(details(page)).not.toContainText(left('left-out.used-recently'));
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` }).check();
+    await page.getByRole('checkbox', { name: `Select all ${LEFTOVERS_CACHES}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('220 MB');
   });
 
   test('the downloads module is unavailable until Downloads is allowed, and says how to allow it', async ({ page }) => {
-    await mockCore(page, SCRIPTS.downloadsUnavailable);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await downloadsModule(page).click();
-    await expect(heading(page, dl('enabled.label'))).toBeFocused();
+    await openDownloads(page, SCRIPTS.downloadsUnavailable);
 
     for (const name of [DL_UNFINISHED, DL_SAFARI, DL_INSTALLERS, DL_MACOS, DL_LARGE]) {
-      const category = page.getByRole('region', { name });
-      await expect(category).toContainText('Not available');
-      await expect(category).toContainText('Your Downloads folder was not looked at.');
+      await openDetails(page, name);
+      const category = details(page);
+      await expect(category.getByRole('region', { name: 'Not available' })).toContainText(
+        'Your Downloads folder was not looked at.',
+      );
       await expect(category.getByRole('checkbox')).toHaveCount(0);
+      await expect(category.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
     }
-    await expect(page.getByRole('button', { name: 'Let Fresher look there' }).first()).toBeVisible();
     await expect(selectionBar(page)).toHaveCount(0);
   });
 
   test('the left-out lines of downloads cannot be selected', async ({ page }) => {
     await openDownloads(page);
+    await openDetails(page, DL_UNFINISHED);
+    await expect(details(page)).toContainText(`1 item left out (48 MB): ${dl('left-out.browser-open')}`);
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, DL_LARGE);
 
-    await expect(page.getByRole('region', { name: DL_UNFINISHED })).toContainText(
-      `1 item left out (48 MB): ${dl('left-out.browser-open')}`,
-    );
-    await expect(page.getByRole('region', { name: DL_LARGE })).toContainText(
-      `1 item left out (1.2 GB): ${dl('left-out.recent')}`,
-    );
+    await expect(details(page)).toContainText(`1 item left out (1.2 GB): ${dl('left-out.recent')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+    await page.getByRole('checkbox', { name: `Select all ${DL_LARGE}` }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('1.2 GB');
   });
 
   test('the left-out lines of old projects cannot be selected', async ({ page }) => {
     await openStaleProjects(page);
+    for (const [name, line] of [
+      [SP_BUILD, `1 item left out (900 MB): ${sp('left-out.recent')}`],
+      [SP_RUST, `1 item left out (2.1 GB): ${sp('left-out.cache-recent')}`],
+    ] as const) {
+      await openDetails(page, name);
+      await expect(details(page)).toContainText(line);
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
+    }
+    await openDetails(page, SP_DEPENDENCIES);
 
-    await expect(page.getByRole('region', { name: SP_DEPENDENCIES })).toContainText(
-      `2 items left out (1.3 GB): ${sp('left-out.recent')}`,
-    );
-    await expect(page.getByRole('region', { name: SP_BUILD })).toContainText(
-      `1 item left out (900 MB): ${sp('left-out.recent')}`,
-    );
-    await expect(page.getByRole('region', { name: SP_RUST })).toContainText(
-      `1 item left out (2.1 GB): ${sp('left-out.cache-recent')}`,
-    );
+    await expect(details(page)).toContainText(`2 items left out (1.3 GB): ${sp('left-out.recent')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select ${SP_DEPENDENCIES}` }).check();
+    await page.getByRole('checkbox', { name: `Select all ${SP_DEPENDENCIES}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('1.3 GB');
   });
 
   test('a choice selects nothing outside its module', async ({ page }) => {
     await openLeftovers(page, SCRIPTS.appLeftoversWithDevCaches);
-    await devCachesModule(page).click();
     await page.getByRole('checkbox', { name: `Select ${NPM}` }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
-    await leftoversModule(page).click();
+    await openDetails(page, LEFTOVERS_CACHES);
 
     await choice(page, 'keep-settings').click();
 
     await expect(selectionBar(page)).toContainText('3 items selected');
-    await devCachesModule(page).click();
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
     await expect(page.getByRole('checkbox', { name: `Select ${NPM}` })).toBeChecked();
   });
 
   test('an ignored cache category is in no total', async ({ page }) => {
     await openDevCaches(page);
 
-    await page.getByRole('button', { name: `Ignore ${NPM}` }).click();
+    await fromCardMenu(page, NPM, 'Ignore this category');
 
-    await expect(devCachesModule(page)).toContainText('8.3 GB');
-    await expect(devCachesModule(page)).not.toContainText('17.2 GB');
-    await page.getByRole('button', { name: 'Overview' }).click();
     await expect(cards(page).filter({ hasText: NPM })).toHaveCount(0);
     await expect(page.getByText('8.3 GB').first()).toBeVisible();
+    await expect(page.getByText('17.2 GB')).toHaveCount(0);
   });
 
   test('ignoring the temporary files module puts its findings in no total', async ({ page }) => {
     await openTemp(page);
+    await page.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
 
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await fromCardMenu(page, TEMP_CATEGORY, `Ignore ${tmp('enabled.label')}`);
 
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Overview' }).click();
     await expect(cards(page)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
+  });
+
+  test("the card's menu closes on Escape and ignores nothing", async ({ page }) => {
+    await openIgnoring(page);
+    const options = page.getByRole('button', { name: 'Options for Example caches' });
+
+    await options.click();
+    await expect(page.getByRole('menu', { name: 'Options for Example caches' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(options).toBeFocused();
+    await expect(cards(page)).toHaveCount(2);
+    await expect(page.getByText(/you ignored/u)).toHaveCount(0);
   });
 });
 
 test.describe('positive cases', () => {
-  test('from a scan to the review of what was ticked', async ({ page }) => {
-    await mockCore(page, SCRIPTS.demo);
-    await page.goto('/');
+  test("Ignore this category from a card's menu takes it out of every total", async ({ page }) => {
+    await openIgnoring(page);
 
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(cards(page)).toHaveText([/^Open Example caches/, /^Open Example downloads/]);
+    await page.getByRole('button', { name: 'Options for Example caches' }).click();
+    await page.getByRole('menuitem', { name: 'Ignore this category' }).click();
 
-    await page.getByRole('button', { name: 'Open Example downloads' }).click();
-    await expect(heading(page, 'Demo module')).toBeFocused();
-    const downloads = page.getByRole('region', { name: 'Example downloads' });
-    await expect(downloads.getByRole('button', { name: 'Show the items of Example downloads' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-    await expect(downloads).toBeInViewport();
+    await expect(cards(page)).toHaveCount(1);
+    await expect(cardNames(page)).toHaveText(['Example downloads']);
+    await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
+    const recorded = await page.evaluate(() => sessionStorage.getItem('fresher.mock.ignore'));
+    expect(JSON.parse(recorded ?? 'null')).toMatchObject({ categories: ['demo.caches'] });
+  });
 
-    await downloads.getByRole('checkbox', { name: 'Select Example: installer.dmg' }).check();
-    const caches = page.getByRole('region', { name: 'Example caches' });
-    await caches.getByRole('checkbox', { name: 'Select Example: browser-cache' }).check();
-    await expect(selectionBar(page)).toContainText('2 items selected');
+  test("the card's menu works by keyboard alone", async ({ page }) => {
+    await openIgnoring(page);
+    const options = page.getByRole('button', { name: 'Options for Example caches' });
 
+    await tabTo(page, options);
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'Ignore this category' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem', { name: 'Ignore Demo module' })).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
+
+    await expect(cards(page)).toHaveCount(1);
+    await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
+  });
+
+  test("Space on a card's menu item chooses it and leaves the menu closed", async ({ page }) => {
+    await openIgnoring(page);
+    const options = page.getByRole('button', { name: 'Options for Example caches' });
+
+    await tabTo(page, options);
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'Ignore this category' })).toBeFocused();
+    await page.keyboard.press('Space');
+
+    await expect(cards(page)).toHaveCount(1);
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(page.getByRole('menuitem')).toHaveCount(0);
+  });
+
+  test("a card's Details opens the category's details with every finding", async ({ page }) => {
+    await scanned(page, SCRIPTS.demo);
+    await expect(cardNames(page)).toHaveText(['Example caches', 'Example downloads']);
+
+    await openDetails(page, 'Example caches');
+
+    await expect(navScan(page)).toHaveAttribute('aria-current', 'page');
+    const list = page.getByRole('list', { name: 'The items of Example caches' });
+    await expect(list.getByRole('listitem')).toHaveCount(2);
+    await expect(list).toContainText('Example: editor-cache');
+    await expect(list).toContainText('Example: browser-cache');
+    await expect(details(page)).toContainText('2 items');
+    await expect(page.getByRole('list', { name: 'The items of Example downloads' })).toHaveCount(0);
+  });
+
+  test('ticking a finding on the details shows the selection bar, and its Review lists it', async ({ page }) => {
+    await scanned(page, SCRIPTS.demo);
+    await openDetails(page, 'Example downloads');
+    await expect(selectionBar(page)).toHaveCount(0);
+
+    await details(page).getByRole('checkbox', { name: 'Select Example: installer.dmg' }).check();
+
+    await expect(selectionBar(page)).toContainText('1 item selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await expect(heading(page, 'Review')).toBeFocused();
     await expect(page.getByRole('list', { name: 'The items of Example downloads' })).toContainText(
       'Example: installer.dmg',
     );
-    await expect(page.getByRole('list', { name: 'The items of Example caches' })).toContainText(
-      'Example: browser-cache',
-    );
+    await expect(page.getByRole('list', { name: 'The items of Example caches' })).toHaveCount(0);
     await expect(removeButton(page)).toBeEnabled();
+  });
+
+  test("a choice on the details of a removed app's category selects only its own categories", async ({ page }) => {
+    await openLeftovers(page);
+    await openDetails(page, LEFTOVERS_CACHES);
+
+    await choice(page, 'keep-settings').click();
+
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_SETTINGS}` })).not.toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_DATA}` })).not.toBeChecked();
+  });
+
+  test("Select all of a zone, then the selection bar's Review lists those categories", async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await scanButton(page).click();
+    await expect(cards(page)).toHaveCount(2);
+
+    await zone(page, 'Low risk').getByRole('checkbox', { name: 'Select all' }).check();
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+
+    await expect(heading(page, 'Review')).toBeFocused();
+    await expect(page.getByRole('list', { name: 'The items of Example downloads' })).toContainText(
+      'Example: installer.dmg',
+    );
+    await expect(page.getByRole('list', { name: 'The items of Example caches' })).toHaveCount(0);
+  });
+
+  test('from a scan to the review of what was ticked, in the zones of the Scan screen', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await reviewAll(page);
+
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove', 'Low risk']);
+    await expect(zone(page, 'Safe to remove').getByRole('heading', { level: 3 })).toHaveText('Example caches');
+    await expect(zone(page, 'Low risk').getByRole('heading', { level: 3 })).toHaveText('Example downloads');
+    await expect(page.getByRole('checkbox', { name: 'Select all' })).toHaveCount(0);
+  });
+
+  test('unticking the last row of a zone removes the zone', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await reviewAll(page);
+    await expect(zone(page, 'Low risk')).toBeVisible();
+
+    await page.getByRole('checkbox', { name: 'Select Example: installer.dmg' }).click();
+
+    await expect(zone(page, 'Low risk')).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove']);
+  });
+
+  test("the selection bar's Clear empties the selection on the overview", async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await scanButton(page).click();
+    await zone(page, 'Safe to remove').getByRole('checkbox', { name: 'Select all' }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+
+    await selectionBar(page).getByRole('button', { name: 'Clear' }).click();
+
+    await expect(selectionBar(page)).toHaveCount(0);
+    await expect(zone(page, 'Safe to remove').getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
   });
 
   test('Stop ends the scan as partial, with what it found so far', async ({ page }) => {
     await mockCore(page, SCRIPTS.live);
     await page.goto('/');
 
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await scanButton(page).click();
     await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
 
     await page.getByRole('button', { name: 'Stop' }).click();
 
     await expect(page.getByText('This scan is incomplete')).toBeVisible();
-    await expect(cards(page)).toHaveText([/1 item$/, /1 item$/]);
-    await expect(page.getByRole('button', { name: /^Demo module/ })).toContainText('2.3 GB');
+    await expect(cards(page)).toHaveText([/1 item/, /1 item/]);
     await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
   });
 
   test('a long list loads its pages as the keyboard moves to its end', async ({ page }) => {
     await mockCore(page, SCRIPTS.large);
     await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await scanButton(page).click();
     await expect(cards(page)).toHaveCount(3);
 
-    await cards(page).first().click();
+    await cards(page).first().getByRole('button', { name: 'Details' }).click();
     const list = page.getByRole('list', { name: /^The items of / }).first();
     await list.getByRole('listitem').first().focus();
     await page.keyboard.press('End');
@@ -575,16 +687,16 @@ test.describe('positive cases', () => {
   test('the whole path without a pointer', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
-    await expect(heading(page, 'Overview')).toBeVisible();
+    await expect(heading(page, 'Scan')).toBeVisible();
 
-    await tabTo(page, page.getByRole('button', { exact: true, name: 'Scan' }));
+    await tabTo(page, scanButton(page));
     await page.keyboard.press('Enter');
-    const open = page.getByRole('button', { name: 'Open Example caches' });
+    const open = detailsOf(page, 'Example caches');
     await expect(open).toBeVisible();
 
     await tabTo(page, open);
     await page.keyboard.press('Enter');
-    await expect(heading(page, 'Demo module')).toBeFocused();
+    await expect(heading(page, 'Example caches')).toBeFocused();
 
     const list = page.getByRole('list', { name: 'The items of Example caches' });
     await tabTo(page, list.getByRole('listitem').first());
@@ -694,35 +806,33 @@ test.describe('positive cases', () => {
 
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
 
-    await expect(page.getByRole('navigation').getByText('Debug · Ignored')).toBeVisible();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await navScan(page).click();
     await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
     await expect(cards(page)).toHaveCount(0);
     await openSettings(page);
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await navScan(page).click();
     await expect(cards(page)).toHaveCount(2);
     await expect(page.getByText(/you ignored is left out/)).toHaveCount(0);
   });
 
-  test('ignoring the module from Settings dims it in the sidebar and Restore on its page brings it back', async ({
-    page,
-  }) => {
+  test('ignoring the module from Settings hides its cards and turning it off brings them back', async ({ page }) => {
     await openIgnoring(page);
     await openSettings(page);
     await page.getByRole('tab', { name: /^Ignored modules/ }).click();
 
     await page.getByRole('switch', { name: 'Ignore Demo module' }).click();
 
-    await expect(demoModule(page)).toContainText('Ignored');
-    await demoModule(page).click();
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
-    await page.getByRole('button', { exact: true, name: 'Restore' }).click();
-    await expect(page.getByText('You ignore this module.')).toHaveCount(0);
-    await expect(demoModule(page)).not.toContainText('Ignored');
+    await navScan(page).click();
+    await expect(cards(page)).toHaveCount(0);
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await page.getByRole('switch', { name: 'Ignore Demo module' }).click();
+    await navScan(page).click();
+    await expect(cards(page)).toHaveCount(2);
   });
 
-  test('a module of an ignored group is locked with its note and the group’s Restore frees it', async ({ page }) => {
+  test('a module of an ignored group is locked with its note and turning the group off frees it', async ({ page }) => {
     await openIgnoring(page);
     await openSettings(page);
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
@@ -731,23 +841,21 @@ test.describe('positive cases', () => {
     const locked = page.getByRole('switch', { name: 'Ignore Demo module' });
     await expect(locked).toBeDisabled();
     await expect(page.getByText('Ignored with its group: Debug')).toBeVisible();
-    await demoModule(page).click();
-    await page.getByRole('button', { name: 'Restore the group' }).click();
-    await expect(page.getByText('You ignore this module.')).toHaveCount(0);
-    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored groups/ }).click();
+    await page.getByRole('switch', { name: 'Ignore Debug' }).click();
     await page.getByRole('tab', { name: /^Ignored modules/ }).click();
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeEnabled();
+    await navScan(page).click();
+    await expect(cards(page)).toHaveCount(2);
   });
 
   test('ignored modules and groups stay ignored after a reload', async ({ page }) => {
     await openIgnoring(page);
-    await demoModule(page).click();
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await fromCardMenu(page, 'Example caches', 'Ignore Demo module');
+    await expect(cards(page)).toHaveCount(0);
 
     await page.reload();
 
-    await expect(demoModule(page)).toContainText('Ignored');
     await openSettings(page);
     await expect(page.getByRole('tab', { name: /^Ignored modules/ })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
@@ -755,9 +863,7 @@ test.describe('positive cases', () => {
 
   test('the ignored line on the overview opens Settings on the tab with an entry', async ({ page }) => {
     await openIgnoring(page);
-    await demoModule(page).click();
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await fromCardMenu(page, 'Example caches', 'Ignore Demo module');
 
     await page.getByRole('button', { name: 'Show in Settings' }).click();
 
@@ -765,13 +871,12 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
   });
 
-  test('Ignore this module on the module page moves it to the Ignored modules tab', async ({ page }) => {
+  test("Ignore Demo module from a card's menu moves it to the Ignored modules tab", async ({ page }) => {
     await openIgnoring(page);
-    await demoModule(page).click();
 
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await fromCardMenu(page, 'Example downloads', 'Ignore Demo module');
 
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
     await openSettings(page);
     await expect(page.getByRole('tab', { name: 'Ignored modules · 1' })).toBeVisible();
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
@@ -779,48 +884,42 @@ test.describe('positive cases', () => {
 
   test('ignoring a module drops what was ticked from the selection', async ({ page }) => {
     await openIgnoring(page);
-    await demoModule(page).click();
-    await page
-      .getByRole('checkbox', { name: /^Select / })
-      .first()
-      .check();
+    await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
     await expect(page.getByRole('button', { name: /^Review \d+ items? selected/ })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await fromCardMenu(page, 'Example caches', 'Ignore Demo module');
 
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
   });
 
-  test('the sidebar lists JetBrains IDEs under Development and its page names each category with its level', async ({
-    page,
-  }) => {
+  test('the details of a JetBrains category name its level', async ({ page }) => {
     await openJetbrains(page);
 
-    await expect(page.getByRole('navigation').getByText('Development', { exact: true })).toBeVisible();
     for (const [name, level] of [
       [JB.caches, 'Safe'],
       [JB.logs, 'Safe'],
       [JB.settings, 'Medium'],
       [JB.uninstalled, 'Medium'],
     ] as const) {
-      await expect(page.getByRole('region', { name })).toContainText(level);
+      await openDetails(page, name);
+      await expect(details(page).getByRole('region', { name: 'Danger level' })).toContainText(level);
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
     }
-    const caches = page.getByRole('region', { name: JB.caches });
-    await caches.getByText('About this category').click();
-    await expect(caches).toContainText(jb('caches.what'));
-    await expect(caches).toContainText(jb('caches.if-removed'));
+    await openDetails(page, JB.caches);
+    const about = details(page).getByRole('region', { name: 'About it' });
+    await expect(about).toContainText(jb('caches.what'));
+    await expect(about).toContainText(jb('caches.if-removed'));
   });
 
   test('the items left out are lines under their category, with their reason', async ({ page }) => {
     await openJetbrains(page);
 
-    await expect(page.getByRole('region', { name: JB.caches })).toContainText(
-      `3 items left out (1.4 GB): ${jb('left-out.current')}`,
-    );
-    await expect(page.getByRole('region', { name: JB.settings })).toContainText(
-      `2 items left out (600 MB): ${jb('left-out.running')}`,
-    );
+    await openDetails(page, JB.caches);
+    await expect(details(page)).toContainText(`3 items left out (1.4 GB): ${jb('left-out.current')}`);
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, JB.settings);
+    await expect(details(page)).toContainText(`2 items left out (600 MB): ${jb('left-out.running')}`);
   });
 
   test('the data of an IDE that is no longer installed is its own Medium category with the findings named', async ({
@@ -828,13 +927,13 @@ test.describe('positive cases', () => {
   }) => {
     await openJetbrains(page);
 
-    const removed = page.getByRole('region', { name: JB.uninstalled });
+    await openDetails(page, JB.uninstalled);
+
+    const removed = details(page);
     await expect(removed).toContainText('Medium');
     await expect(removed).toContainText('2 items');
-    await removed.getByText('About this category').click();
     await expect(removed).toContainText(jb('uninstalled.what'));
     await expect(removed).toContainText(jb('uninstalled.if-removed'));
-    await removed.getByRole('button', { name: `Show the items of ${JB.uninstalled}` }).click();
     await expect(removed).toContainText('DataGrip 2024.3 caches');
     await expect(removed).toContainText('DataGrip 2024.3 settings and plugins');
   });
@@ -860,45 +959,38 @@ test.describe('positive cases', () => {
     await expect(caches).toContainText('Put back where it was.');
   });
 
-  test('ignoring the module from its page hides its totals, Settings lists it and turning it off restores it', async ({
+  test("ignoring the module from a card's menu hides its totals, Settings lists it and turning it off restores it", async ({
     page,
   }) => {
     await openJetbrains(page);
 
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await fromCardMenu(page, JB.caches, 'Ignore JetBrains IDEs');
 
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
-    await expect(jetbrainsModule(page)).toContainText('Ignored');
-    await page.getByRole('button', { name: 'Overview' }).click();
     await expect(cards(page)).toHaveCount(0);
     await openSettings(page);
     await page.getByRole('tab', { name: /^Ignored modules/ }).click();
     const ignored = page.getByRole('switch', { name: 'Ignore JetBrains IDEs' });
     await expect(ignored).toBeChecked();
     await ignored.click();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await navScan(page).click();
     await expect(cards(page)).toHaveCount(4);
-    await expect(jetbrainsModule(page)).not.toContainText('Ignored');
   });
 
-  test('ignoring the group Development hides JetBrains IDEs and restoring the group brings it back', async ({
+  test('ignoring the group Development hides JetBrains IDEs and turning the group off brings it back', async ({
     page,
   }) => {
-    await mockCore(page, SCRIPTS.jetbrains);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
+    await openJetbrains(page);
     await expect(cards(page)).toHaveCount(4);
     await openSettings(page);
 
     await page.getByRole('switch', { name: 'Ignore Development' }).click();
 
-    await expect(page.getByRole('navigation').getByText('Development · Ignored')).toBeVisible();
-    await jetbrainsModule(page).click();
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
-    await page.getByRole('button', { name: 'Restore the group' }).click();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await navScan(page).click();
+    await expect(cards(page)).toHaveCount(0);
+    await openSettings(page);
+    await page.getByRole('switch', { name: 'Ignore Development' }).click();
+    await navScan(page).click();
     await expect(cards(page)).toHaveCount(4);
-    await expect(page.getByRole('navigation').getByText('Development · Ignored')).toHaveCount(0);
   });
 
   test('the module’s days setting is in Settings with its text', async ({ page }) => {
@@ -912,33 +1004,14 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: jb('enabled.label') })).toBeChecked();
   });
 
-  test('the by-meaning view puts WebStorm’s findings under its app line, not DataGrip’s', async ({ page }) => {
-    await mockCore(page, SCRIPTS.jetbrains);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(cards(page)).toHaveCount(4);
-
-    await page.getByRole('radio', { name: 'By meaning' }).click();
-
-    const app = page.getByRole('list', { name: 'WebStorm' });
-    await expect(app).toContainText('1.3 GB');
-    await page.getByRole('button', { name: 'Show what WebStorm keeps' }).click();
-    const kept = page.getByRole('group', { name: 'What WebStorm keeps' });
-    await expect(kept).toContainText(JB.caches);
-    await expect(kept).not.toContainText(JB.uninstalled);
-    await expect(page.getByRole('list', { name: 'DataGrip' })).toContainText('not installed');
-  });
-
-  test('the sidebar lists Temporary files under System and its page shows the category, Safe and its texts', async ({
-    page,
-  }) => {
+  test('the details of Temporary files show the category, Safe and its texts', async ({ page }) => {
     await openTemp(page);
 
-    await expect(page.getByRole('navigation').getByText('System', { exact: true })).toBeVisible();
-    const category = page.getByRole('region', { name: TEMP_CATEGORY });
+    await openDetails(page, TEMP_CATEGORY);
+
+    const category = details(page);
     await expect(category).toContainText('Safe');
     await expect(category).toContainText('5 items');
-    await category.getByText('About this category').click();
     for (const key of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(category).toContainText(tmp(`old-files.${key}`));
     }
@@ -949,7 +1022,9 @@ test.describe('positive cases', () => {
   }) => {
     await openTemp(page);
 
-    const category = page.getByRole('region', { name: TEMP_CATEGORY });
+    await openDetails(page, TEMP_CATEGORY);
+
+    const category = details(page);
     await expect(category).toContainText(`4,712 items left out (790 MB): ${tmp('left-out.recent')}`);
     await expect(category).toContainText(`3 items left out (12 MB): ${tmp('left-out.system')}`);
     await expect(category).toContainText(`1 item left out (0 bytes): ${tmp('left-out.special')}`);
@@ -998,68 +1073,54 @@ test.describe('positive cases', () => {
     await expect(page.getByText('Enter a whole number from 7 to 30.')).toHaveCount(0);
   });
 
-  test('ignoring the module from its page and the group System from Settings, then restoring both', async ({
+  test("ignoring the module from a card's menu and the group System from Settings, then restoring both", async ({
     page,
   }) => {
     await openTemp(page);
 
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await fromCardMenu(page, TEMP_CATEGORY, `Ignore ${tmp('enabled.label')}`);
 
-    await expect(tempModule(page)).toContainText('Ignored');
+    await expect(cards(page)).toHaveCount(0);
     await openSettings(page);
     await page.getByRole('tab', { name: /^Ignored modules/ }).click();
     const ignored = page.getByRole('switch', { name: 'Ignore Temporary files' });
     await expect(ignored).toBeChecked();
     await ignored.click();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await navScan(page).click();
     await expect(cards(page)).toHaveCount(1);
 
     await openSettings(page);
     await page.getByRole('tab', { name: /^Ignored groups/ }).click();
     await page.getByRole('switch', { name: 'Ignore System' }).click();
 
-    await expect(page.getByRole('navigation').getByText('System · Ignored')).toBeVisible();
-    await tempModule(page).click();
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
-    await page.getByRole('button', { name: 'Restore the group' }).click();
-    await page.getByRole('button', { name: 'Overview' }).click();
+    await navScan(page).click();
+    await expect(cards(page)).toHaveCount(0);
+    await openSettings(page);
+    await page.getByRole('tab', { name: /^Ignored groups/ }).click();
+    await page.getByRole('switch', { name: 'Ignore System' }).click();
+    await navScan(page).click();
     await expect(cards(page)).toHaveCount(1);
-    await expect(page.getByRole('navigation').getByText('System · Ignored')).toHaveCount(0);
   });
 
-  test('the overview by place lists the two temporary folders by their names', async ({ page }) => {
-    await mockCore(page, SCRIPTS.temp);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(cards(page)).toHaveCount(1);
-
-    await page.getByRole('radio', { name: 'By place' }).click();
-
-    const roots = page.getByRole('list', { name: 'Scanned folders' });
-    await expect(roots).toContainText(TEMP_DICTIONARY['core.place.user-temp.name'] ?? '');
-    await expect(roots).toContainText(TEMP_DICTIONARY['core.place.shared-temp.name'] ?? '');
-    await expect(roots.getByText('tmp', { exact: true })).toHaveCount(0);
-  });
-
-  test('developer caches show under Development with their size', async ({ page }) => {
+  test('developer caches show their cards with their sizes', async ({ page }) => {
     await openDevCaches(page);
 
-    await expect(page.getByRole('navigation').getByText('Development', { exact: true })).toBeVisible();
-    await expect(devCachesModule(page)).toContainText('17.2 GB');
     for (const name of [NPM, CARGO, GRADLE, XCODE_DATA]) {
-      await expect(page.getByRole('region', { name })).toBeVisible();
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
     }
-    await expect(page.getByRole('region', { name: NPM })).toContainText('8.9 GB');
+    await expect(cards(page).filter({ hasText: NPM })).toContainText('8.9 GB');
   });
 
   test('a developer cache category shows its danger and its five texts', async ({ page }) => {
     await openDevCaches(page);
 
-    const npm = page.getByRole('region', { name: NPM });
+    await openDetails(page, XCODE_DATA);
+    await expect(details(page)).toContainText('Safe');
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, NPM);
+
+    const npm = details(page);
     await expect(npm).toContainText('Low');
-    await expect(page.getByRole('region', { name: XCODE_DATA })).toContainText('Safe');
-    await expect(npm).toContainText(dev('npm.what'));
-    await npm.getByText('About this category').click();
     for (const key of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(npm).toContainText(dev(`npm.${key}`));
     }
@@ -1092,31 +1153,24 @@ test.describe('positive cases', () => {
   test('ignoring npm’s cache keeps the other caches, and restoring brings it back', async ({ page }) => {
     await openDevCaches(page);
 
-    await page.getByRole('button', { name: `Ignore ${NPM}` }).click();
+    await fromCardMenu(page, NPM, 'Ignore this category');
 
-    await expect(page.getByRole('region', { name: NPM })).toHaveCount(0);
+    await expect(cards(page).filter({ hasText: NPM })).toHaveCount(0);
     for (const name of [CARGO, GRADLE, XCODE_DATA]) {
-      await expect(page.getByRole('region', { name })).toBeVisible();
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
     }
     await openSettings(page);
     await page.getByRole('tab', { name: /^Ignored items/ }).click();
     await page.getByRole('button', { name: `Restore ${NPM}` }).click();
-    await devCachesModule(page).click();
-    await expect(page.getByRole('region', { name: NPM })).toContainText('8.9 GB');
-    await expect(devCachesModule(page)).toContainText('17.2 GB');
+    await navScan(page).click();
+    await expect(cards(page).filter({ hasText: NPM })).toContainText('8.9 GB');
   });
 
   test('ignoring the developer caches module hides them all', async ({ page }) => {
     await openDevCaches(page);
 
-    await page.getByRole('button', { name: 'Ignore this module' }).click();
+    await fromCardMenu(page, NPM, `Ignore ${dev('enabled.label')}`);
 
-    await expect(devCachesModule(page)).toContainText('Ignored');
-    await expect(page.getByText('You ignore this module.')).toBeVisible();
-    for (const name of [NPM, CARGO, GRADLE, XCODE_DATA]) {
-      await expect(page.getByRole('region', { name })).toHaveCount(0);
-    }
-    await page.getByRole('button', { name: 'Overview' }).click();
     await expect(cards(page)).toHaveCount(0);
   });
 
@@ -1130,29 +1184,13 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('spinbutton')).toHaveCount(0);
   });
 
-  test('a project’s build data counts in Xcode’s line', async ({ page }) => {
-    await mockCore(page, SCRIPTS.devCaches);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(cards(page)).toHaveCount(1);
-
-    await page.getByRole('radio', { name: 'By meaning' }).click();
-
-    const app = page.getByRole('list', { name: 'Xcode' });
-    await expect(app).toContainText('4.3 GB');
-    await page.getByRole('button', { name: 'Show what Xcode keeps' }).click();
-    await expect(page.getByRole('group', { name: 'What Xcode keeps' })).toContainText(XCODE_DATA);
-  });
-
-  test('removed apps’ leftovers show under Apps with their size', async ({ page }) => {
+  test('removed apps’ leftovers show their cards with their sizes', async ({ page }) => {
     await openLeftovers(page);
 
-    await expect(page.getByRole('navigation').getByText('Apps', { exact: true })).toBeVisible();
-    await expect(leftoversModule(page)).toContainText('2.5 GB');
     for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
-      await expect(page.getByRole('region', { name })).toBeVisible();
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
     }
-    await expect(page.getByRole('region', { name: LEFTOVERS_DATA })).toContainText('1.8 GB');
+    await expect(cards(page).filter({ hasText: LEFTOVERS_DATA })).toContainText('1.8 GB');
   });
 
   test('each removed-app category shows its danger and its five texts', async ({ page }) => {
@@ -1163,21 +1201,23 @@ test.describe('positive cases', () => {
       [LEFTOVERS_SETTINGS, 'settings', 'Medium'],
       [LEFTOVERS_DATA, 'data', 'High'],
     ] as const) {
-      const category = page.getByRole('region', { name });
+      await openDetails(page, name);
+      const category = details(page);
       await expect(category).toContainText(danger);
-      await expect(category).toContainText(left(`${key}.what`));
-      await category.getByText('About this category').click();
-      for (const text of ['made-by', 'if-removed', 'comes-back']) {
+      for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(left(`${key}.${text}`));
       }
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
     }
   });
 
   test('Remove everything selects the three categories and the review names High', async ({ page }) => {
     await openLeftovers(page);
+    await openDetails(page, LEFTOVERS_DATA);
 
     await choice(page, 'everything').click();
 
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
     for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
       await expect(page.getByRole('checkbox', { name: `Select ${name}` })).toBeChecked();
     }
@@ -1192,8 +1232,11 @@ test.describe('positive cases', () => {
 
   test('Keep settings selects only the caches and the review names Safe', async ({ page }) => {
     await openLeftovers(page);
+    await openDetails(page, LEFTOVERS_CACHES);
 
     await choice(page, 'keep-settings').click();
+
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
 
     await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_SETTINGS}` })).not.toBeChecked();
@@ -1209,6 +1252,7 @@ test.describe('positive cases', () => {
 
   test('the caches of a removed app go to the Trash and come back', async ({ page }) => {
     await openLeftovers(page);
+    await openDetails(page, LEFTOVERS_CACHES);
     await choice(page, 'keep-settings').click();
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
@@ -1234,15 +1278,13 @@ test.describe('positive cases', () => {
     await expect(page.getByText(left('uninstalled-after-days.description'))).toBeVisible();
   });
 
-  test('downloads and installers show under Your files with their size', async ({ page }) => {
+  test('downloads and installers show their cards with their sizes', async ({ page }) => {
     await openDownloads(page);
 
-    await expect(page.getByRole('navigation').getByText('Your files', { exact: true })).toBeVisible();
-    await expect(downloadsModule(page)).toContainText('15.8 GB');
     for (const name of [DL_UNFINISHED, DL_SAFARI, DL_INSTALLERS, DL_MACOS, DL_LARGE]) {
-      await expect(page.getByRole('region', { name })).toBeVisible();
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
     }
-    await expect(page.getByRole('region', { name: DL_MACOS })).toContainText('12.8 GB');
+    await expect(cards(page).filter({ hasText: DL_MACOS })).toContainText('12.8 GB');
   });
 
   test('each downloads category shows its danger and its five texts', async ({ page }) => {
@@ -1255,13 +1297,13 @@ test.describe('positive cases', () => {
       [DL_MACOS, 'macos-installers', 'Low'],
       [DL_LARGE, 'large-untouched', 'High'],
     ] as const) {
-      const category = page.getByRole('region', { name });
+      await openDetails(page, name);
+      const category = details(page);
       await expect(category).toContainText(danger);
-      await expect(category).toContainText(dl(`${key}.what`));
-      await category.getByText('About this category').click();
-      for (const text of ['made-by', 'if-removed', 'comes-back']) {
+      for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(dl(`${key}.${text}`));
       }
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
     }
   });
 
@@ -1327,15 +1369,13 @@ test.describe('positive cases', () => {
     await expect(page.getByText(dl('older-than-days.description'))).toBeVisible();
   });
 
-  test('old projects show under Development with their size', async ({ page }) => {
+  test('old projects show their cards with their sizes', async ({ page }) => {
     await openStaleProjects(page);
 
-    await expect(page.getByRole('navigation').getByText('Development', { exact: true })).toBeVisible();
-    await expect(staleProjectsModule(page)).toContainText('6.6 GB');
     for (const name of [SP_DEPENDENCIES, SP_BUILD, SP_PYTHON, SP_RUST]) {
-      await expect(page.getByRole('region', { name })).toBeVisible();
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
     }
-    await expect(page.getByRole('region', { name: SP_BUILD })).toContainText('3.2 GB');
+    await expect(cards(page).filter({ hasText: SP_BUILD })).toContainText('3.2 GB');
   });
 
   test('each old-projects category shows its danger and its five texts', async ({ page }) => {
@@ -1347,29 +1387,31 @@ test.describe('positive cases', () => {
       [SP_PYTHON, 'python-environments', 'Medium'],
       [SP_RUST, 'rust-build-cache', 'Low'],
     ] as const) {
-      const category = page.getByRole('region', { name });
+      await openDetails(page, name);
+      const category = details(page);
       await expect(category).toContainText(danger);
-      await expect(category).toContainText(sp(`${key}.what`));
-      await category.getByText('About this category').click();
-      for (const text of ['made-by', 'if-removed', 'comes-back']) {
+      for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(sp(`${key}.${text}`));
       }
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
     }
   });
 
   test('an old project’s finding names the project, the folder, the date and the command', async ({ page }) => {
     await openStaleProjects(page);
 
-    await page.getByRole('button', { name: `Show the items of ${SP_DEPENDENCIES}` }).click();
-    await page.getByRole('button', { name: `Show the items of ${SP_RUST}` }).click();
-    const items = page.getByRole('region', { name: SP_DEPENDENCIES });
+    await openDetails(page, SP_DEPENDENCIES);
+
+    const items = details(page);
     await expect(items).toContainText('shop · node_modules');
     await expect(items).toContainText('shop · packages/web/node_modules');
     const [beforeDate = '', afterDate = ''] = sp('reason.dependencies').split('{date}');
     await expect(items).toContainText(beforeDate.trim());
     await expect(items).toContainText('Nov 15, 2023');
     await expect(items).toContainText(afterDate.replace('{command}', 'npm install').trim());
-    await expect(page.getByRole('region', { name: SP_RUST })).toContainText('daily · target/debug/incremental');
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, SP_RUST);
+    await expect(details(page)).toContainText('daily · target/debug/incremental');
   });
 
   test('selecting the Python environments and the build output makes the review name Medium', async ({ page }) => {
@@ -1413,18 +1455,5 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: sp('enabled.label') })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: sp('unused-for-days.label') })).toHaveValue('365');
     await expect(page.getByText(sp('unused-for-days.description'))).toBeVisible();
-  });
-
-  test('a removed app’s line in the map is named by its id', async ({ page }) => {
-    await mockCore(page, SCRIPTS.appLeftovers);
-    await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(cards(page)).toHaveCount(3);
-
-    await page.getByRole('radio', { name: 'By meaning' }).click();
-
-    const app = page.getByRole('list', { name: 'com.example.Gone' });
-    await expect(app).toContainText('not installed');
-    await expect(app).toContainText('2.5 GB');
   });
 });

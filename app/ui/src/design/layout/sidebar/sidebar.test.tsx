@@ -13,9 +13,9 @@ const css = readFileSync(path.join(import.meta.dirname, 'sidebar.module.css'), '
 const motionCss = readFileSync(path.join(import.meta.dirname, '../../tokens/motion.css'), 'utf8');
 
 // Where each item sits in the sidebar, as the browser would lay it out.
-const OFFSETS: Readonly<Record<string, number>> = { Overview: 60, Review: 92, Settings: 640 };
+const OFFSETS: Readonly<Record<string, number>> = { Review: 92, Scan: 60, Settings: 640 };
 
-type Screen = 'Overview' | 'Review' | 'Settings' | null;
+type Screen = 'Review' | 'Scan' | 'Settings' | null;
 
 const Navigation = ({ active }: { readonly active: Screen }): JSX.Element => (
   <Sidebar
@@ -23,7 +23,7 @@ const Navigation = ({ active }: { readonly active: Screen }): JSX.Element => (
     label="Screens"
   >
     <NavSection title="Library">
-      <NavItem active={active === 'Overview'} icon={LayoutGrid} label="Overview" onClick={vi.fn()} />
+      <NavItem active={active === 'Scan'} icon={LayoutGrid} label="Scan" onClick={vi.fn()} />
       <NavItem active={active === 'Review'} icon={ListChecks} label="Review" onClick={vi.fn()} />
     </NavSection>
   </Sidebar>
@@ -38,6 +38,18 @@ const indicator = (): HTMLElement => {
   }
 
   return element;
+};
+
+// The scroll container is a plain div with no role: it is the indicator's parent.
+const scrollContainer = (): HTMLElement => {
+  // eslint-disable-next-line testing-library/no-node-access -- the container has no role to query by
+  const parent = indicator().parentElement;
+
+  if (parent === null) {
+    throw new Error('The indicator has no container');
+  }
+
+  return parent;
 };
 
 const placeItems = (): void => {
@@ -70,10 +82,20 @@ describe('Sidebar', () => {
       expect(indicator()).toHaveAttribute('data-instant');
     });
 
+    it('keeps the strip outside the scroll container, so the drag region never scrolls', () => {
+      render(<Navigation active="Scan" />);
+      // eslint-disable-next-line testing-library/no-node-access -- the strip is an empty region with no role to query by
+      const strip = screen.getByRole('navigation', { name: 'Screens' }).firstElementChild;
+
+      expect(strip).toHaveAttribute('data-tauri-drag-region');
+      expect(scrollContainer()).not.toContainElement(strip as HTMLElement);
+      expect(css).toMatch(/\.scroll \{[^}]*overflow-y: auto;/u);
+    });
+
     it('a section without a title has no heading', () => {
       render(
         <NavSection>
-          <NavItem icon={LayoutGrid} label="Overview" onClick={vi.fn()} />
+          <NavItem icon={LayoutGrid} label="Scan" onClick={vi.fn()} />
         </NavSection>,
       );
 
@@ -82,8 +104,25 @@ describe('Sidebar', () => {
   });
 
   describe('positive cases', () => {
+    it('places the indicator from the active item inside the scroll container', () => {
+      render(<Navigation active="Scan" />);
+
+      expect(scrollContainer()).toContainElement(screen.getByRole('button', { name: 'Scan' }));
+      expect(css).toMatch(/\.scroll \{[^}]*position: relative;/u);
+    });
+
+    it('keeps the footer inside the scroll container, after the sections', () => {
+      render(<Navigation active="Scan" />);
+      const scan = screen.getByRole('button', { name: 'Scan' });
+      const settings = screen.getByRole('button', { name: 'Settings' });
+
+      expect(scrollContainer()).toContainElement(settings);
+      expect(scan.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(css).toMatch(/\.footer \{[^}]*margin-top: auto;/u);
+    });
+
     it('the sidebar top strip is a drag region', () => {
-      render(<Navigation active="Overview" />);
+      render(<Navigation active="Scan" />);
       // eslint-disable-next-line testing-library/no-node-access -- the strip is an empty region with no role to query by
       const strip = screen.getByRole('navigation', { name: 'Screens' }).firstElementChild;
 
@@ -92,16 +131,16 @@ describe('Sidebar', () => {
     });
 
     it('names its sections by their headings', () => {
-      render(<Navigation active="Overview" />);
+      render(<Navigation active="Scan" />);
 
       expect(screen.getByRole('region', { name: 'Library' })).toContainElement(
-        screen.getByRole('button', { name: 'Overview' }),
+        screen.getByRole('button', { name: 'Scan' }),
       );
     });
 
     it('the indicator moves to the active item', () => {
       placeItems();
-      const { rerender } = render(<Navigation active="Overview" />);
+      const { rerender } = render(<Navigation active="Scan" />);
 
       expect(indicator()).toHaveAttribute('data-shown');
       expect(indicator().style.getPropertyValue('--indicator-y')).toBe('60px');
@@ -117,9 +156,9 @@ describe('Sidebar', () => {
     });
 
     it('gives each item its place in the entrance stagger', () => {
-      render(<Navigation active="Overview" />);
+      render(<Navigation active="Scan" />);
 
-      expect(screen.getByRole('button', { name: 'Overview' }).style.getPropertyValue('--i')).toBe('0');
+      expect(screen.getByRole('button', { name: 'Scan' }).style.getPropertyValue('--i')).toBe('0');
       expect(screen.getByRole('button', { name: 'Settings' }).style.getPropertyValue('--i')).toBe('2');
     });
   });

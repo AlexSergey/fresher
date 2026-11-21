@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
 
+import type { Segment } from '../segment';
+
 import { stories as storiesOf } from '../../../gallery/story';
 import { Button } from '../../primitives/button/button';
 import { STORY_SEGMENTS, STORY_TOTAL } from '../chart-stories';
@@ -20,7 +22,36 @@ const Found = ({ partial = false, text }: { readonly partial?: boolean; readonly
 
 const FIRST_FOUR = STORY_SEGMENTS.slice(0, 4);
 
+// A disk: the explained space by level, the parts of the system, and Free, which is left undrawn.
+const DISK: readonly Segment[] = [
+  { key: 'explained-safe', label: 'Safe', size: '38 GB', tone: 'safe', value: 38 },
+  { key: 'explained-medium', label: 'Medium', size: '22 GB', tone: 'medium', value: 22 },
+  { key: 'your-folders', label: 'Your folders', size: '90 GB', tone: 'your-folders', value: 90 },
+  { key: 'mac-os', label: 'macOS', size: '30 GB', tone: 'mac-os', value: 30 },
+  { key: 'swap-and-sleep', label: 'Swap and sleep', size: '12 GB', tone: 'swap-and-sleep', value: 12 },
+  { key: 'other-volume', label: 'Backups', size: '20 GB', tone: 'other-volume', value: 20 },
+  { key: 'disk-own', label: 'Disk itself', size: '8 GB', tone: 'disk-own', value: 8 },
+  { key: 'free', label: 'Free', size: '80 GB', tone: 'free', value: 80 },
+];
+
 export const stories = storiesOf('StorageRing', {
+  'disk-highlighted': () => (
+    <StorageRing
+      gapLabel="Free"
+      highlighted="mac-os"
+      label="Space on Macintosh HD"
+      segments={DISK}
+      state="done"
+      total={300}
+    >
+      <Found text="220 GB" />
+    </StorageRing>
+  ),
+  'disk-with-free-gap': () => (
+    <StorageRing gapLabel="Free" label="Space on Macintosh HD" segments={DISK} state="done" total={300}>
+      <Found text="220 GB" />
+    </StorageRing>
+  ),
   empty: () => (
     <StorageRing label="Space found" segments={[]} state="empty" total={0}>
       <Button variant="primary">Scan</Button>

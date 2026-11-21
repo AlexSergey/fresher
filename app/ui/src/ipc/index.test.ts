@@ -21,7 +21,6 @@ import {
   getSettings,
   getStorageMap,
   getStorageMeaning,
-  getStoragePlace,
   ignore,
   openAccessSettings,
   pickFolder,
@@ -96,16 +95,14 @@ describe('the IPC module', () => {
       expect(failureOf(error)).toEqual({ kind: 'unreachable' });
     });
 
-    it('a refusal of get_storage_place becomes a failure', async () => {
+    it('a refusal of get_storage_meaning becomes a failure', async () => {
       const stale = {
         error: { code: 'stale-node' },
         text: { args: {}, key: 'core.error.stale-node' },
       } as unknown as Refusal;
-      mockCore({ getStoragePlace: refuse(stale) });
+      mockCore({ getStorageMeaning: refuse(stale) });
 
-      const error: unknown = await getStoragePlace({ index: 0, state: 1 }, 'through', 0, 10).catch(
-        (failure: unknown) => failure,
-      );
+      const error: unknown = await getStorageMeaning(0).catch((failure: unknown) => failure);
 
       expect(error).toBeInstanceOf(CommandFailed);
       expect(failureOf(error)).toEqual({ kind: 'refused', refusal: stale });
@@ -190,15 +187,11 @@ describe('the IPC module', () => {
 
     it('passes the storage commands their arguments by name', async () => {
       const { answer, seen } = recorder();
-      mockCore({ getStorageMeaning: answer([]), getStoragePlace: answer({ offset: 0, path: [], rows: [], total: 0 }) });
+      mockCore({ getStorageMeaning: answer([]) });
 
       await expect(getStorageMeaning(1)).resolves.toEqual([]);
-      await getStoragePlace({ index: 4, state: 2 }, 'stay', 50, 25);
 
-      expect(seen).toStrictEqual([
-        { volume: 1 },
-        { descent: 'stay', limit: 25, node: { index: 4, state: 2 }, offset: 50 },
-      ]);
+      expect(seen).toStrictEqual([{ volume: 1 }]);
     });
 
     it('passes every cleanup command its arguments by name', async () => {

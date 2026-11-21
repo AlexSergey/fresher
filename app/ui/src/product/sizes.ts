@@ -32,3 +32,16 @@ const countFormat = new Intl.NumberFormat('en');
 
 // A count as the dictionary formats one: `1,024`.
 export const formatCount = (value: number): string => countFormat.format(Math.round(value));
+
+const COMPLETENESS_ORDER: readonly Sizes['completeness'][] = ['complete', 'partial', 'unknown'];
+
+// Two of the core's shares as one, by the core's rule: the bytes add up and the weakest completeness wins.
+export const addSizes = (a: Sizes, b: Sizes): Sizes => ({
+  allocated: a.allocated + b.allocated,
+  completeness:
+    COMPLETENESS_ORDER.indexOf(a.completeness) >= COMPLETENESS_ORDER.indexOf(b.completeness)
+      ? a.completeness
+      : b.completeness,
+  logical: a.logical + b.logical,
+  reclaimable: a.reclaimable + b.reclaimable,
+});

@@ -289,7 +289,9 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
 - **By meaning** (`meaning.rs`, scoped to one volume's roots): the apps largest first, the categories no app names, the
   named places (the Trash) and the largest of the user's folders, then Your folders; every byte of the roots is in
   exactly one leaf, and the volume's other parts are appended at the end (`append_volume_parts`). **By place**
-  (`place.rs`): a folder's children largest first, each with its explained size.
+  (`place.rs`): a folder's children largest first, each with its explained size; the UI no longer shows it since plan
+  [027](../plans/027-scan-screen/readme.md) (the core keeps it, see
+  [`../deferred/place-queries-without-ui.md`](../deferred/place-queries-without-ui.md)).
 - **The three phases** (`query.rs`): no scan, scanning and complete (the phase is in the map, `MapPhase`); a query
   takes what it needs under the results' lock and builds after letting it go, so none blocks a scan.
 - **Budget**: the shares of a scan of the `LARGE` tree take under 50 ms and 5 MB
@@ -340,7 +342,7 @@ and sends them with `ModuleFinished.left_out`, sorted by category, then by reaso
 failed, cancelled, panicked). A left-out whose category is not the module's own is dropped and logged once as a
 warning, and the contract refuses it (`ForeignLeftOutCategory`); an undeclared reason is counted and logged once.
 A left-out of a category in the scan's ignore list, or of an ignored module or a module of an ignored group, is not
-counted, and the module page drops a left-out-only category once it, its module or its group is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
+counted, and a category's details drop a left-out-only category once it, its module or its group is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
 UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports none yet.
 
 ### A failed start
@@ -379,8 +381,7 @@ app/ui/src/
 │   ├── tokens/  base/  motion/  icons/        tokens, the cascade, the motion hooks, the icon allowlist
 │   └── primitives/  data/  feedback/  layout/  effects/      one folder per component
 ├── product/   the app's components: take the core's types, render texts through i18n
-├── screens/   the frame and the screens (overview, module, review, cleanups, settings): wire state to product
-├── modules/   optional custom views per module (none yet); the generic module page is the default
+├── screens/   the frame and the screens (scan, category, review, cleanups, settings): wire state to product
 ├── state/  ipc/  i18n/  locales/  test/
 └── gallery/   the dev-only gallery: every component in every state (`gallery.html`, never in `dist/`)
 ```
@@ -390,6 +391,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
 
 - `design/` imports `design/` and React; only `design/icons/` imports `lucide-react`. Never `product/`, `screens/`,
   `state/`, `ipc/` or `i18n/`.
+- The design layer's `primitives/menu/` (a button's menu of actions, with the keyboard and focus handled) stands beside
+  `primitives/tooltip/`; the card's settings menu is built on it.
 - `product/` imports `design/`, `i18n/` and types from `ipc/bindings.generated` (`import type`). Never `ipc/index`,
   `state/` or `screens/`: it takes its data by props.
 - `screens/` imports everything above, `state/` and `ipc/`.
@@ -407,20 +410,22 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   findings only marks the overview stale; `state/refresh.ts` asks `get_overview` at most 4 times a second during a
   scan and once more at its end; progress reaches React at most 10 times a second.
 - **The storage map** (`state/storage.ts`, `state/navigation.ts`): the store keeps the core's `StorageMap`, asked with
-  the overview and again when a scan starts or ends; the by-meaning groups of a volume and the pages of a place are
-  asked of the core when shown and kept in a small cache (at most 10 pages of 100 rows), dropped when the map's phase
-  or state changes. The overview shows one view of the home volume at a time, kept for the session: by meaning
-  (`product/meaning-list/`, cards largest first) or by place (`product/place-list/`, a breadcrumb that goes back up
-  through the folders opened, and a roots list when a volume holds several roots). The bar (`product/storage-map/`)
-  draws every part with space in the core's order; the tone of Explained is the highest danger level among its
-  categories, from the core's groups (`explainedTone`).
+  the overview and again when a scan starts or ends; the by-meaning groups of the home volume are asked of the core for the
+  ring's split by level only (the place pages and their cache are gone). **Scan** (`screens/scan/`) opens on the hero
+  (`product/scan-hero/`): a ring of the home volume made of the map's parts, the cleanable part split by danger level,
+  Free as the gap, and a legend whose "i" shows the core's descriptions; hovering the ring or the legend highlights
+  the other. Under it the cards are grouped in danger zones from Safe to High (`product/danger-zone/`), each with the
+  core's meaning of the level and a "Select all"; a card has Details and a settings menu (Ignore category, Ignore
+  module), and every level has its icon, and Medium and High use alert icons. "Found, but left out" lists the categories that only have
+  left-out lines. The selection bar (`product/selection-bar/`) shows on Scan and on a category's details. Other
+  volumes keep their map block (`product/storage-map/`), drawn in the core's order.
 - **Lists are paged**: `state/findings.ts` keeps at most 10 pages of 100 findings per app, least recently used
-  dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. The module page asks the core
+  dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. A category's details ask the core
   for `FindingsQuery.order: largest`.
 - **Selection** (`state/selection.ts`): findings, and whole categories minus the findings ticked off in them; the
   action `choose { categories, within }` drops the module's own selection and selects the categories of a module
   choice that hold a finding ("Remove everything", "Keep settings"), touching nothing outside the module; emptied
-  when a scan starts; nothing is pre-selected, selecting by level stops at Safe. Its total is a preview summed with
+  when a scan starts; nothing is pre-selected; a zone's Select all ticks that zone only, and Review with its confirmation stays the gate. Its total is a preview summed with
   the core's rule; the confirmation shows only the core's cleanup plan (plan 008).
 - **Cleanup** (`state/cleanup.ts`): `idle`, `preparing`, `confirming { plan }`, `running`, `finished { report }`,
   `refused { refusal }`, from the review screen's button to the result; the commands are sent from
@@ -437,15 +442,19 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   Quit (⌘Q, an item of the app's own in `app/tauri/src/shell.rs`) publishes `quit-requested`, and the UI asks; **Stop
   and quit** stops after the item in flight. The Dock's Quit cannot be held
   ([`../known-issues/app-quit-during-cleanup.md`](../known-issues/app-quit-during-cleanup.md)).
-- **Modules by group**: the sidebar, the scan's chips and Settings list modules under their group
-  (`product/module-groups.ts`, texts `core.group.<group>.name`); a hidden module stays in the sidebar, dimmed with
-  "Ignored", and its page says why with Restore.
+- **Modules by group**: Settings lists modules under their group (`product/module-groups.ts`, texts
+  `core.group.<group>.name`); the sidebar lists no module. A module is ignored from a card's settings menu and
+  restored in Settings → Ignored.
+- **A category's details** (`screens/category/`): the category's findings, its left-out lines, and the choices of its
+  module ("Remove everything", "Keep settings"); the level heading reads "Danger level". It replaced the module pages.
 - **Settings → Ignored** (`screens/settings/ignored-group.tsx`) has three tabs, "Ignored groups", "Ignored
   modules" and "Ignored items" (plan 005's categories and paths), each with its count; the tabs are the design
-  system's `Tabs` (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). The overview's "N ignored"
+  system's `Tabs` (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). Scan's "N ignored"
   link opens the first tab that has an entry (`Screen.settings.tab`).
-- **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`overview`, `module`, `review`,
-  `cleanups`, `cleanup`, `settings`); no router. When the focused element leaves the screen, the focus goes to the
+- **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`scan`, `category` with its category,
+  `review`, `cleanups`, `cleanup` with its cleanup, `settings` with an optional tab); no router. `screenToShow` returns
+  to Scan when a shown category is no longer among the categories the core lists. The sidebar has Scan, Review,
+  Cleanups and Settings and scrolls in a short window. When the focused element leaves the screen, the focus goes to the
   screen's heading (`screens/keep-focus.ts`).
 
 ### The window

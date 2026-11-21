@@ -9,7 +9,7 @@ export type AppInfo = { version: string, build: Build, };
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
  */
-export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulated: Array<Simulated>, };
+export type Build = { "kind": "release" } | { "kind": "development" } | { "kind": "sandbox", path: string, simulated: Array<Simulated>, trash: Text, };
 
 /**
  * A part of the Mac a sandbox's world answers instead of the real one.

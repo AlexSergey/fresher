@@ -7,51 +7,49 @@ import { useToasts } from '../design/feedback/toast/toaster';
 import { AppShell } from '../design/layout/app-shell/app-shell';
 import { ScrollArea } from '../design/layout/scroll-area/scroll-area';
 import { t, tText } from '../i18n';
-import { customViews } from '../modules/registry';
 import { BuildBanner } from '../product/build-banner/build-banner';
 import { type Screen, useNavigation, useScreen } from '../state/navigation';
 import { useCore } from '../state/store';
 import styles from './app-frame.module.css';
+import { CategoryScreen } from './category/category-screen';
 import { CleanupScreen } from './cleanups/cleanup-screen';
 import { CleanupsScreen } from './cleanups/cleanups-screen';
 import { FrameSidebar } from './frame-sidebar';
-import { ModuleScreen } from './module/module-screen';
-import { OverviewScreen } from './overview/overview-screen';
 import { QuitQuestion } from './quit-question';
 import { ReviewScreen } from './review/review-screen';
+import { ScanScreen } from './scan/scan-screen';
 import { screenKey, ScreenStack } from './screen-stack';
 import { SettingsScreen } from './settings/settings-screen';
 import { useAppInfo } from './use-app-info';
-import { useModules } from './use-modules';
+import { moduleOfCategory, useModules } from './use-modules';
 import { useMotionSetting } from './use-motion-setting';
 
-const moduleName = (module: ModuleInfo): string => tText({ args: {}, key: `${module.id}.enabled.label` });
-
-// The screen's content and its accessible name; `null` for a module the core has not listed yet.
+// The screen's content and its accessible name; `null` for a category's details while the modules are not known.
 const contentOf = (
   screen: Screen,
   modules: null | readonly ModuleInfo[],
 ): null | { readonly content: ReactNode; readonly label: string } => {
   switch (screen.kind) {
-    case 'cleanup':
-      return { content: <CleanupScreen cleanup={screen.cleanup} />, label: t('ui.screen.frame.nav.cleanups') };
-    case 'cleanups':
-      return { content: <CleanupsScreen />, label: t('ui.screen.frame.nav.cleanups') };
-    case 'module': {
-      const module = modules?.find((one) => one.id === screen.module);
+    case 'category': {
+      const module = moduleOfCategory(modules, screen.category);
 
       if (module === undefined) {
         return null;
       }
 
-      const View = customViews[module.id] ?? ModuleScreen;
-
-      return { content: <View category={screen.category} module={module} />, label: moduleName(module) };
+      return {
+        content: <CategoryScreen category={screen.category} module={module} />,
+        label: tText({ args: {}, key: `${screen.category}.name` }),
+      };
     }
-    case 'overview':
-      return { content: <OverviewScreen />, label: t('ui.screen.frame.nav.overview') };
+    case 'cleanup':
+      return { content: <CleanupScreen cleanup={screen.cleanup} />, label: t('ui.screen.frame.nav.cleanups') };
+    case 'cleanups':
+      return { content: <CleanupsScreen />, label: t('ui.screen.frame.nav.cleanups') };
     case 'review':
       return { content: <ReviewScreen />, label: t('ui.screen.frame.nav.review') };
+    case 'scan':
+      return { content: <ScanScreen />, label: t('ui.screen.frame.nav.scan') };
     case 'settings':
       return { content: <SettingsScreen />, label: t('ui.screen.frame.nav.settings') };
   }
@@ -76,7 +74,9 @@ export const AppFrame = (): JSX.Element => {
   const navigation = useNavigation();
   const modules = useModules();
   const info = useAppInfo();
-  const screen = useScreen(modules?.map((module) => module.id) ?? null);
+  const screen = useScreen(
+    modules?.flatMap((module) => module.categories.map(({ descriptor }) => descriptor.id)) ?? null,
+  );
   const loaded = useCore((state) => state.dictionary !== null);
   const unreachable = useCore((state) => state.failure?.kind === 'unreachable');
 
@@ -94,9 +94,10 @@ export const AppFrame = (): JSX.Element => {
 
   return (
     <div className={styles.window}>
-      {info === null ? null : <BuildBanner build={info.build} />}
+      {/* The banner waits for the core's dictionary too: a sandbox's line holds the core's sentence. */}
+      {info === null || !loaded ? null : <BuildBanner build={info.build} />}
       <div className={styles.body}>
-        <AppShell sidebar={<FrameSidebar modules={modules} onNavigate={navigation.navigate} screen={screen} />}>
+        <AppShell sidebar={<FrameSidebar onNavigate={navigation.navigate} screen={screen} />}>
           {unreachable ? (
             <div className={styles.unreachable}>
               <ErrorState

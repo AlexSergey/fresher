@@ -177,7 +177,7 @@ cleanups of a hundred items through the real journal.
   (`state/cleanup.test.ts`), its screens and the e2e mock.
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
-  (one event every so many ms, each asked of Node, as the engine streams), the overview during and after the scan,
+  (one event every so many ms, each asked of Node, as the engine streams), Scan's totals during and after the scan,
   `get_findings` paged from the findings streamed so far, a second scan refused while one runs, and the
   `setting-changed` event of an update); its cleanup part (`e2e/support/cleanup-mock.ts`) answers a plan per
   selection, compares the echo, streams a cleanup item by item (held after `hold` items until `releaseCleanup` or
@@ -193,6 +193,11 @@ cleanups of a hundred items through the real journal.
   another macOS version, which draws text a few pixels differently, so CI runs the suite with `--ignore-snapshots`
   (every other check still runs) and turns on full keyboard access (`AppleKeyboardUIMode` 3), without which WebKit's
   Tab skips buttons. When the runner has the developer's macOS version, CI can compare the screenshots again.
+- **The Scan screen's flows** (`e2e/scan.spec.ts`, `e2e/flows.spec.ts`): the ring and the legend highlight each other
+  and the legend's "i" opens the core's description; a card's settings menu opens, closes on Escape and works by
+  keyboard (Ignore category, Ignore module); a zone's Select all ticks only that zone; a card's Details opens the
+  category's details with every finding; the selection bar shows on Scan and on the details; the short window's
+  sidebar scrolls to Settings (`e2e/layout.spec.ts`).
 - **The gallery** (`app/ui/gallery.html`, `src/gallery/`): every component in every state, each `*.stories.tsx`
   found by `import.meta.glob`; built only by `build:e2e`, never into the app's `dist/`. `gallery.spec.ts` photographs
   every story in WebKit; `visual.spec.ts` photographs every screen in each of its states in WebKit and Chromium.
@@ -587,8 +592,9 @@ category's); a `[[case.left-out]]` has `items` of at least 1, a category of the 
 declares. `EXPECTED.md` in the generated sandbox is the same cases as a checklist, negatives first, one plain
 sentence each, and one more under a case with a `[case.map]`.
 
-`[case.map]` says where the overview's by-place view shows the case's files. `at` is one of the case's paths or their
-folders, and is required when the case's first file is at the sandbox's root; the autotest opens it as the overview opens a folder row (`storage_place` with `Descent::Through`) and checks
+`[case.map]` says where the core's by-place view shows the case's files (the UI no longer shows it, plan 027). `at` is
+one of the case's paths or their folders, and is required when the case's first file is at the sandbox's root; the
+autotest opens the case's folder with the core's place query (`storage_place` with `Descent::Through`) and checks
 the rows that hold the case's files: `explained` in full, or for `your-folders` nothing explained and no finding at,
 below or above `at`. A place that opens with no rows — a folder the scan does not go into, such as a claimed one, a
 folder whose small files the scan folds into it, or a file — is checked by its own row in its folder's view. The

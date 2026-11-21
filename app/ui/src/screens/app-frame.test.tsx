@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ModuleInfo } from '../ipc/bindings.generated';
 import type { CoreAnswers } from '../ipc/mock';
 
 import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../ipc/mock';
@@ -10,6 +9,7 @@ import { createNavigation, type Navigation } from '../state/navigation';
 import { type CoreStore, createCoreStore } from '../state/store';
 import { recordAnimations, setMotion } from '../test/animation';
 import { BUSY, DEMO_DICTIONARY, DEMO_MODULES, DEMO_OVERVIEW, GRANTED, IDLE } from '../test/demo-scan';
+import { BUILD_DICTIONARY, sandboxBuild } from '../test/sandbox-build';
 import { AppFrame } from './app-frame';
 import { AppProviders } from './app-providers';
 
@@ -35,8 +35,7 @@ const renderFrame = async (navigation: Navigation = createNavigation()): Promise
       <AppFrame />
     </AppProviders>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Overview' });
-  await screen.findByRole('button', { name: /^Demo module/ });
+  await screen.findByRole('heading', { level: 1, name: 'Scan' });
 
   return { navigation, store };
 };
@@ -45,8 +44,6 @@ const navItems = (): readonly string[] =>
   within(screen.getByRole('navigation', { name: 'Screens' }))
     .getAllByRole('button')
     .map((button) => button.textContent);
-
-const demoItem = (): HTMLElement => screen.getByRole('button', { name: /^Demo module/ });
 
 beforeEach(async () => {
   await setMotion('off');
@@ -91,42 +88,51 @@ describe('AppFrame', () => {
       expect(screen.queryByRole('note')).toBeNull();
     });
 
-    it('a module the core does not list has no nav item', async () => {
+    it('a category screen renders nothing while the modules are unknown', async () => {
+      core({ getModules: () => new Promise(() => {}) });
+      const navigation = createNavigation();
+      navigation.navigate({ category: 'demo.caches', kind: 'category' });
+
+      const store = createCoreStore();
+
+      render(
+        <AppProviders navigation={navigation} store={store}>
+          <AppFrame />
+        </AppProviders>,
+      );
+      await vi.waitFor(() => {
+        expect(store.getState().dictionary).not.toBeNull();
+      });
+
+      expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toHaveAttribute('aria-current', 'page');
+      expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    });
+
+    it('the details of a category no listed module has fall back to Scan', async () => {
       core();
       const navigation = createNavigation();
-      navigation.navigate({ kind: 'module', module: 'docker' });
+      navigation.navigate({ category: 'gone.category', kind: 'category' });
 
       await renderFrame(navigation);
 
-      expect(navItems()).toStrictEqual(['Overview', 'Demo module—', 'Review', 'Cleanups', 'Settings']);
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Overview');
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Scan');
     });
 
-    it('a module the core does not hide shows its size, not Ignored', async () => {
-      core();
-      const { store } = await renderFrame();
-
-      act(() => {
-        store.dispatch({ overview: DEMO_OVERVIEW, type: 'overview-loaded' });
-      });
-
-      expect(demoItem()).not.toHaveTextContent('Ignored');
-      expect(screen.queryByRole('region', { name: 'Debug · Ignored' })).toBeNull();
-    });
-
-    it('a module the core does not hide is not dimmed', async () => {
-      core();
-      await renderFrame();
-
-      expect(demoItem()).not.toHaveAttribute('data-dimmed');
-    });
-
-    it('a module shows a dash, not a zero, before a scan', async () => {
-      core();
+    it('the sidebar has no group heading', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
 
       await renderFrame();
 
-      expect(demoItem()).toHaveTextContent('Demo module—');
+      expect(within(screen.getByRole('navigation', { name: 'Screens' })).queryByRole('heading')).toBeNull();
+    });
+
+    it('the sidebar has no module item', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+
+      await renderFrame();
+
+      expect(navItems()).toStrictEqual(['Scan', 'Review', 'Cleanups', 'Settings']);
+      expect(screen.queryByRole('button', { name: /^Demo module/u })).toBeNull();
     });
 
     it('the review badge is absent with nothing selected', async () => {
@@ -158,23 +164,68 @@ describe('AppFrame', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-      expect(screen.queryByRole('heading', { name: 'Overview' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Scan' })).toBeNull();
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
       expect(animations).toHaveLength(0);
+    });
+
+    it('coming back from a category whose card is gone puts the focus on the heading', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+      const { navigation } = await renderFrame();
+
+      act(() => {
+        navigation.navigate({ category: 'demo.caches', kind: 'category' });
+      });
+
+      act(() => {
+        navigation.navigate({ from: 'demo.gone', kind: 'scan' });
+      });
+
+      expect(screen.getByRole('heading', { level: 1, name: 'Scan' })).toHaveFocus();
     });
   });
 
   describe('positive cases', () => {
+    it("coming back from a category's details puts the focus on that card's Details", async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+      const { navigation } = await renderFrame();
+      act(() => {
+        navigation.navigate({ category: 'demo.caches', kind: 'category' });
+      });
+
+      act(() => {
+        navigation.navigate({ from: 'demo.caches', kind: 'scan' });
+      });
+
+      const card = screen
+        .getAllByRole('listitem')
+        .find((item) => within(item).queryByRole('heading', { level: 3, name: 'Example caches' }) !== null);
+      expect(within(card as HTMLElement).getByRole('button', { name: /Details/ })).toHaveFocus();
+    });
+
+    it('the sidebar lists Scan, Review, Cleanups and Settings, with Scan current on the scan screen', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+
+      await renderFrame();
+
+      expect(navItems()).toStrictEqual(['Scan', 'Review', 'Cleanups', 'Settings']);
+      expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toBeInTheDocument();
+    });
+
     it('a sandbox build shows the sandbox banner above the window', async () => {
       core({
         appInfo: () => ({
-          build: { kind: 'sandbox', path: '/Users/dev/box', simulated: ['running'] },
+          build: sandboxBuild(['running']),
           version: '0.1.0',
         }),
+        getDictionary: () => ({ ...DEMO_DICTIONARY, ...BUILD_DICTIONARY }),
       });
       await renderFrame();
 
-      expect(await screen.findByRole('note')).toHaveTextContent('Sandbox · /Users/dev/box · Simulated: open apps.');
+      expect(await screen.findByRole('note')).toHaveTextContent(
+        "Sandbox · /Users/dev/sandboxes/trial · Cleanups move items to the sandbox's Trash: " +
+          '/Users/dev/sandboxes/trial/home/.Trash · Simulated: open apps.',
+      );
     });
 
     it('stop and quit asks the core', async () => {
@@ -189,78 +240,6 @@ describe('AppFrame', () => {
         expect(quitAfterCleanup).toHaveBeenCalledOnce();
       });
       expect(screen.queryByRole('dialog')).toBeNull();
-    });
-
-    it('the nav items sit under their group, Development before Debug, whatever the registration order', async () => {
-      const second: ModuleInfo = {
-        categories: [],
-        choices: [],
-        group: 'development',
-        id: 'logs',
-        settings: ['logs.enabled'],
-      };
-      core({
-        getDictionary: () => ({ ...DEMO_DICTIONARY, 'logs.enabled.label': 'Logs' }),
-        getModules: () => [...DEMO_MODULES, second],
-      });
-      await renderFrame();
-
-      const items = (group: string): readonly (null | string)[] =>
-        within(screen.getByRole('region', { name: group }))
-          .getAllByRole('button')
-          .map((item) => item.textContent);
-
-      expect(items('Development')).toStrictEqual(['Logs—']);
-      expect(items('Debug')).toStrictEqual(['Demo module—']);
-      expect(screen.queryByRole('region', { name: 'Modules' })).toBeNull();
-      expect(
-        screen
-          .getAllByRole('heading', { level: 2 })
-          .slice(0, 2)
-          .map((heading) => heading.textContent),
-      ).toStrictEqual(['Development', 'Debug']);
-    });
-
-    it('a module hidden on its own is dimmed and says Ignored in place of its size', async () => {
-      core();
-      const { store } = await renderFrame();
-
-      act(() => {
-        store.dispatch({
-          overview: { ...DEMO_OVERVIEW, hiddenModules: [{ by: 'module', module: 'demo' }] },
-          type: 'overview-loaded',
-        });
-      });
-
-      expect(demoItem()).toHaveTextContent('Demo moduleIgnored');
-      expect(demoItem()).toHaveAttribute('data-dimmed');
-      expect(screen.getByRole('region', { name: 'Debug' })).toBeVisible();
-    });
-
-    it('a module hidden by its group is dimmed under a heading that says Ignored', async () => {
-      core();
-      const { store } = await renderFrame();
-
-      act(() => {
-        store.dispatch({
-          overview: { ...DEMO_OVERVIEW, hiddenModules: [{ by: 'group', module: 'demo' }] },
-          type: 'overview-loaded',
-        });
-      });
-
-      expect(demoItem()).toHaveTextContent('Demo moduleIgnored');
-      expect(screen.getByRole('region', { name: 'Debug · Ignored' })).toBeVisible();
-    });
-
-    it("a module's size updates when the overview does", async () => {
-      core();
-      const { store } = await renderFrame();
-
-      act(() => {
-        store.dispatch({ overview: DEMO_OVERVIEW, type: 'overview-loaded' });
-      });
-
-      expect(demoItem()).toHaveTextContent('Demo module2.6 GB');
     });
 
     it('the review badge counts what is selected', async () => {
@@ -279,13 +258,27 @@ describe('AppFrame', () => {
       core();
       const { navigation } = await renderFrame();
 
-      fireEvent.click(demoItem());
+      fireEvent.click(screen.getByRole('button', { name: 'Cleanups' }));
 
       const heading = screen.getByRole('heading', { level: 1 });
-      expect(heading).toHaveTextContent('Demo module');
+      expect(heading).toHaveTextContent('Cleanups');
       expect(heading).toHaveFocus();
-      expect(demoItem()).toHaveAttribute('aria-current', 'page');
-      expect(navigation.getScreen()).toStrictEqual({ kind: 'module', module: 'demo' });
+      expect(screen.getByRole('button', { name: 'Cleanups' })).toHaveAttribute('aria-current', 'page');
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'cleanups' });
+    });
+
+    it("a category's details render with its name, the focus on its heading and Scan current", async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+      const { navigation } = await renderFrame();
+
+      act(() => {
+        navigation.navigate({ category: 'demo.caches', kind: 'category' });
+      });
+
+      const heading = screen.getByRole('heading', { level: 1 });
+      expect(heading).toHaveTextContent('Example caches');
+      expect(heading).toHaveFocus();
+      expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toHaveAttribute('aria-current', 'page');
     });
 
     it('the first screen does not take the focus', async () => {
@@ -306,13 +299,13 @@ describe('AppFrame', () => {
 
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Review');
       // Still there while it fades, but hidden from assistive technology and out of reach.
-      expect(screen.getByText('Overview', { selector: 'h1' })).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: 'Overview' })).toBeNull();
+      expect(screen.getByText('Scan', { selector: 'h1' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Scan' })).toBeNull();
       expect(animations.map(({ keyframes }) => keyframes)).toStrictEqual([[{ opacity: 1 }, { opacity: 0 }]]);
 
       await animations[0]?.finish();
 
-      expect(screen.queryByText('Overview', { selector: 'h1' })).toBeNull();
+      expect(screen.queryByText('Scan', { selector: 'h1' })).toBeNull();
     });
 
     it("a refused scan shows a toast with the core's text", async () => {

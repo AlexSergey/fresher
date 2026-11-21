@@ -14,6 +14,7 @@ import { largeScan } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
 import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
 import { mockCore, SCRIPTS } from './core-mock';
+import { scanButton } from './support/cards';
 
 // The mocked core pages through a scan's findings as the engine does, so the e2e tests of the lists page for real.
 
@@ -78,7 +79,7 @@ test.describe('positive cases', () => {
     await mockCore(page, { answers, scan: SCAN.events, scanned: SCAN.overview });
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Scan' }).click();
+    await scanButton(page).click();
     const answered = await getFindings(page, QUERY);
 
     expect(answered).toEqual(pageOf(SCAN.findings, QUERY));
@@ -91,8 +92,8 @@ test.describe('positive cases', () => {
   }) => {
     await mockCore(page, SCRIPTS.cleaningLeftOut);
     await page.goto('/');
-    await page.getByRole('button', { exact: true, name: 'Scan' }).click();
-    await expect(page.getByRole('button', { name: /^Open / })).toHaveCount(2);
+    await scanButton(page).click();
+    await expect(page.getByRole('button', { name: 'Details' })).toHaveCount(2);
 
     const plan = await call<CleanupPlanView>(page, COMMANDS.prepareCleanup, {
       selection: { categories: [{ category: 'demo.caches', except: [] }], findings: [2] },
@@ -109,7 +110,7 @@ test.describe('positive cases', () => {
     await mockCore(page, { answers, interval: 200, scan: SCAN.events, scanned: SCAN.overview });
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Scan' }).click();
+    await scanButton(page).click();
     await expect.poll(async () => (await getOverview(page)).status).toEqual({ scan: 1, state: 'scanning' });
     const streaming = await getOverview(page);
 

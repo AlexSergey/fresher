@@ -1,10 +1,11 @@
 import type { JSX } from 'react';
 
-import type { CategoryTotal, Dictionary, Overview, Sizes } from '../../ipc/bindings.generated';
+import type { CategoryTotal, DangerLevel, Dictionary, Overview, Sizes, VolumeMap } from '../../ipc/bindings.generated';
 
 import { setCoreDictionary } from '../../i18n';
 import { DEMO_OVERVIEW, FULL_COVERAGE } from '../../test/demo-scan';
 import { largeScan } from '../../test/large-scan';
+import { SAMPLE_STORAGE_MAP, STORAGE_DICTIONARY } from '../../test/storage-map';
 
 // The data of the product components' stories and tests: the demo scan's overview, a generated scan of twelve
 // categories, and the core's texts they need.
@@ -20,11 +21,13 @@ const whatOfLargeGroups = Object.fromEntries(
 
 export const STORY_DICTIONARY: Dictionary = {
   ...TWELVE_CATEGORIES.dictionary,
+  ...STORAGE_DICTIONARY,
   ...whatOfLargeGroups,
   'core.completeness.partial': 'Some files could not be read, so the real size is a little bigger.',
   'core.group.debug.name': 'Debug',
   'core.group.development.name': 'Development',
   'core.group.system.name': 'System',
+  'core.ignore.modules.description': 'Hides everything this module finds and never cleans it.',
   'core.left-out.summary.one': '{count} item left out ({size}):',
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'demo.caches.what': 'Example data: made-up cache folders of made-up apps, shown by the demo module.',
@@ -112,3 +115,31 @@ export const DEMO_TOTALS: readonly CategoryTotal[] = [
 
 // Everything the demo totals hold.
 export const DEMO_TOTALS_FOUND: Sizes = complete(DEMO_TOTALS.reduce((sum, { sizes }) => sum + sizes.allocated, 0));
+
+const GB = 1_000_000_000;
+
+// The home volume the hero draws after a complete scan: the gallery's sample volume, 64 GB of it explained.
+export const HERO_VOLUME: VolumeMap = SAMPLE_STORAGE_MAP.volumes[0] as VolumeMap;
+
+// The sample volume's cleanable 64 GB by danger level, as the core's shares would sum.
+export const HERO_LEVELS: ReadonlyMap<DangerLevel, Sizes> = new Map([
+  ['high', complete(2 * GB)],
+  ['low', complete(14 * GB)],
+  ['medium', complete(8 * GB)],
+  ['safe', complete(40 * GB)],
+]);
+
+const HERO_GB: readonly number[] = [40, 14, 8, 2];
+
+// The overview that goes with the levels above: the same 64 GB found, in one category per level.
+export const HERO_OVERVIEW: Overview = {
+  ...DEMO_FINISHED,
+  found: complete(64 * GB),
+  totals: DEMO_TOTALS.map((total, index) => ({ ...total, sizes: complete((HERO_GB[index] ?? 0) * GB) })),
+};
+
+// A volume with a disk that changed during the scan.
+export const HERO_VOLUME_CHANGED: VolumeMap = { ...HERO_VOLUME, diskChanged: true };
+
+// What a scan that found nothing has by level.
+export const NO_LEVELS: ReadonlyMap<DangerLevel, Sizes> = new Map();

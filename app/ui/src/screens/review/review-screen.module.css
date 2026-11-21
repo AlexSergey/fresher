@@ -1,6 +1,6 @@
 /*
- * The review screen: the summary panel, then one section per category of the selection, each over a finding list as
- * tall as its rows (`--review-rows`, at most six) that scrolls past them.
+ * The review screen: the summary panel, then one danger zone per level of the selection, each holding a section per
+ * category, each over a finding list as tall as its rows (`--review-rows`, at most six) that scrolls past them.
  */
 @layer components {
   .content {
@@ -46,6 +46,11 @@
     font-size: var(--type-footnote-size);
     line-height: var(--type-footnote-line);
     text-align: right;
+  }
+
+  .zoneGroups {
+    display: grid;
+    gap: var(--space-8);
   }
 
   .group {

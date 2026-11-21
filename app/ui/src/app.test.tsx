@@ -23,7 +23,7 @@ describe('App', () => {
   });
 
   describe('positive cases', () => {
-    it('opens on the overview in the frame', async () => {
+    it('opens on Scan in the frame', async () => {
       mockCore({
         getAccessStatus: () => GRANTED,
         getDictionary: () => DEMO_DICTIONARY,
@@ -34,8 +34,8 @@ describe('App', () => {
 
       render(<App store={createCoreStore()} />);
 
-      expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
-      expect(await screen.findByRole('button', { name: /^Demo module/ })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { level: 1, name: 'Scan' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toHaveAttribute('aria-current', 'page');
     });
   });
 });

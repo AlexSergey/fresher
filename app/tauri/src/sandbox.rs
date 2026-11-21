@@ -9,7 +9,7 @@ use std::sync::Arc;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
     AccessProbe, Build, Clock, CommandRunner, InstallRecords, InstalledApps, KnownFolders, ModuleId, OpenFiles,
-    RunningApps, Simulated, Trash, Volumes,
+    RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
@@ -292,10 +292,10 @@ fn installed_apps(
     Arc::new(StatedInstalledApps::new(Arc::new(listed), stated.clone()))
 }
 
-/// The build the banner shows for `sandbox`: its folder and what it simulates: its open apps always, Spotlight when
-/// its world declares any of it (an app found elsewhere, or Spotlight off), the access when its world states any, and
-/// the installs when it states the macOS version or a receipt.
-pub(crate) fn build(sandbox: &Sandbox) -> Result<Build, SandboxRefusal> {
+/// The build the banner shows for `sandbox`: its folder, what it simulates and where its cleanups go (`trash`). It
+/// simulates its open apps always, Spotlight when its world declares any of it (an app found elsewhere, or Spotlight
+/// off), the access when its world states any, and the installs when it states the macOS version or a receipt.
+pub(crate) fn build(sandbox: &Sandbox, trash: SandboxTrash) -> Result<Build, SandboxRefusal> {
     let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
     let mut simulated = vec![Simulated::Running];
     if world.declares_spotlight() {
@@ -307,7 +307,13 @@ pub(crate) fn build(sandbox: &Sandbox) -> Result<Build, SandboxRefusal> {
     if world.declares_installs() {
         simulated.push(Simulated::Installs);
     }
-    Ok(Build::Sandbox { path: sandbox.path().to_path_buf(), simulated })
+    // The same folder the sandbox's Trash port is given in `compose`.
+    let own_trash = sandbox.trash();
+    let trash = match trash {
+        SandboxTrash::Sandbox => SandboxTrashAt::Sandbox(&own_trash),
+        SandboxTrash::Real => SandboxTrashAt::System,
+    };
+    Ok(Build::Sandbox { path: sandbox.path().to_path_buf(), simulated, trash: trash.text() })
 }
 
 #[cfg(test)]

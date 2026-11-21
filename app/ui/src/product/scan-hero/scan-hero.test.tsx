@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Overview } from '../../ipc/bindings.generated';
@@ -7,15 +7,17 @@ import { Announcer } from '../../design/feedback/announcer/announcer';
 import { setCoreDictionary } from '../../i18n';
 import { setMotion } from '../../test/animation';
 import { ScanHero, type ScanHeroProps } from './scan-hero';
-import { DEMO_FINISHED, DEMO_RUNNING, STORY_DICTIONARY } from './story-data';
+import { DEMO_FINISHED, DEMO_RUNNING, HERO_LEVELS, HERO_VOLUME, STORY_DICTIONARY } from './story-data';
 
 const props = (overrides: Partial<ScanHeroProps> = {}): ScanHeroProps => ({
   failure: null,
+  levels: HERO_LEVELS,
   onScan: vi.fn(),
   onStop: vi.fn(),
   overview: null,
   phase: 'idle',
   progress: null,
+  volume: HERO_VOLUME,
   ...overrides,
 });
 
@@ -44,6 +46,7 @@ const running = (allocated: number): Overview => ({
 /* eslint-disable testing-library/no-node-access -- the ring's layers are decoration, without roles */
 const arcs = (): readonly Element[] => [...document.querySelectorAll('[data-ring="arcs"] [data-tone]')];
 const sweep = (): Element | null => document.querySelector('[data-sweep]');
+const rowOf = (key: string): HTMLElement | null => document.querySelector(`[data-key="${key}"]`);
 /* eslint-enable testing-library/no-node-access */
 
 // What the polite live region says, without the no-break space that makes a repeated text change.
@@ -73,7 +76,28 @@ describe('ScanHero', () => {
       expect(screen.getByRole('button', { name: 'Scan' })).toBeInTheDocument();
       expect(screen.queryByText(/^in \d/u)).not.toBeInTheDocument();
       expect(screen.queryByText(/bytes|GB/u)).not.toBeInTheDocument();
-      expect(screen.getAllByText('Not scanned yet')).toHaveLength(3);
+    });
+
+    it('shows no legend before a scan', () => {
+      mountHero();
+
+      expect(screen.queryByRole('list', { name: 'Parts of the disk' })).not.toBeInTheDocument();
+    });
+
+    it('a highlighted key that is no longer among the parts dims nothing', () => {
+      const update = mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
+
+      fireEvent.pointerEnter(rowOf('free-6') as Element);
+      update({ volume: { ...HERO_VOLUME, parts: HERO_VOLUME.parts.slice(0, 3) } });
+
+      expect(arcs().filter((arc) => arc.hasAttribute('data-dimmed'))).toHaveLength(0);
+    });
+
+    it('shows no caption without a volume', () => {
+      mountHero({ overview: DEMO_FINISHED, phase: 'finished', volume: null });
+
+      expect(screen.queryByText(/^Space on .*disk$/u)).not.toBeInTheDocument();
+      expect(screen.getByRole('img', { name: /^Space on the disk/u })).toBeInTheDocument();
     });
 
     it('the sweep is off when not scanning', () => {
@@ -87,6 +111,7 @@ describe('ScanHero', () => {
 
       expect(screen.getByText('The demo module could not build its example findings.')).toBeInTheDocument();
       expect(arcs()).toHaveLength(0);
+      expect(screen.queryByRole('list', { name: 'Parts of the disk' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Scan' })).not.toBeInTheDocument();
     });
 
@@ -106,8 +131,7 @@ describe('ScanHero', () => {
 
       // The hero's count: the number and its smaller unit, both hidden.
       expect(hidden.map((element) => element.textContent)).toContain('2.6GB');
-      // The hero and its stat tile each give the real value to assistive technology.
-      expect(screen.getAllByText('2.6 GB', { selector: '.u-visually-hidden' })).toHaveLength(2);
+      expect(screen.getAllByText('2.6 GB', { selector: '.u-visually-hidden' })).toHaveLength(1);
     });
 
     it('the announcer is not fed more than once per 5 seconds', () => {
@@ -169,24 +193,77 @@ describe('ScanHero', () => {
       expect(sweep()).not.toBeNull();
     });
 
-    it('segments follow the totals in the core order and their highest levels', () => {
+    it('the ring draws the levels, then the disk parts, and leaves Free as the gap', () => {
       mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
 
-      expect(arcs().map((arc) => arc.getAttribute('data-tone'))).toStrictEqual(['safe', 'low']);
+      expect(arcs().map((arc) => arc.getAttribute('data-tone'))).toStrictEqual([
+        'safe',
+        'low',
+        'medium',
+        'high',
+        'your-folders',
+        'unknown',
+        'mac-os',
+        'swap-and-sleep',
+        'disk-own',
+      ]);
       expect(
-        screen.getByRole('img', { name: 'Space found: Example caches 1.8 GB, Example downloads 750 MB' }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('img', { name: 'Space found by category: Example caches 1.8 GB, Example downloads 750 MB' }),
+        screen.getByRole('img', { name: /^Space on Macintosh HD: Safe to remove 40 GB, Low risk 14 GB,/u }),
       ).toBeInTheDocument();
     });
 
-    it('the centre shows found with its plural line', () => {
+    it('the caption names the volume and its kind', () => {
       mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
 
-      expect(screen.getByText('in 3 items · 2 categories')).toBeInTheDocument();
-      expect(screen.getByRole('group', { name: 'Items' })).toHaveTextContent('3');
-      expect(screen.getByRole('group', { name: 'Categories' })).toHaveTextContent('2');
+      expect(screen.getByText('Space on Macintosh HD, internal disk')).toBeInTheDocument();
+    });
+
+    it('the legend has a row for every part, Free included', () => {
+      mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
+      const rows = within(screen.getByRole('list', { name: 'Parts of the disk' })).getAllByRole('listitem');
+
+      expect(rows.map((row) => row.getAttribute('data-key'))).toStrictEqual([
+        'level-safe',
+        'level-low',
+        'level-medium',
+        'level-high',
+        'your-folders-1',
+        'remainder-2',
+        'mac-os-3',
+        'swap-and-sleep-4',
+        'disk-own-5',
+        'free-6',
+      ]);
+    });
+
+    it('a hover on an arc marks its legend row, and leaving clears it', () => {
+      mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
+      const [safe] = arcs();
+      const row = (): HTMLElement | null => rowOf('level-safe');
+
+      expect(row()).not.toHaveAttribute('data-highlighted');
+
+      fireEvent.pointerEnter(safe as Element);
+
+      expect(row()).toHaveAttribute('data-highlighted');
+
+      fireEvent.pointerLeave(safe as Element);
+
+      expect(row()).not.toHaveAttribute('data-highlighted');
+    });
+
+    it('a hover on a legend row dims the other arcs', () => {
+      mountHero({ overview: DEMO_FINISHED, phase: 'finished' });
+
+      fireEvent.pointerEnter(rowOf('mac-os-3') as Element);
+
+      expect(arcs().filter((arc) => arc.hasAttribute('data-dimmed'))).toHaveLength(arcs().length - 1);
+    });
+
+    it('the disk-changed note shows under the legend', () => {
+      mountHero({ overview: DEMO_FINISHED, phase: 'finished', volume: { ...HERO_VOLUME, diskChanged: true } });
+
+      expect(screen.getByText(/^The disk changed during the scan/u)).toBeInTheDocument();
     });
 
     it('one item in one category is said in the singular', () => {

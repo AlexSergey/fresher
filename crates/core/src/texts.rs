@@ -15,8 +15,8 @@ mod tests {
     use crate::{
         Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CommandError, Completeness,
         DangerLevel, Ended, KnownFolder, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotScanned, PartKind, Place,
-        PlaceName, RemainderReason, Removability, ScanOutcome, SettingsSchema, SkipCode, SkipReason, Text, TextArg,
-        TextKey, ToolId, TrashState, VolumeMap,
+        PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome, SettingsSchema, SkipCode, SkipReason,
+        Text, TextArg, TextKey, ToolId, TrashState, VolumeMap,
     };
 
     use crate::cleanup::outcome_sample;
@@ -47,7 +47,11 @@ mod tests {
         let key = |key: String| TextKey::new(key).unwrap();
         let danger = DangerLevel::ALL.into_iter().flat_map(|level| {
             let level = kebab_name(level);
-            [key(format!("core.danger.{level}.name")), key(format!("core.danger.{level}.meaning"))]
+            [
+                key(format!("core.danger.{level}.name")),
+                key(format!("core.danger.{level}.meaning")),
+                key(format!("core.danger.{level}.zone")),
+            ]
         });
         let groups = ModuleGroup::ALL.into_iter().flat_map(|group| [group.name_key(), group.description_key()]);
         let completeness = [Completeness::Complete, Completeness::Partial, Completeness::Unknown]
@@ -88,6 +92,7 @@ mod tests {
         let put_backs = outcome_sample::put_back_outcomes().into_iter().map(|outcome| outcome.text().key().clone());
         let storage = storage_keys();
         let start = std::iter::once(key("core.start.failed".into()));
+        let trash = [sandbox_trash(), SandboxTrashAt::System.text()].map(|text| text.key().clone());
         let left_out = left_out_summaries().into_iter().map(|text| text.key().clone());
         let cleanup_states = Ended::ALL
             .map(|ended| ended.text().key().clone())
@@ -113,6 +118,7 @@ mod tests {
             .chain(cleanup_states)
             .chain(storage)
             .chain(start)
+            .chain(trash)
             .chain(left_out)
             .chain(settings)
             .collect()
@@ -167,8 +173,13 @@ mod tests {
         })
     }
 
+    /// Where a sandbox's cleanups go when they stay in it: its own Trash folder.
+    fn sandbox_trash() -> Text {
+        SandboxTrashAt::Sandbox(std::path::Path::new("/s/home/.Trash")).text()
+    }
+
     /// The texts the core builds with arguments: the errors, the tool notes, the skips' instructions, the failures,
-    /// the purgeable note.
+    /// the purgeable note, the left-outs' summaries and the sandbox's own Trash.
     fn texts_with_args() -> Vec<Text> {
         let errors = one_error_of_each().iter().map(CommandError::text).collect::<Vec<_>>();
         let skips = outcome_sample::skip_reasons().iter().filter_map(SkipReason::how).collect::<Vec<_>>();
@@ -180,6 +191,7 @@ mod tests {
             .chain(failures)
             .chain(purgeable_note())
             .chain(left_out_summaries())
+            .chain([sandbox_trash()])
             .collect()
     }
 
@@ -391,6 +403,18 @@ mod tests {
                 .collect();
 
             assert_eq!(names, [Some("Safe"), Some("Low"), Some("Medium"), Some("High")]);
+        }
+
+        #[test]
+        fn names_every_zone() {
+            let texts = core_dictionary().unwrap();
+
+            let zones: Vec<_> = DangerLevel::ALL
+                .into_iter()
+                .map(|level| texts.get(&format!("core.danger.{}.zone", super::kebab_name(level))))
+                .collect();
+
+            assert_eq!(zones, [Some("Safe to remove"), Some("Low risk"), Some("Medium risk"), Some("High risk")]);
         }
     }
 }
