@@ -1,0 +1,214 @@
+# The local-ai-models module: the models and datasets the Hugging Face cache and LM Studio keep, offered one folder at
+# a time. Blobs and model files are small, filled with data; a snapshot's names are `[[case.symlink]]` with relative
+# targets inside the model folder. A Space, the hub's locks, a folder that is no repository, a loose file, Ollama's
+# store (not claimed in this version) and a model file in a project are never claimed; a model holding a socket is left
+# out (`special`); a model goes to the Trash as Low (Hugging Face) or Medium (LM Studio). The app-open case is the next
+# file's.
+feature = "local-ai-models"
+module = "local-ai-models"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a Space in the hub is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/blobs/b"
+size = 4096
+fill = "data"
+[[case.symlink]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/snapshots/r/app.py"
+target = "../../blobs/b"
+
+[[case]]
+name = "the hub's locks are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.cache/huggingface/hub/.locks/models--o--n/x.lock"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a folder without blobs and snapshots is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--empty/refs/main"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a name off the repository shape is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--a--b--c/blobs/b"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--a--b--c/snapshots/r/f"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a loose file in LM Studio's models folder is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/.lmstudio/models/pub/loose.gguf"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "Ollama's models are not claimed in this version"
+kind = "negative"
+[[case.file]]
+path = "home/.ollama/models/manifests/registry.ollama.ai/library/tiny/latest"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.ollama/models/blobs/sha256-0001"
+size = 4096
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/.ollama/models"
+
+[[case]]
+name = "a model file in a project is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Code/app/models/tiny.gguf"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a model with a socket inside is kept"
+kind = "negative"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--busy/blobs/b"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--busy/snapshots/r/f"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--busy/blobs/s"
+kind = "socket"
+[[case.left-out]]
+category = "local-ai-models.hugging-face-models"
+reason = "local-ai-models.left-out.special"
+items = 1
+
+[[case]]
+name = "a project's link into the cache stays a link"
+kind = "negative"
+[[case.symlink]]
+path = "home/Code/linked/weights.safetensors"
+target = "../../.cache/huggingface/hub/models--o--shared/blobs/w"
+
+# Then the positive cases.
+
+[[case]]
+name = "a Hugging Face model goes"
+kind = "positive"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/blobs/aa"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/blobs/bb"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/refs/main"
+size = 4096
+fill = "data"
+[[case.symlink]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/snapshots/r1/config.json"
+target = "../../blobs/aa"
+[[case.symlink]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/snapshots/r1/model.safetensors"
+target = "../../blobs/bb"
+[case.expect]
+item = "home/.cache/huggingface/hub/models--meta--tiny"
+category = "local-ai-models.hugging-face-models"
+danger = "low"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/.cache/huggingface/hub/models--meta--tiny"
+
+[[case]]
+name = "a model without an owner goes"
+kind = "positive"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--gpt2/blobs/b"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--gpt2/snapshots/r/f"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.cache/huggingface/hub/models--gpt2"
+category = "local-ai-models.hugging-face-models"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "the model a project links to goes, the link stays"
+kind = "positive"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--shared/blobs/w"
+size = 4096
+fill = "data"
+[[case.symlink]]
+path = "home/.cache/huggingface/hub/models--o--shared/snapshots/r/weights.safetensors"
+target = "../../blobs/w"
+[case.expect]
+item = "home/.cache/huggingface/hub/models--o--shared"
+category = "local-ai-models.hugging-face-models"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a Hugging Face dataset goes"
+kind = "positive"
+[[case.file]]
+path = "home/.cache/huggingface/hub/datasets--o--words/blobs/b"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/datasets--o--words/snapshots/r/data.txt"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.cache/huggingface/hub/datasets--o--words"
+category = "local-ai-models.hugging-face-datasets"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "an LM Studio model goes, at Medium"
+kind = "positive"
+[[case.file]]
+path = "home/.lmstudio/models/pub/model-a/model.gguf"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.lmstudio/models/pub/model-a"
+category = "local-ai-models.lm-studio"
+danger = "medium"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a model in LM Studio's older place goes"
+kind = "positive"
+[[case.file]]
+path = "home/.cache/lm-studio/models/pub/model-b/model.gguf"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.cache/lm-studio/models/pub/model-b"
+category = "local-ai-models.lm-studio"
+danger = "medium"
+after-cleanup = "in-trash"

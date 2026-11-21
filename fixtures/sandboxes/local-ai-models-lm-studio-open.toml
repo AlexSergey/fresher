@@ -1,0 +1,39 @@
+# The local-ai-models module while LM Studio is open: its models are kept (the app writes there as it works), a Hugging
+# Face model goes as ever. A file of its own, since the open app is shared by every case of a file; the paths are
+# named apart from `local-ai-models.toml`'s.
+feature = "local-ai-models-lm-studio-open"
+module = "local-ai-models"
+
+[[case]]
+name = "LM Studio's models are kept while it is open"
+kind = "negative"
+[[case.running]]
+name = "LM Studio"
+bundle-ids = ["ai.elementlabs.lmstudio"]
+[[case.file]]
+path = "home/.lmstudio/models/pub/open-model/model.gguf"
+size = 4096
+fill = "data"
+[[case.left-out]]
+category = "local-ai-models.lm-studio"
+reason = "local-ai-models.left-out.app-open"
+items = 1
+
+# Then the positive case.
+
+[[case]]
+name = "a Hugging Face model still goes while LM Studio is open"
+kind = "positive"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--other/blobs/b"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.cache/huggingface/hub/models--o--other/snapshots/r/f"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/.cache/huggingface/hub/models--o--other"
+category = "local-ai-models.hugging-face-models"
+danger = "low"
+after-cleanup = "in-trash"

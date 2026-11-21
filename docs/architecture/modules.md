@@ -8,7 +8,8 @@ describes each removal as data. This page is the pattern every module plan follo
 [016](../plans/016-jetbrains/readme.md)) the first real one, and `temp` (`modules/temp/`, plan
 [017](../plans/017-temp-files/readme.md)) the example of a module that judges each item by its age and refuses it by
 its kind and owner, and `dev-caches` (`modules/dev-caches/`, plan
-[018](../plans/018-developer-caches/readme.md)) the example of a module with a data table of places and signs. Set up by plan
+[018](../plans/018-developer-caches/readme.md)) the example of a module with a data table of places and signs, and `local-ai-models` (`modules/local-ai-models/`, plan
+[023](../plans/023-local-ai-models/readme.md)) the example of a module with one finding per model, named from its folder. Set up by plan
 [002/06](../plans/002-base-architecture/06-module-kit/readme.md).
 
 ## The crate
@@ -243,6 +244,23 @@ or `Unknown`: only a `Known` one older than the days offers), whether every size
 is a restored one (nothing is offered, `scan-again`). Source, the project folder, `.git` and framework output are not in
 the table and are never offered; a cache is offered by its own age (7 days), not its project's. Every project it
 recognizes and does not offer is a `left_out` with its reason.
+
+**`local-ai-models` is code with a data table, and the example of a module that offers one finding per model**: each
+store is a row of `stores.toml` (the place under the home with `*` for each name, the shape of a model's folder name,
+the sign its folder holds, the app whose store it is, the category), one whole claim per store, so a model's folder is
+summed with everything inside it. The model's name is read from its folder's path by components, never from a file
+(`hub-repo`: `<kind>--<owner>--<name>`, titled `owner/name`; `publisher-model`: two folder names), and a folder that
+does not fit the shape or does not hold the store's sign is not claimed. A Hugging Face repository's kind picks its
+category (`models`, `datasets`); a kind the row does not list (a Space) is never claimed, and the hub's locks are
+summed, never claimed. The decision is a pure function (`decide.rs`, a table of nine rows) taken in `finish`, because it
+needs the running apps: a model of LM Studio is left out while LM Studio is open (`app-open`), or when the apps could
+not be listed (`no-system`). Two more rows refuse a model as `dev-caches` does: a special entry inside it, and a folder
+that is not the user's. No age is judged: every
+model is offered with the date it was last opened or changed in its reason. A finding's identity is
+`<row id>/<the folder names>` and its removal is the model's folder moved to the Trash, never the tool's own command
+(Hugging Face's cache has no index beside its folders, and a tool never runs in a sandbox). Ollama's store is not
+claimed: one finding per model needs the walk to read its manifests and one removal of several paths, so it is
+[deferred](../deferred/ollama-models.md).
 
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.

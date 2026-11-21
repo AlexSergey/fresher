@@ -96,6 +96,17 @@ import {
   JETBRAINS_SETTINGS,
 } from '../src/test/jetbrains-scan';
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
+import {
+  LOCAL_AI_MODELS_DICTIONARY,
+  LOCAL_AI_MODELS_FINDINGS,
+  LOCAL_AI_MODELS_LM_STUDIO_OPEN_OVERVIEW,
+  LOCAL_AI_MODELS_LM_STUDIO_OPEN_SCAN,
+  LOCAL_AI_MODELS_MODULES,
+  LOCAL_AI_MODELS_OVERVIEW,
+  LOCAL_AI_MODELS_SCAN,
+  LOCAL_AI_MODELS_SETTINGS,
+  LOCAL_AI_MODELS_TOTALS,
+} from '../src/test/local-ai-models-scan';
 import { pageOf } from '../src/test/page-of';
 import { BUILD_DICTIONARY, sandboxBuild } from '../src/test/sandbox-build';
 import {
@@ -712,6 +723,34 @@ const STALE_PROJECTS_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The cleanup of the first local AI model (`meta/tiny`): the Hugging Face models stay with one model, 2 GB wait.
+const localAiModelsCleanup = (): CleanupScript => {
+  const detail = movedDetailOf(planOf(LOCAL_AI_MODELS_FINDINGS.filter(({ id }) => id === 501)), 3, 1_735_819_200);
+
+  return {
+    after: {
+      ...LOCAL_AI_MODELS_OVERVIEW,
+      found: sizedOf(8_448_000_000 - 2_000_000_000),
+      totals: LOCAL_AI_MODELS_TOTALS.map((total) =>
+        total.category === 'local-ai-models.hugging-face-models'
+          ? { ...total, count: 1, sizes: sizedOf(548_000_000) }
+          : total,
+      ),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 2_000_000_000 },
+  };
+};
+
+// What the local AI models scripts answer before a scan: the module, its texts and settings.
+const LOCAL_AI_MODELS_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...LOCAL_AI_MODELS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: LOCAL_AI_MODELS_MODULES,
+  getSettings: LOCAL_AI_MODELS_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // Two modules at once: npm's cache of the developer caches module beside the removed app's findings.
 const [NPM_CACHE] = DEV_CACHES_FINDINGS as readonly [Finding];
 const WITH_DEV_CACHES_FINDINGS: readonly Finding[] = [NPM_CACHE, ...APP_LEFTOVERS_FINDINGS];
@@ -870,6 +909,21 @@ export const SCRIPTS = {
     scanned: DEMO_OVERVIEW,
     scanning: DEMO_SCANNING,
     stop: { events: DEMO_STOP, overview: DEMO_STOPPED },
+  },
+  // The local AI models scan, streamed at once; the cleanup moves a Hugging Face model.
+  localAiModels: {
+    answers: LOCAL_AI_MODELS_ANSWERS,
+    cleanup: localAiModelsCleanup(),
+    ignoring: true,
+    scan: LOCAL_AI_MODELS_SCAN,
+    scanned: LOCAL_AI_MODELS_OVERVIEW,
+  },
+  // The same with LM Studio open: its model is left out, only the Hugging Face ones are offered.
+  localAiModelsLmStudioOpen: {
+    answers: LOCAL_AI_MODELS_ANSWERS,
+    ignoring: true,
+    scan: LOCAL_AI_MODELS_LM_STUDIO_OPEN_SCAN,
+    scanned: LOCAL_AI_MODELS_LM_STUDIO_OPEN_OVERVIEW,
   },
   // Some folders could not be read: the scan ends partial, the caches' size a lower bound.
   partial: { answers: ANSWERS, scan: DEMO_PARTIAL_SCAN, scanned: DEMO_PARTIAL },

@@ -2,7 +2,7 @@
 
 One checklist of everything that still waits for a person at a real Mac, in the order that costs least. Each item has a
 checkbox, a link to the plan step it comes from, the commands, what to look for, and where to write the result (the
-step's `## Conclusions`, on `main`). Items already done and written down are not here. Last compiled 2026-11-19.
+step's `## Conclusions`, on `main`). Items already done and written down are not here. Last compiled 2026-11-21.
 
 Read the step only when an item is not clear: each one is meant to be run from here.
 
@@ -194,7 +194,23 @@ them in this order because the first ones teach the screens used by the rest.
       target in `home/elsewhere/modules` is untouched.
 - [ ] Ignore the build-output category, then the module; restore.
 
-### 1.9 Also worth one look (no pending step)
+### 1.9 Local AI models ([023/03/02](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/local-ai-models && npm run dev:sandbox -- local-ai-models`. Scan; walk `EXPECTED.md`, negatives
+      first: nothing of a negative is offered (the Space, the hub's locks, the folder without `blobs` and `snapshots`,
+      the name off the shape, the loose file in LM Studio's folder, Ollama's store, the project's model file, the
+      project's link); the socket case reads as kept with its reason; each positive is offered in its category at its
+      danger (Hugging Face Low, LM Studio Medium); titles read `meta/tiny`, `gpt2`, `o/words`, `pub/model-a` and `pub/model-b` (a model in LM
+      Studio's older place goes); each reason names a date and a size.
+- [ ] The storage map: the offered models in the explained part; `home/.ollama/models` in your folders.
+- [ ] Select everything: Review names Medium; confirm to the Trash: the model folders land in `home/.Trash` with their
+      `snapshots` links inside; `home/Code/linked/weights.safetensors` is still a link (now broken). Cleanups, put
+      back: the folders are back and the link resolves again.
+- [ ] `npm run dev:sandbox -- local-ai-models-lm-studio-open`: the LM Studio model is kept "LM Studio is open"; the
+      Hugging Face model is offered.
+- [ ] Ignore the LM Studio category, then the module; restore.
+
+### 1.10 Also worth one look (no pending step)
 
 - [ ] `npm run dev:sandbox -- cleanup-guards`: the case file of the removal refusals; its `EXPECTED.md` holds. It is
       the one sandbox with no plan step of its own, and 008's run (section 5) leans on its refusals.
@@ -202,7 +218,7 @@ them in this order because the first ones teach the screens used by the rest.
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
-`npm run dev-runs:check`. Do 2.0 once, then the by-hand items of 2.1 to 2.8: only what the disk cannot answer is left
+`npm run dev-runs:check`. Do 2.0 once, then the by-hand items of 2.1 to 2.9: only what the disk cannot answer is left
 here. The record is in [`testing.md`](./testing.md#the-development-run-record); it holds real paths, lives in the
 git-ignored `NO_COMMIT/dev-runs/` and is never sent anywhere.
 
@@ -415,7 +431,28 @@ stat -f %Sm <folder of a file you save>                                         
       time; a `node_modules` of hard links into a shared store: the finding's size against `du`; a recompiling build
       moves `target/debug/incremental`'s times.
 
-### 2.8 Scan time on the real home (rule 4: within 5 %)
+### 2.8 Local AI models ([023/03/02](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md))
+
+The checker does the existence, the folder kind, the roots and the sizes. By hand, what the disk cannot answer:
+
+```sh
+ls ~/.cache/huggingface/hub ~/.lmstudio/models/* ~/.cache/lm-studio/models/* 2>/dev/null
+du -sh ~/.cache/huggingface/hub/models--* ~/.cache/huggingface/hub/datasets--* 2>/dev/null
+du -sh ~/.lmstudio/models/*/* ~/.cache/lm-studio/models/*/* 2>/dev/null
+osascript -e 'id of app "LM Studio"'
+```
+
+- [ ] Every offered model: a repository folder with `blobs` and `snapshots`, or a folder two levels down in LM Studio's
+      models folder; its size against `du`; its title against the folder's name.
+- [ ] Nothing offered outside the three places; a Space or a non-model folder of the hub is not offered.
+- [ ] Facts to verify: LM Studio's bundle id (the `osascript` line) against `stores.toml`, and with LM Studio open its
+      models are kept; its older place `~/.cache/lm-studio/models` on a Mac that has it (or note that none was
+      found); whether LM Studio records when a model was last used, for the date in the reason; a Hugging Face
+      download in progress (what the scan offers, what the cleanup's rehearsal says); an LM Studio model imported by
+      hand reads as a download, at Medium, with the "added yourself" sentence. Correct `stores.toml`, the texts and
+      `docs/categories/local-ai-models-*.md` where they differ.
+
+### 2.9 Scan time on the real home (rule 4: within 5 %)
 
 Scan time is compared once per module generation, not per plan; do it with the baseline worktrees of section 4.2, since
 `main` already holds every module. Quit all other apps, scan `~` three times in each build (the first warms the cache;
@@ -662,17 +699,18 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [011/03/01 docs and conclusions](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)               | pending, in progress           | 1.1           |
 | [012/06/02 run and conclusions](./plans/012-storage-map/06-finish/02-run-and-conclusions.md)                 | pending                        | 1.2, 2.1      |
 | [015/03/02 run and conclusions](./plans/015-module-groups/03-finish/02-run-and-conclusions.md)               | pending, in progress           | 1.1           |
-| [016/04/02 runs and conclusions](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.3, 2.2, 2.8 |
-| [017/04/02 runs and conclusions](./plans/017-temp-files/04-finish/02-run-and-conclusions.md)                 | pending, in progress           | 1.4, 2.3, 2.8 |
-| [018/04/02 runs and conclusions](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)           | pending                        | 1.5, 2.4, 2.8, 4 |
-| [019/04/02 runs and conclusions](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md)  | pending                        | 1.6, 2.5, 2.8, 4 |
+| [016/04/02 runs and conclusions](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.3, 2.2, 2.9 |
+| [017/04/02 runs and conclusions](./plans/017-temp-files/04-finish/02-run-and-conclusions.md)                 | pending, in progress           | 1.4, 2.3, 2.9 |
+| [018/04/02 runs and conclusions](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)           | pending                        | 1.5, 2.4, 2.9, 4 |
+| [019/04/02 runs and conclusions](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md)  | pending                        | 1.6, 2.5, 2.9, 4 |
 | [020/01/02 suffixed names bench](./plans/020-downloads/01-core-prerequisites/02-suffixed-names.md)           | step done, bench re-run pending | 4             |
-| [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.7, 2.6, 2.8, 4 |
-| [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md) | pending | 1.8, 2.7, 2.8, 4 |
+| [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.7, 2.6, 2.9, 4 |
+| [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md) | pending | 1.8, 2.7, 2.9, 4 |
 | [026/03/03 run and conclusions](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md) | pending | 2.0 |
 | [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                         | deferred, due before release   | 5.1           |
 | [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                           | deferred, due before release   | 5.2           |
-| Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.9           |
+| [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)            | pending                        | 1.9, 2.8      |
+| Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and
 the numbers written under it, on `main`. Then tell the agent: a plan moves to done only when you have looked at its

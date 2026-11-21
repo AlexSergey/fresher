@@ -150,10 +150,16 @@ cleanups of a hundred items through the real journal.
   active on the next scan. `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
   modules' caches under `Library/Caches` still theirs), with scripted installed and open apps, Spotlight's answers, the
   clock and the change journal, every rescan asserted to be one (`fixtures/golden/app-leftovers-flow.json`).
+  `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
+  (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
+  a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
+  skipped in use, the project's link stays a link after the cleanup, the sizes of each category, scan, confirm with
+  Medium, Trash and put back byte for byte (`fixtures/golden/local-ai-models-flow.json`), and a restore at launch that
+  offers the same models.
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
   pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
-  `app_leftovers_home`) share one harness there, one file per concern: `home.rs` (the sandbox's layout and the `Flow`),
-  `home_engine.rs` (the engine assembled from the parts a home gives: its modules, its fakes, its avoid list),
+  `app_leftovers_home`, `local_ai_models_home`) share one harness there, one file per concern: `home.rs` (the sandbox's layout and the
+  `Flow`), `home_engine.rs` (the engine assembled from the parts a home gives: its modules, its fakes, its avoid list),
   `home_scan.rs` (the scans and the findings), `home_rescan.rs` (the scripted change journal and a scan that must be a
   rescan) and `home_cleanup.rs` (the cleanup, the outcomes, the journal's records and the relative report); each home
   keeps only its module's own.
@@ -174,7 +180,10 @@ cleanups of a hundred items through the real journal.
   `src/test/page-of.ts` answers `get_findings` over a list of findings as the engine does, and
   `src/test/fake-clock.ts` is the clock the store's timers are tested on. `src/test/cleanup-plan.ts` builds the
   core's plan, events and report over the demo scan's findings, shared by the unit tests of the cleanup state
-  (`state/cleanup.test.ts`), its screens and the e2e mock.
+  (`state/cleanup.test.ts`), its screens and the e2e mock. `src/test/local-ai-models-scan.ts` is a scan of the
+  `local-ai-models` module with its own texts read from its locale file: models offered, one kept (not the user's),
+  and a second script with LM Studio open, where every LM Studio model is left out; the e2e mock plays both
+  (`SCRIPTS.localAiModels`, `SCRIPTS.localAiModelsLmStudioOpen`) on Scan's cards and a category's Details.
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
   (one event every so many ms, each asked of Node, as the engine streams), Scan's totals during and after the scan,
@@ -457,6 +466,14 @@ The case files:
   every case file ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)). The autotest does not opt in to
   Downloads in Settings, so a `not-asked` answer turning granted after the opt-in is not proven there but in the core
   e2e (`tests/downloads.rs`, below); a case file cannot opt in.
+
+- `local-ai-models.toml` and `local-ai-models-lm-studio-open.toml`: the `local-ai-models` module. A Space, the hub's
+  locks, a folder without blobs and snapshots, a name off the repository shape, a loose file in LM Studio's models
+  folder, Ollama's store (not claimed in this version), a model file in a project and a project's link into the cache
+  are never claimed, and a model holding a socket is left out (`special`); a Hugging Face model (with and without an
+  owner, the model a project links to, whose link stays) and dataset go to the Trash as Low, an LM Studio model (the
+  current place and the older) as Medium. The second runs with LM Studio open: its model is left out (`app-open`), a
+  Hugging Face model still goes. Files and paths of their own, the open app being shared by every case of a file.
 
 - `stale-projects.toml`: the `stale-projects` module, offered from the folders under `home` the walk reads
   (`home/Code`). Source, `.git` and the project folder, `dist` and `.next`, a `node_modules` without a project, a link

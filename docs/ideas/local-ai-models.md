@@ -2,6 +2,12 @@
 
 **Since:** 2026-11-15 · **Proposed by:** the agent
 
+Taken up by plan [023](../plans/023-local-ai-models/readme.md) (2026-11-21): the models of Hugging Face (models and
+datasets, Low) and LM Studio (Medium), one finding per model, moved to the Trash. Ollama is
+[deferred](../deferred/ollama-models.md); other apps' models, the Hugging Face chunk cache and the tools' own commands
+stay ideas. The open questions are answered there: the folder goes to the Trash, no tool command; datasets are a
+category of their own.
+
 ## Problem
 
 Running language and image models locally has become a normal part of a developer's Mac. Each model is several

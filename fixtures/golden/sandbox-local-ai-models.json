@@ -1,0 +1,687 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "local-ai-models.hugging-face-datasets",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.cache/huggingface/hub/datasets--o--words",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.hugging-face-models",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.cache/huggingface/hub/models--gpt2",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.hugging-face-models",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.cache/huggingface/hub/models--meta--tiny",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.hugging-face-models",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.cache/huggingface/hub/models--o--shared",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.lm-studio",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.cache/lm-studio/models/pub/model-b",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.lm-studio",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.lmstudio/models/pub/model-a",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "local-ai-models.hugging-face-datasets",
+      "danger": "low",
+      "logical": 8192,
+      "module": "local-ai-models",
+      "subject": "home/.cache/huggingface/hub/datasets--o--words"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.hugging-face-models",
+      "danger": "low",
+      "logical": 8192,
+      "module": "local-ai-models",
+      "subject": "home/.cache/huggingface/hub/models--gpt2"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.hugging-face-models",
+      "danger": "low",
+      "logical": 12288,
+      "module": "local-ai-models",
+      "subject": "home/.cache/huggingface/hub/models--meta--tiny"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.hugging-face-models",
+      "danger": "low",
+      "logical": 4096,
+      "module": "local-ai-models",
+      "subject": "home/.cache/huggingface/hub/models--o--shared"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.lm-studio",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "local-ai-models",
+      "subject": "home/.cache/lm-studio/models/pub/model-b"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.lm-studio",
+      "danger": "medium",
+      "logical": 4096,
+      "module": "local-ai-models",
+      "subject": "home/.lmstudio/models/pub/model-a"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "local-ai-models.hugging-face-models",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "local-ai-models.left-out.special"
+      },
+      "sizes": {
+        "allocated": 8192,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 8192
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/.ollama/models",
+        "case": "Ollama's models are not claimed in this version",
+        "path": [
+          "home/.ollama/models"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/.ollama/models/blobs"
+          },
+          {
+            "allocated": 4096,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/.ollama/models/manifests"
+          }
+        ]
+      },
+      {
+        "at": "home/.cache/huggingface/hub/models--meta--tiny",
+        "case": "a Hugging Face model goes",
+        "path": [
+          "home/.cache/huggingface/hub/models--meta--tiny"
+        ],
+        "rows": [
+          {
+            "allocated": 12288,
+            "explained": 12288,
+            "logical": 12288,
+            "path": "home/.cache/huggingface/hub/models--meta--tiny"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 40960,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 45056,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67109318,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738111034,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 116,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/datasets--o--words"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/datasets--o--words/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/datasets--o--words/blobs/b"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/datasets--o--words/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/datasets--o--words/snapshots/r"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/datasets--o--words/snapshots/r/data.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/model-a"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/model-a/model.gguf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/model-b"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/model-b/model.gguf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--gpt2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--gpt2/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/models--gpt2/blobs/b"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--gpt2/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--gpt2/snapshots/r"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/models--gpt2/snapshots/r/f"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/models--meta--tiny/blobs/aa"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/models--meta--tiny/blobs/bb"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny/refs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/models--meta--tiny/refs/main"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny/snapshots/r1"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny/snapshots/r1/config.json"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/.Trash/models--meta--tiny/snapshots/r1/model.safetensors"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--o--shared"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--o--shared/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/models--o--shared/blobs/w"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--o--shared/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/models--o--shared/snapshots/r"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/.Trash/models--o--shared/snapshots/r/weights.safetensors"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/.locks"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/.locks/models--o--n"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/.locks/models--o--n/x.lock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--a--b--c"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--a--b--c/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/models--a--b--c/blobs/b"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--a--b--c/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--a--b--c/snapshots/r"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/models--a--b--c/snapshots/r/f"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--busy"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--busy/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/models--o--busy/blobs/b"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--busy/blobs/s"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--busy/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--busy/snapshots/r"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/models--o--busy/snapshots/r/f"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--empty"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/models--o--empty/refs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/models--o--empty/refs/main"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/spaces--o--demo"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/spaces--o--demo/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.cache/huggingface/hub/spaces--o--demo/blobs/b"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/spaces--o--demo/snapshots"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/spaces--o--demo/snapshots/r"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/.cache/huggingface/hub/spaces--o--demo/snapshots/r/app.py"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/lm-studio"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/lm-studio/models"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.cache/lm-studio/models/pub"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.lmstudio"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.lmstudio/models"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.lmstudio/models/pub"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.lmstudio/models/pub/loose.gguf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.ollama/models/blobs/sha256-0001"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/tiny"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/tiny/latest"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/app/models"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/app/models/tiny.gguf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/linked"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Code/linked/weights.safetensors"
+      },
+      {
+        "kind": "file",
+        "logical_size": 338,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 86470
+  }
+}

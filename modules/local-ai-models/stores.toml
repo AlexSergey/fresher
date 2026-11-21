@@ -1,0 +1,47 @@
+# The stores of local AI models the module offers (plan 023, design section 1), one row per store, in the order of the
+# module's interests.
+# `id`: the row's id, kebab case: the start of its findings' identities.
+# `tool`: the tool that keeps the store, "hugging-face" or "lm-studio": its reason (`local-ai-models.reason.<tool>`).
+# `folder`: the known folder the place is under, as rules write it; never a temporary folder.
+# `path`: the place, relative to `folder`, plain names; each `*` matches one name, the last name is one.
+# `shape`: how a model's folder is named: "hub-repo" (one `*`: `<kind>--<owner>--<name>`) or "publisher-model" (two
+#   `*`: the publisher's folder, then the model's).
+# `sign`: the names a model's folder must hold, all of them; none when the place is its own sign.
+# `app`: the bundle id of the app whose store it is; kept while that app is open.
+# `category`: the module's category of every model of the row; or, for a "hub-repo" row, `[[store.kind]]` entries:
+#   `kind` (the name's first part) and the `category` of that kind. A kind the row does not list is not claimed.
+# LM Studio's bundle id and its older place are marked "to verify": they are checked by hand on a real Mac in 03/02.
+
+[[store]]
+id = "hugging-face"
+tool = "hugging-face"
+folder = "home"
+path = ".cache/huggingface/hub/*"
+shape = "hub-repo"
+sign = ["blobs", "snapshots"]
+
+[[store.kind]]
+kind = "models"
+category = "local-ai-models.hugging-face-models"
+
+[[store.kind]]
+kind = "datasets"
+category = "local-ai-models.hugging-face-datasets"
+
+[[store]]
+id = "lm-studio"
+tool = "lm-studio"
+folder = "home"
+path = ".lmstudio/models/*/*"
+shape = "publisher-model"
+app = "ai.elementlabs.lmstudio"
+category = "local-ai-models.lm-studio"
+
+[[store]]
+id = "lm-studio-old"
+tool = "lm-studio"
+folder = "home"
+path = ".cache/lm-studio/models/*/*"
+shape = "publisher-model"
+app = "ai.elementlabs.lmstudio"
+category = "local-ai-models.lm-studio"

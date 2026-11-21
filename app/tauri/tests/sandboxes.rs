@@ -242,6 +242,8 @@ mod positive {
         jetbrains => "jetbrains",
         jetbrains_unknown_app_installed => "jetbrains-unknown-app-installed",
         jetbrains_unknown_app_open => "jetbrains-unknown-app-open",
+        local_ai_models => "local-ai-models",
+        local_ai_models_lm_studio_open => "local-ai-models-lm-studio-open",
         stale_projects => "stale-projects",
         storage_map => "storage-map",
         temp => "temp",

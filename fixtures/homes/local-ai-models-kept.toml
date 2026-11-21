@@ -1,0 +1,88 @@
+# A home for the local-ai-models module where every model is recognized and kept: a Hugging Face model with a blob
+# carrying the user's lock (stated), one holding a socket (stated; a socket's path is too long to make here), and an
+# LM Studio model scanned while LM Studio is open (or while the open apps cannot be listed). Every file has a time; a
+# folder with no time is not claimed, a row the decide unit tests cover.
+
+# Every entry has its `age` and its status change `changed`, folders included: an undated one counts as changed now.
+
+[[dir]]
+path = ".lmstudio/models/pub/open-model"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--socket/snapshots/r"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--socket/snapshots"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--socket/blobs"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--socket"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--locked/snapshots/r"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--locked/snapshots"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--locked/blobs"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--locked"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--o--locked/blobs/not-yours"
+size = 1024
+age = "40d"
+changed = "40d"
+flags = ["user-lock"]
+
+[[file]]
+path = ".cache/huggingface/hub/models--o--locked/snapshots/r/f"
+size = 64
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--o--socket/blobs/b"
+size = 1024
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--o--socket/snapshots/r/f"
+size = 64
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--o--socket/listener"
+kind = "socket"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".lmstudio/models/pub/open-model/w.gguf"
+size = 2048
+age = "40d"
+changed = "40d"

@@ -1,0 +1,152 @@
+# The home of the local-ai-models flows: a Hugging Face model `meta/tiny` (two blobs, its refs, a snapshot whose two
+# names are links to the blobs), a dataset, an LM Studio model, a Space (a kind the module does not list) and a project
+# folder holding a link into the model's blobs. Small files, real sizes.
+
+# Every entry has its `age` and its status change `changed`, folders included: an undated one counts as changed now.
+
+[[dir]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/snapshots/r1"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/snapshots"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/refs"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/blobs"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/models--meta--tiny"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/datasets--o--words/snapshots/r"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/datasets--o--words/snapshots"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/datasets--o--words/blobs"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/datasets--o--words"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/snapshots/r"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/snapshots"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/blobs"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.cache/huggingface/hub/spaces--o--demo"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/.lmstudio/models/pub/model-a"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "home/Code/app"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/blobs/aa"
+size = 1000
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/blobs/bb"
+size = 2000
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/refs/main"
+size = 40
+age = "30d"
+changed = "30d"
+
+[[symlink]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/snapshots/r1/config.json"
+target = "../../blobs/aa"
+age = "30d"
+changed = "30d"
+
+[[symlink]]
+path = "home/.cache/huggingface/hub/models--meta--tiny/snapshots/r1/model.safetensors"
+target = "../../blobs/bb"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/datasets--o--words/blobs/dd"
+size = 5000
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/datasets--o--words/snapshots/r/words.txt"
+size = 100
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/blobs/b"
+size = 1024
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.cache/huggingface/hub/spaces--o--demo/snapshots/r/app.py"
+size = 64
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/.lmstudio/models/pub/model-a/model.gguf"
+size = 8192
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "home/Code/app/main.py"
+size = 128
+age = "30d"
+changed = "30d"
+
+[[symlink]]
+path = "home/Code/app/weights"
+target = "../../.cache/huggingface/hub/models--meta--tiny/blobs/bb"
+age = "30d"
+changed = "30d"

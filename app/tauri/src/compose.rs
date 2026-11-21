@@ -59,6 +59,8 @@ pub(crate) enum ComposeError {
     Downloads(#[from] fresher_module_downloads::DownloadsError),
     #[error("the stale-projects module cannot be built: {0}")]
     StaleProjects(#[from] fresher_module_stale_projects::StaleProjectsError),
+    #[error("the local-ai-models module cannot be built: {0}")]
+    LocalAiModels(#[from] fresher_module_local_ai_models::LocalAiModelsError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -405,6 +407,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_app_leftovers::AppLeftoversModule::new()?),
         Box::new(fresher_module_downloads::DownloadsModule::new()?),
         Box::new(fresher_module_stale_projects::StaleProjectsModule::new()?),
+        Box::new(fresher_module_local_ai_models::LocalAiModelsModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -670,9 +673,19 @@ mod tests {
         fn the_engine_runs_the_feature_modules_always_and_the_dev_only_ones_in_debug_builds_only() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             let expected: &[&str] = if cfg!(debug_assertions) {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects", "demo", "trial"]
+                &[
+                    "jetbrains",
+                    "temp",
+                    "dev-caches",
+                    "app-leftovers",
+                    "downloads",
+                    "stale-projects",
+                    "local-ai-models",
+                    "demo",
+                    "trial",
+                ]
             } else {
-                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects"]
+                &["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects", "local-ai-models"]
             };
 
             let engine = engine(folder.path(), home.path()).unwrap();

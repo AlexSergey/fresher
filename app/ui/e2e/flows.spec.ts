@@ -6,6 +6,7 @@ import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanu
 import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
+import { LOCAL_AI_MODELS_DICTIONARY } from '../src/test/local-ai-models-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
@@ -191,6 +192,26 @@ const SP_RUST = sp('rust-build-cache.name');
 
 // Scans the old-projects script.
 const openStaleProjects = (page: Page): Promise<void> => scanned(page, SCRIPTS.staleProjects);
+
+// The local AI models module's own texts, as its locale file has them.
+const ai = (key: string): string => {
+  const value = LOCAL_AI_MODELS_DICTIONARY[`local-ai-models.${key}`];
+  if (value === undefined) {
+    throw new Error(`no text local-ai-models.${key}`);
+  }
+
+  return value;
+};
+
+const AI_HF_MODELS = ai('hugging-face-models.name');
+const AI_HF_DATASETS = ai('hugging-face-datasets.name');
+const AI_LM_STUDIO = ai('lm-studio.name');
+
+// Scans the local AI models script.
+const openLocalAiModels = (
+  page: Page,
+  script: typeof SCRIPTS.localAiModels | typeof SCRIPTS.localAiModelsLmStudioOpen = SCRIPTS.localAiModels,
+): Promise<void> => scanned(page, script);
 
 const choice = (page: Page, name: string): Locator => page.getByRole('button', { name: left(`choice.${name}.label`) });
 
@@ -423,6 +444,27 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select all ${SP_DEPENDENCIES}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('1.3 GB');
+  });
+
+  test('a local AI model kept while LM Studio is open cannot be selected', async ({ page }) => {
+    await openLocalAiModels(page, SCRIPTS.localAiModelsLmStudioOpen);
+    // LM Studio's model, kept while LM Studio is open, has no card: it is listed as found but left out.
+    await expect(cards(page).filter({ hasText: AI_LM_STUDIO })).toHaveCount(0);
+    const leftOut = page.getByRole('region', { name: 'Found, but left out' });
+    await expect(leftOut).toContainText(`1 item left out (4.7 GB): ${ai('left-out.app-open')}`);
+    await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
+    await openDetails(page, AI_LM_STUDIO);
+    await expect(details(page)).toContainText(`1 item left out (4.7 GB): ${ai('left-out.app-open')}`);
+    await expect(details(page)).toContainText('Everything found here was left out: the lines above say why.');
+    await expect(details(page).getByRole('checkbox')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, AI_HF_MODELS);
+
+    await expect(details(page)).toContainText(`1 item left out (300 MB): ${ai('left-out.not-yours')}`);
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select all ${AI_HF_MODELS}` }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).not.toContainText('300 MB');
   });
 
   test('a choice selects nothing outside its module', async ({ page }) => {
@@ -1533,5 +1575,90 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: sp('enabled.label') })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: sp('unused-for-days.label') })).toHaveValue('365');
     await expect(page.getByText(sp('unused-for-days.description'))).toBeVisible();
+  });
+
+  test('local AI models show their cards with their sizes', async ({ page }) => {
+    await openLocalAiModels(page);
+
+    for (const name of [AI_HF_MODELS, AI_HF_DATASETS, AI_LM_STUDIO]) {
+      await expect(cards(page).filter({ hasText: name })).toBeVisible();
+    }
+    await expect(cards(page).filter({ hasText: AI_LM_STUDIO })).toContainText('4.7 GB');
+  });
+
+  test('each local AI models category shows its danger and its five texts', async ({ page }) => {
+    await openLocalAiModels(page);
+
+    for (const [name, key, danger] of [
+      [AI_HF_MODELS, 'hugging-face-models', 'Low'],
+      [AI_HF_DATASETS, 'hugging-face-datasets', 'Low'],
+      [AI_LM_STUDIO, 'lm-studio', 'Medium'],
+    ] as const) {
+      await openDetails(page, name);
+      const category = details(page);
+      await expect(category).toContainText(danger);
+      for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+        await expect(category).toContainText(ai(`${key}.${text}`));
+      }
+      await page.getByRole('button', { name: 'Back to Scan' }).click();
+    }
+  });
+
+  test('a model’s finding names the model, the date and the download size', async ({ page }) => {
+    await openLocalAiModels(page);
+
+    await openDetails(page, AI_HF_MODELS);
+
+    const items = details(page);
+    await expect(items).toContainText('meta/tiny');
+    await expect(items).toContainText('gpt2');
+    const [beforeDate = '', afterDate = ''] = ai('reason.hugging-face').split('{date}');
+    await expect(items).toContainText(beforeDate.trim());
+    await expect(items).toContainText('Mar 10, 2024');
+    await expect(items).toContainText(afterDate.replace('{size}', '2 GB').trim());
+    await page.getByRole('button', { name: 'Back to Scan' }).click();
+    await openDetails(page, AI_LM_STUDIO);
+    await expect(details(page)).toContainText('pub/model-a');
+  });
+
+  test('selecting an LM Studio model makes the review name Medium', async ({ page }) => {
+    await openLocalAiModels(page);
+
+    await page.getByRole('checkbox', { name: `Select ${AI_LM_STUDIO}` }).check();
+
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await expect(dialog).toContainText('Medium');
+    await expect(dialog).toContainText(ai('lm-studio.if-removed'));
+  });
+
+  test('a Hugging Face model goes to the Trash and comes back from the Cleanups', async ({ page }) => {
+    await openLocalAiModels(page);
+    await openDetails(page, AI_HF_MODELS);
+    await page.getByRole('checkbox', { name: /Select meta\/tiny/ }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 1 item to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: 'models--meta--tiny' });
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the switch for local AI models', async ({ page }) => {
+    await mockCore(page, SCRIPTS.localAiModels);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: ai('enabled.label') })).toBeChecked();
+    await expect(page.getByText(ai('enabled.description'))).toBeVisible();
   });
 });

@@ -73,3 +73,4 @@ an automated release are decided before the first release ([`../deferred/release
 | 026 | [The development run record](./026-dev-run-record/readme.md)       | 🔨 in progress | 0.1.0   | app, app/tauri, app/ui, core, cleaner, store, scripts, docs |
 | 027 | [The scan screen](./027-scan-screen/readme.md)                     | 🔨 in progress | 0.1.0   | app/ui, app/tauri, core, sandbox, e2e, docs |
 | 028 | [Ignore one item](./028-ignore-item/readme.md)                     | 🔨 in progress | 0.1.0   | app/ui, e2e, docs |
+| 023 | [Local AI models](./023-local-ai-models/readme.md)                 | 🔨 in progress | 0.1.0   | modules, testing, sandbox, e2e, app, app/ui, docs |

@@ -1,0 +1,177 @@
+# A home for the local-ai-models module where nothing is a model of a store, so nothing is offered and nothing is
+# left out: a space (a kind the row does not list), locks and a version file beside the models, a repository without
+# `blobs` and `snapshots`, a name of four parts, a link to a folder outside the hub; in LM Studio's folder a file at a
+# model's depth and a hidden publisher; Ollama's own store; and a model file in a project. Every file has a time, so
+# only the rule under test can keep a folder out.
+
+# Every entry has its `age` and its status change `changed`, folders included: an undated one counts as changed now.
+
+[[dir]]
+path = "elsewhere/models--o--linked/snapshots/r"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "elsewhere/models--o--linked/snapshots"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "elsewhere/models--o--linked/blobs"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = "elsewhere/models--o--linked"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".lmstudio/models/.hidden/m"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/spaces--o--demo/snapshots/r"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/spaces--o--demo/snapshots"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/spaces--o--demo/blobs"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/spaces--o--demo"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--empty/refs"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--o--empty"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--a--b--c/snapshots/r"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--a--b--c/snapshots"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--a--b--c/blobs"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/models--a--b--c"
+age = "40d"
+changed = "40d"
+
+[[dir]]
+path = ".cache/huggingface/hub/.locks/models--o--n"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/spaces--o--demo/blobs/b"
+size = 1024
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/spaces--o--demo/snapshots/r/app.py"
+size = 64
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/.locks/models--o--n/x.lock"
+size = 0
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/version.txt"
+size = 1
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--o--empty/refs/main"
+size = 40
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--a--b--c/blobs/b"
+size = 1024
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".cache/huggingface/hub/models--a--b--c/snapshots/r/f"
+size = 64
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "elsewhere/models--o--linked/blobs/b"
+size = 1024
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "elsewhere/models--o--linked/snapshots/r/f"
+size = 64
+age = "40d"
+changed = "40d"
+
+[[symlink]]
+path = ".cache/huggingface/hub/models--o--linked"
+target = "../../../../elsewhere/models--o--linked"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".lmstudio/models/pub/loose.gguf"
+size = 2048
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".lmstudio/models/.hidden/m/w.gguf"
+size = 2048
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/llama3/latest"
+size = 512
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0001"
+size = 4096
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "Code/app/models/llama.gguf"
+size = 4096
+age = "40d"
+changed = "40d"

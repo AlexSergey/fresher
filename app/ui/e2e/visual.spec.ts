@@ -194,6 +194,7 @@ test.describe('positive cases', () => {
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)', 'category-details-app-leftovers.png'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)', 'category-details-downloads.png'],
       ['staleProjects', 'Packages of old projects', '2 items left out', 'category-details-stale-projects.png'],
+      ['localAiModels', 'Hugging Face models', '1 item left out (300 MB)', 'category-details-local-ai-models.png'],
     ] as const) {
       test(`of ${category}, with its left-out lines`, async ({ page }) => {
         await detailsAfter(page, SCRIPTS[script], category);

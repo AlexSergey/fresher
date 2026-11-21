@@ -651,7 +651,17 @@ mod tests {
 
             assert_eq!(
                 modules,
-                ["jetbrains", "temp", "dev-caches", "app-leftovers", "downloads", "stale-projects", "demo", "trial"]
+                [
+                    "jetbrains",
+                    "temp",
+                    "dev-caches",
+                    "app-leftovers",
+                    "downloads",
+                    "stale-projects",
+                    "local-ai-models",
+                    "demo",
+                    "trial"
+                ]
             );
             assert_eq!(get_access_status(shell.engine()).access(&Capability::AllFiles), Access::Unknown);
         }

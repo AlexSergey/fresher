@@ -1,0 +1,361 @@
+{
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "local-ai-models.hugging-face-models",
+        "reason": "local-ai-models.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1088,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "local-ai-models.hugging-face-models",
+        "reason": "local-ai-models.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1088,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "local-ai-models.lm-studio",
+        "reason": "local-ai-models.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "category": "local-ai-models.hugging-face-datasets",
+        "danger": "low",
+        "key": {
+          "identity": "hugging-face/datasets--o--words",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1765497600
+            },
+            "size": {
+              "kind": "size",
+              "value": 5100
+            }
+          },
+          "key": "local-ai-models.reason.hugging-face"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".cache/huggingface/hub/datasets--o--words"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 5100,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".cache/huggingface/hub/datasets--o--words"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "o/words"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.hugging-face-models",
+        "danger": "low",
+        "key": {
+          "identity": "hugging-face/models--gpt2",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1759449600
+            },
+            "size": {
+              "kind": "size",
+              "value": 3300
+            }
+          },
+          "key": "local-ai-models.reason.hugging-face"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".cache/huggingface/hub/models--gpt2"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 3300,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".cache/huggingface/hub/models--gpt2"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "gpt2"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.hugging-face-models",
+        "danger": "low",
+        "key": {
+          "identity": "hugging-face/models--meta--tiny",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "size": {
+              "kind": "size",
+              "value": 3040
+            }
+          },
+          "key": "local-ai-models.reason.hugging-face"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".cache/huggingface/hub/models--meta--tiny"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 3040,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".cache/huggingface/hub/models--meta--tiny"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "meta/tiny"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.lm-studio",
+        "danger": "medium",
+        "key": {
+          "identity": "lm-studio-old/pub/model-b",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1749945600
+            },
+            "size": {
+              "kind": "size",
+              "value": 16384
+            }
+          },
+          "key": "local-ai-models.reason.lm-studio"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".cache/lm-studio/models/pub/model-b"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 16384,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".cache/lm-studio/models/pub/model-b"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "pub/model-b"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.lm-studio",
+        "danger": "medium",
+        "key": {
+          "identity": "lm-studio/other/dup",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1765929600
+            },
+            "size": {
+              "kind": "size",
+              "value": 6144
+            }
+          },
+          "key": "local-ai-models.reason.lm-studio"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".lmstudio/models/other/dup"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 6144,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".lmstudio/models/other/dup"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "other/dup"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.lm-studio",
+        "danger": "medium",
+        "key": {
+          "identity": "lm-studio/pub/dup",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1766361600
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "local-ai-models.reason.lm-studio"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".lmstudio/models/pub/dup"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".lmstudio/models/pub/dup"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "pub/dup"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.lm-studio",
+        "danger": "medium",
+        "key": {
+          "identity": "lm-studio/pub/model-a",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1763337600
+            },
+            "size": {
+              "kind": "size",
+              "value": 8192
+            }
+          },
+          "key": "local-ai-models.reason.lm-studio"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": ".lmstudio/models/pub/model-a"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".lmstudio/models/pub/model-a"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "pub/model-a"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

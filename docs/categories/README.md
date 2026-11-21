@@ -17,7 +17,7 @@ confirmation screen, and the confirmation names the highest level among the sele
 | Level      | Meaning                                                                                          | Examples                                                                   |
 | ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | app caches, logs, Xcode derived data, a removed app's caches               |
-| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download |
+| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download |
 | **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, unused Docker images |
 | **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder, a big download you have not opened |
 
@@ -80,6 +80,9 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `stale-projects.build-output` | Low | none (the module's code, `modules/stale-projects`) | [`stale-projects-build-output.md`](./stale-projects-build-output.md) |
 | `stale-projects.python-environments` | Medium | none (the module's code, `modules/stale-projects`) | [`stale-projects-python-environments.md`](./stale-projects-python-environments.md) |
 | `stale-projects.rust-build-cache` | Low | none (the module's code, `modules/stale-projects`) | [`stale-projects-rust-build-cache.md`](./stale-projects-rust-build-cache.md) |
+| `local-ai-models.hugging-face-models` | Low | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-hugging-face-models.md`](./local-ai-models-hugging-face-models.md) |
+| `local-ai-models.hugging-face-datasets` | Low | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-hugging-face-datasets.md`](./local-ai-models-hugging-face-datasets.md) |
+| `local-ai-models.lm-studio` | Medium | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-lm-studio.md`](./local-ai-models-lm-studio.md) |
 | `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |
 
 The next ones (`node_modules`, Docker) come with the plans that implement their rules.
