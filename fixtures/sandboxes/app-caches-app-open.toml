@@ -1,0 +1,41 @@
+# The app-caches module while an app is open: its cache is kept (the app writes there as it works), another app's goes
+# as ever. A file of its own, since the open app is shared by every case of a file; the files are named apart from
+# `app-caches.toml`'s.
+feature = "app-caches-app-open"
+module = "app-caches"
+
+[[case]]
+name = "an open app's cache is kept"
+kind = "negative"
+[[case.app]]
+path = "Applications/Mailer.app"
+bundle-id = "com.example.Mailer"
+name = "Mailer"
+running = true
+[[case.file]]
+path = "home/Library/Caches/com.example.Mailer/Cache.db"
+size = 4096
+fill = "data"
+[[case.left-out]]
+category = "app-caches.library-caches"
+reason = "app-caches.left-out.app-open"
+items = 1
+
+# Then the positive case.
+
+[[case]]
+name = "a closed app's cache still goes while another app is open"
+kind = "positive"
+[[case.app]]
+path = "Applications/Notes.app"
+bundle-id = "com.example.Notes"
+name = "Notes"
+[[case.file]]
+path = "home/Library/Caches/com.example.Notes/Cache.db"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/com.example.Notes"
+category = "app-caches.library-caches"
+danger = "low"
+after-cleanup = "emptied"

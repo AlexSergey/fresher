@@ -1,0 +1,135 @@
+# The app-caches module: the cache folder an installed app keeps in `home/Library/Caches`, named by its bundle id (the
+# app's own id, a helper's, or an id under it such as an updater's). The folder is emptied, never removed, since the app
+# writes there as it works. An installed app is a `[[case.app]]`; the sandbox's apps declare no helpers, so a helper's
+# folder is the fixtures' and the core e2e's. Files are small and filled with data, so the map's numbers are blocks. A
+# removed app's cache here has no saved state, so `app-leftovers` would not claim it either. An open app is shared by
+# every case of a file, so `app-caches-app-open.toml` is a file of its own. The names are apart from every other case
+# file's, so no path is written twice in `npm run sandbox -- all`.
+feature = "app-caches"
+module = "app-caches"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a name that is not an app's id is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/OtherTool/x"
+size = 4096
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/Library/Caches/OtherTool"
+
+[[case]]
+name = "Apple's caches are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/com.apple.Maps/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "Fresher's own cache is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/io.github.alexsergey.fresher.dev/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a removed app's cache is not this module's"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/com.example.Lost/Cache.db"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a vendor's folder above an installed app's id is never claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Writer.app"
+bundle-id = "com.example.Writer"
+name = "Writer"
+[[case.file]]
+path = "home/Library/Caches/com.example/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a link named like an installed app's id is never claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Reader.app"
+bundle-id = "com.example.Reader"
+name = "Reader"
+[[case.symlink]]
+path = "home/Library/Caches/com.example.Reader.Linked"
+target = "../../Projects/kept"
+[[case.file]]
+path = "home/Projects/kept/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a cache holding a socket is kept"
+kind = "negative"
+[[case.app]]
+path = "Applications/Busy.app"
+bundle-id = "com.example.Busy"
+name = "Busy"
+[[case.file]]
+path = "home/Library/Caches/com.example.Busy/x"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/com.example.Busy/s"
+kind = "socket"
+[[case.left-out]]
+category = "app-caches.library-caches"
+reason = "app-caches.left-out.special"
+items = 1
+
+# Then the positive cases.
+
+[[case]]
+name = "an installed app's cache is emptied"
+kind = "positive"
+[[case.app]]
+path = "Applications/Scribe.app"
+bundle-id = "com.example.Scribe"
+name = "Scribe"
+[[case.file]]
+path = "home/Library/Caches/com.example.Scribe/Cache.db"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/com.example.Scribe/fsCachedData/a"
+size = 2048
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/com.example.Scribe"
+category = "app-caches.library-caches"
+danger = "low"
+after-cleanup = "emptied"
+[case.map]
+part = "explained"
+at = "home/Library/Caches/com.example.Scribe"
+
+[[case]]
+name = "an updater's cache under the app's id is emptied"
+kind = "positive"
+[[case.app]]
+path = "Applications/Player.app"
+bundle-id = "com.example.Player"
+name = "Player"
+[[case.file]]
+path = "home/Library/Caches/com.example.Player.ShipIt/update.zip"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/com.example.Player.ShipIt"
+category = "app-caches.library-caches"
+danger = "low"
+after-cleanup = "emptied"

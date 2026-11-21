@@ -1,0 +1,13 @@
+# The places the installed app caches module looks in (plan 030, design section 1), one row per place.
+# `id`: the row's id, kebab case: the start of its findings' identities (`<id>/<folder name>`).
+# `category`: the module's category the row's findings are in.
+# `folder`: the known folder the row's place is under, as rules write it.
+# `path`: plain folder names, then `*`: the `*` matches only a name shaped as a bundle id (`com.example.App`), the
+#   same interest as the `caches` row of `app-leftovers`; `Caches/JetBrains` and `Caches/Homebrew` stay open to their
+#   own modules.
+
+[[place]]
+id = "library-caches"
+category = "app-caches.library-caches"
+folder = "app-caches"
+path = "*"

@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { COMMANDS } from '../src/ipc';
+import { APP_CACHES_DICTIONARY } from '../src/test/app-caches-scan';
 import { APP_LEFTOVERS_DICTIONARY } from '../src/test/app-leftovers-scan';
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
 import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
@@ -214,6 +215,21 @@ const openLocalAiModels = (
   page: Page,
   script: typeof SCRIPTS.localAiModels | typeof SCRIPTS.localAiModelsLmStudioOpen = SCRIPTS.localAiModels,
 ): Promise<void> => scanned(page, script);
+
+// The installed app caches module's own texts, as its locale file has them.
+const ac = (key: string): string => {
+  const value = APP_CACHES_DICTIONARY[`app-caches.${key}`];
+  if (value === undefined) {
+    throw new Error(`no text app-caches.${key}`);
+  }
+
+  return value;
+};
+
+const AC_NAME = ac('library-caches.name');
+
+// The installed app caches script, scanned.
+const openAppCaches = (page: Page): Promise<void> => scanned(page, SCRIPTS.appCaches);
 
 // The unused toolchains module's own texts, as its locale file has them.
 const ut = (key: string): string => {
@@ -465,6 +481,17 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select all ${SP_DEPENDENCIES}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('1.3 GB');
+  });
+
+  test("an open app's cache cannot be selected", async ({ page }) => {
+    await openAppCaches(page);
+    await openDetails(page, AC_NAME);
+
+    await expect(details(page)).toContainText(`1 item left out (90 MB): ${ac('left-out.app-open')}`);
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select all ${AC_NAME}` }).check();
+    await expect(selectionBar(page)).toContainText('3 items selected');
+    await expect(selectionBar(page)).not.toContainText('90 MB');
   });
 
   test('a local AI model kept while LM Studio is open cannot be selected', async ({ page }) => {
@@ -1800,6 +1827,84 @@ test.describe('positive cases', () => {
 
     await expect(page.getByRole('switch', { name: ai('enabled.label') })).toBeChecked();
     await expect(page.getByText(ai('enabled.description'))).toBeVisible();
+  });
+
+  test('caches of your apps show their card with its size and item count', async ({ page }) => {
+    await openAppCaches(page);
+
+    await expect(cards(page).filter({ hasText: AC_NAME })).toBeVisible();
+    await expect(cards(page).filter({ hasText: AC_NAME })).toContainText('1.1 GB');
+    await expect(cards(page).filter({ hasText: AC_NAME })).toContainText('3 items');
+  });
+
+  test('the caches of your apps show their danger and their four texts', async ({ page }) => {
+    await openAppCaches(page);
+
+    await openDetails(page, AC_NAME);
+
+    const category = details(page);
+    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('Low');
+    for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(category).toContainText(ac(`library-caches.${text}`));
+    }
+  });
+
+  test("a cache's finding names its app and its size", async ({ page }) => {
+    await openAppCaches(page);
+
+    await openDetails(page, AC_NAME);
+
+    const items = details(page);
+    await expect(items).toContainText('Editor: com.example.Editor.Helper');
+    await expect(items).toContainText('Player: com.example.Player.ShipIt');
+    const reason = ac('reason');
+    await expect(items).toContainText(reason.replaceAll('{app}', 'Editor').replace('{size}', '920 MB'));
+    await expect(items).toContainText(reason.replaceAll('{app}', 'Player').replace('{size}', '64 MB'));
+  });
+
+  test('selecting app caches makes the review name Low', async ({ page }) => {
+    await openAppCaches(page);
+
+    await page.getByRole('checkbox', { name: `Select ${AC_NAME}` }).check();
+
+    await expect(selectionBar(page)).toContainText('3 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await expect(dialog).toContainText('Low');
+    await expect(dialog).toContainText(ac('library-caches.if-removed'));
+  });
+
+  test("an app's cache is emptied and comes back by put back", async ({ page }) => {
+    await openAppCaches(page);
+    await openDetails(page, AC_NAME);
+    await page.getByRole('checkbox', { exact: true, name: 'Select Editor' }).check();
+    await page.getByRole('checkbox', { name: 'Select Editor: com.example.Editor.Helper' }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 2 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const emptied = items.getByRole('listitem').filter({ hasText: 'com.example.Editor.Helper' });
+    await expect(emptied).toContainText('Emptied. The folder itself stays.');
+    const item = items.getByRole('listitem').filter({ hasText: /^com\.example\.Editor(?!\.)/ });
+    await expect(item).toContainText('In the Trash.');
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the switch for caches of your apps', async ({ page }) => {
+    await mockCore(page, SCRIPTS.appCaches);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: ac('enabled.label') })).toBeChecked();
+    await expect(page.getByText(ac('enabled.description'))).toBeVisible();
   });
 
   test('unused toolchain versions show on Scan with their size', async ({ page }) => {

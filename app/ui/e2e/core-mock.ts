@@ -15,6 +15,15 @@ import type {
 
 import { type CommandKey, COMMANDS } from '../src/ipc';
 import {
+  APP_CACHES_DICTIONARY,
+  APP_CACHES_FINDINGS,
+  APP_CACHES_MODULES,
+  APP_CACHES_OVERVIEW,
+  APP_CACHES_SCAN,
+  APP_CACHES_SETTINGS,
+  APP_CACHES_TOTALS,
+} from '../src/test/app-caches-scan';
+import {
   APP_LEFTOVERS_DICTIONARY,
   APP_LEFTOVERS_FINDINGS,
   APP_LEFTOVERS_MEANING,
@@ -28,6 +37,7 @@ import {
 import {
   CLEANUP_DICTIONARY,
   DELETED_DETAIL,
+  emptiedDetailOf,
   HISTORY,
   INTERRUPTED_DETAIL,
   MOVED_DETAIL,
@@ -745,6 +755,40 @@ const STALE_PROJECTS_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The engine removes every emptied folder from the results, even one that kept an entry, so none of Editor's two stays.
+// The cleanup of Editor's two folders: the first is emptied into the Trash (two entries went), the second held nothing
+// that could go, so nothing of it is in the Trash. One item stays, 64 MB.
+const appCachesCleanup = (): CleanupScript => {
+  const plan = planOf(APP_CACHES_FINDINGS.filter(({ id }) => id === 701 || id === 702));
+  const detail = emptiedDetailOf(plan, 3, 1_735_819_200, [
+    { moved: 2, skipped: 0 },
+    { moved: 0, skipped: 1 },
+  ]);
+
+  return {
+    after: {
+      ...APP_CACHES_OVERVIEW,
+      found: sizedOf(64_000_000),
+      totals: APP_CACHES_TOTALS.map((total) => ({ ...total, count: 1, sizes: sizedOf(64_000_000) })),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 920_000_000 },
+    outcomes: [
+      { kind: 'emptied', moved: 2, skipped: 0 },
+      { kind: 'emptied', moved: 0, skipped: 1 },
+    ],
+  };
+};
+
+// What the app caches script answers before a scan: the module, its texts and settings.
+const APP_CACHES_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...APP_CACHES_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: APP_CACHES_MODULES,
+  getSettings: APP_CACHES_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // The cleanup of the first local AI model (`meta/tiny`): the Hugging Face models stay with one model, 2 GB wait.
 const localAiModelsCleanup = (): CleanupScript => {
   const detail = movedDetailOf(planOf(LOCAL_AI_MODELS_FINDINGS.filter(({ id }) => id === 501)), 3, 1_735_819_200);
@@ -844,6 +888,14 @@ const TEMP_ANSWERS = {
 
 // The scripts the flows and the screenshots play.
 export const SCRIPTS = {
+  // The installed app caches scan, streamed at once; the cleanup empties Editor's two folders.
+  appCaches: {
+    answers: APP_CACHES_ANSWERS,
+    cleanup: appCachesCleanup(),
+    ignoring: true,
+    scan: APP_CACHES_SCAN,
+    scanned: APP_CACHES_OVERVIEW,
+  },
   // The removed apps' leftovers scan, streamed at once, with cleanup, ignoring and its storage meaning.
   appLeftovers: {
     answers: APP_LEFTOVERS_ANSWERS,

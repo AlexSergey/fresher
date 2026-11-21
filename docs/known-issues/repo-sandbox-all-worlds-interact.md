@@ -13,6 +13,10 @@ the whole sandbox, so `app-leftovers.toml`'s positives (and any module's that as
 joins as Spotlight does: the most restrictive wins, so `downloads-denied.toml` denies Downloads for every case file of
 `all`, and `downloads.toml`'s positives are not offered there.
 
+The installed-app worlds interact too: in `all`, `app-caches` offers the cache of every app installed by any file, so
+`app-leftovers.toml`'s installed Editor (its `Library/Caches/com.example.Editor`) is offered by `app-caches` there, which
+that file's checklist does not say.
+
 `all` orders the case files by file name without `.toml` (so a base file precedes its variants) and leaves out whole a
 case file that writes a path an earlier file wrote, naming it on stderr and in the checklist; a left-out file is
 written by name (`npm run sandbox -- <name>`). The `unused-toolchains*` files do: rustup's `settings.toml` and nvm's

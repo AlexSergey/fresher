@@ -1,0 +1,14 @@
+# The ids the installed app caches module never claims (plan 030, design section 1). An entry only ever keeps.
+# `prefix`: an id prefix ending with `.`; every id that starts with it is kept, case ignored.
+# `id`: one bundle id; it and every id under it (`<id>.Helper`) are kept.
+# `why`: the reason, for the reader.
+# An entry has exactly one of `prefix` and `id`. The `com.apple.` entry must stay. An entry for an app whose cache
+# holds what does not come back is added from what a run on a real Mac shows (plan 030, 03/02).
+
+[[exclude]]
+prefix = "com.apple."
+why = "Apple's own apps and the system's services"
+
+[[exclude]]
+id = "io.github.alexsergey.fresher"
+why = "Fresher's own files"

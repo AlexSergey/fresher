@@ -1,0 +1,428 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "empty",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Caches/com.example.Player.ShipIt",
+        "trash": "in-trash"
+      },
+      {
+        "action": "empty",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 2,
+          "skipped": 0
+        },
+        "path": "home/Library/Caches/com.example.Scribe",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.example.Player",
+      "category": "app-caches.library-caches",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Caches/com.example.Player.ShipIt"
+    },
+    {
+      "app": "com.example.Scribe",
+      "category": "app-caches.library-caches",
+      "danger": "low",
+      "logical": 6144,
+      "module": "app-caches",
+      "subject": "home/Library/Caches/com.example.Scribe"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "app-caches.library-caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "app-caches.left-out.special"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Caches/OtherTool",
+        "case": "a name that is not an app's id is never claimed",
+        "path": [
+          "home/Library/Caches/OtherTool"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Library/Caches/OtherTool"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Caches/com.example.Scribe",
+        "case": "an installed app's cache is emptied",
+        "path": [
+          "home/Library/Caches/com.example.Scribe"
+        ],
+        "rows": [
+          {
+            "allocated": 8192,
+            "explained": 8192,
+            "logical": 6144,
+            "path": "home/Library/Caches/com.example.Scribe"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 12288,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 28672,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67109053,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738156355,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 111,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Busy.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Busy.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 357,
+        "path": "Applications/Busy.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Busy.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Player.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Player.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 361,
+        "path": "Applications/Player.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Player.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Reader.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Reader.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 361,
+        "path": "Applications/Reader.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Reader.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Scribe.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Scribe.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 361,
+        "path": "Applications/Scribe.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Scribe.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Writer.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Writer.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 361,
+        "path": "Applications/Writer.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Writer.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/fsCachedData"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "home/.Trash/fsCachedData/a"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/update.zip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/OtherTool"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/OtherTool/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.apple.Maps"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.apple.Maps/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Busy"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Busy/s"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Busy/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Lost"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Lost/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Player.ShipIt"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Reader.Linked"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Scribe"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/io.github.alexsergey.fresher.dev"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/io.github.alexsergey.fresher.dev/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects/kept"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Projects/kept/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 325,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 41149
+  }
+}

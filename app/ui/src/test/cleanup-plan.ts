@@ -243,8 +243,17 @@ export const reportOf = (
     counts[countKey(outcome)] += 1;
   }
 
-  const sizesWhere = (kind: ItemOutcome['kind']): Sizes =>
-    sumOf(items.filter((_, at) => all[at]?.kind === kind).map((item) => item.sizes));
+  // An emptied folder's contents count once, under the cleanup's method: moved to the Trash, or deleted.
+  const sizesWhere = (kind: 'deleted' | 'moved'): Sizes =>
+    sumOf(
+      items
+        .filter((_, at) => {
+          const outcome = all[at]?.kind;
+
+          return outcome === kind || (outcome === 'emptied' && kind === (method === 'trash' ? 'moved' : 'deleted'));
+        })
+        .map((item) => item.sizes),
+    );
 
   return { counts, deleted: sizesWhere('deleted'), ended, measured, method, moved: sizesWhere('moved') };
 };
@@ -340,6 +349,30 @@ export const movedDetailOf = (plan: CleanupPlanView, cleanup: CleanupId, started
   summary: cleanupSummaryOf(cleanup, reportOf(plan, { measured: 100_000_000 }), { started }),
 });
 
+// A cleanup that emptied every folder of `plan` into the Trash, each with what went and what stayed: an item whose
+// entries went is still in the Trash, one with none is not.
+export const emptiedDetailOf = (
+  plan: CleanupPlanView,
+  cleanup: CleanupId,
+  started: number,
+  emptied: readonly { readonly moved: number; readonly skipped: number }[],
+): CleanupDetail => {
+  const outcomes = emptied.map((counts) => ({ kind: 'emptied' as const, ...counts }));
+  const items = movedItems(plan).map((item, at): CleanupItemView => ({
+    ...item,
+    outcome: outcomes[at] ?? item.outcome,
+    trash: emptied[at]?.moved === 0 ? null : 'in-trash',
+  }));
+
+  return {
+    items,
+    summary: cleanupSummaryOf(cleanup, reportOf(plan, { measured: 100_000_000, outcomes }), {
+      inTrash: items.filter((item) => item.trash === 'in-trash').length,
+      started,
+    }),
+  };
+};
+
 // Cleanup 3: the demo plan moved to the Trash, every item still there.
 export const MOVED_DETAIL: CleanupDetail = {
   items: movedItems(DEMO_PLAN),
@@ -384,6 +417,7 @@ export const CLEANUP_DICTIONARY: Dictionary = {
   'core.cleanup.ended.stopped':
     'Stopped because the cleanup history could not be saved. The items after that point were not touched.',
   'core.cleanup.outcome.deleted': 'Deleted permanently.',
+  'core.cleanup.outcome.emptied': 'Emptied. The folder itself stays.',
   'core.cleanup.outcome.moved': 'Moved to the Trash.',
   'core.cleanup.outcome.not-reached': 'Not removed: the cleanup stopped before this item.',
   'core.cleanup.outcome.unknown': 'Unknown: Fresher stopped during this cleanup. Check the Trash.',

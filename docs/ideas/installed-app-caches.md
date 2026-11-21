@@ -2,6 +2,14 @@
 
 **Since:** 2026-11-19 · **Proposed by:** the agent
 
+Built by plan [030](../plans/030-installed-app-caches/readme.md) (2026-11-21) as the module `app-caches`: the folders
+`~/Library/Caches/<bundle id>` that an installed app owns (its id, a helper's, or an id under them), one finding per
+folder, Low, emptied into the Trash while the app and its helpers are closed. The web-engine caches in apps' support
+folders, browsers, game launchers, the Metal shader cache, containers and Apple's apps are
+[deferred](../deferred/installed-app-caches-more-places.md). The open questions are answered there: the generic finder
+waits for a table that ties a folder to its app by bundle id (the layout alone cannot name the owner); a chat or music
+app's offline data in its cache is a cache, at Low, and the texts say it downloads again.
+
 ## Problem
 
 Apps the user still uses keep large caches that nobody empties: chat and music apps, editors built on a web engine,

@@ -656,6 +656,7 @@ mod tests {
                     "temp",
                     "dev-caches",
                     "app-leftovers",
+                    "app-caches",
                     "downloads",
                     "stale-projects",
                     "local-ai-models",

@@ -16,8 +16,8 @@ confirmation screen, and the confirmation names the highest level among the sele
 
 | Level      | Meaning                                                                                          | Examples                                                                   |
 | ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | app caches, logs, Xcode derived data, a removed app's caches               |
-| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download, an unused Rust toolchain |
+| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | logs, Xcode derived data, a removed app's caches, an IDE's caches          |
+| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download, an unused Rust toolchain |
 | **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, unused Docker images, an unused Node version |
 | **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder, a big download you have not opened |
 
@@ -71,6 +71,7 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `app-leftovers.caches` | Safe | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-caches.md`](./app-leftovers-caches.md) |
 | `app-leftovers.settings` | Medium | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-settings.md`](./app-leftovers-settings.md) |
 | `app-leftovers.data` | High | none (the module's code, `modules/app-leftovers`) | [`app-leftovers-data.md`](./app-leftovers-data.md) |
+| `app-caches.library-caches` | Low | none (the module's code, `modules/app-caches`) | [`app-caches-library-caches.md`](./app-caches-library-caches.md) |
 | `downloads.unfinished` | Low | none (the module's code, `modules/downloads`) | [`downloads-unfinished.md`](./downloads-unfinished.md) |
 | `downloads.safari-resumable` | Medium | none (the module's code, `modules/downloads`) | [`downloads-safari-resumable.md`](./downloads-safari-resumable.md) |
 | `downloads.installers` | Low | none (the module's code, `modules/downloads`) | [`downloads-installers.md`](./downloads-installers.md) |

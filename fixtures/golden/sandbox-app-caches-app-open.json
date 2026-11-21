@@ -1,0 +1,222 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "empty",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Caches/com.example.Notes",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.example.Notes",
+      "category": "app-caches.library-caches",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Caches/com.example.Notes"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "app-caches.library-caches",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "app-caches.left-out.app-open"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 4096,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 4096,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67109924,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738188252,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 120,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Mailer.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Mailer.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 361,
+        "path": "Applications/Mailer.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Mailer.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Notes.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Notes.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 359,
+        "path": "Applications/Notes.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Notes.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Mailer"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Mailer/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 220,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 9252
+  }
+}

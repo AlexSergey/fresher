@@ -2,7 +2,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::time::SystemTime;
 
-use fresher_core::{Access, DangerLevel, GuardedFolder, SkipCode, Timestamp};
+use fresher_core::{Access, DangerLevel, GuardedFolder, ModuleId, SkipCode, Timestamp};
 use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
 use crate::generate::LeftOutFile;
@@ -24,7 +24,7 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
             .into_iter()
             .flat_map(|kind| file.cases().iter().filter(move |case| case.kind() == kind));
         for case in ordered {
-            let _ = writeln!(text, "- [ ] **{}**: {}.", case.name(), sentence(case));
+            let _ = writeln!(text, "- [ ] **{}**: {}.", case.name(), sentence(case, file.module()));
             for app in case.tree().apps() {
                 let open = case.running_apps().any(|running| running.path == app.path);
                 let _ = writeln!(text, "  - {}{}.", installed(app), if open { " (open)" } else { "" });
@@ -78,10 +78,14 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
     text
 }
 
-/// What must happen to the case, in one sentence.
-fn sentence(case: &Case) -> String {
+/// What must happen to the case, in one sentence. A negative of a file that names its module reads "never offered by
+/// `<module>`", one of a file with no module "never offered".
+fn sentence(case: &Case, module: Option<ModuleId>) -> String {
     match case.expect() {
-        None => format!("never offered: {}; still there after the cleanup", top_paths(case)),
+        None => {
+            let by = module.map_or_else(String::new, |module| format!(" by `{}`", module.as_str()));
+            format!("never offered{by}: {}; still there after the cleanup", top_paths(case))
+        }
         Some(expect) => format!(
             "offered in *{}* ({}): `{}`; {}",
             expect.category().as_str(),
@@ -285,6 +289,17 @@ reason = "in-use"
                 "never offered: `home/work/fresher-trial-cache2`, `home/other.bin`; still there after the cleanup."
             ));
             assert!(!text.contains("look-alike.bin"));
+        }
+
+        #[test]
+        fn a_negative_of_a_file_with_a_module_names_the_module() {
+            let cases = CASES.replace("feature = \"trial\"\n", "feature = \"trial\"\nmodule = \"trial\"\n");
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            assert!(text.contains(
+                "never offered by `trial`: `home/work/fresher-trial-cache2`, `home/other.bin`; still there after the cleanup."
+            ));
         }
     }
 

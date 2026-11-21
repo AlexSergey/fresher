@@ -225,6 +225,22 @@ doubt keeps all of the id's leftovers, each reported as a `left_out` with its re
 (`exclude.toml`) keeps `com.apple` and system components. Group Containers and launch agents are not places of the
 module. A leftover that is a socket or not the user's is left out alone (`decide_item`), the rest of the id is offered.
 
+**`app-caches` is code with data tables, and the example of a module that shares an interest and claims the other
+half**: its one place (`places.toml`) is the same `Caches/*` shaped to bundle ids (`Interest::only_bundle_ids()`) that
+`app-leftovers` has, so the walk reports each id-named folder to both modules and each decides. `app-caches` claims
+exactly what `app-leftovers`' row 4 leaves unclaimed: the folder of an installed app, found by `BundleId::names` over
+`installed_apps()` and the apps' helpers (the id itself, a helper's, or an id under one; the longest naming id wins,
+never a vendor prefix or a sibling id); a removed app's is `app-leftovers`' and nobody's else, and no folder is ever
+offered by both (the core e2e asserts it). The folders are gathered in `on_match` and decided in `finish` by a pure
+function (`decide.rs`, eleven rows, the same questions as `dev-caches`): the installed apps are asked once, and the
+running apps only when a candidate reaches the row that needs them (a folder whose app or helper runs is left out
+`app-open`). The exclusion table (`exclude.toml`: `com.apple.` and Fresher's own id) keeps what is never claimed. It is
+the first real module whose removal is `Removal::EmptyFolder`: the folder stays and its entries go to the Trash one by
+one (the cleaner's `Emptied`), and one finding is one folder, named after its app and counted in the app's line of the
+storage map (`NewFinding::for_app`). The web-engine caches in `Application Support`, browsers' and game launchers'
+caches are named after the app's name, not its bundle id, so they wait for a table that ties a name to an id
+([`deferred`](../deferred/installed-app-caches-more-places.md)).
+
 **`downloads` is code with data tables, and the example of a module whose categories need a guarded folder**: every
 category declares `Need::required(Capability::Folder(GuardedFolder::Downloads))`, so the module is unavailable, and
 nothing in `~/Downloads` is read, until the user allowed the folder; the engine then runs it in the scan that first

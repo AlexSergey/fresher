@@ -1,0 +1,25 @@
+# A home for the app-caches module where every folder belongs to an installed app and is kept for its own reason:
+# `com.example.Busy` holds a socket (stated: a socket's path is too long to make here); `com.example.Locked` holds a
+# file with the user's lock (stated); `com.example.Open`'s app is running; `com.example.Agent`'s app is closed and only
+# its helper `com.example.Agent.Menu` runs. Scanned with the running apps failing, the last two are kept for that.
+
+[[file]]
+path = "Library/Caches/com.example.Busy/data.db"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example.Busy/x.sock"
+kind = "socket"
+
+[[file]]
+path = "Library/Caches/com.example.Locked/Cache.db"
+size = 4096
+flags = ["user-lock"]
+
+[[file]]
+path = "Library/Caches/com.example.Open/Cache.db"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example.Agent/Cache.db"
+size = 4096

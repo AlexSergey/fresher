@@ -1,0 +1,16 @@
+{
+  "app-caches.library-caches.name": "Caches of your apps",
+  "app-caches.library-caches.what": "Files your installed apps keep in your Library's Caches folder to open and work faster, one folder per app.",
+  "app-caches.library-caches.made-by": "The apps themselves; each item names its app.",
+  "app-caches.library-caches.if-removed": "What is inside the folder goes to the Trash and the folder stays. Your documents and the app's settings are kept elsewhere and stay.",
+  "app-caches.library-caches.comes-back": "Yes, the app makes it again as it needs it. Its next start may be slower, and an app that kept music, videos or maps for offline use downloads them again.",
+  "app-caches.enabled.label": "Caches of your apps",
+  "app-caches.enabled.description": "Finds the caches your installed apps keep for themselves, while each app is closed. The folders are emptied into the Trash; the apps make them again.",
+  "app-caches.title.own": "{app}",
+  "app-caches.title.part": "{app}: {folder}",
+  "app-caches.reason": "{app} keeps {size} here to work faster. It is closed now and makes the cache again when it needs it.",
+  "app-caches.left-out.special": "It holds a connection a running program may be using, so it is kept.",
+  "app-caches.left-out.not-yours": "Some of it belongs to the system or another user, or is locked, often after a command run with sudo. Removing it needs an administrator.",
+  "app-caches.left-out.no-system": "Fresher could not list your open apps, so it keeps this. Scan again.",
+  "app-caches.left-out.app-open": "This app, or a part of it, is open and may be using its cache. Quit it and scan again."
+}

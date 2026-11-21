@@ -1,0 +1,296 @@
+{
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "app-caches.library-caches",
+        "reason": "app-caches.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-caches.library-caches",
+        "reason": "app-caches.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-caches.library-caches",
+        "reason": "app-caches.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-caches.library-caches",
+        "reason": "app-caches.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "app": "com.example.Editor",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "key": {
+          "identity": "library-caches/com.example.Editor",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Editor"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/com.example.Editor"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Editor"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Editor"
+            }
+          },
+          "key": "app-caches.title.own"
+        }
+      },
+      {
+        "app": "com.example.Editor",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "key": {
+          "identity": "library-caches/com.example.Editor.Helper",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Editor"
+            },
+            "size": {
+              "kind": "size",
+              "value": 2048
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/com.example.Editor.Helper"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 2048,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Editor.Helper"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Editor"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "com.example.Editor.Helper"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      },
+      {
+        "app": "com.example.Editor",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "key": {
+          "identity": "library-caches/com.example.Editor.ShipIt",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Editor"
+            },
+            "size": {
+              "kind": "size",
+              "value": 8192
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/com.example.Editor.ShipIt"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Editor.ShipIt"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Editor"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "com.example.Editor.ShipIt"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      },
+      {
+        "app": "com.example.Suite",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "key": {
+          "identity": "library-caches/com.example.Suite",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Suite"
+            },
+            "size": {
+              "kind": "size",
+              "value": 1024
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/com.example.Suite"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 1024,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Suite"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Suite"
+            }
+          },
+          "key": "app-caches.title.own"
+        }
+      },
+      {
+        "app": "com.example.Suite.Pro",
+        "category": "app-caches.library-caches",
+        "danger": "low",
+        "key": {
+          "identity": "library-caches/com.example.Suite.Pro",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Suite Pro"
+            },
+            "size": {
+              "kind": "size",
+              "value": 3072
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/com.example.Suite.Pro"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 3072,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/com.example.Suite.Pro"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Suite Pro"
+            }
+          },
+          "key": "app-caches.title.own"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

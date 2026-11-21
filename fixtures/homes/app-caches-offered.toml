@@ -1,0 +1,23 @@
+# A home for the app-caches module where every folder is offered, in the name of the app that owns it:
+# `com.example.Editor` (the app's own), `com.example.Editor.Helper` (a helper's), `com.example.Editor.ShipIt` (an id
+# under the app's); `com.example.Suite` and `com.example.Suite.Pro` are two installed apps, each the owner of its own.
+
+[[file]]
+path = "Library/Caches/com.example.Editor/Cache.db"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example.Editor.Helper/Cache.db"
+size = 2048
+
+[[file]]
+path = "Library/Caches/com.example.Editor.ShipIt/update.zip"
+size = 8192
+
+[[file]]
+path = "Library/Caches/com.example.Suite/a"
+size = 1024
+
+[[file]]
+path = "Library/Caches/com.example.Suite.Pro/b"
+size = 3072

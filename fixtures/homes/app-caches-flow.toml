@@ -1,0 +1,71 @@
+# The home of the app-caches module's core end-to-end flows (crates/e2e/tests/app_caches.rs), laid out as a sandbox
+# lays out its home (`home/`); the flows add the rest of the sandbox's layout and its marker.
+# The installed `com.example.Editor` keeps a cache of two entries at the top of its folder (a file and a folder of
+# files), its helper `com.example.Editor.Helper` one of a file. The removed `com.example.Gone`, unchanged for 40 days,
+# has a cache and a saved state: `app-leftovers` offers them, `app-caches` never does (no installed app owns the id).
+# Beside them, a `dev-caches` cache (Yarn's), a `jetbrains` older version (WebStorm 2024.3, 2025.3 in use) and Apple's
+# `com.apple.Safari`, which no module claims, all under `Library/Caches`.
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor/Cache.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor/fsCachedData/a.bin"
+size = 2048
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor/fsCachedData/b.bin"
+size = 1024
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor.Helper/Cache.db"
+size = 3072
+fill = "data"
+
+[[dir]]
+path = "home/Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.apple.Safari/Cache.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Yarn/v6/npm-x-1.0/package.json"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 4096
+fill = "data"

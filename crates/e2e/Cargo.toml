@@ -17,6 +17,7 @@ fresher-cleaner = { path = "../cleaner" }
 fresher-core = { path = "../core" }
 fresher-engine = { path = "../engine" }
 fresher-macos = { path = "../macos" }
+fresher-module-app-caches = { path = "../../modules/app-caches" }
 fresher-module-app-leftovers = { path = "../../modules/app-leftovers" }
 fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-dev-caches = { path = "../../modules/dev-caches" }

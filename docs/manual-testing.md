@@ -258,6 +258,25 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] `npm run dev:sandbox -- local-ai-models-ollama-download`: nothing of Ollama is offered, the card says a download
       is in progress.
 
+### 1.13 Caches of installed apps ([030/03/02](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/app-caches && npm run dev:sandbox -- app-caches`. Scan; walk `EXPECTED.md`, negatives first:
+      nothing of a negative is offered by `app-caches` (`OtherTool`, Apple's `com.apple.Maps`, Fresher's own, the
+      removed app's `com.example.Lost`, the vendor's `com.example`, the link `com.example.Reader.Linked`); the socket
+      case reads as kept with its reason; each positive is offered in "Caches of your apps" at Low, titled `Scribe` and
+      `Player: com.example.Player.ShipIt`, each reason naming the app and a size.
+- [ ] The storage map: the offered caches in the explained part, each in its app's line; `home/Library/Caches/OtherTool`
+      in your folders.
+- [ ] Select everything; Review names Low; confirm to the Trash. `home/Library/Caches/com.example.Scribe` is still
+      there and empty, `Cache.db` and `fsCachedData` are in `home/.Trash` (the result counts them as moved to the
+      Trash; the cleanup's detail row is where an item with nothing trashed reads "Emptied. The folder itself stays.").
+      Cleanups, put back: both entries are back inside the folder.
+- [ ] `npm run dev:sandbox -- app-caches-app-open`: Mailer's cache is kept "This app, or a part of it, is open..."; the
+      closed Notes app's is offered.
+- [ ] `npm run dev:sandbox -- app-leftovers`: the installed Editor's caches are offered by "Caches of your apps", and
+      that file's negatives read "never offered by `app-leftovers`", which still holds.
+- [ ] Ignore one cache, then the category, then the module; restore each.
+
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
@@ -515,6 +534,27 @@ du -sh ~/.ollama/models/blobs
       limit; the default host and namespace in `ollama list`'s names; partial download names while `ollama pull` runs
       and that Ollama's server deletes layers no manifest names at its start (both in a throwaway `OLLAMA_MODELS`
       folder, never the real store); what a model loaded while its files move does (the same folder).
+
+### 2.12 Caches of installed apps ([030/03/02](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md))
+
+`npm run dev`, a scan of `~` (a dry run on the real Mac). Compare with these read-only commands:
+
+```sh
+du -sh ~/Library/Caches/*.* 2>/dev/null | sort -h | tail -30
+ls ~/Library/Caches | grep -c '\.'
+mdls -name kMDItemCFBundleIdentifier -raw /Applications/*.app 2>/dev/null | tr '\0' '\n' | sort | head -50
+```
+
+- [ ] Every offered cache is named after an installed app's id, a helper's, or an id under the app's; its size matches
+      `du`; its title names the right app.
+- [ ] Nothing of Apple's, nothing of Fresher's own, and no removed app's cache is offered by this module; a removed
+      app's cache still goes to `app-leftovers` when it is proven and old.
+- [ ] An open app's cache is left out; quit it and rescan: it is offered.
+- [ ] Facts to verify, corrected in the code, the texts and `docs/categories/app-caches-library-caches.md` where they
+      differ: the largest ten caches offered, looked at read-only for what does not come back (an app that keeps such
+      data gets an `exclude.toml` row with its why); how many small findings a real Mac shows (under 1 MB), and
+      whether a size floor is needed; an app with an always-running helper (a menu bar agent): whether its cache is
+      never offered; an updater's cache holding a pending update.
 
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 
@@ -799,6 +839,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)            | pending                        | 1.9, 2.8      |
 | [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)            | pending                        | 1.11, 2.10 |
 | [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)            | pending                        | 1.12, 2.11 |
+| [030/03/02 runs and conclusions](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md)      | pending                        | 1.13, 2.12    |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

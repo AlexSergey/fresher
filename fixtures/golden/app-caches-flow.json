@@ -1,0 +1,597 @@
+{
+  "journal": [
+    {
+      "format": "cleanup-journal",
+      "version": 2
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "items": [
+        {
+          "action": "empty",
+          "category": "app-caches.library-caches",
+          "danger": "low",
+          "key": "library-caches/com.example.Editor",
+          "more": [],
+          "path": "~/home/Library/Caches/com.example.Editor",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Editor"
+              },
+              "size": {
+                "kind": "size",
+                "value": 7168
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 12288,
+            "completeness": "complete",
+            "logical": 7168,
+            "reclaimable": 12288
+          }
+        },
+        {
+          "action": "empty",
+          "category": "app-caches.library-caches",
+          "danger": "low",
+          "key": "library-caches/com.example.Editor.Helper",
+          "more": [],
+          "path": "~/home/Library/Caches/com.example.Editor.Helper",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Editor"
+              },
+              "size": {
+                "kind": "size",
+                "value": 3072
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 3072,
+            "reclaimable": 4096
+          }
+        }
+      ],
+      "method": "trash",
+      "roots": [
+        "~"
+      ],
+      "space": [],
+      "type": "begin"
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Cache.db",
+          "original": "~/home/Library/Caches/com.example.Editor.Helper/Cache.db"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 2,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Cache.db",
+          "original": "~/home/Library/Caches/com.example.Editor/Cache.db"
+        },
+        {
+          "landed": "~/home/.Trash/fsCachedData",
+          "original": "~/home/Library/Caches/com.example.Editor/fsCachedData"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "ended": "completed",
+      "space": [],
+      "type": "end"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    }
+  ],
+  "leftOut": [],
+  "offered": [
+    [
+      "app-caches.library-caches",
+      "home/Library/Caches/com.example.Editor"
+    ],
+    [
+      "app-caches.library-caches",
+      "home/Library/Caches/com.example.Editor.Helper"
+    ],
+    [
+      "app-leftovers.caches",
+      "home/Library/Caches/com.example.Gone"
+    ],
+    [
+      "app-leftovers.caches",
+      "home/Library/Saved Application State/com.example.Gone.savedState"
+    ],
+    [
+      "dev-caches.yarn",
+      "home/Library/Caches/Yarn"
+    ],
+    [
+      "jetbrains.caches",
+      "home/Library/Caches/JetBrains/WebStorm2024.3"
+    ]
+  ],
+  "outcomes": [
+    [
+      "home/Library/Caches/com.example.Editor",
+      {
+        "kind": "emptied",
+        "moved": 2,
+        "skipped": 0
+      }
+    ],
+    [
+      "home/Library/Caches/com.example.Editor.Helper",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ]
+  ],
+  "plan": {
+    "groups": [
+      {
+        "action": "empty",
+        "category": "app-caches.library-caches",
+        "items": [
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Caches/com.example.Editor",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 7168
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 12288,
+              "completeness": "complete",
+              "logical": 7168,
+              "reclaimable": 12288
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                }
+              },
+              "key": "app-caches.title.own"
+            }
+          },
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Caches/com.example.Editor.Helper",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 3072
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 3072,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                },
+                "folder": {
+                  "kind": "text",
+                  "value": "com.example.Editor.Helper"
+                }
+              },
+              "key": "app-caches.title.part"
+            }
+          }
+        ],
+        "summary": {
+          "count": 2,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 16384,
+            "completeness": "complete",
+            "logical": 10240,
+            "reclaimable": 16384
+          }
+        }
+      }
+    ],
+    "leftOut": [],
+    "permanentAvailable": true,
+    "plan": 1,
+    "summary": {
+      "count": 2,
+      "highest": "low",
+      "irreversible": 0,
+      "sizes": {
+        "allocated": 16384,
+        "completeness": "complete",
+        "logical": 10240,
+        "reclaimable": 16384
+      }
+    }
+  },
+  "putBack": {
+    "items": [
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      }
+    ]
+  },
+  "treeAfterCleanup": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3072,
+        "path": ".Trash/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/fsCachedData"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": ".Trash/fsCachedData/a.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1024,
+        "path": ".Trash/fsCachedData/b.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn/v6"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn/v6/npm-x-1.0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Yarn/v6/npm-x-1.0/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.apple.Safari"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.apple.Safari/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor.Helper"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Gone"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Gone/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State/com.example.Gone.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Saved Application State/com.example.Gone.savedState/data.data"
+      }
+    ],
+    "total_logical_size": 34816
+  },
+  "treeAfterPutBack": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn/v6"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn/v6/npm-x-1.0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Yarn/v6/npm-x-1.0/package.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.apple.Safari"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.apple.Safari/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor.Helper"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3072,
+        "path": "Library/Caches/com.example.Editor.Helper/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Editor/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor/fsCachedData"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2048,
+        "path": "Library/Caches/com.example.Editor/fsCachedData/a.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1024,
+        "path": "Library/Caches/com.example.Editor/fsCachedData/b.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Gone"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Gone/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State/com.example.Gone.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Saved Application State/com.example.Gone.savedState/data.data"
+      }
+    ],
+    "total_logical_size": 34816
+  }
+}

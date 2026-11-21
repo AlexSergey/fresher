@@ -256,6 +256,8 @@ mod positive {
     use crate::harness::{case_file_names, read_case_file, registered_modules, run};
 
     case_files! {
+        app_caches => "app-caches",
+        app_caches_app_open => "app-caches-app-open",
         app_leftovers => "app-leftovers",
         app_leftovers_spotlight_off => "app-leftovers-spotlight-off",
         cleanup_guards => "cleanup-guards",

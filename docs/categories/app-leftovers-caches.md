@@ -46,7 +46,9 @@ is claimed only when its name, without the row's suffix, is a bundle id (`com.ex
 
 Never offered: a name that is not an id (`Notes`, `Cookies.binarycookies`), anything of Apple's (`com.apple.`), group
 containers, launch agents, an app's container (it is not read, see below), and the files of an app that is installed,
-open or found elsewhere. Matching is by id only, never by name. The items go to the Trash; the app runs no command, and
+open or found elsewhere. The caches of an installed app are offered by
+[Caches of your apps](./app-caches-library-caches.md) instead, while the app is closed. Matching is by id only, never
+by name. The items go to the Trash; the app runs no command, and
 an item a process holds open when you confirm is skipped. If the app is on a drive that is not connected now, nothing
 can find it: its files wait the days unchanged, each finding says to keep them in that case, and you confirm each.
 

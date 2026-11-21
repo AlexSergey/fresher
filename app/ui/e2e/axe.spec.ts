@@ -220,6 +220,7 @@ test.describe('positive cases', () => {
       ['jetbrains', 'Settings and plugins of older JetBrains IDE versions', '2 items left out (600 MB)'],
       ['temp', 'Old temporary files', '4,712 items left out (790 MB)'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)'],
+      ['appCaches', 'Caches of your apps', '1 item left out (90 MB)'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)'],
       ['staleProjects', 'Packages of old projects', '2 items left out (1.3 GB)'],

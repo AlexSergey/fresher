@@ -1,0 +1,49 @@
+# A home for the app-caches module where nothing under `Library/Caches` may be claimed, scanned with `com.example.Editor`
+# installed (its helper is `com.example.Editor.Helper`): `SomeTool` is not an id; `com.apple.Safari` is Apple's;
+# `io.github.alexsergey.fresher` and `.dev` are Fresher's own; `com.example.Gone` has no installed app (the leftovers
+# module decides it); `com.example` is the vendor prefix of an installed app's id; `com.example.Editorx` is a sibling
+# id; `com.example.Editor.Linked` is a link to a folder outside; `com.example.Editor.plist` is a file;
+# `com.example.Editor.Empty` holds nothing.
+
+[[file]]
+path = "Library/Caches/SomeTool/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.apple.Safari/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/io.github.alexsergey.fresher/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/io.github.alexsergey.fresher.dev/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example.Editorx/x"
+size = 4096
+
+[[symlink]]
+path = "Library/Caches/com.example.Editor.Linked"
+target = "../../elsewhere/Linked"
+
+[[file]]
+path = "elsewhere/Linked/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/com.example.Editor.plist"
+size = 4096
+
+[[dir]]
+path = "Library/Caches/com.example.Editor.Empty"

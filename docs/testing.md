@@ -151,6 +151,12 @@ cleanups of a hundred items through the real journal.
   active on the next scan. `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
   modules' caches under `Library/Caches` still theirs), with scripted installed and open apps, Spotlight's answers, the
   clock and the change journal, every rescan asserted to be one (`fixtures/golden/app-leftovers-flow.json`).
+  `tests/app_caches.rs` runs the `app-caches` module's flows beside the other modules of `Library/Caches` (`jetbrains`,
+  `dev-caches`, `app-leftovers`) over `fixtures/homes/app-caches-flow.toml` with a scripted open app: no folder is
+  offered by both `app-caches` and `app-leftovers`, an open app's folders wait (`app-open`) until a rescan after it
+  quits, a restored scan judges the open apps again, a file held open skips its folder in use with nothing of it moved,
+  a cleanup empties each folder and keeps it with its entries in the Trash, put back returns them beside a file the app
+  wrote since, and the storage map counts both folders in the app's line (`fixtures/golden/app-caches-flow.json`).
   `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
@@ -174,11 +180,12 @@ cleanups of a hundred items through the real journal.
   since moves the offer from one toolchain to another).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
   pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
-  `app_leftovers_home`, `local_ai_models_home`, `local_ai_models_ollama_home`, `unused_toolchains_home`) share one
-  harness there, one file per concern: `home.rs` (the sandbox's layout and the `Flow`), `home_engine.rs` (the engine
-  assembled from the parts a home gives: its modules, its fakes, its avoid list), `home_scan.rs` (the scans and the
-  findings), `home_rescan.rs` (the scripted change journal and a scan that must be a rescan) and `home_cleanup.rs` (the
-  cleanup, the outcomes, the journal's records and the relative report); each home keeps only its module's own.
+  `app_leftovers_home`, `app_caches_home`, `local_ai_models_home`, `local_ai_models_ollama_home`,
+  `unused_toolchains_home`) share one harness there, one file per concern: `home.rs` (the sandbox's layout and the
+  `Flow`), `home_engine.rs` (the engine assembled from the parts a home gives: its modules, its fakes, its avoid list),
+  `home_scan.rs` (the scans and the findings), `home_rescan.rs` (the scripted change journal and a scan that must be a
+  rescan) and `home_cleanup.rs` (the cleanup, the outcomes, the journal's records and the relative report); each home
+  keeps only its module's own.
 - `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
   `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
@@ -200,6 +207,11 @@ cleanups of a hundred items through the real journal.
   `local-ai-models` module with its own texts read from its locale file: models offered, one kept (not the user's),
   and a second script with LM Studio open, where every LM Studio model is left out; the e2e mock plays both
   (`SCRIPTS.localAiModels`, `SCRIPTS.localAiModelsLmStudioOpen`) on Scan's cards and a category's Details.
+  `src/test/app-caches-scan.ts` is the scan of the `app-caches` module in the group System (three Low findings of
+  two apps, each naming its app, and one folder left out `app-open`, texts read from the module's `en.json`); the e2e
+  mock plays it (`SCRIPTS.appCaches`) on the card, the category's Details (visual and axe), the review naming Low, a
+  cleanup that empties and the put back; the "Emptied. The folder itself stays." line is the cleanup detail row of an
+  item whose entries were not trashed, since the result summary counts what went to the Trash.
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
   (one event every so many ms, each asked of Node, as the engine streams), Scan's totals during and after the scan,
@@ -426,6 +438,16 @@ stderr and in `EXPECTED.md`).
 
 The case files:
 
+- `app-caches.toml` and `app-caches-app-open.toml`: the `app-caches` module. A name that is not an app's id, Apple's
+  caches, Fresher's own, a removed app's cache (`app-leftovers`' to decide), a vendor's folder above an installed app's
+  id and a link named like an installed app's id are never claimed; a cache holding a socket is left out (`special`),
+  and, in the second file, an open app's cache is left out (`app-open`); an installed app's cache and an updater's
+  cache under the app's id are emptied (Low, the folder stays, its contents go to the Trash). An installed app is a
+  `[[case.app]]` (the sandbox's apps declare no helpers, so a helper's folder is the fixtures' and the core e2e's);
+  the names are apart from every other file's, so `all` leaves out none of them. The open Mailer of the second file is
+  an installed app (`[[case.app]]` with `running = true`), so `EXPECTED.md` reads "Installed: Mailer (open)". Their
+  checklist sentence names the module, which matters in `npm run dev:sandbox -- app-leftovers`, where the full app
+  also offers that file's installed Editor's cache through `app-caches`.
 - `app-leftovers.toml` and `app-leftovers-spotlight-off.toml`: the `app-leftovers` module. The first: a name that is
   not an app's id, Apple's own files, a tool's files with no app behind them (no saved state proves an app), an
   installed app's files (its helper's and a related id's too), a link at a place, a group container and a container
@@ -663,7 +685,9 @@ the autotest alike: unique names, every negative before every positive, plain re
 two cases writing a path, and `category` and `danger` that exist in the module's descriptor (the danger not below the
 category's); a `[[case.left-out]]` has `items` of at least 1, a category of the descriptor and a reason the category's module
 declares. `EXPECTED.md` in the generated sandbox is the same cases as a checklist, negatives first, one plain
-sentence each, and one more under a case with a `[case.map]`.
+sentence each (a negative reads "never offered by `<module>`", the module the case file names; only a case file that
+declares no module would read "never offered", and every shipped file declares one, `cleanup-guards` and `storage-map`
+the `trial` module), and one more under a case with a `[case.map]`.
 
 `[case.map]` says where the core's by-place view shows the case's files (the UI no longer shows it, plan 027). `at` is
 one of the case's paths or their folders, and is required when the case's first file is at the sandbox's root; the

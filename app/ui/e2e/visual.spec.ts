@@ -204,6 +204,7 @@ test.describe('positive cases', () => {
       ],
       ['temp', 'Old temporary files', '3 items left out (12 MB)', 'category-details-temp.png'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)', 'category-details-dev-caches.png'],
+      ['appCaches', 'Caches of your apps', '1 item left out (90 MB)', 'category-details-app-caches.png'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)', 'category-details-app-leftovers.png'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)', 'category-details-downloads.png'],
       ['staleProjects', 'Packages of old projects', '2 items left out', 'category-details-stale-projects.png'],
