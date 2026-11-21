@@ -39,6 +39,7 @@ pub(crate) fn plan_item(id: u32, action: Action, allocated: u64) -> PlanItem {
     let (subject, removal) = match action {
         Action::Remove(path) => (Subject::Path(path.clone()), Removal::MoveToTrash(path)),
         Action::Empty(path) => (Subject::Path(path.clone()), Removal::EmptyFolder(path)),
+        Action::RemoveTogether(parts) => (Subject::Path(parts.subject().to_path_buf()), Removal::MoveTogether(parts)),
         Action::Tool(command) => {
             (Subject::External { tool: command.tool(), id: format!("{id}") }, Removal::ToolCommand(command))
         }
@@ -316,6 +317,12 @@ impl Rig {
         self.setup.at(relative)
     }
 
+    /// The paths `relative` of the tree removed together, as one item, the first the subject.
+    pub(crate) fn together(&self, relative: &[&str]) -> Action {
+        let parts = relative.iter().map(|path| self.at(path)).collect();
+        Action::RemoveTogether(fresher_core::Parts::new(parts).unwrap())
+    }
+
     pub(crate) fn cx(&self) -> CleanupContext<'_> {
         CleanupContext {
             roots: &self.roots,
@@ -334,6 +341,7 @@ impl Rig {
             .zip(rehearsed)
             .map(|(item, rehearsal)| match rehearsal {
                 fresher_core::Rehearsal::Passed(identity) => item.with_identity(identity),
+                fresher_core::Rehearsal::PassedTogether(identities) => item.with_part_identities(identities),
                 fresher_core::Rehearsal::Skipped(_) => item,
             })
             .collect()

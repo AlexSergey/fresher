@@ -32,8 +32,12 @@ pub(crate) fn to_trash(verified: Verified, _act: Act<'_>, trash: &dyn Trash) -> 
         landed: landed.to_path_buf(),
         identity,
     };
-    let moved =
-        |landed: &Path| Removed { outcome: ItemOutcome::Moved, trashed: vec![trashed(landed, identity)], status: None };
+    let moved = |landed: &Path| Removed {
+        outcome: ItemOutcome::Moved,
+        trashed: vec![trashed(landed, identity)],
+        status: None,
+        went: None,
+    };
     if let Some(reported) = landed.reported.as_deref().filter(|reported| identity_at(reported) == Some(identity)) {
         return moved(reported);
     }
@@ -49,6 +53,7 @@ pub(crate) fn to_trash(verified: Verified, _act: Act<'_>, trash: &dyn Trash) -> 
         outcome: ItemOutcome::Failed { reason: Failure::LandedElsewhere.text() },
         trashed: elsewhere.into_iter().collect(),
         status: None,
+        went: None,
     }
 }
 

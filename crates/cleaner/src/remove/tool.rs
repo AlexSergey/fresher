@@ -17,13 +17,18 @@ pub(crate) fn run_tool(command: &ToolCommand, _act: Act<'_>, runner: &dyn Comman
     let args: Vec<&str> = command.args().iter().map(String::as_str).collect();
     match runner.run(command.tool().as_str(), &args, &CancelToken::new()) {
         Ok(output) if output.status == 0 => {
-            Removed { outcome: ItemOutcome::ToolDone, trashed: Vec::new(), status: Some(0) }
+            Removed { outcome: ItemOutcome::ToolDone, trashed: Vec::new(), status: Some(0), went: None }
         }
         Ok(output) => {
             let first = output.stderr.lines().map(str::trim).find(|line| !line.is_empty()).unwrap_or_default();
             let detail = first.chars().take(DETAIL_LENGTH).collect();
             let reason = Failure::ToolFailed { detail }.text();
-            Removed { outcome: ItemOutcome::Failed { reason }, trashed: Vec::new(), status: Some(output.status) }
+            Removed {
+                outcome: ItemOutcome::Failed { reason },
+                trashed: Vec::new(),
+                status: Some(output.status),
+                went: None,
+            }
         }
         Err(_) => Removed::ended(ItemOutcome::Failed { reason: Failure::ToolMissing.text() }),
     }

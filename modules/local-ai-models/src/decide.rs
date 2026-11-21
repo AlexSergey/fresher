@@ -13,18 +13,32 @@ use crate::stores::{Categories, Store};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct NoSystem;
 
-/// Why a model the module recognized is kept (design, section 5).
+/// Why a model the module recognized is kept (design, section 5; Ollama's: plan 029's design, section 7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Reason {
     NotYours,
     Special,
     AppOpen,
     NoSystem,
+    /// A manifest of the Ollama store could not be read: nothing of the store is offered.
+    OllamaUnreadable,
+    /// The Ollama store holds a download not finished: nothing of the store is offered.
+    OllamaDownload,
+    /// A layer an Ollama model names is missing, not a regular file, or not of its listed size.
+    OllamaIncomplete,
 }
 
 impl Reason {
     /// Every reason, in the order the module declares them.
-    pub(crate) const ALL: [Self; 4] = [Self::NotYours, Self::Special, Self::AppOpen, Self::NoSystem];
+    pub(crate) const ALL: [Self; 7] = [
+        Self::NotYours,
+        Self::Special,
+        Self::AppOpen,
+        Self::NoSystem,
+        Self::OllamaUnreadable,
+        Self::OllamaDownload,
+        Self::OllamaIncomplete,
+    ];
 
     /// The key of the reason's sentence.
     pub(crate) const fn key(self) -> &'static str {
@@ -33,6 +47,9 @@ impl Reason {
             Self::Special => "local-ai-models.left-out.special",
             Self::AppOpen => "local-ai-models.left-out.app-open",
             Self::NoSystem => "local-ai-models.left-out.no-system",
+            Self::OllamaUnreadable => "local-ai-models.left-out.ollama-unreadable",
+            Self::OllamaDownload => "local-ai-models.left-out.ollama-download",
+            Self::OllamaIncomplete => "local-ai-models.left-out.ollama-incomplete",
         }
     }
 }
@@ -50,7 +67,7 @@ pub(crate) enum Verdict {
 
 /// The first row that applies to `candidate`, a match of `row`'s place:
 ///
-/// 1. not a folder: not claimed;
+/// 1. not a folder, or an entry of an Ollama store (decided by `ollama::decide`): not claimed;
 /// 2. the name does not fit the row's shape, or its kind has no category: not claimed;
 /// 3. a name of the row's sign not held: not claimed;
 /// 4. the folder not read in full, or no time at all: not claimed;
@@ -63,7 +80,7 @@ pub(crate) enum Verdict {
 /// `running` is read only for a row that names an app. The inside's lock names are not read, and no time is judged:
 /// the verdict is the same whenever it is asked.
 pub(crate) fn decide(candidate: &Candidate, row: &Store, running: Result<&RunningSet, NoSystem>) -> Verdict {
-    if candidate.kind != EntryKind::Folder {
+    if candidate.ollama.is_some() || candidate.kind != EntryKind::Folder {
         return Verdict::NotClaimed;
     }
     let Some((category, name)) = model(row, &candidate.path) else { return Verdict::NotClaimed };

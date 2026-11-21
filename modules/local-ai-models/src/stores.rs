@@ -9,6 +9,9 @@ use serde::Deserialize;
 /// The table shipped with the module.
 const SHIPPED: &str = include_str!("../stores.toml");
 
+/// The names an Ollama store folder holds: its layout.
+pub(crate) const OLLAMA_LAYOUT: [&str; 2] = ["manifests", "blobs"];
+
 /// The name a place's last part must be: any name.
 const STAR: &str = "*";
 
@@ -31,6 +34,12 @@ pub enum StoresError {
     CategoryNotAllowed { id: String },
     #[error("the category `{category}` has no row")]
     CategoryWithoutRow { category: String },
+    #[error("the place `{path}` of the Ollama row `{id}` has a `*`; its place is the store folder itself")]
+    OllamaStar { id: String, path: String },
+    #[error("the Ollama row `{id}` names a sign; its layout is known by its shape")]
+    OllamaSign { id: String },
+    #[error("the Ollama row `{id}` names an app")]
+    OllamaApp { id: String },
     #[error("the row `{id}` names `{path}`, which is not a relative path of plain names")]
     NotRelative { id: String, path: String },
     #[error("the place `{path}` of the row `{id}` does not end in `*`")]
@@ -55,6 +64,7 @@ pub enum StoresError {
 pub(crate) enum Tool {
     HuggingFace,
     LmStudio,
+    Ollama,
 }
 
 /// How a model's folder is named in a store.
@@ -65,6 +75,8 @@ pub(crate) enum Shape {
     HubRepo,
     /// `<publisher>/<model>`: two `*`.
     PublisherModel,
+    /// The store folder itself, no `*`: `manifests/<host>/<namespace>/<model>/<tag>` and `blobs/sha256-<hex>`.
+    OllamaStore,
 }
 
 impl Shape {
@@ -73,8 +85,51 @@ impl Shape {
         match self {
             Self::HubRepo => 1,
             Self::PublisherModel => 2,
+            Self::OllamaStore => 0,
         }
     }
+}
+
+/// Which of the six interests of an Ollama row a match is, in the order of the design's section 5.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OllamaInterest {
+    /// The store folder, holding `manifests` and `blobs`.
+    Store,
+    /// A host's folder under `manifests`.
+    Hosts,
+    /// A namespace's folder.
+    Namespaces,
+    /// A model's folder.
+    Models,
+    /// A manifest, one file per tag.
+    Manifests,
+    /// A layer, or a partial download, under `blobs`.
+    Blobs,
+}
+
+impl OllamaInterest {
+    /// The six, in the order of their interests.
+    const ALL: [Self; 6] = [Self::Store, Self::Hosts, Self::Namespaces, Self::Models, Self::Manifests, Self::Blobs];
+
+    /// The place of the interest under the store folder `store`: the folder itself, or a depth of `manifests`, or
+    /// `blobs`.
+    fn place(self, store: &str) -> String {
+        match self {
+            Self::Store => store.to_owned(),
+            Self::Hosts => format!("{store}/manifests/*"),
+            Self::Namespaces => format!("{store}/manifests/*/*"),
+            Self::Models => format!("{store}/manifests/*/*/*"),
+            Self::Manifests => format!("{store}/manifests/*/*/*/*"),
+            Self::Blobs => format!("{store}/blobs/*"),
+        }
+    }
+}
+
+/// What one interest of the module stands for: a row of the table and, for an Ollama row, which of its six.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Slot {
+    pub(crate) row: usize,
+    pub(crate) ollama: Option<OllamaInterest>,
 }
 
 /// The categories of a row's models.
@@ -138,16 +193,41 @@ impl Stores {
         &self.stores
     }
 
-    /// The interests, in the table's order: per row, its place claimed whole, looking for the sign when it has one.
+    /// The interests, in the table's order: per row, its place claimed whole, looking for the sign when it has one; an
+    /// Ollama row gives six, each claiming its entry alone (`Claim::Item`), the first holding `manifests` and `blobs`.
     pub(crate) fn interests(&self) -> Result<Vec<Interest>, InterestError> {
-        self.stores
-            .iter()
-            .map(|store| {
+        let mut interests = Vec::new();
+        for store in &self.stores {
+            if store.shape == Shape::OllamaStore {
+                for which in OllamaInterest::ALL {
+                    let interest =
+                        Interest::new(Pattern::Under(store.folder, which.place(&store.path)), Claim::Item, Vec::new())?;
+                    interests.push(if which == OllamaInterest::Store {
+                        interest.holding(OLLAMA_LAYOUT.map(str::to_owned).to_vec())?
+                    } else {
+                        interest
+                    });
+                }
+            } else {
                 let interest =
                     Interest::new(Pattern::Under(store.folder, store.path.clone()), Claim::Whole, Vec::new())?;
-                if store.sign.is_empty() { Ok(interest) } else { interest.holding(store.sign.clone()) }
-            })
-            .collect()
+                interests.push(if store.sign.is_empty() { interest } else { interest.holding(store.sign.clone())? });
+            }
+        }
+        Ok(interests)
+    }
+
+    /// What each interest of [`interests`](Self::interests) stands for, in the same order.
+    pub(crate) fn slots(&self) -> Vec<Slot> {
+        let mut slots = Vec::new();
+        for (row, store) in self.stores.iter().enumerate() {
+            if store.shape == Shape::OllamaStore {
+                slots.extend(OllamaInterest::ALL.map(|which| Slot { row, ollama: Some(which) }));
+            } else {
+                slots.push(Slot { row, ollama: None });
+            }
+        }
+        slots
     }
 }
 
@@ -170,6 +250,14 @@ fn check_row(raw: RawStore, categories: &[(&'static str, DangerLevel)]) -> Resul
         return Err(StoresError::NotRelative { id, path: raw.path });
     }
     check_place(&id, &raw.path, raw.shape)?;
+    if raw.shape == Shape::OllamaStore {
+        if !raw.sign.is_empty() {
+            return Err(StoresError::OllamaSign { id });
+        }
+        if raw.app.is_some() {
+            return Err(StoresError::OllamaApp { id });
+        }
+    }
     if let Some(name) = raw.sign.iter().find(|name| !is_plain_name(name)) {
         return Err(StoresError::NotAName { id, name: name.clone() });
     }
@@ -187,8 +275,15 @@ fn check_row(raw: RawStore, categories: &[(&'static str, DangerLevel)]) -> Resul
     })
 }
 
-/// The place ends in `*`, with as many `*` names as the shape has, and none before them.
+/// An Ollama place has no `*`; any other ends in `*`, with as many `*` names as the shape has, and none before them.
 fn check_place(id: &str, path: &str, shape: Shape) -> Result<(), StoresError> {
+    if shape == Shape::OllamaStore {
+        return if path.contains('*') {
+            Err(StoresError::OllamaStar { id: id.into(), path: path.into() })
+        } else {
+            Ok(())
+        };
+    }
     let names: Vec<&str> = path.split('/').collect();
     if names.last() != Some(&STAR) {
         return Err(StoresError::NoStar { id: id.into(), path: path.into() });
@@ -233,7 +328,7 @@ fn check_categories(
             }
             Ok(Categories::ByKind(by_kind))
         }
-        Shape::PublisherModel => {
+        Shape::PublisherModel | Shape::OllamaStore => {
             if !kinds.is_empty() {
                 return Err(StoresError::KindsNotAllowed { id: id.into() });
             }

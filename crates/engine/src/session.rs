@@ -9,8 +9,8 @@ use std::sync::Arc;
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
     FindingId, FindingSink, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability, Removal, ScanId,
-    ScanKind, ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability, ScanId, ScanKind,
+    ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -469,18 +469,9 @@ impl<'a> Output<'a> {
         };
         self.next_id = id.checked_add(1);
         let now = self.shared.ports.clock.now();
-        let removability = Removability::of_removal(finding.removal(), self.removal_facts(finding.removal()).copied());
+        let removability = Removability::of_removal(finding.removal(), |path| self.facts.get(path).copied());
         if let Some(batch) = self.batcher.push(Finding::new(FindingId::new(id), finding, removability), now) {
             self.send(batch);
-        }
-    }
-
-    /// The facts of the matched entry `removal` names; `None` for a tool's removal or a path no match of this scan
-    /// reported.
-    fn removal_facts(&self, removal: &Removal) -> Option<&EntryFacts> {
-        match removal {
-            Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => self.facts.get(path),
-            Removal::ToolCommand(_) => None,
         }
     }
 
@@ -1012,7 +1003,7 @@ mod tests {
 
         use super::{id, ids, removabilities, scan_outcome};
         use crate::testing::{
-            Fixture, MemorySettings, START, ScriptedWalk, TestModule, batches, bytes, category, finding, scan,
+            Fixture, MemorySettings, START, ScriptedWalk, TestModule, batches, bytes, category, finding, scan, together,
         };
 
         #[test]
@@ -1126,6 +1117,36 @@ mod tests {
 
             // The first finding is made on the match, the second in `finish`.
             assert_eq!(removabilities(&events), [Removability::Locked, Removability::Locked]);
+        }
+
+        #[test]
+        fn a_together_findings_removability_reads_every_part() {
+            let models = category("alpha.models", DangerLevel::Medium);
+            let module = TestModule::builder("alpha")
+                .category("alpha.models", DangerLevel::Medium)
+                .folder("model")
+                .folder("layer")
+                .on_finish(move |_, out| {
+                    out.push(together(&models, &["/home/model", "/home/blobs/layer"], bytes(2)));
+                    out.push(together(&models, &["/home/model", "/home/blobs/unmatched"], bytes(2)));
+                    Ok(())
+                });
+            let locked = EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE };
+            let walk = ScriptedWalk::new().folder("model", "/home/model", bytes(1)).folder_with(
+                "layer",
+                "/home/blobs/layer",
+                bytes(1),
+                locked,
+            );
+            let engine = Fixture::new(walk).module(module).engine();
+
+            let events = scan(&engine);
+
+            // The two matches' own findings, then the together findings: a locked part, a part no match reported.
+            assert_eq!(
+                removabilities(&events),
+                [Removability::Removable, Removability::Locked, Removability::Locked, Removability::NeedsAdministrator]
+            );
         }
 
         #[test]

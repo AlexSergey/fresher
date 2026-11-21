@@ -1,0 +1,69 @@
+# A home for Ollama's models where nothing is claimed and nothing is left out: the store holds `manifests/` and
+# `blobs/`, but no manifest is one Ollama reads. A file one level below a tag's depth (the tag is a folder), hidden
+# files at a host's, a namespace's and a model folder's depth, a layer no manifest names, a file of `blobs/` off the
+# blob shape (`.DS_Store`, a name without `sha256-`, a digest too short). Every file has a time. (A link, a file with a
+# plain name, or a hidden folder at a host's, namespace's or model's depth is not here: it leaves the store out, as
+# `local-ai-models-ollama-hidden.toml` shows.)
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/llama3/latest/extra"
+size = 64
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/.stray"
+size = 64
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/.DS_Store"
+size = 32
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/.DS_Store"
+size = 32
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000001"
+size = 410
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000002"
+size = 3000
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/.DS_Store"
+size = 32
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/layer-0001"
+size = 32
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0001"
+size = 32
+fill = "data"
+age = "40d"
+changed = "40d"

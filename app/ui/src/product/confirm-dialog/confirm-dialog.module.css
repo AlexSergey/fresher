@@ -105,6 +105,42 @@
     color: var(--text-primary);
   }
 
+  .subtitle {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .subtitle > :first-child {
+    flex: 0 1 auto;
+  }
+
+  .moreToggle {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+  }
+
+  .moreToggle:focus-visible {
+    border-radius: var(--radius-xs);
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+
+  .morePaths {
+    display: grid;
+    padding: 0 0 var(--space-2) var(--space-3);
+    margin: 0;
+    gap: var(--space-1);
+    list-style: none;
+  }
+
   .long {
     height: 320px;
     border: 1px solid var(--border-subtle);

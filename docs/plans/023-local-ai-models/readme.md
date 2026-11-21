@@ -20,7 +20,7 @@ Nothing outside a tool's store is claimed, and a folder without the tool's layou
 
 **Ollama is not in this plan** (agent's call 1): one finding per Ollama model needs the walk to read its manifests and
 a removal of several files as one item, neither of which the core has. Its space stays in the storage map; the work is
-[deferred](../../deferred/ollama-models.md).
+[deferred](../029-ollama-models/readme.md).
 
 Nothing in the core changes: the module is a data table (`stores.toml`), a pure decision and texts, in the shape of
 `dev-caches`. Tests at every level, as plans 018 to 021 did: unit, fixture, contract, sandbox, core e2e, UI e2e, runs
@@ -87,7 +87,7 @@ and run the checks.
 - [Local AI models](../../ideas/local-ai-models.md): becomes this plan for Hugging Face and LM Studio; Ollama is
   deferred; the open questions are answered (Trash, not the tool's command; datasets a category of their own); other
   apps' models stay ideas.
-- [Ollama's models](../../deferred/ollama-models.md): a new deferred item, written with this plan.
+- [Ollama's models](../029-ollama-models/readme.md): a new deferred item, written with this plan.
 - [Developer environment cleaner](../../ideas/developer-environment-cleaner.md),
   [large files](../../ideas/large-files-finder.md): touched, not changed (a model in a project stays a user file).
 
@@ -171,7 +171,7 @@ reverted (a deviation from the review's fix 2) and the rerun is green.
 
 **The calls taken while building (for the user to look at).**
 
-- **Ollama is deferred** ([`ollama-models`](../../deferred/ollama-models.md)): its models need the walk to read
+- **Ollama is deferred** ([`ollama-models`](../029-ollama-models/readme.md)): its models need the walk to read
   manifests and one finding removes several paths. The next plans build it; until then the most common model store is
   not offered. Its folder is only shown in the storage map as the user's.
 - **LM Studio models are Medium**: a model the user imported by hand cannot be told from a download.

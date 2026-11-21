@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use fresher_core::{
-    BeginRecord, CancelToken, Cleaner, CleanupContext, CleanupId, CleanupJournal, ConfirmedPlan, Depth, EndRecord,
-    Ended, EntryKind, FindingId, ItemDone, ItemIdentity, ItemOutcome, ItemRecord, JournalError, JournalPage,
-    JournalProblem, JournalState, Method, OpenFiles, OpenFilesError, OpenSet, PlanItem, PutBackOutcome, PutBackRecord,
-    RecordedCleanup, Rehearsal, SkipReason, TrashState, TrashedItem,
+    Action, BeginRecord, CancelToken, Cleaner, CleanupContext, CleanupId, CleanupJournal, ConfirmedPlan, Depth,
+    EndRecord, Ended, EntryKind, Failure, FindingId, ItemDone, ItemIdentity, ItemOutcome, ItemRecord, JournalError,
+    JournalPage, JournalProblem, JournalState, Method, OpenFiles, OpenFilesError, OpenSet, PartlyWay, PlanItem,
+    PutBackOutcome, PutBackRecord, RecordedCleanup, Rehearsal, SkipReason, TrashState, TrashedItem,
 };
 
 use crate::fakes::lock;
@@ -147,7 +147,7 @@ impl CleanupJournal for MemoryCleanupJournal {
     }
 
     fn put_back(&self, record: &PutBackRecord) -> Result<(), JournalError> {
-        self.with_cleanup(record.cleanup, |cleanup| cleanup.put_backs.push(*record))?;
+        self.with_cleanup(record.cleanup, |cleanup| cleanup.put_backs.push(record.clone()))?;
         self.sync()
     }
 
@@ -172,15 +172,21 @@ pub struct ExecutedPlan {
 
 /// A cleaner for the engine's tests: it touches no disk, answers scripted rehearsals and outcomes, and records every
 /// plan it is given. By default every item passes, a path item moves to `/fake-trash/<index>` (or is deleted, by the
-/// permanent method), a tool's item is done, every trashed item is in the Trash and puts back.
+/// permanent method), an item of several paths passes with an identity per part and moves part by part to
+/// `/fake-trash/<index>-<part>`, a tool's item is done, every trashed item is in the Trash and puts back. A scripted
+/// skip or outcome names a finding, so it applies to every part of an item of several paths.
 #[derive(Debug, Default)]
 pub struct FakeCleaner {
     skips: HashMap<FindingId, SkipReason>,
     outcomes: HashMap<FindingId, ItemOutcome>,
-    states: HashMap<PathBuf, TrashState>,
-    put_backs: HashMap<PathBuf, PutBackOutcome>,
+    partly: HashMap<FindingId, u32>,
+    unknown_landings: HashMap<FindingId, u32>,
+    elsewhere: HashMap<FindingId, u32>,
+    states: Mutex<HashMap<PathBuf, TrashState>>,
+    put_backs: Mutex<HashMap<PathBuf, PutBackOutcome>>,
     rehearsed: Mutex<Vec<Vec<FindingId>>>,
     executed: Mutex<Vec<ExecutedPlan>>,
+    put_backs_tried: Mutex<Vec<PathBuf>>,
 }
 
 impl FakeCleaner {
@@ -198,18 +204,53 @@ impl FakeCleaner {
         self
     }
 
+    /// Only the first `done` parts of `finding`, an item of several paths, go to the Trash: it ends `Failed` with
+    /// `Partly`, those parts trashed.
+    #[must_use]
+    pub fn partly(mut self, finding: FindingId, done: u32) -> Self {
+        self.partly.insert(finding, done);
+        self
+    }
+
+    /// Part `part` of `finding`, an item of several paths, goes to the Trash at a place the Trash does not tell: it
+    /// counts as moved and has no trashed entry.
+    #[must_use]
+    pub fn landing_unknown(mut self, finding: FindingId, part: u32) -> Self {
+        self.unknown_landings.insert(finding, part);
+        self
+    }
+
+    /// Part `part` of `finding`, an item of several paths that goes only `partly`, left its place all the same and
+    /// has a trashed entry, which the record's `went` does not count (as a record may not): put back must go by the
+    /// entries too.
+    #[must_use]
+    pub fn landing_elsewhere(mut self, finding: FindingId, part: u32) -> Self {
+        self.elsewhere.insert(finding, part);
+        self
+    }
+
     /// The item that landed at `landed` is in `state`.
     #[must_use]
-    pub fn locating(mut self, landed: impl Into<PathBuf>, state: TrashState) -> Self {
-        self.states.insert(landed.into(), state);
+    pub fn locating(self, landed: impl Into<PathBuf>, state: TrashState) -> Self {
+        self.now_locating(landed, state);
         self
     }
 
     /// Putting back the item that landed at `landed` ends as `outcome`.
     #[must_use]
-    pub fn putting_back(mut self, landed: impl Into<PathBuf>, outcome: PutBackOutcome) -> Self {
-        self.put_backs.insert(landed.into(), outcome);
+    pub fn putting_back(self, landed: impl Into<PathBuf>, outcome: PutBackOutcome) -> Self {
+        self.now_putting_back(landed, outcome);
         self
+    }
+
+    /// From now on, the item that landed at `landed` is in `state`.
+    pub fn now_locating(&self, landed: impl Into<PathBuf>, state: TrashState) {
+        lock(&self.states).insert(landed.into(), state);
+    }
+
+    /// From now on, putting back the item that landed at `landed` ends as `outcome`.
+    pub fn now_putting_back(&self, landed: impl Into<PathBuf>, outcome: PutBackOutcome) {
+        lock(&self.put_backs).insert(landed.into(), outcome);
     }
 
     /// The findings of each rehearsal, in order.
@@ -222,24 +263,69 @@ impl FakeCleaner {
         lock(&self.executed).clone()
     }
 
+    /// The landed path of every item asked to be put back, in the order asked.
+    pub fn put_backs_tried(&self) -> Vec<PathBuf> {
+        lock(&self.put_backs_tried).clone()
+    }
+
     /// The identity the fake reads for an item: the one it has, or one made from its finding.
     fn identity(item: &PlanItem) -> Option<ItemIdentity> {
         item.action().path()?;
         Some(item.identity().unwrap_or_else(|| ItemIdentity::new(1, item.finding().get().into(), EntryKind::Folder)))
     }
 
+    /// The identity the fake reads for each part of an item of several paths, in part order: the ones it has, or
+    /// ones made from its finding and the part's place; empty for any other item.
+    fn part_identities(item: &PlanItem) -> Vec<ItemIdentity> {
+        if !matches!(item.action(), Action::RemoveTogether(_)) {
+            return Vec::new();
+        }
+        if !item.part_identities().is_empty() {
+            return item.part_identities().to_vec();
+        }
+        let made = |part: u64| ItemIdentity::new(part + 1, item.finding().get().into(), EntryKind::File);
+        (0_u64..).zip(item.action().parts()).map(|(part, _)| made(part)).collect()
+    }
+
     fn done(&self, index: u32, item: &PlanItem, method: Method) -> ItemDone {
         let path = item.action().path();
-        let outcome = match (self.skips.get(&item.finding()), self.outcomes.get(&item.finding())) {
-            (Some(reason), _) => ItemOutcome::Skipped { reason: reason.clone() },
-            (None, Some(outcome)) => outcome.clone(),
-            (None, None) => match (path, method) {
+        let parts = Self::part_identities(item);
+        let partly = self.partly.get(&item.finding()).copied().filter(|_| !parts.is_empty());
+        let outcome = match (self.skips.get(&item.finding()), self.outcomes.get(&item.finding()), partly) {
+            (Some(reason), _, _) => ItemOutcome::Skipped { reason: reason.clone() },
+            (None, Some(outcome), _) => outcome.clone(),
+            (None, None, Some(done)) => {
+                let of = u32::try_from(parts.len()).unwrap_or(u32::MAX);
+                ItemOutcome::Failed { reason: Failure::Partly { done, of, way: PartlyWay::Trash }.text() }
+            }
+            (None, None, None) => match (path, method) {
                 (None, _) => ItemOutcome::ToolDone,
                 (Some(_), Method::Trash) => ItemOutcome::Moved,
                 (Some(_), Method::Permanent) => ItemOutcome::Deleted,
             },
         };
+        let went = match (&outcome, partly) {
+            (ItemOutcome::Moved, _) => parts.len(),
+            (ItemOutcome::Failed { .. }, Some(done)) => usize::try_from(done).unwrap_or(usize::MAX),
+            _ => 0,
+        };
+        let unknown = self.unknown_landings.get(&item.finding()).copied();
+        let elsewhere = self.elsewhere.get(&item.finding()).copied().filter(|_| partly.is_some());
         let trashed = match (&outcome, path, Self::identity(item)) {
+            (ItemOutcome::Moved | ItemOutcome::Failed { .. }, Some(_), Some(_)) if !parts.is_empty() => item
+                .action()
+                .parts()
+                .iter()
+                .zip(parts)
+                .zip(0_u32..)
+                .filter(|&(_, part)| usize::try_from(part).is_ok_and(|part| part < went) || Some(part) == elsewhere)
+                .filter(|&(_, part)| Some(part) != unknown)
+                .map(|((original, identity), part)| TrashedItem {
+                    original: original.clone(),
+                    landed: Path::new("/fake-trash").join(format!("{index}-{part}")),
+                    identity,
+                })
+                .collect(),
             (ItemOutcome::Moved, Some(original), Some(identity)) => vec![TrashedItem {
                 original: original.to_path_buf(),
                 landed: Path::new("/fake-trash").join(index.to_string()),
@@ -248,7 +334,8 @@ impl FakeCleaner {
             _ => Vec::new(),
         };
         let status = path.is_none().then_some(i32::from(!matches!(outcome, ItemOutcome::ToolDone)));
-        ItemDone { index, finding: item.finding(), sizes: item.sizes(), outcome, trashed, status }
+        let went = (went > 0).then(|| u32::try_from(went).unwrap_or(u32::MAX));
+        ItemDone { index, finding: item.finding(), sizes: item.sizes(), outcome, trashed, status, went }
     }
 }
 
@@ -265,6 +352,9 @@ impl Cleaner for FakeCleaner {
             .iter()
             .map(|item| match self.skips.get(&item.finding()) {
                 Some(reason) => Rehearsal::Skipped(reason.clone()),
+                None if matches!(item.action(), Action::RemoveTogether(_)) => {
+                    Rehearsal::PassedTogether(Self::part_identities(item))
+                }
                 None => Rehearsal::Passed(Self::identity(item)),
             })
             .collect()
@@ -287,6 +377,7 @@ impl Cleaner for FakeCleaner {
                     outcome: ItemOutcome::NotReached,
                     trashed: Vec::new(),
                     status: None,
+                    went: None,
                     ..self.done(index, item, method)
                 };
                 out(rest);
@@ -302,11 +393,13 @@ impl Cleaner for FakeCleaner {
     }
 
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
-        items.iter().map(|item| self.states.get(&item.landed).copied().unwrap_or(TrashState::InTrash)).collect()
+        let states = lock(&self.states);
+        items.iter().map(|item| states.get(&item.landed).copied().unwrap_or(TrashState::InTrash)).collect()
     }
 
     fn put_back(&self, item: &TrashedItem, _cx: &CleanupContext<'_>) -> PutBackOutcome {
-        self.put_backs.get(&item.landed).copied().unwrap_or(PutBackOutcome::PutBack)
+        lock(&self.put_backs_tried).push(item.landed.clone());
+        lock(&self.put_backs).get(&item.landed).copied().unwrap_or(PutBackOutcome::PutBack)
     }
 }
 
@@ -314,7 +407,7 @@ impl Cleaner for FakeCleaner {
 mod tests {
     use fresher_core::{
         AccessStatus, ByteSize, CategoryDescriptor, CategoryId, CleanupContext, CleanupPlan, Confirmation,
-        ConfirmedPlan, DangerLevel, Finding, FindingId, ModuleId, NewFinding, PlanId, PlanItem, Protection,
+        ConfirmedPlan, DangerLevel, Finding, FindingId, ModuleId, NewFinding, Parts, PlanId, PlanItem, Protection,
         Removability, Removal, ScanId, Sizes, Subject, Text, TextKey, Timestamp,
     };
 
@@ -340,6 +433,25 @@ mod tests {
         [1, 2, 3].map(|id| PlanItem::new(&finding(id))).to_vec()
     }
 
+    /// The item of a finding whose `/home/model-<id>` and `/home/layer-<id>` leave together.
+    fn together(id: u32) -> PlanItem {
+        let base = finding(id);
+        let inner = base.finding();
+        let category = CategoryDescriptor::new(inner.category(), inner.danger());
+        let paths = vec![format!("/home/model-{id}").into(), format!("/home/layer-{id}").into()];
+        let parts = Parts::new(paths).unwrap();
+        let new = NewFinding::new(
+            &category,
+            format!("{id}"),
+            Subject::Path(parts.subject().to_path_buf()),
+            inner.sizes(),
+            inner.title().clone(),
+            inner.reason().clone(),
+            Removal::MoveTogether(parts),
+        );
+        PlanItem::new(&Finding::new(FindingId::new(id), new, Removability::Removable))
+    }
+
     fn confirmed(method: &str) -> ConfirmedPlan {
         let plan =
             CleanupPlan::new(PlanId::new(1), Timestamp::from_secs(0), ScanId::new(1), vec![], items(), vec![]).unwrap();
@@ -363,8 +475,17 @@ mod tests {
             JournalState, OpenFiles, Rehearsal, SkipReason, Timestamp,
         };
 
-        use super::{confirmed, items, with_context};
+        use super::{confirmed, items, together, with_context};
         use crate::{FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
+
+        #[test]
+        fn a_skipped_together_item_is_skipped_whole() {
+            let cleaner = FakeCleaner::default().skipping(FindingId::new(4), SkipReason::Grown);
+
+            let rehearsal = with_context(|cx| cleaner.rehearse(&[], &[together(4)], cx, fresher_core::Depth::Quick));
+
+            assert_eq!(rehearsal, [Rehearsal::Skipped(SkipReason::Grown)]);
+        }
 
         #[test]
         fn the_memory_journal_refuses_when_read_only() {
@@ -415,12 +536,53 @@ mod tests {
         use std::path::{Path, PathBuf};
 
         use fresher_core::{
-            BeginRecord, CancelToken, Cleaner, CleanupJournal, Depth, EndRecord, Ended, FindingId, ItemOutcome, Method,
-            OpenFiles, PutBackOutcome, PutBackRecord, Rehearsal, Timestamp, TrashState,
+            BeginRecord, CancelToken, Cleaner, CleanupJournal, Depth, EndRecord, Ended, Failure, FindingId,
+            ItemOutcome, Method, OpenFiles, PartlyWay, PutBackOutcome, PutBackRecord, Rehearsal, Timestamp, TrashState,
         };
 
-        use super::{confirmed, items, with_context};
+        use super::{confirmed, items, together, with_context};
         use crate::{FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
+
+        #[test]
+        fn the_fake_cleaner_rehearses_and_moves_a_together_item_part_by_part() {
+            let cleaner = FakeCleaner::default();
+            let item = together(4);
+            let plan = fresher_core::CleanupPlan::new(
+                fresher_core::PlanId::new(1),
+                Timestamp::from_secs(0),
+                fresher_core::ScanId::new(1),
+                vec![],
+                vec![item.clone()],
+                vec![],
+            )
+            .unwrap();
+            let echo: fresher_core::Confirmation = serde_json::from_value(serde_json::json!({
+                "plan": 1, "count": 1, "allocated": 4096, "highest": "low", "method": "trash",
+            }))
+            .unwrap();
+            let mut done = Vec::new();
+
+            let rehearsal = with_context(|cx| cleaner.rehearse(&[], std::slice::from_ref(&item), cx, Depth::Full));
+            let Rehearsal::PassedTogether(identities) = rehearsal[0].clone() else { unreachable!("{rehearsal:?}") };
+            let confirmed = plan.confirm(&echo, Timestamp::from_secs(1)).unwrap();
+            with_context(|cx| cleaner.execute(confirmed, cx, &CancelToken::new(), &mut |item| done.push(item)));
+
+            assert_eq!(identities.len(), 2);
+            assert_ne!(identities[0], identities[1]);
+            assert_eq!(done[0].outcome, ItemOutcome::Moved);
+            let trashed: Vec<_> = done[0]
+                .trashed
+                .iter()
+                .map(|item| (item.original.clone(), item.landed.clone(), item.identity))
+                .collect();
+            assert_eq!(
+                trashed,
+                [
+                    (PathBuf::from("/home/model-4"), PathBuf::from("/fake-trash/0-0"), identities[0]),
+                    (PathBuf::from("/home/layer-4"), PathBuf::from("/fake-trash/0-1"), identities[1]),
+                ]
+            );
+        }
 
         #[test]
         fn the_fake_cleaner_records_the_confirmed_plan() {
@@ -457,8 +619,46 @@ mod tests {
             let trashed: Vec<_> = done.iter().flat_map(|item| item.trashed.clone()).collect();
             assert_eq!(trashed[1].landed, Path::new("/fake-trash/1"));
             assert_eq!(cleaner.locate(&trashed), [TrashState::InTrash, TrashState::Gone, TrashState::InTrash]);
-            let answers = with_context(|cx| (cleaner.put_back(&trashed[0], cx), cleaner.put_back(&trashed[1], cx)));
-            assert_eq!(answers, (PutBackOutcome::PutBack, PutBackOutcome::Gone));
+            let answers = with_context(|cx| (cleaner.put_back(&trashed[1], cx), cleaner.put_back(&trashed[0], cx)));
+            assert_eq!(answers, (PutBackOutcome::Gone, PutBackOutcome::PutBack));
+            assert_eq!(cleaner.put_backs_tried(), [Path::new("/fake-trash/1"), Path::new("/fake-trash/0")]);
+        }
+
+        #[test]
+        fn the_fake_cleaner_moves_part_of_a_together_item_as_scripted() {
+            let execute = |cleaner: &FakeCleaner| {
+                let plan = fresher_core::CleanupPlan::new(
+                    fresher_core::PlanId::new(1),
+                    Timestamp::from_secs(0),
+                    fresher_core::ScanId::new(1),
+                    vec![],
+                    vec![together(4)],
+                    vec![],
+                )
+                .unwrap();
+                let echo: fresher_core::Confirmation = serde_json::from_value(serde_json::json!({
+                    "plan": 1, "count": 1, "allocated": 4096, "highest": "low", "method": "trash",
+                }))
+                .unwrap();
+                let mut done = Vec::new();
+                let confirmed = plan.confirm(&echo, Timestamp::from_secs(1)).unwrap();
+                with_context(|cx| cleaner.execute(confirmed, cx, &CancelToken::new(), &mut |item| done.push(item)));
+                done.remove(0)
+            };
+            let landed = |done: &fresher_core::ItemDone| -> Vec<PathBuf> {
+                done.trashed.iter().map(|item| item.landed.clone()).collect()
+            };
+
+            let partly = execute(&FakeCleaner::default().partly(FindingId::new(4), 1));
+            let unknown = execute(&FakeCleaner::default().landing_unknown(FindingId::new(4), 1));
+
+            assert_eq!(
+                partly.outcome,
+                ItemOutcome::Failed { reason: Failure::Partly { done: 1, of: 2, way: PartlyWay::Trash }.text() }
+            );
+            assert_eq!((landed(&partly), partly.went), (vec![PathBuf::from("/fake-trash/0-0")], Some(1)));
+            assert_eq!(unknown.outcome, ItemOutcome::Moved);
+            assert_eq!((landed(&unknown), unknown.went), (vec![PathBuf::from("/fake-trash/0-0")], Some(2)));
         }
 
         #[test]
@@ -475,8 +675,13 @@ mod tests {
             journal.sync().unwrap();
             let end = EndRecord { cleanup: id, at: Timestamp::from_secs(2), ended: Ended::Completed, space: vec![] };
             journal.end(&end).unwrap();
-            let put_back =
-                PutBackRecord { cleanup: id, index: 0, at: Timestamp::from_secs(3), outcome: PutBackOutcome::PutBack };
+            let put_back = PutBackRecord {
+                cleanup: id,
+                index: 0,
+                at: Timestamp::from_secs(3),
+                outcome: PutBackOutcome::PutBack,
+                back: vec![],
+            };
             journal.put_back(&put_back).unwrap();
 
             let page = journal.cleanups(0, 10).unwrap();

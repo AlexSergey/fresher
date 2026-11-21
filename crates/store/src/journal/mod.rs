@@ -17,8 +17,9 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use fresher_core::{
     BeginRecord, CleanupId, CleanupJournal, EndRecord, ItemRecord, JournalError, JournalPage, JournalProblem,
-    JournalState, PutBackRecord, RecordedCleanup,
+    JournalState, PutBackRecord, RecordedCleanup, StoreError,
 };
+use serde_json::Value;
 
 use self::file::{Appender, Found, inspect, journal_error};
 use self::read::{Collected, Format, read_file};
@@ -31,8 +32,31 @@ use crate::migrate::Migration;
 const FILE_NAME: &str = "cleanups.jsonl";
 /// Where a file that is not a journal is kept, renamed, before the journal is written again.
 const BROKEN_FILE_NAME: &str = "cleanups.broken.jsonl";
-/// The migrations of the journal's records, one per version step; version 1 has none.
-const MIGRATIONS: &[Migration] = &[];
+/// The migrations of the journal's records, one per version step.
+const MIGRATIONS: &[Migration] = &[items_of_several_paths];
+
+/// Version 1 → 2, for items of several paths, which version 1 did not have: every item of a `begin` gets no parts
+/// after its subject (`more: []`), an `item` no count of parts that went (`went: null`), a `put-back` no parts brought
+/// back (`back: []`). Any other line is unchanged.
+fn items_of_several_paths(mut line: Value) -> Result<Value, StoreError> {
+    let record = line.as_object_mut().ok_or(StoreError::Broken)?;
+    match record.get("type").and_then(Value::as_str) {
+        Some("begin") => {
+            let items = record.get_mut("items").and_then(Value::as_array_mut).ok_or(StoreError::Broken)?;
+            for item in items {
+                item.as_object_mut().ok_or(StoreError::Broken)?.insert("more".into(), Value::Array(Vec::new()));
+            }
+        }
+        Some("item") => {
+            record.insert("went".into(), Value::Null);
+        }
+        Some("put-back") => {
+            record.insert("back".into(), Value::Array(Vec::new()));
+        }
+        _ => {}
+    }
+    Ok(line)
+}
 
 /// The cleanup journal in the data folder.
 ///

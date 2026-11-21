@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 
 use fresher_core::{
     ActionKind, BeginRecord, ByteSize, CleanupId, Completeness, DangerLevel, EndRecord, Ended, EntryKind,
-    FormatVersion, ItemIdentity, ItemRecord, JournalError, JournalItem, Method, PutBackOutcome, PutBackRecord,
-    RecordedOutcome, Sizes, SkipCode, Text, TextArg, TextKey, Timestamp, TrashedItem, VolumeSpace,
+    FormatVersion, ItemIdentity, ItemRecord, JournalError, JournalItem, JournalPart, Method, PutBackOutcome,
+    PutBackRecord, RecordedOutcome, Sizes, SkipCode, Text, TextArg, TextKey, Timestamp, TrashedItem, VolumeSpace,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +18,7 @@ use super::path_text::StoredPath;
 /// The `format` of the header line.
 pub(super) const FORMAT: &str = "cleanup-journal";
 /// The version of the records this build writes.
-pub(super) const VERSION: FormatVersion = FormatVersion::new(1);
+pub(super) const VERSION: FormatVersion = FormatVersion::new(2);
 
 /// The first line of every journal file.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,12 +76,20 @@ struct ItemForm {
     index: u32,
     path: Option<StoredPath>,
     identity: Option<IdentityForm>,
+    /// The parts of an item of several paths after its subject (version 2).
+    more: Vec<PartForm>,
     action: ActionForm,
     category: String,
     key: String,
     reason: TextForm,
     danger: DangerForm,
     sizes: SizesForm,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct PartForm {
+    path: StoredPath,
+    identity: Option<IdentityForm>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,6 +135,8 @@ pub(super) struct ItemLine {
     index: u32,
     outcome: OutcomeForm,
     trashed: Vec<TrashedForm>,
+    /// How many parts of an item of several paths went (version 2).
+    went: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,12 +167,14 @@ pub(super) struct EndLine {
     space: Vec<SpaceForm>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct PutBackLine {
     pub(super) cleanup: u32,
     index: u32,
     at: u64,
     outcome: PutBackForm,
+    /// The parts of an item of several paths the attempt brought back (version 2).
+    back: Vec<u32>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -272,6 +284,7 @@ impl ItemForm {
             index: item.index,
             path: item.path.as_deref().map(StoredPath::from),
             identity: item.identity.map(IdentityForm::new),
+            more: item.more.iter().map(PartForm::new).collect(),
             action: item.action.into(),
             category: item.category.clone(),
             key: item.key.clone(),
@@ -286,6 +299,7 @@ impl ItemForm {
             index: self.index,
             path: self.path.map(|path| path.0),
             identity: self.identity.map(IdentityForm::into_identity),
+            more: self.more.into_iter().map(PartForm::into_part).collect(),
             action: self.action.into(),
             category: self.category,
             key: self.key,
@@ -293,6 +307,16 @@ impl ItemForm {
             danger: self.danger.into(),
             sizes: self.sizes.into_sizes(),
         })
+    }
+}
+
+impl PartForm {
+    fn new(part: &JournalPart) -> Self {
+        Self { path: StoredPath::from(part.path.as_path()), identity: part.identity.map(IdentityForm::new) }
+    }
+
+    fn into_part(self) -> JournalPart {
+        JournalPart { path: self.path.0, identity: self.identity.map(IdentityForm::into_identity) }
     }
 }
 
@@ -377,6 +401,7 @@ impl ItemLine {
             index: record.index,
             outcome: OutcomeForm::new(record.outcome),
             trashed: record.trashed.iter().map(TrashedForm::new).collect(),
+            went: record.went,
         }
     }
 
@@ -386,6 +411,7 @@ impl ItemLine {
             index: self.index,
             outcome: self.outcome.into_outcome(),
             trashed: self.trashed.into_iter().map(TrashedForm::into_trashed).collect(),
+            went: self.went,
         }
     }
 }
@@ -459,6 +485,7 @@ impl PutBackLine {
             index: record.index,
             at: record.at.secs(),
             outcome: PutBackForm::new(record.outcome),
+            back: record.back.clone(),
         }
     }
 
@@ -468,6 +495,7 @@ impl PutBackLine {
             index: self.index,
             at: Timestamp::from_secs(self.at),
             outcome: self.outcome.into_outcome(),
+            back: self.back,
         }
     }
 }
@@ -509,8 +537,8 @@ pub(super) mod sample {
 
     use fresher_core::{
         ActionKind, BeginRecord, ByteSize, CleanupId, DangerLevel, EndRecord, Ended, EntryKind, ItemIdentity,
-        ItemRecord, JournalItem, Method, PutBackOutcome, PutBackRecord, RecordedOutcome, Sizes, SkipCode, Text,
-        TextArg, TextKey, Timestamp, TrashedItem, VolumeSpace,
+        ItemRecord, JournalItem, JournalPart, Method, PutBackOutcome, PutBackRecord, RecordedOutcome, Sizes, SkipCode,
+        Text, TextArg, TextKey, Timestamp, TrashedItem, VolumeSpace,
     };
 
     pub(in crate::journal) fn item(index: u32) -> JournalItem {
@@ -524,6 +552,7 @@ pub(super) mod sample {
             index,
             path: Some(PathBuf::from(format!("/home/Library/Caches/item-{index}"))),
             identity: Some(ItemIdentity::new(1, u64::from(index) + 100, EntryKind::Folder)),
+            more: Vec::new(),
             action: ActionKind::Remove,
             category: "demo.caches".into(),
             key: format!("item-{index}"),
@@ -547,17 +576,64 @@ pub(super) mod sample {
         }
     }
 
+    /// A cleanup of `count` items whose first leaves with two more parts: `/home/models/m-<index>` (its subject),
+    /// `/home/blobs/a-<index>` and `/home/blobs/b-<index>`.
+    pub(in crate::journal) fn together(count: u32) -> BeginRecord {
+        let mut record = begin(count);
+        let first = &mut record.items[0];
+        first.path = Some(PathBuf::from("/home/models/m-0"));
+        first.identity = Some(ItemIdentity::new(1, 200, EntryKind::File));
+        first.more = vec![
+            JournalPart {
+                path: PathBuf::from("/home/blobs/a-0"),
+                identity: Some(ItemIdentity::new(1, 201, EntryKind::File)),
+            },
+            JournalPart {
+                path: PathBuf::from("/home/blobs/b-0"),
+                identity: Some(ItemIdentity::new(1, 202, EntryKind::File)),
+            },
+        ];
+        record
+    }
+
+    /// Item `index` of [`together`] moved, every part journalled.
+    pub(in crate::journal) fn moved_together(cleanup: CleanupId, index: u32) -> ItemRecord {
+        let begin = together(index + 1);
+        let item = &begin.items[0];
+        let parts = item
+            .path
+            .iter()
+            .cloned()
+            .zip(item.identity)
+            .chain(item.more.iter().filter_map(|part| Some((part.path.clone(), part.identity?))));
+        let trashed = parts
+            .zip(0..)
+            .map(|((original, identity), part)| TrashedItem {
+                landed: PathBuf::from(format!("/home/.Trash/{index}-{part}")),
+                original,
+                identity,
+            })
+            .collect();
+        ItemRecord { cleanup, index, outcome: RecordedOutcome::Moved, trashed, went: Some(3) }
+    }
+
     pub(in crate::journal) fn moved(cleanup: CleanupId, index: u32) -> ItemRecord {
         let trashed = TrashedItem {
             original: PathBuf::from(format!("/home/Library/Caches/item-{index}")),
             landed: PathBuf::from(format!("/home/.Trash/item-{index}")),
             identity: ItemIdentity::new(1, u64::from(index) + 100, EntryKind::Folder),
         };
-        ItemRecord { cleanup, index, outcome: RecordedOutcome::Moved, trashed: vec![trashed] }
+        ItemRecord { cleanup, index, outcome: RecordedOutcome::Moved, trashed: vec![trashed], went: None }
     }
 
     pub(in crate::journal) fn skipped(cleanup: CleanupId, index: u32) -> ItemRecord {
-        ItemRecord { cleanup, index, outcome: RecordedOutcome::Skipped { reason: SkipCode::InUse }, trashed: vec![] }
+        ItemRecord {
+            cleanup,
+            index,
+            outcome: RecordedOutcome::Skipped { reason: SkipCode::InUse },
+            trashed: vec![],
+            went: None,
+        }
     }
 
     pub(in crate::journal) fn end(cleanup: CleanupId) -> EndRecord {
@@ -570,7 +646,7 @@ pub(super) mod sample {
     }
 
     pub(in crate::journal) fn put_back(cleanup: CleanupId, index: u32, outcome: PutBackOutcome) -> PutBackRecord {
-        PutBackRecord { cleanup, index, at: Timestamp::from_secs(1_763_300_000), outcome }
+        PutBackRecord { cleanup, index, at: Timestamp::from_secs(1_763_300_000), outcome, back: vec![] }
     }
 }
 
@@ -628,6 +704,9 @@ mod tests {
             "index",
             "path",
             "identity",
+            "more",
+            "went",
+            "back",
             "device",
             "file",
             "kind",
@@ -720,7 +799,7 @@ mod tests {
 
         #[test]
         fn the_header_names_the_format_and_its_version() {
-            assert_eq!(header_line(VERSION).unwrap(), b"{\"format\":\"cleanup-journal\",\"version\":1}\n");
+            assert_eq!(header_line(VERSION).unwrap(), b"{\"format\":\"cleanup-journal\",\"version\":2}\n");
         }
 
         #[test]
@@ -775,7 +854,7 @@ mod tests {
 
             assert_eq!(
                 String::from_utf8(line).unwrap(),
-                "{\"type\":\"put-back\",\"cleanup\":7,\"index\":0,\"at\":1763300000,\"outcome\":{\"kind\":\"put-back\"}}\n"
+                "{\"type\":\"put-back\",\"cleanup\":7,\"index\":0,\"at\":1763300000,\"outcome\":{\"kind\":\"put-back\"},\"back\":[]}\n"
             );
         }
     }

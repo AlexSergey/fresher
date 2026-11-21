@@ -23,7 +23,7 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `objc2`                        | 0.6.5   | MIT                       | macos                                                                               |
 | `objc2-foundation`             | 0.3.2   | MIT                       | macos                                                                               |
 | `serde`                        | 1.0.229 | MIT OR Apache-2.0         | app, core, e2e, module-app-leftovers, module-dev-caches, module-downloads, module-jetbrains, module-local-ai-models, module-stale-projects, module-unused-toolchains, rules, sandbox, store, testing |
-| `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-app-leftovers, module-demo, module-dev-caches, module-downloads, module-jetbrains, module-stale-projects, module-temp, module-unused-toolchains (tests), store, testing |
+| `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-app-leftovers, module-demo, module-dev-caches, module-downloads, module-jetbrains, module-local-ai-models, module-stale-projects, module-temp, module-unused-toolchains (tests), store, testing |
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
 | `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |

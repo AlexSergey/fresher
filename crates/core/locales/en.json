@@ -61,6 +61,8 @@
   "core.cleanup.ended.stopped": "Stopped because the cleanup history could not be saved. The items after that point were not touched.",
   "core.cleanup.failed.delete-failed": "macOS refused to delete it.",
   "core.cleanup.failed.landed-elsewhere": "Another item was moved to the Trash in its place. You can put it back.",
+  "core.cleanup.failed.partly": "Only {done} of its {of} files went; the rest stayed in place. What went is in the Trash.",
+  "core.cleanup.failed.partly-deleted": "Only {done} of its {of} files went; the rest stayed in place. The files that went were deleted and cannot be put back.",
   "core.cleanup.failed.tool-failed": "The tool that made this item could not remove it, so it is still there. Close the app that uses it, then try again.",
   "core.cleanup.failed.tool-missing": "The tool could not be started. Check that it is installed and running.",
   "core.cleanup.failed.trash-refused": "macOS refused to move it to the Trash.",

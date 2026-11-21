@@ -1,0 +1,60 @@
+# The local-ai-models module's Ollama store with a manifest that cannot be read (`{` is not a manifest) beside a valid
+# model: the whole store is left out (`ollama-unreadable`), since which layers its models share is unknown, and nothing
+# of Ollama is offered. A world of its own: a store-wide left-out would hide every model of
+# `local-ai-models-ollama.toml`. It writes that file's lone layer too, so in `npm run sandbox -- all` it is left out
+# whole and named in `EXPECTED.md`; write it by name (`npm run sandbox -- local-ai-models-ollama-unreadable`)
+# ([known issue](../../docs/known-issues/repo-sandbox-all-worlds-interact.md)).
+feature = "local-ai-models-ollama-unreadable"
+module = "local-ai-models"
+
+[[case]]
+name = "an unreadable manifest keeps every Ollama model"
+kind = "negative"
+[[case.file]]
+path = "home/.ollama/models/blobs/sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/.ollama/models/manifests/registry.ollama.ai/library/broken/latest"
+text = "{"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/.ollama/models/manifests/registry.ollama.ai/library/fine/latest"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "size": 400
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+      "size": 2000
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/.ollama/models/blobs/sha256-b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+size = 400
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/.ollama/models/blobs/sha256-c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+size = 2000
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.left-out]]
+category = "local-ai-models.ollama"
+reason = "local-ai-models.left-out.ollama-unreadable"
+items = 1

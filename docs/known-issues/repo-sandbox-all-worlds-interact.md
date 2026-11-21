@@ -19,8 +19,11 @@ written by name (`npm run sandbox -- <name>`). The `unused-toolchains*` files do
 `alias/default` sit at fixed places and the module's settings and access are shared by every case of a file, so each
 world needs them in its own file. In `all`, `unused-toolchains` stays and its three variants (`-documents-denied`,
 `-off`, `-unknown`) are left out. The main file is written there but the module does not run: `downloads-denied.toml`
-denies Downloads for every case file of `all`, and the module needs Downloads. A run by hand uses the feature's own
-sandbox.
+denies Downloads for every case file of `all`, and the module needs Downloads. The same holds for the Ollama store,
+which is one folder of one home: a left-out of the whole store (an unreadable manifest, a download in progress) hides
+every model beside it. In `all`, `local-ai-models-ollama` stays and `-ollama-unreadable` and `-ollama-download` are
+left out, each writing the lone layer the first writes so that the clash leaves them out. A run by hand uses the
+feature's own sandbox.
 
 ## Cause
 

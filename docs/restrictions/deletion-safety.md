@@ -16,6 +16,13 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `crates/cleaner/tests/types.rs` (each crate's `tests/compile_fail/`); the property test
   `any_changed_field_of_the_echo_refuses` (`confirm.rs`); the core e2e `crates/e2e/tests/cleanup.rs` (a wrong count,
   an old plan: nothing moved, nothing journalled).
+- **An item may be several paths** (a model of a local AI tool: its list and the layers only it uses): the user
+  confirms the item, not its files one by one; the confirmation lists the other paths on demand ("and N more files
+  that go with it"), the item count, size and highest danger are the item's, and every path of it is checked before the
+  first moves (below). Tests: `app/ui/src/product/confirm-dialog/confirm-dialog.test.tsx` (the toggle, the list, the
+  keyboard),
+  `a_together_item_shows_its_subject_and_the_parts_after_it` (`crates/core/src/cleanup/view.rs`),
+  `a_together_item_with_a_covered_part_is_left_out_whole` (`crates/engine/src/cleanup/plan.rs`).
 
 ## Scanning is read-only
 
@@ -32,11 +39,16 @@ The app deletes files from a real person's disk. These rules hold in every versi
 - **Rule:** items are moved to the Trash by default; a permanent delete is a separate, explicit choice per confirmation.
 - **Why:** a mistake must be recoverable.
 - **Enforced by:** the cleaner's API (plan 008/04). A plan's `Method` is `Trash` unless the user ticked the permanent
-  choice; a delete takes the `PermanentConsent` that only `confirm` makes, and only for `Method::Permanent`
+  choice; every part of an item of several paths goes the same way, the subject first, and put back brings the subject
+  back last and never alone (`remove/together.rs`; `put_back_together` in `crates/engine/src/cleanup/history.rs`); a
+  delete takes the `PermanentConsent` that only `confirm` makes, and only for `Method::Permanent`
   (`crates/cleaner/src/pipeline.rs`, `remove/permanent.rs`). A volume with no Trash skips the item (`NoTrash`), never
   deletes it instead (`remove/trash.rs`). Tests: `permanent_consent_literal` (`crates/core/tests/compile_fail/`),
   `a_permanent_method_alone_gives_no_consent_for_the_trash` (`confirm.rs`), `remove/trash.rs`, `pipeline.rs`
-  (`the_trash_method_moves_and_the_permanent_method_deletes`).
+  (`the_trash_method_moves_and_the_permanent_method_deletes`); for an item of several paths,
+  `every_part_goes_to_the_trash_the_subject_first` and `the_permanent_way_deletes_each_part_through_the_deletion_point`
+  (`remove/together.rs`), `a_together_item_comes_back_parts_first_and_the_subject_last` and
+  `a_together_item_whose_layer_cannot_come_back_keeps_its_subject_in_the_trash` (`history.rs`).
 
 ## Re-check before delete
 
@@ -50,7 +62,14 @@ The app deletes files from a real person's disk. These rules hold in every versi
   file id and kind (7), and not grown by more than 25 % and 64 MiB, walked beneath the held handle (11); the first
   check that fails skips the item with its reason. Tests: `paths.rs`, `guard/mod.rs`, `guard/walk.rs`, the race tests
   of `remove/permanent.rs`, `tests/never.rs`; the core e2e
-  `an_item_replaced_after_prepare_is_skipped_and_the_rest_done` (`crates/e2e/tests/cleanup.rs`).
+  `an_item_replaced_after_prepare_is_skipped_and_the_rest_done` (`crates/e2e/tests/cleanup.rs`). An item of several
+  paths is re-checked in every part, each against its own confirmed identity and held open, and its growth on the sum
+  of the parts, all before the first part moves: one part refused skips the whole item and nothing moves. Tests:
+  `a_part_outside_the_roots_moves_no_part`, `a_protected_part_moves_no_part`, `a_replaced_part_moves_no_part`,
+  `a_grown_part_moves_no_part`, `a_part_held_open_moves_no_part`, `a_mapped_part_moves_no_part` (`pipeline.rs`),
+  `parts_that_grew_together_past_the_margin_are_grown` (`guard/mod.rs`), `a_together_item_goes_whole_or_not_at_all`
+  (`tests/never.rs`); the core e2e `crates/e2e/tests/local_ai_models_ollama.rs`
+  (`a_model_whose_layer_is_mapped_moves_nothing`, `a_layer_replaced_after_the_plan_moves_nothing`).
 
 ## Never follow symlinks out, never touch protected paths
 

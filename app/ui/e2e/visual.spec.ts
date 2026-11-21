@@ -45,6 +45,19 @@ const confirmation = async (page: Page, script: CoreScript): Promise<Locator> =>
   return dialog;
 };
 
+// Ollama's models ticked on Scan, the review open and the confirmation asked for.
+const ollamaConfirmation = async (page: Page): Promise<Locator> => {
+  await open(page, SCRIPTS.localAiModelsOllama);
+  await scan(page, '10.9 GB');
+  await page.getByRole('checkbox', { name: 'Select Ollama models' }).check();
+  await go(page, /^Review/, 'Review');
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  return dialog;
+};
+
 const looksTheSame = async (page: Page, name: string): Promise<void> => {
   await expectNoCspViolation(page);
   await expect(page).toHaveScreenshot(name);
@@ -211,6 +224,13 @@ test.describe('positive cases', () => {
       });
     }
 
+    test("of Ollama's models", async ({ page }) => {
+      await detailsAfter(page, SCRIPTS.localAiModelsOllama, 'Ollama models');
+      await expect(details(page).getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
+
+      await looksTheSame(page, 'category-details-ollama.png');
+    });
+
     test('the Scan screen with a category found but left out', async ({ page }) => {
       await mockCore(page, SCRIPTS.devCachesXcodeOpen);
       await page.goto('/');
@@ -289,6 +309,16 @@ test.describe('positive cases', () => {
       await expect(dialog.getByRole('button', { name: 'Delete permanently' })).toBeVisible();
 
       await looksTheSame(page, 'cleanup-confirm-permanent.png');
+    });
+
+    test('the confirmation with a model that goes with more files', async ({ page }) => {
+      const dialog = await ollamaConfirmation(page);
+      await dialog.getByRole('button', { name: /^and 3 more files that go with it/ }).click();
+      await expect(
+        dialog.getByRole('list', { name: 'The other files that go with llama3:8b, llama3:latest' }),
+      ).toBeVisible();
+
+      await looksTheSame(page, 'cleanup-confirm-together.png');
     });
 
     test('the confirmation with an item left out', async ({ page }) => {

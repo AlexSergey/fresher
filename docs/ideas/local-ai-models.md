@@ -3,10 +3,11 @@
 **Since:** 2026-11-15 · **Proposed by:** the agent
 
 Taken up by plan [023](../plans/023-local-ai-models/readme.md) (2026-11-21): the models of Hugging Face (models and
-datasets, Low) and LM Studio (Medium), one finding per model, moved to the Trash. Ollama is
-[deferred](../deferred/ollama-models.md); other apps' models, the Hugging Face chunk cache and the tools' own commands
-stay ideas. The open questions are answered there: the folder goes to the Trash, no tool command; datasets are a
-category of their own.
+datasets, Low) and LM Studio (Medium), one finding per model, moved to the Trash. Ollama's models are built by plan
+[029](../plans/029-ollama-models/readme.md) (2026-11-21): one finding per model, its manifests and the layers no other
+model uses moved to the Trash together as one item, its size the bytes it frees, every model Medium. Other apps'
+models, the Hugging Face chunk cache and the tools' own commands stay ideas. The open questions are answered there:
+the folder goes to the Trash, no tool command; datasets are a category of their own.
 
 ## Problem
 
@@ -25,7 +26,9 @@ of gigabytes disappear without any app pointing at them.
   - others later through [rules as data](./architecture/rules-as-data.md).
 - **Freed bytes, not listed bytes.** Several models share layers (Ollama blobs, Hugging Face blobs behind snapshot
   symlinks). A model frees only the blobs no other model references; the finding says so: "14 GB, of which 9 GB is
-  freed — the rest is shared with `llama3:70b`" ([best practices](./best-practices.md), 15).
+  freed — the rest is shared with `llama3:70b`" ([best practices](./best-practices.md), 15). Answered for Ollama by
+  plan 029: the finding's size is what removing it frees, and its reason names the model's whole size and the model
+  the rest is shared with.
 - Removal through the tool's own command where it has one (`ollama rm`, the Hugging Face cache command), so its index
   stays consistent; otherwise the model folder moves to the Trash.
 - Danger level **Low**: downloaded again on demand, at the cost of bandwidth — the finding names the size of that

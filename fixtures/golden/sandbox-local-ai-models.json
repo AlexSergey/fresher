@@ -134,22 +134,17 @@
     "places": [
       {
         "at": "home/.ollama/models",
-        "case": "Ollama's models are not claimed in this version",
+        "case": "Ollama's folder without its manifests is not claimed",
         "path": [
-          "home/.ollama/models"
+          "home/.ollama/models",
+          "home/.ollama/models/blobs"
         ],
         "rows": [
           {
             "allocated": 4096,
             "explained": 0,
             "logical": 4096,
-            "path": "home/.ollama/models/blobs"
-          },
-          {
-            "allocated": 4096,
-            "explained": 0,
-            "logical": 4096,
-            "path": "home/.ollama/models/manifests"
+            "path": "home/.ollama/models/blobs/sha256-0001"
           }
         ]
       },
@@ -181,7 +176,7 @@
             }
           },
           {
-            "allocated": 45056,
+            "allocated": 40960,
             "part": {
               "kind": "your-folders"
             }
@@ -214,7 +209,7 @@
             }
           },
           {
-            "allocated": 738111034,
+            "allocated": 738115130,
             "part": {
               "kind": "disk-own"
             }
@@ -624,31 +619,6 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.ollama/models/manifests"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
-        "path": "home/.ollama/models/manifests/registry.ollama.ai"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
-        "path": "home/.ollama/models/manifests/registry.ollama.ai/library"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
-        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/tiny"
-      },
-      {
-        "kind": "file",
-        "logical_size": 4096,
-        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/tiny/latest"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
         "path": "home/Code"
       },
       {
@@ -682,6 +652,6 @@
         "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 86470
+    "totalLogicalSize": 82374
   }
 }

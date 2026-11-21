@@ -138,13 +138,14 @@ pub fn assert_texts_used(module: &dyn Module, runs: &[ModuleRun]) {
     assert!(problems.is_empty(), "the texts of module `{}` are wrong:{}", module.descriptor().id(), listed(&problems));
 }
 
-/// Every finding of `runs` whose removal names a path that no match of its run reported. The engine takes an item's
-/// removability from the match its removal names; without one the item needs an administrator (fail closed), so
-/// the app could never remove it.
+/// Every finding of `runs` whose removal names a path that no match of its run reported, any part of an item of
+/// several paths included. The engine takes an item's removability from the matches its removal names; without one
+/// the item needs an administrator (fail closed), so the app could never remove it.
 pub fn check_removals_matched(runs: &[ModuleRun]) -> Vec<ContractProblem> {
     let unmatched = runs.iter().flat_map(|run| {
         run.findings.iter().filter(|finding| match finding.removal() {
             Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => !run.matched.contains(path),
+            Removal::MoveTogether(parts) => parts.all().iter().any(|part| !run.matched.contains(part)),
             Removal::ToolCommand(_) => false,
         })
     });
@@ -265,6 +266,10 @@ fn listed(problems: &[ContractProblem]) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use fresher_core::{CategoryDescriptor, NewFinding, Parts, Removal, Subject};
+
     use crate::run_module::sample::{CacheModule, TREE};
     use crate::{FixtureTree, ModuleRun, Ports, run_module};
 
@@ -287,14 +292,43 @@ mod tests {
         vec![run_module(module, &tree, &Ports::at(0)).unwrap()]
     }
 
+    /// The run's first finding, removed together with `others`.
+    fn together_with(run: &ModuleRun, others: Vec<PathBuf>) -> NewFinding {
+        let first = &run.findings[0];
+        let category = CategoryDescriptor::new(first.category(), first.danger());
+        let Subject::Path(path) = first.subject().clone() else { unreachable!("a path finding") };
+        let parts = Parts::new([vec![path.clone()], others].concat()).unwrap();
+        NewFinding::new(
+            &category,
+            "together",
+            Subject::Path(path),
+            first.sizes(),
+            first.title().clone(),
+            first.reason().clone(),
+            Removal::MoveTogether(parts),
+        )
+    }
+
     mod negative {
         use fresher_core::{
             DangerLevel, DescriptorError, DictionaryError, SettingDescriptor, SettingKey, SettingKind, SettingValue,
         };
 
-        use super::{catalogue_file, docs, runs};
+        use super::{catalogue_file, docs, runs, together_with};
         use crate::run_module::sample::{CacheModule, en_with};
         use crate::{Catalogue, ContractProblem, check_module_contract, check_removals_matched, check_texts_used};
+
+        #[test]
+        fn a_together_removal_with_an_unmatched_part_is_flagged() {
+            let module = CacheModule::new();
+            let mut run = runs(&module).remove(0);
+            let together = together_with(&run, vec!["/nowhere/layer".into()]);
+            run.findings = vec![together];
+
+            let problems = check_removals_matched(&[run]);
+
+            assert!(matches!(problems.as_slice(), [ContractProblem::UnmatchedRemoval { .. }]), "{problems:?}");
+        }
 
         #[test]
         fn a_path_removal_without_a_match_is_flagged() {
@@ -512,9 +546,28 @@ mod tests {
     }
 
     mod positive {
+        use super::together_with;
         use super::{catalogue_file, docs, runs};
         use crate::run_module::sample::{CacheModule, en_with};
         use crate::{Catalogue, assert_module_contract, assert_texts_used, check_removals_matched, check_texts_used};
+
+        #[test]
+        fn a_together_removal_of_matched_parts_is_not_flagged() {
+            let module = CacheModule::new();
+            let mut run = runs(&module).remove(0);
+            let first = run.findings[0].subject().clone();
+            let others: Vec<_> = run
+                .matched
+                .iter()
+                .filter(|path| first != fresher_core::Subject::Path((*path).clone()))
+                .cloned()
+                .collect();
+            assert!(!others.is_empty(), "the sample tree matches more than one path");
+            let together = together_with(&run, others);
+            run.findings = vec![together];
+
+            assert_eq!(check_removals_matched(&[run]), []);
+        }
 
         #[test]
         fn a_complete_module_keeps_its_contract() {

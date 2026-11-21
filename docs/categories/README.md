@@ -83,6 +83,7 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `local-ai-models.hugging-face-models` | Low | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-hugging-face-models.md`](./local-ai-models-hugging-face-models.md) |
 | `local-ai-models.hugging-face-datasets` | Low | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-hugging-face-datasets.md`](./local-ai-models-hugging-face-datasets.md) |
 | `local-ai-models.lm-studio` | Medium | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-lm-studio.md`](./local-ai-models-lm-studio.md) |
+| `local-ai-models.ollama` | Medium | none (the module's code, `modules/local-ai-models`) | [`local-ai-models-ollama.md`](./local-ai-models-ollama.md) |
 | `unused-toolchains.rust` | Low | none (the module's code, `modules/unused-toolchains`) | [`unused-toolchains-rust.md`](./unused-toolchains-rust.md) |
 | `unused-toolchains.node` | Medium | none (the module's code, `modules/unused-toolchains`) | [`unused-toolchains-node.md`](./unused-toolchains-node.md) |
 | `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |

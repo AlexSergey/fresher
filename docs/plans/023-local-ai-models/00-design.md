@@ -35,7 +35,7 @@ come back.
   models use them is written only inside its manifest files, and a model is several files in two folders. The module
   cannot read a file's contents (only the walk reads the head of a `CACHEDIR.TAG`), and a finding has one removal of
   one path. Its space stays visible in the storage map as its real folders. Postponed to
-  [`../../deferred/ollama-models.md`](../../deferred/ollama-models.md) with what it needs.
+  [`../../deferred/ollama-models.md`](../029-ollama-models/readme.md) with what it needs.
 - A store moved by an environment variable or the tool's settings (`HF_HOME`, `HF_HUB_CACHE`, LM Studio's chosen
   folder): only the default places, as plan 018 decided for every cache (agent's call 3). A moved store is missed,
   never mistaken.
@@ -225,7 +225,7 @@ None.
 
 Made while writing this design from the code and the rules; each with what it costs if wrong.
 
-1. **Ollama is not in this plan; it is deferred** ([`ollama-models`](../../deferred/ollama-models.md)), against the
+1. **Ollama is not in this plan; it is deferred** ([`ollama-models`](../029-ollama-models/readme.md)), against the
    idea, which lists it first. One finding per Ollama model needs (a) which blobs a model uses, written only inside
    its manifest, while a module never reads a file and the walk reads only a `CACHEDIR.TAG`'s head; and (b) a removal
    of a manifest and several blobs as one item, while a finding has one `Removal` of one path. The tool route does not

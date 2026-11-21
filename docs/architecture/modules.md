@@ -261,12 +261,31 @@ category (`models`, `datasets`); a kind the row does not list (a Space) is never
 summed, never claimed. The decision is a pure function (`decide.rs`, a table of nine rows) taken in `finish`, because it
 needs the running apps: a model of LM Studio is left out while LM Studio is open (`app-open`), or when the apps could
 not be listed (`no-system`). Two more rows refuse a model as `dev-caches` does: a special entry inside it, and a folder
-that is not the user's. No age is judged: every
-model is offered with the date it was last opened or changed in its reason. A finding's identity is
-`<row id>/<the folder names>` and its removal is the model's folder moved to the Trash, never the tool's own command
-(Hugging Face's cache has no index beside its folders, and a tool never runs in a sandbox). Ollama's store is not
-claimed: one finding per model needs the walk to read its manifests and one removal of several paths, so it is
-[deferred](../deferred/ollama-models.md).
+that is not the user's. No age is judged: every model is offered with the date it was last opened or changed in its
+reason. A finding's identity is `<row id>/<the folder names>` and its removal is the model's folder moved to the Trash,
+never the tool's own command (Hugging Face's cache has no index beside its folders, and a tool never runs in a sandbox).
+
+**Ollama is a row of the same table with a shape of its own (`ollama-store`), and the example of a module whose finding
+is several paths**: one model is not one folder. The store `~/.ollama/models` holds `manifests/<host>/<namespace>/
+<model>/<tag>` (a small JSON file per tag naming the model's layers by digest and size) and `blobs/sha256-<hex>` (the
+layers, shared between models). The row gives six interests, each an item claim so the storage map keeps the real
+folders: the store (holding `manifests` and `blobs`), the manifests' three folder levels (only to see whose they are)
+and the manifests and the layers. The store's rows decide first, once a scan, before any manifest is read: no store or
+no `manifests` and `blobs` is not claimed; an entry that is not the user's (a lock or a restricted one counts as not
+the user's) or a partial download in `blobs/` leaves the store out whole (`not-yours`, `ollama-download`); then, and
+only then, `finish` reads every manifest the scan matched through `cx.system().small_file` (at most 4 KiB, never a
+link) and any manifest that cannot be read, or any entry at a host's, namespace's or model's depth that is not a folder
+of a plain name (a link, a file, a hidden folder; a hidden file such as `.DS_Store` is ignored), leaves the store out
+as `ollama-unreadable`, since which layers are shared cannot be told. A model is the manifests that name exactly the
+same files (the tags of one model are one finding, tags in name order, the subject the first tag's manifest); its parts
+are its manifests and the layers no manifest outside it names, and its size is what removing it frees. A layer another
+model names never leaves with a model, even when that model is incomplete. A model with a missing or wrong-sized layer
+is left out (`ollama-incomplete`); one with no known time or fewer than two parts (a tag whose every layer is shared)
+or more than 64 is not claimed. The finding's identity is `ollama/<host>/<namespace>/<model>/<tag>` of its first tag, its
+removal is `Removal::MoveTogether` of the manifests then the layers, and its reason says when it was last opened or
+changed and, when layers are shared, how large the model is in all and with which model (the first by name, and how
+many more) the rest stays. The cleaner checks every part before the first moves, so a model the server has loaded (its
+layers are mapped) moves nothing ([`removal.md`](./removal.md)).
 
 **`unused-toolchains` is code with a data table, and the example of a module that reads small files**: each manager is a
 row of `toolchains.toml` (rustup, nvm: the versions' place under the home, the shape of a version's folder name, the
@@ -340,8 +359,11 @@ A module ships only when every box is ticked:
 - [ ] The contract test passes (`assert_module_contract`, `assert_texts_used`, no `check_removals_matched` problem).
 - [ ] No dependency on another module (the dependency guard checks it).
 - [ ] No danger level is lowered: a rule or a finding only raises its category's.
-- [ ] Every removal is data (`MoveToTrash`, `EmptyFolder`, `ToolCommand`); the module deletes nothing and walks nothing.
-- [ ] A path removal names the finding's own subject (`MoveToTrash` or `EmptyFolder` of the `Subject::Path`); a tool
-      removal runs the subject's own tool and never forces (no `-f`, `--force`, `--force=…`, nor `f` among short
-      flags such as `-rf`). The plan builder leaves any other out (`NotTheSubject`, `ForcedTool`;
-      `crates/engine/src/cleanup/plan.rs`), so such a finding can never be removed.
+- [ ] Every removal is data (`MoveToTrash`, `EmptyFolder`, `MoveTogether`, `ToolCommand`); the module deletes nothing
+      and walks nothing.
+- [ ] A path removal names the finding's own subject (`MoveToTrash` or `EmptyFolder` of the `Subject::Path`); a
+      `MoveTogether` of two to 64 paths (`Parts`, `MAX_PARTS`) has the subject first and every part a path the module
+      was matched on, none twice, none inside another; a tool removal runs the subject's own tool and never forces
+      (no `-f`, `--force`, `--force=…`, nor `f` among short flags such as `-rf`). The plan builder leaves any other
+      out (`NotTheSubject`, `ForcedTool`; `crates/engine/src/cleanup/plan.rs`), so such a finding can never be
+      removed.

@@ -1,11 +1,13 @@
 # The stores of local AI models the module offers (plan 023, design section 1), one row per store, in the order of the
 # module's interests.
 # `id`: the row's id, kebab case: the start of its findings' identities.
-# `tool`: the tool that keeps the store, "hugging-face" or "lm-studio": its reason (`local-ai-models.reason.<tool>`).
+# `tool`: the tool that keeps the store, "hugging-face", "lm-studio" or "ollama": its reason
+#   (`local-ai-models.reason.<tool>`).
 # `folder`: the known folder the place is under, as rules write it; never a temporary folder.
 # `path`: the place, relative to `folder`, plain names; each `*` matches one name, the last name is one.
 # `shape`: how a model's folder is named: "hub-repo" (one `*`: `<kind>--<owner>--<name>`) or "publisher-model" (two
-#   `*`: the publisher's folder, then the model's).
+#   `*`: the publisher's folder, then the model's) or "ollama-store" (no `*`: the store folder itself, its layout of
+#   `manifests/` and `blobs/` known by the shape; no `sign`, no `app`, one `category`).
 # `sign`: the names a model's folder must hold, all of them; none when the place is its own sign.
 # `app`: the bundle id of the app whose store it is; kept while that app is open.
 # `category`: the module's category of every model of the row; or, for a "hub-repo" row, `[[store.kind]]` entries:
@@ -45,3 +47,11 @@ path = ".cache/lm-studio/models/*/*"
 shape = "publisher-model"
 app = "ai.elementlabs.lmstudio"
 category = "local-ai-models.lm-studio"
+
+[[store]]
+id = "ollama"
+tool = "ollama"
+folder = "home"
+path = ".ollama/models"
+shape = "ollama-store"
+category = "local-ai-models.ollama"

@@ -207,6 +207,7 @@ const ai = (key: string): string => {
 const AI_HF_MODELS = ai('hugging-face-models.name');
 const AI_HF_DATASETS = ai('hugging-face-datasets.name');
 const AI_LM_STUDIO = ai('lm-studio.name');
+const AI_OLLAMA = ai('ollama.name');
 
 // Scans the local AI models script.
 const openLocalAiModels = (
@@ -485,6 +486,18 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select all ${AI_HF_MODELS}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('300 MB');
+  });
+
+  test('while Ollama downloads, its card offers nothing and says why', async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllamaDownload);
+
+    await expect(cards(page).filter({ hasText: AI_OLLAMA })).toHaveCount(0);
+    const leftOut = page.getByRole('region', { name: 'Found, but left out' });
+    await expect(leftOut).toContainText(`1 item left out (6.3 GB): ${ai('left-out.ollama-download')}`);
+    await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
+    await openDetails(page, AI_OLLAMA);
+    await expect(details(page)).toContainText(`1 item left out (6.3 GB): ${ai('left-out.ollama-download')}`);
+    await expect(details(page).getByRole('checkbox')).toHaveCount(0);
   });
 
   test('a Node version not owned by you is kept and cannot be selected', async ({ page }) => {
@@ -1697,6 +1710,85 @@ test.describe('positive cases', () => {
     await result.getByRole('button', { name: 'See this cleanup' }).click();
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: 'models--meta--tiny' });
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Ollama models show on Scan with their freed size', async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllama);
+
+    await expect(cards(page).filter({ hasText: AI_OLLAMA })).toBeVisible();
+    await expect(cards(page).filter({ hasText: AI_OLLAMA })).toContainText('10.9 GB');
+    await expect(cards(page).filter({ hasText: AI_OLLAMA })).toContainText('3 items');
+  });
+
+  test("a shared Ollama model's reason names what stays", async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllama);
+
+    await openDetails(page, AI_OLLAMA);
+
+    const items = details(page);
+    await expect(items).toContainText('It is 4.9 GB in all, of which 4.6 GB is freed;');
+    await expect(items).toContainText('the rest is shared with llama3:8b and stays.');
+    await expect(items).toContainText('the rest is shared with llama3-custom:latest and stays.');
+  });
+
+  test("an unshared Ollama model's reason gives the command that downloads it again", async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllama);
+
+    await openDetails(page, AI_OLLAMA);
+
+    await expect(details(page)).toContainText('`ollama pull gemma2:2b` downloads its 1.6 GB again');
+  });
+
+  test('the Ollama category shows Medium and its five texts', async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllama);
+
+    await openDetails(page, AI_OLLAMA);
+
+    const category = details(page);
+    await expect(category.getByRole('heading', { name: AI_OLLAMA })).toBeVisible();
+    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('Medium');
+    for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(category).toContainText(ai(`ollama.${text}`));
+    }
+    await expect(category).toContainText('llama3:8b, llama3:latest');
+  });
+
+  test('the confirm dialog lists the files that go with a model on demand', async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllama);
+    await page.getByRole('checkbox', { name: `Select ${AI_OLLAMA}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await expect(dialog).toContainText('Medium');
+    const toggle = dialog.getByRole('button', { name: 'and 3 more files that go with it: llama3:8b, llama3:latest' });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(dialog.getByRole('list', { name: /^The other files that go with/ })).toHaveCount(0);
+
+    await toggle.click();
+
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const files = dialog.getByRole('list', { name: 'The other files that go with llama3:8b, llama3:latest' });
+    await expect(files.getByRole('listitem')).toHaveCount(3);
+    await expect(files).toContainText('/.ollama/models/manifests/registry.ollama.ai/library/llama3/latest');
+    await expect(files).toContainText('/.ollama/models/blobs/sha256-a1f0c2');
+  });
+
+  test('an Ollama model goes to the Trash and comes back', async ({ page }) => {
+    await scanned(page, SCRIPTS.localAiModelsOllama);
+    await openDetails(page, AI_OLLAMA);
+    await page.getByRole('checkbox', { name: /Select llama3:8b, llama3:latest/ }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 1 item to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem');
     await item.getByRole('button', { name: 'Put back' }).click();
     await expect(item).toContainText('Put back where it was.');
   });

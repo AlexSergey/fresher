@@ -198,10 +198,10 @@ them in this order because the first ones teach the screens used by the rest.
 
 - [ ] `rm -rf sandbox/local-ai-models && npm run dev:sandbox -- local-ai-models`. Scan; walk `EXPECTED.md`, negatives
       first: nothing of a negative is offered (the Space, the hub's locks, the folder without `blobs` and `snapshots`,
-      the name off the shape, the loose file in LM Studio's folder, Ollama's store, the project's model file, the
-      project's link); the socket case reads as kept with its reason; each positive is offered in its category at its
-      danger (Hugging Face Low, LM Studio Medium); titles read `meta/tiny`, `gpt2`, `o/words`, `pub/model-a` and `pub/model-b` (a model in LM
-      Studio's older place goes); each reason names a date and a size.
+      the name off the shape, the loose file in LM Studio's folder, Ollama's folder without `manifests`, the project's
+      model file, the project's link; Ollama's models are 1.12); the socket case reads as kept with its reason; each
+      positive is offered in its category at its danger (Hugging Face Low, LM Studio Medium); titles read `meta/tiny`, `gpt2`, `o/words`, `pub/model-a` and
+      `pub/model-b` (a model in LM Studio's older place goes); each reason names a date and a size.
 - [ ] The storage map: the offered models in the explained part; `home/.ollama/models` in your folders.
 - [ ] Select everything: Review names Medium; confirm to the Trash: the model folders land in `home/.Trash` with their
       `snapshots` links inside; `home/Code/linked/weights.safetensors` is still a link (now broken). Cleanups, put
@@ -240,6 +240,23 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
       Scan's cards of the two categories say they need Documents,
       and their Details screen offers "Let Fresher look there"; nothing is offered.
 - [ ] Ignore the Rust category from its card's menu on Scan, then the module; restore both in Settings, Ignored.
+
+### 1.12 Ollama's models ([029/04/02](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/local-ai-models-ollama && npm run dev:sandbox -- local-ai-models-ollama`. Scan; walk
+      `EXPECTED.md`, negatives first: the lone layer and the manifest at the wrong depth are not offered; the incomplete
+      model reads as kept with its reason; `llama3:latest, llama3:8b` is one finding; the derived model's reason says
+      how large it is in all, how much is freed and that the rest is shared with the base; every Ollama finding is
+      Medium.
+- [ ] The storage map: the offered models' layers in the explained part; the shared layers and the lone layer in your
+      folders.
+- [ ] Select the derived model and `mistral:7b`; the confirm dialog names Medium; open "more files" on each: exactly
+      the manifest's companions the golden lists. Confirm to the Trash: the manifests and the unshared layers land in
+      `home/.Trash`; the shared layers and the base's manifest stay. Cleanups, put back: every file is back.
+- [ ] `npm run dev:sandbox -- local-ai-models-ollama-unreadable`: nothing of Ollama is offered, the card says a model
+      list could not be read.
+- [ ] `npm run dev:sandbox -- local-ai-models-ollama-download`: nothing of Ollama is offered, the card says a download
+      is in progress.
 
 ## 2. The real Mac: one recorded run
 
@@ -477,6 +494,27 @@ osascript -e 'id of app "LM Studio"'
       download in progress (what the scan offers, what the cleanup's rehearsal says); an LM Studio model imported by
       hand reads as a download, at Medium, with the "added yourself" sentence. Correct `stores.toml`, the texts and
       `docs/categories/local-ai-models-*.md` where they differ.
+
+### 2.11 Ollama's models ([029/04/02](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md))
+
+`npm run dev`, a scan of `~` (a dry run on the real Mac). Compare with these read-only commands:
+
+```sh
+ollama list
+find ~/.ollama/models/manifests -type f | sed 's|.*/manifests/||'
+find ~/.ollama/models/manifests -type f -exec wc -c {} + | sort -n | tail -3
+ls ~/.ollama/models/blobs | grep -c partial
+du -sh ~/.ollama/models/blobs
+```
+
+- [ ] Every offered model is in `ollama list` with the same tags; aliases (the same id) are one finding; each freed
+      size checked against the layers its manifest names that no other manifest names.
+- [ ] Select an Ollama model, confirm: the dry run checks every part and ends "a dry run"; with a model loaded
+      (`ollama run <model>` in another window), the item is skipped as in use.
+- [ ] Facts to verify, corrected in the code and the texts where they differ: the largest manifest against the 4 KiB
+      limit; the default host and namespace in `ollama list`'s names; partial download names while `ollama pull` runs
+      and that Ollama's server deletes layers no manifest names at its start (both in a throwaway `OLLAMA_MODELS`
+      folder, never the real store); what a model loaded while its files move does (the same folder).
 
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 
@@ -760,6 +798,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                           | deferred, due before release   | 5.2           |
 | [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)            | pending                        | 1.9, 2.8      |
 | [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)            | pending                        | 1.11, 2.10 |
+| [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)            | pending                        | 1.12, 2.11 |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

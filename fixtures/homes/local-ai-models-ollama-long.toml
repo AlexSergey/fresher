@@ -1,0 +1,45 @@
+# A home whose Ollama store has a manifest of 4097 bytes, one over the small-file reader's limit, beside a whole model:
+# it is not read, so nothing of Ollama is offered, and the store is left out `ollama-unreadable`.
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/tiny/latest"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+    "size": 410
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+      "size": 3000
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000001"
+size = 410
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000002"
+size = 3000
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/long/latest"
+size = 4097
+fill = "data"
+age = "40d"
+changed = "40d"

@@ -10,11 +10,12 @@ use fresher_core::{
 };
 
 use crate::CleanerPorts;
+use crate::guard::Verified;
 use crate::guard::walk::HeldWalk;
-use crate::guard::{GuardContext, Purpose, Unverified, verify, verify_tool};
+use crate::guard::{GuardContext, Purpose, Unverified, verify, verify_together, verify_tool};
 use crate::paths::{Roots, expand_home};
 use crate::reach::Reach;
-use crate::remove::{Removed, Way, delete, empty, run_tool, to_trash};
+use crate::remove::{Removed, Way, delete, empty, run_tool, to_trash, together};
 
 /// The snapshot of open files and running apps is taken again when this much time has passed on the clock.
 pub(crate) const SNAPSHOT_AGE: Duration = Duration::from_secs(2);
@@ -103,6 +104,11 @@ pub(crate) fn rehearse(
             Err(Unverified::Skipped(reason)) => Rehearsal::Skipped(reason),
             Err(Unverified::Cancelled) => Rehearsal::Skipped(SkipReason::CheckFailed),
         },
+        Action::RemoveTogether(_) => match verify_together(item, &guard, depth) {
+            Ok(parts) => Rehearsal::PassedTogether(parts.iter().map(Verified::identity).collect()),
+            Err(Unverified::Skipped(reason)) => Rehearsal::Skipped(reason),
+            Err(Unverified::Cancelled) => Rehearsal::Skipped(SkipReason::CheckFailed),
+        },
     };
     items.iter().map(rehearse_one).collect()
 }
@@ -145,14 +151,16 @@ pub(crate) fn execute(
             outcome: removed.outcome,
             trashed: removed.trashed,
             status: removed.status,
+            went: removed.went,
         });
     }
     if cancel.is_cancelled() { Ended::Cancelled } else { Ended::Completed }
 }
 
-/// One item: every check right before the act, then the removal its action and the plan's method call for. A reach
-/// that does not act (the dry run) ends an item that passed every check `DryRun`, before any act: no tool runs,
-/// nothing is moved, emptied or deleted.
+/// One item: every check right before the act, then the removal its action and the plan's method call for. An item of
+/// several paths passes every check on every part before its first part is acted on. A reach that does not act (the
+/// dry run) ends an item that passed every check `DryRun`, before any act: no tool runs, nothing is moved, emptied or
+/// deleted.
 fn act_on(item: &PlanItem, guard: &GuardContext<'_>, plan: &ConfirmedPlan, ports: &CleanerPorts) -> Removed {
     let act = plan.act();
     if let Action::Tool(command) = item.action() {
@@ -163,24 +171,47 @@ fn act_on(item: &PlanItem, guard: &GuardContext<'_>, plan: &ConfirmedPlan, ports
             Err(reason) => Removed::ended(ItemOutcome::Skipped { reason }),
         };
     }
+    let way = match plan.permanent() {
+        Some(consent) => Way::Permanent(consent),
+        None => Way::Trash(&*ports.trash),
+    };
+    if matches!(item.action(), Action::RemoveTogether(_)) {
+        let verified = match verify_together(item, guard, Depth::Full) {
+            Ok(verified) => verified,
+            Err(unverified) => return not_verified(unverified),
+        };
+        #[cfg(debug_assertions)]
+        if !guard.reach.acts() {
+            drop(verified);
+            return Removed::ended(ItemOutcome::Skipped { reason: SkipReason::DryRun });
+        }
+        return together(verified, act, way, guard.cancel);
+    }
     let verified = match verify(item, guard, Depth::Full) {
         Ok(verified) => verified,
-        Err(Unverified::Skipped(reason)) => return Removed::ended(ItemOutcome::Skipped { reason }),
-        Err(Unverified::Cancelled) => return Removed::ended(ItemOutcome::NotReached),
+        Err(unverified) => return not_verified(unverified),
     };
     #[cfg(debug_assertions)]
     if !guard.reach.acts() {
         drop(verified);
         return Removed::ended(ItemOutcome::Skipped { reason: SkipReason::DryRun });
     }
-    let way = match plan.permanent() {
-        Some(consent) => Way::Permanent(consent),
-        None => Way::Trash(&*ports.trash),
-    };
     match (item.action(), way) {
         (Action::Empty(_), way) => empty(verified, act, way, guard.cancel),
-        (_, Way::Permanent(consent)) => delete(verified, act, consent),
-        (_, Way::Trash(trash)) => to_trash(verified, act, trash),
+        (Action::Remove(_), Way::Permanent(consent)) => delete(verified, act, consent),
+        (Action::Remove(_), Way::Trash(trash)) => to_trash(verified, act, trash),
+        // `verify` refuses both before this: neither is ever acted on as a single path.
+        (Action::RemoveTogether(_) | Action::Tool(_), _) => {
+            Removed::ended(ItemOutcome::Skipped { reason: SkipReason::CheckFailed })
+        }
+    }
+}
+
+/// The end of an item that did not pass the guard: skipped with the check's reason, or not reached on a cancel.
+fn not_verified(unverified: Unverified) -> Removed {
+    match unverified {
+        Unverified::Skipped(reason) => Removed::ended(ItemOutcome::Skipped { reason }),
+        Unverified::Cancelled => Removed::ended(ItemOutcome::NotReached),
     }
 }
 
@@ -695,4 +726,6 @@ mod tests {
             assert_eq!(full[0], Rehearsal::Skipped(SkipReason::OtherVolume));
         }
     }
+
+    mod together;
 }

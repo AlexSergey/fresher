@@ -83,7 +83,7 @@
     "journal": [
       {
         "format": "cleanup-journal",
-        "version": 1
+        "version": 2
       },
       {
         "at": 1767225600,
@@ -94,6 +94,7 @@
             "category": "jetbrains.settings",
             "danger": "medium",
             "key": "settings/GoLand2024.3",
+            "more": [],
             "path": "~/home/Library/Application Support/JetBrains/GoLand2024.3",
             "reason": {
               "args": {
@@ -124,6 +125,7 @@
             "category": "jetbrains.settings",
             "danger": "medium",
             "key": "settings/WebStorm2024.3",
+            "more": [],
             "path": "~/home/Library/Application Support/JetBrains/WebStorm2024.3",
             "reason": {
               "args": {
@@ -154,6 +156,7 @@
             "category": "jetbrains.caches",
             "danger": "safe",
             "key": "caches/GoLand2024.3",
+            "more": [],
             "path": "~/home/Library/Caches/JetBrains/GoLand2024.3",
             "reason": {
               "args": {
@@ -184,6 +187,7 @@
             "category": "jetbrains.caches",
             "danger": "safe",
             "key": "caches/WebStorm2024.3",
+            "more": [],
             "path": "~/home/Library/Caches/JetBrains/WebStorm2024.3",
             "reason": {
               "args": {
@@ -214,6 +218,7 @@
             "category": "jetbrains.logs",
             "danger": "safe",
             "key": "logs/GoLand2024.3",
+            "more": [],
             "path": "~/home/Library/Logs/JetBrains/GoLand2024.3",
             "reason": {
               "args": {
@@ -244,6 +249,7 @@
             "category": "jetbrains.logs",
             "danger": "safe",
             "key": "logs/WebStorm2024.3",
+            "more": [],
             "path": "~/home/Library/Logs/JetBrains/WebStorm2024.3",
             "reason": {
               "args": {
@@ -288,7 +294,8 @@
             "original": "~/home/Library/Application Support/JetBrains/GoLand2024.3"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -301,7 +308,8 @@
             "original": "~/home/Library/Application Support/JetBrains/WebStorm2024.3"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -314,7 +322,8 @@
             "original": "~/home/Library/Caches/JetBrains/GoLand2024.3"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -327,7 +336,8 @@
             "original": "~/home/Library/Caches/JetBrains/WebStorm2024.3"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -340,7 +350,8 @@
             "original": "~/home/Library/Logs/JetBrains/GoLand2024.3"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -353,7 +364,8 @@
             "original": "~/home/Library/Logs/JetBrains/WebStorm2024.3"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "at": 1767225600,
@@ -364,6 +376,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -372,6 +385,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -380,6 +394,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -388,6 +403,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -396,6 +412,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -404,6 +421,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -419,6 +437,7 @@
           "items": [
             {
               "danger": "safe",
+              "more": [],
               "path": "~/home/Library/Caches/JetBrains/GoLand2024.3",
               "reason": {
                 "args": {
@@ -459,6 +478,7 @@
             },
             {
               "danger": "safe",
+              "more": [],
               "path": "~/home/Library/Caches/JetBrains/WebStorm2024.3",
               "reason": {
                 "args": {
@@ -516,6 +536,7 @@
           "items": [
             {
               "danger": "safe",
+              "more": [],
               "path": "~/home/Library/Logs/JetBrains/GoLand2024.3",
               "reason": {
                 "args": {
@@ -556,6 +577,7 @@
             },
             {
               "danger": "safe",
+              "more": [],
               "path": "~/home/Library/Logs/JetBrains/WebStorm2024.3",
               "reason": {
                 "args": {
@@ -613,6 +635,7 @@
           "items": [
             {
               "danger": "medium",
+              "more": [],
               "path": "~/home/Library/Application Support/JetBrains/GoLand2024.3",
               "reason": {
                 "args": {
@@ -653,6 +676,7 @@
             },
             {
               "danger": "medium",
+              "more": [],
               "path": "~/home/Library/Application Support/JetBrains/WebStorm2024.3",
               "reason": {
                 "args": {

@@ -228,7 +228,7 @@ export type Removability = "removable" | "needs-administrator" | "locked" | "pro
 /**
  * How the cleaner removes a finding once the user confirmed it.
  */
-export type Removal = { "kind": "move-to-trash", "value": string } | { "kind": "empty-folder", "value": string } | { "kind": "tool-command", "value": ToolCommand };
+export type Removal = { "kind": "move-to-trash", "value": string } | { "kind": "empty-folder", "value": string } | { "kind": "tool-command", "value": ToolCommand } | { "kind": "move-together", "value": Array<string> };
 
 /**
  * A call of an external tool: the tool and a fixed list of arguments, never a shell string.
@@ -685,7 +685,12 @@ export type PlanItemView = { finding: FindingId, title: Text, reason: Text, dang
 /**
  * Where it is, to show; `None` for a tool's item.
  */
-path: string | null, };
+path: string | null, 
+/**
+ * The other paths that leave with it, to show: the parts after the subject of an item of several paths, empty
+ * for any other item.
+ */
+more: Array<string>, };
 
 /**
  * A finding of the selection that will not be removed, and why; shown under "These will not be removed".

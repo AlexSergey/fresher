@@ -16,15 +16,16 @@ mod model {
     use std::collections::BTreeMap;
     use std::fs;
     use std::os::unix::fs::{MetadataExt as _, symlink};
-    use std::path::{Path, PathBuf};
+    use std::path::{Component, Path, PathBuf};
     use std::sync::Arc;
 
     use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
     use fresher_core::{
         AccessStatus, Action, ActionKind, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Cleaner as _,
         CleanupContext, CleanupPlan, Confirmation, ConfirmedPlan, DangerLevel, Depth, Finding, FindingId, ItemDone,
-        ItemOutcome, Method, ModuleId, NewFinding, PlanId, PlanItem, Protection, Rehearsal, Removability, Removal,
-        SANDBOX_MARKER, SANDBOX_SIGNATURE, ScanId, Sizes, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId,
+        ItemOutcome, Method, ModuleId, NewFinding, Parts, PlanId, PlanItem, Protection, Rehearsal, Removability,
+        Removal, SANDBOX_MARKER, SANDBOX_SIGNATURE, ScanId, Sizes, Subject, Text, TextKey, Timestamp, ToolCommand,
+        ToolId,
     };
     use fresher_testing::{FakeClock, FakeCommandRunner, FakeOpenFiles, FakeTrash};
     use tempfile::TempDir;
@@ -193,6 +194,9 @@ mod model {
         let (subject, removal) = match action {
             Action::Remove(path) => (Subject::Path(path.clone()), Removal::MoveToTrash(path)),
             Action::Empty(path) => (Subject::Path(path.clone()), Removal::EmptyFolder(path)),
+            Action::RemoveTogether(parts) => {
+                (Subject::Path(parts.subject().to_path_buf()), Removal::MoveTogether(parts))
+            }
             Action::Tool(command) => {
                 (Subject::External { tool: command.tool(), id: "1".into() }, Removal::ToolCommand(command))
             }
@@ -253,8 +257,20 @@ mod model {
             bench
         }
 
+        /// The bench whose Trash refuses the path `relative` of the tree, as macOS does for a locked item.
+        pub(crate) fn refusing(tree: Tree, relative: &Path) -> Self {
+            let physical = fs::canonicalize(tree.root()).unwrap().join(relative);
+            let trash = FakeTrash::new(tree.at(".Trash")).refusing(physical);
+            Self::with_trash(tree, Reach::Sandbox, trash)
+        }
+
         fn within(tree: Tree, reach: Reach) -> Self {
-            let trash = Arc::new(FakeTrash::new(tree.at(".Trash")));
+            let trash = FakeTrash::new(tree.at(".Trash"));
+            Self::with_trash(tree, reach, trash)
+        }
+
+        fn with_trash(tree: Tree, reach: Reach, trash: FakeTrash) -> Self {
+            let trash = Arc::new(trash);
             let runner = Arc::new(FakeCommandRunner::default());
             let ports = CleanerPorts {
                 trash: Arc::clone(&trash) as _,
@@ -295,6 +311,7 @@ mod model {
                 .zip(rehearsed)
                 .map(|(item, rehearsal)| match rehearsal {
                     Rehearsal::Passed(identity) => item.with_identity(identity),
+                    Rehearsal::PassedTogether(identities) => item.with_part_identities(identities),
                     Rehearsal::Skipped(_) => item,
                 })
                 .collect();
@@ -354,9 +371,23 @@ mod model {
         NEVER_PLACES.iter().any(|never| inside(path, never) && !carved(never)) || inside(path, IGNORED)
     }
 
-    /// An item's path relative to the tree, if it names a path of it.
-    pub(crate) fn relative(tree: &Tree, item: &PlanItem) -> Option<PathBuf> {
-        item.action().path()?.strip_prefix(tree.root()).ok().map(Path::to_path_buf)
+    /// Every path an item acts on relative to the tree, in order: `None` for one that is not a path of it.
+    pub(crate) fn parts(tree: &Tree, item: &PlanItem) -> Vec<Option<PathBuf>> {
+        item.action().parts().iter().map(|part| part.strip_prefix(tree.root()).ok().map(Path::to_path_buf)).collect()
+    }
+
+    /// The picked paths as one item of several paths, the first the subject: a path that is not plain, or that is,
+    /// lies in or above a path kept before it, is left out; a remove of the first when fewer than two are left.
+    pub(crate) fn together(paths: Vec<PathBuf>) -> Action {
+        let first = paths[0].clone();
+        let mut kept: Vec<PathBuf> = Vec::new();
+        for path in paths {
+            let plain = path.components().all(|part| matches!(part, Component::RootDir | Component::Normal(_)));
+            if plain && !kept.iter().any(|earlier| earlier.starts_with(&path) || path.starts_with(earlier)) {
+                kept.push(path);
+            }
+        }
+        Parts::new(kept).map_or(Action::Remove(first), Action::RemoveTogether)
     }
 
     /// Whether `outcome` acted on the item.
@@ -391,14 +422,15 @@ mod negative {
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
 
-    use fresher_core::{Action, Depth, ItemDone, Method, PlanItem};
+    use fresher_core::{Action, Depth, Failure, ItemDone, ItemOutcome, Method, PartlyWay, PlanItem};
     use fresher_testing::Swapper;
     use proptest::prelude::*;
     use proptest::sample::Index;
     use proptest::test_runner::TestCaseError;
 
     use crate::model::{
-        BASES, Bench, Leaf, Listed, OUTSIDE, Tree, acted, is_kept, is_path_action, item, may_go, relative, tool, twin,
+        BASES, Bench, Leaf, Listed, OUTSIDE, Tree, acted, is_kept, is_path_action, item, may_go, parts, together, tool,
+        twin,
     };
 
     fn leaf() -> impl Strategy<Value = Leaf> {
@@ -409,25 +441,58 @@ mod negative {
         prop::collection::vec((0..BASES.len(), prop::collection::vec(0_usize..3, 0..3), leaf()), 0..14)
     }
 
-    /// Picks of the tree's candidate paths, each with an action: 0 remove, 1 empty, 2 a tool.
-    fn picks() -> impl Strategy<Value = Vec<(Index, u8)>> {
-        prop::collection::vec((any::<Index>(), prop_oneof![4 => Just(0_u8), 3 => Just(1_u8), 1 => Just(2_u8)]), 1..12)
+    /// One to four more picks: with the first, the parts of an item of several paths.
+    fn more() -> impl Strategy<Value = Vec<Index>> {
+        prop::collection::vec(any::<Index>(), 1..5)
     }
 
-    fn plan(bench: &Bench, picks: &[(Index, u8)]) -> Vec<PlanItem> {
+    /// Picks of the tree's candidate paths, each with an action: 0 remove, 1 empty, 2 a tool, 3 the path and the
+    /// item's more picks together.
+    fn picks() -> impl Strategy<Value = Vec<(Index, u8, Vec<Index>)>> {
+        let action = prop_oneof![4 => Just(0_u8), 3 => Just(1_u8), 1 => Just(2_u8), 2 => Just(3_u8)];
+        prop::collection::vec((any::<Index>(), action, more()), 1..12)
+    }
+
+    /// The paths `first` and `more` pick of the tree's candidates, as one item of several paths when they make one.
+    fn together_of(candidates: &[PathBuf], first: Index, more: &[Index]) -> Action {
+        together(std::iter::once(&first).chain(more).map(|pick| pick.get(candidates).clone()).collect())
+    }
+
+    fn plan(bench: &Bench, picks: &[(Index, u8, Vec<Index>)]) -> Vec<PlanItem> {
         let candidates = bench.tree.candidates();
         (1..)
             .zip(picks)
-            .map(|(id, (pick, action))| {
+            .map(|(id, (pick, action, more))| {
                 let path = pick.get(&candidates).clone();
                 let action = match action {
                     0 => Action::Remove(path),
                     1 => Action::Empty(path),
-                    _ => tool(),
+                    2 => tool(),
+                    _ => together_of(&candidates, *pick, more),
                 };
                 item(id, action)
             })
             .collect()
+    }
+
+    /// Whether the entry `path`, listed before, is gone or another entry now.
+    fn went(path: &Path, before: &BTreeMap<PathBuf, Listed>, after: &BTreeMap<PathBuf, Listed>) -> bool {
+        before.get(path).is_some_and(|listed| after.get(path).is_none_or(|now| now.0 != listed.0))
+    }
+
+    /// Whether the item ended so that what lies under its paths may have gone: acted on, or an item of several paths
+    /// that failed after some of its parts went.
+    fn may_have_removed(item: &PlanItem, done: &ItemDone) -> bool {
+        acted(&done.outcome)
+            || matches!(item.action(), Action::RemoveTogether(_)) && matches!(done.outcome, ItemOutcome::Failed { .. })
+    }
+
+    /// Whether `path` lies under a path of `item` (strictly inside the folder of an emptied one).
+    fn under(bench: &Bench, item: &PlanItem, path: &Path) -> bool {
+        parts(&bench.tree, item).into_iter().flatten().any(|planned| match item.action() {
+            Action::Empty(_) => path.starts_with(&planned) && *path != planned,
+            _ => path.starts_with(&planned),
+        })
     }
 
     /// Whether `path` lies in a place that must list exactly as before.
@@ -449,10 +514,12 @@ mod negative {
         for (index, item) in items.iter().enumerate() {
             if acted(&done[index].outcome) {
                 prop_assert!(is_path_action(item));
-                let path = relative(&bench.tree, item);
-                prop_assert!(path.as_deref().is_some_and(may_go), "acted on {:?}", item.action());
+                for part in parts(&bench.tree, item) {
+                    prop_assert!(part.as_deref().is_some_and(may_go), "acted on {:?}", item.action());
+                }
             }
         }
+        together_whole_or_not_at_all(bench, items, before, &after, done)?;
         let gone: Vec<&PathBuf> = before
             .iter()
             .filter(|(path, listed)| after.get(*path).is_none_or(|now| now.0 != listed.0))
@@ -460,13 +527,8 @@ mod negative {
             .collect();
         for path in gone {
             prop_assert!(may_go(path), "{} went", path.display());
-            let covered = items.iter().zip(done).any(|(item, done)| {
-                acted(&done.outcome)
-                    && relative(&bench.tree, item).is_some_and(|planned| match item.action() {
-                        Action::Empty(_) => path.starts_with(&planned) && *path != planned,
-                        _ => path.starts_with(&planned),
-                    })
-            });
+            let covered =
+                items.iter().zip(done).any(|(item, done)| may_have_removed(item, done) && under(bench, item, path));
             prop_assert!(covered, "{} went without a plan item over it", path.display());
         }
         for (path, listed) in before {
@@ -479,6 +541,113 @@ mod negative {
             prop_assert_eq!(after.get(&path).map(|listed| listed.0), before.get(&path).map(|listed| listed.0));
         }
         Ok(())
+    }
+
+    /// An item of several paths acted on went whole: every part was listed before and is gone. One skipped or not
+    /// reached moved no part: a part gone lies under another item that may have removed it.
+    fn together_whole_or_not_at_all(
+        bench: &Bench,
+        items: &[PlanItem],
+        before: &BTreeMap<PathBuf, Listed>,
+        after: &BTreeMap<PathBuf, Listed>,
+        done: &[ItemDone],
+    ) -> Result<(), TestCaseError> {
+        for (index, item) in items.iter().enumerate() {
+            if !matches!(item.action(), Action::RemoveTogether(_)) {
+                continue;
+            }
+            let parts = parts(&bench.tree, item);
+            if acted(&done[index].outcome) {
+                for part in &parts {
+                    let gone = part.as_deref().is_some_and(|part| went(part, before, after));
+                    prop_assert!(gone, "{:?} acted on, but {:?} stayed", item.action(), part);
+                }
+            } else if !matches!(done[index].outcome, ItemOutcome::Failed { .. }) {
+                for part in parts.iter().flatten().filter(|part| went(part, before, after)) {
+                    let other = (0..items.len()).filter(|other| *other != index).any(|other| {
+                        may_have_removed(&items[other], &done[other]) && under(bench, &items[other], part)
+                    });
+                    prop_assert!(other, "{} went, its item {:?}", part.display(), done[index].outcome);
+                }
+                prop_assert!(done[index].trashed.is_empty());
+            }
+        }
+        Ok(())
+    }
+
+    proptest! {
+        /// One item of several paths that may go, now and then with one of any of the tree's candidate paths among
+        /// them, the Trash refusing one of its parts or none: every part goes or none does, unless the Trash refuses
+        /// a part at its act; then the parts before it went, the rest stayed, and the item says only part of it went
+        /// (or, for the subject, that the Trash refused it), with what went to put back.
+        #[test]
+        fn a_together_item_goes_whole_or_not_at_all(
+            entries in entries(),
+            first in any::<Index>(),
+            more in more(),
+            stranger in proptest::option::of((any::<Index>(), any::<Index>())),
+            permanent in any::<bool>(),
+            refused in proptest::option::of(any::<Index>()),
+        ) {
+            let tree = Tree::build(&entries);
+            let candidates = tree.candidates();
+            let goers: Vec<PathBuf> =
+                candidates.iter().filter(|path| path.strip_prefix(tree.root()).is_ok_and(may_go)).cloned().collect();
+            if goers.len() < 2 {
+                return Ok(());
+            }
+            let mut picked: Vec<PathBuf> = std::iter::once(&first).chain(&more).map(|pick| pick.get(&goers).clone()).collect();
+            if let Some((at, pick)) = stranger {
+                picked.insert(at.index(picked.len() + 1), pick.get(&candidates).clone());
+            }
+            let action = together(picked);
+            let Action::RemoveTogether(paths) = &action else { return Ok(()) };
+            let relative: Vec<PathBuf> =
+                paths.all().iter().map(|part| part.strip_prefix(tree.root()).unwrap_or(part).to_path_buf()).collect();
+            let refused = refused.map(|pick| pick.index(relative.len()));
+            let bench = match refused {
+                Some(index) => Bench::refusing(tree, &relative[index]),
+                None => Bench::new(tree),
+            };
+            let before = bench.tree.listing();
+            let method = if permanent { Method::Permanent } else { Method::Trash };
+
+            let done = bench.execute(vec![item(1, action.clone())], method);
+
+            let after = bench.tree.listing();
+            let outcome = &done[0].outcome;
+            let refusing = refused.filter(|_| !permanent);
+            match (outcome, refusing) {
+                (ItemOutcome::Moved | ItemOutcome::Deleted, None) => {
+                    for part in &relative {
+                        prop_assert!(went(part, &before, &after), "{} stayed", part.display());
+                    }
+                    let journalled = if permanent { 0 } else { relative.len() };
+                    prop_assert_eq!(done[0].trashed.len(), journalled);
+                }
+                (ItemOutcome::Failed { reason }, Some(index)) => {
+                    let of = u32::try_from(relative.len()).unwrap();
+                    let done_parts = u32::try_from(index).unwrap();
+                    let expected = if index == 0 {
+                        Failure::TrashRefused.text()
+                    } else {
+                        Failure::Partly { done: done_parts, of, way: PartlyWay::Trash }.text()
+                    };
+                    prop_assert_eq!(reason, &expected);
+                    for (at, part) in relative.iter().enumerate() {
+                        prop_assert_eq!(went(part, &before, &after), at < index, "{}", part.display());
+                    }
+                    prop_assert_eq!(done[0].trashed.len(), index);
+                    prop_assert_eq!(bench.trash.moved().len(), index);
+                }
+                (ItemOutcome::Skipped { .. } | ItemOutcome::NotReached, _) => {
+                    prop_assert_eq!(&after, &before, "a refused item changed the tree");
+                    prop_assert!(done[0].trashed.is_empty());
+                }
+                (outcome, refusing) => prop_assert!(false, "{:?} ended {:?} (refusing {:?})", action, outcome, refusing),
+            }
+            holds(&bench, &[item(1, action.clone())], &before, &done)?;
+        }
     }
 
     proptest! {
@@ -527,8 +696,9 @@ mod negative {
             let strictly_inside = |path: &Path| path.starts_with(folder) && path != Path::new(folder);
             for (item, done) in items.iter().zip(&done) {
                 if acted(&done.outcome) {
-                    let path = relative(&bench.tree, item);
-                    prop_assert!(path.as_deref().is_some_and(strictly_inside), "acted on {:?}", item.action());
+                    for part in parts(&bench.tree, item) {
+                        prop_assert!(part.as_deref().is_some_and(strictly_inside), "acted on {:?}", item.action());
+                    }
                 }
             }
             let after = bench.tree.listing();

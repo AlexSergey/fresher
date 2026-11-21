@@ -105,7 +105,7 @@ and run the checks.
   go with the deferred item).
 - [Other toolchains' unused versions](../../deferred/other-toolchain-versions.md): a new deferred item, written with
   this plan.
-- [Ollama's models](../../deferred/ollama-models.md): its first need (a module reads a small file) is built here; its
+- [Ollama's models](../029-ollama-models/readme.md): its first need (a module reads a small file) is built here; its
   removal of several paths is still missing, so it stays deferred, its "Due at" updated.
 - [The world outside the disk in a sandbox](../../deferred/sandbox-world.md): touched, not due (settings in a case file
   are not the world outside the disk).

@@ -1,4 +1,4 @@
-import { type JSX, useRef, useState } from 'react';
+import { type JSX, type Ref, useEffect, useId, useRef, useState } from 'react';
 
 import type { VirtualRowProps } from '../../design/data/virtual-list/virtual-list';
 import type { UiKey } from '../../i18n/types';
@@ -48,10 +48,81 @@ const HOW: Readonly<Record<ActionKind, Readonly<Record<Method, UiKey>>>> = {
   tool: { permanent: 'ui.confirm.how.tool', trash: 'ui.confirm.how.tool' },
 };
 
-const ItemRow = ({ item, ...row }: Partial<VirtualRowProps> & { readonly item: PlanItemView }): JSX.Element => (
+type MoreControl = {
+  // The id of the list the button opens.
+  readonly controls: string;
+  readonly expanded: boolean;
+  readonly onToggle: () => void;
+};
+
+// The button under an item's path that says how many more files go with it; the list opens on request.
+const MoreButton = ({ control, item }: { readonly control: MoreControl; readonly item: PlanItemView }): JSX.Element => {
+  const files = t('ui.confirm.more-files', { count: { kind: 'count', value: item.more.length } });
+
+  // The name says whose files they are, so the buttons of several together items differ.
+  return (
+    <button
+      aria-controls={control.controls}
+      aria-expanded={control.expanded}
+      aria-label={t('ui.confirm.more-files-of', {
+        files: { kind: 'text', value: files },
+        item: { kind: 'text', value: tText(item.title) },
+      })}
+      className={styles.moreToggle}
+      onClick={control.onToggle}
+      type="button"
+    >
+      {files}
+    </button>
+  );
+};
+
+// Every other path of an item that goes together, one line each.
+const MorePaths = ({
+  id,
+  item,
+  ref,
+}: {
+  readonly id: string;
+  readonly item: PlanItemView;
+  readonly ref?: Ref<HTMLUListElement>;
+}): JSX.Element => (
+  <ul
+    aria-label={t('ui.confirm.more-list', { item: { kind: 'text', value: tText(item.title) } })}
+    className={styles.morePaths}
+    id={id}
+    ref={ref}
+  >
+    {item.more.map((path) => (
+      <li key={path}>
+        <PathText path={path} />
+      </li>
+    ))}
+  </ul>
+);
+
+const ItemRow = ({
+  item,
+  more,
+  ...row
+}: Partial<VirtualRowProps> & {
+  readonly item: PlanItemView;
+  readonly more?: MoreControl | undefined;
+}): JSX.Element => (
   <ListRow
     {...row}
-    subtitle={item.path === null ? undefined : <PathText path={item.path} />}
+    subtitle={
+      more === undefined ? (
+        item.path === null ? undefined : (
+          <PathText path={item.path} />
+        )
+      ) : (
+        <span className={styles.subtitle}>
+          {item.path === null ? null : <PathText path={item.path} />}
+          <MoreButton control={more} item={item} />
+        </span>
+      )
+    }
     title={tText(item.title)}
     trailing={
       <>
@@ -64,24 +135,92 @@ const ItemRow = ({ item, ...row }: Partial<VirtualRowProps> & { readonly item: P
   />
 );
 
+// A plain group's item: its row, and under it the other paths when asked for.
+const PlainItem = ({ item }: { readonly item: PlanItemView }): JSX.Element => {
+  const id = useId();
+  const [expanded, setExpanded] = useState(false);
+
+  if (item.more.length === 0) {
+    return <ItemRow item={item} />;
+  }
+
+  return (
+    <>
+      <ItemRow
+        item={item}
+        more={{
+          controls: id,
+          expanded,
+          onToggle: (): void => {
+            setExpanded(!expanded);
+          },
+        }}
+      />
+      {expanded ? (
+        <div role="listitem">
+          <MorePaths id={id} item={item} />
+        </div>
+      ) : null}
+    </>
+  );
+};
+
+// A virtual row is one fixed height, so the other paths of an item open below the list, not in its row.
+const VirtualItems = ({ group, label }: { readonly group: PlanGroup; readonly label: string }): JSX.Element => {
+  const id = useId();
+  const listRef = useRef<HTMLUListElement>(null);
+  const [openedId, setOpenedId] = useState<null | number>(null);
+  const opened = group.items.find((item) => item.finding === openedId) ?? null;
+
+  // The list opens below the virtual box, maybe out of view: bring it in.
+  useEffect(() => {
+    listRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [openedId]);
+
+  return (
+    <>
+      <div className={styles.long}>
+        <VirtualList
+          count={group.items.length}
+          getItem={(index) => group.items[index]}
+          getKey={(index) => String(group.items[index]?.finding ?? index)}
+          label={label}
+          renderRow={(_, item, row) =>
+            item === undefined ? (
+              <ListRow {...row} title="" />
+            ) : (
+              <ItemRow
+                {...row}
+                item={item}
+                more={
+                  item.more.length === 0
+                    ? undefined
+                    : {
+                        controls: id,
+                        expanded: openedId === item.finding,
+                        onToggle: (): void => {
+                          setOpenedId(openedId === item.finding ? null : item.finding);
+                        },
+                      }
+                }
+              />
+            )
+          }
+          rowHeight={ITEM_HEIGHT}
+        />
+      </div>
+      {opened === null ? null : <MorePaths id={id} item={opened} ref={listRef} />}
+    </>
+  );
+};
+
 const Items = ({ group, label }: { readonly group: PlanGroup; readonly label: string }): JSX.Element =>
   group.items.length > PLAIN_ITEMS ? (
-    <div className={styles.long}>
-      <VirtualList
-        count={group.items.length}
-        getItem={(index) => group.items[index]}
-        getKey={(index) => String(group.items[index]?.finding ?? index)}
-        label={label}
-        renderRow={(_, item, row) =>
-          item === undefined ? <ListRow {...row} title="" /> : <ItemRow {...row} item={item} />
-        }
-        rowHeight={ITEM_HEIGHT}
-      />
-    </div>
+    <VirtualItems group={group} label={label} />
   ) : (
     <div aria-label={label} role="list">
       {group.items.map((item) => (
-        <ItemRow item={item} key={item.finding} />
+        <PlainItem item={item} key={item.finding} />
       ))}
     </div>
   );

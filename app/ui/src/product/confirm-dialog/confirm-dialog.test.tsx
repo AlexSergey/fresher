@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { type JSX, useState } from 'react';
@@ -15,7 +15,11 @@ import {
   HIGH_PLAN,
   LEFT_OUT_PLAN,
   LONG_PLAN,
+  LONG_TOGETHER_PLAN,
   ONE_ITEM_PLAN,
+  planOf,
+  TOGETHER_FINDING,
+  TOGETHER_PLAN,
   TOOL_ONLY_PLAN,
   TOOL_PLAN,
 } from '../../test/cleanup-plan';
@@ -61,6 +65,8 @@ const Screen = ({ onCancel = vi.fn(), onConfirm = vi.fn(), plan = DEMO_PLAN }: O
   );
 };
 
+const MORE_FILES = 'and 2 more files that go with it: Example: demo-model';
+
 const opener = (): HTMLElement => screen.getByRole('button', { name: 'Review' });
 
 const openDialog = (owner: Owner = {}): HTMLElement => {
@@ -88,6 +94,19 @@ afterEach(async () => {
 
 describe('ConfirmDialog', () => {
   describe('negative cases', () => {
+    it('shows no more-files line when an item has one path', () => {
+      openDialog();
+
+      expect(screen.queryByRole('button', { name: /more files? that/u })).not.toBeInTheDocument();
+    });
+
+    it('keeps the other paths of a together item hidden until asked for', () => {
+      openDialog({ plan: TOGETHER_PLAN });
+
+      expect(screen.getByRole('button', { name: MORE_FILES })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByRole('list', { name: /The other files/u })).not.toBeInTheDocument();
+    });
+
     it('Cancel has the initial focus', () => {
       openDialog();
 
@@ -203,6 +222,71 @@ describe('ConfirmDialog', () => {
   });
 
   describe('positive cases', () => {
+    it('names how many more files go with an item', () => {
+      openDialog({ plan: TOGETHER_PLAN });
+
+      expect(screen.getByRole('button', { name: MORE_FILES })).toBeInTheDocument();
+    });
+
+    it('lists every other path on demand', () => {
+      openDialog({ plan: TOGETHER_PLAN });
+
+      fireEvent.click(screen.getByRole('button', { name: MORE_FILES }));
+
+      const list = screen.getByRole('list', { name: 'The other files that go with Example: demo-model' });
+      const [, ...others] = TOGETHER_FINDING.removal.kind === 'move-together' ? TOGETHER_FINDING.removal.value : [];
+
+      expect(screen.getByRole('button', { name: MORE_FILES })).toHaveAttribute('aria-expanded', 'true');
+      expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+      for (const [at, other] of others.entries()) {
+        expect(within(list).getAllByRole('listitem')[at]).toHaveTextContent(other);
+      }
+
+      fireEvent.click(screen.getByRole('button', { name: MORE_FILES }));
+
+      expect(screen.queryByRole('list', { name: /The other files/u })).not.toBeInTheDocument();
+    });
+
+    it('the toggle in a virtual row is left to the button: its keys are not taken by the row', () => {
+      openDialog({ plan: LONG_TOGETHER_PLAN });
+      const toggle = screen.getByRole('button', { name: MORE_FILES });
+      toggle.focus();
+
+      // The list does not preventDefault a key of a control inside a row, so Enter and Space activate the button.
+      expect(fireEvent.keyDown(toggle, { key: 'Enter' })).toBe(true);
+      expect(fireEvent.keyDown(toggle, { key: ' ' })).toBe(true);
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(toggle);
+
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('the buttons of two together items name their own item', () => {
+      const other = {
+        ...TOGETHER_FINDING,
+        id: 31,
+        title: { args: { name: { kind: 'text', value: 'second' } }, key: 'demo.finding.title' },
+      } as const;
+      openDialog({ plan: planOf([TOGETHER_FINDING, other]) });
+
+      expect(screen.getByRole('button', { name: MORE_FILES })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'and 2 more files that go with it: Example: second' }),
+      ).toBeInTheDocument();
+    });
+
+    it('in a long group the other paths open below the list, one item at a time', () => {
+      openDialog({ plan: LONG_TOGETHER_PLAN });
+
+      fireEvent.click(screen.getByRole('button', { name: MORE_FILES }));
+
+      const list = screen.getByRole('list', { name: 'The other files that go with Example: demo-model' });
+
+      expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.getByRole('list', { name: 'The items of Example caches' })).not.toContainElement(list);
+    });
+
     it('confirm calls onConfirm with trash', () => {
       const onConfirm = vi.fn();
       openDialog({ onConfirm });

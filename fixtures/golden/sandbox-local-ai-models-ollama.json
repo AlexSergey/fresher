@@ -1,0 +1,433 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/llama3/8b",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/mistral/7b",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/me/qwen-chat/latest",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/someone/tiny/q4",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "local-ai-models.ollama",
+      "danger": "medium",
+      "logical": 7013,
+      "module": "local-ai-models",
+      "subject": "home/.ollama/models/manifests/registry.ollama.ai/library/llama3/8b"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.ollama",
+      "danger": "medium",
+      "logical": 4434,
+      "module": "local-ai-models",
+      "subject": "home/.ollama/models/manifests/registry.ollama.ai/library/mistral/7b"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.ollama",
+      "danger": "medium",
+      "logical": 1064,
+      "module": "local-ai-models",
+      "subject": "home/.ollama/models/manifests/registry.ollama.ai/library/qwen/base"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.ollama",
+      "danger": "medium",
+      "logical": 3754,
+      "module": "local-ai-models",
+      "subject": "home/.ollama/models/manifests/registry.ollama.ai/me/qwen-chat/latest"
+    },
+    {
+      "app": null,
+      "category": "local-ai-models.ollama",
+      "danger": "medium",
+      "logical": 3664,
+      "module": "local-ai-models",
+      "subject": "home/.ollama/models/manifests/registry.ollama.ai/someone/tiny/q4"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "local-ai-models.ollama",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "local-ai-models.left-out.ollama-incomplete"
+      },
+      "sizes": {
+        "allocated": 12288,
+        "completeness": "complete",
+        "logical": 2883,
+        "reclaimable": 12288
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/.ollama/models/blobs/sha256-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "case": "a model with no sharer goes with its layers, at Medium",
+        "path": [
+          "home/.ollama/models/blobs/sha256-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 3500,
+            "path": "home/.ollama/models/blobs/sha256-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 65536,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 36864,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67044372,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738159596,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 123,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 484,
+        "path": "home/.Trash/7b"
+      },
+      {
+        "kind": "file",
+        "logical_size": 664,
+        "path": "home/.Trash/8b"
+      },
+      {
+        "kind": "file",
+        "logical_size": 664,
+        "path": "home/.Trash/latest"
+      },
+      {
+        "kind": "file",
+        "logical_size": 844,
+        "path": "home/.Trash/latest"
+      },
+      {
+        "kind": "file",
+        "logical_size": 484,
+        "path": "home/.Trash/q4"
+      },
+      {
+        "kind": "file",
+        "logical_size": 380,
+        "path": "home/.Trash/sha256-0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "kind": "file",
+        "logical_size": 410,
+        "path": "home/.Trash/sha256-4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2500,
+        "path": "home/.Trash/sha256-5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4000,
+        "path": "home/.Trash/sha256-6666666666666666666666666666666666666666666666666666666666666666"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1200,
+        "path": "home/.Trash/sha256-7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      {
+        "kind": "file",
+        "logical_size": 485,
+        "path": "home/.Trash/sha256-8888888888888888888888888888888888888888888888888888888888888888"
+      },
+      {
+        "kind": "file",
+        "logical_size": 450,
+        "path": "home/.Trash/sha256-9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2800,
+        "path": "home/.Trash/sha256-a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3500,
+        "path": "home/.Trash/sha256-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3000,
+        "path": "home/.ollama/models/blobs/sha256-1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1500,
+        "path": "home/.ollama/models/blobs/sha256-2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      {
+        "kind": "file",
+        "logical_size": 400,
+        "path": "home/.ollama/models/blobs/sha256-3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.ollama/models/blobs/sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "kind": "file",
+        "logical_size": 400,
+        "path": "home/.ollama/models/blobs/sha256-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2000,
+        "path": "home/.ollama/models/blobs/sha256-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "kind": "file",
+        "logical_size": 400,
+        "path": "home/.ollama/models/blobs/sha256-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1999,
+        "path": "home/.ollama/models/blobs/sha256-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/incomplete"
+      },
+      {
+        "kind": "file",
+        "logical_size": 484,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/incomplete/q4"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/llama3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/mistral"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/odd"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/odd/latest"
+      },
+      {
+        "kind": "file",
+        "logical_size": 484,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/odd/latest/extra"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/qwen"
+      },
+      {
+        "kind": "file",
+        "logical_size": 664,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/qwen/base"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/me"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/me/qwen-chat"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/someone"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/someone/tiny"
+      },
+      {
+        "kind": "file",
+        "logical_size": 3493,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 37908
+  }
+}

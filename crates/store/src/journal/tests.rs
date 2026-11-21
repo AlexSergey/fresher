@@ -8,13 +8,17 @@ use fresher_core::{FormatVersion, StoreError};
 use serde_json::Value;
 use tempfile::TempDir;
 
-use super::FileCleanupJournal;
 use super::read::Format;
 use super::records::VERSION;
 use super::rotate::JOURNAL_GENERATION;
+use super::{FileCleanupJournal, items_of_several_paths};
 use crate::DataFolder;
+use crate::migrate::Migration;
 
-pub(super) const HEADER: &str = "{\"format\":\"cleanup-journal\",\"version\":1}\n";
+/// The migrations of a build that writes version 3: this build's, then one of the tests.
+const TO_VERSION_3: &[Migration] = &[items_of_several_paths, mark_categories];
+
+pub(super) const HEADER: &str = "{\"format\":\"cleanup-journal\",\"version\":2}\n";
 
 pub(super) struct Folder {
     root: TempDir,
@@ -29,9 +33,9 @@ impl Folder {
         FileCleanupJournal::open(&DataFolder::open(self.root.path()).unwrap())
     }
 
-    /// The journal of a build that writes version 2, with one migration from version 1.
-    pub(super) fn journal_at_version_2(&self) -> FileCleanupJournal {
-        let format = Format { version: FormatVersion::new(2), migrations: &[mark_categories] };
+    /// The journal of a build that writes version 3, with this build's migration and one more of the tests.
+    pub(super) fn journal_at_version_3(&self) -> FileCleanupJournal {
+        let format = Format { version: FormatVersion::new(3), migrations: TO_VERSION_3 };
         FileCleanupJournal::with_format(&DataFolder::open(self.root.path()).unwrap(), format, JOURNAL_GENERATION)
     }
 
@@ -76,7 +80,7 @@ pub(super) fn fixture() -> Vec<u8> {
     fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/journal/v1.jsonl")).unwrap()
 }
 
-/// A migration from version 1 to 2 for the tests: every item's category gets a prefix.
+/// A migration from version 2 to 3 for the tests: every item's category gets a prefix.
 fn mark_categories(mut line: Value) -> Result<Value, StoreError> {
     if let Some(items) = line.get_mut("items").and_then(Value::as_array_mut) {
         for item in items {
@@ -104,7 +108,8 @@ mod negative {
     use fresher_core::{CleanupId, CleanupJournal, Ended, JournalError, JournalProblem, JournalState, RecordedOutcome};
 
     use super::{Folder, HEADER, append, fixture, syncs};
-    use crate::journal::records::sample;
+    use crate::journal::MIGRATIONS;
+    use crate::journal::records::{VERSION, sample};
 
     #[test]
     fn a_missing_file_starts_with_its_header() {
@@ -194,9 +199,33 @@ mod negative {
         assert!(folder.current().is_dir());
     }
     #[test]
-    fn a_newer_version_is_read_only_and_never_written() {
+    fn a_version_one_file_reads_with_no_more_parts() {
         let folder = Folder::new();
-        let text = String::from_utf8(fixture()).unwrap().replacen("\"version\":1", "\"version\":2", 1);
+        fs::write(folder.current(), fixture()).unwrap();
+        let journal = folder.journal();
+
+        let recorded: Vec<_> = (1..=3).map(|id| journal.cleanup(CleanupId::new(id)).unwrap().unwrap()).collect();
+
+        assert_eq!(journal.state(), JournalState::Ready);
+        assert_eq!(journal.cleanups(0, 10).unwrap().skipped, 0);
+        let items = recorded.iter().flat_map(|cleanup| &cleanup.begin.items);
+        assert!(items.clone().count() > 0);
+        assert!(items.clone().all(|item| item.more.is_empty()), "{recorded:?}");
+        assert!(recorded.iter().flat_map(|cleanup| &cleanup.items).all(|item| item.went.is_none()));
+        assert_eq!(recorded[0].put_backs.len(), 2);
+        assert!(recorded.iter().flat_map(|cleanup| &cleanup.put_backs).all(|put_back| put_back.back.is_empty()));
+        assert_eq!(MIGRATIONS.len() + 1, usize::try_from(VERSION.get()).unwrap());
+    }
+
+    #[test]
+    fn a_newer_version_than_two_is_read_only() {
+        let folder = Folder::new();
+        let written = folder.journal();
+        for _ in 0..3 {
+            written.begin(&sample::together(2)).unwrap();
+        }
+        drop(written);
+        let text = folder.text().replacen("\"version\":2", "\"version\":3", 1);
         fs::write(folder.current(), &text).unwrap();
         let journal = folder.journal();
 
@@ -301,7 +330,7 @@ mod positive {
         let folder = Folder::new();
         fs::write(
             folder.current(),
-            format!("{HEADER}{{\"type\":\"put-back\",\"cleanup\":41,\"index\":0,\"at\":1,\"outcome\":{{\"kind\":\"gone\"}}}}\n"),
+            format!("{HEADER}{{\"type\":\"put-back\",\"cleanup\":41,\"index\":0,\"at\":1,\"outcome\":{{\"kind\":\"gone\"}},\"back\":[]}}\n"),
         )
         .unwrap();
         let journal = folder.journal();
@@ -342,6 +371,53 @@ mod positive {
         let id = journal.begin(&begin).unwrap();
 
         assert!(folder.text().contains("{\"bytes\":\"2f686f6d652ffffe2f6ee965\"}"), "{}", folder.text());
+        assert_eq!(journal.cleanup(id).unwrap().unwrap().begin, begin);
+    }
+
+    #[test]
+    fn a_together_item_round_trips_with_its_parts() {
+        let folder = Folder::new();
+        let journal = folder.journal();
+        let begin = sample::together(2);
+
+        let id = journal.begin(&begin).unwrap();
+        journal.item(&sample::moved_together(id, 0)).unwrap();
+        journal.end(&sample::end(id)).unwrap();
+        let mut put_back = sample::put_back(id, 0, PutBackOutcome::Occupied);
+        put_back.back = vec![2];
+        journal.put_back(&put_back).unwrap();
+
+        let recorded = folder.journal().cleanup(id).unwrap().unwrap();
+        assert_eq!(recorded.begin, begin);
+        assert_eq!(recorded.begin.items[0].more.len(), 2);
+        assert_eq!(recorded.items, [sample::moved_together(id, 0)]);
+        assert_eq!(recorded.items[0].went, Some(3));
+        assert_eq!(recorded.put_backs, [put_back]);
+        assert!(folder.lines()[1].contains("\"more\":[{\"path\":"), "{}", folder.lines()[1]);
+    }
+
+    #[test]
+    fn a_part_without_an_identity_round_trips() {
+        let folder = Folder::new();
+        let journal = folder.journal();
+        let mut begin = sample::together(1);
+        begin.items[0].more[0].identity = None;
+
+        let id = journal.begin(&begin).unwrap();
+
+        assert_eq!(folder.journal().cleanup(id).unwrap().unwrap().begin, begin);
+    }
+
+    #[test]
+    fn a_part_path_that_is_not_utf8_round_trips() {
+        let folder = Folder::new();
+        let journal = folder.journal();
+        let mut begin = sample::together(1);
+        begin.items[0].more[1].path = PathBuf::from(OsStr::from_bytes(b"/home/blobs/\xff\xfe"));
+
+        let id = journal.begin(&begin).unwrap();
+
+        assert!(folder.text().contains("{\"bytes\":\"2f686f6d652f626c6f62732ffffe\"}"), "{}", folder.text());
         assert_eq!(journal.cleanup(id).unwrap().unwrap().begin, begin);
     }
 
@@ -429,7 +505,7 @@ mod positive {
         let folder = Folder::new();
         fs::write(folder.current(), fixture()).unwrap();
 
-        let journal = folder.journal_at_version_2();
+        let journal = folder.journal_at_version_3();
 
         assert_eq!(journal.state(), JournalState::Ready);
         let first = journal.cleanup(CleanupId::new(1)).unwrap().unwrap();

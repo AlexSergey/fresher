@@ -1,6 +1,6 @@
 //! A model's name read from its folder's path (design, section 3): by path components, never by slicing the path.
 
-use std::path::Path;
+use std::path::{Component, Path};
 
 use crate::stores::Shape;
 
@@ -19,7 +19,8 @@ pub(crate) struct ModelName {
 ///
 /// - `HubRepo`: the last component is `<kind>--<owner>--<name>` (title `owner/name`) or `<kind>--<name>` (title
 ///   `name`), every part non-empty;
-/// - `PublisherModel`: the last two components, neither starting with `.` (title `publisher/model`).
+/// - `PublisherModel`: the last two components, neither starting with `.` (title `publisher/model`);
+/// - `OllamaStore`: a manifest's path, as [`OllamaTag::read`] reads it.
 pub(crate) fn read(shape: Shape, path: &Path) -> Option<ModelName> {
     match shape {
         Shape::HubRepo => hub_repo(path.file_name()?.to_str()?),
@@ -31,6 +32,50 @@ pub(crate) fn read(shape: Shape, path: &Path) -> Option<ModelName> {
             }
             Some(ModelName { kind: None, title: format!("{publisher}/{model}") })
         }
+        Shape::OllamaStore => OllamaTag::read(path).map(|tag| ModelName { kind: None, title: tag.title() }),
+    }
+}
+
+/// The host and the namespace of Ollama's own registry, whose models are shown by `model:tag` alone.
+const OLLAMA_HOST: &str = "registry.ollama.ai";
+const OLLAMA_NAMESPACE: &str = "library";
+
+/// An Ollama model's tag: the last four components of a manifest's path under `manifests/`, ordered by them in turn
+/// (the name order of the module's findings).
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct OllamaTag {
+    pub(crate) host: String,
+    pub(crate) namespace: String,
+    pub(crate) model: String,
+    pub(crate) tag: String,
+}
+
+impl OllamaTag {
+    /// The tag a manifest's `path` names: its last four components, each a name in UTF-8 not starting with `.`;
+    /// `None` for fewer or any other kind of component.
+    pub(crate) fn read(path: &Path) -> Option<Self> {
+        let mut names = path.components().rev().take(4).map(|part| match part {
+            Component::Normal(name) => name.to_str().filter(|name| !name.starts_with('.')),
+            _ => None,
+        });
+        let (tag, model, namespace, host) = (names.next()??, names.next()??, names.next()??, names.next()??);
+        Some(Self { host: host.into(), namespace: namespace.into(), model: model.into(), tag: tag.into() })
+    }
+
+    /// The title Ollama itself shows: `model:tag` for its registry's `library`, `namespace/model:tag` for its
+    /// registry's other namespaces, `host/namespace/model:tag` for any other host.
+    pub(crate) fn title(&self) -> String {
+        let Self { host, namespace, model, tag } = self;
+        match (host.as_str(), namespace.as_str()) {
+            (OLLAMA_HOST, OLLAMA_NAMESPACE) => format!("{model}:{tag}"),
+            (OLLAMA_HOST, _) => format!("{namespace}/{model}:{tag}"),
+            _ => format!("{host}/{namespace}/{model}:{tag}"),
+        }
+    }
+
+    /// What tells the model apart in the module's findings: `ollama/<host>/<namespace>/<model>/<tag>`.
+    pub(crate) fn identity(&self) -> String {
+        format!("ollama/{}/{}/{}/{}", self.host, self.namespace, self.model, self.tag)
     }
 }
 
@@ -54,7 +99,7 @@ mod tests {
         use std::os::unix::ffi::OsStrExt as _;
         use std::path::Path;
 
-        use crate::name::read;
+        use crate::name::{OllamaTag, read};
         use crate::stores::Shape;
 
         const HUB: &str = "/home/.cache/huggingface/hub";
@@ -101,12 +146,45 @@ mod tests {
             assert_eq!(read(Shape::PublisherModel, &models.join(publisher).join("model")), None);
             assert_eq!(read(Shape::PublisherModel, &models.join("publisher").join(publisher)), None);
         }
+
+        #[test]
+        fn a_manifest_path_with_three_components_is_not_a_tag() {
+            for path in ["/registry.ollama.ai/library/llama3", "library/llama3/latest", "/latest", "/"] {
+                assert_eq!(OllamaTag::read(Path::new(path)), None, "{path}");
+            }
+        }
+
+        #[test]
+        fn a_hidden_component_is_not_a_tag() {
+            for path in [
+                "/m/manifests/.hidden/library/llama3/latest",
+                "/m/manifests/registry.ollama.ai/.library/llama3/latest",
+                "/m/manifests/registry.ollama.ai/library/.llama3/latest",
+                "/m/manifests/registry.ollama.ai/library/llama3/.DS_Store",
+            ] {
+                assert_eq!(OllamaTag::read(Path::new(path)), None, "{path}");
+            }
+        }
+
+        #[test]
+        fn a_component_not_in_utf8_is_not_a_tag() {
+            let bad = OsStr::from_bytes(b"lla\xffma");
+            let folder = Path::new("/m/manifests/registry.ollama.ai/library");
+
+            assert_eq!(OllamaTag::read(&folder.join(bad).join("latest")), None);
+            assert_eq!(OllamaTag::read(&folder.join("llama3").join(bad)), None);
+        }
+
+        #[test]
+        fn an_ollama_store_folder_is_not_a_model() {
+            assert_eq!(read(Shape::OllamaStore, Path::new("/home/.ollama/models")), None);
+        }
     }
 
     mod positive {
         use std::path::Path;
 
-        use crate::name::{ModelName, read};
+        use crate::name::{ModelName, OllamaTag, read};
         use crate::stores::Shape;
 
         fn hub(name: &str) -> Option<ModelName> {
@@ -134,6 +212,37 @@ mod tests {
         fn a_dataset_reads_its_kind() {
             assert_eq!(hub("datasets--squad"), Some(named(Some("datasets"), "squad")));
             assert_eq!(hub("spaces--owner--demo"), Some(named(Some("spaces"), "owner/demo")));
+        }
+
+        fn tag(path: &str) -> OllamaTag {
+            OllamaTag::read(Path::new(path)).expect("a manifest path")
+        }
+
+        #[test]
+        fn the_library_of_ollama_s_registry_is_titled_model_and_tag() {
+            let found = tag("/home/.ollama/models/manifests/registry.ollama.ai/library/llama3/latest");
+
+            assert_eq!(found.title(), "llama3:latest");
+            assert_eq!(found.identity(), "ollama/registry.ollama.ai/library/llama3/latest");
+            assert_eq!(
+                read(Shape::OllamaStore, Path::new("/m/manifests/registry.ollama.ai/library/llama3/8b")),
+                Some(named(None, "llama3:8b"))
+            );
+        }
+
+        #[test]
+        fn another_namespace_of_the_registry_is_titled_with_it() {
+            let found = tag("/m/manifests/registry.ollama.ai/jmorganca/phi/q4");
+
+            assert_eq!(found.title(), "jmorganca/phi:q4");
+        }
+
+        #[test]
+        fn another_host_is_titled_with_it() {
+            let found = tag("/m/manifests/hf.co/bartowski/gemma/Q4_K_M");
+
+            assert_eq!(found.title(), "hf.co/bartowski/gemma:Q4_K_M");
+            assert_eq!(found.identity(), "ollama/hf.co/bartowski/gemma/Q4_K_M");
         }
 
         #[test]

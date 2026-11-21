@@ -1,8 +1,9 @@
 # A home for the local-ai-models module where nothing is a model of a store, so nothing is offered and nothing is
 # left out: a space (a kind the row does not list), locks and a version file beside the models, a repository without
 # `blobs` and `snapshots`, a name of four parts, a link to a folder outside the hub; in LM Studio's folder a file at a
-# model's depth and a hidden publisher; Ollama's own store; and a model file in a project. Every file has a time, so
-# only the rule under test can keep a folder out.
+# model's depth and a hidden publisher; Ollama's folder with `blobs/` but no `manifests/` (not its store's layout);
+# and a model file in a project. Every file has a time, so only the rule under test can keep a folder out. Ollama's
+# other cases are `local-ai-models-ollama-not-claimed.toml`'s.
 
 # Every entry has its `age` and its status change `changed`, folders included: an undated one counts as changed now.
 
@@ -155,12 +156,6 @@ changed = "40d"
 [[file]]
 path = ".lmstudio/models/.hidden/m/w.gguf"
 size = 2048
-age = "40d"
-changed = "40d"
-
-[[file]]
-path = ".ollama/models/manifests/registry.ollama.ai/library/llama3/latest"
-size = 512
 age = "40d"
 changed = "40d"
 

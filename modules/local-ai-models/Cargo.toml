@@ -1,6 +1,6 @@
 [package]
 name = "fresher-module-local-ai-models"
-description = "The local AI models module of Fresher: the models Hugging Face and LM Studio downloaded."
+description = "The local AI models module of Fresher: the models Hugging Face, LM Studio and Ollama downloaded."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,10 +13,10 @@ workspace = true
 [dependencies]
 fresher-core = { path = "../../crates/core" }
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
 fresher-testing = { path = "../../crates/testing" }
 proptest.workspace = true
-serde_json.workspace = true

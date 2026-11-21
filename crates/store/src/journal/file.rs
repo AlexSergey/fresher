@@ -198,7 +198,7 @@ mod tests {
             let mut appender = Appender::open(&path, VERSION).unwrap();
             appender.append(b"[]\n").unwrap();
 
-            assert_eq!(fs::read(&path).unwrap(), b"{\"format\":\"cleanup-journal\",\"version\":1}\n{}\n[]\n");
+            assert_eq!(fs::read(&path).unwrap(), b"{\"format\":\"cleanup-journal\",\"version\":2}\n{}\n[]\n");
             assert_eq!(appender.len().unwrap(), 47);
         }
     }

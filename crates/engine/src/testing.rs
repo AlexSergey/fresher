@@ -12,9 +12,9 @@ use fresher_core::{
     ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan,
     DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
     ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
-    Need, NewFinding, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore, Sizes,
-    StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand, ToolId,
-    TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore,
+    Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand,
+    ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixedDiskState,
@@ -230,6 +230,21 @@ pub(crate) fn finding(category: &CategoryDescriptor, path: impl Into<PathBuf>, s
         text("test.finding.title"),
         text("test.finding.reason"),
         Removal::MoveToTrash(path),
+    )
+}
+
+/// A finding of `category` whose parts `paths` leave together, the first its subject.
+pub(crate) fn together(category: &CategoryDescriptor, paths: &[&str], sizes: Sizes) -> NewFinding {
+    let parts = Parts::new(paths.iter().map(PathBuf::from).collect()).unwrap();
+    let subject = parts.subject().to_path_buf();
+    NewFinding::new(
+        category,
+        subject.to_string_lossy().into_owned(),
+        Subject::Path(subject),
+        sizes,
+        text("test.finding.title"),
+        text("test.finding.reason"),
+        Removal::MoveTogether(parts),
     )
 }
 

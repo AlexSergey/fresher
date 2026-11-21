@@ -4,7 +4,7 @@ use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use fresher_core::{ByteSize, ClaimedPath, Finding, FindingId, ModuleId, Sizes, Subject};
+use fresher_core::{ByteSize, ClaimedPath, Finding, FindingId, ModuleId, Removal, Sizes, Subject};
 
 /// What `resolve` decided: each path finding's counted size, and the owner of each claimed path.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -41,8 +41,11 @@ impl Claims {
 /// - Only findings about a path take part (a tool object, a Docker image say, does not).
 /// - Two findings of the same path: the higher danger level owns it, then the module registered first, then the
 ///   category id, then the lower finding id. The other counts nothing.
+/// - A finding of several paths claims each part. It counts its sizes only when it owns every part; one that loses a
+///   part owns none and counts nothing.
 /// - The deepest finding owns its subtree: an outer finding counts its sizes minus those of the owners nearest
-///   inside it, compared by path components, never by string prefix.
+///   inside it, compared by path components, never by string prefix. A finding of several paths is taken off once,
+///   from the owner nearest above its first part, its subject.
 pub(crate) fn resolve(findings: &[Finding], order: &[ModuleId]) -> Claims {
     let rank = |finding: &Finding| {
         let module = order.iter().position(|&module| module == finding.module()).unwrap_or(usize::MAX);
@@ -53,28 +56,58 @@ pub(crate) fn resolve(findings: &[Finding], order: &[ModuleId]) -> Claims {
             Reverse(finding.id()),
         )
     };
-    let mut owners: BTreeMap<PathBuf, Finding> = BTreeMap::new();
-    let mut counted = HashMap::new();
-    for finding in findings {
-        let Subject::Path(path) = finding.finding().subject() else { continue };
-        counted.insert(finding.id(), Sizes::ZERO);
-        match owners.get(path.as_path()) {
-            Some(owner) if rank(owner) >= rank(finding) => {}
-            _ => {
-                owners.insert(path.clone(), finding.clone());
+    let claiming: Vec<&Finding> =
+        findings.iter().filter(|finding| matches!(finding.finding().subject(), Subject::Path(_))).collect();
+    let contest = |losers: &HashSet<FindingId>| {
+        let mut owners: BTreeMap<PathBuf, Finding> = BTreeMap::new();
+        for &finding in claiming.iter().filter(|finding| !losers.contains(&finding.id())) {
+            for path in claimed(finding) {
+                match owners.get(path) {
+                    Some(owner) if rank(owner) >= rank(finding) => {}
+                    _ => {
+                        owners.insert(path.to_path_buf(), finding.clone());
+                    }
+                }
             }
         }
-    }
+        owners
+    };
+    // A finding of several paths that loses one gives up all of them, so another finding may own them; it cannot
+    // make any other finding of several paths lose a part.
+    let first = contest(&HashSet::new());
+    let owns_all = |finding: &Finding| {
+        claimed(finding).iter().all(|path| first.get(*path).is_some_and(|owner| owner.id() == finding.id()))
+    };
+    let losers: HashSet<FindingId> = claiming
+        .iter()
+        .filter(|finding| matches!(finding.finding().removal(), Removal::MoveTogether(_)) && !owns_all(finding))
+        .map(|finding| finding.id())
+        .collect();
+    let owners = if losers.is_empty() { first } else { contest(&losers) };
+    let mut counted: HashMap<FindingId, Sizes> = claiming.iter().map(|finding| (finding.id(), Sizes::ZERO)).collect();
     for owner in owners.values() {
         counted.insert(owner.id(), owner.finding().sizes());
     }
     for (path, owner) in &owners {
+        // Each owner is taken off once: at its first claimed path, the subject of a finding of several paths.
+        if claimed(owner).first() != Some(&path.as_path()) {
+            continue;
+        }
         if let Some(outer) = nearest_owner_above(&owners, path) {
             let less = counted.get(&outer.id()).copied().unwrap_or(Sizes::ZERO);
             counted.insert(outer.id(), minus(less, owner.finding().sizes()));
         }
     }
     Claims { counted, owners }
+}
+
+/// The paths `finding` claims: every part of a removal of several paths, else its subject.
+fn claimed(finding: &Finding) -> Vec<&Path> {
+    match (finding.finding().removal(), finding.finding().subject()) {
+        (Removal::MoveTogether(parts), _) => parts.all().iter().map(PathBuf::as_path).collect(),
+        (_, Subject::Path(path)) => vec![path.as_path()],
+        (_, Subject::External { .. }) => Vec::new(),
+    }
 }
 
 fn nearest_owner_above<'a>(owners: &'a BTreeMap<PathBuf, Finding>, path: &Path) -> Option<&'a Finding> {
@@ -100,10 +133,14 @@ mod tests {
         CategoryDescriptor, Finding, FindingId, ModuleId, NewFinding, Removability, Removal, Subject, ToolId,
     };
 
-    use crate::testing::{bytes, finding, text};
+    use crate::testing::{bytes, finding, text, together};
 
     pub(super) fn found(id: u32, category: &CategoryDescriptor, path: &str, size: u64) -> Finding {
         Finding::new(FindingId::new(id), finding(category, PathBuf::from(path), bytes(size)), Removability::Removable)
+    }
+
+    fn found_together(id: u32, category: &CategoryDescriptor, parts: &[&str], size: u64) -> Finding {
+        Finding::new(FindingId::new(id), together(category, parts, bytes(size)), Removability::Removable)
     }
 
     pub(super) fn order() -> Vec<ModuleId> {
@@ -127,9 +164,44 @@ mod tests {
     mod negative {
         use fresher_core::DangerLevel;
 
-        use super::{found, image, order};
+        use super::{found, found_together, image, order};
         use crate::claims::resolve;
         use crate::testing::{bytes, category};
+
+        #[test]
+        fn a_together_finding_that_loses_a_part_counts_nothing() {
+            let (models, data) =
+                (category("alpha.models", DangerLevel::Safe), category("beta.data", DangerLevel::High));
+            let model = found_together(1, &models, &["/m/latest", "/b/1", "/b/2"], 10);
+            let layer = found(2, &data, "/b/1", 4);
+
+            let claims = resolve(&[model.clone(), layer.clone()], &order());
+
+            assert_eq!((claims.counted(&model), claims.counted(&layer)), (bytes(0), bytes(4)));
+            let paths: Vec<_> = claims.paths().into_iter().map(|claim| (claim.path, claim.category)).collect();
+            assert_eq!(paths, [("/b/1".into(), data.id())], "it gives up every part");
+        }
+
+        #[test]
+        fn a_single_path_finding_that_lost_to_a_losing_together_finding_owns_the_path_again() {
+            let (low, mid, high) = (
+                category("alpha.caches", DangerLevel::Safe),
+                category("beta.models", DangerLevel::Medium),
+                category("beta.data", DangerLevel::High),
+            );
+            let single = found(1, &low, "/b/1", 4);
+            let model = found_together(2, &mid, &["/m", "/b/1"], 10);
+            let above = found(3, &high, "/m", 7);
+
+            let claims = resolve(&[single.clone(), model.clone(), above.clone()], &order());
+
+            assert_eq!(
+                (claims.counted(&single), claims.counted(&model), claims.counted(&above)),
+                (bytes(4), bytes(0), bytes(7))
+            );
+            let paths: Vec<_> = claims.paths().into_iter().map(|claim| (claim.path, claim.category)).collect();
+            assert_eq!(paths, [("/b/1".into(), low.id()), ("/m".into(), high.id())]);
+        }
 
         #[test]
         fn a_nested_finding_is_not_counted_twice() {
@@ -180,9 +252,25 @@ mod tests {
     mod positive {
         use fresher_core::DangerLevel;
 
-        use super::{found, order};
+        use super::{found, found_together, order};
         use crate::claims::resolve;
         use crate::testing::{bytes, category};
+
+        #[test]
+        fn a_together_finding_claims_each_part() {
+            let models = category("alpha.models", DangerLevel::Medium);
+            let store = found(1, &category("beta.data", DangerLevel::Low), "/o", 100);
+            let model = found_together(2, &models, &["/o/m/latest", "/o/blobs/1", "/o/blobs/2"], 30);
+
+            let claims = resolve(&[store.clone(), model.clone()], &order());
+
+            assert_eq!((claims.counted(&store), claims.counted(&model)), (bytes(70), bytes(30)), "taken off once");
+            let paths: Vec<_> = claims.paths().into_iter().filter(|claim| claim.category == models.id()).collect();
+            assert_eq!(
+                paths.into_iter().map(|claim| claim.path).collect::<Vec<_>>(),
+                ["/o/blobs/1", "/o/blobs/2", "/o/m/latest"].map(std::path::PathBuf::from)
+            );
+        }
 
         #[test]
         fn the_deepest_finding_owns_its_subtree() {

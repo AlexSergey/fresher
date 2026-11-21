@@ -69,6 +69,7 @@ const HUB = '.cache/huggingface/hub';
 const HUGGING_FACE_MODELS = 'local-ai-models.hugging-face-models';
 const HUGGING_FACE_DATASETS = 'local-ai-models.hugging-face-datasets';
 const LM_STUDIO = 'local-ai-models.lm-studio';
+export const OLLAMA = 'local-ai-models.ollama';
 
 const HUGGING_FACE_FINDINGS: readonly Finding[] = [
   findingOf({
@@ -124,13 +125,14 @@ const readyCategory = (id: string, danger: Finding['danger']): ModuleInfo['categ
   descriptor: { danger, id, needs: [] },
 });
 
-// `get_modules`: the module in the group Development, its three categories, its switch, no choice.
+// `get_modules`: the module in the group Development, its four categories, its switch, no choice.
 export const LOCAL_AI_MODELS_MODULES: readonly ModuleInfo[] = [
   {
     categories: [
       readyCategory(HUGGING_FACE_MODELS, 'low'),
       readyCategory(HUGGING_FACE_DATASETS, 'low'),
       readyCategory(LM_STUDIO, 'medium'),
+      readyCategory(OLLAMA, 'medium'),
     ],
     choices: [],
     group: 'development',

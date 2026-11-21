@@ -1,9 +1,12 @@
-//! The `local-ai-models` module: the models Hugging Face and LM Studio downloaded.
+//! The `local-ai-models` module: the models Hugging Face, LM Studio and Ollama downloaded.
 //!
-//! It offers one finding per model, found in the default store of each tool (`stores.toml`): Hugging Face's hub cache
-//! and LM Studio's models folder, the current place and the older one. A store moved by an environment variable or the
-//! tool's settings is not found, since the module reads neither. It runs no tool command and has nothing for Ollama,
-//! and it reads no file: what the user confirms goes to the Trash, and a model comes back by download.
+//! It offers one finding per model, found in the default store of each tool (`stores.toml`): Hugging Face's hub cache,
+//! LM Studio's models folder (the current place and the older one) and Ollama's `~/.ollama/models`. A store moved by an
+//! environment variable or the tool's settings is not found, since the module reads neither. It runs no tool command
+//! and sends no request. The only files it reads are Ollama's manifests its matches showed
+//! (`manifests/<host>/<namespace>/<model>/<tag>`), each once a scan through the small-file reader, to tell which layer
+//! files each model names: an Ollama model goes to the Trash as its manifests and the layers no other model names,
+//! together. What the user confirms goes to the Trash, and most models come back by download.
 
 #![forbid(unsafe_code)]
 
@@ -11,20 +14,22 @@ mod categories;
 mod decide;
 mod gathered;
 mod name;
+mod ollama;
 mod report;
 mod stores;
 
 use fresher_core::{
     CategoryDescriptor, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError, Locales, Match,
-    Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, TextKeyError,
+    Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, SmallFile, TextKeyError,
 };
 
 use crate::categories::CATEGORIES;
 use crate::decide::{NoSystem, decide};
 use crate::gathered::{Candidate, Gathered};
+use crate::ollama::decide::{Entries, StoreVerdict};
 use crate::report::Report;
-use crate::stores::Stores;
 pub use crate::stores::StoresError;
+use crate::stores::{Shape, Slot, Store, Stores};
 
 /// Why the `local-ai-models` module could not be built (a bug in its own constants or stores table).
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
@@ -46,15 +51,17 @@ pub enum LocalAiModelsError {
 pub struct LocalAiModelsModule {
     descriptor: ModuleDescriptor,
     stores: Stores,
-    /// One per row of `stores`, in its order.
+    /// One per row of `stores`, six for an Ollama row, in its order.
     interests: Vec<Interest>,
+    /// What each of `interests` stands for, in the same order.
+    slots: Vec<Slot>,
     report: Report,
     /// The matches of the scan, waiting for its `finish`.
     gathered: Gathered,
 }
 
 impl LocalAiModelsModule {
-    /// The module, with its three categories, its left-out reasons, no setting beyond its switch, and the interests
+    /// The module, with its four categories, its left-out reasons, no setting beyond its switch, and the interests
     /// of its stores table.
     ///
     /// # Errors
@@ -73,7 +80,8 @@ impl LocalAiModelsModule {
             .with_problems(report.problems())?;
         let stores = Stores::shipped()?;
         let interests = stores.interests()?;
-        Ok(Self { descriptor, stores, interests, report, gathered: Gathered::default() })
+        let slots = stores.slots();
+        Ok(Self { descriptor, stores, interests, slots, report, gathered: Gathered::default() })
     }
 }
 
@@ -86,14 +94,18 @@ impl Module for LocalAiModelsModule {
         &self.interests
     }
 
-    /// Keeps a store's folder for the scan's `finish`; a match of no interest is not claimed.
+    /// Keeps a store's folder, or an entry of an Ollama store, for the scan's `finish`; a match of no interest is not
+    /// claimed.
     fn on_match(&self, matched: &Match, cx: &ModuleContext<'_>, _: &mut dyn FindingSink) -> Result<(), ModuleError> {
-        if matched.interest < self.stores.stores().len() {
+        if let Some(slot) = self.slots.get(matched.interest) {
             let candidate = Candidate {
-                row: matched.interest,
+                row: slot.row,
+                ollama: slot.ollama,
                 path: matched.path.clone(),
                 kind: matched.kind,
                 sizes: matched.sizes,
+                modified: matched.modified,
+                accessed: matched.accessed,
                 facts: matched.facts,
                 holds: matched.holds.clone(),
                 inside: matched.inside,
@@ -103,9 +115,11 @@ impl Module for LocalAiModelsModule {
         Ok(())
     }
 
-    /// Decides every folder of the scan, sorted by path: offered, left out with the reason, or not claimed.
+    /// Decides every folder of the scan, sorted by path: offered, left out with the reason, or not claimed; then
+    /// each Ollama store, from its manifests read now.
     fn finish(&self, cx: &ModuleContext<'_>, out: &mut dyn FindingSink) -> Result<(), ModuleError> {
-        let candidates = self.gathered.take(cx.cancel());
+        let (ollama, candidates): (Vec<Candidate>, Vec<Candidate>) =
+            self.gathered.take(cx.cancel()).into_iter().partition(|candidate| candidate.ollama.is_some());
         let rows = self.stores.stores();
         let names_app = |candidate: &Candidate| rows.get(candidate.row).is_some_and(|row| row.app.is_some());
         // Read once, and only when a row that names an app has a folder. Otherwise it is not read, and `decide`, which
@@ -122,7 +136,60 @@ impl Module for LocalAiModelsModule {
             let Some(row) = rows.get(candidate.row) else { continue };
             self.report.tell(row, candidate, decide(candidate, row, running), out);
         }
+        for (index, row) in rows.iter().enumerate().filter(|(_, row)| row.shape == Shape::OllamaStore) {
+            self.finish_ollama(row, &Entries::new(ollama.iter().filter(|candidate| candidate.row == index)), cx, out)?;
+        }
         Ok(())
+    }
+}
+
+impl LocalAiModelsModule {
+    /// Decides the store of `row` from `entries`, its matches, as far as it can without reading; when it can still be
+    /// offered, reads every manifest through the small-file reader, then decides the store and, when it is open,
+    /// each of its models in name order.
+    fn finish_ollama(
+        &self,
+        row: &Store,
+        entries: &Entries<'_>,
+        cx: &ModuleContext<'_>,
+        out: &mut dyn FindingSink,
+    ) -> Result<(), ModuleError> {
+        if let Some(verdict) = ollama::decide::kept(entries) {
+            self.tell_ollama_store(row, &verdict, out);
+            return Ok(());
+        }
+        let mut read = Vec::with_capacity(entries.manifests().len());
+        for (tag, candidate) in entries.manifests() {
+            if cx.cancel().is_cancelled() {
+                return Err(ModuleError::Cancelled);
+            }
+            let file = candidate
+                .path
+                .parent()
+                .map_or(SmallFile::Unreadable, |folder| cx.system().small_file(folder, &tag.tag));
+            read.push(ollama::manifest::read(file));
+        }
+        let layout = match ollama::decide::store(entries, read) {
+            StoreVerdict::Open(layout) => layout,
+            verdict => {
+                self.tell_ollama_store(row, &verdict, out);
+                return Ok(());
+            }
+        };
+        for (index, model) in layout.models().iter().enumerate() {
+            if cx.cancel().is_cancelled() {
+                return Err(ModuleError::Cancelled);
+            }
+            self.report.tell_ollama_model(row, model, ollama::decide::model(entries, &layout, index), out);
+        }
+        Ok(())
+    }
+
+    /// Tells a verdict on the whole Ollama store of `row` that offers nothing: its left-out, or nothing.
+    fn tell_ollama_store(&self, row: &Store, verdict: &StoreVerdict, out: &mut dyn FindingSink) {
+        if let StoreVerdict::LeftOut(reason, sizes) = verdict {
+            self.report.tell_ollama_store(row, *reason, *sizes, out);
+        }
     }
 }
 

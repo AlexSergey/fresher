@@ -21,6 +21,11 @@
 - **Enforced by:** the contract of `SystemFacts::small_file` (`SmallFiles`, one bounded no-follow read) and its tests;
   that a module reads only files its matches showed is a rule of review
   ([`../architecture/modules.md`](../architecture/modules.md)).
+- **Rule, as used:** the `local-ai-models` module reads the manifests of Ollama's models this way (small JSON lists of
+  layer names, at most 4 KiB each, never through a link, only files its own matches showed), once per scan in `finish`,
+  to tell which layers models share; it never logs, keeps or sends their bytes: only the digests and sizes it parses
+  are used, and a model's name comes from the file's path. Tests: `modules/local-ai-models/src/ollama/manifest/tests.rs` (the 4 KiB edge, a link, not
+  text) and the fixture home `fixtures/homes/local-ai-models-ollama-long.toml` (a manifest one byte over the limit).
 - **Rule:** a development build started by `npm run dev` writes a record of each run (real paths of the Mac, never file
   contents) to `NO_COMMIT/dev-runs/` of the repository, which git ignores; a release build has no such code.
 - **Enforced by:** `#[cfg(debug_assertions)]` on `app/tauri/src/dev_runs/`, the variable set only by `scripts/dev.ts`,

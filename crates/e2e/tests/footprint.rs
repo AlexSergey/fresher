@@ -89,6 +89,7 @@ mod run {
             index,
             path: Some(original(cleanup, index)),
             identity: Some(ItemIdentity::new(1, u64::from(cleanup * ITEMS + index), EntryKind::Folder)),
+            more: Vec::new(),
             action: ActionKind::Remove,
             category: "footprint.caches".into(),
             key: format!("com.example.application-{cleanup}/cache-{index}"),
@@ -120,7 +121,13 @@ mod run {
                 identity: ItemIdentity::new(1, u64::from(cleanup * ITEMS + index), EntryKind::Folder),
             };
             journal
-                .item(&ItemRecord { cleanup: id, index, outcome: RecordedOutcome::Moved, trashed: vec![trashed] })
+                .item(&ItemRecord {
+                    cleanup: id,
+                    index,
+                    outcome: RecordedOutcome::Moved,
+                    trashed: vec![trashed],
+                    went: None,
+                })
                 .unwrap();
         }
         journal.end(&EndRecord { cleanup: id, at: begin.at, ended: Ended::Completed, space }).unwrap();

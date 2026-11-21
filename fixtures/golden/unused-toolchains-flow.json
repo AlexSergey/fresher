@@ -2,7 +2,7 @@
   "journal": [
     {
       "format": "cleanup-journal",
-      "version": 1
+      "version": 2
     },
     {
       "at": 1767225600,
@@ -13,6 +13,7 @@
           "category": "unused-toolchains.node",
           "danger": "medium",
           "key": "nvm/v14.21.3",
+          "more": [],
           "path": "~/home/.nvm/versions/node/v14.21.3",
           "reason": {
             "args": {
@@ -43,6 +44,7 @@
           "category": "unused-toolchains.rust",
           "danger": "low",
           "key": "rustup/1.60.0-aarch64-apple-darwin",
+          "more": [],
           "path": "~/home/.rustup/toolchains/1.60.0-aarch64-apple-darwin",
           "reason": {
             "args": {
@@ -73,6 +75,7 @@
           "category": "unused-toolchains.rust",
           "danger": "low",
           "key": "rustup/nightly-2023-06-01-aarch64-apple-darwin",
+          "more": [],
           "path": "~/home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin",
           "reason": {
             "args": {
@@ -117,7 +120,8 @@
           "original": "~/home/.nvm/versions/node/v14.21.3"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -130,7 +134,8 @@
           "original": "~/home/.rustup/toolchains/1.60.0-aarch64-apple-darwin"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -143,7 +148,8 @@
           "original": "~/home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "at": 1767225600,
@@ -154,6 +160,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -162,6 +169,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -170,6 +178,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -206,6 +215,7 @@
         "items": [
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.rustup/toolchains/1.60.0-aarch64-apple-darwin",
             "reason": {
               "args": {
@@ -242,6 +252,7 @@
           },
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin",
             "reason": {
               "args": {
@@ -295,6 +306,7 @@
         "items": [
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/.nvm/versions/node/v14.21.3",
             "reason": {
               "args": {

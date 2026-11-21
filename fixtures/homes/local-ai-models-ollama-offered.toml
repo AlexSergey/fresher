@@ -1,0 +1,331 @@
+# A home whose Ollama store offers its models. `llama3:latest` and `llama3:8b` name the same files (one finding, both
+# tags); `mistral:7b` shares nothing; `qwen:base` and `me/qwen-chat:latest`, made from it, share two layers (each
+# frees its own files, and its reason names the other); `me/qwen-tools:latest` shares one layer with `me/qwen-chat`,
+# whose reason then names `qwen:base` and one more model; `hf.co/org/tiny-gguf:q4` is on another host (its title names
+# it). `broken:1` lists a layer of 2000 bytes whose file has 1999: it is left out `ollama-incomplete`; it also names
+# one of llama3's layers, which still counts as named, so llama3 does not free it and its reason names `broken:1`.
+# Manifests are their JSON text, layers filled with data of the sizes the manifests list; the freed layers were opened
+# 30 days ago.
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/llama3/latest"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+    "size": 485
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+      "size": 4000
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+      "size": 1200
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/llama3/8b"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+    "size": 485
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+      "size": 4000
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+      "size": 1200
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/mistral/7b"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+    "size": 480
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000005",
+      "size": 3000
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/qwen/base"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000006",
+    "size": 490
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000007",
+      "size": 5000
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000008",
+      "size": 700
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/me/qwen-chat/latest"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000009",
+    "size": 495
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000007",
+      "size": 5000
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000008",
+      "size": 700
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000a",
+      "size": 900
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/me/qwen-tools/latest"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000f",
+    "size": 450
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000a",
+      "size": 900
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000010",
+      "size": 800
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/hf.co/org/tiny-gguf/q4"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000b",
+    "size": 470
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000c",
+      "size": 2500
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/manifests/registry.ollama.ai/library/broken/1"
+text = '''
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000d",
+    "size": 460
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000e",
+      "size": 2000
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.model",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+      "size": 1200
+    }
+  ]
+}'''
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000001"
+size = 485
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000002"
+size = 4000
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000003"
+size = 1200
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000004"
+size = 480
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000005"
+size = 3000
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000006"
+size = 490
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000007"
+size = 5000
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000008"
+size = 700
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000009"
+size = 495
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000a"
+size = 900
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000b"
+size = 470
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000c"
+size = 2500
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000d"
+size = 460
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000e"
+size = 1999
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000f"
+size = 450
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000010"
+size = 800
+fill = "data"
+age = "30d"
+changed = "30d"

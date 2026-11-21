@@ -1,0 +1,436 @@
+{
+  "hidden": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "local-ai-models.ollama",
+        "reason": "local-ai-models.left-out.ollama-unreadable",
+        "sizes": {
+          "allocated": 12288,
+          "completeness": "complete",
+          "logical": 3894,
+          "reclaimable": 12288
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "local-ai-models.ollama",
+        "reason": "local-ai-models.left-out.ollama-download",
+        "sizes": {
+          "allocated": 16384,
+          "completeness": "complete",
+          "logical": 5394,
+          "reclaimable": 16384
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "long": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "local-ai-models.ollama",
+        "reason": "local-ai-models.left-out.ollama-unreadable",
+        "sizes": {
+          "allocated": 20480,
+          "completeness": "complete",
+          "logical": 7991,
+          "reclaimable": 20480
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "no-blobs": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "key": {
+          "identity": "ollama/hf.co/org/tiny-gguf/q4",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "name": {
+              "kind": "text",
+              "value": "hf.co/org/tiny-gguf:q4"
+            },
+            "size": {
+              "kind": "size",
+              "value": 3454
+            }
+          },
+          "key": "local-ai-models.reason.ollama"
+        },
+        "removal": {
+          "kind": "move-together",
+          "value": [
+            ".ollama/models/manifests/hf.co/org/tiny-gguf/q4",
+            ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000b",
+            ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000c"
+          ]
+        },
+        "sizes": {
+          "allocated": 12288,
+          "completeness": "complete",
+          "logical": 3454,
+          "reclaimable": 12288
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".ollama/models/manifests/hf.co/org/tiny-gguf/q4"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "hf.co/org/tiny-gguf:q4"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "key": {
+          "identity": "ollama/registry.ollama.ai/library/llama3/8b",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "listed": {
+              "kind": "size",
+              "value": 5685
+            },
+            "other": {
+              "kind": "text",
+              "value": "broken:1"
+            },
+            "size": {
+              "kind": "size",
+              "value": 5813
+            }
+          },
+          "key": "local-ai-models.reason.ollama-shared"
+        },
+        "removal": {
+          "kind": "move-together",
+          "value": [
+            ".ollama/models/manifests/registry.ollama.ai/library/llama3/8b",
+            ".ollama/models/manifests/registry.ollama.ai/library/llama3/latest",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000001",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000002"
+          ]
+        },
+        "sizes": {
+          "allocated": 16384,
+          "completeness": "complete",
+          "logical": 5813,
+          "reclaimable": 16384
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".ollama/models/manifests/registry.ollama.ai/library/llama3/8b"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "llama3:8b, llama3:latest"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "key": {
+          "identity": "ollama/registry.ollama.ai/library/mistral/7b",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "name": {
+              "kind": "text",
+              "value": "mistral:7b"
+            },
+            "size": {
+              "kind": "size",
+              "value": 3964
+            }
+          },
+          "key": "local-ai-models.reason.ollama"
+        },
+        "removal": {
+          "kind": "move-together",
+          "value": [
+            ".ollama/models/manifests/registry.ollama.ai/library/mistral/7b",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000004",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000005"
+          ]
+        },
+        "sizes": {
+          "allocated": 12288,
+          "completeness": "complete",
+          "logical": 3964,
+          "reclaimable": 12288
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".ollama/models/manifests/registry.ollama.ai/library/mistral/7b"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "mistral:7b"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "key": {
+          "identity": "ollama/registry.ollama.ai/library/qwen/base",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "listed": {
+              "kind": "size",
+              "value": 6190
+            },
+            "other": {
+              "kind": "text",
+              "value": "me/qwen-chat:latest"
+            },
+            "size": {
+              "kind": "size",
+              "value": 1153
+            }
+          },
+          "key": "local-ai-models.reason.ollama-shared"
+        },
+        "removal": {
+          "kind": "move-together",
+          "value": [
+            ".ollama/models/manifests/registry.ollama.ai/library/qwen/base",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000006"
+          ]
+        },
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 1153,
+          "reclaimable": 8192
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".ollama/models/manifests/registry.ollama.ai/library/qwen/base"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "qwen:base"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "key": {
+          "identity": "ollama/registry.ollama.ai/me/qwen-chat/latest",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "count": {
+              "kind": "count",
+              "value": 1
+            },
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "listed": {
+              "kind": "size",
+              "value": 7095
+            },
+            "other": {
+              "kind": "text",
+              "value": "qwen:base"
+            },
+            "size": {
+              "kind": "size",
+              "value": 1337
+            }
+          },
+          "key": "local-ai-models.reason.ollama-shared-more"
+        },
+        "removal": {
+          "kind": "move-together",
+          "value": [
+            ".ollama/models/manifests/registry.ollama.ai/me/qwen-chat/latest",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000009"
+          ]
+        },
+        "sizes": {
+          "allocated": 8192,
+          "completeness": "complete",
+          "logical": 1337,
+          "reclaimable": 8192
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".ollama/models/manifests/registry.ollama.ai/me/qwen-chat/latest"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "me/qwen-chat:latest"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      },
+      {
+        "category": "local-ai-models.ollama",
+        "danger": "medium",
+        "key": {
+          "identity": "ollama/registry.ollama.ai/me/qwen-tools/latest",
+          "module": "local-ai-models"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "date",
+              "value": 1764633600
+            },
+            "listed": {
+              "kind": "size",
+              "value": 2150
+            },
+            "other": {
+              "kind": "text",
+              "value": "me/qwen-chat:latest"
+            },
+            "size": {
+              "kind": "size",
+              "value": 1912
+            }
+          },
+          "key": "local-ai-models.reason.ollama-shared"
+        },
+        "removal": {
+          "kind": "move-together",
+          "value": [
+            ".ollama/models/manifests/registry.ollama.ai/me/qwen-tools/latest",
+            ".ollama/models/blobs/sha256-000000000000000000000000000000000000000000000000000000000000000f",
+            ".ollama/models/blobs/sha256-0000000000000000000000000000000000000000000000000000000000000010"
+          ]
+        },
+        "sizes": {
+          "allocated": 12288,
+          "completeness": "complete",
+          "logical": 1912,
+          "reclaimable": 12288
+        },
+        "subject": {
+          "kind": "path",
+          "value": ".ollama/models/manifests/registry.ollama.ai/me/qwen-tools/latest"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "me/qwen-tools:latest"
+            }
+          },
+          "key": "local-ai-models.title"
+        }
+      }
+    ],
+    "leftOut": [
+      {
+        "category": "local-ai-models.ollama",
+        "reason": "local-ai-models.left-out.ollama-incomplete",
+        "sizes": {
+          "allocated": 12288,
+          "completeness": "complete",
+          "logical": 3123,
+          "reclaimable": 12288
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "unreadable": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "local-ai-models.ollama",
+        "reason": "local-ai-models.left-out.ollama-unreadable",
+        "sizes": {
+          "allocated": 16384,
+          "completeness": "complete",
+          "logical": 3902,
+          "reclaimable": 16384
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

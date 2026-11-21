@@ -1,0 +1,195 @@
+{
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "leftOut": [
+    {
+      "category": "local-ai-models.ollama",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "local-ai-models.left-out.ollama-unreadable"
+      },
+      "sizes": {
+        "allocated": 20480,
+        "completeness": "complete",
+        "logical": 6981,
+        "reclaimable": 20480
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 20480,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67096388,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738189500,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 134,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/blobs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.ollama/models/blobs/sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "kind": "file",
+        "logical_size": 400,
+        "path": "home/.ollama/models/blobs/sha256-b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2000,
+        "path": "home/.ollama/models/blobs/sha256-c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/broken"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/broken/latest"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/fine"
+      },
+      {
+        "kind": "file",
+        "logical_size": 484,
+        "path": "home/.ollama/models/manifests/registry.ollama.ai/library/fine/latest"
+      },
+      {
+        "kind": "file",
+        "logical_size": 889,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 8004
+  }
+}

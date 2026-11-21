@@ -4,8 +4,8 @@
 use std::path::PathBuf;
 
 use crate::cleanup::{
-    ActionKind, CleanupId, CleanupReport, CleanupSummary, ConfirmedPlan, Ended, ItemIdentity, Method, PutBackOutcome,
-    RecordedOutcome, TrashedItem,
+    Action, ActionKind, CleanupId, CleanupReport, CleanupSummary, ConfirmedPlan, Ended, ItemIdentity, Method, PlanItem,
+    PutBackOutcome, RecordedOutcome, TrashedItem,
 };
 use crate::{ByteSize, DangerLevel, Sizes, Text, Timestamp};
 
@@ -71,7 +71,9 @@ pub struct BeginRecord {
 }
 
 impl BeginRecord {
-    /// The record of `plan`, about to start at `at` with the volumes' `space`.
+    /// The record of `plan`, about to start at `at` with the volumes' `space`. An item of several paths keeps every
+    /// part after its subject, with the identity the rehearsal read, so a crash in its middle leaves a record of every
+    /// path it was about to move.
     pub fn new(at: Timestamp, plan: &ConfirmedPlan, space: Vec<VolumeSpace>) -> Self {
         let items = plan
             .items()
@@ -81,6 +83,7 @@ impl BeginRecord {
                 index,
                 path: item.action().path().map(PathBuf::from),
                 identity: item.identity(),
+                more: more_parts(item),
                 action: item.action().kind(),
                 category: item.category().as_str().to_owned(),
                 key: item.key().identity().to_owned(),
@@ -93,13 +96,24 @@ impl BeginRecord {
     }
 }
 
+/// The parts of an item of several paths after its subject, each with its identity; empty for any other item.
+/// Every part is kept, even one whose identity the item does not carry.
+fn more_parts(item: &PlanItem) -> Vec<JournalPart> {
+    let Action::RemoveTogether(parts) = item.action() else { return Vec::new() };
+    let identities = item.part_identities();
+    let identity = |place: usize| identities.get(place).copied().filter(|_| identities.len() == parts.all().len());
+    (1..).zip(parts.rest()).map(|(place, path)| JournalPart { path: path.clone(), identity: identity(place) }).collect()
+}
+
 /// One item of a cleanup as the journal keeps it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JournalItem {
     pub index: u32,
-    /// `None` for a tool's item.
+    /// `None` for a tool's item; the subject of an item of several paths.
     pub path: Option<PathBuf>,
     pub identity: Option<ItemIdentity>,
+    /// The parts of an item of several paths after its subject, in the order they move; empty for any other item.
+    pub more: Vec<JournalPart>,
     pub action: ActionKind,
     pub category: String,
     /// The finding's identity within its module.
@@ -108,6 +122,14 @@ pub struct JournalItem {
     pub reason: Text,
     pub danger: DangerLevel,
     pub sizes: Sizes,
+}
+
+/// A part of an item of several paths other than its subject, as the journal keeps it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct JournalPart {
+    pub path: PathBuf,
+    /// The identity the rehearsal read; `None` when the plan item did not carry one for every part.
+    pub identity: Option<ItemIdentity>,
 }
 
 /// The available space of the volume that holds `root`.
@@ -124,6 +146,9 @@ pub struct ItemRecord {
     pub index: u32,
     pub outcome: RecordedOutcome,
     pub trashed: Vec<TrashedItem>,
+    /// How many parts of an item of several paths went, the subject first, whether or not the Trash told where each
+    /// landed; `None` for any other item.
+    pub went: Option<u32>,
 }
 
 /// How a cleanup ended.
@@ -136,12 +161,15 @@ pub struct EndRecord {
 }
 
 /// An attempt to put an item back.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PutBackRecord {
     pub cleanup: CleanupId,
     pub index: u32,
     pub at: Timestamp,
     pub outcome: PutBackOutcome,
+    /// The parts of an item of several paths this attempt brought back, by their place among the item's parts (the
+    /// subject is 0); empty for any other item.
+    pub back: Vec<u32>,
 }
 
 /// One cleanup as the journal read it back.
@@ -207,10 +235,10 @@ mod tests {
 
     use crate::cleanup::plan::sample;
     use crate::cleanup::{
-        BeginRecord, CleanupId, EndRecord, Ended, ItemIdentity, ItemRecord, PutBackRecord, RecordedCleanup,
-        RecordedOutcome, TrashedItem,
+        BeginRecord, CleanupId, CleanupPlan, ConfirmedPlan, EndRecord, Ended, ItemIdentity, ItemRecord, PlanId,
+        PlanItem, PutBackRecord, RecordedCleanup, RecordedOutcome, TrashedItem,
     };
-    use crate::{EntryKind, Timestamp};
+    use crate::{EntryKind, ScanId, Timestamp};
 
     fn cleanup(items: Vec<ItemRecord>, end: Option<Ended>, put_backs: Vec<PutBackRecord>) -> RecordedCleanup {
         let echo =
@@ -227,19 +255,60 @@ mod tests {
         }
     }
 
+    /// The confirmed plan of `item` alone, a medium item of 4 KiB.
+    fn confirmed_one(item: PlanItem) -> ConfirmedPlan {
+        let plan = CleanupPlan::new(
+            PlanId::new(7),
+            Timestamp::from_secs(sample::MADE),
+            ScanId::new(1),
+            vec!["/home".into()],
+            vec![item],
+            vec![],
+        )
+        .unwrap();
+        let echo =
+            serde_json::json!({ "plan": 7, "count": 1, "allocated": 4096, "highest": "medium", "method": "trash" });
+        plan.confirm(&serde_json::from_value(echo).unwrap(), Timestamp::from_secs(sample::MADE)).unwrap()
+    }
+
     fn moved(index: u32) -> ItemRecord {
         let trashed = TrashedItem {
             original: PathBuf::from(format!("/home/cache-{index}")),
             landed: PathBuf::from(format!("/home/.Trash/cache-{index}")),
             identity: ItemIdentity::new(1, u64::from(index), EntryKind::File),
         };
-        ItemRecord { cleanup: CleanupId::new(2), index, outcome: RecordedOutcome::Moved, trashed: vec![trashed] }
+        ItemRecord {
+            cleanup: CleanupId::new(2),
+            index,
+            outcome: RecordedOutcome::Moved,
+            trashed: vec![trashed],
+            went: None,
+        }
     }
 
     mod negative {
-        use super::{cleanup, moved};
-        use crate::Timestamp;
-        use crate::cleanup::{CleanupId, Ended, PutBackOutcome, PutBackRecord, RecordedOutcome};
+        use std::path::PathBuf;
+
+        use super::{cleanup, confirmed_one, moved};
+        use crate::cleanup::plan::sample;
+        use crate::cleanup::{
+            BeginRecord, CleanupId, Ended, ItemIdentity, JournalPart, PlanItem, PutBackOutcome, PutBackRecord,
+            RecordedOutcome,
+        };
+        use crate::{DangerLevel, EntryKind, Timestamp};
+
+        #[test]
+        fn an_item_without_an_identity_for_every_part_still_keeps_every_part() {
+            let finding = sample::together(4, DangerLevel::Medium, 4096);
+            let short = PlanItem::new(&finding).with_part_identities(vec![ItemIdentity::new(1, 10, EntryKind::File)]);
+
+            let none = BeginRecord::new(Timestamp::from_secs(5), &confirmed_one(PlanItem::new(&finding)), vec![]);
+            let partial = BeginRecord::new(Timestamp::from_secs(5), &confirmed_one(short), vec![]);
+
+            let layer = [JournalPart { path: PathBuf::from("/home/layer-4"), identity: None }];
+            assert_eq!(none.items[0].more, layer);
+            assert_eq!(partial.items[0].more, layer);
+        }
 
         #[test]
         fn a_cleanup_without_an_end_is_interrupted_and_its_items_unknown() {
@@ -254,8 +323,13 @@ mod tests {
 
         #[test]
         fn an_item_put_back_is_no_longer_in_the_trash() {
-            let put_back =
-                |outcome| PutBackRecord { cleanup: CleanupId::new(2), index: 0, at: Timestamp::from_secs(9), outcome };
+            let put_back = |outcome| PutBackRecord {
+                cleanup: CleanupId::new(2),
+                index: 0,
+                at: Timestamp::from_secs(9),
+                outcome,
+                back: vec![],
+            };
             let occupied = cleanup(vec![moved(0)], Some(Ended::Completed), vec![put_back(PutBackOutcome::Occupied)]);
             let done = cleanup(vec![moved(0)], Some(Ended::Completed), vec![put_back(PutBackOutcome::PutBack)]);
 
@@ -265,11 +339,12 @@ mod tests {
     }
 
     mod positive {
-        use std::path::Path;
+        use std::path::{Path, PathBuf};
 
-        use super::{cleanup, moved};
-        use crate::cleanup::{ActionKind, CleanupId, Ended, Method};
-        use crate::{ByteSize, DangerLevel, Timestamp};
+        use super::{cleanup, confirmed_one, moved};
+        use crate::cleanup::plan::sample;
+        use crate::cleanup::{ActionKind, BeginRecord, CleanupId, Ended, ItemIdentity, JournalPart, Method, PlanItem};
+        use crate::{ByteSize, DangerLevel, EntryKind, Timestamp};
 
         #[test]
         fn the_begin_record_holds_every_item_of_the_plan() {
@@ -286,6 +361,23 @@ mod tests {
             assert_eq!(first.reason.key().as_str(), "demo.finding.reason");
             assert_eq!(begin.items[2].path, None);
             assert_eq!(begin.items[2].action, ActionKind::Tool);
+        }
+
+        #[test]
+        fn an_item_of_several_paths_keeps_every_part_after_its_subject() {
+            let identities = vec![ItemIdentity::new(1, 10, EntryKind::File), ItemIdentity::new(1, 11, EntryKind::File)];
+            let item =
+                PlanItem::new(&sample::together(4, DangerLevel::Medium, 4096)).with_part_identities(identities.clone());
+
+            let begin = BeginRecord::new(Timestamp::from_secs(5), &confirmed_one(item), vec![]);
+
+            let item = &begin.items[0];
+            assert_eq!((item.path.as_deref(), item.identity), (Some(Path::new("/home/model-4")), Some(identities[0])));
+            assert_eq!(
+                item.more,
+                [JournalPart { path: PathBuf::from("/home/layer-4"), identity: Some(identities[1]) }]
+            );
+            assert_eq!(cleanup(vec![], None, vec![]).begin.items[0].more, []);
         }
 
         #[test]

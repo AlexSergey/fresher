@@ -188,7 +188,7 @@ mod tests {
         fn an_older_version_becomes_the_previous_generation_at_the_next_write() {
             let folder = Folder::new();
             fs::write(folder.current(), fixture()).unwrap();
-            let journal = folder.journal_at_version_2();
+            let journal = folder.journal();
 
             let id = journal.begin(&sample::begin(1)).unwrap();
 
@@ -198,7 +198,7 @@ mod tests {
             let page = journal.cleanups(0, 10).unwrap();
             assert_eq!((page.total, page.skipped), (4, 0));
             let first = journal.cleanup(CleanupId::new(1)).unwrap().unwrap();
-            assert_eq!(first.begin.items[0].category, "migrated.demo.caches");
+            assert_eq!(first.begin.items[0].more, []);
         }
     }
 }

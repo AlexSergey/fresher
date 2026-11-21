@@ -107,6 +107,14 @@ import {
   LOCAL_AI_MODELS_SETTINGS,
   LOCAL_AI_MODELS_TOTALS,
 } from '../src/test/local-ai-models-scan';
+import {
+  OLLAMA_DOWNLOAD_OVERVIEW,
+  OLLAMA_DOWNLOAD_SCAN,
+  OLLAMA_FINDINGS,
+  OLLAMA_OVERVIEW,
+  OLLAMA_SCAN,
+  OLLAMA_TOTALS,
+} from '../src/test/ollama-scan';
 import { pageOf } from '../src/test/page-of';
 import { BUILD_DICTIONARY, sandboxBuild } from '../src/test/sandbox-build';
 import {
@@ -756,6 +764,21 @@ const localAiModelsCleanup = (): CleanupScript => {
   };
 };
 
+// The cleanup of the first Ollama model: one item, its parts go together, 4.7 GB wait.
+const ollamaCleanup = (): CleanupScript => {
+  const detail = movedDetailOf(planOf(OLLAMA_FINDINGS.filter(({ id }) => id === 511)), 3, 1_735_819_200);
+
+  return {
+    after: {
+      ...OLLAMA_OVERVIEW,
+      found: sizedOf(10_900_000_000 - 4_700_000_000),
+      totals: OLLAMA_TOTALS.map((total) => ({ ...total, count: 2, sizes: sizedOf(6_200_000_000) })),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 4_700_000_000 },
+  };
+};
+
 // What the local AI models scripts answer before a scan: the module, its texts and settings.
 const LOCAL_AI_MODELS_ANSWERS = {
   ...ANSWERS,
@@ -964,6 +987,21 @@ export const SCRIPTS = {
     ignoring: true,
     scan: LOCAL_AI_MODELS_LM_STUDIO_OPEN_SCAN,
     scanned: LOCAL_AI_MODELS_LM_STUDIO_OPEN_OVERVIEW,
+  },
+  // The local AI models scan with Ollama's three models offered; the cleanup moves the first one.
+  localAiModelsOllama: {
+    answers: LOCAL_AI_MODELS_ANSWERS,
+    cleanup: ollamaCleanup(),
+    ignoring: true,
+    scan: OLLAMA_SCAN,
+    scanned: OLLAMA_OVERVIEW,
+  },
+  // Ollama is downloading a model: its store is left out as a whole, nothing of it is offered.
+  localAiModelsOllamaDownload: {
+    answers: LOCAL_AI_MODELS_ANSWERS,
+    ignoring: true,
+    scan: OLLAMA_DOWNLOAD_SCAN,
+    scanned: OLLAMA_DOWNLOAD_OVERVIEW,
   },
   // Some folders could not be read: the scan ends partial, the caches' size a lower bound.
   partial: { answers: ANSWERS, scan: DEMO_PARTIAL_SCAN, scanned: DEMO_PARTIAL },

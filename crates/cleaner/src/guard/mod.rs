@@ -3,6 +3,7 @@
 //! follow no link.
 
 use std::ffi::OsString;
+use std::path::Path;
 
 mod access;
 mod facts;
@@ -99,12 +100,69 @@ impl Verified {
     }
 }
 
+/// What a path must be besides what the plan holds: a folder to empty must still be a folder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Shape {
+    Any,
+    Folder,
+}
+
 /// The checks of a path item, in the design's order: reach, roots, protection, ignored, the open through no link,
 /// the volume, the identity, removability, capability, use, and with `Depth::Full` growth.
 pub(crate) fn verify(item: &PlanItem, cx: &GuardContext<'_>, depth: Depth) -> Result<Verified, Unverified> {
-    let Some(path) = item.action().path() else {
+    let (path, shape) = match item.action() {
+        Action::Remove(path) => (path, Shape::Any),
+        Action::Empty(path) => (path, Shape::Folder),
+        // An item of several paths is never checked by its subject alone: `verify_together` checks every part.
+        Action::RemoveTogether(_) | Action::Tool(_) => return Err(SkipReason::CheckFailed.into()),
+    };
+    let (verified, measured) = verify_path(path, item.identity(), shape, cx, depth)?;
+    if measured.is_some_and(|now| grown(item.sizes().allocated.bytes(), now)) {
+        return Err(SkipReason::Grown.into());
+    }
+    Ok(verified)
+}
+
+/// The checks of an item of several paths: every part through checks 1 to 10, in order, each against its own
+/// identity, and with `Depth::Full` measured; then check 11 once, on the sum of the parts against the item's size
+/// (the item's sizes are its parts' together). The first refusal refuses the whole item; on success every part is
+/// held open, in part order, the subject first.
+pub(crate) fn verify_together(
+    item: &PlanItem,
+    cx: &GuardContext<'_>,
+    depth: Depth,
+) -> Result<Vec<Verified>, Unverified> {
+    let Action::RemoveTogether(parts) = item.action() else {
         return Err(SkipReason::CheckFailed.into());
     };
+    let identities = item.part_identities();
+    // A rehearsal of a new plan holds none yet; anything else holds one per part.
+    if !identities.is_empty() && identities.len() != parts.all().len() {
+        return Err(SkipReason::CheckFailed.into());
+    }
+    let mut verified = Vec::with_capacity(parts.all().len());
+    let mut measured = 0_u64;
+    for (index, path) in parts.all().iter().enumerate() {
+        let (part, now) = verify_path(path, identities.get(index).copied(), Shape::Any, cx, depth)?;
+        measured = measured.saturating_add(now.unwrap_or(0));
+        verified.push(part);
+    }
+    if depth == Depth::Full && grown(item.sizes().allocated.bytes(), measured) {
+        return Err(SkipReason::Grown.into());
+    }
+    Ok(verified)
+}
+
+/// Checks 1 to 10 of one path against the identity the plan holds for it (`None` in a rehearsal of a new plan),
+/// and with `Depth::Full` the size it allocates now, walked for a folder (`None` when not walked: a quick check or a
+/// link). Check 11 is the caller's, against the size the item was confirmed with.
+fn verify_path(
+    path: &Path,
+    planned: Option<ItemIdentity>,
+    shape: Shape,
+    cx: &GuardContext<'_>,
+    depth: Depth,
+) -> Result<(Verified, Option<u64>), Unverified> {
     let placed = cx.roots.place(path);
     let in_reach = match &placed {
         Ok(placed) => cx.reach.admits(&placed.root, &placed.relative, cx.user, cx.system),
@@ -116,24 +174,24 @@ pub(crate) fn verify(item: &PlanItem, cx: &GuardContext<'_>, depth: Depth) -> Re
     let placed = placed?;
     check_protection(&placed, &[cx.system, cx.protection])?;
     let handle = Handle::open(&placed)?;
-    let identity = identity::check(item.identity(), identity::of(handle.metadata()), cx.purpose)?;
-    if matches!(item.action(), Action::Empty(_)) && !handle.metadata().is_dir() {
+    let identity = identity::check(planned, identity::of(handle.metadata()), cx.purpose)?;
+    if shape == Shape::Folder && !handle.metadata().is_dir() {
         return Err(SkipReason::KindChanged.into());
     }
     facts::check(&handle, &placed, cx.user)?;
     access::check(&placed, cx.guarded, cx.access)?;
     in_use::check(&placed, cx.open, cx.running)?;
-    if depth == Depth::Full && identity.kind() != EntryKind::Symlink {
+    let measured = if depth == Depth::Full && identity.kind() != EntryKind::Symlink {
         let now =
             cx.walk.measure(handle.file(), handle.metadata(), placed.device, cx.cancel).map_err(|stop| match stop {
                 WalkStop::Skip(reason) => Unverified::Skipped(reason),
                 WalkStop::Cancelled => Unverified::Cancelled,
             })?;
-        if grown(item.sizes().allocated.bytes(), now) {
-            return Err(SkipReason::Grown.into());
-        }
-    }
-    Ok(Verified { handle, placed, identity })
+        Some(now)
+    } else {
+        None
+    };
+    Ok((Verified { handle, placed, identity }, measured))
 }
 
 /// Check 11's margins: more than `GROWTH_SHARE` percent and more than `GROWTH_FLOOR` bytes over the confirmed size.
@@ -168,7 +226,7 @@ pub(crate) fn verify_tool(command: &ToolCommand, cx: &GuardContext<'_>) -> Resul
 mod tests {
     use fresher_core::{Action, Depth, PlanItem, SkipReason};
 
-    use crate::guard::{Purpose, Unverified, Verified, verify};
+    use crate::guard::{Purpose, Unverified, Verified, identity, verify};
     use crate::test_support::{Setup, plan_item};
 
     fn tree() -> Setup {
@@ -206,6 +264,31 @@ mod tests {
     }
 
     const MIB: u64 = 1024 * 1024;
+
+    /// Two files of the tree as one item allocating `allocated` bytes, holding `identities` of their identities (in
+    /// turn, the first again after the last), checked at `depth` with a walk that answers `walked` for each part; and
+    /// how often it walked.
+    fn together(
+        allocated: u64,
+        identities: usize,
+        depth: Depth,
+        walked: u64,
+    ) -> (Result<Vec<Verified>, Unverified>, u32) {
+        let mut setup = tree();
+        let walk = std::sync::Arc::new(crate::test_support::FixedWalk::answering(Ok(walked)));
+        setup.walk = Box::new(std::sync::Arc::clone(&walk));
+        let paths = vec![setup.at("home/cache/a.bin"), setup.at("home/Desktop/b.txt")];
+        let found: Vec<_> = paths
+            .iter()
+            .map(|path| identity::of(&std::fs::symlink_metadata(path).unwrap()))
+            .cycle()
+            .take(identities)
+            .collect();
+        let parts = fresher_core::Parts::new(paths).unwrap();
+        let item = plan_item(1, Action::RemoveTogether(parts), allocated).with_part_identities(found);
+        let answer = crate::guard::verify_together(&item, &setup.cx(Purpose::Act), depth);
+        (answer, walk.calls())
+    }
 
     fn remove(setup: &Setup, relative: &str) -> PlanItem {
         plan_item(1, Action::Remove(setup.at(relative)), 4096)
@@ -316,6 +399,53 @@ mod tests {
             let item = plan_item(1, Action::Empty(setup.at("home/cache/a.bin")), 4096);
 
             assert_eq!(check(&setup, &item, Purpose::Rehearse).unwrap_err(), SkipReason::KindChanged);
+        }
+
+        #[test]
+        fn a_together_item_is_never_checked_by_its_subject_alone() {
+            let setup = tree();
+            let parts = fresher_core::Parts::new(vec![setup.at("home/cache/a.bin"), setup.at("home/cache/b.bin")]);
+            let item = plan_item(1, Action::RemoveTogether(parts.unwrap()), 4096);
+
+            for purpose in [Purpose::Rehearse, Purpose::Act] {
+                assert_eq!(check(&setup, &item, purpose).unwrap_err(), SkipReason::CheckFailed, "{purpose:?}");
+            }
+        }
+
+        #[test]
+        fn parts_that_grew_together_past_the_margin_are_grown() {
+            // Each part alone is within the margin of the item's size; both together are past it.
+            let (answer, calls) = super::together(4096, 2, Depth::Full, 33 * MIB);
+
+            assert_eq!(answer.unwrap_err(), Unverified::Skipped(SkipReason::Grown));
+            assert_eq!(calls, 2);
+        }
+
+        #[test]
+        fn an_item_holding_another_count_of_part_identities_is_refused() {
+            for count in [1, 3] {
+                let (answer, calls) = super::together(4096, count, Depth::Full, 0);
+
+                assert_eq!(answer.unwrap_err(), Unverified::Skipped(SkipReason::CheckFailed), "{count}");
+                assert_eq!(calls, 0, "refused before any part is checked");
+            }
+        }
+
+        #[test]
+        fn an_act_on_parts_without_their_identities_is_refused() {
+            let (answer, _) = super::together(4096, 0, Depth::Full, 0);
+
+            assert_eq!(answer.unwrap_err(), Unverified::Skipped(SkipReason::CheckFailed));
+        }
+
+        #[test]
+        fn a_single_item_is_never_checked_as_parts() {
+            let setup = tree();
+            let item = remove(&setup, "home/cache/a.bin");
+
+            let answer = crate::guard::verify_together(&item, &setup.cx(Purpose::Rehearse), Depth::Quick);
+
+            assert_eq!(answer.unwrap_err(), Unverified::Skipped(SkipReason::CheckFailed));
         }
 
         #[test]
@@ -470,6 +600,25 @@ mod tests {
         fn a_folder_that_grew_within_the_margin_passes() {
             assert!(walked(1024 * MIB, Ok(1124 * MIB)).0.is_ok());
             assert!(walked(MIB, Ok(61 * MIB)).0.is_ok());
+        }
+
+        #[test]
+        fn parts_that_grew_together_within_the_margin_pass_in_part_order() {
+            let (answer, calls) = super::together(4096, 2, fresher_core::Depth::Full, 31 * MIB);
+
+            let parts = answer.unwrap();
+            assert_eq!(calls, 2);
+            assert_eq!(parts.len(), 2);
+            assert!(parts[0].placed().lexical.ends_with("home/cache/a.bin"));
+            assert!(parts[1].placed().lexical.ends_with("home/Desktop/b.txt"));
+        }
+
+        #[test]
+        fn a_quick_check_of_parts_does_not_walk() {
+            let (answer, calls) = super::together(0, 2, fresher_core::Depth::Quick, u64::MAX);
+
+            assert!(answer.is_ok());
+            assert_eq!(calls, 0);
         }
 
         #[test]

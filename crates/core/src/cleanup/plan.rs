@@ -11,7 +11,7 @@ use ts_rs::TS;
 
 use crate::cleanup::SkipReason;
 use crate::{
-    CategoryId, DangerLevel, EntryKind, Finding, FindingId, FindingKey, Removal, ScanId, Sizes, Text, Timestamp,
+    CategoryId, DangerLevel, EntryKind, Finding, FindingId, FindingKey, Parts, Removal, ScanId, Sizes, Text, Timestamp,
     ToolCommand,
 };
 
@@ -140,6 +140,9 @@ pub enum Action {
     Empty(PathBuf),
     /// The tool removes it, whatever the method; it can never be put back (`Removal::ToolCommand`).
     Tool(ToolCommand),
+    /// Several files or folders leave together, the subject first, each the way a removed item goes; nothing of it
+    /// leaves unless every part can (`Removal::MoveTogether`).
+    RemoveTogether(Parts),
 }
 
 /// The kind of an action, without what it acts on.
@@ -158,22 +161,33 @@ impl Action {
             Removal::MoveToTrash(path) => Self::Remove(path.clone()),
             Removal::EmptyFolder(path) => Self::Empty(path.clone()),
             Removal::ToolCommand(command) => Self::Tool(command.clone()),
+            Removal::MoveTogether(parts) => Self::RemoveTogether(parts.clone()),
         }
     }
 
     pub const fn kind(&self) -> ActionKind {
         match self {
-            Self::Remove(_) => ActionKind::Remove,
+            Self::Remove(_) | Self::RemoveTogether(_) => ActionKind::Remove,
             Self::Empty(_) => ActionKind::Empty,
             Self::Tool(_) => ActionKind::Tool,
         }
     }
 
-    /// The path it acts on; `None` for a tool's.
+    /// The path it acts on, the subject of an item of several paths; `None` for a tool's.
     pub fn path(&self) -> Option<&Path> {
         match self {
             Self::Remove(path) | Self::Empty(path) => Some(path),
+            Self::RemoveTogether(parts) => Some(parts.subject()),
             Self::Tool(_) => None,
+        }
+    }
+
+    /// Every path it acts on, in order: its one path, every part of an item of several paths, none for a tool's.
+    pub fn parts(&self) -> &[PathBuf] {
+        match self {
+            Self::Remove(path) | Self::Empty(path) => std::slice::from_ref(path),
+            Self::RemoveTogether(parts) => parts.all(),
+            Self::Tool(_) => &[],
         }
     }
 }
@@ -190,6 +204,7 @@ pub struct PlanItem {
     reason: Text,
     action: Action,
     identity: Option<ItemIdentity>,
+    part_identities: Vec<ItemIdentity>,
 }
 
 impl PlanItem {
@@ -206,6 +221,7 @@ impl PlanItem {
             reason: inner.reason().clone(),
             action: Action::from_removal(inner.removal()),
             identity: None,
+            part_identities: Vec::new(),
         }
     }
 
@@ -213,6 +229,15 @@ impl PlanItem {
     #[must_use]
     pub const fn with_identity(mut self, identity: Option<ItemIdentity>) -> Self {
         self.identity = identity;
+        self
+    }
+
+    /// The item with the identity of every part the rehearsal read, in part order, for an item of several paths; its
+    /// `identity()` is the first's, the subject's.
+    #[must_use]
+    pub fn with_part_identities(mut self, identities: Vec<ItemIdentity>) -> Self {
+        self.identity = identities.first().copied();
+        self.part_identities = identities;
         self
     }
 
@@ -250,6 +275,11 @@ impl PlanItem {
 
     pub const fn identity(&self) -> Option<ItemIdentity> {
         self.identity
+    }
+
+    /// The identity of every part, in part order, of an item of several paths; empty for every other item.
+    pub fn part_identities(&self) -> &[ItemIdentity] {
+        &self.part_identities
     }
 }
 
@@ -388,8 +418,8 @@ pub(crate) mod sample {
 
     use crate::cleanup::{CleanupPlan, PlanId, PlanItem};
     use crate::{
-        ByteSize, CategoryDescriptor, CategoryId, DangerLevel, Finding, FindingId, ModuleId, NewFinding, Removability,
-        Removal, ScanId, Sizes, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId,
+        ByteSize, CategoryDescriptor, CategoryId, DangerLevel, Finding, FindingId, ModuleId, NewFinding, Parts,
+        Removability, Removal, ScanId, Sizes, Subject, Text, TextKey, Timestamp, ToolCommand, ToolId,
     };
 
     /// The time every sample plan is made at.
@@ -401,6 +431,7 @@ pub(crate) mod sample {
         let text = |key: &str| Text::new(TextKey::new(key).unwrap());
         let subject = match &removal {
             Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => Subject::Path(path.clone()),
+            Removal::MoveTogether(parts) => Subject::Path(parts.subject().to_path_buf()),
             Removal::ToolCommand(command) => Subject::External { tool: command.tool(), id: format!("{id}") },
         };
         let sizes = Sizes::complete(ByteSize::new(allocated / 2), ByteSize::new(allocated));
@@ -418,6 +449,12 @@ pub(crate) mod sample {
 
     pub(crate) fn trash(id: u32, danger: DangerLevel, allocated: u64) -> Finding {
         finding(id, danger, allocated, Removal::MoveToTrash(PathBuf::from(format!("/home/cache-{id}"))))
+    }
+
+    /// A finding of two parts: `/home/model-<id>` (the subject) and `/home/layer-<id>`.
+    pub(crate) fn together(id: u32, danger: DangerLevel, allocated: u64) -> Finding {
+        let paths = vec![PathBuf::from(format!("/home/model-{id}")), PathBuf::from(format!("/home/layer-{id}"))];
+        finding(id, danger, allocated, Removal::MoveTogether(Parts::new(paths).unwrap()))
     }
 
     pub(crate) fn tool(id: u32) -> Finding {
@@ -494,7 +531,17 @@ mod tests {
             let item = PlanItem::new(&sample::tool(1));
 
             assert_eq!(item.action().path(), None);
+            assert_eq!(item.action().parts(), [] as [std::path::PathBuf; 0]);
             assert_eq!(item.identity(), None);
+        }
+
+        #[test]
+        fn only_an_item_of_several_paths_keeps_part_identities() {
+            let item = PlanItem::new(&sample::trash(1, DangerLevel::Low, 1))
+                .with_identity(Some(crate::cleanup::ItemIdentity::new(1, 2, crate::EntryKind::File)));
+
+            assert_eq!(item.part_identities(), []);
+            assert_eq!(PlanItem::new(&sample::together(2, DangerLevel::Low, 1)).part_identities(), []);
         }
     }
 
@@ -584,6 +631,24 @@ mod tests {
                 [ActionKind::Remove, ActionKind::Empty, ActionKind::Tool]
             );
             assert_eq!(empty.path(), Some(Path::new("/home/b")));
+            assert_eq!(remove.parts(), [Path::new("/home/a")]);
+            assert_eq!(empty.parts(), [Path::new("/home/b")]);
+        }
+
+        #[test]
+        fn a_together_action_removes_every_part_with_the_subject_first() {
+            let finding = sample::together(4, DangerLevel::Medium, 4096);
+            let identities = vec![ItemIdentity::new(1, 10, EntryKind::File), ItemIdentity::new(1, 11, EntryKind::File)];
+
+            let item = PlanItem::new(&finding).with_part_identities(identities.clone());
+
+            assert!(matches!(item.action(), Action::RemoveTogether(_)));
+            assert_eq!(item.action().kind(), ActionKind::Remove);
+            assert_eq!(item.action().path(), Some(Path::new("/home/model-4")));
+            assert_eq!(item.action().parts(), [Path::new("/home/model-4"), Path::new("/home/layer-4")]);
+            assert_eq!(item.identity(), Some(identities[0]));
+            assert_eq!(item.part_identities(), identities);
+            assert_eq!(PlanSummary::of([&item]).map(|summary| (summary.count, summary.irreversible)), Some((1, 0)));
         }
 
         #[test]

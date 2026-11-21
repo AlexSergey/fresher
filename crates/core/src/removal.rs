@@ -1,11 +1,15 @@
 //! How a finding would be removed: described by a module as data, executed only by the cleaner.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use ts_rs::TS;
 
 use crate::ToolId;
+use crate::cleanup::is_plain;
+
+/// The most paths one item may name.
+pub const MAX_PARTS: usize = 64;
 
 /// How the cleaner removes a finding once the user confirmed it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
@@ -17,7 +21,15 @@ pub enum Removal {
     EmptyFolder(PathBuf),
     /// An external tool removes it (`docker image rm <id>`).
     ToolCommand(ToolCommand),
+    /// Several files or folders that leave together, as one item the user confirms: the first is the finding's
+    /// subject and goes first; put back brings it back last.
+    MoveTogether(#[ts(as = "Vec<PathBuf>")] Parts),
 }
+
+/// The paths of a `MoveTogether`: two to `MAX_PARTS`, each absolute and plain, none twice, none inside another.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(transparent)]
+pub struct Parts(Vec<PathBuf>);
 
 /// A call of an external tool: the tool and a fixed list of arguments, never a shell string.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
@@ -31,6 +43,61 @@ pub struct ToolCommand {
 pub enum RemovalError {
     #[error("argument {index} of the tool command holds a NUL byte")]
     NulByte { index: usize },
+    #[error("an item of several paths names fewer than two")]
+    TooFewParts,
+    #[error("an item of several paths names {count}, more than {MAX_PARTS}")]
+    TooManyParts { count: usize },
+    #[error("part {index} is not an absolute path of plain names")]
+    NotPlain { index: usize },
+    #[error("part {index} names a path an earlier part names")]
+    PartTwice { index: usize },
+    #[error("part {inner} is inside part {outer}")]
+    PartInsidePart { inner: usize, outer: usize },
+}
+
+impl Parts {
+    /// The parts of one item, in the order they leave: two to `MAX_PARTS` absolute paths with no `.` or `..`, none
+    /// the same as another or inside another (by components, never by text).
+    pub fn new(paths: Vec<PathBuf>) -> Result<Self, RemovalError> {
+        if paths.len() < 2 {
+            return Err(RemovalError::TooFewParts);
+        }
+        if paths.len() > MAX_PARTS {
+            return Err(RemovalError::TooManyParts { count: paths.len() });
+        }
+        if let Some(index) = paths.iter().position(|path| !is_plain(path)) {
+            return Err(RemovalError::NotPlain { index });
+        }
+        for (later, path) in paths.iter().enumerate() {
+            for (earlier, other) in paths[..later].iter().enumerate() {
+                if path == other {
+                    return Err(RemovalError::PartTwice { index: later });
+                }
+                if path.starts_with(other) {
+                    return Err(RemovalError::PartInsidePart { inner: later, outer: earlier });
+                }
+                if other.starts_with(path) {
+                    return Err(RemovalError::PartInsidePart { inner: earlier, outer: later });
+                }
+            }
+        }
+        Ok(Self(paths))
+    }
+
+    /// The first part: the finding's subject, the part that goes first.
+    pub fn subject(&self) -> &Path {
+        &self.0[0]
+    }
+
+    /// Every part, the subject first.
+    pub fn all(&self) -> &[PathBuf] {
+        &self.0
+    }
+
+    /// The parts after the subject.
+    pub fn rest(&self) -> &[PathBuf] {
+        &self.0[1..]
+    }
 }
 
 impl ToolCommand {
@@ -65,7 +132,51 @@ impl ToolCommand {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::{RemovalError, ToolCommand, ToolId};
+        use std::path::PathBuf;
+
+        use crate::{MAX_PARTS, Parts, RemovalError, ToolCommand, ToolId};
+
+        fn parts(paths: &[&str]) -> Result<Parts, RemovalError> {
+            Parts::new(paths.iter().map(PathBuf::from).collect())
+        }
+
+        #[test]
+        fn parts_refuse_fewer_than_two() {
+            assert_eq!(parts(&[]), Err(RemovalError::TooFewParts));
+            assert_eq!(parts(&["/home/a"]), Err(RemovalError::TooFewParts));
+        }
+
+        #[test]
+        fn parts_refuse_more_than_the_limit() {
+            let paths: Vec<PathBuf> = (0..=MAX_PARTS).map(|index| PathBuf::from(format!("/home/{index}"))).collect();
+
+            assert_eq!(paths.len(), 65);
+            assert_eq!(Parts::new(paths), Err(RemovalError::TooManyParts { count: 65 }));
+        }
+
+        #[test]
+        fn parts_refuse_a_relative_or_dotted_path() {
+            assert_eq!(parts(&["/home/a", "home/b"]), Err(RemovalError::NotPlain { index: 1 }));
+            assert_eq!(parts(&["/home/./a", "/home/b"]), Err(RemovalError::NotPlain { index: 0 }));
+            assert_eq!(parts(&["/home/a", "/home/x/../b"]), Err(RemovalError::NotPlain { index: 1 }));
+            assert_eq!(parts(&["/home/a", "/home/b/."]), Err(RemovalError::NotPlain { index: 1 }));
+        }
+
+        #[test]
+        fn parts_refuse_a_path_twice() {
+            assert_eq!(parts(&["/home/a", "/home/b", "/home/a"]), Err(RemovalError::PartTwice { index: 2 }));
+            assert_eq!(parts(&["/home/a", "/home//a/"]), Err(RemovalError::PartTwice { index: 1 }));
+        }
+
+        #[test]
+        fn parts_refuse_a_part_inside_another() {
+            assert_eq!(parts(&["/home/a", "/home/a/b"]), Err(RemovalError::PartInsidePart { inner: 1, outer: 0 }));
+            assert_eq!(
+                parts(&["/home/x", "/home/a/b", "/home/a"]),
+                Err(RemovalError::PartInsidePart { inner: 1, outer: 2 })
+            );
+            assert!(parts(&["/home/a/b", "/home/a/bc"]).is_ok(), "compared by components, not by text");
+        }
 
         #[test]
         fn rejects_a_tool_command_argument_with_a_nul_byte() {
@@ -100,7 +211,30 @@ mod tests {
             }
         }
 
-        use crate::{Removal, ToolCommand, ToolId};
+        use std::path::{Path, PathBuf};
+
+        use crate::{Parts, Removal, ToolCommand, ToolId};
+
+        #[test]
+        fn parts_keep_their_order_and_the_first_is_the_subject() {
+            let paths: Vec<PathBuf> = ["/home/m/latest", "/home/b/2", "/home/b/1"].map(PathBuf::from).to_vec();
+
+            let parts = Parts::new(paths.clone()).unwrap();
+
+            assert_eq!(parts.subject(), Path::new("/home/m/latest"));
+            assert_eq!(parts.all(), paths);
+            assert_eq!(parts.rest(), &paths[1..]);
+        }
+
+        #[test]
+        fn move_together_serializes_as_a_list() {
+            let parts = Parts::new(vec!["/home/a".into(), "/home/b".into()]).unwrap();
+
+            assert_eq!(
+                serde_json::to_value(Removal::MoveTogether(parts)).unwrap(),
+                json!({ "kind": "move-together", "value": ["/home/a", "/home/b"] })
+            );
+        }
 
         #[test]
         fn keeps_the_arguments_as_a_list() {

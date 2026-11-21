@@ -8,7 +8,7 @@ use crate::guard::{self, Verified};
 use crate::paths::open_failure;
 use crate::remove::{Removed, delete_entry, to_trash};
 
-/// Where an emptied folder's entries go.
+/// Where the entries of a removal of several go: an emptied folder's, or the parts of an item of several paths.
 #[derive(Clone, Copy)]
 pub(crate) enum Way<'a> {
     Trash(&'a dyn Trash),
@@ -52,7 +52,7 @@ pub(crate) fn empty(folder: Verified, act: Act<'_>, way: Way<'_>, cancel: &Cance
         trashed.extend(removed.trashed);
     }
     drop(folder);
-    Removed { outcome: ItemOutcome::Emptied { moved, skipped }, trashed, status: None }
+    Removed { outcome: ItemOutcome::Emptied { moved, skipped }, trashed, status: None, went: None }
 }
 
 /// The folder's place, its parent opened through no link, still holds the verified folder; a link there is

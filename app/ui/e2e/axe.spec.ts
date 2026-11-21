@@ -107,6 +107,24 @@ const tempSettings = async (page: Page): Promise<void> => {
   await days.scrollIntoViewIfNeeded();
 };
 
+// Ollama's models ticked, the review open and the confirmation asked for, the first model's other files listed.
+const ollamaConfirmation = async (page: Page): Promise<Locator> => {
+  await mockCore(page, SCRIPTS.localAiModelsOllama);
+  await page.goto('/');
+  await scanButton(page).click();
+  await scanFinished(page);
+  await page.getByRole('checkbox', { name: 'Select Ollama models' }).check();
+  await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Review' })).toBeFocused();
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await dialog.getByRole('button', { name: /^and 3 more files that go with it/ }).click();
+  await expect(dialog.getByRole('list', { name: /^The other files that go with/ })).toBeVisible();
+
+  return dialog;
+};
+
 // WebStorm's three categories ticked, the review open and the confirmation (it names Medium) asked for.
 const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
   await mockCore(page, SCRIPTS.jetbrains);
@@ -254,6 +272,19 @@ test.describe('positive cases', () => {
 
     test('the confirmation of a cleanup that names Medium', async ({ page }) => {
       await jetbrainsConfirmation(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the confirmation of a model that goes with more files', async ({ page }) => {
+      await ollamaConfirmation(page);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test("the details of Ollama's models", async ({ page }) => {
+      await detailsAfter(page, SCRIPTS.localAiModelsOllama, 'Ollama models');
+      await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });

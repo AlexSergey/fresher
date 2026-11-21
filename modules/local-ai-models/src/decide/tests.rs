@@ -20,9 +20,12 @@ fn row(id: &str) -> Store {
 fn candidate(row: &Store, path: &Path) -> Candidate {
     Candidate {
         row: 0,
+        ollama: None,
         path: path.to_path_buf(),
         kind: EntryKind::Folder,
         sizes: Sizes::ZERO,
+        modified: None,
+        accessed: None,
         facts: EntryFacts::REMOVABLE,
         holds: row.sign.clone(),
         inside: Some(Inside { newest_change: Some(Timestamp::from_secs(CHANGED)), ..Inside::EMPTY }),

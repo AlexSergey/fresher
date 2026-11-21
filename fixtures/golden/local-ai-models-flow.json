@@ -2,7 +2,7 @@
   "journal": [
     {
       "format": "cleanup-journal",
-      "version": 1
+      "version": 2
     },
     {
       "at": 1767225600,
@@ -13,6 +13,7 @@
           "category": "local-ai-models.hugging-face-datasets",
           "danger": "low",
           "key": "hugging-face/datasets--o--words",
+          "more": [],
           "path": "~/home/.cache/huggingface/hub/datasets--o--words",
           "reason": {
             "args": {
@@ -39,6 +40,7 @@
           "category": "local-ai-models.hugging-face-models",
           "danger": "low",
           "key": "hugging-face/models--meta--tiny",
+          "more": [],
           "path": "~/home/.cache/huggingface/hub/models--meta--tiny",
           "reason": {
             "args": {
@@ -65,6 +67,7 @@
           "category": "local-ai-models.lm-studio",
           "danger": "medium",
           "key": "lm-studio/pub/model-a",
+          "more": [],
           "path": "~/home/.lmstudio/models/pub/model-a",
           "reason": {
             "args": {
@@ -105,7 +108,8 @@
           "original": "~/home/.cache/huggingface/hub/datasets--o--words"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -118,7 +122,8 @@
           "original": "~/home/.cache/huggingface/hub/models--meta--tiny"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -131,7 +136,8 @@
           "original": "~/home/.lmstudio/models/pub/model-a"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "at": 1767225600,
@@ -142,6 +148,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -150,6 +157,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -158,6 +166,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -194,6 +203,7 @@
         "items": [
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.cache/huggingface/hub/models--meta--tiny",
             "reason": {
               "args": {
@@ -243,6 +253,7 @@
         "items": [
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.cache/huggingface/hub/datasets--o--words",
             "reason": {
               "args": {
@@ -292,6 +303,7 @@
         "items": [
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/.lmstudio/models/pub/model-a",
             "reason": {
               "args": {

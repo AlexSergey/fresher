@@ -58,11 +58,11 @@ pub use cleanup::{
     CleanupId, CleanupItemRef, CleanupItemView, CleanupJournal, CleanupPlan, CleanupPlanView, CleanupReport,
     CleanupSelection, CleanupSummary, CleanupsPage, CleanupsQuery, ConfirmError, Confirmation, ConfirmedMethod,
     ConfirmedPlan, Depth, EchoField, EndRecord, Ended, Failure, ItemDone, ItemIdentity, ItemOutcome, ItemRecord,
-    ItemReport, JournalError, JournalItem, JournalPage, JournalProblem, JournalState, LeftOut, MAX_PLAN_ITEMS, Method,
-    OutcomeCounts, PLAN_LIFETIME, PermanentConsent, PlanError, PlanGroup, PlanId, PlanItem, PlanItemView, PlanSummary,
-    Protected, Protection, ProtectionError, PutBackItem, PutBackOutcome, PutBackRecord, PutBackReport, PutBackRequest,
-    RecordedCleanup, RecordedOutcome, Rehearsal, SANDBOX_MARKER, SANDBOX_SIGNATURE, SkipCode, SkipReason, TrashState,
-    TrashedItem, VolumeSpace,
+    ItemReport, JournalError, JournalItem, JournalPage, JournalPart, JournalProblem, JournalState, LeftOut,
+    MAX_PLAN_ITEMS, Method, OutcomeCounts, PLAN_LIFETIME, PartlyWay, PermanentConsent, PlanError, PlanGroup, PlanId,
+    PlanItem, PlanItemView, PlanSummary, Protected, Protection, ProtectionError, PutBackItem, PutBackOutcome,
+    PutBackRecord, PutBackReport, PutBackRequest, RecordedCleanup, RecordedOutcome, Rehearsal, SANDBOX_MARKER,
+    SANDBOX_SIGNATURE, SkipCode, SkipReason, TrashState, TrashedItem, VolumeSpace,
 };
 pub use command::{
     CategoryInfo, CategoryTotal, ChoiceInfo, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, HiddenBy,
@@ -95,7 +95,7 @@ pub use ports::{
     SystemUi, SystemUiError, Trash, TrashError,
 };
 pub use removability::{EntryFacts, Removability};
-pub use removal::{Removal, RemovalError, ToolCommand};
+pub use removal::{MAX_PARTS, Parts, Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
     DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, ModuleSettings, ResolvedSettings,

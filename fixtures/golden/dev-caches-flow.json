@@ -2,7 +2,7 @@
   "journal": [
     {
       "format": "cleanup-journal",
-      "version": 1
+      "version": 2
     },
     {
       "at": 1767225600,
@@ -13,6 +13,7 @@
           "category": "dev-caches.cargo",
           "danger": "low",
           "key": "cargo-cache/cache",
+          "more": [],
           "path": "~/home/.cargo/registry/cache",
           "reason": {
             "args": {
@@ -35,6 +36,7 @@
           "category": "dev-caches.cargo",
           "danger": "low",
           "key": "cargo-src/src",
+          "more": [],
           "path": "~/home/.cargo/registry/src",
           "reason": {
             "args": {
@@ -57,6 +59,7 @@
           "category": "dev-caches.gradle",
           "danger": "low",
           "key": "gradle/caches",
+          "more": [],
           "path": "~/home/.gradle/caches",
           "reason": {
             "args": {
@@ -79,6 +82,7 @@
           "category": "dev-caches.npm",
           "danger": "low",
           "key": "npm/_cacache",
+          "more": [],
           "path": "~/home/.npm/_cacache",
           "reason": {
             "args": {
@@ -101,6 +105,7 @@
           "category": "dev-caches.xcode-derived-data",
           "danger": "safe",
           "key": "xcode-derived-data/Demo-abcdefghijklmnopqrstuvwxyzab",
+          "more": [],
           "path": "~/home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab",
           "reason": {
             "args": {
@@ -137,7 +142,8 @@
           "original": "~/home/.cargo/registry/cache"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -150,7 +156,8 @@
           "original": "~/home/.cargo/registry/src"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -163,7 +170,8 @@
           "original": "~/home/.gradle/caches"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -176,7 +184,8 @@
           "original": "~/home/.npm/_cacache"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -189,7 +198,8 @@
           "original": "~/home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "at": 1767225600,
@@ -200,6 +210,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -208,6 +219,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -216,6 +228,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -224,6 +237,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -232,6 +246,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -280,6 +295,7 @@
         "items": [
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.npm/_cacache",
             "reason": {
               "args": {
@@ -320,6 +336,7 @@
         "items": [
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.cargo/registry/cache",
             "reason": {
               "args": {
@@ -343,6 +360,7 @@
           },
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.cargo/registry/src",
             "reason": {
               "args": {
@@ -383,6 +401,7 @@
         "items": [
           {
             "danger": "low",
+            "more": [],
             "path": "~/home/.gradle/caches",
             "reason": {
               "args": {
@@ -423,6 +442,7 @@
         "items": [
           {
             "danger": "safe",
+            "more": [],
             "path": "~/home/Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab",
             "reason": {
               "args": {

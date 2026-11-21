@@ -11,6 +11,8 @@ import {
   HIGH_PLAN,
   LEFT_OUT_PLAN,
   LONG_PLAN,
+  LONG_TOGETHER_PLAN,
+  TOGETHER_PLAN,
   TOOL_PLAN,
 } from '../../test/cleanup-plan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
@@ -23,6 +25,7 @@ const ignore = (): void => undefined;
 const open = (
   plan: CleanupPlanView,
   permanent = false,
+  expanded = false,
 ): { readonly render: () => JSX.Element; readonly width: number } => ({
   render: function Story(): JSX.Element {
     const stageRef = useRef<HTMLDivElement>(null);
@@ -32,6 +35,12 @@ const open = (
     useEffect(() => {
       if (permanent) {
         stageRef.current?.querySelector<HTMLInputElement>('dialog input[type="checkbox"]')?.click();
+      }
+      if (expanded) {
+        for (const toggle of stageRef.current?.querySelectorAll<HTMLButtonElement>('dialog button[aria-expanded]') ??
+          []) {
+          toggle.click();
+        }
       }
     }, []);
 
@@ -51,6 +60,9 @@ export const stories = storiesOf('ConfirmDialog', {
   'left-out': open(LEFT_OUT_PLAN),
   'long-list': open(LONG_PLAN),
   permanent: open(DEMO_PLAN, true),
+  'together-item': open(TOGETHER_PLAN),
+  'together-item-open': open(TOGETHER_PLAN, false, true),
+  'together-item-open-long': open(LONG_TOGETHER_PLAN, false, true),
   'tool-group': open(TOOL_PLAN),
   trash: open(DEMO_PLAN),
 });

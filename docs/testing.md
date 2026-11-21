@@ -112,7 +112,8 @@ cleanups of a hundred items through the real journal.
   (`paths.rs`, `guard/`, `remove/`, `put_back.rs`, `pipeline.rs`); `remove/permanent.rs` races a delete against a
   `Swapper` 100 times (a parent and a folder inside swapped for a link) and mounts a volume inside a folder.
   `tests/never.rs` is the property test of what the cleaner never does, for any plan (random trees with links in, out
-  and up and a protected, carved-out, hard-blocked and ignored folder; random plans; the swap case); its default run
+  and up and a protected, carved-out, hard-blocked and ignored folder; random plans, items of several paths among
+  them: one goes whole or not at all, unless the Trash refuses a part at its act; the swap case); its default run
   is in the hooks, `PROPTEST_CASES=10000` by hand. `tests/types.rs` holds the compile-fail cases of `Verified` and
   `Act` (`tests/compile_fail/`); `tests/reach.rs` fails when the real-disk token is named outside its three places;
   `tests/deletion_point.rs` fails on a second deletion point or a deleting system call outside `ffi/beneath.rs`.
@@ -156,6 +157,12 @@ cleanups of a hundred items through the real journal.
   skipped in use, the project's link stays a link after the cleanup, the sizes of each category, scan, confirm with
   Medium, Trash and put back byte for byte (`fixtures/golden/local-ai-models-flow.json`), and a restore at launch that
   offers the same models.
+  `tests/local_ai_models_ollama.rs` runs the same module over `fixtures/homes/local-ai-models-ollama-flow.toml` (an
+  Ollama store: two tags of one model, a model of its own, and a base model with one made from it sharing two layers):
+  a model goes together, its manifests and unshared layers as one item, or nothing of it moves (a layer held open or
+  mapped, a layer replaced after the plan); a shared layer and the sharer's manifest stay; the journal holds every
+  part, put back brings the subject last, byte for byte (`fixtures/golden/local-ai-models-ollama-flow.json`); a restore
+  reads the manifests again.
   `tests/unused_toolchains.rs` runs the `unused-toolchains` module's flows alone over
   `fixtures/homes/unused-toolchains-flow.toml` (rustup's default, a moving channel, an old toolchain, a dated nightly and
   one a project's `rust-toolchain.toml` names; nvm's default, the newest Node version and an old one; no stored
@@ -167,12 +174,11 @@ cleanups of a hundred items through the real journal.
   since moves the offer from one toolchain to another).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
   pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
-  `app_leftovers_home`, `local_ai_models_home`, `unused_toolchains_home`) share one harness there, one file per
-  concern: `home.rs` (the sandbox's layout and the `Flow`), `home_engine.rs` (the engine assembled from the parts a home
-  gives: its modules, its fakes, its avoid list),
-  `home_scan.rs` (the scans and the findings), `home_rescan.rs` (the scripted change journal and a scan that must be a
-  rescan) and `home_cleanup.rs` (the cleanup, the outcomes, the journal's records and the relative report); each home
-  keeps only its module's own.
+  `app_leftovers_home`, `local_ai_models_home`, `local_ai_models_ollama_home`, `unused_toolchains_home`) share one
+  harness there, one file per concern: `home.rs` (the sandbox's layout and the `Flow`), `home_engine.rs` (the engine
+  assembled from the parts a home gives: its modules, its fakes, its avoid list), `home_scan.rs` (the scans and the
+  findings), `home_rescan.rs` (the scripted change journal and a scan that must be a rescan) and `home_cleanup.rs` (the
+  cleanup, the outcomes, the journal's records and the relative report); each home keeps only its module's own.
 - `crates/engine/src/ignore.rs` — the ignore lists, Reset all settings and "Rescan to apply" on the engine's fakes;
   `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
@@ -483,11 +489,22 @@ The case files:
 
 - `local-ai-models.toml` and `local-ai-models-lm-studio-open.toml`: the `local-ai-models` module. A Space, the hub's
   locks, a folder without blobs and snapshots, a name off the repository shape, a loose file in LM Studio's models
-  folder, Ollama's store (not claimed in this version), a model file in a project and a project's link into the cache
-  are never claimed, and a model holding a socket is left out (`special`); a Hugging Face model (with and without an
-  owner, the model a project links to, whose link stays) and dataset go to the Trash as Low, an LM Studio model (the
-  current place and the older) as Medium. The second runs with LM Studio open: its model is left out (`app-open`), a
-  Hugging Face model still goes. Files and paths of their own, the open app being shared by every case of a file.
+  folder, Ollama's folder without `manifests/` (its models are the next files'), a model file in a project and a
+  project's link into the cache are never claimed, and a model holding a socket is left out (`special`); a Hugging
+  Face model (with and without an owner, the model a project links to, whose link stays) and dataset go to the Trash
+  as Low, an LM Studio model (the current place and the older) as Medium. The second runs with LM Studio open: its
+  model is left out (`app-open`), a Hugging Face model still goes. Files and paths of their own, the open app being
+  shared by every case of a file.
+
+- `local-ai-models-ollama.toml`, `-ollama-unreadable.toml` and `-ollama-download.toml`: the module's Ollama store. A
+  layer no manifest names, a manifest at another depth (a file below a tag's folder) and a model with a layer of the
+  wrong size (left out `ollama-incomplete`) are never offered; a model, two tags with the same files (one finding), a
+  model in another namespace and a model made from another that shares two layers go to the Trash as Medium, the
+  shared layers and the other model's manifest staying where they were (the golden's tree after shows them). The
+  other two files are worlds of their own, since a left-out of the whole store hides every model beside it: an
+  unreadable manifest and a download in progress keep every Ollama model. Each writes the lone layer of the first file
+  too, so in `npm run sandbox -- all` they are left out whole and named in `EXPECTED.md`; write them by name
+  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
 
 - `stale-projects.toml`: the `stale-projects` module, offered from the folders under `home` the walk reads
   (`home/Code`). Source, `.git` and the project folder, `dist` and `.next`, a `node_modules` without a project, a link

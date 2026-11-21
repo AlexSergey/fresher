@@ -12,11 +12,11 @@ mod view;
 
 pub use confirm::{Act, ConfirmError, Confirmation, ConfirmedMethod, ConfirmedPlan, EchoField, PermanentConsent};
 pub use journal::{
-    BeginRecord, CleanupJournal, EndRecord, ItemRecord, JournalError, JournalItem, JournalPage, JournalProblem,
-    JournalState, PutBackRecord, RecordedCleanup, VolumeSpace,
+    BeginRecord, CleanupJournal, EndRecord, ItemRecord, JournalError, JournalItem, JournalPage, JournalPart,
+    JournalProblem, JournalState, PutBackRecord, RecordedCleanup, VolumeSpace,
 };
 pub use outcome::{
-    BlockedReason, CleanupReport, Ended, Failure, ItemOutcome, ItemReport, OutcomeCounts, PutBackOutcome,
+    BlockedReason, CleanupReport, Ended, Failure, ItemOutcome, ItemReport, OutcomeCounts, PartlyWay, PutBackOutcome,
     RecordedOutcome, SkipCode, SkipReason, TrashState,
 };
 pub use plan::{
@@ -24,6 +24,7 @@ pub use plan::{
     Method, PLAN_LIFETIME, PlanError, PlanId, PlanItem, PlanSummary,
 };
 pub use port::{Cleaner, CleanupContext, Depth, ItemDone, Rehearsal, TrashedItem};
+pub(crate) use protection::is_plain;
 pub use protection::{Protected, Protection, ProtectionError};
 pub use sandbox::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
 pub use view::{

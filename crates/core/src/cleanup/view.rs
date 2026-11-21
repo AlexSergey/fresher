@@ -1,4 +1,4 @@
-//! What the cleanup commands take from and return to the UI. No path crosses the IPC but the display path of an
+//! What the cleanup commands take from and return to the UI. No path crosses the IPC but the display paths of an
 //! item; the UI names items by their ids and indexes.
 
 use std::path::PathBuf;
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::cleanup::{
-    ActionKind, BlockedReason, CleanupId, Ended, LeftOut, Method, OutcomeCounts, PlanId, PlanItem, PlanSummary,
+    Action, ActionKind, BlockedReason, CleanupId, Ended, LeftOut, Method, OutcomeCounts, PlanId, PlanItem, PlanSummary,
     PutBackOutcome, RecordedOutcome, TrashState,
 };
 use crate::{ByteSize, CategoryId, DangerLevel, FindingId, Sizes, Text, Timestamp};
@@ -46,6 +46,9 @@ pub struct PlanItemView {
     pub sizes: Sizes,
     /// Where it is, to show; `None` for a tool's item.
     pub path: Option<PathBuf>,
+    /// The other paths that leave with it, to show: the parts after the subject of an item of several paths, empty
+    /// for any other item.
+    pub more: Vec<PathBuf>,
 }
 
 impl PlanItemView {
@@ -57,6 +60,10 @@ impl PlanItemView {
             danger: item.danger(),
             sizes: item.sizes(),
             path: item.action().path().map(PathBuf::from),
+            more: match item.action() {
+                Action::RemoveTogether(parts) => parts.rest().to_vec(),
+                Action::Remove(_) | Action::Empty(_) | Action::Tool(_) => Vec::new(),
+            },
         }
     }
 }
@@ -218,13 +225,13 @@ mod tests {
         use crate::cleanup::plan::sample;
         use crate::cleanup::{
             ActionKind, CleanupDetail, CleanupId, CleanupItemView, CleanupPlanView, CleanupSummary, CleanupsQuery,
-            Ended, LeftOut, Method, OutcomeCounts, PlanGroup, PlanItemView, PutBackRequest, RecordedOutcome,
+            Ended, LeftOut, Method, OutcomeCounts, PlanGroup, PlanItem, PlanItemView, PutBackRequest, RecordedOutcome,
             SkipReason, TrashState,
         };
         use crate::{DangerLevel, Sizes, Timestamp};
 
         #[test]
-        fn no_view_holds_a_path_but_the_display_one() {
+        fn no_view_holds_a_path_but_the_display_ones() {
             let plan = sample::plan();
             let left = LeftOut::new(&sample::trash(9, DangerLevel::Low, 1), SkipReason::Covered);
             let view = CleanupPlanView {
@@ -234,7 +241,12 @@ mod tests {
                     category: plan.items()[0].category(),
                     action: ActionKind::Remove,
                     summary: plan.summary(),
-                    items: plan.items().iter().map(PlanItemView::of).collect(),
+                    items: plan
+                        .items()
+                        .iter()
+                        .map(PlanItemView::of)
+                        .chain([PlanItemView::of(&PlanItem::new(&sample::together(4, DangerLevel::Low, 1)))])
+                        .collect(),
                 }],
                 left_out: vec![left],
                 permanent_available: true,
@@ -269,8 +281,12 @@ mod tests {
             paths(&serde_json::to_value(view).unwrap(), "", &mut found);
             paths(&serde_json::to_value(detail).unwrap(), "", &mut found);
 
-            assert!(found.iter().all(|(key, _)| key == "path"), "{found:?}");
-            assert_eq!(found.len(), 3, "the two path items and the history's item: {found:?}");
+            assert!(found.iter().all(|(key, _)| key == "path" || key == "more"), "{found:?}");
+            assert_eq!(
+                found.len(),
+                5,
+                "the three path items, the together item's other part, the history's: {found:?}"
+            );
         }
 
         #[test]
@@ -306,6 +322,15 @@ mod tests {
 
             assert_eq!(trash.path, Some(PathBuf::from("/home/cache-1")));
             assert_eq!(tool.path, None);
+            assert!(trash.more.is_empty() && tool.more.is_empty());
+        }
+
+        #[test]
+        fn a_together_item_shows_its_subject_and_the_parts_after_it() {
+            let view = PlanItemView::of(&PlanItem::new(&sample::together(3, crate::DangerLevel::Medium, 1)));
+
+            assert_eq!(view.path, Some(PathBuf::from("/home/model-3")));
+            assert_eq!(view.more, [PathBuf::from("/home/layer-3")]);
         }
 
         #[test]

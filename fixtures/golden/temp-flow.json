@@ -28,7 +28,7 @@
     "journal": [
       {
         "format": "cleanup-journal",
-        "version": 1
+        "version": 2
       },
       {
         "at": 1767225600,
@@ -39,6 +39,7 @@
             "category": "temp.old-files",
             "danger": "safe",
             "key": "shared-temp/old-build.log",
+            "more": [],
             "path": "~/private/tmp/old-build.log",
             "reason": {
               "args": {
@@ -61,6 +62,7 @@
             "category": "temp.old-files",
             "danger": "safe",
             "key": "user-temp/node-compile-cache",
+            "more": [],
             "path": "~/private/var/folders/xx/sandbox/T/node-compile-cache",
             "reason": {
               "args": {
@@ -83,6 +85,7 @@
             "category": "temp.old-files",
             "danger": "safe",
             "key": "user-temp/tmp.IKKNWYIRnq",
+            "more": [],
             "path": "~/private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
             "reason": {
               "args": {
@@ -121,7 +124,8 @@
             "original": "~/private/tmp/old-build.log"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -134,7 +138,8 @@
             "original": "~/private/var/folders/xx/sandbox/T/node-compile-cache"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "cleanup": 1,
@@ -147,7 +152,8 @@
             "original": "~/private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
           }
         ],
-        "type": "item"
+        "type": "item",
+        "went": null
       },
       {
         "at": 1767225600,
@@ -158,6 +164,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -166,6 +173,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -174,6 +182,7 @@
       },
       {
         "at": 1767225600,
+        "back": [],
         "cleanup": 1,
         "outcome": {
           "kind": "put-back"
@@ -219,6 +228,7 @@
           "items": [
             {
               "danger": "safe",
+              "more": [],
               "path": "~/private/tmp/old-build.log",
               "reason": {
                 "args": {
@@ -247,6 +257,7 @@
             },
             {
               "danger": "safe",
+              "more": [],
               "path": "~/private/var/folders/xx/sandbox/T/node-compile-cache",
               "reason": {
                 "args": {
@@ -275,6 +286,7 @@
             },
             {
               "danger": "safe",
+              "more": [],
               "path": "~/private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq",
               "reason": {
                 "args": {

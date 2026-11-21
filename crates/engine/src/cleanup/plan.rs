@@ -71,38 +71,61 @@ pub(crate) fn expand<'a>(
 /// Leaves out of `selected` (in its order), with the first reason that holds: a finding the app cannot remove, a
 /// removal that is not about the finding's subject, a tool told to force, an item inside another item that may go
 /// (it goes with that one; of two items of one path the first stays), an item on the user's `ignored` paths, inside
-/// one or an ancestor of one.
+/// one or an ancestor of one. An item of several paths is judged by every part and left out whole: nothing of it
+/// goes unless all of it can, and its parts cover nothing once it is left out.
 pub(crate) fn sort_out<'a>(selected: &[&'a Finding], ignored: &[PathBuf]) -> Vec<Sorted<'a>> {
     let is_ignored = |path: &Path| ignored.iter().any(|place| path.starts_with(place) || place.starts_with(path));
     let early: Vec<Option<SkipReason>> = selected.iter().map(|finding| refused(finding)).collect();
-    // The items that may go, by path: only they can cover another.
-    let mut first: HashMap<&Path, usize> = HashMap::new();
-    for (index, finding) in selected.iter().enumerate() {
-        if early[index].is_none()
-            && let Some(path) = removal_path(finding.finding().removal())
-            && !is_ignored(path)
-        {
-            first.entry(path).or_insert(index);
-        }
-    }
-    let covered = |index: usize, path: &Path| {
-        first.get(path).is_some_and(|&kept| kept != index)
-            || path.ancestors().skip(1).any(|ancestor| first.contains_key(ancestor))
-    };
+    let parts: Vec<&[PathBuf]> = selected.iter().map(|finding| removal_parts(finding.finding().removal())).collect();
+    let may_go = |index: usize| early[index].is_none() && !parts[index].iter().any(|part| is_ignored(part));
+    let any_covered =
+        |first: &HashMap<&Path, usize>, index: usize| parts[index].iter().any(|part| is_covered(first, index, part));
+    // First every item that may go covers by its parts; then an item of several paths with a covered part is left
+    // out, and the parts of what is left cover the rest.
+    let first = first_by_path(&parts, may_go);
+    let dropped: HashSet<usize> = (0..selected.len())
+        .filter(|&index| is_together(selected[index]) && may_go(index) && any_covered(&first, index))
+        .collect();
+    let first = first_by_path(&parts, |index| may_go(index) && !dropped.contains(&index));
     selected
         .iter()
         .zip(early)
         .enumerate()
         .map(|(index, (&finding, early))| {
-            let path = removal_path(finding.finding().removal());
-            let reason = early.or_else(|| match path {
-                Some(path) if covered(index, path) => Some(SkipReason::Covered),
-                Some(path) if is_ignored(path) => Some(SkipReason::Ignored),
-                _ => None,
+            let reason = early.or_else(|| {
+                if dropped.contains(&index) || any_covered(&first, index) {
+                    Some(SkipReason::Covered)
+                } else if parts[index].iter().any(|part| is_ignored(part)) {
+                    Some(SkipReason::Ignored)
+                } else {
+                    None
+                }
             });
             reason.map_or(Sorted::Kept(finding), |reason| Sorted::Left(LeftOut::new(finding, reason)))
         })
         .collect()
+}
+
+/// Each part of the items `covers` keeps, by path, with the first item that names it.
+fn first_by_path<'a>(parts: &[&'a [PathBuf]], covers: impl Fn(usize) -> bool) -> HashMap<&'a Path, usize> {
+    let mut first = HashMap::new();
+    for (index, paths) in parts.iter().enumerate().filter(|(index, _)| covers(*index)) {
+        for path in *paths {
+            first.entry(path.as_path()).or_insert(index);
+        }
+    }
+    first
+}
+
+/// Whether `path`, a part of item `index`, is covered: an earlier item names the same path, or any item names one
+/// of its ancestors (compared by components).
+fn is_covered(first: &HashMap<&Path, usize>, index: usize, path: &Path) -> bool {
+    first.get(path).is_some_and(|&kept| kept != index)
+        || path.ancestors().skip(1).any(|ancestor| first.contains_key(ancestor))
+}
+
+fn is_together(finding: &Finding) -> bool {
+    matches!(finding.finding().removal(), Removal::MoveTogether(_))
 }
 
 /// The plan's items and its left-out list: each kept finding with the identity its rehearsal read, or left out with
@@ -126,10 +149,20 @@ pub(crate) fn freeze(
             }
             Sorted::Kept(finding) => finding,
         };
-        match answers.next() {
-            Some(Rehearsal::Passed(identity)) => items.push(PlanItem::new(finding).with_identity(identity)),
-            Some(Rehearsal::Skipped(reason)) => left_out.push(LeftOut::new(finding, reason)),
-            None => return Err(EngineError::Rehearsal { items: kept, answers: kept }),
+        let item = PlanItem::new(finding);
+        let parts = item.action().parts().len();
+        match (answers.next(), is_together(finding)) {
+            (Some(Rehearsal::Passed(identity)), false) => items.push(item.with_identity(identity)),
+            (Some(Rehearsal::PassedTogether(identities)), true) if identities.len() == parts => {
+                items.push(item.with_part_identities(identities));
+            }
+            // An identity short or over, or an answer of the other form: no part may be acted on unchecked.
+            (Some(Rehearsal::PassedTogether(identities)), _) => {
+                return Err(EngineError::Rehearsal { items: parts, answers: identities.len() });
+            }
+            (Some(Rehearsal::Passed(_)), true) => return Err(EngineError::Rehearsal { items: parts, answers: 1 }),
+            (Some(Rehearsal::Skipped(reason)), _) => left_out.push(LeftOut::new(finding, reason)),
+            (None, _) => return Err(EngineError::Rehearsal { items: kept, answers: kept }),
         }
     }
     Ok((items, left_out))
@@ -154,6 +187,7 @@ fn refused(finding: &Finding) -> Option<SkipReason> {
     let new = finding.finding();
     match (new.removal(), new.subject()) {
         (Removal::MoveToTrash(path) | Removal::EmptyFolder(path), Subject::Path(subject)) if path == subject => None,
+        (Removal::MoveTogether(parts), Subject::Path(subject)) if parts.subject() == subject => None,
         (Removal::ToolCommand(command), Subject::External { tool, .. }) if command.tool() == *tool => {
             command.forces().then_some(SkipReason::ForcedTool)
         }
@@ -161,17 +195,20 @@ fn refused(finding: &Finding) -> Option<SkipReason> {
     }
 }
 
-fn removal_path(removal: &Removal) -> Option<&Path> {
+/// Every path `removal` acts on: its one path, every part of an item of several paths, none for a tool's.
+fn removal_parts(removal: &Removal) -> &[PathBuf] {
     match removal {
-        Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => Some(path),
-        Removal::ToolCommand(_) => None,
+        Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => std::slice::from_ref(path),
+        Removal::MoveTogether(parts) => parts.all(),
+        Removal::ToolCommand(_) => &[],
     }
 }
 
-/// Moved items first, then emptied folders, then a tool's items: each group of the confirmation goes one way.
+/// Moved items (of one path or several) first, then emptied folders, then a tool's items: each group of the
+/// confirmation goes one way.
 const fn action_order(removal: &Removal) -> u8 {
     match removal {
-        Removal::MoveToTrash(_) => 0,
+        Removal::MoveToTrash(_) | Removal::MoveTogether(_) => 0,
         Removal::EmptyFolder(_) => 1,
         Removal::ToolCommand(_) => 2,
     }
@@ -188,7 +225,7 @@ mod tests {
 
     use super::Sorted;
     use crate::cleanup::testing::select;
-    use crate::testing::{bytes, category, finding, text};
+    use crate::testing::{bytes, category, finding, text, together};
 
     fn alpha() -> CategoryDescriptor {
         category("alpha.caches", DangerLevel::Safe)
@@ -217,6 +254,10 @@ mod tests {
             removal,
         );
         Finding::new(FindingId::new(id), new, Removability::Removable)
+    }
+
+    fn found_together(id: u32, category: &CategoryDescriptor, parts: &[&str], size: u64) -> Finding {
+        Finding::new(FindingId::new(id), together(category, parts, bytes(size)), Removability::Removable)
     }
 
     fn tool(id: u32, args: &[&str]) -> Finding {
@@ -252,9 +293,108 @@ mod tests {
             CommandError, FindingId, MAX_PLAN_ITEMS, Rehearsal, Removability, Removal, SkipReason, Subject, ToolId,
         };
 
-        use super::{alpha, beta, expand, found, removed_by, sorted, tool};
+        use super::{alpha, beta, expand, found, found_together, removed_by, sorted, tool};
         use crate::cleanup::testing::select;
         use crate::error::EngineError;
+
+        #[test]
+        fn a_together_removal_whose_first_part_is_not_the_subject_is_not_the_subject() {
+            let parts = fresher_core::Parts::new(vec!["/home/m".into(), "/home/l".into()]).unwrap();
+            let second = removed_by(1, Subject::Path("/home/l".into()), Removal::MoveTogether(parts.clone()));
+            let elsewhere = removed_by(2, Subject::Path("/home/x".into()), Removal::MoveTogether(parts));
+
+            let reasons = sorted(&[second, elsewhere], &[]);
+
+            assert_eq!(reasons, [(1, Some(SkipReason::NotTheSubject)), (2, Some(SkipReason::NotTheSubject))]);
+        }
+
+        #[test]
+        fn a_together_item_with_a_covered_part_is_left_out_whole() {
+            let findings = [
+                found(1, &alpha(), "/home/blobs", 1),
+                found_together(2, &beta(), &["/home/m/latest", "/home/blobs/1"], 1),
+                found(3, &alpha(), "/home/m/latest/inner", 1),
+                found(4, &alpha(), "/home/x", 1),
+                found_together(5, &beta(), &["/home/n/latest", "/home/x"], 1),
+                found(6, &alpha(), "/home/n/latest", 1),
+            ];
+
+            let reasons = sorted(&findings, &[]);
+
+            // 2 is under 1; 5 shares a path with 4, named first. Left out, their parts cover nothing: 3 and 6 stay.
+            assert_eq!(
+                reasons,
+                [
+                    (1, None),
+                    (2, Some(SkipReason::Covered)),
+                    (3, None),
+                    (4, None),
+                    (5, Some(SkipReason::Covered)),
+                    (6, None)
+                ]
+            );
+        }
+
+        #[test]
+        fn a_together_item_with_an_ignored_part_is_left_out_whole() {
+            let findings = [
+                found_together(1, &alpha(), &["/home/m/a", "/home/kept/1"], 1),
+                found_together(2, &alpha(), &["/home/m/b", "/home/blobs/2"], 1),
+                found_together(3, &alpha(), &["/home/m/c", "/home/blobs/3"], 1),
+                found(4, &alpha(), "/home/kept/1/inner", 1),
+            ];
+
+            let inside = sorted(&findings, &[PathBuf::from("/home/kept")]);
+            let above = sorted(&findings[1..3], &[PathBuf::from("/home/blobs/2/x")]);
+
+            assert_eq!(inside[0], (1, Some(SkipReason::Ignored)));
+            assert_eq!(inside[3], (4, Some(SkipReason::Ignored)), "an ignored item covers nothing");
+            assert_eq!(above, [(2, Some(SkipReason::Ignored)), (3, None)]);
+        }
+
+        #[test]
+        fn a_single_item_inside_a_part_is_covered() {
+            let findings = [
+                found(1, &alpha(), "/home/blobs/1/inner", 1),
+                found_together(2, &beta(), &["/home/m/latest", "/home/blobs/1"], 1),
+                found(3, &alpha(), "/home/blobs/1", 1),
+                found(4, &alpha(), "/home/blobs/10", 1),
+            ];
+
+            let reasons = sorted(&findings, &[]);
+
+            assert_eq!(reasons, [(1, Some(SkipReason::Covered)), (2, None), (3, Some(SkipReason::Covered)), (4, None)]);
+        }
+
+        #[test]
+        fn a_together_rehearsal_that_does_not_answer_every_part_is_refused() {
+            let findings = [found_together(1, &alpha(), &["/home/m", "/home/a", "/home/b"], 1)];
+            let selected: Vec<_> = findings.iter().collect();
+            let identity = fresher_core::ItemIdentity::new(1, 1, fresher_core::EntryKind::File);
+            let freeze = |answer| super::super::freeze(super::super::sort_out(&selected, &[]), vec![answer]);
+
+            let short = freeze(Rehearsal::PassedTogether(vec![identity; 2]));
+            let over = freeze(Rehearsal::PassedTogether(vec![identity; 4]));
+            let single = freeze(Rehearsal::Passed(Some(identity)));
+
+            assert_eq!(short.err(), Some(EngineError::Rehearsal { items: 3, answers: 2 }));
+            assert_eq!(over.err(), Some(EngineError::Rehearsal { items: 3, answers: 4 }));
+            assert_eq!(single.err(), Some(EngineError::Rehearsal { items: 3, answers: 1 }));
+        }
+
+        #[test]
+        fn a_together_answer_for_an_item_of_one_path_is_refused() {
+            let findings = [found(1, &alpha(), "/home/a", 1)];
+            let selected: Vec<_> = findings.iter().collect();
+            let identity = fresher_core::ItemIdentity::new(1, 1, fresher_core::EntryKind::File);
+
+            let error = super::super::freeze(
+                super::super::sort_out(&selected, &[]),
+                vec![Rehearsal::PassedTogether(vec![identity])],
+            );
+
+            assert_eq!(error.err(), Some(EngineError::Rehearsal { items: 1, answers: 1 }));
+        }
 
         #[test]
         fn an_empty_selection_is_nothing_to_clean() {
@@ -417,8 +557,46 @@ mod tests {
     mod positive {
         use fresher_core::{FindingId, ItemIdentity, PlanItem, Rehearsal, SkipReason};
 
-        use super::{alpha, beta, expand, found, ids, select, sorted, tool};
+        use super::{alpha, beta, expand, found, found_together, ids, select, sorted, tool};
         use crate::cleanup::plan::{freeze, sort_out, to_rehearse};
+
+        fn removed_by_empty(id: u32) -> fresher_core::Finding {
+            let path = std::path::PathBuf::from("/home/e");
+            super::removed_by(id, fresher_core::Subject::Path(path.clone()), fresher_core::Removal::EmptyFolder(path))
+        }
+
+        #[test]
+        fn a_together_item_goes_with_the_moved_items() {
+            let findings = [
+                tool(1, &["image", "rm", "a"]),
+                removed_by_empty(2),
+                found(3, &alpha(), "/home/a", 10),
+                found_together(4, &alpha(), &["/home/m/latest", "/home/blobs/1"], 20),
+            ];
+
+            let selected = expand(&select(&[1, 2, 3, 4], &[]), &findings);
+
+            assert_eq!(selected, Ok(vec![4, 3, 2, 1]));
+            assert_eq!(sorted(&findings, &[]).iter().filter(|(_, reason)| reason.is_some()).count(), 0);
+        }
+
+        #[test]
+        fn a_passed_together_rehearsal_keeps_every_identity() {
+            let findings = [found_together(1, &alpha(), &["/home/m", "/home/a"], 1), found(2, &alpha(), "/home/b", 1)];
+            let selected: Vec<_> = findings.iter().collect();
+            let identities = vec![
+                ItemIdentity::new(1, 10, fresher_core::EntryKind::File),
+                ItemIdentity::new(1, 11, fresher_core::EntryKind::Folder),
+            ];
+            let answers = vec![Rehearsal::PassedTogether(identities.clone()), Rehearsal::Passed(None)];
+
+            let (items, left_out) = freeze(sort_out(&selected, &[]), answers).unwrap();
+
+            assert_eq!(left_out, []);
+            assert_eq!(items[0].part_identities(), identities);
+            assert_eq!(items[0].identity(), Some(identities[0]));
+            assert_eq!(items[1].part_identities(), []);
+        }
 
         #[test]
         fn a_category_expands_to_its_findings_minus_its_exceptions() {

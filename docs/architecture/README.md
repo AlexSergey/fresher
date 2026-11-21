@@ -36,6 +36,10 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 - **Strict modularity**: every feature is a module in its own crate under `modules/`; a module never knows another,
   never walks the disk and never deletes. It declares what it wants to see, the engine runs one walk for all modules
   and hands each module its matches; the module turns them into findings.
+- **A finding's removal is data, and may be several paths**: one path moved or emptied, a tool's command, or two to 64
+  paths that go together as one item the user confirms (`Removal::MoveTogether`, the first the finding's subject).
+  The cleaner checks every path before the first moves, journals every path that went, and puts them back together
+  ([`removal.md`](./removal.md)).
 - **The engine depends on the core alone**: everything it needs from outside is a port (a trait) in `fresher-core`,
   implemented in another crate and injected by the app.
 - **Events, not polling**: the engine streams typed events (`scan-started`, `findings-added`, …) to the UI through one
@@ -54,7 +58,7 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
 | `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
-| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `dev-caches` (the package managers', Go's and Xcode's caches); `app-leftovers` (the data of apps no longer installed, group Apps); `downloads` (unfinished downloads, installers of installed apps, old macOS installers and big files not opened in `~/Downloads`, group Your files, only once the folder is allowed); `stale-projects` (the artifact folders of projects nothing changed in for a year, and the Rust build caches unused for a week, group Development; decided from the projects in `finish`); `local-ai-models` (the model folders of Hugging Face and LM Studio, group Development; one finding per model, decided in `finish`); `unused-toolchains` (the rustup toolchains and, behind a switch off by default, the nvm Node versions nothing points at, group Development; decided in `finish` from the pointer and pin files it reads); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
+| `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `dev-caches` (the package managers', Go's and Xcode's caches); `app-leftovers` (the data of apps no longer installed, group Apps); `downloads` (unfinished downloads, installers of installed apps, old macOS installers and big files not opened in `~/Downloads`, group Your files, only once the folder is allowed); `stale-projects` (the artifact folders of projects nothing changed in for a year, and the Rust build caches unused for a week, group Development; decided from the projects in `finish`); `local-ai-models` (the models of Hugging Face, LM Studio and Ollama, group Development; one finding per model, decided in `finish`; an Ollama model is one finding of several paths, its manifests and the layers no other model names); `unused-toolchains` (the rustup toolchains and, behind a switch off by default, the nvm Node versions nothing points at, group Development; decided in `finish` from the pointer and pin files it reads); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
 | `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos, store |
 | `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
@@ -244,9 +248,12 @@ No database: the app keeps its own state in small plain files, with nothing to i
   the committed state.
 - **The webview keeps nothing**: the window runs `incognito`.
 - **The cleanup journal** (`FileCleanupJournal`, behind the core's `CleanupJournal`): an append-only JSON-lines file,
-  `cleanups.jsonl`, private to the user (`0600`). A header line `{"format":"cleanup-journal","version":1}`, then one
-  record per line tagged by `type` — `begin` (every item of the cleanup: its path, identity, action, category, finding
-  key, reason, danger level and sizes), `item` (its outcome and where it landed in the Trash), `end` and `put-back` —
+  `cleanups.jsonl`, private to the user (`0600`). A header line `{"format":"cleanup-journal","version":2}`, then one
+  record per line tagged by `type` — `begin` (every item of the cleanup: its path, identity, the parts after the
+  subject of an item of several paths (`more`, each with its identity; version 2), action, category, finding key,
+  reason, danger level and sizes), `item` (its outcome, where it landed in the Trash and, for an item of several
+  paths, how many parts went: `went`), `end` and `put-back` (with the parts of an item of several paths it brought
+  back: `back`) —
   in forms of the file's own, not the IPC types. A path is a string when it is UTF-8 and `{"bytes":"<hex>"}`
   otherwise. Write-ahead: `begin` is synced before it returns (and a new file's folder before it), the engine syncs
   the items every 50 and every second, `end` and `put-back` are synced. A torn last line (a crash) is skipped and

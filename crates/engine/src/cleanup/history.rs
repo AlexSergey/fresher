@@ -1,10 +1,12 @@
 //! The history of cleanups, from the journal, with where each moved item is now; putting items back; showing one in
 //! the Trash.
 
+use std::path::{Path, PathBuf};
+
 use fresher_core::{
     BlockedReason, ByteSize, CleanupDetail, CleanupId, CleanupItemView, CleanupJournal, CleanupSummary, CleanupsPage,
-    CleanupsQuery, CommandError, JournalState, PutBackItem, PutBackOutcome, PutBackRecord, PutBackReport,
-    RecordedCleanup, Timestamp, TrashState, TrashedItem,
+    CleanupsQuery, CommandError, JournalItem, JournalState, PutBackItem, PutBackOutcome, PutBackRecord, PutBackReport,
+    RecordedCleanup, RecordedOutcome, SkipCode, Timestamp, TrashState, TrashedItem,
 };
 
 use crate::cleanup::context::Context;
@@ -107,9 +109,9 @@ pub(crate) fn put_back(shared: &Shared, id: CleanupId, items: Option<&[u32]>) ->
             report.items.push(PutBackItem::new(index, PutBackOutcome::PutBack));
             continue;
         }
-        let outcome = located.put_back(ports, index, &cx);
+        let (outcome, back) = located.put_back(ports, &recorded, index, &cx);
         let at = Timestamp::from_system_time(shared.ports.clock.now());
-        if let Err(error) = ports.journal.put_back(&PutBackRecord { cleanup: id, index, at, outcome }) {
+        if let Err(error) = ports.journal.put_back(&PutBackRecord { cleanup: id, index, at, outcome, back }) {
             tracing::warn!(%error, cleanup = id.get(), index, "an attempt to put an item back was not recorded");
         }
         report.items.push(PutBackItem::new(index, outcome));
@@ -222,35 +224,115 @@ impl Located {
 
     /// Puts item `index` back, entry by entry: only the entries still in the Trash are tried. Answers `NotTrashed` for
     /// an item that never went to the Trash, the state of an item no entry of which is there, else the first entry's
-    /// refusal, else `PutBack`. The caller answers for an item put back already.
-    fn put_back(&self, ports: &CleanupPorts, index: u32, cx: &Context) -> PutBackOutcome {
-        let Some(state) = self.state(index) else { return PutBackOutcome::NotTrashed };
-        match state {
-            TrashState::Gone => PutBackOutcome::Gone,
-            TrashState::Replaced => PutBackOutcome::Replaced,
-            TrashState::InTrash => {
-                let outcomes = self.in_trash_entries(index).map(|entry| ports.cleaner.put_back(entry, &cx.borrow()));
-                outcomes.fold(
-                    PutBackOutcome::PutBack,
-                    |first, outcome| {
+    /// refusal, else `PutBack`. An item of several paths puts back as [`Self::put_back_together`] says; with the
+    /// answer come the parts of it brought back. The caller answers for an item put back already.
+    fn put_back(
+        &self,
+        ports: &CleanupPorts,
+        recorded: &RecordedCleanup,
+        index: u32,
+        cx: &Context,
+    ) -> (PutBackOutcome, Vec<u32>) {
+        let Some(state) = self.state(index) else { return (PutBackOutcome::NotTrashed, Vec::new()) };
+        let begun = recorded.begin.items.iter().find(|item| item.index == index);
+        let went = recorded.items.iter().rev().find(|record| record.index == index).and_then(|record| record.went);
+        if let Some(item) = begun.filter(|item| !item.more.is_empty() || went.is_some()) {
+            return self.put_back_together(ports, recorded, item, went, cx);
+        }
+        let outcome =
+            match state {
+                TrashState::Gone => PutBackOutcome::Gone,
+                TrashState::Replaced => PutBackOutcome::Replaced,
+                TrashState::InTrash => {
+                    let outcomes =
+                        self.in_trash_entries(index).map(|entry| ports.cleaner.put_back(entry, &cx.borrow()));
+                    outcomes.fold(PutBackOutcome::PutBack, |first, outcome| {
                         if first == PutBackOutcome::PutBack { outcome } else { first }
-                    },
-                )
+                    })
+                }
+            };
+        (outcome, Vec::new())
+    }
+
+    /// Puts back an item of several paths that went to the Trash, so a model never comes back as a manifest that
+    /// names a layer still in the Trash: the parts other than the subject that went and are not back yet first, in
+    /// the reverse of the order they moved; then the subject, only when every other part that went is back (brought
+    /// back now, or by an earlier attempt as the journal records). Otherwise the subject stays in the Trash and the
+    /// answer is the first refusal. A part that went with no entry (the Trash did not tell where it landed), or whose
+    /// entry is no longer in the Trash and was never brought back, cannot come back and keeps the subject there.
+    /// Answers the parts brought back by their place among the item's parts (the subject is 0). A record that does not
+    /// hold together — more parts went than the item has, or an entry of a path that is none of its parts — puts
+    /// nothing back.
+    fn put_back_together(
+        &self,
+        ports: &CleanupPorts,
+        recorded: &RecordedCleanup,
+        item: &JournalItem,
+        went: Option<u32>,
+        cx: &Context,
+    ) -> (PutBackOutcome, Vec<u32>) {
+        let entries = self.entries(item.index).unwrap_or_default();
+        let paths: Vec<&Path> =
+            item.path.iter().map(PathBuf::as_path).chain(item.more.iter().map(|part| part.path.as_path())).collect();
+        let fits = went.is_none_or(|went| usize::try_from(went).is_ok_and(|went| went <= paths.len()))
+            && entries.iter().all(|(entry, _)| paths.contains(&entry.original.as_path()));
+        if item.path.is_none() || !fits {
+            return (PutBackOutcome::Refused { reason: SkipCode::CheckFailed }, Vec::new());
+        }
+        let entry = |path: &Path| entries.iter().find(|(entry, _)| entry.original == path);
+        let try_one = |found: Option<&(TrashedItem, TrashState)>| match found {
+            Some((trashed, TrashState::InTrash)) => ports.cleaner.put_back(trashed, &cx.borrow()),
+            Some((_, TrashState::Replaced)) => PutBackOutcome::Replaced,
+            Some((_, TrashState::Gone)) | None => PutBackOutcome::Gone,
+        };
+        let earlier: Vec<u32> = recorded
+            .put_backs
+            .iter()
+            .filter(|record| record.index == item.index)
+            .flat_map(|record| record.back.iter().copied())
+            .collect();
+        // The cleaner counts the parts that went, the subject first, whether or not the Trash told where each landed;
+        // a part with an entry left its place all the same, so every part up to the last one with an entry went too.
+        let counted = match went {
+            Some(went) => usize::try_from(went).unwrap_or(usize::MAX).saturating_sub(1),
+            None if recorded.outcome(item.index) == RecordedOutcome::Moved => item.more.len(),
+            None => 0,
+        };
+        let with_entry = item.more.iter().rposition(|part| entry(&part.path).is_some()).map_or(0, |last| last + 1);
+        let went = counted.max(with_entry);
+        let others: Vec<(u32, &Path)> =
+            (1_u32..).zip(&item.more).take(went).map(|(place, part)| (place, part.path.as_path())).collect();
+        let (mut back, mut refusal) = (Vec::new(), None);
+        for &(place, path) in others.iter().rev().filter(|(place, _)| !earlier.contains(place)) {
+            match try_one(entry(path)) {
+                PutBackOutcome::PutBack => back.push(place),
+                answer => {
+                    refusal.get_or_insert(answer);
+                }
             }
         }
+        if let Some(refusal) = refusal {
+            return (refusal, back);
+        }
+        let outcome = try_one(item.path.as_deref().and_then(entry));
+        if outcome == PutBackOutcome::PutBack {
+            back.push(0);
+        }
+        (outcome, back)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
     use std::sync::Arc;
 
-    use fresher_core::{CleanupId, Event};
+    use fresher_core::{CleanupId, DangerLevel, Event};
     use fresher_testing::{FakeCleaner, MemoryCleanupJournal};
 
     use crate::Engine;
     use crate::cleanup::testing::{echo, fixture, scanned, select, wait_for_cleanup};
-    use crate::testing::Fixture;
+    use crate::testing::{Fixture, ScriptedWalk, TestModule, bytes, category, together};
 
     /// An engine after a scan of `fixture` and a cleanup of findings `findings` by `method`; the cleanup's id.
     fn cleaned(fixture: Fixture, findings: &[u32], method: &str) -> (Engine, CleanupId) {
@@ -275,15 +357,52 @@ mod tests {
         (fixture, journal)
     }
 
+    /// The finding of the model whose parts leave together: `/home/models/m` (its subject), `/home/blobs/a` and
+    /// `/home/blobs/b`. Findings 1 to 3 are the parts on their own.
+    const MODEL: u32 = 4;
+
+    /// An engine after a scan of module `alpha`, which finds the model, and a cleanup of the model by `cleaner`, which
+    /// lands its parts at `/fake-trash/0-<part>`; the cleanup's id, the cleaner and the journal.
+    fn cleaned_model(cleaner: FakeCleaner) -> (Engine, CleanupId, Arc<FakeCleaner>, Arc<MemoryCleanupJournal>) {
+        let walk = ScriptedWalk::new()
+            .folder("model", "/home/models/m", bytes(1))
+            .folder("layer", "/home/blobs/a", bytes(1))
+            .folder("layer", "/home/blobs/b", bytes(1));
+        let models = category("alpha.models", DangerLevel::Medium);
+        let module = TestModule::builder("alpha")
+            .category("alpha.files", DangerLevel::Safe)
+            .category("alpha.models", DangerLevel::Medium)
+            .folder("model")
+            .folder("layer")
+            .on_finish(move |_, out| {
+                out.push(together(&models, &["/home/models/m", "/home/blobs/a", "/home/blobs/b"], bytes(3)));
+                Ok(())
+            });
+        let cleaner = Arc::new(cleaner);
+        let fixture = Fixture::new(walk).module(module).cleaner(Arc::clone(&cleaner));
+        let journal = Arc::clone(&fixture.journal);
+        let engine = scanned(fixture);
+        let id = clean(&engine, &[MODEL], "trash");
+        (engine, id, cleaner, journal)
+    }
+
+    /// `/fake-trash/0-<part>`, where part `part` of the model landed.
+    fn landed(part: u32) -> PathBuf {
+        PathBuf::from(format!("/fake-trash/0-{part}"))
+    }
+
     mod negative {
+        use std::path::PathBuf;
         use std::sync::Arc;
 
         use fresher_core::{
-            BlockedReason, CleanupId, CommandError, Operation, PutBackOutcome, SystemUiError, TrashState,
+            ActionKind, BeginRecord, BlockedReason, CleanupId, CleanupJournal, CommandError, DangerLevel, EndRecord,
+            Ended, EntryKind, FindingId, ItemIdentity, ItemRecord, JournalItem, Method, Operation, PutBackOutcome,
+            RecordedOutcome, SkipCode, SystemUiError, Timestamp, TrashState, TrashedItem,
         };
         use fresher_testing::{FakeCleaner, FakeSystemUi, MemoryCleanupJournal};
 
-        use super::{cleaned, with};
+        use super::{MODEL, cleaned, cleaned_model, landed, with};
         use crate::cleanup::testing::{echo, fixture, scanned, select};
         use crate::testing::{HeldCleaner, ScriptedWalk, engine, wait_for_finish};
 
@@ -416,6 +535,149 @@ mod tests {
         }
 
         #[test]
+        fn a_together_item_whose_layer_cannot_come_back_keeps_its_subject_in_the_trash() {
+            let (engine, id, cleaner, _) =
+                cleaned_model(FakeCleaner::default().putting_back(landed(1), PutBackOutcome::Occupied));
+
+            let report = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Occupied);
+            assert_eq!(cleaner.put_backs_tried(), [landed(2), landed(1)], "never the subject");
+            let detail = engine.cleanup(id).unwrap();
+            assert_eq!(
+                (detail.items[0].trash, detail.items[0].put_back),
+                (Some(TrashState::InTrash), Some(PutBackOutcome::Occupied))
+            );
+        }
+
+        #[test]
+        fn a_together_item_whose_subject_is_gone_puts_back_the_rest_and_says_gone() {
+            let (engine, id, cleaner, _) = cleaned_model(FakeCleaner::default().locating(landed(0), TrashState::Gone));
+
+            let report = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Gone);
+            assert_eq!(cleaner.put_backs_tried(), [landed(2), landed(1)]);
+        }
+
+        #[test]
+        fn a_together_part_whose_landing_is_unknown_keeps_its_subject_in_the_trash() {
+            let (engine, id, cleaner, _) =
+                cleaned_model(FakeCleaner::default().landing_unknown(FindingId::new(MODEL), 1));
+
+            let report = engine.put_back(id, None).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Gone);
+            assert_eq!(cleaner.put_backs_tried(), [landed(2)], "the layer with no entry cannot come back");
+        }
+
+        #[test]
+        fn a_together_part_gone_from_the_trash_keeps_its_subject_there() {
+            let (engine, id, cleaner, _) = cleaned_model(FakeCleaner::default().locating(landed(2), TrashState::Gone));
+
+            let report = engine.put_back(id, None).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Gone);
+            assert_eq!(cleaner.put_backs_tried(), [landed(1)]);
+            assert_eq!(engine.cleanup(id).unwrap().items[0].trash, Some(TrashState::InTrash));
+        }
+
+        #[test]
+        fn a_partly_item_whose_last_moved_part_landed_unknown_never_brings_the_subject_back() {
+            let model = FindingId::new(MODEL);
+            let (engine, id, cleaner, _) =
+                cleaned_model(FakeCleaner::default().partly(model, 2).landing_unknown(model, 1));
+
+            let report = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Gone);
+            assert_eq!(cleaner.put_backs_tried(), Vec::<PathBuf>::new(), "the subject stays in the Trash");
+            assert_eq!(engine.cleanup(id).unwrap().items[0].trash, Some(TrashState::InTrash));
+        }
+
+        #[test]
+        fn a_retry_where_a_part_vanished_from_both_places_keeps_the_subject() {
+            let (engine, id, cleaner, _) =
+                cleaned_model(FakeCleaner::default().putting_back(landed(1), PutBackOutcome::Occupied));
+            engine.put_back(id, Some(&[0])).unwrap();
+            cleaner.now_locating(landed(2), TrashState::Gone);
+            cleaner.now_locating(landed(1), TrashState::Gone);
+
+            let retry = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(retry.items[0].outcome, PutBackOutcome::Gone);
+            assert_eq!(cleaner.put_backs_tried(), [landed(2), landed(1)], "nothing more is tried, never the subject");
+            assert_eq!(engine.cleanup(id).unwrap().items[0].trash, Some(TrashState::InTrash));
+        }
+
+        #[test]
+        fn a_partly_item_whose_part_landed_elsewhere_keeps_its_subject_until_that_part_is_back() {
+            let model = FindingId::new(MODEL);
+            let cleaner = FakeCleaner::default()
+                .partly(model, 1)
+                .landing_elsewhere(model, 1)
+                .putting_back(landed(1), PutBackOutcome::Occupied);
+            let (engine, id, cleaner, _) = cleaned_model(cleaner);
+
+            let first = engine.put_back(id, Some(&[0])).unwrap();
+            cleaner.now_putting_back(landed(1), PutBackOutcome::PutBack);
+            let retry = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(first.items[0].outcome, PutBackOutcome::Occupied);
+            assert_eq!(retry.items[0].outcome, PutBackOutcome::PutBack);
+            assert_eq!(
+                cleaner.put_backs_tried(),
+                [landed(1), landed(1), landed(0)],
+                "the subject only once it is back"
+            );
+        }
+
+        #[test]
+        fn a_together_record_that_does_not_hold_together_puts_nothing_back() {
+            let cleaner = Arc::new(FakeCleaner::default());
+            let fixture = fixture().cleaner(Arc::clone(&cleaner));
+            let journal = Arc::clone(&fixture.journal);
+            let engine = scanned(fixture);
+            let subject = PathBuf::from("/home/models/m");
+            let item = JournalItem {
+                index: 0,
+                path: Some(subject.clone()),
+                identity: Some(ItemIdentity::new(1, 1, EntryKind::File)),
+                more: Vec::new(),
+                action: ActionKind::Remove,
+                category: "alpha.caches".into(),
+                key: "m".into(),
+                reason: crate::testing::text("test.finding.reason"),
+                danger: DangerLevel::Safe,
+                sizes: crate::testing::bytes(2),
+            };
+            let begin = BeginRecord {
+                at: Timestamp::from_secs(1),
+                method: Method::Trash,
+                roots: vec![PathBuf::from("/home")],
+                space: vec![],
+                items: vec![item],
+            };
+            let id = journal.begin(&begin).unwrap();
+            let trashed = |original: &str, part: u32| TrashedItem {
+                original: PathBuf::from(original),
+                landed: landed(part),
+                identity: ItemIdentity::new(1, u64::from(part) + 1, EntryKind::File),
+            };
+            let trashed = vec![trashed("/home/models/m", 0), trashed("/home/blobs/a", 1)];
+            let record = ItemRecord { cleanup: id, index: 0, outcome: RecordedOutcome::Moved, trashed, went: Some(2) };
+            journal.item(&record).unwrap();
+            journal
+                .end(&EndRecord { cleanup: id, at: Timestamp::from_secs(2), ended: Ended::Completed, space: vec![] })
+                .unwrap();
+
+            let report = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Refused { reason: SkipCode::CheckFailed });
+            assert_eq!(cleaner.put_backs_tried(), Vec::<PathBuf>::new());
+        }
+
+        #[test]
         fn a_read_only_journal_shows_its_history_and_blocks() {
             let engine = scanned(fixture().journal(MemoryCleanupJournal::read_only()));
 
@@ -430,11 +692,61 @@ mod tests {
         use std::path::PathBuf;
         use std::sync::Arc;
 
-        use fresher_core::{ByteSize, CleanupId, Ended, Method, PutBackOutcome, RecordedOutcome, TrashState};
+        use fresher_core::{
+            ByteSize, CleanupId, Ended, FindingId, Method, PutBackOutcome, RecordedOutcome, TrashState,
+        };
         use fresher_testing::{FakeCleaner, SystemUiCall};
 
-        use super::{clean, cleaned, with};
+        use super::{MODEL, clean, cleaned, cleaned_model, landed, with};
         use crate::cleanup::testing::fixture;
+
+        #[test]
+        fn a_together_item_comes_back_parts_first_and_the_subject_last() {
+            let (engine, id, cleaner, _) = cleaned_model(FakeCleaner::default());
+            let detail = engine.cleanup(id).unwrap();
+            assert_eq!(detail.items.len(), 1);
+            assert_eq!(detail.items[0].path, Some(PathBuf::from("/home/models/m")));
+
+            let report = engine.put_back(id, None).unwrap();
+
+            assert_eq!(
+                report.items.iter().map(|item| (item.index, item.outcome)).collect::<Vec<_>>(),
+                [(0, PutBackOutcome::PutBack)]
+            );
+            assert_eq!(cleaner.put_backs_tried(), [landed(2), landed(1), landed(0)]);
+            assert_eq!(engine.cleanup(id).unwrap().summary.in_trash, 0);
+        }
+
+        #[test]
+        fn a_retry_after_one_refused_part_brings_the_subject_back_once_that_part_comes_back() {
+            let (engine, id, cleaner, journal) =
+                cleaned_model(FakeCleaner::default().putting_back(landed(1), PutBackOutcome::Occupied));
+            let first = engine.put_back(id, Some(&[0])).unwrap();
+            cleaner.now_locating(landed(2), TrashState::Gone);
+            cleaner.now_putting_back(landed(1), PutBackOutcome::PutBack);
+
+            let retry = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(
+                (first.items[0].outcome, retry.items[0].outcome),
+                (PutBackOutcome::Occupied, PutBackOutcome::PutBack)
+            );
+            assert_eq!(cleaner.put_backs_tried(), [landed(2), landed(1), landed(1), landed(0)]);
+            let backs: Vec<_> = journal.recorded()[0].put_backs.iter().map(|record| record.back.clone()).collect();
+            assert_eq!(backs, [vec![2], vec![1, 0]]);
+            assert_eq!(engine.cleanup(id).unwrap().summary.in_trash, 0);
+        }
+
+        #[test]
+        fn a_partly_moved_item_puts_back_what_went() {
+            let (engine, id, cleaner, _) = cleaned_model(FakeCleaner::default().partly(FindingId::new(MODEL), 2));
+            assert!(matches!(engine.cleanup(id).unwrap().items[0].outcome, RecordedOutcome::Failed { .. }));
+
+            let report = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(report.items[0].outcome, PutBackOutcome::PutBack);
+            assert_eq!(cleaner.put_backs_tried(), [landed(1), landed(0)], "the layer that never moved is not tried");
+        }
 
         #[test]
         fn history_is_newest_first_with_trash_counts() {

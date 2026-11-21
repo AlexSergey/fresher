@@ -1,12 +1,13 @@
 //! The module as built, and the module through `on_match` and `finish`, on a recording sink, with every system fact
-//! faked and plain `Match` values in a home at `/home`.
+//! faked and plain `Match` values in a home at `/home`. Ollama's store: `ollama.rs`.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use fresher_core::{
     ByteSize, CancelToken, EntryFacts, EntryKind, Inside, LeftOutItem, Match, Module as _, ModuleContext, NewFinding,
-    SettingsSchema, Sizes, StoredSettings, SystemFacts, SystemPorts, Timestamp,
+    ReadError, SettingsSchema, Sizes, SmallFile, SmallFiles, StoredSettings, SystemFacts, SystemPorts, Timestamp,
 };
 use fresher_testing::{FakeClock, FakeCommandRunner, FakeInstalledApps, FakeKnownFolders, FakeRunningApps};
 
@@ -21,6 +22,39 @@ const LM_STUDIO: &str = "ai.elementlabs.lmstudio";
 const HUGGING_FACE: usize = 0;
 const LM_STUDIO_NOW: usize = 1;
 const LM_STUDIO_OLD: usize = 2;
+
+/// The small files of a scan, by path, each read counted.
+#[derive(Debug, Default)]
+struct FakeSmallFiles {
+    files: BTreeMap<PathBuf, SmallFile>,
+    reads: Mutex<BTreeMap<PathBuf, usize>>,
+}
+
+impl FakeSmallFiles {
+    fn with(files: impl IntoIterator<Item = (PathBuf, SmallFile)>) -> Self {
+        Self { files: files.into_iter().collect(), ..Self::default() }
+    }
+
+    /// How many times each file was read.
+    fn reads(&self) -> BTreeMap<PathBuf, usize> {
+        self.reads.lock().unwrap().clone()
+    }
+}
+
+impl SmallFiles for FakeSmallFiles {
+    fn head(&self, folder: &Path, name: &str, limit: usize) -> Result<Vec<u8>, ReadError> {
+        let at = folder.join(name);
+        *self.reads.lock().unwrap().entry(at.clone()).or_default() += 1;
+        match self.files.get(&at) {
+            None | Some(SmallFile::Missing) => Err(ReadError::Vanished),
+            Some(SmallFile::Text(text)) => Ok(text.as_bytes().to_vec()),
+            Some(SmallFile::NotAFile) => Err(ReadError::Replaced),
+            Some(SmallFile::TooLong) => Ok(vec![b'1'; limit]),
+            Some(SmallFile::NotText) => Ok(vec![0xff, 0xfe]),
+            Some(SmallFile::Unreadable) => Err(ReadError::Failed),
+        }
+    }
+}
 
 /// Keeps everything the module reports, in order.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -124,15 +158,20 @@ fn running(id: &str) -> fresher_core::RunningApp {
 /// The system a scan runs with.
 struct Scan {
     running: Arc<FakeRunningApps>,
+    files: Arc<FakeSmallFiles>,
 }
 
 impl Scan {
     fn new() -> Self {
-        Self { running: Arc::new(FakeRunningApps::default()) }
+        Self::running(FakeRunningApps::default())
     }
 
     fn running(running: FakeRunningApps) -> Self {
-        Self { running: Arc::new(running) }
+        Self { running: Arc::new(running), files: Arc::new(FakeSmallFiles::default()) }
+    }
+
+    fn files(files: FakeSmallFiles) -> Self {
+        Self { running: Arc::new(FakeRunningApps::default()), files: Arc::new(files) }
     }
 
     fn run(&self, matches: &[Match]) -> Recorded {
@@ -162,7 +201,7 @@ impl Scan {
             apps: Arc::new(FakeInstalledApps::new(Vec::new())),
             running: Arc::<FakeRunningApps>::clone(&self.running),
             installs: Arc::new(fresher_testing::FakeInstallRecords::default()),
-            files: Arc::new(fresher_testing::NoFiles),
+            files: Arc::<FakeSmallFiles>::clone(&self.files),
         });
         let (clock, commands) = (FakeClock::at(NOW), FakeCommandRunner::default());
         let settings = SettingsSchema::new([module.descriptor()])
@@ -175,24 +214,16 @@ impl Scan {
 }
 
 mod negative {
-    use fresher_core::{CancelToken, EntryFacts, Match, Module as _, ModuleError, Pattern};
+    use fresher_core::{CancelToken, EntryFacts, Match, Module as _, ModuleError};
     use fresher_testing::FakeRunningApps;
 
     use super::{LM_STUDIO, Recorded, Scan, folder, holding_a_socket, lm_model, mixed, repo, running};
     use crate::LocalAiModelsModule;
 
     #[test]
-    fn ollama_s_store_is_never_claimed() {
-        let module = LocalAiModelsModule::new().unwrap();
-
-        for interest in module.interests() {
-            let place = match interest.pattern() {
-                Pattern::Under(_, place) => place.as_str(),
-                other => unreachable!("every interest is a place under a known folder: {other:?}"),
-            };
-            assert!(!place.split('/').any(|name| name == ".ollama"), "{place}");
-        }
+    fn a_match_of_no_interest_is_not_claimed() {
         let stray = Match { interest: 99, ..folder(0, ".ollama/models/blobs", &["blobs", "snapshots"], 100) };
+
         assert_eq!(Scan::new().run(&[stray]), Recorded::default());
     }
 
@@ -343,12 +374,13 @@ mod positive {
                 ("local-ai-models.hugging-face-models", DangerLevel::Low),
                 ("local-ai-models.hugging-face-datasets", DangerLevel::Low),
                 ("local-ai-models.lm-studio", DangerLevel::Medium),
+                ("local-ai-models.ollama", DangerLevel::Medium),
             ]
         );
     }
 
     #[test]
-    fn the_left_out_reasons_are_the_four_in_order() {
+    fn the_left_out_reasons_are_the_seven_in_order() {
         let module = module();
 
         let problems: Vec<&str> = module.descriptor().problems().iter().map(TextKey::as_str).collect();
@@ -360,13 +392,16 @@ mod positive {
                 "local-ai-models.left-out.special",
                 "local-ai-models.left-out.app-open",
                 "local-ai-models.left-out.no-system",
+                "local-ai-models.left-out.ollama-unreadable",
+                "local-ai-models.left-out.ollama-download",
+                "local-ai-models.left-out.ollama-incomplete",
             ]
         );
     }
 
     #[test]
-    fn the_module_has_one_interest_per_store() {
-        assert_eq!(module().interests().len(), 3);
+    fn the_module_has_one_interest_per_store_and_six_for_ollama() {
+        assert_eq!(module().interests().len(), 3 + 6);
     }
 
     #[test]
@@ -450,3 +485,5 @@ mod positive {
         }
     }
 }
+
+mod ollama;

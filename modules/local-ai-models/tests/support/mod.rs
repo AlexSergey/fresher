@@ -68,3 +68,12 @@ pub(crate) fn kept() -> (FixtureTree, ModuleRun) {
 pub(crate) fn offered() -> (FixtureTree, ModuleRun) {
     scan("local-ai-models-offered")
 }
+
+/// Ollama's homes, by the end of their name: nothing claimed, then each store left out whole, then the models offered.
+pub(crate) const OLLAMA_HOMES: [&str; 7] =
+    ["not-claimed", "no-blobs", "kept", "unreadable", "long", "hidden", "offered"];
+
+/// The Ollama home `local-ai-models-ollama-<name>` scanned with nothing open, walked.
+pub(crate) fn ollama(name: &str) -> (FixtureTree, ModuleRun) {
+    scan(&format!("local-ai-models-ollama-{name}"))
+}

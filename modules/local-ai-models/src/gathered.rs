@@ -4,16 +4,22 @@
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use fresher_core::{CancelToken, EntryFacts, EntryKind, Inside, Sizes};
+use fresher_core::{CancelToken, EntryFacts, EntryKind, Inside, Sizes, Timestamp};
 
-/// A match of a store's place: a folder the module may offer as one model.
+use crate::stores::OllamaInterest;
+
+/// A match of a store's place: a folder the module may offer as one model, or an entry of an Ollama store.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Candidate {
-    /// The index of the row in the stores table, which is the index of its interest.
+    /// The index of the row in the stores table.
     pub(crate) row: usize,
+    /// For a match of an Ollama row, which of its six interests; `None` for any other row.
+    pub(crate) ollama: Option<OllamaInterest>,
     pub(crate) path: PathBuf,
     pub(crate) kind: EntryKind,
     pub(crate) sizes: Sizes,
+    pub(crate) modified: Option<Timestamp>,
+    pub(crate) accessed: Option<Timestamp>,
     pub(crate) facts: EntryFacts,
     /// Which names of the row's sign the folder holds.
     pub(crate) holds: Vec<String>,
@@ -62,9 +68,12 @@ mod tests {
     fn candidate(row: usize, path: &str) -> Candidate {
         Candidate {
             row,
+            ollama: None,
             path: path.into(),
             kind: EntryKind::Folder,
             sizes: Sizes::ZERO,
+            modified: None,
+            accessed: None,
             facts: EntryFacts::REMOVABLE,
             holds: Vec::new(),
             inside: Some(Inside::EMPTY),

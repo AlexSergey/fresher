@@ -11,8 +11,10 @@ use crate::{AccessStatus, CancelToken, FindingId, GuardedPlace, Sizes};
 /// Checks items right before they are acted on, removes the items of a confirmed plan, and puts items back.
 pub trait Cleaner: Send + Sync {
     /// Runs every check of the guard on each item of an unconfirmed plan, in order, and does nothing: each answer is
-    /// the item's identity or why it would be skipped. `roots` are the roots of the scan the items come from, its
-    /// places included. It has no `Act`, so it cannot remove anything.
+    /// the item's identity or why it would be skipped. An item of several paths runs every check on each part, in
+    /// order: its answer is the first refused part's reason, or `PassedTogether` with every part's identity. `roots`
+    /// are the roots of the scan the items come from, its places included. It has no `Act`, so it cannot remove
+    /// anything.
     fn rehearse(&self, roots: &[PathBuf], items: &[PlanItem], cx: &CleanupContext<'_>, depth: Depth) -> Vec<Rehearsal>;
 
     /// Acts on the items of `plan`, one at a time in plan order: the checks again right before each item, then its
@@ -65,6 +67,8 @@ pub enum Depth {
 pub enum Rehearsal {
     /// Every check passed; the identity read from the disk (`None` for a tool's item).
     Passed(Option<ItemIdentity>),
+    /// Every check passed on every part of an item of several paths; the identity of each, in part order.
+    PassedTogether(Vec<ItemIdentity>),
     Skipped(SkipReason),
 }
 
@@ -82,6 +86,8 @@ pub struct ItemDone {
     pub trashed: Vec<TrashedItem>,
     /// A tool's exit status, when a tool ran.
     pub status: Option<i32>,
+    /// How many parts of an item of several paths went, the subject first; `None` for any other item.
+    pub went: Option<u32>,
 }
 
 impl ItemDone {
@@ -97,6 +103,7 @@ impl ItemDone {
             index: self.index,
             outcome: self.outcome.recorded(self.status),
             trashed: self.trashed.clone(),
+            went: self.went,
         }
     }
 }
@@ -131,6 +138,7 @@ mod tests {
                 outcome: ItemOutcome::Moved,
                 trashed: vec![trashed.clone()],
                 status: None,
+                went: None,
             };
 
             let report = done.report();

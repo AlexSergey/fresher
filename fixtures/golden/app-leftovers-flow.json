@@ -2,7 +2,7 @@
   "journal": [
     {
       "format": "cleanup-journal",
-      "version": 1
+      "version": 2
     },
     {
       "at": 1767225600,
@@ -13,6 +13,7 @@
           "category": "app-leftovers.data",
           "danger": "high",
           "key": "support/com.example.Gone",
+          "more": [],
           "path": "~/home/Library/Application Support/com.example.Gone",
           "reason": {
             "args": {
@@ -35,6 +36,7 @@
           "category": "app-leftovers.caches",
           "danger": "safe",
           "key": "caches/com.example.Gone",
+          "more": [],
           "path": "~/home/Library/Caches/com.example.Gone",
           "reason": {
             "args": {
@@ -57,6 +59,7 @@
           "category": "app-leftovers.settings",
           "danger": "medium",
           "key": "cookies/com.example.Gone.binarycookies",
+          "more": [],
           "path": "~/home/Library/Cookies/com.example.Gone.binarycookies",
           "reason": {
             "args": {
@@ -79,6 +82,7 @@
           "category": "app-leftovers.settings",
           "danger": "medium",
           "key": "http-storage/com.example.Gone",
+          "more": [],
           "path": "~/home/Library/HTTPStorages/com.example.Gone",
           "reason": {
             "args": {
@@ -101,6 +105,7 @@
           "category": "app-leftovers.settings",
           "danger": "medium",
           "key": "http-cookies/com.example.Gone.binarycookies",
+          "more": [],
           "path": "~/home/Library/HTTPStorages/com.example.Gone.binarycookies",
           "reason": {
             "args": {
@@ -123,6 +128,7 @@
           "category": "app-leftovers.caches",
           "danger": "safe",
           "key": "logs/com.example.Gone",
+          "more": [],
           "path": "~/home/Library/Logs/com.example.Gone",
           "reason": {
             "args": {
@@ -145,6 +151,7 @@
           "category": "app-leftovers.settings",
           "danger": "medium",
           "key": "preferences/com.example.Gone.plist",
+          "more": [],
           "path": "~/home/Library/Preferences/com.example.Gone.plist",
           "reason": {
             "args": {
@@ -167,6 +174,7 @@
           "category": "app-leftovers.caches",
           "danger": "safe",
           "key": "saved-state/com.example.Gone.savedState",
+          "more": [],
           "path": "~/home/Library/Saved Application State/com.example.Gone.savedState",
           "reason": {
             "args": {
@@ -189,6 +197,7 @@
           "category": "app-leftovers.settings",
           "danger": "medium",
           "key": "web-data/com.example.Gone",
+          "more": [],
           "path": "~/home/Library/WebKit/com.example.Gone",
           "reason": {
             "args": {
@@ -227,7 +236,8 @@
           "original": "~/home/Library/Application Support/com.example.Gone"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -240,7 +250,8 @@
           "original": "~/home/Library/Caches/com.example.Gone"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -253,7 +264,8 @@
           "original": "~/home/Library/Cookies/com.example.Gone.binarycookies"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -266,7 +278,8 @@
           "original": "~/home/Library/HTTPStorages/com.example.Gone"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -279,7 +292,8 @@
           "original": "~/home/Library/HTTPStorages/com.example.Gone.binarycookies"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -292,7 +306,8 @@
           "original": "~/home/Library/Logs/com.example.Gone"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -305,7 +320,8 @@
           "original": "~/home/Library/Preferences/com.example.Gone.plist"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -318,7 +334,8 @@
           "original": "~/home/Library/Saved Application State/com.example.Gone.savedState"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -331,7 +348,8 @@
           "original": "~/home/Library/WebKit/com.example.Gone"
         }
       ],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "at": 1767225600,
@@ -342,6 +360,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -350,6 +369,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -358,6 +378,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -366,6 +387,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -374,6 +396,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -382,6 +405,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -390,6 +414,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -398,6 +423,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -406,6 +432,7 @@
     },
     {
       "at": 1767225600,
+      "back": [],
       "cleanup": 1,
       "outcome": {
         "kind": "put-back"
@@ -524,6 +551,7 @@
         "items": [
           {
             "danger": "safe",
+            "more": [],
             "path": "~/home/Library/Caches/com.example.Gone",
             "reason": {
               "args": {
@@ -552,6 +580,7 @@
           },
           {
             "danger": "safe",
+            "more": [],
             "path": "~/home/Library/Logs/com.example.Gone",
             "reason": {
               "args": {
@@ -580,6 +609,7 @@
           },
           {
             "danger": "safe",
+            "more": [],
             "path": "~/home/Library/Saved Application State/com.example.Gone.savedState",
             "reason": {
               "args": {
@@ -625,6 +655,7 @@
         "items": [
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/Library/Cookies/com.example.Gone.binarycookies",
             "reason": {
               "args": {
@@ -653,6 +684,7 @@
           },
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/Library/HTTPStorages/com.example.Gone",
             "reason": {
               "args": {
@@ -681,6 +713,7 @@
           },
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/Library/HTTPStorages/com.example.Gone.binarycookies",
             "reason": {
               "args": {
@@ -709,6 +742,7 @@
           },
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/Library/Preferences/com.example.Gone.plist",
             "reason": {
               "args": {
@@ -737,6 +771,7 @@
           },
           {
             "danger": "medium",
+            "more": [],
             "path": "~/home/Library/WebKit/com.example.Gone",
             "reason": {
               "args": {
@@ -782,6 +817,7 @@
         "items": [
           {
             "danger": "high",
+            "more": [],
             "path": "~/home/Library/Application Support/com.example.Gone",
             "reason": {
               "args": {

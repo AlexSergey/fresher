@@ -49,6 +49,7 @@ const actionOf = (finding: Finding): ActionKind => {
     case 'empty-folder':
       return 'empty';
     case 'move-to-trash':
+    case 'move-together':
       return 'remove';
     case 'tool-command':
       return 'tool';
@@ -87,6 +88,7 @@ export const planOf = (
         items: own.map((finding) => ({
           danger: finding.danger,
           finding: finding.id,
+          more: finding.removal.kind === 'move-together' ? finding.removal.value.slice(1) : [],
           path: finding.subject.kind === 'path' ? finding.subject.value : null,
           reason: finding.reason,
           sizes: finding.sizes,
@@ -144,6 +146,28 @@ export const LONG_PLAN: CleanupPlanView = planOf(
     }),
   ),
 );
+
+const MODEL_PATHS = [
+  '/Users/someone/.ollama/models/manifests/registry.ollama.ai/library/demo/latest',
+  '/Users/someone/.ollama/models/blobs/sha256-0a1b2c3d4e5f',
+  '/Users/someone/.ollama/models/blobs/sha256-6f5e4d3c2b1a',
+] as const;
+
+// A model that is one item with three paths: the manifest, then its two layers.
+export const TOGETHER_FINDING: Finding = {
+  ...findingOf({ bytes: 4_700_000_000, id: 30, level: 'low', name: 'demo-model' }),
+  removal: { kind: 'move-together', value: [...MODEL_PATHS] },
+  subject: { kind: 'path', value: MODEL_PATHS[0] },
+};
+
+// A cache and a model of two layers: the model is one item that goes with two more files.
+export const TOGETHER_PLAN: CleanupPlanView = planOf([DEMO_FINDINGS[0] as Finding, TOGETHER_FINDING]);
+
+// The model among 60 caches: the group is long enough for a virtual list.
+export const LONG_TOGETHER_PLAN: CleanupPlanView = planOf([
+  TOGETHER_FINDING,
+  ...Array.from({ length: 60 }, (_, at) => findingOf({ id: 200 + at, level: 'safe', name: `cache-${String(at)}` })),
+]);
 
 const refusal = (error: Refusal['error'], key: string, args: Refusal['text']['args'] = {}): Refusal => ({
   error,

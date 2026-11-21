@@ -206,6 +206,17 @@ pub enum Failure {
     ToolFailed { detail: String },
     /// The tool could not be started.
     ToolMissing,
+    /// Only `done` of the `of` parts of an item of several paths went, the way `way` says; the rest stayed in place.
+    Partly { done: u32, of: u32, way: PartlyWay },
+}
+
+/// Where the parts of a partly done item went: it tells whether they can be put back from the Trash.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PartlyWay {
+    /// The parts that went are in the Trash.
+    Trash,
+    /// The parts that went were deleted and cannot be put back.
+    Deleted,
 }
 
 impl Failure {
@@ -218,6 +229,13 @@ impl Failure {
             Self::DeleteFailed => key("delete-failed"),
             Self::ToolFailed { detail } => key("tool-failed").with(DETAIL_ARG, TextArg::Text(detail.clone())),
             Self::ToolMissing => key("tool-missing"),
+            Self::Partly { done, of, way } => {
+                let id = match way {
+                    PartlyWay::Trash => "partly",
+                    PartlyWay::Deleted => "partly-deleted",
+                };
+                key(id).with("done", TextArg::Count((*done).into())).with("of", TextArg::Count((*of).into()))
+            }
         }
     }
 }
@@ -547,7 +565,7 @@ impl BlockedReason {
 
 #[cfg(test)]
 pub(crate) mod sample {
-    use crate::cleanup::{Failure, ItemOutcome, PutBackOutcome, RecordedOutcome, SkipCode, SkipReason};
+    use crate::cleanup::{Failure, ItemOutcome, PartlyWay, PutBackOutcome, RecordedOutcome, SkipCode, SkipReason};
     use crate::{Capability, Removability};
 
     /// One skip reason of every variant; the `match` has no wildcard, so a new variant fails to compile until it is
@@ -605,7 +623,8 @@ pub(crate) mod sample {
             | Failure::LandedElsewhere
             | Failure::DeleteFailed
             | Failure::ToolFailed { .. }
-            | Failure::ToolMissing => failure,
+            | Failure::ToolMissing
+            | Failure::Partly { .. } => failure,
         };
         vec![
             sample(Failure::TrashRefused),
@@ -613,6 +632,8 @@ pub(crate) mod sample {
             sample(Failure::DeleteFailed),
             sample(Failure::ToolFailed { detail: "image is in use".into() }),
             sample(Failure::ToolMissing),
+            sample(Failure::Partly { done: 1, of: 3, way: PartlyWay::Trash }),
+            sample(Failure::Partly { done: 1, of: 3, way: PartlyWay::Deleted }),
         ]
     }
 
@@ -742,11 +763,11 @@ mod tests {
     mod positive {
         use serde_json::json;
 
-        use crate::cleanup::Failure;
         use crate::cleanup::outcome::sample;
         use crate::cleanup::{
             CleanupReport, Ended, ItemOutcome, ItemReport, Method, RecordedOutcome, SkipCode, SkipReason,
         };
+        use crate::cleanup::{Failure, PartlyWay};
         use crate::{ByteSize, Capability, DETAIL_ARG, FindingId, Sizes, TextArg};
 
         #[test]
@@ -756,6 +777,24 @@ mod tests {
             assert_eq!(text.key().as_str(), "core.cleanup.failed.tool-failed");
             assert_eq!(text.args().len(), 1);
             assert_eq!(text.args().get(DETAIL_ARG), Some(&TextArg::Text("Error: image is in use".into())));
+        }
+
+        #[test]
+        fn a_partial_act_carries_its_counts() {
+            let text = Failure::Partly { done: 2, of: 5, way: PartlyWay::Trash }.text();
+
+            assert_eq!(text.key().as_str(), "core.cleanup.failed.partly");
+            assert_eq!(text.args().get("done"), Some(&TextArg::Count(2)));
+            assert_eq!(text.args().get("of"), Some(&TextArg::Count(5)));
+        }
+
+        #[test]
+        fn a_partial_delete_has_its_own_text_that_never_names_the_trash() {
+            let text = Failure::Partly { done: 2, of: 5, way: PartlyWay::Deleted }.text();
+
+            assert_eq!(text.key().as_str(), "core.cleanup.failed.partly-deleted");
+            assert_eq!(text.args().get("done"), Some(&TextArg::Count(2)));
+            assert_eq!(text.args().get("of"), Some(&TextArg::Count(5)));
         }
 
         #[test]

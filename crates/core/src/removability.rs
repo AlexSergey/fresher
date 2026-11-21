@@ -2,6 +2,8 @@
 //! shown with its size and an instruction, never cleaned. Worked out by the engine from what the walk read about the
 //! entry, never declared by a module.
 
+use std::path::Path;
+
 use serde::Serialize;
 use ts_rs::TS;
 
@@ -70,13 +72,20 @@ impl Removability {
         }
     }
 
-    /// The removability of a finding removed by `removal`, with the facts of the matched entry its path names: a
-    /// tool's removal is removable here (its need is the tool); a path with no facts is not (fail closed).
-    pub const fn of_removal(removal: &Removal, facts: Option<EntryFacts>) -> Self {
-        match (removal, facts) {
-            (Removal::ToolCommand(_), _) => Self::Removable,
-            (Removal::MoveToTrash(_) | Removal::EmptyFolder(_), Some(facts)) => Self::of(facts),
-            (Removal::MoveToTrash(_) | Removal::EmptyFolder(_), None) => Self::NeedsAdministrator,
+    /// The removability of a finding removed by `removal`, given the facts of the matched entry each path names: a
+    /// tool's removal is removable here (its need is the tool); a path with no facts is not (fail closed). An item of
+    /// several paths is the removability of its first part, in order, that is not removable.
+    pub fn of_removal(removal: &Removal, facts: impl Fn(&Path) -> Option<EntryFacts>) -> Self {
+        let of_path = |path: &Path| facts(path).map_or(Self::NeedsAdministrator, Self::of);
+        match removal {
+            Removal::ToolCommand(_) => Self::Removable,
+            Removal::MoveToTrash(path) | Removal::EmptyFolder(path) => of_path(path),
+            Removal::MoveTogether(parts) => parts
+                .all()
+                .iter()
+                .map(|part| of_path(part))
+                .find(|state| !state.is_removable())
+                .unwrap_or(Self::Removable),
         }
     }
 
@@ -107,7 +116,9 @@ impl Removability {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use crate::{EntryFacts, Removability, Removal};
+        use std::path::Path;
+
+        use crate::{EntryFacts, Parts, Removability, Removal};
 
         #[test]
         fn nothing_known_is_not_removable() {
@@ -156,8 +167,33 @@ mod tests {
         #[test]
         fn a_path_removal_without_facts_is_not_removable() {
             for removal in [Removal::MoveToTrash("/home/a".into()), Removal::EmptyFolder("/home/b".into())] {
-                assert_eq!(Removability::of_removal(&removal, None), Removability::NeedsAdministrator);
+                assert_eq!(Removability::of_removal(&removal, |_| None), Removability::NeedsAdministrator);
             }
+        }
+
+        #[test]
+        fn a_together_removal_is_the_first_part_that_cannot_go() {
+            let parts = Parts::new(vec!["/home/a".into(), "/home/b".into(), "/home/c".into()]).unwrap();
+            let facts = |path: &Path| {
+                Some(match path.to_str() {
+                    Some("/home/b") => EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE },
+                    Some("/home/c") => EntryFacts { restricted: true, ..EntryFacts::REMOVABLE },
+                    _ => EntryFacts::REMOVABLE,
+                })
+            };
+
+            assert_eq!(Removability::of_removal(&Removal::MoveTogether(parts), facts), Removability::Locked);
+        }
+
+        #[test]
+        fn a_part_without_facts_needs_the_administrator() {
+            let parts = Parts::new(vec!["/home/a".into(), "/home/b".into()]).unwrap();
+            let facts = |path: &Path| (path == Path::new("/home/a")).then_some(EntryFacts::REMOVABLE);
+
+            assert_eq!(
+                Removability::of_removal(&Removal::MoveTogether(parts), facts),
+                Removability::NeedsAdministrator
+            );
         }
 
         #[test]
@@ -170,7 +206,7 @@ mod tests {
         use proptest::prelude::*;
         use serde_json::json;
 
-        use crate::{EntryFacts, Removability, Removal, ToolCommand, ToolId};
+        use crate::{EntryFacts, Parts, Removability, Removal, ToolCommand, ToolId};
 
         #[test]
         fn a_users_own_writable_item_is_removable() {
@@ -182,7 +218,7 @@ mod tests {
             let docker = ToolId::new("docker").unwrap();
             let removal = Removal::ToolCommand(ToolCommand::new(docker, vec!["image".into(), "rm".into()]).unwrap());
 
-            assert_eq!(Removability::of_removal(&removal, None), Removability::Removable);
+            assert_eq!(Removability::of_removal(&removal, |_| None), Removability::Removable);
         }
 
         #[test]
@@ -190,8 +226,18 @@ mod tests {
             let locked = EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE };
             let removal = Removal::EmptyFolder("/home/Library/Caches/a".into());
 
-            assert_eq!(Removability::of_removal(&removal, Some(EntryFacts::REMOVABLE)), Removability::Removable);
-            assert_eq!(Removability::of_removal(&removal, Some(locked)), Removability::Locked);
+            assert_eq!(Removability::of_removal(&removal, |_| Some(EntryFacts::REMOVABLE)), Removability::Removable);
+            assert_eq!(Removability::of_removal(&removal, |_| Some(locked)), Removability::Locked);
+        }
+
+        #[test]
+        fn a_together_removal_of_removable_parts_is_removable() {
+            let parts = Parts::new(vec!["/home/a".into(), "/home/b".into()]).unwrap();
+
+            assert_eq!(
+                Removability::of_removal(&Removal::MoveTogether(parts), |_| Some(EntryFacts::REMOVABLE)),
+                Removability::Removable
+            );
         }
 
         #[test]

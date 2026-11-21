@@ -133,7 +133,7 @@ fn check_plain<'a>(paths: impl IntoIterator<Item = &'a PathBuf>) -> Result<(), P
 }
 
 /// Absolute, with no `.` or `..` anywhere: `components()` drops a `.` inside a path, so the raw names are looked at.
-fn is_plain(path: &Path) -> bool {
+pub(crate) fn is_plain(path: &Path) -> bool {
     let bytes = path.as_os_str().as_encoded_bytes();
     let dotted =
         bytes.split(|byte| std::path::is_separator(char::from(*byte))).any(|name| name == b"." || name == b"..");

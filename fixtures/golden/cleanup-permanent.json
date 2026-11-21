@@ -171,7 +171,7 @@
   "journal": [
     {
       "format": "cleanup-journal",
-      "version": 1
+      "version": 2
     },
     {
       "at": 1763200000,
@@ -183,6 +183,7 @@
           "danger": "safe",
           "index": 0,
           "key": "~/home/sandbox/fresher-trial-cache",
+          "more": [],
           "path": "~/home/sandbox/fresher-trial-cache",
           "reason": {
             "args": {},
@@ -201,6 +202,7 @@
           "danger": "low",
           "index": 1,
           "key": "~/home/sandbox/fresher-trial-kept",
+          "more": [],
           "path": "~/home/sandbox/fresher-trial-kept",
           "reason": {
             "args": {},
@@ -219,6 +221,7 @@
           "danger": "low",
           "index": 2,
           "key": "~/home/sandbox/fresher-e2e-build",
+          "more": [],
           "path": "~/home/sandbox/fresher-e2e-build",
           "reason": {
             "args": {},
@@ -246,7 +249,8 @@
         "kind": "deleted"
       },
       "trashed": [],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -257,7 +261,8 @@
         "skipped": 0
       },
       "trashed": [],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "cleanup": 1,
@@ -266,7 +271,8 @@
         "kind": "deleted"
       },
       "trashed": [],
-      "type": "item"
+      "type": "item",
+      "went": null
     },
     {
       "at": 1763200000,

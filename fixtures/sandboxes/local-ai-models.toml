@@ -1,9 +1,9 @@
 # The local-ai-models module: the models and datasets the Hugging Face cache and LM Studio keep, offered one folder at
 # a time. Blobs and model files are small, filled with data; a snapshot's names are `[[case.symlink]]` with relative
 # targets inside the model folder. A Space, the hub's locks, a folder that is no repository, a loose file, Ollama's
-# store (not claimed in this version) and a model file in a project are never claimed; a model holding a socket is left
-# out (`special`); a model goes to the Trash as Low (Hugging Face) or Medium (LM Studio). The app-open case is the next
-# file's.
+# folder without `manifests/` (not its store's layout) and a model file in a project are never claimed; a model holding
+# a socket is left out (`special`); a model goes to the Trash as Low (Hugging Face) or Medium (LM Studio). The app-open
+# case is the next file's.
 feature = "local-ai-models"
 module = "local-ai-models"
 
@@ -57,12 +57,8 @@ size = 4096
 fill = "data"
 
 [[case]]
-name = "Ollama's models are not claimed in this version"
+name = "Ollama's folder without its manifests is not claimed"
 kind = "negative"
-[[case.file]]
-path = "home/.ollama/models/manifests/registry.ollama.ai/library/tiny/latest"
-size = 4096
-fill = "data"
 [[case.file]]
 path = "home/.ollama/models/blobs/sha256-0001"
 size = 4096
