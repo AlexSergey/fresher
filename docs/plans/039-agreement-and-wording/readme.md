@@ -43,8 +43,8 @@ serious as it is; and every sentence in the app helps them decide.
   the first confirmation. "I understand" and "Not now" (the cleanup does not start; scanning still works).
 - **State**: the accepted text's version and date, in the settings file (plan [005](../005-settings/readme.md)). A
   changed text asks again and says what changed. The text is always readable under Settings → About.
-- **The same words outside the app**: a "No warranty" section in the README and on the release page, so nobody meets
-  them for the first time after installing.
+- **The same words outside the app**: a "No warranty" section in the README (plan [040](../040-readme/readme.md))
+  and on the release page, so nobody meets them for the first time after installing.
 - **What it is worth**: the two licences already disclaim warranty and liability; the agreement makes that visible
   and recorded. It lowers the risk, it does not remove it, and it is not a lawyer's work (open question 1).
 
