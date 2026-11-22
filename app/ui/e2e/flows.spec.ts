@@ -5,6 +5,7 @@ import { APP_CACHES_DICTIONARY } from '../src/test/app-caches-scan';
 import { APP_LEFTOVERS_DICTIONARY } from '../src/test/app-leftovers-scan';
 import { CLEANUP_DICTIONARY, PLAN_GONE, PLAN_MISMATCH } from '../src/test/cleanup-plan';
 import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
+import { DOCKER_DICTIONARY } from '../src/test/docker-scan';
 import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { LOCAL_AI_MODELS_DICTIONARY } from '../src/test/local-ai-models-scan';
@@ -260,6 +261,26 @@ const XC_DEVICE_SUPPORT = xc('device-support.name');
 const XC_PREVIEWS = xc('previews.name');
 const XC_SIMULATOR = xc('simulator-caches.name');
 const XC_ARCHIVES = xc('archives.name');
+
+// The docker module's own texts, as its locale file has them.
+const dk = (key: string): string => DOCKER_DICTIONARY[`docker.${key}`] ?? '';
+
+const DESCRIBED = 'Described, not cleaned';
+
+const described = (page: Page): Locator => page.getByRole('region', { name: DESCRIBED });
+
+// Scans the Xcode script with the docker module describing OrbStack.
+const openDocker = (page: Page): Promise<void> => scanned(page, SCRIPTS.docker);
+
+// Opens the insight screen of the one card of the section, the screen's title taking the focus.
+const openInsight = async (page: Page, title: string): Promise<void> => {
+  await described(page).getByRole('button', { name: 'Details' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeFocused();
+};
+
+const COPIED_LINE = 'docker --context orbstack builder prune --all';
+
+const insightScreen = (page: Page): Locator => page.locator('[data-screen^="insight:"]:not([aria-hidden])');
 
 // The Xcode script, scanned.
 const openXcode = (page: Page): Promise<void> => scanned(page, SCRIPTS.xcode);
@@ -737,6 +758,63 @@ test.describe('negative cases', () => {
     await page.getByRole('checkbox', { name: `Select all ${XC_DEVICE_SUPPORT}` }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('300 MB');
+  });
+
+  test('the described section has no checkbox and adds nothing to the selection', async ({ page }) => {
+    await openDocker(page);
+
+    await expect(described(page).getByRole('checkbox')).toHaveCount(0);
+    for (const name of ['Safe to remove', 'Low risk', 'High risk']) {
+      await zone(page, name).getByRole('checkbox', { name: 'Select all' }).check();
+    }
+
+    // Xcode's five findings are the whole selection; the section adds none.
+    await expect(selectionBar(page)).toContainText('5 items selected');
+  });
+
+  test('the insight screen has no selection bar and Review never lists Docker', async ({ page }) => {
+    await openDocker(page);
+    for (const name of ['Safe to remove', 'Low risk', 'High risk']) {
+      await zone(page, name).getByRole('checkbox', { name: 'Select all' }).check();
+    }
+    await openInsight(page, 'OrbStack');
+
+    await expect(insightScreen(page).getByRole('checkbox')).toHaveCount(0);
+    await expect(selectionBar(page)).toHaveCount(0);
+    await page
+      .getByRole('button', { name: /^Review/ })
+      .first()
+      .click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await expect(page.getByRole('main')).not.toContainText(/orbstack|docker/i);
+  });
+
+  test('a part without a command has no Copy button', async ({ page }) => {
+    await openDocker(page);
+    await openInsight(page, 'OrbStack');
+
+    const containers = insightScreen(page)
+      .getByRole('listitem')
+      .filter({ hasText: dk('part.containers.label') });
+    await expect(containers).toContainText(dk('part.containers.none'));
+    await expect(containers.getByRole('button', { name: 'Copy' })).toHaveCount(0);
+    await expect(containers.locator('code')).toHaveCount(0);
+    await expect(insightScreen(page).getByRole('button', { name: 'Copy' })).toHaveCount(3);
+  });
+
+  test('the section is absent before a scan and while scanning', async ({ page }) => {
+    await mockCore(page, SCRIPTS.dockerHeld);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 2, name: DESCRIBED })).toHaveCount(0);
+
+    await scanButton(page).click();
+    // The docker module has finished, the scan has not.
+    await expect(cards(page)).toHaveCount(4);
+    await expect(page.getByRole('heading', { level: 2, name: DESCRIBED })).toHaveCount(0);
+
+    await releaseScan(page);
+    await scanFinished(page);
+    await expect(described(page)).toBeVisible();
   });
 });
 
@@ -2428,5 +2506,103 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('switch', { name: ut('enabled.label') })).toBeChecked();
     await expect(page.getByRole('switch', { name: ut('node-versions.label') })).not.toBeChecked();
     await expect(page.getByText(ut('node-versions.description'))).toBeVisible();
+  });
+
+  test('the scan screen shows the described section with the card’s figures', async ({ page }) => {
+    await openDocker(page);
+
+    const section = described(page);
+    await expect(section).toContainText('Fresher shows what these take');
+    const card = section.getByRole('listitem').first();
+    await expect(card.getByRole('heading', { level: 3, name: 'OrbStack' })).toBeVisible();
+    await expect(card).toContainText('OrbStack uses 3.6 GB inside its disk file; 1.6 GB of it is unused.');
+    await expect(card.getByText(dk('figure.on-disk'))).toBeVisible();
+    await expect(card).toContainText('1 MB');
+    await expect(card.getByText(dk('figure.inside'))).toBeVisible();
+    await expect(card).toContainText('3.6 GB');
+  });
+
+  test('Details opens the insight screen with its parts, levels and commands', async ({ page }) => {
+    await openDocker(page);
+
+    await openInsight(page, 'OrbStack');
+
+    const screen = insightScreen(page);
+    const parts = screen.getByRole('listitem');
+    for (const [label, level, lines] of [
+      ['build-cache', 'Safe', ['docker --context orbstack builder prune --all']],
+      ['images', 'Low', ['docker --context orbstack image prune --all']],
+      ['containers', 'Medium', []],
+      ['volumes', 'High', ['docker --context orbstack volume prune']],
+    ] as const) {
+      const part = parts.filter({ hasText: dk(`part.${label}.label`) });
+      await expect(part).toContainText(level);
+      await expect(part).toContainText(dk(`part.${label}.effect`));
+      await expect(part.locator('code')).toHaveText(lines);
+    }
+    await expect(screen).toContainText(dk('runtime.orbstack.gives-back'));
+    await expect(screen).toContainText(dk('note.never-runs'));
+  });
+
+  test("Back returns the focus to the insight card's Details button", async ({ page }) => {
+    await openDocker(page);
+    await openInsight(page, 'OrbStack');
+
+    await page.getByRole('button', { name: 'Back' }).click();
+
+    await expect(described(page).getByRole('button', { name: 'Details' })).toBeFocused();
+  });
+
+  test('Copy puts the command line on the clipboard and says Copied', async ({ browserName, context, page }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- WebKit does not grant reading the clipboard; the next test covers it
+    test.skip(browserName !== 'chromium');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openDocker(page);
+    await openInsight(page, 'OrbStack');
+    const part = insightScreen(page)
+      .getByRole('listitem')
+      .filter({ hasText: dk('part.build-cache.label') });
+
+    await part.getByRole('button', { name: 'Copy' }).click();
+
+    await expect(part).toContainText('Copied.');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(COPIED_LINE);
+  });
+
+  test('Copy says Copied or that it could not copy, and the line stays selectable', async ({ page }) => {
+    await openDocker(page);
+    await openInsight(page, 'OrbStack');
+    const part = insightScreen(page)
+      .getByRole('listitem')
+      .filter({ hasText: dk('part.build-cache.label') });
+
+    await part.getByRole('button', { name: 'Copy' }).click();
+
+    await expect(part).toContainText(/Copied\.|Could not copy/);
+    await expect(part.locator('code')).toHaveText(COPIED_LINE);
+  });
+
+  test('Back returns to the scan screen', async ({ page }) => {
+    await openDocker(page);
+    await openInsight(page, 'OrbStack');
+
+    await page.getByRole('button', { name: 'Back' }).click();
+
+    await expect(heading(page, 'Scan')).toBeVisible();
+    await expect(described(page)).toBeVisible();
+  });
+
+  test('a stopped runtime’s card says to start it and its screen lists no part', async ({ page }) => {
+    await scanned(page, SCRIPTS.dockerStopped);
+
+    const card = described(page).getByRole('listitem').first();
+    await expect(card).toContainText('Docker Desktop is not running');
+    await expect(card).toContainText('Start it and scan again');
+    await openInsight(page, 'Docker Desktop');
+
+    const screen = insightScreen(page);
+    await expect(screen.getByRole('listitem').filter({ has: page.getByRole('heading', { level: 3 }) })).toHaveCount(0);
+    await expect(screen.getByRole('button', { name: 'Copy' })).toHaveCount(0);
+    await expect(screen).toContainText(dk('runtime.docker-desktop.gives-back'));
   });
 });

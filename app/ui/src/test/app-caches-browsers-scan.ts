@@ -66,6 +66,7 @@ export const APP_CACHES_BROWSERS_SCAN: readonly Event[] = [
   { findings: APP_CACHES_BROWSERS_FINDINGS.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: APP_CACHES_BROWSERS_FINDINGS.slice(3), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...APP_CACHES_BROWSERS_LEFT_OUT],
     module: 'app-caches',
     outcome: { kind: 'completed' },

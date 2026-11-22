@@ -1,6 +1,6 @@
 //! Sandbox mode of a development build: started with `FRESHER_SANDBOX=<folder>`, the app lives entirely inside that
-//! sandbox folder — its home and known folders, its data folder, its Trash — and its cleaner reaches nothing outside
-//! it (docs/plans/007-safe-development/00-design.md, "Sandbox mode of the app"). Compiled in debug builds only.
+//! sandbox folder — its home and known folders, its data folder, its Trash — and its cleaner reaches nothing outside it
+//! (docs/plans/007-safe-development/00-design.md, "Sandbox mode of the app"). Compiled in debug builds only.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -25,6 +25,10 @@ use fresher_testing::{FactsLens, FakeTrash, StatedFacts, StatedInstalledApps};
 
 use crate::adapters::UnknownAccess;
 use crate::compose::{ComposeError, Shared, assemble, real_protection, user_temp};
+
+mod commands;
+
+use commands::SandboxCommands;
 
 /// The variable naming the sandbox folder, an absolute path.
 const SANDBOX_VARIABLE: &str = "FRESHER_SANDBOX";
@@ -134,8 +138,9 @@ impl SandboxMode {
 
 /// What sandbox mode keeps real in the app, and the autotests replace by fakes: all of it is only read. The running
 /// apps are never the Mac's, the clock starts at the sandbox's own moment, the access is the one its world states, the
-/// receipts and the macOS version are its world's, and the facts the sandbox's entries state are read instead of the
-/// disk's: the app takes all five from the sandbox's world.toml.
+/// receipts and the macOS version are its world's, the facts the sandbox's entries state are read instead of the
+/// disk's, and the commands are the world's (no program of the Mac runs but `/usr/bin/open`): the app takes all six
+/// from the sandbox's world.toml.
 #[derive(Clone)]
 pub struct SandboxPorts {
     pub clock: Arc<dyn Clock>,
@@ -162,7 +167,9 @@ impl SandboxPorts {
     /// on the Mac never changes what a sandbox shows, a clock that starts at the moment the sandbox was generated (the
     /// system's without one), so its ages are the case files' however long ago it was generated, the access its world
     /// states (a stand-in that knows nothing without one), the receipts and the macOS version its world states (none,
-    /// and a version that fails, without them: never the Mac's), and the facts its entries state.
+    /// and a version that fails, without them: never the Mac's), the facts its entries state, and the commands its
+    /// world answers: a program it does not state answers not installed and is never run, with or without stated
+    /// tools; only `/usr/bin/open`, the system's interface (Show in Finder, System Settings), runs for real.
     pub(crate) fn real(sandbox: &Sandbox) -> Result<Self, SandboxRefusal> {
         let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
         let clock: Arc<dyn Clock> = match world.now() {
@@ -176,7 +183,10 @@ impl SandboxPorts {
             volumes: Arc::new(MacVolumes::new()),
             open_files: Arc::new(MacOpenFiles::new()),
             running: Arc::new(world.running_apps()),
-            commands: Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT)),
+            commands: Arc::new(SandboxCommands {
+                world: Arc::new(world.commands(sandbox.path())),
+                open: Arc::new(ProcessCommandRunner::new(COMMAND_TIMEOUT)),
+            }),
             access,
             installs: Arc::new(world.install_records()),
             stated: world.stated(sandbox.path()),
@@ -255,8 +265,8 @@ pub(crate) fn compose(
     // Sandbox mode keeps a standing avoid list, the guarded places of both homes: its access is a stand-in, since the
     // sandbox's world is not the Mac's, and a scan root outside the sandbox, such as the real home, must raise no
     // system prompt (docs/hacks/, "Sandbox mode avoids the places that prompt"). The sandbox home's places of the
-    // folders its world states are left to the engine's coverage, as on a Mac; the real home's stay avoided whatever
-    // the world says.
+    // folders and of other apps' data its world states are left to the engine's coverage, as on a Mac; the real
+    // home's stay avoided whatever the world says.
     let stated = world.stated_places(&home);
     let mut avoid: Vec<PathBuf> =
         places_that_prompt(&home).into_iter().filter(|place| !stated.contains(place)).collect();
@@ -300,7 +310,8 @@ fn installed_apps(
 
 /// The build the banner shows for `sandbox`: its folder, what it simulates and where its cleanups go (`trash`). It
 /// simulates its open apps always, Spotlight when its world declares any of it (an app found elsewhere, or Spotlight
-/// off), the access when its world states any, and the installs when it states the macOS version or a receipt.
+/// off), the access when its world states any, the installs when it states the macOS version or a receipt, and the
+/// tools when it states what a program answers.
 pub(crate) fn build(sandbox: &Sandbox, trash: SandboxTrash) -> Result<Build, SandboxRefusal> {
     let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
     let mut simulated = vec![Simulated::Running];
@@ -312,6 +323,9 @@ pub(crate) fn build(sandbox: &Sandbox, trash: SandboxTrash) -> Result<Build, San
     }
     if world.declares_installs() {
         simulated.push(Simulated::Installs);
+    }
+    if world.declares_tools() {
+        simulated.push(Simulated::Tools);
     }
     // The same folder the sandbox's Trash port is given in `compose`.
     let own_trash = sandbox.trash();

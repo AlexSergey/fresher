@@ -4,12 +4,13 @@ use std::time::{Duration, SystemTime};
 
 use fresher_core::{
     Access, BundleId, Capability, CategoryDescriptor, CategoryId, DangerLevel, GuardedFolder, IdError, ModuleId,
-    RunningApp, SettingKey, SkipCode, SystemVersion, TextKey,
+    RunningApp, SettingKey, SkipCode, SystemVersion, TextKey, is_kebab_case,
 };
 use fresher_testing::{AppBundle, TreeDescription, time_at_age};
 use serde::{Deserialize, Serialize};
 
 use crate::CaseError;
+use crate::world::{StatedTool, ToolProblem};
 
 /// The cases of one feature (`fixtures/sandboxes/<feature>.toml`), checked when parsed: names unique, negatives
 /// first, every path plain and inside the sandbox, no path written by two cases, every positive's item its own.
@@ -42,15 +43,19 @@ pub struct Case {
     elsewhere: Vec<(String, BundleId)>,
     /// `spotlight = "off"`: Spotlight cannot be asked in the case's sandbox.
     spotlight_off: bool,
-    /// What the guarded folders allow, in the order of [`GuardedFolder`]; a folder the case does not state is absent.
-    access: Vec<(GuardedFolder, Access)>,
+    /// What the guarded folders and other apps' data allow, in the order of [`Capability`]; one the case does not
+    /// state is absent.
+    access: Vec<(Capability, Access)>,
     /// The macOS version the case states (`macos = "15.4"`).
     macos: Option<SystemVersion>,
     /// The installer receipts of `[[case.receipt]]`: the package's file name and the age it was installed at.
     receipts: Vec<(String, String)>,
+    /// The calls of `[[case.tool]]`: what a program answers in the case's sandbox.
+    tools: Vec<StatedTool>,
     expect: Option<Expectation>,
     map: Option<MapExpectation>,
     left_out: Vec<LeftOutExpectation>,
+    insights: Vec<InsightExpectation>,
 }
 
 /// A negative case is never offered and stays untouched; a positive case is offered and cleaned as it expects.
@@ -77,6 +82,16 @@ pub struct LeftOutExpectation {
     category: CategoryId,
     reason: TextKey,
     items: u32,
+}
+
+/// What a case expects its file's module to describe and never offer: the insight called `identity`, with `figures`
+/// numbers and `parts` parts, `commands` of them carrying a command. The harness fails on an insight no case expects.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InsightExpectation {
+    identity: String,
+    figures: u32,
+    parts: u32,
+    commands: u32,
 }
 
 /// Where the storage map's by-place view must show a case's files: in which part, under which folder.
@@ -117,8 +132,9 @@ struct RawCaseFile {
 }
 
 // Its files are every key but `name`, `kind`, `spotlight`, `access`, `macos`, `expect`, `map`, `left-out`, `running`,
-// `elsewhere` and `receipt` (`[[case.running]]`, `[[case.elsewhere]]` and `[[case.receipt]]`, taken out first), read as
-// a `TreeDescription`, which refuses an unknown one; each `[[case.app]]` loses its `running` first.
+// `elsewhere`, `receipt`, `tool` and `insight` (`[[case.running]]`, `[[case.elsewhere]]`, `[[case.receipt]]`,
+// `[[case.tool]]` and `[[case.insight]]`, taken out first), read as a `TreeDescription`, which refuses an unknown one;
+// each `[[case.app]]` loses its `running` first.
 #[derive(Deserialize)]
 struct RawCase {
     name: String,
@@ -184,6 +200,28 @@ struct RawReceipt {
     installed: String,
 }
 
+/// A `[[case.insight]]`: an insight the module describes; checked once read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawInsight {
+    identity: String,
+    figures: u32,
+    parts: u32,
+    commands: u32,
+}
+
+/// A `[[case.tool]]`: a call of a program and its answer; checked once read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawTool {
+    program: String,
+    args: Vec<String>,
+    #[serde(default)]
+    status: i32,
+    #[serde(default)]
+    stdout: String,
+}
+
 /// `spotlight`: the only value is `off`; Spotlight is on when a case says nothing.
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -221,11 +259,17 @@ impl RawAccess {
     }
 }
 
-/// The guarded folder an `access` key names (its capability's id: `desktop`, `documents`, `downloads`).
-pub(crate) fn guarded_folder(key: &str) -> Option<GuardedFolder> {
-    [GuardedFolder::Desktop, GuardedFolder::Documents, GuardedFolder::Downloads]
-        .into_iter()
-        .find(|&folder| Capability::Folder(folder).id() == key)
+/// The capability an `access` key names (its id: `desktop`, `documents`, `downloads`, `other-apps-data`): a guarded
+/// folder or other apps' data, never every file.
+pub(crate) fn stated_capability(key: &str) -> Option<Capability> {
+    [
+        Capability::Folder(GuardedFolder::Desktop),
+        Capability::Folder(GuardedFolder::Documents),
+        Capability::Folder(GuardedFolder::Downloads),
+        Capability::OtherAppsData,
+    ]
+    .into_iter()
+    .find(|capability| capability.id() == key)
 }
 
 #[derive(Clone, Copy, Deserialize)]
@@ -247,6 +291,7 @@ impl CaseFile {
         let mut names = HashSet::new();
         let mut written: HashMap<PathBuf, String> = HashMap::new();
         let mut seen_positive = false;
+        let mut insights: HashMap<String, String> = HashMap::new();
         let mut cases = Vec::with_capacity(raw.cases.len());
         for raw_case in raw.cases {
             let (case, pending) = Case::from_raw(raw_case)?;
@@ -259,6 +304,12 @@ impl CaseFile {
                     return Err(CaseError::PositiveBeforeNegative { case: case.name });
                 }
                 CaseKind::Negative => {}
+            }
+            for insight in &case.insights {
+                if let Some(other) = insights.insert(insight.identity.clone(), case.name.clone()) {
+                    let identity = insight.identity.clone();
+                    return Err(CaseError::InsightTwice { case: case.name, other, identity });
+                }
             }
             for path in case.tree.paths() {
                 if let Some(other) = written.insert(path.to_path_buf(), case.name.clone()) {
@@ -401,6 +452,8 @@ impl Case {
         let running_elsewhere = take_running_elsewhere(&name, &mut raw.files)?;
         let elsewhere = take_elsewhere(&name, &mut raw.files)?;
         let receipts = take_receipts(&name, &mut raw.files)?;
+        let tools = take_tools(&name, &mut raw.files)?;
+        let insights = take_insights(&name, &mut raw.files)?;
         let tree: TreeDescription = toml::Value::Table(raw.files)
             .try_into()
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
@@ -428,8 +481,8 @@ impl Case {
             .access
             .unwrap_or_default()
             .into_iter()
-            .map(|(key, value)| match guarded_folder(&key) {
-                Some(folder) => Ok((folder, value.access())),
+            .map(|(key, value)| match stated_capability(&key) {
+                Some(capability) => Ok((capability, value.access())),
                 None => Err(CaseError::AccessKey { case: name.clone(), key }),
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -448,9 +501,11 @@ impl Case {
             access,
             macos,
             receipts,
+            tools,
             expect: None,
             map,
             left_out: vec![],
+            insights,
         };
         Ok((case, Pending { expect, left_out }))
     }
@@ -490,8 +545,8 @@ impl Case {
         self.spotlight_off
     }
 
-    /// What the case states the guarded folders allow; empty when it states nothing.
-    pub fn access(&self) -> &[(GuardedFolder, Access)] {
+    /// What the case states the guarded folders and other apps' data allow; empty when it states nothing.
+    pub fn access(&self) -> &[(Capability, Access)] {
         &self.access
     }
 
@@ -503,6 +558,11 @@ impl Case {
     /// The case's `[[case.receipt]]`: each package's file name and the age it was installed at (`"10d"`).
     pub fn receipts(&self) -> &[(String, String)] {
         &self.receipts
+    }
+
+    /// The case's `[[case.tool]]`: the calls it answers, in order.
+    pub(crate) fn tools(&self) -> &[StatedTool] {
+        &self.tools
     }
 
     /// The expectation of a positive case; a negative case has none.
@@ -518,6 +578,33 @@ impl Case {
     /// Where the storage map must show the case's files, when the case says.
     pub const fn map(&self) -> Option<&MapExpectation> {
         self.map.as_ref()
+    }
+
+    /// The insights the case expects its file's module to describe.
+    pub fn insights(&self) -> &[InsightExpectation] {
+        &self.insights
+    }
+}
+
+impl InsightExpectation {
+    /// The insight's identity, unique in its case file.
+    pub fn identity(&self) -> &str {
+        &self.identity
+    }
+
+    /// How many numbers it shows.
+    pub const fn figures(&self) -> u32 {
+        self.figures
+    }
+
+    /// How many parts it lists.
+    pub const fn parts(&self) -> u32 {
+        self.parts
+    }
+
+    /// How many of its parts carry a command.
+    pub const fn commands(&self) -> u32 {
+        self.commands
     }
 }
 
@@ -751,6 +838,48 @@ fn take_receipts(case: &str, files: &mut toml::Table) -> Result<Vec<(String, Str
         .collect()
 }
 
+/// Removes `[[case.tool]]` from the case's files and checks each: a program relative to the sandbox whose every
+/// component is a plain name, arguments without a NUL, an output of at most 64 KiB.
+fn take_tools(case: &str, files: &mut toml::Table) -> Result<Vec<StatedTool>, CaseError> {
+    let Some(entries) = files.remove("tool") else { return Ok(Vec::new()) };
+    let entries: Vec<RawTool> =
+        entries.try_into().map_err(|source| CaseError::Files { case: case.into(), source: Box::new(source) })?;
+    entries
+        .into_iter()
+        .map(|entry| {
+            StatedTool::new(&entry.program, entry.args, entry.status, entry.stdout).map_err(|problem| {
+                let (case, program) = (case.into(), entry.program);
+                match problem {
+                    ToolProblem::Program => CaseError::ToolProgram { case, program },
+                    ToolProblem::Argument => CaseError::ToolArgument { case, program },
+                    ToolProblem::Output => CaseError::ToolOutput { case, program },
+                }
+            })
+        })
+        .collect()
+}
+
+/// Removes `[[case.insight]]` from the case's files and checks each: an identity in kebab case, no more commands than
+/// parts.
+fn take_insights(case: &str, files: &mut toml::Table) -> Result<Vec<InsightExpectation>, CaseError> {
+    let Some(entries) = files.remove("insight") else { return Ok(Vec::new()) };
+    let entries: Vec<RawInsight> =
+        entries.try_into().map_err(|source| CaseError::Files { case: case.into(), source: Box::new(source) })?;
+    entries
+        .into_iter()
+        .map(|entry| {
+            let RawInsight { identity, figures, parts, commands } = entry;
+            if !is_kebab_case(&identity) {
+                return Err(CaseError::InsightIdentity { case: case.into(), identity });
+            }
+            if commands > parts {
+                return Err(CaseError::InsightCommands { case: case.into(), identity, commands, parts });
+            }
+            Ok(InsightExpectation { identity, figures, parts, commands })
+        })
+        .collect()
+}
+
 /// `true` for a name that is one plain file name: not empty, no `/`, not `.` or `..`.
 pub(crate) fn is_bundle_name(name: &str) -> bool {
     is_plain(Path::new(name)) && Path::new(name).components().count() == 1 && !name.contains('/')
@@ -875,12 +1004,29 @@ after-cleanup = "in-trash"
         format!("[[case.left-out]]\ncategory = \"{category}\"\nreason = \"{reason}\"\nitems = {items}\n")
     }
 
+    const DOCKER: &str = "Applications/OrbStack.app/Contents/MacOS/xbin/docker";
+
+    /// A `[[case.tool]]` of `program` with `extra` lines (its `args` included).
+    fn tool(program: &str, extra: &str) -> String {
+        format!("[[case.tool]]\nprogram = \"{program}\"\n{extra}")
+    }
+
+    /// A `[[case.insight]]` of `identity` with its counts.
+    fn insight(identity: &str, figures: u32, parts: u32, commands: u32) -> String {
+        format!(
+            "[[case.insight]]\nidentity = \"{identity}\"\nfigures = {figures}\nparts = {parts}\ncommands = {commands}\n"
+        )
+    }
+
     fn trial_problems() -> Vec<TextKey> {
         vec![TextKey::new("trial.error.failed").unwrap()]
     }
 
     mod negative {
-        use super::{NEGATIVE, cache, file, left_out, positive, trial_categories, trial_problems, with_app};
+        use super::{
+            DOCKER, NEGATIVE, cache, file, insight, left_out, positive, tool, trial_categories, trial_problems,
+            with_app,
+        };
         use crate::{CaseError, CaseFile, MapPartName, merged_settings};
 
         fn refused(text: &str) -> CaseError {
@@ -1238,6 +1384,63 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn a_tool_with_an_absolute_program_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}{}", tool(&format!("/{DOCKER}"), "args = []\n"))]);
+
+            let error = refused(&text);
+
+            assert!(
+                matches!(&error, CaseError::ToolProgram { case, program }
+                    if case.starts_with("a trial folder") && *program == format!("/{DOCKER}")),
+                "{error}"
+            );
+        }
+
+        #[test]
+        fn a_tool_with_a_dotted_program_is_refused() {
+            for program in ["", ".", "..", "a/./docker", "a/../docker", "a//docker", "a/docker/", "./docker"] {
+                let text = file(&[&format!("{NEGATIVE}{}", tool(program, "args = []\n"))]);
+
+                let error = refused(&text);
+
+                assert!(matches!(error, CaseError::ToolProgram { .. }), "{program:?}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_tool_argument_with_a_nul_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}{}", tool(DOCKER, "args = [\"system\", \"d\\u0000f\"]\n"))]);
+
+            let error = refused(&text);
+
+            assert!(matches!(&error, CaseError::ToolArgument { program, .. } if program == DOCKER), "{error}");
+        }
+
+        #[test]
+        fn a_tool_output_over_64_kib_is_refused() {
+            let output = "x".repeat(64 * 1024 + 1);
+            let text = file(&[&format!("{NEGATIVE}{}", tool(DOCKER, &format!("args = []\nstdout = \"{output}\"\n")))]);
+
+            let error = refused(&text);
+
+            assert!(matches!(&error, CaseError::ToolOutput { program, .. } if program == DOCKER), "{error}");
+            let most = "x".repeat(64 * 1024);
+            let text = file(&[&format!("{NEGATIVE}{}", tool(DOCKER, &format!("args = []\nstdout = \"{most}\"\n")))]);
+            assert!(CaseFile::parse(&text).is_ok());
+        }
+
+        #[test]
+        fn a_tool_with_a_missing_unknown_or_mistyped_field_is_refused() {
+            for extra in ["args = []\nstderr = \"no\"\n", "args = []\nstatus = \"0\"\n", "stdout = \"\"\n"] {
+                let text = file(&[&format!("{NEGATIVE}{}", tool(DOCKER, extra))]);
+
+                let error = refused(&text);
+
+                assert!(matches!(error, CaseError::Files { .. }), "{extra}: {error}");
+            }
+        }
+
+        #[test]
         fn a_spotlight_value_other_than_off_is_refused() {
             for value in ["\"on\"", "\"Off\"", "false"] {
                 let text = file(&[&NEGATIVE.replace("kind =", &format!("spotlight = {value}\nkind ="))]);
@@ -1247,8 +1450,8 @@ after-cleanup = "in-trash"
         }
 
         #[test]
-        fn an_access_key_other_than_a_guarded_folder_is_refused() {
-            for key in ["all-files", "other-apps-data", "x"] {
+        fn all_files_stays_refused_in_access() {
+            for key in ["all-files", "removable-volume", "x"] {
                 let text = file(&[&NEGATIVE.replace("kind =", &format!("access = {{ {key} = \"granted\" }}\nkind ="))]);
 
                 let error = refused(&text);
@@ -1258,7 +1461,50 @@ after-cleanup = "in-trash"
                         if case.starts_with("a trial folder") && found == key),
                     "{key}: {error}"
                 );
-                assert!(error.to_string().contains("only the guarded folders desktop, documents and downloads"));
+                assert!(error.to_string().contains("only the guarded folders desktop, documents and downloads, and"));
+            }
+        }
+
+        #[test]
+        fn an_insight_identity_twice_is_refused() {
+            let other = NEGATIVE.replace("bare", "other").replace("a trial folder", "another folder");
+            let first = format!("{NEGATIVE}{}", insight("orbstack", 3, 4, 3));
+            let second = format!("{other}{}", insight("orbstack", 3, 0, 0));
+            let within = format!("{NEGATIVE}{}{}", insight("orbstack", 3, 4, 3), insight("orbstack", 1, 0, 0));
+
+            for text in [file(&[&first, &second]), file(&[&within])] {
+                let error = refused(&text);
+
+                assert!(
+                    matches!(&error, CaseError::InsightTwice { identity, .. } if identity == "orbstack"),
+                    "{error}"
+                );
+            }
+        }
+
+        #[test]
+        fn more_commands_than_parts_is_refused() {
+            let text = file(&[&format!("{NEGATIVE}{}", insight("orbstack", 3, 2, 3))]);
+
+            let error = refused(&text);
+
+            assert!(matches!(error, CaseError::InsightCommands { commands: 3, parts: 2, .. }), "{error}");
+        }
+
+        #[test]
+        fn an_insight_off_the_shape_is_refused() {
+            for identity in ["OrbStack", "docker_desktop", "", "-a"] {
+                let error = refused(&file(&[&format!("{NEGATIVE}{}", insight(identity, 1, 0, 0))]));
+
+                assert!(matches!(error, CaseError::InsightIdentity { .. }), "{identity}: {error}");
+            }
+            for extra in ["colour = 1\n", ""] {
+                let raw = format!("[[case.insight]]\nidentity = \"orbstack\"\nfigures = 1\nparts = 0\n{extra}");
+                let raw = if extra.is_empty() { raw } else { format!("{raw}commands = 0\n") };
+
+                let error = refused(&file(&[&format!("{NEGATIVE}{raw}")]));
+
+                assert!(matches!(error, CaseError::Files { .. }), "{extra}: {error}");
             }
         }
 
@@ -1367,10 +1613,13 @@ after-cleanup = "in-trash"
         use std::path::Path;
         use std::time::{Duration, SystemTime};
 
-        use fresher_core::{Access, DangerLevel, GuardedFolder, ModuleId, SkipCode, SystemVersion};
+        use fresher_core::{Access, Capability, DangerLevel, GuardedFolder, ModuleId, SkipCode, SystemVersion};
         use fresher_testing::FIXTURE_NOW;
 
-        use super::{NEGATIVE, cache, file, left_out, trial_categories, trial_problems, with_app};
+        use super::{
+            DOCKER, NEGATIVE, cache, file, insight, left_out, tool, trial_categories, trial_problems, with_app,
+        };
+        use crate::world::StatedTool;
         use crate::{AfterCleanup, Case, CaseFile, CaseKind, MapPartName, merged_settings};
 
         #[test]
@@ -1502,6 +1751,23 @@ after-cleanup = "in-trash"
             assert_eq!(parsed.cases()[0].expect().unwrap().after(), AfterCleanup::Skipped(SkipCode::InUse));
         }
 
+        #[test]
+        fn a_tool_reads_with_its_defaults() {
+            let text = file(&[&format!("{NEGATIVE}{}", tool(DOCKER, "args = [\"system\", \"df\"]\n"))]);
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            assert_eq!(
+                parsed.cases()[0].tools(),
+                [StatedTool {
+                    program: Path::new(DOCKER).to_path_buf(),
+                    args: vec!["system".into(), "df".into()],
+                    status: 0,
+                    stdout: String::new(),
+                }]
+            );
+        }
+
         // A negative case may hold a link out of the sandbox on purpose: the scan must not follow it.
         #[test]
         fn a_symlink_may_point_out_of_the_sandbox() {
@@ -1577,11 +1843,51 @@ after-cleanup = "in-trash"
             assert_eq!(
                 parsed.cases()[0].access(),
                 [
-                    (GuardedFolder::Desktop, Access::Denied),
-                    (GuardedFolder::Documents, Access::NotAsked),
-                    (GuardedFolder::Downloads, Access::Granted),
+                    (Capability::Folder(GuardedFolder::Desktop), Access::Denied),
+                    (Capability::Folder(GuardedFolder::Documents), Access::NotAsked),
+                    (Capability::Folder(GuardedFolder::Downloads), Access::Granted),
                 ]
             );
+        }
+
+        #[test]
+        fn other_apps_data_is_read_in_access() {
+            for (value, state) in
+                [("granted", Access::Granted), ("denied", Access::Denied), ("not-asked", Access::NotAsked)]
+            {
+                let access = format!("access = {{ other-apps-data = \"{value}\", downloads = \"granted\" }}\n");
+                let text = file(&[&NEGATIVE.replace("kind =", &format!("{access}kind ="))]);
+
+                let parsed = CaseFile::parse(&text).unwrap();
+
+                assert_eq!(
+                    parsed.cases()[0].access(),
+                    [
+                        (Capability::Folder(GuardedFolder::Downloads), Access::Granted),
+                        (Capability::OtherAppsData, state)
+                    ]
+                );
+            }
+        }
+
+        #[test]
+        fn an_insight_expectation_reads() {
+            let other = cache("low");
+            let negative = format!("{NEGATIVE}{}{}", insight("docker-desktop", 3, 0, 0), insight("orbstack", 3, 4, 3));
+            let positive = format!("{other}{}", insight("trial-two", 1, 2, 0));
+
+            let parsed = CaseFile::parse(&file(&[&negative, &positive])).unwrap();
+
+            let read = |case: usize| -> Vec<(&str, u32, u32, u32)> {
+                parsed.cases()[case]
+                    .insights()
+                    .iter()
+                    .map(|insight| (insight.identity(), insight.figures(), insight.parts(), insight.commands()))
+                    .collect()
+            };
+            assert_eq!(read(0), [("docker-desktop", 3, 0, 0), ("orbstack", 3, 4, 3)]);
+            assert_eq!(read(1), [("trial-two", 1, 2, 0)]);
+            assert_eq!(parsed.cases()[0].tree().files().count(), 1, "an insight writes no file");
         }
 
         #[test]

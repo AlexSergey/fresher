@@ -43,20 +43,28 @@ pub(crate) struct Parts {
     pub(crate) avoid: Vec<PathBuf>,
 }
 
-/// What only some flows set besides the parts: the system's interface they read back, Finder's Trash setting, and a
-/// second Trash.
+/// What only some flows set besides the parts: the system's interface they read back, Finder's Trash setting, a
+/// second Trash, and the external commands' answers.
 pub(crate) struct Extras {
     pub(crate) system_ui: Arc<FakeSystemUi>,
     pub(crate) finder: AutoEmpty,
     /// A second Trash outside the sandbox: the fake Trash moves there instead of `home/.Trash`, and the composition
     /// names it among the Trash folders. `None`: the home's Trash only.
     pub(crate) other_trash: Option<PathBuf>,
+    /// The external commands' answers, shared by the modules and the cleaner; a flow keeps its handle to read the
+    /// calls.
+    pub(crate) commands: Arc<FakeCommandRunner>,
 }
 
 impl Default for Extras {
-    /// A fresh system interface, Finder's setting unknown, the home's Trash only.
+    /// A fresh system interface, Finder's setting unknown, the home's Trash only, no command answered.
     fn default() -> Self {
-        Self { system_ui: Arc::new(FakeSystemUi::default()), finder: AutoEmpty::Unknown, other_trash: None }
+        Self {
+            system_ui: Arc::new(FakeSystemUi::default()),
+            finder: AutoEmpty::Unknown,
+            other_trash: None,
+            commands: Arc::new(FakeCommandRunner::default()),
+        }
     }
 }
 
@@ -108,7 +116,7 @@ pub(crate) fn engine_with(
         installs: given.installs,
         files: Arc::new(fresher_testing::DiskFiles),
     };
-    let commands = Arc::new(FakeCommandRunner::default());
+    let commands = extras.commands;
     let ports = Ports {
         walk: Arc::new(scanner),
         settings: Arc::new(FileSettingsStore::new(DataFolder::open(&data).unwrap())),

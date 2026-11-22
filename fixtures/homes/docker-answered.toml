@@ -1,0 +1,11 @@
+# A home with OrbStack's socket (stated: a socket's path is too long to make here) and its disk file, 8 GiB at most and
+# 1 MiB written, in another app's data. Scanned with OrbStack installed and open, whose answers a test plays.
+
+[[file]]
+path = ".orbstack/run/docker.sock"
+kind = "socket"
+
+[[file]]
+path = "Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img"
+size = 8589934592
+written = 1048576

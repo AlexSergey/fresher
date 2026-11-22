@@ -552,8 +552,8 @@ mod tests {
             assert_eq!(get_cleanups(shell.engine(), first_page()).cleanups[0].in_trash, 0);
         }
 
-        /// What the sandbox reach leaves out with no valid marker (`the_sandbox_reach_cleans_nothing_outside_a_sandbox`),
-        /// the dry run admits: it checks the real disk.
+        /// What the sandbox reach leaves out with no valid marker
+        /// (`the_sandbox_reach_cleans_nothing_outside_a_sandbox`), the dry run admits: it checks the real disk.
         #[cfg(debug_assertions)]
         #[test]
         fn a_dry_run_plan_holds_what_the_sandbox_reach_leaves_out() {
@@ -691,6 +691,7 @@ mod tests {
                     "local-ai-models",
                     "unused-toolchains",
                     "xcode",
+                    "docker",
                     "demo",
                     "trial"
                 ]

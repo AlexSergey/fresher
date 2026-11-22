@@ -1,0 +1,27 @@
+# The home of the docker module's core end-to-end flows (crates/e2e/tests/docker.rs), laid out as a sandbox lays out
+# its home (`home/`); the flows add the rest of the sandbox's layout and its marker. OrbStack's socket (stated: a
+# socket's path is too long to make here) and its disk file, 8 GiB at most and 1 MiB written; Docker Desktop's stale
+# socket with no app installed; and npm's cache, `dev-caches`' to offer, so that a cleanup has something to do.
+
+[[file]]
+path = "home/.orbstack/run/docker.sock"
+kind = "socket"
+
+[[file]]
+path = "home/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img"
+size = 8589934592
+written = 1048576
+
+[[file]]
+path = "home/.docker/run/docker.sock"
+kind = "socket"
+
+[[file]]
+path = "home/.npm/_cacache/index-v5/ab/cd/x"
+size = 512
+fill = "data"
+
+[[file]]
+path = "home/.npm/_cacache/content-v2/sha512/ab/x"
+size = 4096
+fill = "data"

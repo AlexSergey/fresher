@@ -57,8 +57,8 @@ Beyond plain caches, the rules recognize leftovers that generic tools miss, for 
 - **Developer caches**: package manager caches (npm, Yarn, pnpm, Cargo, Homebrew, CocoaPods, Gradle, …), Xcode derived
   data, archives and old simulators.
 - **`node_modules` folders** of projects, with the project they belong to and when it was last touched.
-- **Docker**: images, containers, volumes and build cache. This is a dangerous zone: a volume may hold the only copy of
-  a database; each kind gets its own danger level and explanation.
+- **Docker**: described, never cleaned (plan 032): what images, containers, volumes and build cache take, each with
+  its danger level and the command that frees it, for the user to run. A volume may hold the only copy of a database.
 - **App caches and logs** in `~/Library`.
 
 ### 5. Watch mode: who keeps growing

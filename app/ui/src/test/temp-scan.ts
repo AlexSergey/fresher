@@ -105,7 +105,14 @@ export const TEMP_SCAN: readonly Event[] = [
   { modules: ['temp'], scan: 1, type: 'scan-started' },
   { findings: TEMP_FINDINGS.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: TEMP_FINDINGS.slice(3), scan: 1, type: 'findings-added' },
-  { leftOut: [...TEMP_LEFT_OUT], module: 'temp', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+  {
+    insights: [],
+    leftOut: [...TEMP_LEFT_OUT],
+    module: 'temp',
+    outcome: { kind: 'completed' },
+    scan: 1,
+    type: 'module-finished',
+  },
   { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];

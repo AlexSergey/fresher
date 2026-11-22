@@ -2,7 +2,8 @@
 //!
 //! The core does no IO. The ports to the outside world (the clock, the Trash, external commands, open files, folders,
 //! the known folders, the change journal, volumes, the scan cache, the disk state, the access probe, the system's
-//! interface, the cleaner and the cleanup journal) are traits here, so every other crate can be tested with the fakes of `fresher-testing`.
+//! interface, the cleaner and the cleanup journal) are traits here, so every other crate can be tested with the fakes
+//! of `fresher-testing`.
 
 #![forbid(unsafe_code)]
 
@@ -25,6 +26,7 @@ mod group;
 mod hash;
 mod ids;
 mod inside;
+mod insight;
 mod interest;
 mod journal;
 mod known_folder;
@@ -81,8 +83,11 @@ pub use finding::{Finding, NewFinding};
 pub use folder::{EntryAccess, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError};
 pub use group::ModuleGroup;
 pub use hash::stable_hash;
-pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Timestamp, ToolId};
+pub use ids::{CategoryId, FindingId, FindingKey, IdError, ModuleId, ScanId, Timestamp, ToolId, is_kebab_case};
 pub use inside::Inside;
+pub use insight::{
+    Figure, Insight, InsightError, InsightPart, MAX_FIGURES, MAX_INSIGHT_PARTS, MAX_NOTES, ShownCommand,
+};
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
 pub use known_folder::{KnownFolder, KnownFolders, expand_home};

@@ -1,0 +1,248 @@
+{
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "insights": [
+    {
+      "figures": [],
+      "identity": "docker-desktop",
+      "notes": [
+        {
+          "args": {},
+          "key": "docker.runtime.docker-desktop.gives-back"
+        }
+      ],
+      "parts": [],
+      "summary": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "Docker Desktop"
+          }
+        },
+        "key": "docker.summary.no-answer"
+      },
+      "title": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "Docker Desktop"
+          }
+        },
+        "key": "docker.title"
+      }
+    },
+    {
+      "figures": [],
+      "identity": "orbstack",
+      "notes": [
+        {
+          "args": {},
+          "key": "docker.runtime.orbstack.gives-back"
+        }
+      ],
+      "parts": [],
+      "summary": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "OrbStack"
+          }
+        },
+        "key": "docker.summary.unreadable"
+      },
+      "title": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "OrbStack"
+          }
+        },
+        "key": "docker.title"
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67110708,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738195660,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [],
+    "before": []
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 117,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Docker.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Docker.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 360,
+        "path": "Applications/Docker.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Docker.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/OrbStack.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/OrbStack.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 364,
+        "path": "Applications/OrbStack.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/OrbStack.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.docker"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.docker/run"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/.docker/run/docker.sock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.orbstack"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.orbstack/run"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/.orbstack/run/docker.sock"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1003,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 1844
+  }
+}

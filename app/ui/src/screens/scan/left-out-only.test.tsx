@@ -44,6 +44,7 @@ const renderSection = async (
   act(() => {
     store.dispatch(SCAN_STARTED);
     store.dispatch({
+      insights: [],
       leftOut: [...leftOut],
       module: 'demo',
       outcome: { kind: 'completed' },
@@ -95,6 +96,7 @@ describe('LeftOutOnly', () => {
       act(() => {
         store.dispatch({ modules: ['demo'], scan: 2, type: 'scan-started' });
         store.dispatch({
+          insights: [],
           leftOut: [DOWNLOADS_LEFT_OUT],
           module: 'demo',
           outcome: { kind: 'completed' },

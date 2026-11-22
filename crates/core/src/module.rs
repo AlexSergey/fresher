@@ -5,8 +5,8 @@ use std::collections::BTreeSet;
 use crate::ids::is_kebab_case;
 use crate::settings::schema::ENABLED;
 use crate::{
-    CancelToken, Capability, CategoryDescriptor, CategoryId, Clock, CommandRunner, Interest, LeftOutItem, Match,
-    ModuleGroup, ModuleId, ModuleSettings, NewFinding, PlaceSeen, SettingDescriptor, SystemFacts, Text, TextKey,
+    CancelToken, Capability, CategoryDescriptor, CategoryId, Clock, CommandRunner, Insight, Interest, LeftOutItem,
+    Match, ModuleGroup, ModuleId, ModuleSettings, NewFinding, PlaceSeen, SettingDescriptor, SystemFacts, Text, TextKey,
     ToolCommand, ToolId,
 };
 
@@ -284,12 +284,15 @@ pub enum ModuleError {
     Failed { reason: Text },
 }
 
-/// Where a module puts its findings and what it left out.
+/// Where a module puts its findings, what it left out and what it describes.
 pub trait FindingSink {
     fn push(&mut self, finding: NewFinding);
 
     /// An item the module recognized and chose not to offer; never dropped silently by a module.
     fn left_out(&mut self, left_out: LeftOutItem);
+
+    /// Space the module describes and never offers; a sink that keeps findings only drops it.
+    fn describe(&mut self, _insight: Insight) {}
 }
 
 /// For tests that look at findings only: it keeps the findings and drops every left-out.

@@ -41,7 +41,7 @@ export const FrameSidebar = ({ onNavigate, screen }: FrameSidebarProps): JSX.Ele
       <p className={styles.name}>{t('ui.app.title')}</p>
       <NavSection>
         <NavItem
-          active={screen.kind === 'scan' || screen.kind === 'category'}
+          active={screen.kind === 'scan' || screen.kind === 'category' || screen.kind === 'insight'}
           icon={LayoutGrid}
           label={t('ui.screen.frame.nav.scan')}
           onClick={() => {

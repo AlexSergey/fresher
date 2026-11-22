@@ -24,6 +24,15 @@ export const focusCard = (element: HTMLElement | null, category: string): boolea
   return details !== null;
 };
 
+// The same for an insight's card (`module/identity`).
+export const focusInsightCard = (element: HTMLElement | null, insight: string): boolean => {
+  const details = element?.querySelector<HTMLElement>(`[data-insight="${CSS.escape(insight)}"] button`) ?? null;
+
+  details?.focus({ preventScroll: true });
+
+  return details !== null;
+};
+
 const dropped = (): boolean => document.activeElement === null || document.activeElement === document.body;
 
 // While `active`: when the element that had the focus leaves the screen with it (Scan turns into Stop, a scan ends,

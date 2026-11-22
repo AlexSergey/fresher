@@ -151,6 +151,7 @@ export const JETBRAINS_SCAN: readonly Event[] = [
   { findings: JETBRAINS_FINDINGS.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: JETBRAINS_FINDINGS.slice(3), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...JETBRAINS_LEFT_OUT],
     module: 'jetbrains',
     outcome: { kind: 'completed' },

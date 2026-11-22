@@ -21,6 +21,7 @@ import { countsOf, firstWithEntry } from '../settings/ignored-tab';
 import { RescanNotice } from '../settings/rescan-notice';
 import { useModules } from '../use-modules';
 import { useScanActions } from '../use-scan-actions';
+import { DescribedOnly } from './described-only';
 import { LeftOutOnly } from './left-out-only';
 import { moduleProgress } from './module-progress';
 import { phaseOf, scanFailure } from './phase';
@@ -115,6 +116,7 @@ export const ScanScreen = (): JSX.Element => {
           />
         ) : null}
         {views ? <LeftOutOnly cards={[...totals, ...unavailable].map(({ category }) => category)} /> : null}
+        {views ? <DescribedOnly /> : null}
         {ignoredCount > 0 ? (
           <p className={styles.ignored}>
             <span>{t('ui.screen.scan.ignored', { count: { kind: 'count', value: ignoredCount } })}</span>

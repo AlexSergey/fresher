@@ -207,6 +207,15 @@ cleanups of a hundred items through the real journal.
   Medium, Trash and put back byte for byte, `settings.toml` and the pins untouched
   (`fixtures/golden/unused-toolchains-flow.json`), and a restore at launch that reads the pins again (a pin changed
   since moves the offer from one toolchain to another).
+  `tests/docker.rs` runs the `docker` module (plan 032) with `dev-caches` over `fixtures/homes/docker-flow.toml` (an
+  OrbStack socket and disk file, Docker Desktop's stale socket, npm's cache) on the real scanner and cleaner, with a
+  scripted runtime and a recording fake command runner: an open runtime with its socket runs the one read,
+  `<bundle>/<cli> --context <context> system df --format json`, and its insight reaches `ModuleFinished.insights`; a
+  closed runtime, a missing socket, a stale socket of a runtime not installed, a restored scan and a runtime that
+  answers nothing readable run nothing or describe no numbers; no finding, no total and no plan item is Docker's, and a
+  cleanup of every finding leaves the socket and the disk file as they were (kind, length, blocks); every shown command
+  has `--context` and no force. Its home lives in `tests/docker_home/mod.rs`, and `Extras.commands` of
+  `support/home_engine.rs` lets a test read the calls.
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
   pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
   `app_leftovers_home`, `app_caches_home`, `app_caches_browsers_home`, `local_ai_models_home`,
@@ -249,6 +258,12 @@ cleanups of a hundred items through the real journal.
   previews, the simulators' caches and an archive, each for the app Xcode, and one device support folder left out as
   special; texts read from the module's `en.json`); the e2e mock plays it (`SCRIPTS.xcode`) on the cards, the Details
   (visual and axe), the review naming High, a cleanup that empties the caches and moves the archive, and the put back.
+  `src/test/docker-scan.ts` is the scan of the `docker` module in the group Development beside Xcode's findings (an
+  OrbStack insight with its four parts and three commands, and a stopped Docker Desktop with the disk file's figures,
+  texts read from the module's `en.json`); the e2e mock plays it (`SCRIPTS.docker`, `dockerHeld` for a scan held after
+  the module finished, `dockerStopped`) on the section "Described, not cleaned", the insight screen with Copy (the
+  clipboard read only in chromium; both engines check the status line), the visual baselines and axe; Review is
+  unaffected.
 - `src/test/trash-view.ts` holds the samples of the Trash view (a line with a share, a dated one, one not measured, two
   Trashes); the e2e mock plays them (`SCRIPTS.trash`, `trashDated`, `trashCleaning`, `trashNotMeasured`, `trashTwo`,
   `get_trash` and `open_trash`, which refuses an unlisted index) on the scan screen (visual and axe), a cleanup that
@@ -456,7 +471,7 @@ the fake home `home/` with its Trash `home/.Trash/`, `Applications/`, `System/Ap
 `C/`, `0/` and `X/` beside it, and `private/tmp/`), every case's files, `EXPECTED.md`, the checklist of a run by hand
 (one checkbox per case, negatives first), and `world.toml`: `now`, the moment of the generation every age counts back
 from, the apps the cases declare open, what Spotlight answers (`spotlight = "off"`, `[[elsewhere]]`), what the guarded
-folders allow (`[access]`), the macOS version (`macos`) and the installer receipts (`[[receipt]]`), and an `[[entry]]` per path whose files state facts (its path in the sandbox,
+folders allow (`[access]`), the macOS version (`macos`), the installer receipts (`[[receipt]]`), the tools' answers (`[[tool]]`) and an `[[entry]]` per path whose files state facts (its path in the sandbox,
 its times in seconds since the epoch, its owner, flags and kind). The sandbox's known folders `UserTemp` and
 `SharedTemp` are those two places, never the Mac's, and a list of its own protects them as the Mac's list protects
 the real ones (`Sandbox::places_protection`: every user's folders and `private/var/tmp` never, the sandbox's `T` carved
@@ -639,6 +654,19 @@ The case files:
   open Xcode is a `[[case.running]]`, shared by every case of a file, so it has a file of its own. `all` writes every
   path but, with Xcode open in the joined world, `xcode.toml`'s positives are left out as `app-open`: walk `xcode` by
   name.
+- `docker.toml`, `docker-stopped.toml`, `docker-no-answer.toml` and `docker-left-behind.toml`: the `docker` module,
+  described and never cleaned, so every case is a negative (nothing is offered) and each states the insight it
+  expects. In the first, OrbStack is open with its socket and its disk file, and the tool answer (the four lines of
+  `system df --format json`) gives one card of 2 figures, 4 parts and 3 commands (the containers part has nothing
+  unused); beside it, a Docker Desktop that is not installed with a stale socket says nothing, and a disk file at no
+  known place is not Docker's. The second has Docker Desktop installed and closed (its disk file's two figures, no
+  program run) and OrbStack open with its engine stopped (no socket, no numbers). The third has Docker Desktop's
+  read failing (exit status 1, no output) and OrbStack printing what is not the documented shape (a card with no numbers
+  and no command each). The
+  fourth has only a disk file, Docker Desktop removed: its numbers and a "left behind" card, nothing run. The disk
+  files are sparse (64 or 8 GiB) with `written = 4194304`, so what they take on the disk is the same on every Mac. The
+  cases with a disk file use `access = { other-apps-data = "granted" }`, and the runtimes' places are fixed, so
+  `npm run sandbox -- all` leaves three of the four out (they write a path an earlier file wrote); walk them by name.
 
 A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox;
 a file that writes a path an earlier file wrote is left out of `all` whole, named on stderr and in `EXPECTED.md`, and is
@@ -672,7 +700,7 @@ invariants on it. Before the cleanup, no line has a share from cleanups: nothing
 one. After it, the share is exactly the allocated sizes of the cleanup's items found in the Trash, all of it in line
 0 (the sandbox's `home/.Trash`), whose `waiting` is known and not below it; with nothing moved, no line has a share.
 A split of one Trash into two lines (the same folder spelled two ways) fails them, and so does a share counted
-twice. `goneBy` is `null` in every golden, since the autotest's fake command runner answers no `defaults`. A failure
+twice. `goneBy` is `null` in every golden, since the autotest's world answers no `defaults` (in the app's sandbox mode the one read of Finder's Trash setting, exactly `defaults read com.apple.finder FXRemoveOldTrashItems`, runs on the Mac like `open`, so "gone by" shows there; the autotest's unstated-call check exempts that exact read by name, like the trial tool's reads). A failure
 names the case file and both numbers.
 
 A case file checks left-outs exactly: the scan's `ModuleFinished.left_out` of every registered module, summed per
@@ -769,6 +797,24 @@ declares. `EXPECTED.md` in the generated sandbox is the same cases as a checklis
 sentence each (a negative reads "never offered by `<module>`", the module the case file names; only a case file that
 declares no module would read "never offered", and every shipped file declares one, `cleanup-guards` and `storage-map`
 the `trial` module), and one more under a case with a `[case.map]`.
+
+A case may state what an external tool answers (plan 032): `[[case.tool]]` with `program` (a path relative to the
+sandbox, plain components, e.g. `Applications/OrbStack.app/Contents/MacOS/xbin/docker`), `args` (the exact arguments),
+`status` (the exit status, 0 by default) and `stdout` (inline, at most 64 KiB). `world.toml` writes them as `[[tool]]`
+only when stated, and sandbox mode and the autotest answer those calls from it and nothing else: **sandbox mode runs
+no program of the Mac but `/usr/bin/open`**, with or without stated tools, so a call no case states is answered as a tool
+that is not installed and recorded; the banner says tools are simulated when the world states any. The autotest fails a case file on
+any call it does not state, naming it; the only exemption is the trial module's two reads
+(`fresher-trial-tool version` and `list`, a test fixture's tool), never its remove. A tool stated twice with one
+program and arguments is refused. `access = { other-apps-data = "granted" }` states that other apps' data (the Library's
+`Containers` and `Group Containers`) is readable, as the three folders' keys do. `written = <bytes>` on a sparse file
+writes that many bytes at its head and nothing else (not with `text`, `data`, `cachedir-tag` or over the size), so a
+file of 64 GiB takes a known size on the disk; on APFS a head that is a multiple of 1 MiB is exact, and a sparse file
+of 16 MiB or less is allocated whole once written. `[[case.insight]]` (`identity`, kebab-case; `figures`, `parts`,
+`commands`, the counts) states an insight the module describes; the autotest compares the module's insights with the
+file's (a described insight no case expects fails, and so does an expected one that is not described), `EXPECTED.md`
+reads it as a card ("N numbers", "N parts", Copy when there are commands, nothing selectable), and the golden holds an
+`insights` list only when there is one.
 
 `[case.map]` says where the core's by-place view shows the case's files (the UI no longer shows it, plan 027). `at` is
 one of the case's paths or their folders, and is required when the case's first file is at the sandbox's root; the

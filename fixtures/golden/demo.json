@@ -345,6 +345,7 @@
       "type": "findings-added"
     },
     {
+      "insights": [],
       "leftOut": [
         {
           "category": "demo.caches",

@@ -28,7 +28,7 @@ mod system_ui;
 pub use access::MacAccess;
 pub use apps::{AppSearch, DeclaredSearch, MacInstalledApps};
 pub use clock::{StartedClock, SystemClock};
-pub use finder_settings::MacFinderSettings;
+pub use finder_settings::{MacFinderSettings, is_trash_setting_read};
 pub use installs::MacInstallRecords;
 pub use known_folders::MacKnownFolders;
 pub use macos_version::{MacosVersion, macos_version};

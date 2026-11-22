@@ -1,0 +1,38 @@
+/* What the modules described and do not clean: a quiet rule, the heading and its sentence, then one card each. */
+@layer components {
+  .section {
+    display: grid;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-subtle);
+    gap: var(--space-3);
+  }
+
+  .title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .text {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .cards {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    list-style: none;
+  }
+
+  .card {
+    display: grid;
+  }
+}

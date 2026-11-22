@@ -32,6 +32,6 @@ Open questions:
 
 **Built in plan [031](../plans/031-xcode/readme.md)** (2026-11-22): Xcode's device support, previews, simulator caches
 and archives, in the module `xcode`. **Deferred:** the simulator devices and runtimes
-([why](../deferred/xcode-simulator-devices.md)). **Drafted in plan [032](../plans/032-docker/readme.md)**
-(2026-11-22): Docker described part by part with the command that frees each, never cleaned by the app.
+([why](../deferred/xcode-simulator-devices.md)). **Built by plan [032](../plans/032-docker/readme.md)**
+(2026-11-22) as a description: the four parts with their commands and the disk file's figures; the app never cleans Docker.
 **Still an idea:** simulator runtimes, VS Code, pnpm's store, Maven's repository, Cargo's git caches and index, derived data's module cache.

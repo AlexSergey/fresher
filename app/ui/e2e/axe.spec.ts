@@ -266,6 +266,39 @@ test.describe('positive cases', () => {
       });
     }
 
+    test('the Scan screen with the described section', async ({ page }) => {
+      await mockCore(page, SCRIPTS.docker);
+      await page.goto('/');
+      await scanButton(page).click();
+      await scanFinished(page);
+      const section = page.getByRole('region', { name: 'Described, not cleaned' });
+      await expect(section).toContainText('OrbStack');
+      // The totals have arrived: the layout no longer moves.
+      await expect(page.getByText('in 5 items · 4 categories')).toBeVisible();
+      await section.scrollIntoViewIfNeeded();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    for (const [script, title] of [
+      ['docker', 'OrbStack'],
+      ['dockerStopped', 'Docker Desktop'],
+    ] as const) {
+      test(`the insight screen of ${title}`, async ({ page }) => {
+        await mockCore(page, SCRIPTS[script]);
+        await page.goto('/');
+        await scanButton(page).click();
+        await scanFinished(page);
+        await page
+          .getByRole('region', { name: 'Described, not cleaned' })
+          .getByRole('button', { name: 'Details' })
+          .click();
+        await expect(page.getByRole('heading', { level: 1, name: title })).toBeFocused();
+
+        expect(await violations(page)).toStrictEqual([]);
+      });
+    }
+
     test('the Scan screen with a category found but left out', async ({ page }) => {
       await mockCore(page, SCRIPTS.devCachesXcodeOpen);
       await page.goto('/');

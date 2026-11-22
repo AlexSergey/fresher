@@ -180,6 +180,7 @@ export const DOWNLOADS_SCAN: readonly Event[] = [
   { findings: DOWNLOADS_FINDINGS.slice(0, 4), scan: 1, type: 'findings-added' },
   { findings: DOWNLOADS_FINDINGS.slice(4), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...DOWNLOADS_LEFT_OUT],
     module: 'downloads',
     outcome: { kind: 'completed' },
@@ -194,6 +195,7 @@ export const DOWNLOADS_SCAN: readonly Event[] = [
 export const DOWNLOADS_UNAVAILABLE_SCAN: readonly Event[] = [
   { modules: ['downloads'], scan: 1, type: 'scan-started' },
   {
+    insights: [],
     leftOut: [],
     module: 'downloads',
     outcome: { kind: 'unavailable', missing: [DOWNLOADS] },

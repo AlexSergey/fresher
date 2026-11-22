@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryText, DETAIL_ARG, DangerLevel, DescriptorError, Dictionary, DictionaryError, Module,
-    ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text, TextKey,
+    CategoryDescriptor, CategoryText, DETAIL_ARG, DangerLevel, DescriptorError, Dictionary, DictionaryError, Insight,
+    Module, ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text, TextKey,
 };
 
 use crate::ModuleRun;
@@ -50,6 +50,10 @@ pub enum ContractProblem {
     ForeignLeftOutCategory { category: String },
     #[error("the text of `{key}` names `{{detail}}`: a technical detail is shown only on request, never in a sentence")]
     DetailInSentence { key: String },
+    #[error("the insight text `{key}` is not in the module's namespace")]
+    ForeignInsightText { key: String },
+    #[error("two insights of one run share the identity `{identity}`")]
+    DuplicateInsight { identity: String },
 }
 
 /// Every way `module` breaks the module contract: its descriptor validates; every category has its five texts, every
@@ -91,9 +95,11 @@ pub fn assert_module_contract(module: &dyn Module, catalogue: &Catalogue) {
     assert!(problems.is_empty(), "module `{}` breaks its contract:{}", module.descriptor().id(), listed(&problems));
 }
 
-/// Every way the texts of `module` and the findings of `runs` disagree: every key of the dictionary is a descriptor
-/// key (a declared problem included) or appears in a finding (or a failure) of the runs; every key a finding uses has
-/// a text, and the finding gives every placeholder that text names; every failure and left-out reason of the runs is
+/// Every way the texts of `module` and the findings and insights of `runs` disagree: every key of the dictionary is a
+/// descriptor key (a declared problem included) or appears in a finding (or a failure, or any text of an insight: its
+/// title, summary, figure labels, part labels, details and effects, notes) of the runs; every key a finding or an
+/// insight uses has a text, and it gives every placeholder that text names; an insight's key is in the module's
+/// namespace and two insights of one run never share an identity; every failure and left-out reason of the runs is
 /// a declared problem, and every left-out is in one of the module's categories. A plural text (`<key>.one`,
 /// `<key>.other`) stands for `<key>`.
 pub fn check_texts_used(module: &dyn Module, runs: &[ModuleRun]) -> Vec<ContractProblem> {
@@ -104,7 +110,9 @@ pub fn check_texts_used(module: &dyn Module, runs: &[ModuleRun]) -> Vec<Contract
     };
     let left_out_reasons: Vec<Text> =
         runs.iter().flat_map(|run| &run.left_out).map(|item| Text::new(item.reason.clone())).collect();
-    let texts: Vec<&Text> = runs.iter().flat_map(run_texts).chain(&left_out_reasons).collect();
+    let insight_texts: Vec<&Text> = runs.iter().flat_map(|run| &run.insights).flat_map(insight_texts).collect();
+    let texts: Vec<&Text> =
+        runs.iter().flat_map(run_texts).chain(&left_out_reasons).chain(insight_texts.iter().copied()).collect();
     let mut used: BTreeSet<String> = descriptor_keys(descriptor).into_iter().collect();
     used.extend(texts.iter().map(|text| text.key().as_str().to_owned()));
     let mut problems: Vec<ContractProblem> = dictionary
@@ -123,7 +131,21 @@ pub fn check_texts_used(module: &dyn Module, runs: &[ModuleRun]) -> Vec<Contract
         .flat_map(|run| &run.left_out)
         .filter(|item| !descriptor.categories().iter().any(|category| category.id() == item.category))
         .map(|item| ContractProblem::ForeignLeftOutCategory { category: item.category.as_str().into() });
-    let found = texts.into_iter().flat_map(|text| text_problems(&dictionary, text)).chain(undeclared).chain(foreign);
+    let namespace = descriptor.id().as_str();
+    let is_foreign = |text: &Text| text.key().namespace() != namespace;
+    let foreign_texts = insight_texts
+        .iter()
+        .filter(|text| is_foreign(text))
+        .map(|text| ContractProblem::ForeignInsightText { key: text.key().as_str().into() });
+    let duplicates = runs.iter().flat_map(duplicate_insights);
+    let found = texts
+        .into_iter()
+        .filter(|text| !insight_texts.contains(text) || !is_foreign(text))
+        .flat_map(|text| text_problems(&dictionary, text))
+        .chain(undeclared)
+        .chain(foreign)
+        .chain(foreign_texts)
+        .chain(duplicates);
     for problem in found {
         if !problems.contains(&problem) {
             problems.push(problem);
@@ -197,6 +219,24 @@ fn run_texts(run: &ModuleRun) -> impl Iterator<Item = &Text> {
     run.findings.iter().flat_map(|finding| [finding.title(), finding.reason()]).chain(failure(run))
 }
 
+/// Every text an insight shows, in the order the UI shows it.
+fn insight_texts(insight: &Insight) -> Vec<&Text> {
+    let figures = insight.figures().iter().map(|figure| &figure.label);
+    let parts = insight.parts().iter().flat_map(|part| [&part.label, &part.detail, &part.effect]);
+    [insight.title(), insight.summary()].into_iter().chain(figures).chain(parts).chain(insight.notes()).collect()
+}
+
+/// One problem per identity that two insights of `run` share.
+fn duplicate_insights(run: &ModuleRun) -> Vec<ContractProblem> {
+    let mut seen = BTreeSet::new();
+    let mut reported = BTreeSet::new();
+    let repeated = run.insights.iter().map(Insight::identity).filter(|identity| !seen.insert(*identity));
+    repeated
+        .filter(|identity| reported.insert(*identity))
+        .map(|identity| ContractProblem::DuplicateInsight { identity: identity.into() })
+        .collect()
+}
+
 /// The problem keys a run reports: its failure's reason and every left-out's reason.
 fn problem_keys(run: &ModuleRun) -> impl Iterator<Item = &TextKey> {
     failure(run).map(Text::key).into_iter().chain(run.left_out.iter().map(|item| &item.reason))
@@ -268,9 +308,12 @@ fn listed(problems: &[ContractProblem]) -> String {
 mod tests {
     use std::path::PathBuf;
 
-    use fresher_core::{CategoryDescriptor, NewFinding, Parts, Removal, Subject};
+    use fresher_core::{
+        ByteSize, CategoryDescriptor, DangerLevel, Figure, Insight, InsightPart, NewFinding, Parts, Removal, Subject,
+        Text, TextKey,
+    };
 
-    use crate::run_module::sample::{CacheModule, TREE};
+    use crate::run_module::sample::{CacheModule, TREE, en_with};
     use crate::{FixtureTree, ModuleRun, Ports, run_module};
 
     /// The catalogue file of `sample.caches` with `danger` on its danger line.
@@ -309,12 +352,45 @@ mod tests {
         )
     }
 
+    /// An insight called `identity` whose title is `title`; its summary and note are `sample.insight.summary` and
+    /// `sample.insight.note`.
+    fn insight_titled(identity: &str, title: &str) -> Insight {
+        let text = |key: &str| Text::new(TextKey::new(key).unwrap());
+        let (summary, note) = (text("sample.insight.summary"), text("sample.insight.note"));
+        Insight::new(identity, text(title), summary, vec![], vec![], vec![note]).unwrap()
+    }
+
+    /// `en_with` the sample insight's summary, note and title texts, with `summary` as the summary's template.
+    fn en_with_insight(summary: &str) -> &'static str {
+        let en = format!(
+            r#""sample.insight.title": "Title", "sample.insight.summary": "{summary}", "sample.insight.note": "Note""#
+        );
+        en_with(String::leak(en))
+    }
+
+    /// An insight using every kind of text: a title, a summary, a figure, a part and a note.
+    fn full_insight() -> Insight {
+        let text = |key: &str| Text::new(TextKey::new(key).unwrap());
+        let figure = Figure { label: text("sample.insight.figure"), size: ByteSize::new(1) };
+        let part = InsightPart {
+            label: text("sample.insight.part.label"),
+            size: ByteSize::new(1),
+            detail: text("sample.insight.part.detail"),
+            effect: text("sample.insight.part.effect"),
+            danger: DangerLevel::Low,
+            command: None,
+        };
+        let (title, summary, note) =
+            (text("sample.insight.title"), text("sample.insight.summary"), text("sample.insight.note"));
+        Insight::new("full", title, summary, vec![figure], vec![part], vec![note]).unwrap()
+    }
+
     mod negative {
         use fresher_core::{
             DangerLevel, DescriptorError, DictionaryError, SettingDescriptor, SettingKey, SettingKind, SettingValue,
         };
 
-        use super::{catalogue_file, docs, runs, together_with};
+        use super::{catalogue_file, docs, en_with_insight, insight_titled, runs, together_with};
         use crate::run_module::sample::{CacheModule, en_with};
         use crate::{Catalogue, ContractProblem, check_module_contract, check_removals_matched, check_texts_used};
 
@@ -433,6 +509,56 @@ mod tests {
         }
 
         #[test]
+        fn an_insight_text_without_a_dictionary_entry_is_missing() {
+            let module = CacheModule::new().describing(vec![insight_titled("one", "sample.insight.title")]);
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            let missing = |key: &str| ContractProblem::MissingText { key: key.into() };
+            assert_eq!(
+                problems,
+                [missing("sample.insight.title"), missing("sample.insight.summary"), missing("sample.insight.note")]
+            );
+        }
+
+        #[test]
+        fn an_insight_text_of_another_namespace_is_foreign() {
+            let module = CacheModule::with_dictionary(en_with_insight("Summary"))
+                .describing(vec![insight_titled("one", "other.insight.title")]);
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            let unused = ContractProblem::UnusedText { key: "sample.insight.title".into() };
+            let foreign = ContractProblem::ForeignInsightText { key: "other.insight.title".into() };
+            assert_eq!(problems, [unused, foreign]);
+            assert!(problems[1].to_string().contains("not in the module's namespace"), "{}", problems[1]);
+        }
+
+        #[test]
+        fn an_insight_text_missing_a_placeholder_is_reported() {
+            let module = CacheModule::with_dictionary(en_with_insight("{size} described"))
+                .describing(vec![insight_titled("one", "sample.insight.title")]);
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            let arg = ContractProblem::MissingArg { key: "sample.insight.summary".into(), arg: "size".into() };
+            assert_eq!(problems, [arg]);
+        }
+
+        #[test]
+        fn two_insights_with_one_identity_are_a_problem() {
+            let (one, again) =
+                (insight_titled("one", "sample.insight.title"), insight_titled("one", "sample.insight.title"));
+            let module =
+                CacheModule::with_dictionary(en_with_insight("Summary")).describing(vec![one, again.clone(), again]);
+
+            let problems = check_texts_used(&module, &runs(&module));
+
+            assert_eq!(problems, [ContractProblem::DuplicateInsight { identity: "one".into() }]);
+            assert!(problems[0].to_string().contains("share the identity `one`"), "{}", problems[0]);
+        }
+
+        #[test]
         fn an_unused_key_fails() {
             let en = r#"{
                 "sample.caches.name": "Caches", "sample.caches.what": "Files.", "sample.caches.made-by": "Apps.",
@@ -547,7 +673,7 @@ mod tests {
 
     mod positive {
         use super::together_with;
-        use super::{catalogue_file, docs, runs};
+        use super::{catalogue_file, docs, full_insight, runs};
         use crate::run_module::sample::{CacheModule, en_with};
         use crate::{Catalogue, assert_module_contract, assert_texts_used, check_removals_matched, check_texts_used};
 
@@ -567,6 +693,19 @@ mod tests {
             run.findings = vec![together];
 
             assert_eq!(check_removals_matched(&[run]), []);
+        }
+
+        #[test]
+        fn an_insight_s_texts_count_as_used() {
+            let en = en_with(
+                r#""sample.insight.title": "T", "sample.insight.summary": "S", "sample.insight.note": "N",
+                "sample.insight.figure": "F", "sample.insight.part.label": "L",
+                "sample.insight.part.detail": "D", "sample.insight.part.effect.one": "one",
+                "sample.insight.part.effect.other": "many""#,
+            );
+            let module = CacheModule::with_dictionary(en).describing(vec![full_insight()]);
+
+            assert_eq!(check_texts_used(&module, &runs(&module)), []);
         }
 
         #[test]

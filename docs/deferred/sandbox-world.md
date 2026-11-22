@@ -40,6 +40,13 @@ written now); `world.toml` lists `macos` and `[[receipt]]`, sandbox mode and the
 the version from it (`World::install_records`, never the Mac's), and `StatedInstalledApps` puts the stated change on
 the installed app. Open files, tools and the steps between scans stay deferred.
 
+**Partly taken by plan [032](../plans/032-docker/readme.md)** (2026-11-22), the first module that reads an external
+tool's answer: the tools. A case states `[[case.tool]]` (a program relative to the sandbox, exact arguments, status,
+inline output of at most 64 KiB); `world.toml` lists them (`[[tool]]`); the autotest answers those calls from it, fails
+a case file on any call it does not state and records every other call, and **sandbox mode runs no program of the Mac
+but `/usr/bin/open`**. Other apps' data is in the world's access (`access = { other-apps-data = "granted" }`). Open
+files and the steps between scans stay deferred.
+
 ## What is postponed
 
 Plan [007](../plans/007-safe-development/readme.md)'s former plan 06: a case file of `fixtures/sandboxes/` also
@@ -49,7 +56,7 @@ then, sandbox mode keeps volumes, open files, commands and access real and read-
 fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016), the
 stated file facts too (plan 017), Spotlight's answers (plan 019), the access of the guarded folders and the installs (plan 020).
 Plan [031](../plans/031-xcode/readme.md) dropped its tool category (the simulator devices are deferred, see [Xcode's
-simulator devices](./xcode-simulator-devices.md)), so plan 032 is the first module that needs `[[world.tool]]`.
+simulator devices](./xcode-simulator-devices.md)), so plan 032 was the first module that needed tools (taken, above).
 
 ## What doing it needs
 

@@ -370,6 +370,16 @@ A left-out of a category in the scan's ignore list, or of an ignored module or a
 counted, and a category's details drop a left-out-only category once it, its module or its group is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
 UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports none yet.
 
+### Insights
+
+A module may also describe space it does not offer (`out.describe(Insight)`, plan 032: Docker). The engine collects
+them per module and sends them with `ModuleFinished.insights`, whatever the outcome, dropping a repeated identity of one
+module with a warning. An insight is text and numbers: never a finding, never in a total, the storage map, the scan
+cache or the journal, and nothing in it can be selected; the UI keeps the last scan's insights per module from the
+event, and a restore at launch describes again (the module runs over the restored matches), but its events come before
+the UI subscribes, so a UI that connects after a restore shows none until the next scan (known gap). The shown commands
+are text; no code path of the app runs one.
+
 ### A failed start
 
 `app/tauri/src/start_failure.rs`: when setup fails, the app logs the error, destroys the half-started main window (a
@@ -478,6 +488,14 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   Quit (⌘Q, an item of the app's own in `app/tauri/src/shell.rs`) publishes `quit-requested`, and the UI asks; **Stop
   and quit** stops after the item in flight. The Dock's Quit cannot be held
   ([`../known-issues/app-quit-during-cleanup.md`](../known-issues/app-quit-during-cleanup.md)).
+- **Described, not cleaned** (plan 032; `screens/scan/described-only.tsx`, `product/insight-card/`,
+  `screens/insight/`): under the danger zones, a section of one card per insight of the last scan (the core's title,
+  summary and figures; no checkbox, nothing selectable, not counted in the zones, the selection bar or the ring). A
+  card has Details, which opens the insight screen (`Screen.insight`, a module and an identity): the figures, one block
+  per part with its detail, effect, danger level as wording and its command with **Copy** (the web view's clipboard;
+  the text stays selectable as the fallback, and a failed copy says so), and the notes. Every sentence is the core's;
+  the UI owns only the section's heading and sentence, Details, Back, Copy, Copied and Could-not-copy. The screen
+  returns to Scan when the insight is no longer in the last scan.
 - **Modules by group**: Settings lists modules under their group (`product/module-groups.ts`, texts
   `core.group.<group>.name`); the sidebar lists no module. A module is ignored from a card's settings menu and
   restored in Settings → Ignored.
@@ -489,7 +507,7 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   system's `Tabs` (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). Scan's "N ignored"
   link opens the first tab that has an entry (`Screen.settings.tab`).
 - **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`scan`, `category` with its category,
-  `review`, `cleanups`, `cleanup` with its cleanup, `settings` with an optional tab); no router. `screenToShow` returns
+  `review`, `cleanups`, `cleanup` with its cleanup, `insight` with its module and identity, `settings` with an optional tab); no router. `screenToShow` returns
   to Scan when a shown category is no longer among the categories the core lists. The sidebar has Scan, Review,
   Cleanups and Settings and scrolls in a short window. When the focused element leaves the screen, the focus goes to the
   screen's heading (`screens/keep-focus.ts`).

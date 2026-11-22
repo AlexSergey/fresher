@@ -1,6 +1,6 @@
 import { type JSX, type ReactNode, useEffect } from 'react';
 
-import type { ModuleInfo } from '../ipc/bindings.generated';
+import type { Insight, ModuleInfo } from '../ipc/bindings.generated';
 
 import { ErrorState } from '../design/feedback/error-state/error-state';
 import { useToasts } from '../design/feedback/toast/toaster';
@@ -15,6 +15,7 @@ import { CategoryScreen } from './category/category-screen';
 import { CleanupScreen } from './cleanups/cleanup-screen';
 import { CleanupsScreen } from './cleanups/cleanups-screen';
 import { FrameSidebar } from './frame-sidebar';
+import { InsightScreen } from './insight/insight-screen';
 import { QuitQuestion } from './quit-question';
 import { ReviewScreen } from './review/review-screen';
 import { ScanScreen } from './scan/scan-screen';
@@ -28,6 +29,7 @@ import { useMotionSetting } from './use-motion-setting';
 const contentOf = (
   screen: Screen,
   modules: null | readonly ModuleInfo[],
+  insightOf: (screen: Extract<Screen, { kind: 'insight' }>) => Insight | undefined,
 ): null | { readonly content: ReactNode; readonly label: string } => {
   switch (screen.kind) {
     case 'category': {
@@ -46,6 +48,13 @@ const contentOf = (
       return { content: <CleanupScreen cleanup={screen.cleanup} />, label: t('ui.screen.frame.nav.cleanups') };
     case 'cleanups':
       return { content: <CleanupsScreen />, label: t('ui.screen.frame.nav.cleanups') };
+    case 'insight': {
+      const insight = insightOf(screen);
+
+      return insight === undefined
+        ? null
+        : { content: <InsightScreen insight={insight} module={screen.module} />, label: tText(insight.title) };
+    }
     case 'review':
       return { content: <ReviewScreen />, label: t('ui.screen.frame.nav.review') };
     case 'scan':
@@ -74,8 +83,15 @@ export const AppFrame = (): JSX.Element => {
   const navigation = useNavigation();
   const modules = useModules();
   const info = useAppInfo();
+  const described = useCore((state) => state.modules);
+  const refs = described.flatMap(({ insights, module }) => insights.map(({ identity }) => ({ identity, module })));
+  const insightOf = (shown: { readonly identity: string; readonly module: string }): Insight | undefined =>
+    described
+      .find(({ module }) => module === shown.module)
+      ?.insights.find(({ identity }) => identity === shown.identity);
   const screen = useScreen(
     modules?.flatMap((module) => module.categories.map(({ descriptor }) => descriptor.id)) ?? null,
+    refs,
   );
   const loaded = useCore((state) => state.dictionary !== null);
   const unreachable = useCore((state) => state.failure?.kind === 'unreachable');
@@ -83,7 +99,7 @@ export const AppFrame = (): JSX.Element => {
   useRefusalToasts();
 
   const renderScreen = (shown: Screen): ReactNode => {
-    const content = contentOf(shown, modules);
+    const content = contentOf(shown, modules, insightOf);
 
     return content === null ? null : (
       <ScrollArea label={content.label} screenKey={screenKey(shown)}>

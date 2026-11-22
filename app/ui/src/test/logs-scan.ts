@@ -121,7 +121,14 @@ export const LOGS_LEFT_OUT: readonly LeftOutCount[] = [
 export const LOGS_SCAN: readonly Event[] = [
   { modules: ['logs'], scan: 1, type: 'scan-started' },
   { findings: [...LOGS_FINDINGS], scan: 1, type: 'findings-added' },
-  { leftOut: [...LOGS_LEFT_OUT], module: 'logs', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+  {
+    insights: [],
+    leftOut: [...LOGS_LEFT_OUT],
+    module: 'logs',
+    outcome: { kind: 'completed' },
+    scan: 1,
+    type: 'module-finished',
+  },
   { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];

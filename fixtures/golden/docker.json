@@ -1,0 +1,172 @@
+{
+  "findings": [],
+  "insights": [
+    {
+      "figures": [
+        {
+          "label": {
+            "args": {},
+            "key": "docker.figure.on-disk"
+          },
+          "size": 1048576
+        },
+        {
+          "label": {
+            "args": {},
+            "key": "docker.figure.inside"
+          },
+          "size": 3587201090
+        }
+      ],
+      "identity": "orbstack",
+      "notes": [
+        {
+          "args": {},
+          "key": "docker.runtime.orbstack.gives-back"
+        },
+        {
+          "args": {},
+          "key": "docker.note.never-runs"
+        }
+      ],
+      "parts": [
+        {
+          "command": {
+            "args": [
+              "--context",
+              "orbstack",
+              "builder",
+              "prune",
+              "--all"
+            ],
+            "line": "docker --context orbstack builder prune --all",
+            "tool": "docker"
+          },
+          "danger": "safe",
+          "detail": {
+            "args": {},
+            "key": "docker.part.build-cache.detail"
+          },
+          "effect": {
+            "args": {},
+            "key": "docker.part.build-cache.effect"
+          },
+          "label": {
+            "args": {},
+            "key": "docker.part.build-cache.label"
+          },
+          "size": 512000000
+        },
+        {
+          "command": {
+            "args": [
+              "--context",
+              "orbstack",
+              "image",
+              "prune",
+              "--all"
+            ],
+            "line": "docker --context orbstack image prune --all",
+            "tool": "docker"
+          },
+          "danger": "low",
+          "detail": {
+            "args": {
+              "count": {
+                "kind": "count",
+                "value": 5
+              }
+            },
+            "key": "docker.part.images.detail"
+          },
+          "effect": {
+            "args": {},
+            "key": "docker.part.images.effect"
+          },
+          "label": {
+            "args": {},
+            "key": "docker.part.images.label"
+          },
+          "size": 1071000000
+        },
+        {
+          "command": null,
+          "danger": "medium",
+          "detail": {
+            "args": {},
+            "key": "docker.part.containers.none"
+          },
+          "effect": {
+            "args": {},
+            "key": "docker.part.containers.effect"
+          },
+          "label": {
+            "args": {},
+            "key": "docker.part.containers.label"
+          },
+          "size": 0
+        },
+        {
+          "command": {
+            "args": [
+              "--context",
+              "orbstack",
+              "volume",
+              "prune"
+            ],
+            "line": "docker --context orbstack volume prune",
+            "tool": "docker"
+          },
+          "danger": "high",
+          "detail": {
+            "args": {
+              "count": {
+                "kind": "count",
+                "value": 1
+              }
+            },
+            "key": "docker.part.volumes.detail"
+          },
+          "effect": {
+            "args": {},
+            "key": "docker.part.volumes.effect"
+          },
+          "label": {
+            "args": {},
+            "key": "docker.part.volumes.label"
+          },
+          "size": 41200000
+        }
+      ],
+      "summary": {
+        "args": {
+          "inside": {
+            "kind": "size",
+            "value": 3587201090
+          },
+          "runtime": {
+            "kind": "text",
+            "value": "OrbStack"
+          },
+          "unused": {
+            "kind": "size",
+            "value": 1624200000
+          }
+        },
+        "key": "docker.summary.answered"
+      },
+      "title": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "OrbStack"
+          }
+        },
+        "key": "docker.title"
+      }
+    }
+  ],
+  "outcome": {
+    "kind": "completed"
+  }
+}

@@ -1,0 +1,7 @@
+# The same disk file as `docker-stopped.toml` and no socket at all: a runtime whose app is open but whose socket the
+# walk did not see.
+
+[[file]]
+path = "Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+size = 68719476736
+written = 1048576

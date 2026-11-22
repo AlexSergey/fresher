@@ -333,6 +333,29 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
       Put the items back afterwards.
 - [ ] No button anywhere says Empty; the Trash line and the result only invite.
 
+### 1.19 Docker, described ([032/06/01](./plans/032-docker/06-finish/01-docs-and-conclusions.md))
+
+Docker is only described: nothing of it is ever offered, selected or cleaned, and the app never runs a Docker command
+beyond the one read.
+
+- [ ] `rm -rf sandbox/docker && npm run dev:sandbox -- docker`. The banner names "tools" among what is simulated.
+      Scan; walk `EXPECTED.md` line by line: nothing is offered by `docker`; the stale Docker Desktop socket and the
+      disk file at no known place say nothing.
+- [ ] Scan screen: under the danger zones a section "Described, not cleaned" with one OrbStack card (2 numbers, 4 parts,
+      3 commands). No checkbox, nothing selectable, no Select all, and the zones, the ring and the selection bar do not
+      count it. Review is unaffected (nothing of Docker's in it).
+- [ ] Details opens the insight screen: the largest size, what the file takes on the disk, what is used inside; four parts
+      (build cache Safe, images Low, stopped containers Medium, volumes High) each with its size, what running its
+      command costs and its command with `--context orbstack`; no command for the containers part (nothing unused);
+      the notes (how OrbStack gives space back, "Fresher never runs these"). Back returns to Scan.
+- [ ] Copy puts a command on the clipboard and says "Copied."; paste it into a text editor and read the line (no
+      `-f`, no `--force`). Check it in the built app too (`npm run tauri build`), not only the dev web view: the
+      clipboard in the built app is unverified.
+- [ ] `npm run dev:sandbox -- docker-stopped`: Docker Desktop installed and closed shows its disk file's two figures and
+      no part; OrbStack open with its engine stopped shows no numbers. `-- docker-no-answer`: a card with no numbers and
+      no command each. `-- docker-left-behind`: a "left behind" card with the disk file's numbers.
+- [ ] Select everything on Scan and open Review: no Docker line; a cleanup leaves the socket and the disk file alone.
+
 ### 1.14 The scan screen and ignoring one item ([027/04/02](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md), [028/02/02](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md))
 
 - [ ] `rm -rf sandbox/trial && npm run dev:sandbox -- trial` (and `app-leftovers` for the choices). Walk the boxes of 027/04/02 "By the user": the sidebar,
@@ -686,6 +709,28 @@ ls ~/Library/Developer/Xcode/UserData/Previews 2>/dev/null
       that has connected a device; the previews' folder and its `Simulator Devices` sign on a recent Xcode; an
       archive's `Info.plist` and the dated folder's name; whether `CoreSimulator/Caches` holds anything but `dyld`.
 
+### 2.17 Docker, described ([032/06/01](./plans/032-docker/06-finish/01-docs-and-conclusions.md))
+
+`npm run dev`, a scan of `~` on a Mac with Docker Desktop or OrbStack **running** (a development build is a dry run;
+the module asks only a runtime that is open with its socket present). Compare the card with the runtime's own numbers,
+run by you, by hand:
+
+```sh
+docker --context orbstack system df      # or --context desktop-linux
+ls -l ~/Library/"Group Containers"/HUAQ24HBR6.dev.orbstack/data/data.img
+du -sh ~/Library/"Group Containers"/HUAQ24HBR6.dev.orbstack/data/data.img
+```
+
+- [ ] Each part's unused size matches `Reclaimable` of its line (images, containers, volumes, build cache); the disk
+      file's figures match `ls` (its length) and `du` (what it takes).
+- [ ] With the runtime closed: its card shows the disk file's figures only, and no `docker` program was started by the
+      scan (Activity Monitor).
+- [ ] With the runtime open but its engine stopped: no numbers, no error.
+- [ ] A restored scan (quit and start the app): the card shows nothing until a scan (known gap) and no runtime is
+      asked.
+- [ ] The facts to verify, corrected in `runtimes.toml`, the texts and the category docs where they differ: see the
+      plan's list in [`deferred/user-review-2026-11-22.md`](./deferred/user-review-2026-11-22.md), "Plan 032".
+
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 
 Scan time is compared once per module generation, not per plan; do it with the baseline worktrees of section 4.2, since
@@ -974,6 +1019,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [027/04/02 checks and the walk](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md)           | pending                        | 1.14          |
 | [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)            | pending                        | 1.14          |
 | [031/03/02 runs and conclusions](./plans/031-xcode/03-finish/02-run-and-conclusions.md)                    | pending                        | 1.18, 2.16    |
+| [032/06/01 docs and conclusions](./plans/032-docker/06-finish/01-docs-and-conclusions.md)                  | pending                        | 1.19, 2.17    |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

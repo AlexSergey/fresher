@@ -143,6 +143,7 @@ export const scanOf = (
   { findings: findings.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: findings.slice(3), scan: 1, type: 'findings-added' },
   ...modules.map((module): Event => ({
+    insights: [],
     leftOut: module === 'app-leftovers' ? [...APP_LEFTOVERS_LEFT_OUT] : [],
     module,
     outcome: { kind: 'completed' },

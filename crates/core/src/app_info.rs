@@ -60,6 +60,8 @@ pub enum Simulated {
     Access,
     /// The installer receipts and the macOS version.
     Installs,
+    /// The answers of the programs modules run: the case files'.
+    Tools,
 }
 
 #[cfg(test)]

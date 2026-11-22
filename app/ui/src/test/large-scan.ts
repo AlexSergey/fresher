@@ -129,7 +129,7 @@ export const largeScan = ({
     events: [
       { modules: ['demo'], scan: 1, type: 'scan-started' },
       ...batches,
-      { leftOut: [], module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+      { insights: [], leftOut: [], module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
       { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
     ],
     findings,

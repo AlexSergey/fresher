@@ -124,6 +124,7 @@ const scanOf = (findings: readonly Finding[], leftOut: readonly LeftOutCount[]):
   { modules: ['local-ai-models'], scan: 1, type: 'scan-started' },
   ...findingsAdded(findings),
   {
+    insights: [],
     leftOut: [...leftOut],
     module: 'local-ai-models',
     outcome: { kind: 'completed' },

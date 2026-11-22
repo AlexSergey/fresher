@@ -21,6 +21,7 @@
       "type": "scan-progress"
     },
     {
+      "insights": [],
       "leftOut": [
         {
           "category": "demo.caches",
@@ -45,6 +46,7 @@
       "type": "module-finished"
     },
     {
+      "insights": [],
       "leftOut": [],
       "module": "probe",
       "outcome": {

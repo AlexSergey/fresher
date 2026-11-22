@@ -61,8 +61,11 @@ pub enum CaseError {
     /// A `[[case.elsewhere]]` bundle id the app would not read.
     #[error("case \"{case}\": `{id}` of an app Spotlight finds elsewhere is not a bundle id")]
     ElsewhereBundleId { case: String, id: String },
-    /// An `access` key that is no guarded folder.
-    #[error("case \"{case}\": `access` names `{key}`: only the guarded folders desktop, documents and downloads")]
+    /// An `access` key that is no guarded folder and not other apps' data.
+    #[error(
+        "case \"{case}\": `access` names `{key}`: only the guarded folders desktop, documents and downloads, and \
+         other-apps-data"
+    )]
     AccessKey { case: String, key: String },
     /// A `macos` that is no version (`15.4`).
     #[error("case \"{case}\": `macos` is {value:?}, not a macOS version such as \"15.4\"")]
@@ -73,6 +76,26 @@ pub enum CaseError {
     /// A `[[case.receipt]]` whose `installed` is not an age.
     #[error("case \"{case}\": the receipt of {package} has `installed` {installed:?}, which is not an age")]
     ReceiptInstalled { case: String, package: String, installed: String },
+    /// A `[[case.tool]]` program that is absolute or has a component that is not a plain name.
+    #[error(
+        "case \"{case}\": the tool's program {program:?} must be relative to the sandbox, every component a plain name"
+    )]
+    ToolProgram { case: String, program: String },
+    /// A `[[case.tool]]` argument with a NUL.
+    #[error("case \"{case}\": an argument of the tool {program} holds a NUL")]
+    ToolArgument { case: String, program: String },
+    /// A `[[case.tool]]` output over 64 KiB.
+    #[error("case \"{case}\": the output of the tool {program} is over 64 KiB")]
+    ToolOutput { case: String, program: String },
+    /// A `[[case.insight]]` identity that is not a kebab-case name.
+    #[error("case \"{case}\": the insight `{identity}` is not named in kebab case")]
+    InsightIdentity { case: String, identity: String },
+    /// A `[[case.insight]]` with more parts carrying a command than parts.
+    #[error("case \"{case}\": the insight `{identity}` has {commands} commands for {parts} parts")]
+    InsightCommands { case: String, identity: String, commands: u32, parts: u32 },
+    /// Two `[[case.insight]]` of one file expect one identity.
+    #[error("case \"{case}\": the insight `{identity}` is also expected by case \"{other}\"")]
+    InsightTwice { case: String, other: String, identity: String },
     /// Two cases write one path.
     #[error("case \"{case}\": the path {path} is also written by case \"{other}\"")]
     PathWrittenTwice { case: String, other: String, path: PathBuf },
@@ -157,6 +180,9 @@ pub enum SandboxError {
     /// Two cases state different macOS versions: one sandbox has one.
     #[error("the cases state two macOS versions, {first} and {second}; a sandbox has one")]
     MacosVersions { first: String, second: String },
+    /// Two cases state one call of a program (the same program and arguments) with different answers.
+    #[error("the tool {program} is stated twice with the same arguments and different answers")]
+    ToolTwice { program: PathBuf },
     /// A case file does not make one tree.
     #[error("{source}")]
     Case { source: CaseError },

@@ -19,13 +19,12 @@ use fresher_core::{
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_macos::{current_user, protection, user_temp_dir};
-use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, Sandbox, generate};
-use fresher_testing::{
-    FIXTURE_NOW, FakeAccess, FakeClock, FakeCommandRunner, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport,
-};
+use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, Sandbox, WorldCommands, generate};
+use fresher_testing::{FIXTURE_NOW, FakeAccess, FakeClock, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
+use crate::insight::{Described, check_insights};
 use crate::left_out::{check_left_outs, sorted};
 use crate::map::{check_map, sandbox_disk};
 
@@ -112,16 +111,19 @@ fn assert_golden_volume() {
 /// The ids of the modules the app registers, in its order.
 pub(crate) fn registered_modules() -> Vec<String> {
     let world = World::new("registry").unwrap();
-    let engine = world.engine(&[], None).unwrap();
+    let (engine, _) = world.engine(&[], None).unwrap();
     engine.modules().iter().map(|module| module.id.as_str().to_owned()).collect()
 }
 
 /// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation. The storage map
-/// is checked after the scan and before the cleanup, the Trash view both before and after it.
+/// is checked after the scan and before the cleanup, the Trash view both before and after it; a program the case file
+/// does not state fails the run after the scan and after the cleanup; the insights its module described must be the
+/// ones its cases expect.
 pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let file = CaseFile::parse(text).map_err(|error| failure(name, format!("the case file is refused: {error}")))?;
     let world = World::new(name)?;
-    let engine = world.engine(std::slice::from_ref(&file), file.module().map(fresher_core::ModuleId::as_str))?;
+    let (engine, commands) =
+        world.engine(std::slice::from_ref(&file), file.module().map(fresher_core::ModuleId::as_str))?;
     let categories: Vec<_> =
         engine.modules().into_iter().flat_map(|module| module.categories).map(|info| info.descriptor).collect();
     file.check(&categories, &engine.problems())
@@ -130,8 +132,11 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let around = world.around(name)?;
     let before = report_of(name, &sandbox)?;
 
-    let left_out = sorted(&scan(name, &engine)?);
+    let (left_out, insights) = scan(name, &engine)?;
+    let left_out = sorted(&left_out);
+    check_no_unstated_calls(name, &commands)?;
     check_left_outs(name, &file, &left_out)?;
+    check_insights(name, &file, &insights)?;
     let findings = findings(name, &engine)?;
     let mut positives = Vec::new();
     for case in file.cases() {
@@ -144,6 +149,7 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let trash_before = engine.trash();
     crate::trash::check_before(name, &trash_before)?;
     let (view, detail) = clean(name, &engine, &positives)?;
+    check_no_unstated_calls(name, &commands)?;
     let (view, detail) = (view.as_ref(), detail.as_ref());
     let trash_after = engine.trash();
     crate::trash::check_after(name, &trash_after, detail)?;
@@ -167,6 +173,9 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     });
     if let Some(left_out) = crate::left_out::report(&left_out) {
         report["leftOut"] = left_out;
+    }
+    if let Some(insights) = crate::insight::report(&file, &insights, &sandbox) {
+        report["insights"] = insights;
     }
     Ok(report)
 }
@@ -200,8 +209,9 @@ impl World {
     }
 
     /// `files` generated into the sandbox, and the sandbox mode's engine on it with fakes for every port it keeps
-    /// real, the sandbox on a fake volume sized by its files; only `module` registered when one is named.
-    fn engine(&self, files: &[CaseFile], module: Option<&str>) -> Result<Engine, Failure> {
+    /// real, the sandbox on a fake volume sized by its files, and the world's commands it runs; only `module`
+    /// registered when one is named.
+    fn engine(&self, files: &[CaseFile], module: Option<&str>) -> Result<(Engine, Arc<WorldCommands>), Failure> {
         let name = &self.name;
         let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
         let user_temp = user_temp_dir().ok();
@@ -217,7 +227,8 @@ impl World {
         let tree = TreeReport::of(generated.sandbox.path()).map_err(|error| failure(name, error))?;
         let tree_size = sandbox_entries(&tree).iter().map(|entry| entry.logical_size).sum();
         let world = fresher_sandbox::World::read(&generated.sandbox).map_err(|error| failure(name, error))?;
-        let ports = fakes(tree_size, &world, &generated.sandbox)
+        let commands = Arc::new(world.commands(generated.sandbox.path()));
+        let ports = fakes(tree_size, &world, &generated.sandbox, Arc::clone(&commands))
             .ok_or_else(|| failure(name, "the sandbox's world.toml holds no `now`"))?;
         let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), ports)
             .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
@@ -234,15 +245,15 @@ impl World {
             let (key, problem) = (problem.key(), format!("{problem:?}"));
             return Err(failure(name, format!("the setting `{key}` of the case file is refused: {problem}")));
         }
-        // The switch decides whether a guarded folder is read: the run turns on the switch of every stated folder,
-        // as the user would before scanning it.
-        for folder in world.stated_folders() {
-            let key = format!("core.access.{}", Capability::Folder(folder).id());
+        // The switch decides whether a guarded folder or other apps' data is read: the run turns on the switch of
+        // every stated one, as the user would before scanning it.
+        for capability in world.stated_capabilities() {
+            let key = format!("core.access.{}", capability.id());
             let update = json!({ "key": key, "value": { "kind": "switch", "value": true } });
             let update = serde_json::from_value(update).map_err(|error| failure(name, error))?;
             engine.update_setting(update).map_err(|error| failure(name, format!("{key}: {error:?}")))?;
         }
-        Ok(engine)
+        Ok((engine, commands))
     }
 
     /// Everything in the temporary folder but the sandbox.
@@ -260,8 +271,13 @@ fn leak(id: &str) -> &'static str {
 /// Fakes for every port sandbox mode keeps real: no clock, volume, open file, tool or permission of the machine, and
 /// the running apps, the moment, the access, the installs and the stated facts of the sandbox's `world` (at `sandbox`),
 /// as sandbox mode takes them: the clock stands at the moment the sandbox was generated. The volume holds `tree_size`
-/// bytes of the sandbox's files. `None` when the world holds no moment.
-fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Sandbox) -> Option<SandboxPorts> {
+/// bytes of the sandbox's files; the programs are the world's `commands`. `None` when the world holds no moment.
+fn fakes(
+    tree_size: u64,
+    world: &fresher_sandbox::World,
+    sandbox: &Sandbox,
+    commands: Arc<WorldCommands>,
+) -> Option<SandboxPorts> {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
     let now = world.now()?.duration_since(SystemTime::UNIX_EPOCH).ok()?;
     Some(SandboxPorts {
@@ -269,7 +285,7 @@ fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Sandbox) -> O
         volumes: Arc::new(FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size))),
         open_files: Arc::new(FakeOpenFiles::default()),
         running: Arc::new(world.running_apps()),
-        commands: Arc::new(FakeCommandRunner::default()),
+        commands,
         access: access_of(
             world,
             &sandbox.home(),
@@ -280,22 +296,42 @@ fn fakes(tree_size: u64, world: &fresher_sandbox::World, sandbox: &Sandbox) -> O
     })
 }
 
+/// The reads of the trial module's made-up tool (`<tool> version`, `<tool> list`), a bare name that exists on no Mac:
+/// sandbox mode answers them not installed, as the trial's case files expect, so they are the one unstated call a
+/// case file may make. Its removal is never among them.
+const TRIAL_TOOL_READS: [&str; 2] = ["version", "list"];
+
+/// Fails the case file `file` when a program it does not state was run: every call `commands` could not answer, but
+/// the trial tool's reads and the read of Finder's Trash setting (sandbox mode lets that one through to the Mac).
+pub(crate) fn check_no_unstated_calls(file: &str, commands: &WorldCommands) -> Result<(), Failure> {
+    let trial_read =
+        |call: &str| TRIAL_TOOL_READS.iter().any(|read| call == format!("{} {read}", fresher_module_trial::TRIAL_TOOL));
+    let finder_read = |call: &str| call == "/usr/bin/defaults read com.apple.finder FXRemoveOldTrashItems";
+    let unanswered: Vec<String> =
+        commands.unanswered().into_iter().filter(|call| !trial_read(call) && !finder_read(call)).collect();
+    if unanswered.is_empty() {
+        return Ok(());
+    }
+    Err(failure(file, format!("a program the case file does not state was run: {}", unanswered.join("; "))))
+}
+
 fn report_of(name: &str, sandbox: &Path) -> Result<TreeReport, Failure> {
     TreeReport::of(sandbox).map_err(|error| failure(name, error))
 }
 
-/// A full scan, waited for: what its modules left out, as each reported it.
-fn scan(name: &str, engine: &Engine) -> Result<Vec<LeftOutCount>, Failure> {
+/// A full scan, waited for: what its modules left out and what they described, as each reported it.
+fn scan(name: &str, engine: &Engine) -> Result<(Vec<LeftOutCount>, Described), Failure> {
     let events = engine.subscribe();
     engine.start_scan(ScanMode::Full).map_err(|error| failure(name, format!("the scan does not start: {error:?}")))?;
-    let mut left_out = Vec::new();
+    let (mut left_out, mut described) = (Vec::new(), Vec::new());
     until(name, &events, |event| {
-        if let Event::ModuleFinished { left_out: counts, .. } = event {
+        if let Event::ModuleFinished { module, left_out: counts, insights, .. } = event {
             left_out.extend(counts.iter().cloned());
+            described.extend(insights.iter().map(|insight| (*module, insight.clone())));
         }
         matches!(event, Event::ScanFinished { .. })
     })?;
-    Ok(left_out)
+    Ok((left_out, described))
 }
 
 /// Waits for the first event that `is_last`; on a timeout, the failure names the last event seen.
@@ -601,4 +637,88 @@ fn sandbox_entries(report: &TreeReport) -> Vec<TreeEntry> {
             TreeEntry { logical_size: if sized { entry.logical_size } else { 0 }, ..entry.clone() }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use fresher_sandbox::{World, WorldCommands};
+
+    /// The commands of a world stating nothing, at `/box`.
+    fn commands() -> WorldCommands {
+        World::default().commands(Path::new("/box"))
+    }
+
+    mod negative {
+        use fresher_core::{CancelToken, CommandRunner as _};
+
+        use super::commands;
+        use crate::harness::check_no_unstated_calls;
+
+        #[test]
+        fn the_trial_tools_removal_is_no_read() {
+            let commands = commands();
+            let _ = commands.run("fresher-trial-tool", &["list"], &CancelToken::new());
+            let _ = commands.run("fresher-trial-tool", &["remove", "trial-object"], &CancelToken::new());
+
+            let failure = check_no_unstated_calls("trial", &commands).unwrap_err();
+
+            assert!(failure.problem.ends_with("was run: fresher-trial-tool remove trial-object"), "{failure}");
+        }
+
+        #[test]
+        fn a_defaults_write_is_no_read() {
+            let commands = commands();
+            let args = ["write", "com.apple.finder", "FXRemoveOldTrashItems", "1"];
+            let _ = commands.run("/usr/bin/defaults", &args, &CancelToken::new());
+
+            assert!(check_no_unstated_calls("docker", &commands).is_err());
+        }
+
+        #[test]
+        fn an_unstated_call_fails_the_file_naming_it() {
+            let commands = commands();
+            let _ = commands.run("/bin/rm", &["-rf", "/box/home"], &CancelToken::new());
+            let _ = commands.run("/bin/echo", &[], &CancelToken::new());
+
+            let failure = check_no_unstated_calls("docker", &commands).unwrap_err();
+
+            assert_eq!(failure.case, "docker");
+            assert_eq!(
+                failure.problem,
+                "a program the case file does not state was run: /bin/rm -rf /box/home; /bin/echo"
+            );
+        }
+    }
+
+    mod positive {
+        use fresher_core::{CancelToken, CommandRunner as _};
+
+        use super::commands;
+        use crate::harness::check_no_unstated_calls;
+
+        #[test]
+        fn no_call_passes() {
+            assert!(check_no_unstated_calls("docker", &commands()).is_ok());
+        }
+
+        #[test]
+        fn the_trial_tools_reads_pass() {
+            let commands = commands();
+            let _ = commands.run("fresher-trial-tool", &["version"], &CancelToken::new());
+            let _ = commands.run("fresher-trial-tool", &["list"], &CancelToken::new());
+
+            assert!(check_no_unstated_calls("trial", &commands).is_ok());
+        }
+
+        #[test]
+        fn the_read_of_finders_trash_setting_passes() {
+            let commands = commands();
+            let args = ["read", "com.apple.finder", "FXRemoveOldTrashItems"];
+            let _ = commands.run("/usr/bin/defaults", &args, &CancelToken::new());
+
+            assert!(check_no_unstated_calls("docker", &commands).is_ok());
+        }
+    }
 }

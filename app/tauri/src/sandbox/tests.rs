@@ -522,6 +522,17 @@ mod negative {
         assert_eq!(ports.running.list(), Ok(Vec::new()));
     }
 
+    /// A program the world does not state is never run, even one that would harm nothing: it answers not installed.
+    #[test]
+    fn the_real_ports_run_no_program_of_the_mac_but_open() {
+        let world = World::new();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        let answer = ports.commands.run("/bin/echo", &["hi"], &fresher_core::CancelToken::new());
+        assert_eq!(answer, Err(fresher_core::CommandRunError::NotInstalled { program: "/bin/echo".into() }));
+    }
+
     /// A sandbox with no generation moment (no `world.toml`, or one written before it held one) runs on the system's
     /// clock.
     #[test]
@@ -657,6 +668,19 @@ mod positive {
         assert!(matches!(
             crate::sandbox::build(&sandbox, SandboxTrash::Sandbox).unwrap(),
             fresher_core::Build::Sandbox { simulated, .. } if simulated == [Simulated::Running, Simulated::Spotlight]
+        ));
+    }
+
+    #[test]
+    fn the_banner_names_tools_when_the_world_states_them() {
+        let world = World::new();
+        let sandbox = world.sandbox();
+        let tool = "[[tool]]\nprogram = \"Applications/OrbStack.app/Contents/MacOS/xbin/docker\"\nargs = [\"info\"]\n";
+        fs::write(sandbox.world(), tool).unwrap();
+
+        assert!(matches!(
+            crate::sandbox::build(&sandbox, SandboxTrash::Sandbox).unwrap(),
+            fresher_core::Build::Sandbox { simulated, .. } if simulated == [Simulated::Running, Simulated::Tools]
         ));
     }
 

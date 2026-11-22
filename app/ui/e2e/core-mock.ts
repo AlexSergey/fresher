@@ -89,6 +89,14 @@ import {
   DEV_CACHES_XCODE_OPEN_SCAN,
 } from '../src/test/dev-caches-scan';
 import {
+  DOCKER_DICTIONARY,
+  DOCKER_MODULES,
+  DOCKER_OVERVIEW,
+  DOCKER_SCAN,
+  DOCKER_SETTINGS,
+  DOCKER_STOPPED_SCAN,
+} from '../src/test/docker-scan';
+import {
   DOWNLOADS_DICTIONARY,
   DOWNLOADS_FINDINGS,
   DOWNLOADS_GRANTED,
@@ -907,6 +915,15 @@ const XCODE_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// What the docker scripts answer before a scan: Xcode's module, the docker module and their texts and settings.
+const DOCKER_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...DOCKER_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: DOCKER_MODULES,
+  getSettings: DOCKER_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // What the app caches script answers before a scan: the module, its texts and settings.
 const APP_CACHES_ANSWERS = {
   ...ANSWERS,
@@ -1129,6 +1146,29 @@ export const SCRIPTS = {
   },
   // A development build on the real home folder: the banner says nothing can be removed outside a sandbox.
   development: { answers: { ...ANSWERS, appInfo: { build: { kind: 'development' }, version: '0.1.0' } } },
+  // Xcode's scan with the docker module describing OrbStack (answered, four parts, three commands) and offering nothing.
+  docker: {
+    answers: DOCKER_ANSWERS,
+    cleanup: xcodeCleanup(),
+    ignoring: true,
+    scan: DOCKER_SCAN,
+    scanned: DOCKER_OVERVIEW,
+  },
+  // The same held after the docker module finished: the scan still runs, so the section is not shown yet.
+  dockerHeld: {
+    answers: DOCKER_ANSWERS,
+    hold: 5,
+    scan: DOCKER_SCAN,
+    scanned: DOCKER_OVERVIEW,
+    scanning: { ...DOCKER_OVERVIEW, lastScan: null, status: { scan: 1, state: 'scanning' } },
+  },
+  // The same with Docker Desktop not running: its card says to start it, its screen lists no part.
+  dockerStopped: {
+    answers: DOCKER_ANSWERS,
+    ignoring: true,
+    scan: DOCKER_STOPPED_SCAN,
+    scanned: DOCKER_OVERVIEW,
+  },
   // The downloads and installers scan, streamed at once; the cleanup moves the installers and the big file.
   downloads: {
     answers: DOWNLOADS_ANSWERS,

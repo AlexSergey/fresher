@@ -1,0 +1,39 @@
+# The docker module with a runtime that is closed or whose engine is stopped: the disk file's numbers when there is one,
+# nothing asked, no program run. The cases share one world.
+feature = "docker-stopped"
+module = "docker"
+
+[[case]]
+name = "Docker Desktop closed: its disk file's numbers, never asked"
+kind = "negative"
+access = { other-apps-data = "granted" }
+[[case.app]]
+path = "Applications/Docker.app"
+bundle-id = "com.docker.docker"
+name = "Docker"
+[[case.file]]
+path = "home/.docker/run/docker.sock"
+kind = "socket"
+[[case.file]]
+path = "home/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+size = 68719476736
+written = 4194304
+[[case.insight]]
+identity = "docker-desktop"
+figures = 2
+parts = 0
+commands = 0
+
+[[case]]
+name = "OrbStack open with its engine stopped: never asked"
+kind = "negative"
+[[case.app]]
+path = "Applications/OrbStack.app"
+bundle-id = "dev.kdrag0n.MacVirt"
+name = "OrbStack"
+running = true
+[[case.insight]]
+identity = "orbstack"
+figures = 0
+parts = 0
+commands = 0

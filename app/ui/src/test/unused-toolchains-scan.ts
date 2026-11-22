@@ -150,6 +150,7 @@ export const UNUSED_TOOLCHAINS_SCAN: readonly Event[] = [
   { findings: UNUSED_TOOLCHAINS_FINDINGS.slice(0, 2), scan: 1, type: 'findings-added' },
   { findings: UNUSED_TOOLCHAINS_FINDINGS.slice(2), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...UNUSED_TOOLCHAINS_LEFT_OUT],
     module: 'unused-toolchains',
     outcome: { kind: 'completed' },
@@ -164,6 +165,7 @@ export const UNUSED_TOOLCHAINS_SCAN: readonly Event[] = [
 export const UNUSED_TOOLCHAINS_NO_DOCUMENTS_SCAN: readonly Event[] = [
   { modules: ['unused-toolchains'], scan: 1, type: 'scan-started' },
   {
+    insights: [],
     leftOut: [],
     module: 'unused-toolchains',
     outcome: { kind: 'unavailable', missing: [DOCUMENTS] },

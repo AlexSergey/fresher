@@ -1,0 +1,199 @@
+{
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "insights": [
+    {
+      "figures": [
+        {
+          "label": {
+            "args": {},
+            "key": "docker.figure.maximum"
+          },
+          "size": 68719476736
+        },
+        {
+          "label": {
+            "args": {},
+            "key": "docker.figure.on-disk"
+          },
+          "size": 4194304
+        }
+      ],
+      "identity": "docker-desktop",
+      "notes": [],
+      "parts": [],
+      "summary": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "Docker Desktop"
+          }
+        },
+        "key": "docker.summary.left"
+      },
+      "title": {
+        "args": {
+          "runtime": {
+            "kind": "text",
+            "value": "Docker Desktop"
+          }
+        },
+        "key": "docker.title"
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 4194304,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 801112064,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [],
+    "before": []
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 119,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.docker.docker"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.docker.docker/Data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.docker.docker/Data/vms"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.docker.docker/Data/vms/0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Containers/com.docker.docker/Data/vms/0/data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 68719476736,
+        "path": "home/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+      },
+      {
+        "kind": "file",
+        "logical_size": 454,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 68719477309
+  }
+}

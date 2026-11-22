@@ -137,6 +137,7 @@ export const APP_CACHES_SCAN: readonly Event[] = [
   { findings: APP_CACHES_FINDINGS.slice(0, 2), scan: 1, type: 'findings-added' },
   { findings: APP_CACHES_FINDINGS.slice(2), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...APP_CACHES_LEFT_OUT],
     module: 'app-caches',
     outcome: { kind: 'completed' },

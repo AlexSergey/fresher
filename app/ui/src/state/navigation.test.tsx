@@ -58,6 +58,14 @@ describe('navigation', () => {
       expect(screen.getByText('scan')).toBeInTheDocument();
     });
 
+    it('an insight screen whose insight is gone falls back to the start', () => {
+      const shown = screenToShow({ identity: 'gone', kind: 'insight', module: 'demo' }, null, [
+        { identity: 'other', module: 'demo' },
+      ]);
+
+      expect(shown).toStrictEqual({ kind: 'scan' });
+    });
+
     it('keeps a category screen while the modules are not known yet', () => {
       expect(screenToShow({ category: 'demo.caches', kind: 'category' }, null)).toEqual({
         category: 'demo.caches',
@@ -80,6 +88,12 @@ describe('navigation', () => {
   describe('positive cases', () => {
     it('starts on the scan screen', () => {
       expect(createNavigation().getScreen()).toEqual({ kind: 'scan' });
+    });
+
+    it('navigates to an insight screen', () => {
+      const insight = { identity: 'demo-tool', kind: 'insight', module: 'demo' } as const;
+
+      expect(screenToShow(insight, null, [{ identity: 'demo-tool', module: 'demo' }])).toStrictEqual(insight);
     });
 
     it('keeps a category screen of a category a listed module has', () => {

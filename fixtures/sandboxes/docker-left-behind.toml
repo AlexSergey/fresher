@@ -1,0 +1,17 @@
+# The docker module with Docker Desktop removed and its disk file left behind: the file's numbers, nothing run.
+feature = "docker-left-behind"
+module = "docker"
+
+[[case]]
+name = "Docker Desktop removed, its disk file left: its numbers, nothing run"
+kind = "negative"
+access = { other-apps-data = "granted" }
+[[case.file]]
+path = "home/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+size = 68719476736
+written = 4194304
+[[case.insight]]
+identity = "docker-desktop"
+figures = 2
+parts = 0
+commands = 0

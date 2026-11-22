@@ -4,7 +4,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::{
-    AccessStatus, ByteSize, Capability, CleanupId, CleanupReport, Coverage, Finding, FindingId, ItemReport,
+    AccessStatus, ByteSize, Capability, CleanupId, CleanupReport, Coverage, Finding, FindingId, Insight, ItemReport,
     LeftOutCount, Method, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp,
 };
 
@@ -34,6 +34,8 @@ pub enum Event {
         /// reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
         #[serde(rename = "leftOut")]
         left_out: Vec<LeftOutCount>,
+        /// What the module described and does not offer, in the order it gave it.
+        insights: Vec<Insight>,
     },
     /// What the scan saw and what it did not; sent right before `ScanFinished`.
     ScanCoverage {
@@ -152,6 +154,7 @@ mod tests {
                 module: ModuleId::new("demo").unwrap(),
                 outcome: ModuleOutcome::Failed { reason: Text::new(TextKey::new("demo.error.broken").unwrap()) },
                 left_out: vec![],
+                insights: vec![],
             };
 
             assert_eq!(
@@ -166,6 +169,7 @@ mod tests {
                     "module": "demo",
                     "outcome": { "kind": "failed", "reason": { "key": "demo.error.broken", "args": {} } },
                     "leftOut": [],
+                    "insights": [],
                 })
             );
             assert_eq!(
@@ -189,6 +193,7 @@ mod tests {
                 module: ModuleId::new("demo").unwrap(),
                 outcome: ModuleOutcome::Completed,
                 left_out: vec![count],
+                insights: vec![],
             };
 
             assert_eq!(
@@ -204,9 +209,11 @@ mod tests {
                         "items": 1,
                         "sizes": { "logical": 1, "allocated": 4096, "reclaimable": 4096, "completeness": "complete" },
                     }],
+                    "insights": [],
                 })
             );
             assert!(Event::decl(&Config::new()).contains("leftOut: Array<LeftOutCount>"));
+            assert!(Event::decl(&Config::new()).contains("insights: Array<Insight>"));
         }
 
         #[test]

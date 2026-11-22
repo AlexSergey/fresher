@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    CancelToken, DiskWalk, FindingSink, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, NewFinding, PlaceSeen, ProjectFinder, SchemaError, SettingsSchema, SmallFiles, StoredSettings,
-    SystemFacts, SystemPorts, WalkError, WalkMode, WalkRequest, WalkSummary,
+    CancelToken, DiskWalk, FindingSink, Insight, InterestSet, LeftOutItem, Match, Module, ModuleContext, ModuleError,
+    ModuleId, ModuleOutcome, NewFinding, PlaceSeen, ProjectFinder, SchemaError, SettingsSchema, SmallFiles,
+    StoredSettings, SystemFacts, SystemPorts, WalkError, WalkMode, WalkRequest, WalkSummary,
 };
 use serde_json::{Value, json};
 
@@ -87,6 +87,8 @@ pub struct ModuleRun {
     pub findings: Vec<NewFinding>,
     /// What the module recognized and did not offer, in the order it reported it.
     pub left_out: Vec<LeftOutItem>,
+    /// What the module described and does not offer, in the order it gave it.
+    pub insights: Vec<Insight>,
     pub outcome: ModuleOutcome,
     root: PathBuf,
     /// The path of every match the module received.
@@ -177,8 +179,8 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         Some(ModuleError::Cancelled) => ModuleOutcome::Cancelled,
         Some(ModuleError::Failed { reason }) => ModuleOutcome::Failed { reason },
     };
-    let Recorder { findings, left_out } = sink;
-    Ok(ModuleRun { findings, left_out, outcome, root: tree.root().to_path_buf(), matched: matched_paths })
+    let Recorder { findings, left_out, insights } = sink;
+    Ok(ModuleRun { findings, left_out, insights, outcome, root: tree.root().to_path_buf(), matched: matched_paths })
 }
 
 /// What the walk saw of the place of each of the module's interests, by its own index; `Unknown` when it said
@@ -198,6 +200,7 @@ fn places_of(module: &dyn Module, interests: &InterestSet, summary: &WalkSummary
 struct Recorder {
     findings: Vec<NewFinding>,
     left_out: Vec<LeftOutItem>,
+    insights: Vec<Insight>,
 }
 
 impl FindingSink for Recorder {
@@ -208,12 +211,16 @@ impl FindingSink for Recorder {
     fn left_out(&mut self, left_out: LeftOutItem) {
         self.left_out.push(left_out);
     }
+
+    fn describe(&mut self, insight: Insight) {
+        self.insights.push(insight);
+    }
 }
 
 impl ModuleRun {
-    /// A stable JSON report of the run: the outcome, the findings sorted by identity and, when the module left any
-    /// out, its left-outs in order; every path relative to the fixture root (the root itself is `.`), pretty-printed
-    /// with a final newline.
+    /// A stable JSON report of the run: the outcome, the findings sorted by identity and, when the module left any out,
+    /// its left-outs in order and, when it described any, its insights in order; every path relative to the fixture
+    /// root (the root itself is `.`), pretty-printed with a final newline.
     pub fn golden(&self) -> Result<String, serde_json::Error> {
         let mut findings: Vec<&NewFinding> = self.findings.iter().collect();
         findings.sort_by(|left, right| left.key().cmp(right.key()));
@@ -224,6 +231,9 @@ impl ModuleRun {
                 .iter()
                 .map(|item| json!({ "category": item.category, "reason": item.reason, "sizes": item.sizes }));
             report["leftOut"] = Value::Array(left_out.collect());
+        }
+        if !self.insights.is_empty() {
+            report["insights"] = serde_json::to_value(&self.insights)?;
         }
         relative_paths(&mut report, &self.root);
         Ok(serde_json::to_string_pretty(&report)? + "\n")
@@ -281,6 +291,7 @@ pub(crate) mod sample {
         fail_in_finish: bool,
         left_out: Option<&'static str>,
         left_out_category: Option<CategoryId>,
+        insights: Vec<fresher_core::Insight>,
     }
 
     impl CacheModule {
@@ -306,6 +317,7 @@ pub(crate) mod sample {
                 fail_in_finish: false,
                 left_out: None,
                 left_out_category: None,
+                insights: vec![],
             }
         }
 
@@ -338,6 +350,11 @@ pub(crate) mod sample {
 
         pub(crate) fn leaving_out(self, reason: &'static str) -> Self {
             Self { left_out: Some(reason), ..self }
+        }
+
+        /// This module, describing `insights` in `finish`.
+        pub(crate) fn describing(self, insights: Vec<fresher_core::Insight>) -> Self {
+            Self { insights, ..self }
         }
 
         /// This module, leaving out its item in `category` instead of its own.
@@ -384,11 +401,29 @@ pub(crate) mod sample {
                 let sizes = Sizes::complete(ByteSize::new(7), ByteSize::new(7));
                 out.left_out(LeftOutItem { category, reason: TextKey::new(reason).unwrap(), sizes });
             }
+            for insight in &self.insights {
+                out.describe(insight.clone());
+            }
             if self.fail_in_finish {
                 return Err(ModuleError::Failed { reason: Text::new(TextKey::new("sample.error.broken").unwrap()) });
             }
             Ok(())
         }
+    }
+
+    /// An insight called `identity` with the keys `sample.insight.title`, `.summary` and `.note`: a title, a summary
+    /// and one note.
+    pub(crate) fn insight(identity: &str) -> fresher_core::Insight {
+        let text = |key: &str| Text::new(TextKey::new(key).unwrap());
+        fresher_core::Insight::new(
+            identity,
+            text("sample.insight.title"),
+            text("sample.insight.summary"),
+            vec![],
+            vec![],
+            vec![text("sample.insight.note")],
+        )
+        .unwrap()
     }
 
     /// A module without categories whose one interest is every item of the caches; `finish` records what the walk saw
@@ -530,6 +565,17 @@ mod tests {
         }
 
         #[test]
+        fn a_run_without_insights_keeps_its_golden_unchanged() {
+            let tree = FixtureTree::from_toml_str(TREE).unwrap();
+            let module = CacheModule::new().leaving_out("sample.left-out.open");
+
+            let golden = run_module(&module, &tree, &Ports::at(0)).unwrap().golden().unwrap();
+
+            let report: serde_json::Value = serde_json::from_str(&golden).unwrap();
+            assert!(report.get("insights").is_none(), "{golden}");
+        }
+
+        #[test]
         fn a_place_avoided_reaches_the_module_not_scanned() {
             let tree = FixtureTree::from_toml_str(CACHES).unwrap();
             let probe = PlaceProbe::new();
@@ -549,9 +595,9 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{ByteSize, ModuleOutcome};
+        use fresher_core::{ByteSize, Insight, ModuleOutcome};
 
-        use crate::run_module::sample::{CACHES, CacheModule, NODE_PROJECT, PlaceProbe, ProjectProbe, TREE};
+        use crate::run_module::sample::{CACHES, CacheModule, NODE_PROJECT, PlaceProbe, ProjectProbe, TREE, insight};
         use crate::{FixtureTree, MatchOrder, Ports, run_module};
 
         #[test]
@@ -646,6 +692,38 @@ mod tests {
                     "sizes": { "logical": 7, "allocated": 7, "reclaimable": 7, "completeness": "complete" },
                 }])
             );
+        }
+
+        #[test]
+        fn run_module_records_what_a_module_describes() {
+            let tree = FixtureTree::from_toml_str(TREE).unwrap();
+            let module = CacheModule::new().describing(vec![insight("first"), insight("second")]);
+
+            let run = run_module(&module, &tree, &Ports::at(0)).unwrap();
+
+            let identities: Vec<&str> = run.insights.iter().map(Insight::identity).collect();
+            assert_eq!(identities, ["first", "second"]);
+        }
+
+        #[test]
+        fn the_golden_lists_insights_in_order() {
+            let tree = FixtureTree::from_toml_str(TREE).unwrap();
+            let module =
+                CacheModule::new().leaving_out("sample.left-out.open").describing(vec![insight("b"), insight("a")]);
+
+            let golden = run_module(&module, &tree, &Ports::at(0)).unwrap().golden().unwrap();
+
+            let report: serde_json::Value = serde_json::from_str(&golden).unwrap();
+            let identities: Vec<&str> = report["insights"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|insight| insight["identity"].as_str().unwrap())
+                .collect();
+            assert_eq!(identities, ["b", "a"]);
+            assert_eq!(report["insights"][0]["title"]["key"], "sample.insight.title");
+            let fields: Vec<&str> = report.as_object().unwrap().keys().map(String::as_str).collect();
+            assert_eq!(fields, ["findings", "insights", "leftOut", "outcome"]);
         }
 
         #[test]

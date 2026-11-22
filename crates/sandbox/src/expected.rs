@@ -2,12 +2,15 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::time::SystemTime;
 
-use fresher_core::{Access, DangerLevel, GuardedFolder, ModuleId, SkipCode, Timestamp};
+use fresher_core::{Access, Capability, DangerLevel, ModuleId, SkipCode, Timestamp};
 use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
 use crate::generate::LeftOutFile;
 use crate::world::folder_name;
-use crate::{AfterCleanup, Case, CaseFile, CaseKind, Expectation, LeftOutExpectation, MapExpectation, MapPartName};
+use crate::{
+    AfterCleanup, Case, CaseFile, CaseKind, Expectation, InsightExpectation, LeftOutExpectation, MapExpectation,
+    MapPartName,
+};
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
@@ -41,8 +44,8 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
                     "  - Spotlight is off: it cannot be asked in this sandbox, for every case file in it."
                 );
             }
-            for &(folder, access) in case.access() {
-                let _ = writeln!(text, "  - {}.", access_sentence(folder, access));
+            for &(capability, access) in case.access() {
+                let _ = writeln!(text, "  - {}.", access_sentence(capability, access));
             }
             if let Some(version) = case.macos() {
                 let _ = writeln!(text, "  - The sandbox runs macOS {}.{}.", version.major, version.minor);
@@ -59,6 +62,9 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
             }
             if let Some(map) = case.map() {
                 let _ = writeln!(text, "  - {}.", map_sentence(map));
+            }
+            for insight in case.insights() {
+                let _ = writeln!(text, "  - {}", insight_sentence(insight));
             }
         }
     }
@@ -110,9 +116,15 @@ fn left_out_sentence(left_out: &LeftOutExpectation) -> String {
     format!("Under '{}', {} left out: {}", left_out.category().as_str(), left_out.items(), left_out.reason().as_str())
 }
 
-/// What the sandbox answers for a guarded folder, in words.
-fn access_sentence(folder: GuardedFolder, access: Access) -> String {
-    let folder = folder_name(folder);
+/// What the sandbox answers for a guarded folder or other apps' data, in words.
+fn access_sentence(capability: Capability, access: Access) -> String {
+    let folder = match capability {
+        Capability::Folder(folder) => folder_name(folder),
+        // A case states only the folders and other apps' data (`stated_capability`); the rest read the same.
+        Capability::OtherAppsData | Capability::AllFiles | Capability::Volume(_) | Capability::Tool(_) => {
+            "other apps' data"
+        }
+    };
     match access {
         // A case states only the first three; the other two never reach a checklist and read as allowed and refused.
         Access::Granted | Access::NotApplicable => {
@@ -163,6 +175,20 @@ fn when(time: Timestamp, now: SystemTime) -> String {
     };
     let unit = if count == 1 { unit.to_owned() } else { format!("{unit}s") };
     if after { format!("in {count} {unit}") } else { format!("{count} {unit} ago") }
+}
+
+/// What the scan screen shows of an expected insight: its card, its numbers, its parts and their commands.
+fn insight_sentence(insight: &InsightExpectation) -> String {
+    let parts = match insight.parts() {
+        0 => "its Details lists no part".to_owned(),
+        parts => format!("its Details lists {parts} parts, {} with a command to copy", insight.commands()),
+    };
+    let copy = if insight.commands() > 0 { " Copy puts the command on the clipboard." } else { "" };
+    format!(
+        "Under «Described, not cleaned», the card «{}» shows {} numbers; {parts}.{copy} Nothing of it can be selected.",
+        insight.identity(),
+        insight.figures()
+    )
 }
 
 /// Where the overview's by-place view shows the case's files.
@@ -456,6 +482,36 @@ reason = "in-use"
                     "  - The sandbox allows Downloads; it is read once its switch in Settings → Permissions is on.",
                 ]
             );
+        }
+
+        #[test]
+        fn an_expected_insight_writes_its_line() {
+            let insights = "[[case.insight]]\nidentity = \"orbstack\"\nfigures = 3\nparts = 4\ncommands = 3\n\
+                            [[case.insight]]\nidentity = \"docker-desktop\"\nfigures = 2\nparts = 0\ncommands = 0\n";
+            let cases = CASES.replace("path = \"home/other.bin\"\n", &format!("path = \"home/other.bin\"\n{insights}"));
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - Under «Described, not cleaned», the card «orbstack» shows 3 numbers; its Details lists 4 parts, \
+                     3 with a command to copy. Copy puts the command on the clipboard. Nothing of it can be selected.",
+                    "  - Under «Described, not cleaned», the card «docker-desktop» shows 2 numbers; its Details lists no \
+                     part. Nothing of it can be selected.",
+                ]
+            );
+        }
+
+        #[test]
+        fn the_checklist_names_other_apps_data() {
+            let access = "access = { other-apps-data = \"denied\" }\n";
+            let cases = CASES.replacen("kind = \"negative\"\n", &format!("kind = \"negative\"\n{access}"), 1);
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            assert!(text.lines().any(|line| line == "  - The sandbox refuses other apps' data."), "{text}");
         }
 
         #[test]

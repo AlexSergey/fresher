@@ -143,6 +143,7 @@ const scanned = (store: CoreStore, leftOut: readonly LeftOutCount[], overview: O
   act(() => {
     store.dispatch(SCAN_STARTED);
     store.dispatch({
+      insights: [],
       leftOut: [...leftOut],
       module: 'demo',
       outcome: { kind: 'completed' },

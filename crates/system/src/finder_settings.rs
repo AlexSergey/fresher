@@ -13,6 +13,11 @@ const FINDER_DOMAIN: &str = "com.apple.finder";
 /// The key of "Remove items from the Trash after 30 days".
 const REMOVE_OLD_TRASH_ITEMS: &str = "FXRemoveOldTrashItems";
 
+/// Whether `program` with `args` is exactly the read of Finder's Trash setting, the one `defaults` call made here.
+pub fn is_trash_setting_read(program: &str, args: &[&str]) -> bool {
+    program == DEFAULTS && args == [READ, FINDER_DOMAIN, REMOVE_OLD_TRASH_ITEMS]
+}
+
 /// Reads Finder's settings through `defaults read`.
 pub struct MacFinderSettings {
     commands: Arc<dyn CommandRunner>,

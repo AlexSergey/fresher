@@ -39,6 +39,7 @@ small `thiserror` error of its own: no panicking path.
 | `interests()`     | what the walk should report to it: a folder name, a path under a known folder, a marker file or an extension |
 | `on_match(…)`     | one match of one of its interests (`matched.interest` is the index in its own list) → findings     |
 | `finish(…)`       | the end of the walk: work that needs every match (the newest version), or that reads no disk (a tool) |
+| `out.describe(…)` | (on the sink, any method) an `Insight`: text and numbers about space the module does not offer |
 
 - A module names its group: `ModuleDescriptor::new(id, group, categories, settings, locales)`, a `ModuleGroup` of the
   core (`System` for what macOS and the user's apps keep for themselves, such as `temp`; `Apps` for what apps leave behind;
@@ -49,6 +50,14 @@ small `thiserror` error of its own: no panicking path.
   name and the categories it selects (texts `<module>.choice.<name>.label` and `.description`), carried to the UI as
   `ModuleInfo.choices`. A finding of an app that may no longer be installed names it with
   `NewFinding::for_app_named(id, name)`, and the storage map shows that name.
+- **An insight** (`Insight`, plan 032) is what a module describes and never offers: an identity (kebab-case, unique in
+  the module), a title, a summary, up to 4 figures, up to 8 parts (a label, a size, a detail, an effect, a danger level
+  as wording and an optional `ShownCommand`: a tool, its arguments and the line to copy) and up to 4 notes. It is never a
+  finding, never counted in a total or the map, never stored in the scan cache and never in the journal; a restored scan
+  describes again (the module runs over the restored matches). It travels only in `Event::ModuleFinished.insights`.
+  `FindingSink::describe` is a no-op by default (the `Vec<NewFinding>` sink drops it, like a left-out; `run_module` records it); the engine drops a repeated
+  identity of one module with a warning. A shown command never forces (no `-f`, `--force`, `--force=…`, `f` among short
+  flags) and its parts need no quoting; the app never runs one.
 - A module's problems are declared: `ModuleDescriptor::with_problems(keys)` lists every key it may report. A failed
   part returns `ModuleError::Failed { reason }` with a declared `Text` (a technical detail goes under `DETAIL_ARG`,
   never named in the sentence). An item the module recognized and does not offer is `out.left_out(LeftOutItem { … })`:
@@ -353,6 +362,26 @@ locked file are left out with a reason, and so is a file changed within the sett
 in `logs` as well, so it holds even if their claims change. The module asks for no installed or running apps: the
 cleaner's open-file check protects a log in use.
 
+**`docker` is code with a data table, and the example of a module that describes and never offers** (plan
+[032](../plans/032-docker/readme.md)): Docker keeps its space inside one disk file of a virtual machine, and a prune is
+Docker's own business, so the module reports no finding, no left-out and no category, and nothing of Docker's can be
+selected, totalled, planned or journaled. It describes: `out.describe(Insight)` sends what it found as text and
+numbers. A table, `runtimes.toml`, has one row per runtime that has an app (Docker Desktop, OrbStack): the app's bundle
+id, the CLI inside its bundle, its context, its socket place under the home and its disk file's place, and whether the
+file's length is a limit worth showing (`shown`) or not (`hidden`). Each row gives two `Claim::Item` interests under a
+known folder (the socket, then the disk file). A pure decision (`decide.rs`) picks a state per row: `left` (the disk
+file is there and the app is not installed, said only after a complete installed-apps listing), `restored` (a restored
+scan asks nothing), `unknown`, `stopped` (the app is closed, or open and the socket not seen), `no-answer`,
+`unreadable` and `answered`. Only when the installed app is running, the walk saw its socket as an `Other` entry and the
+scan is not restored does the module run the runtime's own CLI, exactly `<app>/<cli> --context <context> system df
+--format json`, through the command runner (output capped at 64 KiB, never started when the app is closed). The
+answer's four lines (`Images`, `Containers`, `Local Volumes`, `Build Cache`) become the four parts, each with its
+danger level as wording, its unused size, a sentence on what running it costs and, when something is unused, its
+command shown with `--context` (`builder prune --all`, `image prune --all`, `container prune`, `volume prune`; a
+`ShownCommand` never forces and never needs quoting). The disk file's figures are its largest size, what it takes on
+the disk and what is used inside. The notes say when the disk file was not seen, how the runtime gives freed space back
+and that Fresher never runs these commands. The runtime's answer decides nothing else.
+
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.
 
@@ -396,6 +425,7 @@ A module ships only when every box is ticked:
       of [`../rules.md`](../rules.md)).
 - [ ] Every failure and left-out text is declared with `with_problems`, plain, and says what to do next.
 - [ ] An item the module recognized and does not offer is reported with `left_out`, never dropped.
+- [ ] A module that describes space it does not offer uses `describe`, never a finding.
 - [ ] Every category that cannot see everything without a permission declares it (`with_needs`), and a needed tool has
       its `with_tool_check`.
 - [ ] Negative fixtures come first: a look-alike name, the current version of a versioned item, a symlink out of the

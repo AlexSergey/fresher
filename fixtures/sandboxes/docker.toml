@@ -1,0 +1,50 @@
+# The docker module: Docker is described, never cleaned, so every case is negative. Nothing of Docker's is offered or
+# cleaned; the only program run is the read of a runtime that is installed, running and has its socket, answered here
+# by a stated tool. The cases share one world.
+feature = "docker"
+module = "docker"
+
+[[case]]
+name = "Docker Desktop not installed, a stale socket left: nothing said, nothing run"
+kind = "negative"
+[[case.file]]
+path = "home/.docker/run/docker.sock"
+kind = "socket"
+
+[[case]]
+name = "a disk file at no known place is not Docker's"
+kind = "negative"
+[[case.file]]
+path = "home/VMs/Docker.raw"
+size = 1073741824
+
+[[case]]
+name = "OrbStack running: what is inside, a command for each unused part, nothing run but the read"
+kind = "negative"
+access = { other-apps-data = "granted" }
+[[case.app]]
+path = "Applications/OrbStack.app"
+bundle-id = "dev.kdrag0n.MacVirt"
+name = "OrbStack"
+running = true
+[[case.file]]
+path = "home/.orbstack/run/docker.sock"
+kind = "socket"
+[[case.file]]
+path = "home/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img"
+size = 8589934592
+written = 4194304
+[[case.tool]]
+program = "Applications/OrbStack.app/Contents/MacOS/xbin/docker"
+args = ["--context", "orbstack", "system", "df", "--format", "json"]
+stdout = """
+{"Active":"2","Reclaimable":"1.071GB (35%)","Size":"3.034GB","TotalCount":"7","Type":"Images"}
+{"Active":"1","Reclaimable":"0B (0%)","Size":"1.09kB","TotalCount":"1","Type":"Containers"}
+{"Active":"1","Reclaimable":"41.2MB (100%)","Size":"41.2MB","TotalCount":"2","Type":"Local Volumes"}
+{"Active":"0","Reclaimable":"512MB","Size":"512MB","TotalCount":"13","Type":"Build Cache"}
+"""
+[[case.insight]]
+identity = "orbstack"
+figures = 2
+parts = 4
+commands = 3

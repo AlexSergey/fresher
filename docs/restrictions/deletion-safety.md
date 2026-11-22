@@ -75,8 +75,8 @@ The app deletes files from a real person's disk. These rules hold in every versi
 
 - **Rule:** the scanner and the cleaner follow no links — neither symlinks nor Finder aliases — so a link can never
   point them somewhere unexpected; nothing under `/System`, `/usr` (except `/usr/local`), `/bin`, `/sbin`,
-  `/private/var/db`, SIP-protected locations, or another user's home is ever offered for deletion. Docker objects are
-  removed only through the Docker CLI, never by deleting its files.
+  `/private/var/db`, SIP-protected locations, or another user's home is ever offered for deletion. Docker is
+  described, never cleaned: Fresher runs no Docker command that removes anything and never deletes its files.
 - **Why:** deleting there breaks macOS or another user's data; Docker's files are its own database.
 - **Enforced by:** the scanner lists a link as itself and never follows it (`crates/scanner/tests/reference.rs`). The
   cleaner's checks 2, 3 and 5: an item strictly inside a root by components, refused by the protection list

@@ -1,0 +1,6 @@
+# Docker Desktop's disk file, 64 GiB at most and 1 MiB written, with no app installed: what is left of it.
+
+[[file]]
+path = "Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+size = 68719476736
+written = 1048576

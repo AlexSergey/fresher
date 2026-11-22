@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use fresher_core::{
     AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
-    FindingId, FindingSink, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError, ModuleId,
-    ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability, ScanId, ScanKind,
-    ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    FindingId, FindingSink, Insight, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError,
+    ModuleId, ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability, ScanId,
+    ScanKind, ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -85,19 +85,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         })
         .collect();
     let mut outcomes: Vec<Option<ModuleOutcome>> = vec![None; plan.modules.len()];
-    let mut output = Output {
-        shared,
-        scan,
-        next_id: first_id,
-        batcher: Batcher::default(),
-        exhausted: false,
-        ended: false,
-        kind: ScanKind::Full,
-        coverage: Coverage::default(),
-        facts: HashMap::new(),
-        left_outs: plan.modules.iter().map(|planned| LeftOuts::new(planned.module.descriptor())).collect(),
-        ignored: &plan.ignored,
-    };
+    let mut output = Output::new(shared, scan, first_id, plan);
 
     let (entry, unavailable) = decide_access(shared, plan, cancel);
     for (index, missing) in unavailable.into_iter().enumerate() {
@@ -414,11 +402,31 @@ struct Output<'a> {
     facts: HashMap<PathBuf, EntryFacts>,
     /// What each planned module left out so far, by its index in the plan.
     left_outs: Vec<LeftOuts<'a>>,
+    /// What each planned module described so far, by its index in the plan, in the order it gave it.
+    insights: Vec<(ModuleId, Vec<Insight>)>,
     /// The scan's ignore lists.
     ignored: &'a Ignored,
 }
 
 impl<'a> Output<'a> {
+    /// The output of scan `scan` of `plan`, numbering its findings from `first_id`.
+    fn new(shared: &'a Shared, scan: ScanId, first_id: Option<u32>, plan: &'a ScanPlan) -> Self {
+        Self {
+            shared,
+            scan,
+            next_id: first_id,
+            batcher: Batcher::default(),
+            exhausted: false,
+            ended: false,
+            kind: ScanKind::Full,
+            coverage: Coverage::default(),
+            facts: HashMap::new(),
+            left_outs: plan.modules.iter().map(|planned| LeftOuts::new(planned.module.descriptor())).collect(),
+            insights: plan.modules.iter().map(|planned| (planned.module.descriptor().id(), Vec::new())).collect(),
+            ignored: &plan.ignored,
+        }
+    }
+
     /// Records the last scan, publishes `ScanCoverage` then `ScanFinished` and lets the engine go `Idle`, all under the
     /// state's lock.
     fn end(&mut self, outcome: ScanOutcome) {
@@ -446,8 +454,8 @@ impl<'a> Output<'a> {
         ModuleSink { output: self, index }
     }
 
-    /// Sends what the module left in the open batch, then its `ModuleFinished` with what it left out, whatever its
-    /// outcome: what it left out before it failed or was cancelled is still true.
+    /// Sends what the module left in the open batch, then its `ModuleFinished` with what it left out and what it
+    /// described, whatever its outcome: what it gave before it failed or was cancelled is still true.
     fn module_finished(&mut self, index: usize, module: ModuleId, outcome: ModuleOutcome) -> ModuleOutcome {
         if let Some(batch) = self.batcher.take() {
             self.send(batch);
@@ -456,7 +464,8 @@ impl<'a> Output<'a> {
             tracing::warn!(module = module.as_str(), reason = reason.key().as_str(), "a module failed");
         }
         let left_out = self.left_outs.get_mut(index).map(LeftOuts::take).unwrap_or_default();
-        let finished = Event::ModuleFinished { scan: self.scan, module, outcome: outcome.clone(), left_out };
+        let insights = self.insights.get_mut(index).map(|(_, given)| std::mem::take(given)).unwrap_or_default();
+        let finished = Event::ModuleFinished { scan: self.scan, module, outcome: outcome.clone(), left_out, insights };
         self.shared.bus.publish(&finished);
         outcome
     }
@@ -490,7 +499,8 @@ impl Drop for Output<'_> {
     }
 }
 
-/// The sink of one module's call: its findings go to the scan's output, its left-outs to its own sums.
+/// The sink of one module's call: its findings go to the scan's output, its left-outs to its own sums, its insights
+/// to its own list.
 struct ModuleSink<'o, 'a> {
     output: &'o mut Output<'a>,
     index: usize,
@@ -508,6 +518,21 @@ impl FindingSink for ModuleSink<'_, '_> {
         if let Some(left_outs) = self.output.left_outs.get_mut(self.index) {
             left_outs.add(left_out);
         }
+    }
+
+    fn describe(&mut self, insight: Insight) {
+        let Some((module, insights)) = self.output.insights.get_mut(self.index) else {
+            return;
+        };
+        if insights.iter().any(|given| given.identity() == insight.identity()) {
+            tracing::warn!(
+                module = module.as_str(),
+                identity = insight.identity(),
+                "a module described the same identity twice"
+            );
+            return;
+        }
+        insights.push(insight);
     }
 }
 

@@ -139,3 +139,43 @@ Plan [037](../plans/037-trash/readme.md), awaiting the user's walk.
   one full run of the plan's last Playwright pass. It is the known flaky baseline (item 1.14 of the manual testing doc); on the final
   commit it passes alone and fails when its whole spec runs (the diff is the whole page drawn at another scroll
   offset, not a Trash change, as the details screen has no Trash line). It was not run on main from this branch.
+
+## 032 — Docker, described and never cleaned
+
+Plan [032](../plans/032-docker/readme.md), awaiting the user's walk.
+
+- **Walk by hand**: `rm -rf sandbox/docker && npm run dev:sandbox -- docker`, and `docker-stopped`, `docker-no-answer`
+  and `docker-left-behind`: every line of `EXPECTED.md`, the section "Described, not cleaned", the insight screen, Copy
+  and a paste into a text editor, nothing selectable, Review unaffected, the banner naming "tools" (items 1.19 and 2.17
+  of [`../manual-testing.md`](../manual-testing.md)). Copy in the built app too (`npm run tauri build`), not only the
+  dev web view: the clipboard in the built app is unverified.
+- **Your decision kept**: Docker is described only and never cleaned; nothing of it is selectable, counted or
+  journaled, and the app runs no prune. It shows the command, the user runs it.
+- **New and generic**: an `Insight` output in the core (what a module describes and never offers), the section
+  "Described, not cleaned" on the scan screen and an insight screen with Copy. Only Docker Desktop and OrbStack are
+  built; Colima, Lima, Podman machines and Rancher Desktop are deferred
+  ([`docker-other-runtimes.md`](./docker-other-runtimes.md)).
+- **How the module asks**: it runs the runtime's own CLI, `<app>/<cli> --context <ctx> system df --format json`, only
+  when the app is installed and running and the walk saw its socket, never on a restored scan and never to start a
+  runtime. Output over 64 KiB is refused. The `left` card ("not installed any more, its disk file is left") is said
+  only on a complete installed-apps listing. The reason a read is unreadable is not logged (the module has no tracing).
+- **Facts not verified (read-only, on a Mac with the runtime running; the answer's format was taken from the
+  documentation and is mocked)**:
+  - `docker --context orbstack system df --format json` prints the four lines in the documented shape (string `Type`,
+    `TotalCount`, `Active`, `Size`, `Reclaimable`; sizes in powers of 1000; ` (N%)` after `Reclaimable`).
+  - Docker Desktop's CLI is at `Contents/Resources/bin/docker` in its bundle and its context is `desktop-linux`;
+    `Docker.raw`'s place (`~/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw`).
+  - OrbStack's disk file (`~/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img`) and whether its length
+    is a limit (agent's call: hidden).
+  - Whether a runtime's CLI starts it when it is stopped (the module asks only a running one).
+  - How each runtime gives freed space back (the two `gives-back` sentences).
+  - `docker volume prune` removing only unnamed volumes on the installed Docker version.
+  - Whether `Reclaimable` of images and build cache matches what `--all` frees.
+- **Calls worth a second look** ([`00-design.md`](../plans/032-docker/00-design.md)): the generic `Insight` in the core
+  (call 8); only runtimes with an app (call 2); the four commands and `--context` (call 3); no storage-map change
+  (call 5); nothing asked in a restored scan (call 6); sandbox mode running no program but `/usr/bin/open` (call 9;
+  the autotest exempts only the trial tool's two reads); the parts' levels (call 12). Decided while building: the
+  `left` card only on a complete listing, and the output cap.
+- **Known gaps**: a UI that connects after a restore shows no insight until the next scan; `npm run sandbox -- all`
+  leaves three of Docker's four case files out (the runtimes' fixed paths); the other runtimes are deferred; the
+  unreadable reason is not logged.

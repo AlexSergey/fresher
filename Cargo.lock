@@ -1236,6 +1236,7 @@ dependencies = [
  "fresher-module-app-leftovers",
  "fresher-module-demo",
  "fresher-module-dev-caches",
+ "fresher-module-docker",
  "fresher-module-downloads",
  "fresher-module-jetbrains",
  "fresher-module-local-ai-models",
@@ -1300,6 +1301,7 @@ dependencies = [
  "fresher-module-app-leftovers",
  "fresher-module-demo",
  "fresher-module-dev-caches",
+ "fresher-module-docker",
  "fresher-module-downloads",
  "fresher-module-jetbrains",
  "fresher-module-local-ai-models",
@@ -1382,6 +1384,19 @@ dependencies = [
 
 [[package]]
 name = "fresher-module-dev-caches"
+version = "0.1.0"
+dependencies = [
+ "fresher-core",
+ "fresher-testing",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "toml 1.2.1+spec-1.1.0",
+]
+
+[[package]]
+name = "fresher-module-docker"
 version = "0.1.0"
 dependencies = [
  "fresher-core",

@@ -7,6 +7,7 @@ import type {
   EngineStatus,
   Event,
   FindingId,
+  Insight,
   LeftOutCount,
   ModuleId,
   ModuleOutcome,
@@ -50,8 +51,10 @@ export type CoreState = {
   readonly failure: Failure | null;
   // How many times an ignore list changed in this session: the finding pages start again (state/findings.ts).
   readonly ignoreChanges: number;
-  // The modules that finished in the followed scan, with how, and what each left out (counted by the engine).
+  // The modules that finished in the followed scan, with how, what each left out (counted by the engine) and what
+  // each described and does not offer.
   readonly modules: readonly {
+    readonly insights: readonly Insight[];
     readonly leftOut: readonly LeftOutCount[];
     readonly module: ModuleId;
     readonly outcome: ModuleOutcome;
@@ -162,7 +165,10 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
       return follows(event.scan)
         ? markStale({
             ...state,
-            modules: [...state.modules, { leftOut: event.leftOut, module: event.module, outcome: event.outcome }],
+            modules: [
+              ...state.modules,
+              { insights: event.insights, leftOut: event.leftOut, module: event.module, outcome: event.outcome },
+            ],
           })
         : state;
     case 'quit-requested':

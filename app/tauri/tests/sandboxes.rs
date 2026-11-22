@@ -12,6 +12,9 @@
 #[path = "sandboxes/harness.rs"]
 mod harness;
 #[cfg(test)]
+#[path = "sandboxes/insight.rs"]
+mod insight;
+#[cfg(test)]
 #[path = "sandboxes/left_out.rs"]
 mod left_out;
 #[cfg(test)]
@@ -390,6 +393,10 @@ mod positive {
         dev_caches => "dev-caches",
         dev_caches_unsigned => "dev-caches-unsigned",
         dev_caches_xcode_open => "dev-caches-xcode-open",
+        docker => "docker",
+        docker_left_behind => "docker-left-behind",
+        docker_no_answer => "docker-no-answer",
+        docker_stopped => "docker-stopped",
         downloads => "downloads",
         downloads_browser_open => "downloads-browser-open",
         downloads_denied => "downloads-denied",

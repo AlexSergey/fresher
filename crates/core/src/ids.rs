@@ -21,7 +21,7 @@ pub enum IdError {
 }
 
 /// `true` for a lowercase kebab-case name: `demo`, `node-modules`, `jetbrains-2024`.
-pub(crate) fn is_kebab_case(name: &str) -> bool {
+pub fn is_kebab_case(name: &str) -> bool {
     name.starts_with(|first: char| first.is_ascii_lowercase())
         && !name.ends_with('-')
         && !name.contains("--")

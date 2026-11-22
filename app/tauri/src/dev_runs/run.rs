@@ -156,7 +156,7 @@ impl Run {
         match event {
             Event::ScanStarted { scan, modules } => self.scan_started(*scan, modules, at, engine),
             Event::FindingsAdded { scan, findings } => self.findings_added(*scan, findings, engine),
-            Event::ModuleFinished { scan, module, outcome, left_out } => {
+            Event::ModuleFinished { scan, module, outcome, left_out, .. } => {
                 let left_out = left_out_records(left_out, engine);
                 let record = self.scan(*scan).map(|scan| scan.modules.entry(*module).or_default());
                 if let Some(record) = record {

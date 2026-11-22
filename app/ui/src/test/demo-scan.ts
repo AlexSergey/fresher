@@ -106,7 +106,14 @@ export const DEMO_SCAN: readonly Event[] = [
   SCAN_STARTED,
   FIRST_BATCH,
   { findings: DEMO_FINDINGS.slice(2), scan: 1, type: 'findings-added' },
-  { leftOut: [DEMO_LEFT_OUT], module: 'demo', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+  {
+    insights: [],
+    leftOut: [DEMO_LEFT_OUT],
+    module: 'demo',
+    outcome: { kind: 'completed' },
+    scan: 1,
+    type: 'module-finished',
+  },
   { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];
@@ -235,7 +242,7 @@ export const DEMO_SCANNING: Overview = {
 
 // What the core streams when the live scan is stopped after its first batch, and the overview it answers then.
 export const DEMO_STOP: readonly Event[] = [
-  { leftOut: [], module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
+  { insights: [], leftOut: [], module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
   { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
 ];
 
@@ -286,7 +293,14 @@ const FAILURE = { args: {}, key: 'demo.error.failed' } as const;
 export const DEMO_FAILED_SCAN: readonly Event[] = [
   SCAN_STARTED,
   FIRST_BATCH,
-  { leftOut: [], module: 'demo', outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'module-finished' },
+  {
+    insights: [],
+    leftOut: [],
+    module: 'demo',
+    outcome: { kind: 'failed', reason: FAILURE },
+    scan: 1,
+    type: 'module-finished',
+  },
   { kind: { kind: 'full' }, outcome: { kind: 'failed', reason: FAILURE }, scan: 1, type: 'scan-finished' },
 ];
 

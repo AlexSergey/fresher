@@ -10,6 +10,7 @@
         "type": "scan-started"
       },
       {
+        "insights": [],
         "leftOut": [
           {
             "category": "demo.caches",
@@ -34,6 +35,7 @@
         "type": "module-finished"
       },
       {
+        "insights": [],
         "leftOut": [],
         "module": "probe",
         "outcome": {
@@ -798,6 +800,7 @@
         "type": "scan-started"
       },
       {
+        "insights": [],
         "leftOut": [],
         "module": "probe",
         "outcome": {

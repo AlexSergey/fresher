@@ -161,6 +161,7 @@ export const XCODE_SCAN: readonly Event[] = [
   { findings: XCODE_FINDINGS.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: XCODE_FINDINGS.slice(3), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...XCODE_LEFT_OUT],
     module: 'xcode',
     outcome: { kind: 'completed' },

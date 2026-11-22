@@ -1,0 +1,11 @@
+# A home with Docker Desktop's disk file, 64 GiB at most and 1 MiB written, and OrbStack's socket (stated: a socket's
+# path is too long to make here). Scanned with Docker Desktop installed and closed, or with OrbStack installed and open.
+
+[[file]]
+path = "Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+size = 68719476736
+written = 1048576
+
+[[file]]
+path = ".orbstack/run/docker.sock"
+kind = "socket"

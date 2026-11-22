@@ -1,0 +1,30 @@
+# The Docker runtimes the module describes, one row each, in the order the module asks them.
+#
+# id       the row's name in kebab case; also the identity of the card the module describes
+# name     the runtime's own product name; the card's title (`docker.title`)
+# app      the runtime's bundle id: whether it is installed and running is asked by it
+# cli      the runtime's own Docker CLI, relative to its app bundle (plain folder names)
+# context  the Docker context the runtime creates; every command, read or shown, names it
+# socket   where the runtime's engine socket is, a known folder and a plain relative path
+# disk     where the runtime's disk file is, a known folder and a plain relative path
+# maximum  `shown` when the disk file's length is the size limit the user set, `hidden` when it is not
+
+[[runtime]]
+id = "docker-desktop"
+name = "Docker Desktop"
+app = "com.docker.docker"
+cli = "Contents/Resources/bin/docker"
+context = "desktop-linux"
+socket = { folder = "home", path = ".docker/run/docker.sock" }
+disk = { folder = "containers", path = "com.docker.docker/Data/vms/0/data/Docker.raw" }
+maximum = "shown"
+
+[[runtime]]
+id = "orbstack"
+name = "OrbStack"
+app = "dev.kdrag0n.MacVirt"
+cli = "Contents/MacOS/xbin/docker"
+context = "orbstack"
+socket = { folder = "home", path = ".orbstack/run/docker.sock" }
+disk = { folder = "group-containers", path = "HUAQ24HBR6.dev.orbstack/data/data.img" }
+maximum = "hidden"

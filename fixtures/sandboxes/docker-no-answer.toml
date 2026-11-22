@@ -1,0 +1,47 @@
+# The docker module when a running runtime's engine gives no usable answer: no numbers rather than a guess, and nothing
+# else run. The cases share one world.
+feature = "docker-no-answer"
+module = "docker"
+
+[[case]]
+name = "Docker Desktop not answering: no numbers, nothing else run"
+kind = "negative"
+[[case.app]]
+path = "Applications/Docker.app"
+bundle-id = "com.docker.docker"
+name = "Docker"
+running = true
+[[case.file]]
+path = "home/.docker/run/docker.sock"
+kind = "socket"
+[[case.tool]]
+program = "Applications/Docker.app/Contents/Resources/bin/docker"
+args = ["--context", "desktop-linux", "system", "df", "--format", "json"]
+status = 1
+stdout = ""
+[[case.insight]]
+identity = "docker-desktop"
+figures = 0
+parts = 0
+commands = 0
+
+[[case]]
+name = "OrbStack answering what Fresher cannot read: no numbers rather than a guess"
+kind = "negative"
+[[case.app]]
+path = "Applications/OrbStack.app"
+bundle-id = "dev.kdrag0n.MacVirt"
+name = "OrbStack"
+running = true
+[[case.file]]
+path = "home/.orbstack/run/docker.sock"
+kind = "socket"
+[[case.tool]]
+program = "Applications/OrbStack.app/Contents/MacOS/xbin/docker"
+args = ["--context", "orbstack", "system", "df", "--format", "json"]
+stdout = "Images 3 2 3GB\n"
+[[case.insight]]
+identity = "orbstack"
+figures = 0
+parts = 0
+commands = 0

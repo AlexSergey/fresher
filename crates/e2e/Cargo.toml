@@ -21,6 +21,7 @@ fresher-module-app-caches = { path = "../../modules/app-caches" }
 fresher-module-app-leftovers = { path = "../../modules/app-leftovers" }
 fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-dev-caches = { path = "../../modules/dev-caches" }
+fresher-module-docker = { path = "../../modules/docker" }
 fresher-module-downloads = { path = "../../modules/downloads" }
 fresher-module-jetbrains = { path = "../../modules/jetbrains" }
 fresher-module-local-ai-models = { path = "../../modules/local-ai-models" }

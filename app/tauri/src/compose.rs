@@ -71,6 +71,8 @@ pub(crate) enum ComposeError {
     UnusedToolchains(#[from] fresher_module_unused_toolchains::UnusedToolchainsError),
     #[error("the xcode module cannot be built: {0}")]
     Xcode(#[from] fresher_module_xcode::XcodeError),
+    #[error("the docker module cannot be built: {0}")]
+    Docker(#[from] fresher_module_docker::DockerError),
     /// A development build started on a sandbox that is not one: it does not start rather than run elsewhere.
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
@@ -440,6 +442,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_local_ai_models::LocalAiModelsModule::new()?),
         Box::new(fresher_module_unused_toolchains::UnusedToolchainsModule::new()?),
         Box::new(fresher_module_xcode::XcodeModule::new()?),
+        Box::new(fresher_module_docker::DockerModule::new()?),
     ];
     #[cfg(debug_assertions)]
     let modules = {
@@ -762,6 +765,7 @@ mod tests {
                     "local-ai-models",
                     "unused-toolchains",
                     "xcode",
+                    "docker",
                     "demo",
                     "trial",
                 ]
@@ -778,6 +782,7 @@ mod tests {
                     "local-ai-models",
                     "unused-toolchains",
                     "xcode",
+                    "docker",
                 ]
             };
 

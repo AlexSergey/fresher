@@ -191,7 +191,14 @@ const scanOf = (findings: readonly Finding[], leftOut: readonly LeftOutCount[]):
   { modules: ['dev-caches'], scan: 1, type: 'scan-started' },
   { findings: findings.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: findings.slice(3), scan: 1, type: 'findings-added' },
-  { leftOut: [...leftOut], module: 'dev-caches', outcome: { kind: 'completed' }, scan: 1, type: 'module-finished' },
+  {
+    insights: [],
+    leftOut: [...leftOut],
+    module: 'dev-caches',
+    outcome: { kind: 'completed' },
+    scan: 1,
+    type: 'module-finished',
+  },
   { coverage: FULL_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' },
 ];

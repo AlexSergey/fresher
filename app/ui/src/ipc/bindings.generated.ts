@@ -14,7 +14,7 @@ export type Build = { "kind": "release" } | { "kind": "development" } | { "kind"
 /**
  * A part of the Mac a sandbox's world answers instead of the real one.
  */
-export type Simulated = "running" | "spotlight" | "access" | "installs";
+export type Simulated = "running" | "spotlight" | "access" | "installs" | "tools";
 
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
@@ -24,7 +24,11 @@ export type Event = { "type": "scan-started", scan: ScanId, modules: Array<Modul
  * What the module recognized and did not offer, counted per category and reason, sorted by category, then by
  * reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
  */
-leftOut: Array<LeftOutCount>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
+leftOut: Array<LeftOutCount>, 
+/**
+ * What the module described and does not offer, in the order it gave it.
+ */
+insights: Array<Insight>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
 
 /**
  * A refused command as the UI receives it: the error, and the text to show for it, built by `CommandError::text()`.
@@ -273,6 +277,29 @@ export type ModuleOutcome = { "kind": "completed" } | { "kind": "failed", reason
  * The engine's sum of the left-outs of one category and one reason.
  */
 export type LeftOutCount = { category: CategoryId, reason: Text, items: number, sizes: Sizes, };
+
+/**
+ * Space a module describes and never offers (`FindingSink::describe`): never selectable, never counted in a total,
+ * never stored or cached. It travels only in the module's `ModuleFinished`; a restored scan describes again.
+ */
+export type Insight = { identity: string, title: Text, summary: Text, figures: Array<Figure>, parts: Array<InsightPart>, notes: Array<Text>, };
+
+/**
+ * One number of an insight with its label (the disk file's maximum, the space it takes).
+ */
+export type Figure = { label: Text, size: ByteSize, };
+
+/**
+ * One part of what an insight describes: its size, what it is, what removing it would do, how dangerous that is and
+ * the command the user may run by hand.
+ */
+export type InsightPart = { label: Text, size: ByteSize, detail: Text, effect: Text, danger: DangerLevel, command: ShownCommand | null, };
+
+/**
+ * A command the app shows and the user may copy; the app never runs it. It never forces and never needs quoting, so
+ * its `line` pastes into a shell as it is.
+ */
+export type ShownCommand = { tool: ToolId, args: Array<string>, line: string, };
 
 /**
  * How a scan ended.

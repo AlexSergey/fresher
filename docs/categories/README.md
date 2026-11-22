@@ -16,10 +16,10 @@ confirmation screen, and the confirmation names the highest level among the sele
 
 | Level      | Meaning                                                                                          | Examples                                                                   |
 | ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | logs, Xcode derived data, a removed app's caches, an IDE's caches          |
-| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, a browser's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download, an unused Rust toolchain, old device support files |
-| **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, unused Docker images, an unused Node version |
-| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder, a big download you have not opened, Xcode archives |
+| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | logs, Xcode derived data, a removed app's caches, an IDE's caches, Docker build cache          |
+| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, a browser's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, unused Docker images, an unfinished download, an unused Rust toolchain, old device support files |
+| **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, stopped Docker containers, an unused Node version |
+| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, iOS device backups, a removed app's support folder, a big download you have not opened, Xcode archives |
 
 The levels are final for a category in its default form; a rule may raise (never lower) a level for a specific finding,
 for example a `node_modules` of a project touched yesterday.
@@ -97,4 +97,21 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `xcode.simulator-caches`        | Safe         | none (the module's code, `modules/xcode`)      | [`xcode-simulator-caches.md`](./xcode-simulator-caches.md)               |
 | `xcode.archives`                | High         | none (the module's code, `modules/xcode`)      | [`xcode-archives.md`](./xcode-archives.md)                               |
 
-The next ones (`node_modules`, Docker) come with the plans that implement their rules.
+The next one (`node_modules`) comes with the plan that implements its rules.
+
+## Described, not cleaned
+
+Docker is not a category: nothing of it is offered, selected, counted or removed by Fresher (plan
+[032](../plans/032-docker/readme.md); the user's decision of 2026-11-22). The module `docker` only describes what a
+running runtime says it takes, and shows the command that frees each part for the user to run. The levels below colour
+the wording of those parts, nothing else; there is no category file and no row in the catalogue.
+
+| Part               | Level  | The command shown                          | Why that level                                         |
+| ------------------ | ------ | ------------------------------------------ | ------------------------------------------------------ |
+| Build cache        | Safe   | `docker --context <ctx> builder prune --all`  | rebuilt by the next build                           |
+| Unused images      | Low    | `docker --context <ctx> image prune --all`    | pulled or built again, at the cost of time          |
+| Stopped containers | Medium | `docker --context <ctx> container prune`      | their writable layer is lost                        |
+| Unused volumes     | High   | `docker --context <ctx> volume prune`         | a volume may hold the only copy of a database       |
+
+The disk file of the runtime is shown beside them (its largest size, what it takes on the disk, what is used inside),
+because freed space inside Docker does not shrink what the Mac loses until the runtime gives it back.

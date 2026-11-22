@@ -15,6 +15,7 @@ const SIMULATED_TEXT: Readonly<Record<Simulated, UiKey>> = {
   installs: 'ui.build-banner.simulated.installs',
   running: 'ui.build-banner.simulated.running',
   spotlight: 'ui.build-banner.simulated.spotlight',
+  tools: 'ui.build-banner.simulated.tools',
 };
 
 // The sandbox's banner: its folder, the core's sentence of where its cleanups go and, when the core reports any, what

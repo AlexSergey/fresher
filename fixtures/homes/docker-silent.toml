@@ -1,0 +1,14 @@
+# A home where Docker has nothing to say: a stale socket at Docker Desktop's place (stated: a socket's path is too long
+# to make here), a file named `Docker.raw` at no place the module knows, and a folder, not a file, at Docker Desktop's
+# disk file's place. With no Docker app installed the module says nothing and runs nothing.
+
+[[file]]
+path = ".docker/run/docker.sock"
+kind = "socket"
+
+[[file]]
+path = "VMs/Docker.raw"
+size = 4096
+
+[[dir]]
+path = "Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"

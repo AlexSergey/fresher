@@ -56,10 +56,10 @@ describe('BuildBanner', () => {
     });
 
     it('the_sandbox_banner_lists_every_simulated_part_in_the_cores_order', () => {
-      render(<BuildBanner build={sandbox(['running', 'spotlight', 'access', 'installs'])} />);
+      render(<BuildBanner build={sandbox(['running', 'spotlight', 'access', 'installs', 'tools'])} />);
 
       expect(screen.getByRole('note').textContent).toBe(
-        `Sandbox · /Users/dev/box · ${OWN_TRASH} · Simulated: open apps, Spotlight, access, installs.`,
+        `Sandbox · /Users/dev/box · ${OWN_TRASH} · Simulated: open apps, Spotlight, access, installs, tools.`,
       );
     });
 

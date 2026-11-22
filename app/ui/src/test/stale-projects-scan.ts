@@ -164,6 +164,7 @@ export const STALE_PROJECTS_SCAN: readonly Event[] = [
   { findings: STALE_PROJECTS_FINDINGS.slice(0, 3), scan: 1, type: 'findings-added' },
   { findings: STALE_PROJECTS_FINDINGS.slice(3), scan: 1, type: 'findings-added' },
   {
+    insights: [],
     leftOut: [...STALE_PROJECTS_LEFT_OUT],
     module: 'stale-projects',
     outcome: { kind: 'completed' },

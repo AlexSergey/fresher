@@ -23,7 +23,8 @@ const FILL_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 pub(crate) const CACHEDIR_TAG_CONTENT: &[u8] =
     b"Signature: 8a477f597d28d172789f06886806bc55\n# A cache directory tag.\n";
 
-/// A tree of files, folders, links, sandbox markers and app bundles as plain data (the format: docs/testing.md, "Fixture homes").
+/// A tree of files, folders, links, sandbox markers and app bundles as plain data (the format: docs/testing.md,
+/// "Fixture homes").
 ///
 /// It is checked when parsed or merged and built with [`TreeDescription::build_at`] into any existing folder.
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -75,6 +76,10 @@ struct FileSpec {
     age: Option<String>,
     /// Absent: sparse.
     fill: Option<Fill>,
+    /// With the sparse fill only: its first `written` bytes hold the data pattern and the rest stays a hole, so it
+    /// takes about `written` bytes on disk for its `size` (APFS allocates the head in 16 KiB steps, and a file of
+    /// 16 MiB or less whole). Counted in the tree's filled total.
+    written: Option<u64>,
     /// The time of its last status change, stated, as an `age`.
     changed: Option<String>,
     /// The time of its last access, stated, as an `age`.
@@ -322,14 +327,40 @@ impl TreeDescription {
                     return Err(FixtureError::FillOverCap { path: file.path.clone() });
                 }
             }
+            if let Some(written) = file.written {
+                check_written(file, written)?;
+                filled = filled.saturating_add(written);
+                if filled > MAX_FILLED_TREE {
+                    return Err(FixtureError::FillOverCap { path: file.path.clone() });
+                }
+            }
         }
         Ok(())
     }
 }
 
+/// A file's `written` head comes with the sparse fill only, fits inside its size and under the fill cap.
+fn check_written(file: &FileSpec, written: u64) -> Result<(), FixtureError> {
+    if file.fill.unwrap_or_default() != Fill::Sparse {
+        return Err(FixtureError::WrittenWithFill { path: file.path.clone() });
+    }
+    if written > file.size {
+        return Err(FixtureError::WrittenOverSize { path: file.path.clone() });
+    }
+    if written > MAX_FILLED_FILE {
+        return Err(FixtureError::FillOverCap { path: file.path.clone() });
+    }
+    Ok(())
+}
+
 /// A file's `text` comes alone and fits the small-file reader.
 fn check_text(file: &FileSpec, text: &str) -> Result<(), FixtureError> {
-    let with = [("size", file.size != 0), ("fill", file.fill.is_some()), ("kind", file.kind.is_some())];
+    let with = [
+        ("size", file.size != 0),
+        ("fill", file.fill.is_some()),
+        ("kind", file.kind.is_some()),
+        ("written", file.written.is_some()),
+    ];
     if let Some((field, _)) = with.into_iter().find(|(_, given)| *given) {
         return Err(FixtureError::TextWith { path: file.path.clone(), field });
     }
@@ -416,7 +447,15 @@ fn create_file(folder: &Path, spec: &FileSpec, now: SystemTime) -> Result<(), Fi
         file.write_all(text.as_bytes()).and_then(|()| file.sync_all()).map_err(create_error)?;
     } else {
         match spec.fill.unwrap_or_default() {
-            Fill::Sparse => file.set_len(spec.size).map_err(create_error)?,
+            Fill::Sparse => match spec.written {
+                None | Some(0) => file.set_len(spec.size).map_err(create_error)?,
+                // Sized first, then only the head written: the rest stays a hole.
+                Some(written) => file
+                    .set_len(spec.size)
+                    .and_then(|()| write_pattern(&mut file, written))
+                    .and_then(|()| file.sync_all())
+                    .map_err(create_error)?,
+            },
             // Sized first, so every write lands inside the file: a file grown by appends can keep blocks the file
             // system reserved past its end, under load even after the sync, and a walk would read them. Synced, so
             // the blocks are allocated before a walk reads the file's size on disk.
@@ -659,6 +698,43 @@ mod tests {
                 writeln!(many, "[[file]]\npath = \"f{n}\"\nsize = 67108864\nfill = \"data\"").unwrap();
             }
             for text in [one.to_string(), many] {
+                assert!(matches!(parse(&text).unwrap_err(), FixtureError::FillOverCap { .. }));
+            }
+        }
+
+        #[test]
+        fn written_with_the_data_fill_is_refused() {
+            for fill in ["data", "cachedir-tag"] {
+                let text = format!("[[file]]\npath = \"a\"\nsize = 8192\nfill = \"{fill}\"\nwritten = 4096\n");
+
+                let error = parse(&text).unwrap_err();
+
+                assert!(
+                    matches!(error, FixtureError::WrittenWithFill { .. } | FixtureError::TagWithSize { .. }),
+                    "{fill}"
+                );
+            }
+            let tag = "[[file]]\npath = \"a\"\nfill = \"cachedir-tag\"\nwritten = 0\n";
+            assert!(matches!(parse(tag).unwrap_err(), FixtureError::WrittenWithFill { .. }));
+            let text = "[[file]]\npath = \"a\"\ntext = \"x\"\nwritten = 1\n";
+            assert!(matches!(parse(text).unwrap_err(), FixtureError::TextWith { field: "written", .. }));
+        }
+
+        #[test]
+        fn written_over_the_size_is_refused() {
+            let error = parse("[[file]]\npath = \"a\"\nsize = 4096\nwritten = 4097\n").unwrap_err();
+
+            assert!(matches!(error, FixtureError::WrittenOverSize { .. }), "{error}");
+        }
+
+        #[test]
+        fn written_over_the_fill_cap_is_refused() {
+            let one = "[[file]]\npath = \"a\"\nsize = 10737418240\nwritten = 67108865\n".to_owned();
+            let mut many = String::new();
+            for n in 0..9 {
+                writeln!(many, "[[file]]\npath = \"f{n}\"\nsize = 10737418240\nwritten = 67108864").unwrap();
+            }
+            for text in [one, many] {
                 assert!(matches!(parse(&text).unwrap_err(), FixtureError::FillOverCap { .. }));
             }
         }
@@ -919,6 +995,31 @@ mod tests {
                 assert_eq!(metadata.len(), size, "{name}");
                 assert_eq!(metadata.blocks() * 512, blocks, "{name}");
             }
+        }
+
+        #[test]
+        fn a_written_head_takes_about_its_bytes_on_disk() {
+            use std::io::Read as _;
+
+            let folder = tempfile::tempdir().unwrap();
+            let text = "[[file]]\npath = \"disk.img\"\nsize = 1073741824\nwritten = 1048576\n\
+                        [[file]]\npath = \"explicit.img\"\nsize = 67108864\nfill = \"sparse\"\nwritten = 1000\n";
+
+            TreeDescription::from_toml_str(text).unwrap().build_at(folder.path(), now()).unwrap();
+
+            // APFS allocates a written head in 16 KiB steps; a file of 16 MiB or less would be allocated whole.
+            for (name, size, on_disk) in
+                [("disk.img", 1_073_741_824, 1_048_576..=1_048_576), ("explicit.img", 67_108_864, 4096..=16_384)]
+            {
+                let metadata = std::fs::metadata(folder.path().join(name)).unwrap();
+                assert_eq!(metadata.len(), size, "{name}");
+                assert!(on_disk.contains(&(metadata.blocks() * 512)), "{name}: {}", metadata.blocks() * 512);
+            }
+            let mut head = Vec::new();
+            let file = std::fs::File::open(folder.path().join("explicit.img")).unwrap();
+            file.take(65_536).read_to_end(&mut head).unwrap();
+            assert!(head[..1000].iter().any(|&byte| byte != 0));
+            assert!(head[1000..].iter().all(|&byte| byte == 0));
         }
 
         #[test]

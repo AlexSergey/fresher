@@ -11,8 +11,13 @@ use fresher_testing::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::case::{RawAccess, guarded_folder, is_bundle_name, is_pkg_name, is_plain};
+use crate::case::{RawAccess, is_bundle_name, is_pkg_name, is_plain, stated_capability};
 use crate::{CaseFile, Sandbox, SandboxError};
+
+mod commands;
+
+pub use commands::WorldCommands;
+pub(crate) use commands::{StatedTool, ToolProblem};
 
 /// The largest `world.toml` read: far more than any set of case files declares.
 const MAX_WORLD_BYTES: u64 = 1024 * 1024;
@@ -34,8 +39,9 @@ pub struct World {
     spotlight_on: bool,
     /// The apps Spotlight finds outside the apps folders, by name and bundle id, in the order of the case files.
     elsewhere: Vec<(String, BundleId)>,
-    /// What the guarded folders allow, in the order of [`GuardedFolder`]; a folder no case states is absent.
-    access: Vec<(GuardedFolder, Access)>,
+    /// What the guarded folders and other apps' data allow, in the order of [`Capability`]; one no case states is
+    /// absent.
+    access: Vec<(Capability, Access)>,
     /// The macOS version the cases state; `None` when none does.
     macos: Option<SystemVersion>,
     /// The installer receipts: each package's file name and the moment it was installed, in seconds since the Unix
@@ -43,6 +49,8 @@ pub struct World {
     receipts: Vec<(String, u64)>,
     /// The stated facts, by path relative to the sandbox, in the order of the case files.
     entries: Vec<(PathBuf, Stated)>,
+    /// The calls of programs the case files answer, each once, in the order of the files and their cases.
+    tools: Vec<StatedTool>,
 }
 
 impl Default for World {
@@ -58,6 +66,7 @@ impl Default for World {
             macos: None,
             receipts: Vec::new(),
             entries: Vec::new(),
+            tools: Vec::new(),
         }
     }
 }
@@ -82,6 +91,20 @@ struct RawWorld {
     receipts: Vec<RawReceipt>,
     #[serde(default, rename = "entry", skip_serializing_if = "Vec::is_empty")]
     entries: Vec<RawEntry>,
+    #[serde(default, rename = "tool", skip_serializing_if = "Vec::is_empty")]
+    tools: Vec<RawTool>,
+}
+
+/// A `[[tool]]`: a call of a program, relative to the sandbox, and what it answers.
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct RawTool {
+    program: String,
+    args: Vec<String>,
+    #[serde(default)]
+    status: i32,
+    #[serde(default)]
+    stdout: String,
 }
 
 /// A `[[receipt]]`: an installer receipt of the sandbox's Mac, its moment in seconds since the Unix epoch.
@@ -132,24 +155,27 @@ enum RawSpotlight {
 }
 
 impl World {
-    /// The world of `files` generated at `now`, joined: every case's installed app declared `running = true` (its
-    /// name and bundle id), then its `[[case.running]]`, its `[[case.elsewhere]]`, and every fact its files state
-    /// (times counted back from `now`), in the order of the files and their cases; Spotlight is off when any case
-    /// says so; a folder whose access two cases state differently takes the most restrictive (`denied`, then
-    /// `not-asked`, then `granted`).
+    /// The world of `files` generated at `now`, joined: every case's installed app declared `running = true` (its name
+    /// and bundle id), then its `[[case.running]]`, its `[[case.elsewhere]]`, and every fact its files state (times
+    /// counted back from `now`), in the order of the files and their cases; Spotlight is off when any case says so; a
+    /// folder (or other apps' data) whose access two cases state differently takes the most restrictive (`denied`, then
+    /// `not-asked`, then `granted`); a call of a program stated twice is kept once, and refused when its answers
+    /// differ.
     pub fn of(files: &[CaseFile], now: SystemTime) -> Result<Self, SandboxError> {
         let mut running = Vec::new();
         let mut entries = Vec::new();
         let mut elsewhere = Vec::new();
         let mut spotlight_on = true;
-        let mut access: BTreeMap<GuardedFolder, Access> = BTreeMap::new();
+        let mut access: BTreeMap<Capability, Access> = BTreeMap::new();
         let mut macos: Option<SystemVersion> = None;
         let mut receipts = Vec::new();
+        let tools = commands::join_tools(files.iter().flat_map(CaseFile::cases).flat_map(|case| case.tools().to_vec()))
+            .map_err(|program| SandboxError::ToolTwice { program })?;
         for case in files.iter().flat_map(CaseFile::cases) {
             elsewhere.extend(case.elsewhere().iter().cloned());
             spotlight_on &= !case.spotlight_off();
-            for &(folder, stated) in case.access() {
-                let joined = access.entry(folder).or_insert(stated);
+            for &(capability, stated) in case.access() {
+                let joined = access.entry(capability).or_insert(stated);
                 if restrictiveness(stated) > restrictiveness(*joined) {
                     *joined = stated;
                 }
@@ -180,7 +206,7 @@ impl World {
         }
         let now = now.duration_since(SystemTime::UNIX_EPOCH).ok().map(|since| since.as_secs());
         let access = access.into_iter().collect();
-        Ok(Self { now, running, spotlight_on, elsewhere, access, macos, receipts, entries })
+        Ok(Self { now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools })
     }
 
     /// The world of `sandbox`, read from its `world.toml`, through no link; a missing file is an empty world. Anything
@@ -240,35 +266,36 @@ impl World {
         !self.spotlight_on || !self.elsewhere.is_empty()
     }
 
-    /// Whether the world states what any guarded folder allows.
+    /// Whether the world states what any guarded folder or other apps' data allows.
     pub fn declares_access(&self) -> bool {
         !self.access.is_empty()
     }
 
     /// The access the app asks in the sandbox whose home is `home`; `None` when the world states none. Every
-    /// capability the system grants has a state: every file `Unknown`, a stated folder as stated, every other
-    /// `NotAsked`. Each stated folder is guarded at `home/<Folder>`, and trying it answers `Granted` for `granted` and
-    /// `not-asked` (the simulated prompt is accepted), `Denied` for `denied`.
+    /// capability the system grants has a state: every file `Unknown`, a stated folder or other apps' data as stated,
+    /// every other `NotAsked`. Each stated folder is guarded at `home/<Folder>`, other apps' data at
+    /// `home/Library/Containers` and `home/Library/Group Containers`, and trying a place answers `Granted` for
+    /// `granted` and `not-asked` (the simulated prompt is accepted), `Denied` for `denied`.
     pub fn access(&self, home: &Path) -> Option<FakeAccess> {
         if self.access.is_empty() {
             return None;
         }
-        let declared = |folder| self.access.iter().find(|(stated, _)| *stated == folder).map(|&(_, access)| access);
+        let declared =
+            |capability| self.access.iter().find(|(stated, _)| *stated == capability).map(|&(_, access)| access);
         let states: Vec<(Capability, Access)> = Capability::SYSTEM
             .into_iter()
             .map(|capability| {
                 let access = match capability {
                     Capability::AllFiles => Access::Unknown,
-                    Capability::Folder(folder) => declared(folder).unwrap_or(Access::NotAsked),
-                    _ => Access::NotAsked,
+                    _ => declared(capability).unwrap_or(Access::NotAsked),
                 };
                 (capability, access)
             })
             .collect();
         let fake = FakeAccess::with(&states).home(home);
-        Some(self.access.iter().fold(fake, |fake, &(folder, access)| {
+        Some(self.access.iter().fold(fake, |fake, &(capability, access)| {
             let answer = if access == Access::Denied { Access::Denied } else { Access::Granted };
-            fake.guard(folder_name(folder), Capability::Folder(folder)).answering(folder_name(folder), answer)
+            places(capability).iter().fold(fake, |fake, place| fake.guard(place, capability).answering(place, answer))
         }))
     }
 
@@ -296,14 +323,15 @@ impl World {
         }
     }
 
-    /// The folders whose access the world states.
-    pub fn stated_folders(&self) -> Vec<GuardedFolder> {
-        self.access.iter().map(|&(folder, _)| folder).collect()
+    /// The capabilities whose access the world states: guarded folders and other apps' data.
+    pub fn stated_capabilities(&self) -> Vec<Capability> {
+        self.access.iter().map(|&(capability, _)| capability).collect()
     }
 
-    /// The places of the stated folders in the sandbox whose home is `home`: `home/<Folder>` of each.
+    /// The places of the stated capabilities in the sandbox whose home is `home`: `home/<Folder>` of each folder,
+    /// `home/Library/Containers` and `home/Library/Group Containers` of other apps' data.
     pub fn stated_places(&self, home: &Path) -> Vec<PathBuf> {
-        self.access.iter().map(|&(folder, _)| home.join(folder_name(folder))).collect()
+        self.access.iter().flat_map(|&(capability, _)| places(capability)).map(|place| home.join(place)).collect()
     }
 
     /// The running apps as the port the app asks: the same answer at every call.
@@ -315,6 +343,17 @@ impl World {
     /// sandbox mode's reader reports instead of the disk's.
     pub fn stated(&self, sandbox: &Path) -> StatedFacts {
         StatedFacts::under(sandbox, self.entries.iter().map(|(path, stated)| (path.as_path(), stated)))
+    }
+
+    /// Whether the world states what any program answers.
+    pub fn declares_tools(&self) -> bool {
+        !self.tools.is_empty()
+    }
+
+    /// The programs as sandbox mode runs them in the sandbox at `sandbox` (the canonical sandbox folder): the stated
+    /// calls answered, every other call recorded and answered `NotInstalled`; nothing is ever run.
+    pub fn commands(&self, sandbox: &Path) -> WorldCommands {
+        WorldCommands::new(sandbox, &self.tools)
     }
 
     /// The `world.toml` text.
@@ -348,13 +387,23 @@ impl World {
         let access = self
             .access
             .iter()
-            .filter_map(|&(folder, access)| Some((Capability::Folder(folder).id().to_owned(), RawAccess::of(access)?)))
+            .filter_map(|&(capability, access)| Some((capability.id().to_owned(), RawAccess::of(access)?)))
             .collect();
         let macos = self.macos.map(version_text);
         let receipts = self
             .receipts
             .iter()
             .map(|(package, installed)| RawReceipt { package: package.clone(), installed: *installed })
+            .collect();
+        let tools = self
+            .tools
+            .iter()
+            .map(|tool| RawTool {
+                program: tool.program.to_string_lossy().into_owned(),
+                args: tool.args.clone(),
+                status: tool.status,
+                stdout: tool.stdout.clone(),
+            })
             .collect();
         let body = toml::to_string(&RawWorld {
             now: self.now,
@@ -365,6 +414,7 @@ impl World {
             elsewhere,
             receipts,
             entries,
+            tools,
         })
         .map_err(|error| SandboxError::World { path: "world.toml".into(), reason: error.to_string() })?;
         // The facts', Spotlight's and the access's lines only when there are any: a world without them is written as
@@ -375,11 +425,20 @@ impl World {
         } else {
             ""
         };
-        let access = if self.declares_access() {
-            "# [access] is what the guarded folders allow in sandbox mode: granted, denied, or not-asked, which is\n\
-             # granted once its switch in Settings → Permissions is on.\n"
-        } else {
-            ""
+        let access = match (
+            self.declares_access(),
+            self.access.iter().any(|&(stated, _)| stated == Capability::OtherAppsData),
+        ) {
+            (false, _) => "",
+            (true, false) => {
+                "# [access] is what the guarded folders allow in sandbox mode: granted, denied, or not-asked, which is\n\
+                 # granted once its switch in Settings → Permissions is on.\n"
+            }
+            (true, true) => {
+                "# [access] is what the guarded folders allow in sandbox mode: granted, denied, or not-asked, which is\n\
+                 # granted once its switch in Settings → Permissions is on.\n\
+                 # `other-apps-data` guards Library/Containers and Library/Group Containers of the sandbox's home.\n"
+            }
         };
         let installs = if self.declares_installs() {
             "# `macos` and each [[receipt]] are what the system's version and installer receipts answer in sandbox mode.\n"
@@ -391,9 +450,15 @@ impl World {
         } else {
             "# Each [[entry]] states facts of a path that the disk does not have (Finder never shows them).\n"
         };
+        let tools = if self.declares_tools() {
+            "# Each [[tool]] is what a program below the sandbox answers to exactly its arguments in sandbox mode; no\n\
+             # other program is run.\n"
+        } else {
+            ""
+        };
         Ok(format!(
             "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written by the\n\
-             # generator from the case files.\n{spotlight}{access}{installs}{facts}{body}"
+             # generator from the case files.\n{spotlight}{access}{installs}{facts}{tools}{body}"
         ))
     }
 
@@ -450,11 +515,12 @@ impl World {
         let access = raw
             .access
             .into_iter()
-            .map(|(key, value)| match guarded_folder(&key) {
-                Some(folder) => Ok((folder, value.access())),
-                None => {
-                    Err(format!("`access` names `{key}`: only the guarded folders desktop, documents and downloads"))
-                }
+            .map(|(key, value)| match stated_capability(&key) {
+                Some(capability) => Ok((capability, value.access())),
+                None => Err(format!(
+                    "`access` names `{key}`: only the guarded folders desktop, documents and downloads, and \
+                     other-apps-data"
+                )),
             })
             .collect::<Result<Vec<_>, String>>()?;
         let macos = raw
@@ -471,8 +537,23 @@ impl World {
                 Ok((receipt.package, receipt.installed))
             })
             .collect::<Result<_, String>>()?;
+        let tools = raw
+            .tools
+            .into_iter()
+            .map(|tool| {
+                let program = tool.program.clone();
+                StatedTool::new(&tool.program, tool.args, tool.status, tool.stdout).map_err(|problem| match problem {
+                    ToolProblem::Program => format!("the tool `{program}` is not a plain path inside the sandbox"),
+                    ToolProblem::Argument => format!("an argument of the tool `{program}` holds a NUL"),
+                    ToolProblem::Output => format!("the output of the tool `{program}` is over 64 KiB"),
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let tools = commands::join_tools(tools).map_err(|program| {
+            format!("the tool `{}` is stated twice with the same arguments and different answers", program.display())
+        })?;
         let spotlight_on = raw.spotlight.is_none();
-        Ok(Self { now: raw.now, running, spotlight_on, elsewhere, access, macos, receipts, entries })
+        Ok(Self { now: raw.now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools })
     }
 }
 
@@ -496,6 +577,17 @@ pub(crate) const fn folder_name(folder: GuardedFolder) -> &'static str {
         GuardedFolder::Desktop => "Desktop",
         GuardedFolder::Documents => "Documents",
         GuardedFolder::Downloads => "Downloads",
+    }
+}
+
+/// The places a stated capability guards in a home folder, relative to it; none for one a case cannot state.
+const fn places(capability: Capability) -> &'static [&'static str] {
+    match capability {
+        Capability::Folder(GuardedFolder::Desktop) => &["Desktop"],
+        Capability::Folder(GuardedFolder::Documents) => &["Documents"],
+        Capability::Folder(GuardedFolder::Downloads) => &["Downloads"],
+        Capability::OtherAppsData => &["Library/Containers", "Library/Group Containers"],
+        Capability::AllFiles | Capability::Volume(_) | Capability::Tool(_) => &[],
     }
 }
 
@@ -576,6 +668,16 @@ mod tests {
 
     const RECEIPT: &str = "[[case.receipt]]\npackage = \"Tool-3.1.pkg\"\ninstalled = \"10d\"\n";
 
+    const DOCKER: &str = "Applications/OrbStack.app/Contents/MacOS/xbin/docker";
+
+    /// A `[[case.tool]]` of `DOCKER` answering `args` with `status` and `stdout`.
+    fn tool(args: &str, status: i32, stdout: &str) -> String {
+        format!("[[case.tool]]\nprogram = \"{DOCKER}\"\nargs = [{args}]\nstatus = {status}\nstdout = \"{stdout}\"\n")
+    }
+
+    const DF: &str = "\"--context\", \"orbstack\", \"system\", \"df\", \"--format\", \"json\"";
+    const DF_ARGS: [&str; 6] = ["--context", "orbstack", "system", "df", "--format", "json"];
+
     fn user(folder: &Path) -> u32 {
         use std::os::unix::fs::MetadataExt as _;
         fs::metadata(folder).unwrap().uid()
@@ -607,10 +709,126 @@ mod tests {
         use std::os::unix::fs::symlink;
         use std::path::Path;
 
-        use fresher_core::{InstallRecords, RunningApps};
+        use fresher_core::{
+            Access, AccessProbe, CancelToken, Capability, CommandRunError, CommandRunner, InstallRecords, RunningApps,
+        };
 
-        use super::{RECEIPT, case_file, elsewhere, generated, installed, with_installs};
+        use super::{
+            DF, DF_ARGS, DOCKER, RECEIPT, case_file, elsewhere, generated, installed, tool, with_access, with_installs,
+        };
         use crate::{SandboxError, World};
+
+        #[test]
+        fn other_apps_data_not_stated_is_not_asked() {
+            let world = World::of(&[with_access("a", "downloads = \"granted\"")], super::now()).unwrap();
+            let home = Path::new("/box/home");
+
+            let access = world.access(home).unwrap();
+
+            assert_eq!(access.status().access(&Capability::OtherAppsData), Access::NotAsked);
+            let places = access.guarded_places(&[home.to_path_buf()]);
+            assert!(places.iter().all(|place| place.capability != Capability::OtherAppsData), "{places:?}");
+            assert!(!world.stated_places(home).iter().any(|place| place.starts_with(home.join("Library"))));
+            assert!(!world.text().unwrap().contains("other-apps-data"));
+        }
+
+        #[test]
+        fn two_answers_to_one_call_are_refused() {
+            let files = [case_file("a", &tool(DF, 0, "one")), case_file("b", &tool(DF, 0, "two"))];
+
+            let error = World::of(&files, super::now()).unwrap_err();
+
+            assert!(matches!(&error, SandboxError::ToolTwice { program } if program == Path::new(DOCKER)), "{error}");
+            let status = [case_file("a", &tool(DF, 0, "")), case_file("b", &tool(DF, 1, ""))];
+            assert!(matches!(World::of(&status, super::now()), Err(SandboxError::ToolTwice { .. })));
+        }
+
+        #[test]
+        fn an_unstated_call_answers_not_installed_and_is_recorded() {
+            let world = World::of(&[case_file("a", &tool(DF, 0, "{}"))], super::now()).unwrap();
+            let commands = world.commands(Path::new("/box"));
+
+            let answer = commands.run("/bin/rm", &["-rf", "/box/home"], &CancelToken::new());
+
+            assert_eq!(answer, Err(CommandRunError::NotInstalled { program: "/bin/rm".into() }));
+            assert_eq!(commands.unanswered(), ["/bin/rm -rf /box/home"]);
+        }
+
+        #[test]
+        fn a_stated_program_with_other_arguments_is_unanswered() {
+            let world = World::of(&[case_file("a", &tool(DF, 0, "{}"))], super::now()).unwrap();
+            let commands = world.commands(Path::new("/box"));
+            let program = format!("/box/{DOCKER}");
+
+            let prune = commands.run(&program, &["--context", "orbstack", "image", "prune"], &CancelToken::new());
+            let fewer = commands.run(&program, &DF_ARGS[..5], &CancelToken::new());
+            let outside = commands.run(&format!("/{DOCKER}"), &DF_ARGS, &CancelToken::new());
+
+            for answer in [prune, fewer, outside] {
+                assert!(matches!(answer, Err(CommandRunError::NotInstalled { .. })), "{answer:?}");
+            }
+            assert_eq!(
+                commands.unanswered(),
+                [
+                    format!("{program} --context orbstack image prune"),
+                    format!("{program} --context orbstack system df --format"),
+                    format!("/{DOCKER} --context orbstack system df --format json"),
+                ]
+            );
+        }
+
+        #[test]
+        fn a_set_cancel_token_answers_cancelled() {
+            let world = World::of(&[case_file("a", &tool(DF, 0, "{}"))], super::now()).unwrap();
+            let commands = world.commands(Path::new("/box"));
+            let (program, cancel) = (format!("/box/{DOCKER}"), CancelToken::new());
+            cancel.cancel();
+
+            let stated = commands.run(&program, &DF_ARGS, &cancel);
+            let unstated = commands.run("/bin/echo", &["hi"], &cancel);
+
+            assert_eq!(stated, Err(CommandRunError::Cancelled { program: program.clone() }));
+            assert_eq!(unstated, Err(CommandRunError::Cancelled { program: "/bin/echo".into() }));
+            assert_eq!(commands.unanswered(), ["/bin/echo hi"], "an unstated call is recorded even when cancelled");
+        }
+
+        #[test]
+        fn a_world_without_tools_writes_no_tool() {
+            let world = World::of(&[case_file("plain", "")], super::now()).unwrap();
+
+            assert_eq!(
+                world.text().unwrap(),
+                format!(
+                    "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written \
+                     by the\n# generator from the case files.\nnow = {}\n",
+                    fresher_testing::FIXTURE_NOW
+                )
+            );
+            assert!(!world.declares_tools());
+        }
+
+        #[test]
+        fn a_tool_world_toml_cannot_hold_is_refused() {
+            let (_folder, sandbox) = generated(&[case_file("plain", "")]);
+            let twice = "[[tool]]\nprogram = \"a/b\"\nargs = []\nstdout = \"1\"\n\
+                         [[tool]]\nprogram = \"a/b\"\nargs = []\nstdout = \"2\"\n";
+            let large = format!("[[tool]]\nprogram = \"a/b\"\nargs = []\nstdout = \"{}\"\n", "x".repeat(64 * 1024 + 1));
+            for tools in [
+                "[[tool]]\nprogram = \"/bin/rm\"\nargs = []\n",
+                "[[tool]]\nprogram = \"a/../b\"\nargs = []\n",
+                "[[tool]]\nprogram = \"a/b\"\nargs = [\"\\u0000\"]\n",
+                "[[tool]]\nprogram = \"a/b\"\n",
+                "[[tool]]\nprogram = \"a/b\"\nargs = []\nstderr = \"\"\n",
+                twice,
+                &large,
+            ] {
+                fs::write(sandbox.world(), tools).unwrap();
+
+                let error = World::read(&sandbox).unwrap_err();
+
+                assert!(matches!(error, SandboxError::World { .. }), "{tools}: {error}");
+            }
+        }
 
         #[test]
         fn a_world_without_access_writes_no_access_table() {
@@ -863,11 +1081,58 @@ mod tests {
 
         use std::path::{Path, PathBuf};
 
+        use fresher_core::{CancelToken, CommandOutput, CommandRunner};
+
         use super::{
-            RECEIPT, case_file, elsewhere, generated, installed, names, spotlight, spotlight_off, with_access,
-            with_installs,
+            DF, DF_ARGS, DOCKER, RECEIPT, case_file, elsewhere, generated, installed, names, spotlight, spotlight_off,
+            tool, with_access, with_installs,
         };
         use crate::World;
+
+        #[test]
+        fn tools_round_trip_through_world_toml() {
+            let stdout = "{\\\"Type\\\":\\\"Images\\\"}\\n{\\\"Type\\\":\\\"Containers\\\"}";
+            let files =
+                [case_file("a", &format!("{}{}", tool(DF, 0, stdout), tool("\"info\"", 1, ""))), case_file("b", "")];
+            let (_folder, sandbox) = generated(&files);
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world, World::of(&files, super::now()).unwrap());
+            assert!(world.declares_tools());
+            let text = fs::read_to_string(sandbox.world()).unwrap();
+            assert!(
+                text.contains(&format!("[[tool]]\nprogram = \"{DOCKER}\"\nargs = [\"info\"]\nstatus = 1\n")),
+                "{text}"
+            );
+            assert!(text.contains("# Each [[tool]] is what a program below the sandbox answers"), "{text}");
+        }
+
+        #[test]
+        fn a_stated_call_answers_its_status_and_output() {
+            let files = [case_file("a", &format!("{}{}", tool(DF, 0, "{}"), tool("\"info\"", 3, "no")))];
+            let world = World::of(&files, super::now()).unwrap();
+            let commands = world.commands(Path::new("/box"));
+            let program = format!("/box/{DOCKER}");
+
+            let df = commands.run(&program, &DF_ARGS, &CancelToken::new());
+            let info = commands.run(&program, &["info"], &CancelToken::new());
+
+            assert_eq!(df, Ok(CommandOutput { status: 0, stdout: "{}".into(), stderr: String::new() }));
+            assert_eq!(info, Ok(CommandOutput { status: 3, stdout: "no".into(), stderr: String::new() }));
+            assert_eq!(commands.unanswered(), Vec::<String>::new());
+        }
+
+        #[test]
+        fn the_same_answer_twice_is_kept_once() {
+            let files = [case_file("a", &tool(DF, 0, "{}")), case_file("b", &tool(DF, 0, "{}"))];
+
+            let world = World::of(&files, super::now()).unwrap();
+
+            let text = world.text().unwrap();
+            assert_eq!(text.matches("[[tool]]").count(), 2, "the comment names it once, the table once: {text}");
+            assert_eq!(world, World::of(&files[..1], super::now()).unwrap());
+        }
 
         const DESKTOP: Capability = Capability::Folder(GuardedFolder::Desktop);
         const DOCUMENTS: Capability = Capability::Folder(GuardedFolder::Documents);
@@ -887,6 +1152,78 @@ mod tests {
             assert_eq!(state(&denied, DOWNLOADS), Access::Denied);
             assert_eq!(state(&reversed, DOWNLOADS), Access::Denied);
             assert_eq!(state(&not_asked, DESKTOP), Access::NotAsked);
+        }
+
+        #[test]
+        fn the_most_restrictive_other_apps_data_statement_wins() {
+            let home = Path::new("/box/home");
+            let state = |first: &str, second: &str| {
+                let files = [
+                    with_access("a", &format!("other-apps-data = \"{first}\"")),
+                    with_access("b", &format!("other-apps-data = \"{second}\"")),
+                ];
+                World::of(&files, super::now())
+                    .unwrap()
+                    .access(home)
+                    .unwrap()
+                    .status()
+                    .access(&Capability::OtherAppsData)
+            };
+
+            assert_eq!(state("granted", "denied"), Access::Denied);
+            assert_eq!(state("denied", "granted"), Access::Denied);
+            assert_eq!(state("granted", "not-asked"), Access::NotAsked);
+            assert_eq!(state("granted", "granted"), Access::Granted);
+        }
+
+        #[test]
+        fn other_apps_data_guards_containers_and_group_containers() {
+            let home = Path::new("/box/home");
+            let places = |value: &str| {
+                let world =
+                    World::of(&[with_access("a", &format!("other-apps-data = \"{value}\""))], super::now()).unwrap();
+                let access = world.access(home).unwrap();
+                // Read before a place is tried: trying it answers the simulated prompt.
+                let status = access.status().access(&Capability::OtherAppsData);
+                let places = access.guarded_places(&[home.to_path_buf()]);
+                let tried: Vec<Access> = places.iter().map(|place| access.try_place(place)).collect();
+                (world.stated_places(home), places, tried, status)
+            };
+            let both = [home.join("Library/Containers"), home.join("Library/Group Containers")];
+            let guarded: Vec<GuardedPlace> = both
+                .iter()
+                .map(|path| GuardedPlace { path: path.clone(), capability: Capability::OtherAppsData })
+                .collect();
+
+            for (value, state, answer) in [
+                ("granted", Access::Granted, Access::Granted),
+                ("not-asked", Access::NotAsked, Access::Granted),
+                ("denied", Access::Denied, Access::Denied),
+            ] {
+                let (stated, places, tried, status) = places(value);
+
+                assert_eq!(stated, both, "{value}");
+                assert_eq!(places, guarded, "{value}");
+                assert_eq!(tried, [answer, answer], "{value}");
+                assert_eq!(status, state, "{value}");
+            }
+        }
+
+        #[test]
+        fn other_apps_data_round_trips_through_world_toml() {
+            let files = [with_access("a", "other-apps-data = \"granted\", downloads = \"denied\""), case_file("b", "")];
+            let (_folder, sandbox) = generated(&files);
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world, World::of(&files, super::now()).unwrap());
+            assert_eq!(world.stated_capabilities(), [DOWNLOADS, Capability::OtherAppsData]);
+            let text = fs::read_to_string(sandbox.world()).unwrap();
+            assert!(text.contains("[access]\ndownloads = \"denied\"\nother-apps-data = \"granted\"\n"), "{text}");
+            assert!(
+                text.contains("# `other-apps-data` guards Library/Containers and Library/Group Containers"),
+                "{text}"
+            );
         }
 
         #[test]

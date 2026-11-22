@@ -116,6 +116,16 @@ const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
   return dialog;
 };
 
+// Scans, opens the one card of the described section and waits for the insight screen's title to take the focus.
+const insightAfter = async (page: Page, script: CoreScript, title: string): Promise<void> => {
+  await mockCore(page, script);
+  await page.goto('/');
+  await scanButton(page).click();
+  await scanFinished(page);
+  await page.getByRole('region', { name: 'Described, not cleaned' }).getByRole('button', { name: 'Details' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeFocused();
+};
+
 test.beforeEach(async ({ page }) => {
   await motionOff(page);
   await failOnCspViolation(page);
@@ -257,6 +267,40 @@ test.describe('positive cases', () => {
       await expect(details(page).getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
 
       await looksTheSame(page, 'category-details-ollama.png');
+    });
+
+    test('the Scan screen with the described section', async ({ page }) => {
+      await mockCore(page, SCRIPTS.docker);
+      await page.goto('/');
+      await scanButton(page).click();
+      await scanFinished(page);
+      const section = page.getByRole('region', { name: 'Described, not cleaned' });
+      await expect(section).toContainText('OrbStack');
+      // The totals have arrived: the layout no longer moves.
+      await expect(page.getByText('in 5 items · 4 categories')).toBeVisible();
+      await section.evaluate((element) => {
+        element.scrollIntoView({ block: 'end' });
+      });
+      await expect(section.getByRole('button', { name: 'Details' })).toBeInViewport();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'scan-described.png');
+    });
+
+    test('the insight screen, answered', async ({ page }) => {
+      await insightAfter(page, SCRIPTS.docker, 'OrbStack');
+      await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'insight-answered.png');
+    });
+
+    test('the insight screen, stopped', async ({ page }) => {
+      await insightAfter(page, SCRIPTS.dockerStopped, 'Docker Desktop');
+      await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'insight-stopped.png');
     });
 
     test('the Scan screen with a category found but left out', async ({ page }) => {

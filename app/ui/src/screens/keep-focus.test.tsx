@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { type JSX, useRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { focusCard, useKeepFocus } from './keep-focus';
+import { focusCard, focusInsightCard, useKeepFocus } from './keep-focus';
 
 type Props = { readonly active?: boolean; readonly scanning: boolean };
 
@@ -108,6 +108,37 @@ describe('focusCard', () => {
 
       expect(focusCard(screen.getByTestId('screen'), 'a.one')).toBe(true);
       expect(screen.getByRole('button', { name: 'Details of one' })).toHaveFocus();
+    });
+  });
+});
+
+describe('focusInsightCard', () => {
+  const Cards = (): JSX.Element => (
+    <div data-testid="screen">
+      <h1>Scan</h1>
+      <ul>
+        <li data-insight="docker/orbstack">
+          <button type="button">Details of OrbStack</button>
+        </li>
+      </ul>
+    </div>
+  );
+
+  describe('negative cases', () => {
+    it('says no and moves nothing when the card is not on the screen', () => {
+      render(<Cards />);
+
+      expect(focusInsightCard(screen.getByTestId('screen'), 'docker/gone')).toBe(false);
+      expect(document.body).toHaveFocus();
+    });
+  });
+
+  describe('positive cases', () => {
+    it("focuses the card's Details button", () => {
+      render(<Cards />);
+
+      expect(focusInsightCard(screen.getByTestId('screen'), 'docker/orbstack')).toBe(true);
+      expect(screen.getByRole('button', { name: 'Details of OrbStack' })).toHaveFocus();
     });
   });
 });

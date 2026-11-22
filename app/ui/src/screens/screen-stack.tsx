@@ -5,7 +5,7 @@ import type { Screen } from '../state/navigation';
 import { usePresence } from '../design/motion';
 import { DURATION } from '../design/tokens/motion';
 import styles from './app-frame.module.css';
-import { focusCard, focusHeading, useKeepFocus } from './keep-focus';
+import { focusCard, focusHeading, focusInsightCard, useKeepFocus } from './keep-focus';
 
 export type ScreenStackProps = {
   // The screen itself, inside its `ScrollArea`.
@@ -14,7 +14,7 @@ export type ScreenStackProps = {
 };
 
 // One screen on the stack: open (the current one) or leaving. `arrived` when a screen change brought it: it fades in
-// and its heading takes the focus; the first screen of the app just appears.
+// and its heading takes the focus (Scan after a details screen: the card it came from); the first screen of the app just appears.
 type Layer = { readonly arrived: boolean; readonly key: string; readonly open: boolean; readonly screen: Screen };
 
 const FADE_OUT: readonly Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
@@ -31,6 +31,8 @@ export const screenKey = (screen: Screen): string => {
     case 'scan':
     case 'settings':
       return screen.kind;
+    case 'insight':
+      return `insight:${screen.module}/${screen.identity}`;
   }
 };
 
@@ -57,9 +59,13 @@ const ScreenLayer = ({ children, layer, onGone }: ScreenLayerProps): JSX.Element
       return;
     }
 
-    const from = layer.screen.kind === 'scan' ? layer.screen.from : undefined;
+    const { from, fromInsight } =
+      layer.screen.kind === 'scan' ? layer.screen : { from: undefined, fromInsight: undefined };
+    const returned =
+      (from !== undefined && focusCard(ref.current, from)) ||
+      (fromInsight !== undefined && focusInsightCard(ref.current, fromInsight));
 
-    if (from === undefined || !focusCard(ref.current, from)) {
+    if (!returned) {
       focusHeading(ref.current);
     }
   }, [layer.open, layer.arrived, layer.screen, ref]);
