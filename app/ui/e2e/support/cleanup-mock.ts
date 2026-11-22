@@ -132,11 +132,19 @@ const planFor =
   };
 
 // Adds the cleanup commands to the mocked core of `core-mock.ts`, which calls `invoke` first for every command.
-export const mockCleanup = async (page: Page, findings: readonly Finding[], script: CleanupScript): Promise<void> => {
+// `confirmed` is told the plan of every cleanup the user confirmed (the Largest mock forgets what it moved).
+export const mockCleanup = async (
+  page: Page,
+  findings: readonly Finding[],
+  script: CleanupScript,
+  confirmed?: (plan: CleanupPlanView) => void,
+): Promise<void> => {
   await page.exposeFunction(PLAN_OF, planFor(findings, script));
-  await page.exposeFunction(CLEANUP_OF, (plan: CleanupPlanView, method: Method) =>
-    JSON.stringify(cleanupOf(script, plan, method, script.hold ?? plan.summary.count)),
-  );
+  await page.exposeFunction(CLEANUP_OF, (plan: CleanupPlanView, method: Method) => {
+    confirmed?.(plan);
+
+    return JSON.stringify(cleanupOf(script, plan, method, script.hold ?? plan.summary.count));
+  });
   await page.addInitScript(
     (setup: Setup) => {
       const scope = globalThis as unknown as Record<string, unknown>;

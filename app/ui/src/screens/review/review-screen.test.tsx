@@ -20,6 +20,7 @@ import {
 } from '../../test/cleanup-plan';
 import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW } from '../../test/demo-scan';
 import { FINDING_DICTIONARY, HIGH_FINDING } from '../../test/finding-fixtures';
+import { LARGEST_DICTIONARY, LARGEST_ROWS, ownFindingOf } from '../../test/largest-scan';
 import { pageOf } from '../../test/page-of';
 import { BUILD_DICTIONARY, sandboxBuild } from '../../test/sandbox-build';
 import { STORAGE_DICTIONARY } from '../../test/storage-map';
@@ -81,6 +82,7 @@ const renderReview = async (
     ...Object.fromEntries(Object.entries(cleanup).map(([key, answer]) => [key, recorded(key as CommandKey, answer)])),
     getDictionary: recorded('getDictionary', () => ({
       ...FINDING_DICTIONARY,
+      ...LARGEST_DICTIONARY,
       ...CLEANUP_DICTIONARY,
       ...BUILD_DICTIONARY,
       ...STORAGE_DICTIONARY,
@@ -304,6 +306,15 @@ describe('ReviewScreen', () => {
       // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
       expect(title.parentElement?.querySelector('svg')).not.toBeNull();
       expect(within(high).getByRole('region', { name: 'Example projects' })).toBeInTheDocument();
+    });
+
+    it('a picked own file is listed under Your own files in the High zone', async () => {
+      await renderReview(pickFinding(ownFindingOf(LARGEST_ROWS[0] as (typeof LARGEST_ROWS)[number], 101)));
+
+      const high = screen.getByRole('region', { name: 'High risk' });
+
+      expect(within(high).getByRole('region', { name: 'Your own files' })).toBeInTheDocument();
+      expect(within(high).getByText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '')).toBeInTheDocument();
     });
 
     it('groups follow the zones, then size order, and show what is lost', async () => {

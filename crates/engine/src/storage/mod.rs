@@ -3,8 +3,8 @@
 
 pub(crate) mod attribution;
 mod meaning;
-mod place;
-mod query;
+pub(crate) mod place;
+pub(crate) mod query;
 pub(crate) mod roots;
 pub(crate) mod shares;
 mod volume;

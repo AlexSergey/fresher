@@ -1,0 +1,504 @@
+{
+  "files": {
+    "kinds": [
+      {
+        "count": 1,
+        "kind": "disk-image"
+      },
+      {
+        "count": 1,
+        "kind": "archive"
+      },
+      {
+        "count": 1,
+        "kind": "video"
+      },
+      {
+        "count": 1,
+        "kind": "virtual-machine"
+      },
+      {
+        "count": 1,
+        "kind": "file"
+      }
+    ],
+    "minSize": 10000000,
+    "offset": 0,
+    "places": [
+      {
+        "count": 2,
+        "folder": {
+          "files": 4,
+          "folders": 1,
+          "kind": "folder",
+          "name": "Downloads",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 37752832,
+            "completeness": "complete",
+            "logical": 37752832,
+            "reclaimable": 37752832
+          }
+        }
+      },
+      {
+        "count": 1,
+        "folder": {
+          "files": 1,
+          "folders": 0,
+          "kind": "folder",
+          "name": "Movies",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 14680064,
+            "completeness": "complete",
+            "logical": 14680064,
+            "reclaimable": 14680064
+          }
+        }
+      },
+      {
+        "count": 1,
+        "folder": {
+          "files": 1,
+          "folders": 1,
+          "kind": "folder",
+          "name": "Old projects",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        }
+      },
+      {
+        "count": 1,
+        "folder": {
+          "files": 1,
+          "folders": 2,
+          "kind": "folder",
+          "name": "VMs",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        }
+      }
+    ],
+    "rows": [
+      {
+        "kind": "disk-image",
+        "node": {
+          "files": 0,
+          "folders": 0,
+          "kind": "file",
+          "name": "Installer.dmg",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 16777216,
+            "completeness": "complete",
+            "logical": 16777216,
+            "reclaimable": 16777216
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "picked": null,
+        "place": "~/Downloads",
+        "unpacked": null
+      },
+      {
+        "kind": "video",
+        "node": {
+          "files": 0,
+          "folders": 0,
+          "kind": "file",
+          "name": "Trip.mov",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 14680064,
+            "completeness": "complete",
+            "logical": 14680064,
+            "reclaimable": 14680064
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "picked": null,
+        "place": "~/Movies",
+        "unpacked": null
+      },
+      {
+        "kind": "archive",
+        "node": {
+          "files": 0,
+          "folders": 0,
+          "kind": "file",
+          "name": "Photos.zip",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "picked": null,
+        "place": "~/Downloads",
+        "unpacked": "Photos"
+      },
+      {
+        "kind": "file",
+        "node": {
+          "files": 0,
+          "folders": 0,
+          "kind": "file",
+          "name": "data.bin",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "picked": null,
+        "place": "~/Old projects/archive",
+        "unpacked": null
+      },
+      {
+        "kind": "virtual-machine",
+        "node": {
+          "files": 1,
+          "folders": 1,
+          "kind": "folder",
+          "name": "Old.utm",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "picked": null,
+        "place": "~/VMs",
+        "unpacked": null
+      }
+    ],
+    "sizes": {
+      "allocated": 69206016,
+      "completeness": "complete",
+      "logical": 69206016,
+      "reclaimable": 69206016
+    },
+    "total": 5,
+    "truncated": false
+  },
+  "folders": {
+    "offset": 0,
+    "path": [
+      {
+        "files": 14,
+        "folders": 20,
+        "kind": "folder",
+        "name": "~/home",
+        "notScanned": null,
+        "owner": null,
+        "sizes": {
+          "allocated": 140517376,
+          "completeness": "complete",
+          "logical": 140513363,
+          "reclaimable": 140517376
+        }
+      }
+    ],
+    "rows": [
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 4,
+          "folders": 1,
+          "kind": "folder",
+          "name": "Downloads",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 37752832,
+            "completeness": "complete",
+            "logical": 37752832,
+            "reclaimable": 37752832
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "standard-folder"
+        },
+        "opens": true,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 0,
+          "kind": "folder",
+          "name": "Movies",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 14680064,
+            "completeness": "complete",
+            "logical": 14680064,
+            "reclaimable": 14680064
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "standard-folder"
+        },
+        "opens": true,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 12582912,
+          "completeness": "complete",
+          "logical": 12582912,
+          "reclaimable": 12582912
+        },
+        "kind": "folder",
+        "node": {
+          "files": 2,
+          "folders": 1,
+          "kind": "folder",
+          "name": "project",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12587008,
+            "completeness": "complete",
+            "logical": 12582995,
+            "reclaimable": 12587008
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "holds-explained"
+        },
+        "opens": true,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 0,
+          "kind": "folder",
+          "name": ".Trash",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "trash"
+        },
+        "opens": false,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 1,
+          "kind": "folder",
+          "name": ".android",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "hidden"
+        },
+        "opens": false,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 3,
+          "kind": "folder",
+          "name": "Applications",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "standard-folder"
+        },
+        "opens": true,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 2,
+          "kind": "folder",
+          "name": "Library",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "withheld",
+          "reason": "library"
+        },
+        "opens": false,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 1,
+          "kind": "folder",
+          "name": "Old projects",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "opens": true,
+        "picked": null
+      },
+      {
+        "explained": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 0,
+          "reclaimable": 0
+        },
+        "kind": "folder",
+        "node": {
+          "files": 1,
+          "folders": 2,
+          "kind": "folder",
+          "name": "VMs",
+          "notScanned": null,
+          "owner": null,
+          "sizes": {
+            "allocated": 12582912,
+            "completeness": "complete",
+            "logical": 12582912,
+            "reclaimable": 12582912
+          }
+        },
+        "offer": {
+          "kind": "offered"
+        },
+        "opens": true,
+        "picked": null
+      }
+    ],
+    "total": 9
+  }
+}

@@ -8,34 +8,34 @@ use crate::state::TreeState;
 use crate::tree::arena::{Shared, Tree};
 use crate::tree::node::{NodeIndex, Sums};
 
-const MIB: u64 = 1 << 20;
+pub(super) const MIB: u64 = 1 << 20;
 
 /// A tree built in memory, one entry at a time, then frozen into a state.
-struct Built {
-    tree: Tree,
-    root: NodeIndex,
+pub(super) struct Built {
+    pub(super) tree: Tree,
+    pub(super) root: NodeIndex,
 }
 
 impl Built {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let mut tree = Tree::new();
         let root = tree.add_root(Path::new("/home"), FolderIdentity { device: 1, file_id: 2 }).unwrap();
         Self { tree, root }
     }
 
-    fn folder(&mut self, parent: NodeIndex, name: &str) -> NodeIndex {
+    pub(super) fn folder(&mut self, parent: NodeIndex, name: &str) -> NodeIndex {
         self.tree.add_child(parent, name.as_bytes(), EntryKind::Folder).unwrap()
     }
 
     /// A kept file of `allocated` bytes.
-    fn file(&mut self, parent: NodeIndex, name: &str, allocated: u64) -> NodeIndex {
+    pub(super) fn file(&mut self, parent: NodeIndex, name: &str, allocated: u64) -> NodeIndex {
         let file = self.tree.add_child(parent, name.as_bytes(), EntryKind::File).unwrap();
         self.tree.add_own(file, sums(allocated)).unwrap();
         file
     }
 
     /// A kept file of `allocated` bytes, a name of the hard link group `id`.
-    fn hard_link(&mut self, parent: NodeIndex, name: &str, id: u64, allocated: u64) -> NodeIndex {
+    pub(super) fn hard_link(&mut self, parent: NodeIndex, name: &str, id: u64, allocated: u64) -> NodeIndex {
         let file = self.tree.add_child(parent, name.as_bytes(), EntryKind::File).unwrap();
         self.tree.add_shared(Shared::HardLink, 1, id, file, sums(allocated)).unwrap();
         file
@@ -47,7 +47,7 @@ impl Built {
     }
 }
 
-const fn sums(allocated: u64) -> Sums {
+pub(super) const fn sums(allocated: u64) -> Sums {
     Sums { files: 0, logical: allocated, allocated, reclaimable: 0 }
 }
 

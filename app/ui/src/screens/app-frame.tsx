@@ -16,6 +16,7 @@ import { CleanupScreen } from './cleanups/cleanup-screen';
 import { CleanupsScreen } from './cleanups/cleanups-screen';
 import { FrameSidebar } from './frame-sidebar';
 import { InsightScreen } from './insight/insight-screen';
+import { LargestScreen } from './largest/largest-screen';
 import { QuitQuestion } from './quit-question';
 import { ReviewScreen } from './review/review-screen';
 import { ScanScreen } from './scan/scan-screen';
@@ -55,6 +56,8 @@ const contentOf = (
         ? null
         : { content: <InsightScreen insight={insight} module={screen.module} />, label: tText(insight.title) };
     }
+    case 'largest':
+      return { content: <LargestScreen />, label: t('ui.screen.frame.nav.largest') };
     case 'review':
       return { content: <ReviewScreen />, label: t('ui.screen.frame.nav.review') };
     case 'scan':

@@ -1,0 +1,463 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "core.own-file",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Archives/Photos.zip",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "core.own-file",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Images/Installer.dmg",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "core.own-file",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Old projects",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "core.own-file",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/VMs/Old.utm",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/cache-project/fresher-trial-cache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "core.own-file",
+      "danger": "high",
+      "logical": 12582912,
+      "module": "core",
+      "subject": "home/Archives/Photos.zip"
+    },
+    {
+      "app": null,
+      "category": "core.own-file",
+      "danger": "high",
+      "logical": 16777216,
+      "module": "core",
+      "subject": "home/Images/Installer.dmg"
+    },
+    {
+      "app": null,
+      "category": "core.own-file",
+      "danger": "high",
+      "logical": 12582912,
+      "module": "core",
+      "subject": "home/Old projects"
+    },
+    {
+      "app": null,
+      "category": "core.own-file",
+      "danger": "high",
+      "logical": 14680064,
+      "module": "core",
+      "subject": "home/VMs/Old.utm"
+    },
+    {
+      "app": null,
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 12582912,
+      "module": "trial",
+      "subject": "home/cache-project/fresher-trial-cache"
+    }
+  ],
+  "largest": {
+    "files": [
+      {
+        "allocated": 16777216,
+        "kind": "disk-image",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Images/Installer.dmg",
+        "unpacked": null
+      },
+      {
+        "allocated": 14680064,
+        "kind": "virtual-machine",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/VMs/Old.utm",
+        "unpacked": null
+      },
+      {
+        "allocated": 12582912,
+        "kind": "archive",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Archives/Photos.zip",
+        "unpacked": "Photos"
+      },
+      {
+        "allocated": 12582912,
+        "kind": "file",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Old projects/site/data.bin",
+        "unpacked": null
+      },
+      {
+        "allocated": 12582912,
+        "kind": "virtual-machine",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/VMs/Inner.utm",
+        "unpacked": null
+      }
+    ],
+    "places": [
+      {
+        "at": "home/Public",
+        "case": "a standard folder cannot be chosen",
+        "kind": "folder",
+        "offer": {
+          "kind": "withheld",
+          "reason": "standard-folder"
+        },
+        "opens": true
+      },
+      {
+        "at": "home/Old projects",
+        "case": "a large folder can be chosen whole",
+        "kind": "folder",
+        "offer": {
+          "kind": "offered"
+        },
+        "opens": true
+      }
+    ]
+  },
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 12582912,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 115347456,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 79696416,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "folders": 1,
+                  "kind": "unreadable",
+                  "needs": {
+                    "kind": "all-files"
+                  }
+                },
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 597679584,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [
+      {
+        "fromCleanups": 69206016,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 81788928
+      }
+    ],
+    "before": [
+      {
+        "fromCleanups": 0,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 12582912
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 112,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 16777216,
+        "path": "home/.Trash/Installer.dmg"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Old projects"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Old projects/site"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/.Trash/Old projects/site/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Old.utm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Old.utm/Images"
+      },
+      {
+        "kind": "file",
+        "logical_size": 14680064,
+        "path": "home/.Trash/Old.utm/Images/disk.qcow2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/.Trash/Photos.zip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/.Trash/old.dmg"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.tool"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/.tool/disk.img"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Archives"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Archives/Photos"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Archives/Photos/one.jpg"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8388608,
+        "path": "home/Archives/small.zip"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/Documents/report.iso"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Images"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/Big"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/Library/Application Support/Big/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Public"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Public/notes.txt"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/VMs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/VMs/Inner.utm"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/VMs/Inner.utm/Images"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/VMs/Inner.utm/Images/disk.qcow2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/cache-project"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/cache-project/.fresher-sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 349,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 140517920
+  }
+}

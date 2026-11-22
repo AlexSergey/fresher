@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 
 import type { Screen } from '../state/navigation';
 
-import { History, LayoutGrid, ListChecks, Settings } from '../design/icons/icons';
+import { ArrowDownWideNarrow, History, LayoutGrid, ListChecks, Settings } from '../design/icons/icons';
 import { NavItem } from '../design/layout/nav-item/nav-item';
 import { NavSection } from '../design/layout/sidebar/nav-section';
 import { Sidebar } from '../design/layout/sidebar/sidebar';
@@ -17,7 +17,7 @@ export type FrameSidebarProps = {
   readonly screen: Screen;
 };
 
-// The sidebar: the app's name, Scan (current on a category's details too), Review with the selection's count,
+// The sidebar: the app's name, Scan (current on a category's details too), Largest, Review with the selection's count,
 // Cleanups, and Settings at the bottom.
 export const FrameSidebar = ({ onNavigate, screen }: FrameSidebarProps): JSX.Element => {
   const overview = useCore((state) => state.overview);
@@ -46,6 +46,14 @@ export const FrameSidebar = ({ onNavigate, screen }: FrameSidebarProps): JSX.Ele
           label={t('ui.screen.frame.nav.scan')}
           onClick={() => {
             onNavigate({ kind: 'scan' });
+          }}
+        />
+        <NavItem
+          active={screen.kind === 'largest'}
+          icon={ArrowDownWideNarrow}
+          label={t('ui.screen.frame.nav.largest')}
+          onClick={() => {
+            onNavigate({ kind: 'largest' });
           }}
         />
       </NavSection>

@@ -188,6 +188,16 @@ cleanups of a hundred items through the real journal.
   counts nothing, a rescan takes the cleanup into its measure and adds nothing twice, a Trash on a second folder
   gets its own line, `open_trash` opens the folder it names and refuses an index it did not list, and Finder's
   30-day setting dates the share.
+  `tests/largest.rs` runs the Largest screen's flows (plan 035) over `fixtures/homes/largest.toml` with the `trial`
+  module, the smallest size listed set to 10 MB in the settings file and the home's standard folders whole: a claimed
+  folder, the Library, the Trash, a hidden folder, an app bundle, a link, a package's inner file and a file below the
+  minimum are never listed, a standard folder opens but is never picked, a pick changes nothing on Scan (the totals,
+  the findings, the map's explained part), a package with a file held open is skipped in use with nothing of it moved,
+  the Files list ranks the home's items by allocated size with their kinds (a package one row, an archive beside its
+  folder pointed out), the Folders view opens through the home, a picked file and a picked folder go through the
+  confirmed plan at High to the Trash and leave the list, put back returns a file byte for byte, a restored scan lists
+  the same rows and a rescan after put back lists the file again (`fixtures/golden/largest-flow.json`, the first scan's
+  Files page and the home's Folders page).
   `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
@@ -352,6 +362,12 @@ The storage map's `Shares` (budget 50 ms and 5 MB, plan 012) are built over a st
 `LARGE`, with the dependency trees and cache folders claimed, by a test ignored in the hooks and run by hand in
 release; it prints the time and the heap (the hash tables' bucket count, not their capacity):
 `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture shares_of_the_large_tree`.
+
+The Largest screen's items (budget 50 ms and 5 MB, plan 035) are measured the same way, over the same claims: at the
+default smallest size, at none (the tree's files are sparse and kept as no node, so the engine's rule reads every folder
+and keeps nothing), and with a rule that calls every folder from some depth an item, filling the list to its 10 000; it
+prints the time and the heap of the kept items:
+`cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture items_of_the_large_tree`.
 
 **The footprint test** (`crates/e2e/tests/footprint.rs`): ten scans of a generated tree through the real scanner and
 `FileScanCache` on a temporary data folder, with a scripted journal and changes between the scans; the data folder
@@ -527,6 +543,14 @@ The case files:
   status change (40 days, or 5). The second runs with Spotlight off, a world of its own: a removed app's files are
   left out (`spotlight-unread`); in `npm run sandbox -- all` Spotlight is then off for every case file
   ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+- `large-files.toml`: the Largest screen, on the `trial` module, every case with a `[case.largest]` and the smallest
+  size listed set to 10 MB in its `[settings]`. A file under `Library`, in the Trash, in a hidden folder, inside a
+  package and below the minimum are never listed; `Public`, a standard folder, cannot be chosen (sandbox mode keeps out
+  of `Movies`, `Music` and `Pictures`, which Largest shows as not seen); nothing in the denied `Documents` is seen; a
+  trial cache is its module's and never listed. A disk image, a package (one row), an archive beside its unpacked
+  folder and a folder chosen whole are picked as the screen's tick does and go to the Trash as `core.own-file` (High).
+  The list ranks by allocated bytes, so its files are filled with data (12 to 16 MiB); nothing lies in `Downloads` or
+  `Desktop`, which other case files' worlds deny in `all`.
 - `trial.toml`: the `trial` module. A look-alike folder, a trial folder with no marker next to it, a file named like a
   trial folder and a plain file next to a marker are never offered; a cache next to a marker goes to the Trash, a kept
   folder is emptied.
@@ -748,6 +772,12 @@ items = 1                    # at least 1; the file's expectations of one catego
 [case.map]                   # optional, on any case
 part = "explained"           # explained (a positive) | your-folders (a negative)
 at = "home/work/fresher-trial-cache"   # optional: by default the folder of the case's first file
+[case.largest]               # optional, on any case
+shown = "offered"            # offered | absent | withheld | not-seen
+at = "home/VMs/Old.utm"      # optional for offered and absent (by default the case's first file); required otherwise
+kind = "virtual-machine"     # optional, offered only: an ItemKind as serialized
+withheld = "standard-folder" # required for withheld, refused otherwise: a Withheld as serialized
+unpacked = "Photos"          # optional, offered only: the folder the row names beside an archive
 ```
 
 A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
@@ -773,8 +803,9 @@ a case states what a guarded folder allows: the keys are `desktop`, `documents` 
 refused), the values `granted`, `denied` and `not-asked`. When two cases state one folder differently, the most
 restrictive wins (`denied`, then `not-asked`, then `granted`), as `spotlight = "off"` does, so `npm run sandbox -- all`
 stays valid; `world.toml` writes `[access]` only when a case states any. Sandbox mode and the autotest then answer
-access from it (`World::access`): Full Disk Access `unknown`, a stated folder as stated, every other permission
-`not-asked`; each stated folder is guarded at `home/<Folder>`, and trying it answers `granted` for `granted` and
+access from it (`World::access`, which reads a scan root `~` as the sandbox's home): Full Disk Access `unknown`, a
+stated folder as stated, every other permission `not-asked`; each stated folder is guarded at `home/<Folder>`, and
+trying it answers `granted` for `granted` and
 `not-asked` (the simulated prompt is accepted once the folder's switch in Settings → Permissions is on), `denied` for
 `denied`. As on a Mac without Full Disk Access, a stated folder is read only with its switch on, `granted` too; the
 autotest turns on the switch of every stated folder. Without `[access]` they answer the stand-in that knows nothing,
@@ -825,6 +856,19 @@ the rows that hold the case's files: `explained` in full, or for `your-folders` 
 below or above `at`. A place that opens with no rows — a folder the scan does not go into, such as a claimed one, a
 folder whose small files the scan folds into it, or a file — is checked by its own row in its folder's view. The
 golden report holds the map's parts and, for every `at`, the folders the view went through and its rows.
+
+`[case.largest]` says what the Largest screen shows at the case's `at` (one of its paths or their folders): `offered`
+is a Files row at `at` that can be chosen, of `kind` and naming `unpacked` beside it when the case says (a folder with
+neither is checked by its row in its folder's Folders view); `absent` is no Files row at or below `at`; `withheld` is
+the Folders row at `at` withheld for `withheld`; `not-seen` is no Files row at or below `at` and the last scan's
+coverage not entering the guarded folder `at` is in. The autotest reads the whole Files list (no filter, every page)
+after the scan and before the cleanup, checks every case, then picks the item of every positive whose category is the
+core's `core.own-file` (`pick_own_item`, as a tick on the screen does), so the cleanup takes the picks through the
+confirmed plan into the sandbox's Trash; the categories a case file is checked against include `core.own-file`. The
+golden report holds a `largest` section (the Files rows: path, kind, offer, allocated bytes, the folder beside; and the
+Folders rows checked) only for a case file with a `[case.largest]`, so no other report changes. `EXPECTED.md` writes
+one line under the case, with the kind's name and the reason's sentence from the core's dictionary ("On Largest,
+`home/Images/Installer.dmg` is listed as *Disk image* and can be chosen.").
 
 The sandbox's home, `home/`, stands for the user's home: its own places that prompt (`Documents`, `Desktop`, …) are not
 scanned, as on the real Mac before access is granted (plan 006). A case file therefore puts its positive cases under

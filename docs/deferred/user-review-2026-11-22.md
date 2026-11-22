@@ -217,3 +217,35 @@ Plan [038](../plans/038-demo-recordings/readme.md), awaiting the user's walk.
 - **Known gaps**: no scenario for the screens of plans 031 to 037 yet
   ([deferred](./demo-scenarios-for-new-screens.md)); no CI run of `demo:check` (it needs a window); automatic
   screenshots not built.
+
+## 035 — The largest files
+
+Plan [035](../plans/035-large-files/readme.md), awaiting the user's walk.
+
+- **Walks by hand**: `rm -rf sandbox/large-files && npm run dev:sandbox -- large-files` (every line of `EXPECTED.md`,
+  the filters, Folders, a withheld row's sentence, tick, Review, confirm, put back, rescan: item 1.20 of
+  [`../manual-testing.md`](../manual-testing.md)); Largest on the real Mac after a scan of `~`, against `find` and `du`
+  (item 2.18).
+- **Facts not verified**: whether Spotlight's last-used date and the access time behave on another Mac as on this one
+  (checked here on macOS 27.2.1; the last-used date is mostly empty); whether any app keeps a large, hidden-free folder
+  in the home that should not be offered (a legacy sync client's folder); how many items a real home holds over 100 MB
+  and whether 10 000 is enough; the items query's time on the real home (8.7 ms on a synthetic list of 10 000).
+- **Rulings worth a second look** ([`00-design.md`](../plans/035-large-files/00-design.md), agent's calls):
+  - 2: a picked own file is a new core category `core.own-file` (High, never pre-selected, Trash by default), judged
+    with one judgement (`judge_reached`) at the pick, at prepare and at confirm;
+  - 3: "Changed", not "Last opened"; 5: ranked by allocated size (cloud-only files are not listed);
+  - 7: removability left to the rehearsal; 8: no sync-client marker; 9: hidden names never offered;
+  - 12: a claimed place is skipped even when its category is ignored: a folder holding any claimed node is withheld;
+    a folder holding an ignored path is withheld but opens;
+  - 13: 10 000 items; the minimum size setting offers 10, 50, 100, 500 MB and 1 GB, default 100 MB.
+  - Withheld rows: Library, the Trash, hidden names, app bundles, package interiors, claimed module folders (ignored or
+    not), protected and standard folders (the protection list and the cleaner's re-check), folders holding a claimed
+    node.
+- **Built beyond the design**: `TextKey` accepts a number-hyphen-word segment (`10-mb`); `get_storage_place` is
+  removed (the deferred place-queries item is closed); a pre-existing sandbox bug is fixed: a stated access was
+  compared with paths without expanding `~`, so a denied folder was still scanned (the `downloads-denied` golden
+  changed, and a granted folder whose switch is off is no longer scanned in a hand walk).
+- **To confirm**: a denied guarded folder's remainder says "all files" rather than its own capability (engine
+  behaviour); the confirmation has no separate High tick yet (plan 039).
+- **Known gaps**: [`largest-files-more.md`](./largest-files-more.md); the folders' sizes after a cleanup stay the
+  scan's until a rescan; a folder's "Changed" is its own time.

@@ -4,7 +4,9 @@ The catalogue of everything the app can name on a disk. Every category the app s
 here matches a category of a module. A category that is not documented here is not shipped (rule 3 of
 [`../rules.md`](../rules.md)): each module's contract test (`assert_module_contract` of `fresher-testing` with
 `Catalogue::Required`) fails for a category without its file or with another danger level in it. The dev-only `demo`
-and `trial` modules have no files here. How a module is written:
+and `trial` modules have no files here. One category is the core's, not a module's: `core.own-file`, the items the
+user picks by hand on the Largest screen ([`core-own-file.md`](./core-own-file.md), plan
+[035](../plans/035-large-files/readme.md)). How a module is written:
 [`../architecture/modules.md`](../architecture/modules.md).
 
 There is no "Other", "Miscellaneous" or "System data" category. Space no rule recognizes is shown as its real folders.
@@ -96,6 +98,7 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `xcode.previews`                | Safe         | none (the module's code, `modules/xcode`)      | [`xcode-previews.md`](./xcode-previews.md)                               |
 | `xcode.simulator-caches`        | Safe         | none (the module's code, `modules/xcode`)      | [`xcode-simulator-caches.md`](./xcode-simulator-caches.md)               |
 | `xcode.archives`                | High         | none (the module's code, `modules/xcode`)      | [`xcode-archives.md`](./xcode-archives.md)                               |
+| `core.own-file`                 | High         | none (the core's code, `crates/engine/src/own.rs`; made by no module: the user picks each item on the Largest screen) | [`core-own-file.md`](./core-own-file.md) |
 
 The next one (`node_modules`) comes with the plan that implements its rules.
 

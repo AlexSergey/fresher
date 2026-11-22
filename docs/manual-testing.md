@@ -366,6 +366,15 @@ beyond the one read.
 - [ ] Known flaky in the autotests, not a defect of the app: the chromium screenshot
       `category-details-app-leftovers-chosen` fails now and then in the full run and passes alone.
 
+### 1.20 The largest files ([035/05/01](./plans/035-large-files/05-finish/01-docs-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/large-files && npm run dev:sandbox -- large-files`. Walk `EXPECTED.md` line by line, negatives
+      first: each row it names withheld is listed with its sentence, each offered row can be ticked.
+- [ ] Largest: the Files list, the filters (kind, place, changed), the Folders view and its way back by the breadcrumb,
+      a withheld row's sentence, the Documents notice.
+- [ ] Tick the disk image, the package, the archive and the folder. Review shows "Your own files" at High, nothing
+      ticked by itself. Confirm to the Trash: the rows leave the list. Cleanups: put back. Rescan: they are listed again.
+
 ### 1.21 Demo recordings: the world and the check ([038/04/02](./plans/038-demo-recordings/04-finish/02-docs-and-conclusions.md))
 
 Quit any development window first (the app is single-instance). Section 2.19 is the recording itself.
@@ -744,6 +753,19 @@ du -sh ~/Library/"Group Containers"/HUAQ24HBR6.dev.orbstack/data/data.img
 - [ ] The facts to verify, corrected in `runtimes.toml`, the texts and the category docs where they differ: see the
       plan's list in [`deferred/user-review-2026-11-22.md`](./deferred/user-review-2026-11-22.md), "Plan 032".
 
+### 2.18 The largest files ([035/05/01](./plans/035-large-files/05-finish/01-docs-and-conclusions.md))
+
+Open Largest after a scan of `~` (`npm run dev`: a development build is a dry run). Check the ten largest rows against
+the shell, run by you:
+
+```sh
+find ~ -xdev -size +100M -not -path "$HOME/Library/*" -not -path "*/.*" 2>/dev/null | head -50
+du -sh <a path from the list>
+```
+
+- [ ] The ten largest rows are the biggest things the `find` shows (sizes on disk, `du -sh`; allocated size ranks).
+- [ ] No row is under `~/Library`, the Trash, a hidden folder or an app; a module's folder is not listed.
+
 ### 2.19 Demo recordings: the recording on the screen ([038/04/02](./plans/038-demo-recordings/04-finish/02-docs-and-conclusions.md))
 
 Run after 1.21. This is the one run that captures your screen; no private data is on it (the world is made up), but it
@@ -1049,6 +1071,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)            | pending                        | 1.14          |
 | [031/03/02 runs and conclusions](./plans/031-xcode/03-finish/02-run-and-conclusions.md)                    | pending                        | 1.18, 2.16    |
 | [032/06/01 docs and conclusions](./plans/032-docker/06-finish/01-docs-and-conclusions.md)                  | pending                        | 1.19, 2.17    |
+| [035/05/01 docs and conclusions](./plans/035-large-files/05-finish/01-docs-and-conclusions.md)               | pending                        | 1.20, 2.18    |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

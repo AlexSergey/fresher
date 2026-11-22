@@ -21,7 +21,7 @@ test.afterEach(async ({ page }) => {
   await expectNoCspViolation(page);
 });
 
-const NAV_ITEMS = ['Scan', 'Review', 'Cleanups', 'Settings'] as const;
+const NAV_ITEMS = ['Scan', 'Largest', 'Review', 'Cleanups', 'Settings'] as const;
 
 test.describe('negative cases', () => {
   test("at the window's minimum, 900 × 600, no sidebar item is hidden", async ({ page }) => {

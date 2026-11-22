@@ -5,16 +5,15 @@ import { mockIPC } from '@tauri-apps/api/mocks';
 import type { Event, Refusal } from './bindings.generated';
 
 import { type CommandKey, COMMANDS } from '.';
-import { EMPTY_PLACE, SAMPLE_MEANING, SAMPLE_STORAGE_MAP } from '../test/storage-map';
+import { SAMPLE_MEANING, SAMPLE_STORAGE_MAP } from '../test/storage-map';
 
 // What the Rust core answers in a test, by the command keys of src/ipc/index.ts; an answer gets the command's args.
 export type CoreAnswers = Readonly<Record<CommandKey, (args: unknown) => unknown>>;
 
-// The storage map's three commands answered with the gallery's sample volume; spread into `mockCore`.
-export const sampleStorageAnswers: Pick<CoreAnswers, 'getStorageMap' | 'getStorageMeaning' | 'getStoragePlace'> = {
+// The storage map's two commands answered with the gallery's sample volume; spread into `mockCore`.
+export const sampleStorageAnswers: Pick<CoreAnswers, 'getStorageMap' | 'getStorageMeaning'> = {
   getStorageMap: () => SAMPLE_STORAGE_MAP,
   getStorageMeaning: () => SAMPLE_MEANING,
-  getStoragePlace: () => EMPTY_PLACE,
 };
 
 const keyOf = (command: string): CommandKey | undefined =>

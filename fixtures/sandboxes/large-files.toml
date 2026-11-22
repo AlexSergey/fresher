@@ -1,0 +1,176 @@
+# The Largest screen, on the `trial` module: what it lists, what it withholds and what it does not see, and a pick
+# that goes through the confirmed plan into the sandbox's Trash. The list ranks by allocated bytes, so every file meant
+# to be listed is filled with data (12 to 16 MiB) and the smallest size listed is 10 MB (a sparse file takes no block
+# and would never be listed). Nothing lies in `Downloads` or `Desktop`: other case files' worlds deny them in
+# `npm run sandbox -- all`. The guarded folder denied is this file's own `Documents`. An app bundle's inside is the core
+# e2e's (`crates/e2e/tests/largest.rs`): a `[[case.app]]` writes only its own small bundle. The standard folder is
+# `Public`: sandbox mode keeps out of `Movies`, `Music` and `Pictures` (places only Full Disk Access opens), which Largest
+# then shows as not seen.
+feature = "large-files"
+module = "trial"
+
+[settings]
+"core.largest.min-size" = "10-mb"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "a file under Library is never listed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Application Support/Big/data.bin"
+size = 12582912
+fill = "data"
+[case.largest]
+shown = "absent"
+
+[[case]]
+name = "a file in the Trash is never listed"
+kind = "negative"
+[[case.file]]
+path = "home/.Trash/old.dmg"
+size = 12582912
+fill = "data"
+[case.largest]
+shown = "absent"
+
+[[case]]
+name = "a hidden folder is never listed"
+kind = "negative"
+[[case.file]]
+path = "home/.tool/disk.img"
+size = 12582912
+fill = "data"
+[case.largest]
+shown = "absent"
+
+[[case]]
+name = "a package's inner file is not a row of its own"
+kind = "negative"
+[[case.file]]
+path = "home/VMs/Inner.utm/Images/disk.qcow2"
+size = 12582912
+fill = "data"
+[case.largest]
+shown = "absent"
+at = "home/VMs/Inner.utm/Images"
+
+[[case]]
+name = "a file below the minimum is not listed"
+kind = "negative"
+[[case.file]]
+path = "home/Archives/small.zip"
+size = 8388608
+fill = "data"
+[case.largest]
+shown = "absent"
+
+[[case]]
+name = "a standard folder cannot be chosen"
+kind = "negative"
+[[case.file]]
+path = "home/Public/notes.txt"
+size = 4096
+[case.largest]
+shown = "withheld"
+at = "home/Public"
+withheld = "standard-folder"
+
+[[case]]
+name = "nothing in a denied guarded folder is seen"
+kind = "negative"
+access = { documents = "denied" }
+[[case.file]]
+path = "home/Documents/report.iso"
+size = 12582912
+fill = "data"
+[case.largest]
+shown = "not-seen"
+at = "home/Documents"
+
+[[case]]
+name = "a trial cache is its module's and never listed"
+kind = "positive"
+[[case.marker]]
+path = "home/cache-project"
+[[case.file]]
+path = "home/cache-project/fresher-trial-cache/blob.bin"
+size = 12582912
+fill = "data"
+[case.expect]
+item = "home/cache-project/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.largest]
+shown = "absent"
+at = "home/cache-project/fresher-trial-cache"
+
+[[case]]
+name = "a large disk image is listed and goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Images/Installer.dmg"
+size = 16777216
+fill = "data"
+[case.expect]
+item = "home/Images/Installer.dmg"
+category = "core.own-file"
+danger = "high"
+after-cleanup = "in-trash"
+[case.largest]
+shown = "offered"
+kind = "disk-image"
+
+[[case]]
+name = "a package is one row"
+kind = "positive"
+[[case.file]]
+path = "home/VMs/Old.utm/Images/disk.qcow2"
+size = 14680064
+fill = "data"
+[case.expect]
+item = "home/VMs/Old.utm"
+category = "core.own-file"
+danger = "high"
+after-cleanup = "in-trash"
+[case.largest]
+shown = "offered"
+at = "home/VMs/Old.utm"
+kind = "virtual-machine"
+
+[[case]]
+name = "an archive beside its unpacked folder is pointed out"
+kind = "positive"
+[[case.file]]
+path = "home/Archives/Photos.zip"
+size = 12582912
+fill = "data"
+[[case.file]]
+path = "home/Archives/Photos/one.jpg"
+size = 4096
+[case.expect]
+item = "home/Archives/Photos.zip"
+category = "core.own-file"
+danger = "high"
+after-cleanup = "in-trash"
+[case.largest]
+shown = "offered"
+at = "home/Archives/Photos.zip"
+kind = "archive"
+unpacked = "Photos"
+
+[[case]]
+name = "a large folder can be chosen whole"
+kind = "positive"
+[[case.file]]
+path = "home/Old projects/site/data.bin"
+size = 12582912
+fill = "data"
+[case.expect]
+item = "home/Old projects"
+category = "core.own-file"
+danger = "high"
+after-cleanup = "in-trash"
+[case.largest]
+shown = "offered"
+at = "home/Old projects"

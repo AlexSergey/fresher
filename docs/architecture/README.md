@@ -238,7 +238,8 @@ No database: the app keeps its own state in small plain files, with nothing to i
   three locks — read in the same bulk call; a match's entry facts (removability) come from its node and its
   parent's. The committed tree is the `DiskState`.
 - **Queries** (the engine's `disk.rs` over the last committed `DiskState`): `disk_roots`, `disk_node`,
-  `disk_children` (by size or by name, paged), `largest_files`, `search_names` (case ignored, in memory, a lowercase
+  `disk_children` (by size or by name, paged), `largest_files`, `items` (plan [035](../plans/035-large-files/readme.md): the files and folders the Largest screen
+  offers, in one pass), `search_names` (case ignored, in memory, a lowercase
   copy of the names built by the first search) and `unreadable_places`, every limit capped at 500. A query reads the
   state's `Arc` outside the engine's lock, so it never blocks a scan; `NoScan` before any commit, `StaleNode` for an
   id of another state. The IPC commands come with the screens that use them (plans 003 and 012).
@@ -319,16 +320,43 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
 - **By meaning** (`meaning.rs`, scoped to one volume's roots): the apps largest first, the categories no app names, the
   named places (the Trash) and the largest of the user's folders, then Your folders; every byte of the roots is in
   exactly one leaf, and the volume's other parts are appended at the end (`append_volume_parts`). **By place**
-  (`place.rs`): a folder's children largest first, each with its explained size; the UI no longer shows it since plan
-  [027](../plans/027-scan-screen/readme.md) (the core keeps it, see
-  [`../deferred/place-queries-without-ui.md`](../deferred/place-queries-without-ui.md)).
+  (`place.rs`): a folder's children largest first, each with its explained size; the UI dropped it with plan
+  [027](../plans/027-scan-screen/readme.md) and it is back as Largest, Folders (plan
+  [035](../plans/035-large-files/readme.md), the section "The largest files" below) with its way up as a breadcrumb.
 - **The three phases** (`query.rs`): no scan, scanning and complete (the phase is in the map, `MapPhase`); a query
   takes what it needs under the results' lock and builds after letting it go, so none blocks a scan.
 - **Budget**: the shares of a scan of the `LARGE` tree take under 50 ms and 5 MB
   (`crates/e2e/tests/storage_budget.rs`, run by hand; [`../testing.md`](../testing.md)).
-- The commands are `get_storage_map`, `get_storage_meaning(volume)` and `get_storage_place(node, descent, offset,
-  limit)` (`app/tauri/src/storage_commands.rs`). The storage map's sandbox case file (plan 012/05) is not built yet: it
+- The commands are `get_storage_map` and `get_storage_meaning(volume)` (`app/tauri/src/storage_commands.rs`;
+  `get_storage_place` was removed by plan 035, whose `get_largest_place` shows a folder's children). The storage map's sandbox case file (plan 012/05) is not built yet: it
   waits for plan [007](../plans/007-safe-development/readme.md) to be merged into `main`.
+
+## The largest files
+
+Plan [035](../plans/035-large-files/readme.md): the biggest things the user owns that no module explains, listed so
+the user can choose one. The core judges, the UI renders.
+
+- **Two queries** (the engine's `largest/`): `largest` (the Files list: items below the home, ranked by allocated size,
+  ties in path order, filtered by kind, place and `Unchanged`, paged by `MAX_PAGE` = 100) and `largest_place` (the
+  Folders view: a folder's children, the home first, a folder opened through the breadcrumb). The items come from
+  `DiskState::items` (one depth-first pass over the committed tree, never entering owned nodes, links, hidden names,
+  `Library`, `.Trash` or `.app` bundles), at the minimum of the setting `core.largest.min-size` (10, 50, 100, 500 MB or
+  1 GB, default 100 MB), at most `MAX_ITEMS` = 10 000 kept, computed once per state and minimum and kept beside the
+  state. Cloud-only files are not listed (they take no space).
+- **The judgement** (`judge.rs`): every row is offered or withheld with one reason, in a fixed order (explained, library,
+  trash, hidden, app, link, not seen, standard folder, protected, holds explained, read in part, ignored, offered). One
+  function, `judge_reached`, answers for the Files rows, the Folders rows, the pick and the plan: it also asks every
+  folder above the row whether it opens, so a row inside a package, a claimed folder or a protected place is never
+  offered. A folder holding an ignored path is withheld but still opens; a folder holding any claimed node is
+  withheld.
+- **The pick**: `pick_own_item(node)` is refused (`NotOwnItem`) unless the judgement answers offered at that moment.
+  The answer is a finding of the core's category `core.own-file` (danger High, `Removal::MoveToTrash`), kept in
+  `Results.own` apart from the scan's findings: never in a total, a card, the map or a findings page. The plan builder
+  adds the picks still offered (judged again at prepare and at confirm); a removed pick leaves the lists until a
+  rescan.
+- **The commands** are `get_largest`, `get_largest_place` and `pick_own_item` (`app/tauri/src/largest_commands.rs`).
+- **UI**: the screen `screens/largest/` (`Screen` `largest`; Files and Folders as tabs, the filters, a selection bar) and
+  the component `product/own-item-row/`; the sidebar lists Scan, Largest, Review, Cleanups and Settings.
 
 ## Problems and reasons
 
@@ -512,8 +540,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   system's `Tabs` (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). Scan's "N ignored"
   link opens the first tab that has an entry (`Screen.settings.tab`).
 - **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`scan`, `category` with its category,
-  `review`, `cleanups`, `cleanup` with its cleanup, `insight` with its module and identity, `settings` with an optional tab); no router. `screenToShow` returns
-  to Scan when a shown category is no longer among the categories the core lists. The sidebar has Scan, Review,
+  `largest`, `review`, `cleanups`, `cleanup` with its cleanup, `insight` with its module and identity, `settings` with an optional tab); no router. `screenToShow` returns
+  to Scan when a shown category is no longer among the categories the core lists. The sidebar has Scan, Largest, Review,
   Cleanups and Settings and scrolls in a short window. When the focused element leaves the screen, the focus goes to the
   screen's heading (`screens/keep-focus.ts`).
 

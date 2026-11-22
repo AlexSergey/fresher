@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use crate::ByteSize;
+
 use super::{IdOf, SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingValue};
 
 /// How much the interface moves: `system` follows macOS's "Reduce motion", `reduced` keeps only fades.
@@ -9,6 +11,27 @@ pub(crate) const MOTION: &str = "core.motion";
 
 /// The folders a scan walks; `~` is the home folder.
 pub const SCAN_ROOTS: &str = "core.scan.roots";
+
+/// The smallest size the Largest screen lists: a choice of `10-mb`, `50-mb`, `100-mb`, `500-mb` or `1-gb`.
+pub const LARGEST_MIN_SIZE: &str = "core.largest.min-size";
+
+/// The choice of [`LARGEST_MIN_SIZE`] used when none is stored.
+const MIN_SIZE_DEFAULT: &str = "100-mb";
+
+/// The sizes of [`LARGEST_MIN_SIZE`]'s choices, in decimal units (10 MB is 10 000 000 bytes, as the Finder counts).
+const MIN_SIZES: [(&str, u64); 5] = [
+    ("10-mb", 10_000_000),
+    ("50-mb", 50_000_000),
+    (MIN_SIZE_DEFAULT, 100_000_000),
+    ("500-mb", 500_000_000),
+    ("1-gb", 1_000_000_000),
+];
+
+/// The size a choice of [`LARGEST_MIN_SIZE`] stands for; an unknown choice is the default's.
+pub fn min_size_of(choice: &str) -> ByteSize {
+    let bytes_of = |name: &str| MIN_SIZES.iter().find(|(known, _)| *known == name).map(|(_, bytes)| *bytes);
+    ByteSize::new(bytes_of(choice).or_else(|| bytes_of(MIN_SIZE_DEFAULT)).unwrap_or_default())
+}
 
 /// The opt-ins into the places the system guards: on, the next scan tries the place, and the system may ask the user
 /// once. Off by default.
@@ -48,6 +71,13 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
         SettingGroup::Scan,
         SettingEffect::NextScan,
     );
+    let min_size = setting(
+        LARGEST_MIN_SIZE,
+        SettingKind::Choice { options: MIN_SIZES.iter().map(|(name, _)| *name).collect() },
+        SettingValue::Choice(MIN_SIZE_DEFAULT.into()),
+        SettingGroup::Scan,
+        SettingEffect::Now,
+    );
     let opt_in = |key: &str| {
         setting(
             key,
@@ -69,13 +99,14 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
     );
     let ignored =
         [ids(IGNORE_MODULES, IdOf::Module), ids(IGNORE_GROUPS, IdOf::Group), ids(IGNORE_CATEGORIES, IdOf::Category)];
-    [motion, roots].into_iter().chain(ACCESS_OPT_INS.map(opt_in)).chain(ignored).chain([paths]).collect()
+    [motion, roots, min_size].into_iter().chain(ACCESS_OPT_INS.map(opt_in)).chain(ignored).chain([paths]).collect()
 }
 
 #[cfg(test)]
 mod tests {
     mod negative {
-        use super::super::core_settings;
+        use super::super::{core_settings, min_size_of};
+        use crate::ByteSize;
 
         #[test]
         fn the_opt_in_switches_are_off_by_default() {
@@ -108,6 +139,12 @@ mod tests {
         }
 
         #[test]
+        fn an_unknown_min_size_choice_is_the_default() {
+            assert_eq!(min_size_of("2-gb"), ByteSize::new(100_000_000));
+            assert_eq!(min_size_of(""), min_size_of("100-mb"));
+        }
+
+        #[test]
         fn a_module_setting_is_never_in_a_core_group() {
             let kind = crate::SettingKind::Switch;
             let module = crate::SettingDescriptor::new(
@@ -123,7 +160,7 @@ mod tests {
     }
 
     mod positive {
-        use super::super::core_settings;
+        use super::super::{core_settings, min_size_of};
         use crate::{SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingValue};
 
         #[test]
@@ -149,6 +186,7 @@ mod tests {
                 [
                     at("core.motion", SettingGroup::General, SettingEffect::Now),
                     at("core.scan.roots", SettingGroup::Scan, SettingEffect::NextScan),
+                    at("core.largest.min-size", SettingGroup::Scan, SettingEffect::Now),
                     at("core.access.desktop", SettingGroup::Permissions, SettingEffect::NextScan),
                     at("core.access.documents", SettingGroup::Permissions, SettingEffect::NextScan),
                     at("core.access.downloads", SettingGroup::Permissions, SettingEffect::NextScan),
@@ -158,6 +196,24 @@ mod tests {
                     at("core.ignore.categories", SettingGroup::Ignored, SettingEffect::Now),
                     at("core.ignore.paths", SettingGroup::Ignored, SettingEffect::Now),
                 ]
+            );
+        }
+
+        #[test]
+        fn the_min_size_choices_are_decimal() {
+            let sizes = ["10-mb", "50-mb", "100-mb", "500-mb", "1-gb"].map(|choice| min_size_of(choice).bytes());
+            let options = core_settings()
+                .into_iter()
+                .find(|setting| setting.key().as_str() == "core.largest.min-size")
+                .map(|setting| (setting.kind().clone(), setting.default().clone()));
+
+            assert_eq!(sizes, [10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000]);
+            assert_eq!(
+                options,
+                Some((
+                    crate::SettingKind::Choice { options: vec!["10-mb", "50-mb", "100-mb", "500-mb", "1-gb"] },
+                    SettingValue::Choice("100-mb".into())
+                ))
             );
         }
 

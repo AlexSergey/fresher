@@ -15,6 +15,9 @@ mod harness;
 #[path = "sandboxes/insight.rs"]
 mod insight;
 #[cfg(test)]
+#[path = "sandboxes/largest.rs"]
+mod largest;
+#[cfg(test)]
 #[path = "sandboxes/left_out.rs"]
 mod left_out;
 #[cfg(test)]
@@ -219,6 +222,69 @@ mod negative {
         assert!(failure.problem.contains("expected Explained"), "{failure}");
     }
 
+    /// A `trial` case file listing from 10 MB, with one negative case writing `file` (with `extra` lines) and this
+    /// `[case.largest]` body.
+    fn largest_file(file: &str, extra: &str, largest: &str) -> String {
+        format!(
+            "feature = \"large-files\"\nmodule = \"trial\"\n[settings]\n\"core.largest.min-size\" = \"10-mb\"\n\
+             [[case]]\nname = \"a file\"\nkind = \"negative\"\n{extra}[[case.file]]\npath = \"{file}\"\n\
+             size = 12582912\nfill = \"data\"\n[case.largest]\n{largest}"
+        )
+    }
+
+    /// One per `shown`: a listed file expected absent or of another kind, an absent file (in Library) expected offered,
+    /// a standard folder expected withheld for another reason, and a granted folder expected not seen.
+    #[test]
+    fn a_largest_expectation_that_does_not_hold_fails() {
+        for (text, problem) in [
+            (largest_file("home/Images/Big.dmg", "", "shown = \"absent\"\n"), "Big.dmg is listed"),
+            (
+                largest_file("home/Images/Big.dmg", "", "shown = \"offered\"\nkind = \"video\"\n"),
+                "listed as DiskImage, not as Video",
+            ),
+            (
+                largest_file("home/Library/Big.dmg", "", "shown = \"offered\"\n"),
+                "on Largest, home/Library/Big.dmg is not listed",
+            ),
+            (
+                largest_file(
+                    "home/Public/Big.dmg",
+                    "",
+                    "shown = \"withheld\"\nat = \"home/Public\"\nwithheld = \"hidden\"\n",
+                ),
+                "home/Public is Withheld(StandardFolder), not Withheld(Hidden)",
+            ),
+            (
+                largest_file(
+                    "home/Documents/Big.dmg",
+                    "access = { documents = \"granted\" }\n",
+                    "shown = \"not-seen\"\nat = \"home/Documents\"\n",
+                ),
+                "Big.dmg is listed",
+            ),
+        ] {
+            let failure = run("largest", &text).unwrap_err();
+
+            assert_eq!(failure.case, "a file", "{failure}");
+            assert!(failure.problem.contains(problem), "{problem}: {failure}");
+        }
+    }
+
+    /// A granted folder whose file is below the minimum lists nothing in it: the coverage says it was seen.
+    #[test]
+    fn a_seen_folder_expected_not_seen_fails_by_the_coverage() {
+        let text = largest_file(
+            "home/Documents/small.txt",
+            "access = { documents = \"granted\" }\n",
+            "shown = \"not-seen\"\nat = \"home/Documents\"\n",
+        )
+        .replace("size = 12582912\nfill = \"data\"\n", "size = 4096\n");
+
+        let failure = run("seen", &text).unwrap_err();
+
+        assert!(failure.problem.contains("the scan entered Documents"), "{failure}");
+    }
+
     /// A `demo` case file with this `[settings]` table.
     fn demo_settings(settings: &str) -> String {
         format!("{}[settings]\n{settings}", demo_file(&demo_left_out("demo.left-out.open", 1)))
@@ -403,6 +469,7 @@ mod positive {
         jetbrains => "jetbrains",
         jetbrains_unknown_app_installed => "jetbrains-unknown-app-installed",
         jetbrains_unknown_app_open => "jetbrains-unknown-app-open",
+        large_files => "large-files",
         local_ai_models => "local-ai-models",
         local_ai_models_lm_studio_open => "local-ai-models-lm-studio-open",
         local_ai_models_ollama => "local-ai-models-ollama",

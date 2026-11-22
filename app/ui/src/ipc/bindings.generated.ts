@@ -40,7 +40,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" };
 
 /**
  * The answer of `get_overview`.
@@ -425,7 +425,8 @@ export type Text = { key: TextKey, args: { [key in string]: TextArg }, };
 
 /**
  * A key of the dictionary: two or more dot-separated kebab-case segments, the first one the namespace
- * (`core.error.busy`, `demo.caches.name`).
+ * (`core.error.busy`, `demo.caches.name`); a segment after the namespace may start with a digit
+ * (`core.largest.min-size.options.10-mb`).
  */
 export type TextKey = string;
 
@@ -652,6 +653,121 @@ explained: Sizes, };
  * How a place opens: down through the folders that are almost all one child, or at the folder asked.
  */
 export type Descent = "through" | "stay";
+
+/**
+ * One page of the Files list: what to keep, and where to start.
+ */
+export type LargestQuery = { 
+/**
+ * Only items of this kind.
+ */
+kind: ItemKind | null, 
+/**
+ * Only items inside this folder.
+ */
+place: NodeId | null, unchanged: Unchanged, offset: number, 
+/**
+ * At most `MAX_PAGE`; the engine caps a larger one.
+ */
+limit: number, };
+
+/**
+ * How long an item has gone unchanged, as a filter.
+ */
+export type Unchanged = "any" | "month" | "half-year" | "year" | "two-years";
+
+/**
+ * The answer to a `LargestQuery`.
+ */
+export type LargestPage = { rows: Array<LargestRow>, offset: number, 
+/**
+ * How many items the filters leave, in all.
+ */
+total: number, 
+/**
+ * The sizes of every item the filters leave.
+ */
+sizes: Sizes, 
+/**
+ * The kinds present under the other filters, with their counts.
+ */
+kinds: Array<KindCount>, 
+/**
+ * The folders that hold the most items under the other filters.
+ */
+places: Array<PlaceCount>, 
+/**
+ * More items than `MAX_ITEMS` were found: the smallest were left out.
+ */
+truncated: boolean, 
+/**
+ * The smallest size listed (the setting's value).
+ */
+minSize: ByteSize, };
+
+/**
+ * One row of the Files list.
+ */
+export type LargestRow = { node: NodeInfo, 
+/**
+ * The folder the item is in, as a path from the home, for display.
+ */
+place: string, kind: ItemKind, offer: Offer, 
+/**
+ * The name of a folder beside an archive that may hold what was unpacked from it.
+ */
+unpacked: string | null, 
+/**
+ * The finding the user already picked this item as.
+ */
+picked: FindingId | null, };
+
+/**
+ * What a row is. `File` and `Folder` are the row's real kind, not a catch-all category.
+ */
+export type ItemKind = "disk-image" | "archive" | "installer" | "video" | "audio" | "image" | "virtual-machine" | "media-library" | "project" | "memory-dump" | "document" | "device-backup" | "file" | "folder";
+
+/**
+ * Whether a row can be chosen, as the engine judges it.
+ */
+export type Offer = { "kind": "offered" } | { "kind": "withheld", "reason": Withheld };
+
+/**
+ * Why a row cannot be chosen.
+ */
+export type Withheld = "explained" | "library" | "trash" | "hidden" | "app" | "link" | "not-seen" | "standard-folder" | "protected" | "holds-explained" | "read-in-part" | "ignored";
+
+/**
+ * How many items of one kind the filters leave.
+ */
+export type KindCount = { kind: ItemKind, count: number, };
+
+/**
+ * How many items a folder holds under the filters.
+ */
+export type PlaceCount = { folder: NodeInfo, count: number, };
+
+/**
+ * One page of the folder view.
+ */
+export type OwnPlace = { 
+/**
+ * The way from the home (first) to the opened folder (last).
+ */
+path: Array<NodeInfo>, rows: Array<OwnRow>, offset: number, total: number, };
+
+/**
+ * One row of the folder view.
+ */
+export type OwnRow = { node: NodeInfo, 
+/**
+ * The part of it a module explains.
+ */
+explained: Sizes, kind: ItemKind, offer: Offer, 
+/**
+ * Whether the row opens to its children.
+ */
+opens: boolean, picked: FindingId | null, };
 
 /**
  * What the user picked for removal, as the UI sends it: ids only, never a path.

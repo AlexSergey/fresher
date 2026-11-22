@@ -2,7 +2,7 @@
 //! paths.
 #![expect(clippy::needless_pass_by_value, reason = "Tauri hands a command its state and inputs by value")]
 
-use fresher_core::{Descent, MeaningGroup, NodeId, PlaceView, Refusal, StorageMap};
+use fresher_core::{MeaningGroup, Refusal, StorageMap};
 use fresher_engine::Engine;
 use tauri::State;
 
@@ -19,37 +19,13 @@ pub(crate) fn get_storage_meaning(engine: State<'_, Engine>, volume: u32) -> Res
     engine.storage_meaning(volume).map_err(Refusal::from)
 }
 
-/// One page of the place `node` of the last scan, largest first, opened through its single-child folders or not.
-#[tauri::command(async)]
-pub(crate) fn get_storage_place(
-    engine: State<'_, Engine>,
-    node: NodeId,
-    descent: Descent,
-    offset: u32,
-    limit: u32,
-) -> Result<PlaceView, Refusal> {
-    engine.storage_place(node, descent, offset, limit).map_err(Refusal::from)
-}
-
 #[cfg(test)]
 mod tests {
     mod negative {
-        use fresher_core::{CommandError, Descent, NodeId, Refusal, StateId};
+        use fresher_core::{CommandError, Refusal};
 
-        use crate::storage_commands::{get_storage_meaning, get_storage_place};
+        use crate::storage_commands::get_storage_meaning;
         use crate::testing::{Shell, scan};
-
-        #[test]
-        fn a_place_of_an_older_scan_is_refused_as_stale() {
-            let shell = Shell::new();
-            scan(&shell);
-            let older = NodeId::new(StateId::new(u32::MAX), 0);
-
-            assert_eq!(
-                get_storage_place(shell.engine(), older, Descent::Through, 0, 10),
-                Err(Refusal::from(CommandError::StaleNode))
-            );
-        }
 
         #[test]
         fn an_unknown_volume_is_refused() {

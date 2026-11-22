@@ -115,8 +115,9 @@ pub(crate) fn registered_modules() -> Vec<String> {
     engine.modules().iter().map(|module| module.id.as_str().to_owned()).collect()
 }
 
-/// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation. The storage map
-/// is checked after the scan and before the cleanup, the Trash view both before and after it; a program the case file
+/// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation. The Largest screen
+/// (its picks joining the findings) and the storage map are checked after the scan and before the cleanup, the Trash
+/// view both before and after it; a program the case file
 /// does not state fails the run after the scan and after the cleanup; the insights its module described must be the
 /// ones its cases expect.
 pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
@@ -124,8 +125,14 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let world = World::new(name)?;
     let (engine, commands) =
         world.engine(std::slice::from_ref(&file), file.module().map(fresher_core::ModuleId::as_str))?;
-    let categories: Vec<_> =
-        engine.modules().into_iter().flat_map(|module| module.categories).map(|info| info.descriptor).collect();
+    // The core's own category is a positive's to expect too: a row the run picks on the Largest screen.
+    let categories: Vec<_> = engine
+        .modules()
+        .into_iter()
+        .flat_map(|module| module.categories)
+        .map(|info| info.descriptor)
+        .chain([fresher_core::own_file()])
+        .collect();
     file.check(&categories, &engine.problems())
         .map_err(|error| failure(name, format!("the case file does not fit the modules: {error}")))?;
     let sandbox = world.sandbox();
@@ -137,7 +144,10 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     check_no_unstated_calls(name, &commands)?;
     check_left_outs(name, &file, &left_out)?;
     check_insights(name, &file, &insights)?;
-    let findings = findings(name, &engine)?;
+    let mut findings = findings(name, &engine)?;
+    let (largest, picks) = crate::largest::check_largest(name, &file, &engine, &sandbox)?;
+    findings.extend(picks);
+    sort_findings(&mut findings);
     let mut positives = Vec::new();
     for case in file.cases() {
         match case.expect() {
@@ -176,6 +186,9 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     }
     if let Some(insights) = crate::insight::report(&file, &insights, &sandbox) {
         report["insights"] = insights;
+    }
+    if let Some(largest) = largest {
+        report["largest"] = largest;
     }
     Ok(report)
 }
@@ -368,8 +381,13 @@ pub(crate) fn findings(name: &str, engine: &Engine) -> Result<Vec<Finding>, Fail
     if page.total as usize > page.findings.len() {
         return Err(failure(name, format!("{} findings: more than one page", page.total)));
     }
-    page.findings.sort_by_key(|finding| (format!("{:?}", finding.finding().subject()), finding.finding().category()));
+    sort_findings(&mut page.findings);
     Ok(page.findings)
+}
+
+/// By subject and category, so the findings' ids never order the report.
+fn sort_findings(findings: &mut [Finding]) {
+    findings.sort_by_key(|finding| (format!("{:?}", finding.finding().subject()), finding.finding().category()));
 }
 
 pub(crate) fn path_of(finding: &Finding) -> Option<&Path> {

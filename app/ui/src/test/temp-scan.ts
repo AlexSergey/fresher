@@ -4,9 +4,7 @@ import type {
   Finding,
   LeftOutCount,
   ModuleInfo,
-  NodeInfo,
   Overview,
-  PlaceView,
   SettingsView,
   Sizes,
   StorageMap,
@@ -174,26 +172,6 @@ export const TEMP_MAP: StorageMap = {
     ],
     roots: [HOME_ROOT, USER_ROOT, SHARED_ROOT],
   })),
-};
-
-const folderOf = (name: string, id: NodeInfo['id'], bytes: number): NodeInfo => ({
-  files: 20,
-  folders: 4,
-  id,
-  kind: 'folder',
-  modified: null,
-  name,
-  notScanned: null,
-  owner: null,
-  sizes: sized(bytes),
-});
-
-const emptyPlace = (folder: NodeInfo): PlaceView => ({ offset: 0, path: [folder], rows: [], total: 0 });
-
-// The two temporary folders as the place view answers them, by their node's index.
-export const TEMP_PLACES: Readonly<Record<string, PlaceView>> = {
-  [String(SHARED_ROOT.index)]: emptyPlace(folderOf('tmp', SHARED_ROOT, 142 * MB)),
-  [String(USER_ROOT.index)]: emptyPlace(folderOf('T', USER_ROOT, 695 * MB)),
 };
 
 const named = (...keys: readonly string[]): Dictionary =>

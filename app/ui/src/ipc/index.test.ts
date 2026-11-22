@@ -17,6 +17,8 @@ import {
   getCleanups,
   getDictionary,
   getFindings,
+  getLargest,
+  getLargestPlace,
   getModules,
   getOverview,
   getOwnData,
@@ -28,6 +30,7 @@ import {
   openAccessSettings,
   openTrash,
   pickFolder,
+  pickOwnItem,
   prepareCleanup,
   putBack,
   quitAfterCleanup,
@@ -136,6 +139,19 @@ describe('the IPC module', () => {
       expect(failureOf(error)).toEqual({ kind: 'refused', refusal: stale });
     });
 
+    it('a refusal of pick_own_item becomes a failure', async () => {
+      const refusal = {
+        error: { code: 'not-own-item' },
+        text: { args: {}, key: 'core.error.not-own-item' },
+      } as unknown as Refusal;
+      mockCore({ pickOwnItem: refuse(refusal) });
+
+      const error: unknown = await pickOwnItem({ index: 3, state: 1 }).catch((failure: unknown) => failure);
+
+      expect(error).toBeInstanceOf(CommandFailed);
+      expect(failureOf(error)).toEqual({ kind: 'refused', refusal });
+    });
+
     it('opens the settings only for a capability object, never a string', async () => {
       // The IPC rejects arguments the command cannot read, as the core rejects a capability it does not know.
       mockCore({
@@ -236,6 +252,25 @@ describe('the IPC module', () => {
       await expect(getStorageMeaning(1)).resolves.toEqual([]);
 
       expect(seen).toStrictEqual([{ volume: 1 }]);
+    });
+
+    it('passes the Largest commands their arguments by name', async () => {
+      const { answer, seen } = recorder();
+      const node = { index: 3, state: 1 };
+      const query = { kind: null, limit: 100, offset: 0, place: null, unchanged: 'any' } as const;
+      mockCore({ getLargest: answer(null), getLargestPlace: answer(null), pickOwnItem: answer(null) });
+
+      await getLargest(query);
+      await getLargestPlace(node, 100, 50);
+      await getLargestPlace(null, 0, 100);
+      await pickOwnItem(node);
+
+      expect(seen).toStrictEqual([
+        { query },
+        { folder: node, limit: 50, offset: 100 },
+        { folder: null, limit: 100, offset: 0 },
+        { node },
+      ]);
     });
 
     it('passes every cleanup command its arguments by name', async () => {

@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime};
 
 use fresher_core::{
     Access, ByteSize, Capability, CleanupPlanView, CleanupSelection, Confirmation, Event, FindingOrder, FindingsQuery,
-    Protection, SANDBOX_MARKER, Subject, VolumeFacts, VolumeId,
+    Protection, SANDBOX_MARKER, SettingUpdate, SettingValue, Subject, VolumeFacts, VolumeId,
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_sandbox::{CaseFile, Sandbox, generate};
@@ -156,10 +156,16 @@ fn start_stated(world: &World) -> Engine {
 }
 
 /// Writes `[access]` with `downloads = "granted"` into the world's `world.toml`, as a case stating it would.
-fn grant_downloads(world: &World) {
+fn grant_downloads(world: &World, access: &str) {
     let sandbox = world.sandbox();
-    let text = fs::read_to_string(sandbox.world()).unwrap() + "\n[access]\ndownloads = \"granted\"\n";
+    let text = fs::read_to_string(sandbox.world()).unwrap() + &format!("\n[access]\ndownloads = \"{access}\"\n");
     fs::write(sandbox.world(), text).unwrap();
+}
+
+/// Turns on the switch of Downloads in Settings → Permissions, as the user does before a scan reads it.
+fn switch_on_downloads(engine: &Engine) {
+    let update = SettingUpdate { key: "core.access.downloads".into(), value: SettingValue::Switch(true) };
+    engine.update_setting(update).unwrap();
 }
 
 /// Sandbox mode on the world's sandbox with the access its `world.toml` states, as the real ports take it.
@@ -427,6 +433,27 @@ mod negative {
         assert_eq!(fs::read_dir(world.real_home()).unwrap().count(), 0, "the real home is untouched");
     }
 
+    /// The sandbox's scan root is `~`: the folder its world states is decided at the sandbox's home, so a denied
+    /// Downloads, or a granted one whose switch is off, is not entered and the coverage says so.
+    #[test]
+    fn a_world_denying_downloads_or_granting_it_with_its_switch_off_keeps_the_walk_out() {
+        let downloads = fresher_core::Capability::Folder(fresher_core::GuardedFolder::Downloads);
+        for (access, switch) in [("denied", true), ("granted", false)] {
+            let world = World::new();
+            super::grant_downloads(&world, access);
+            let x = super::download(&world);
+            let engine = super::start_with_access(&world);
+            if switch {
+                super::switch_on_downloads(&engine);
+            }
+
+            let coverage = super::scan_coverage(&engine);
+
+            assert!(!super::has_node(&engine, &x), "{access}: the walk entered home/Downloads");
+            assert!(coverage.not_entered.iter().any(|not| not.capability == downloads), "{access}: {coverage:?}");
+        }
+    }
+
     /// A place of the real home that may raise a system prompt is never opened, even as a scan root.
     #[test]
     fn the_real_homes_places_that_prompt_are_not_walked() {
@@ -472,7 +499,7 @@ mod negative {
     #[test]
     fn the_real_homes_guarded_places_stay_avoided_whatever_the_world() {
         let world = World::new();
-        super::grant_downloads(&world);
+        super::grant_downloads(&world, "granted");
         let downloads = fs::canonicalize(world.real_home()).unwrap().join("Downloads");
         fs::create_dir_all(downloads.join("fresher-trial-cache")).unwrap();
         fs::write(downloads.join("fresher-trial-cache/blob.bin"), [0; 64]).unwrap();
@@ -693,12 +720,14 @@ mod positive {
         ));
     }
 
+    /// The switch is turned on first: as on a Mac without Full Disk Access, a granted folder is read only with it.
     #[test]
     fn a_world_granting_downloads_lets_the_walk_into_the_sandbox_downloads() {
         let world = World::new();
-        super::grant_downloads(&world);
+        super::grant_downloads(&world, "granted");
         let x = super::download(&world);
         let engine = super::start_with_access(&world);
+        super::switch_on_downloads(&engine);
 
         let coverage = super::scan_coverage(&engine);
 
@@ -710,7 +739,7 @@ mod positive {
     #[test]
     fn the_banner_lists_access_when_the_world_states_it() {
         let world = World::new();
-        super::grant_downloads(&world);
+        super::grant_downloads(&world, "granted");
 
         let build = crate::sandbox::build(&world.sandbox(), SandboxTrash::Sandbox).unwrap();
 

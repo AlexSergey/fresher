@@ -30,6 +30,7 @@ mod insight;
 mod interest;
 mod journal;
 mod known_folder;
+mod largest;
 mod left_out;
 mod module;
 mod ports;
@@ -75,7 +76,8 @@ pub use coverage::{Coverage, NotEntered, UnreadableCount};
 pub use danger::DangerLevel;
 pub use dictionary::{Dictionary, DictionaryError};
 pub use disk_state::{
-    ChildOrder, DiskState, NodeId, NodeInfo, NodeKind, NodePage, NotScanned, StateId, UnreadablePlace,
+    ChildOrder, DiskState, ItemRule, ItemVisit, NodeId, NodeInfo, NodeKind, NodePage, NotScanned, StateId,
+    UnreadablePlace,
 };
 pub use error::{CommandError, Refusal};
 pub use event::{Event, ModuleOutcome, ScanKind, ScanOutcome};
@@ -91,6 +93,11 @@ pub use insight::{
 pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, MarkerCheck, Match, Pattern};
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
 pub use known_folder::{KnownFolder, KnownFolders, expand_home};
+pub use largest::{
+    ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, MAX_ITEMS, MAX_PAGE, OWN_FILE_ID, Offer, OwnPlace,
+    OwnRow, PlaceCount, Unchanged, Withheld, archive_stem, is_app_bundle, is_package, kind_of, own_file,
+    own_file_reason, own_file_title,
+};
 pub use left_out::{LeftOutCount, LeftOutItem};
 pub use module::{
     DescriptorError, FindingSink, Locales, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,
@@ -103,9 +110,9 @@ pub use removability::{EntryFacts, Removability};
 pub use removal::{MAX_PARTS, Parts, Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
-    DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, ModuleSettings, ResolvedSettings,
-    SCAN_ROOTS, SchemaError, SettingDescriptor, SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind,
-    SettingProblem, SettingValue, SettingsSchema, Unit,
+    DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, LARGEST_MIN_SIZE, ModuleSettings,
+    ResolvedSettings, SCAN_ROOTS, SchemaError, SettingDescriptor, SettingEffect, SettingError, SettingGroup,
+    SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema, Unit, min_size_of,
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{

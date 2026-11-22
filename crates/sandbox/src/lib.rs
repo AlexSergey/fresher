@@ -17,8 +17,10 @@ mod demo;
 mod error;
 mod expected;
 mod generate;
+mod largest;
 mod layout;
 mod scenario;
+mod stated_access;
 mod stated_space;
 mod world;
 
@@ -29,10 +31,12 @@ pub use case::{
 pub use demo::{Demo, DemoSizes, DemoVolume};
 pub use error::{CaseError, SandboxError};
 pub use generate::{Generated, LeftOutFile, generate, generate_leaving_out, without_clashes};
+pub use largest::{LargestExpectation, Shown};
 pub use layout::Sandbox;
 pub use scenario::{
     AppState, DemoOutcome, DemoPlay, DemoWindow, NameMatch, Role, Scenario, ScenarioError, Step, Target, Wait,
     is_plain_name,
 };
+pub use stated_access::StatedAccess;
 pub use stated_space::StatedSpace;
 pub use world::{World, WorldCommands};

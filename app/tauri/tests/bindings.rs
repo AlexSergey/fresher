@@ -30,6 +30,10 @@ mod support {
         AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, MountKind, PartKind, PlaceName,
         PlaceRow, PlaceShare, PlaceView, RemainderReason, StorageMap, VolumeMap,
     };
+    use fresher_core::{
+        ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, Offer, OwnPlace, OwnRow, PlaceCount, Unchanged,
+        Withheld,
+    };
     use fresher_sandbox::{AppState, DemoOutcome, DemoPlay, DemoWindow, NameMatch, Role, Scenario, Step, Target, Wait};
     use ts_rs::{Config, TS};
 
@@ -140,6 +144,7 @@ mod support {
             declaration::<UnreadablePlace>(&config),
         ];
         declarations.extend(storage_declarations(&config));
+        declarations.extend(largest_declarations(&config));
         declarations.extend(cleanup_declarations(&config));
         declarations.extend(demo_declarations(&config));
         declarations
@@ -164,6 +169,23 @@ mod support {
             declaration::<PlaceView>(config),
             declaration::<PlaceRow>(config),
             declaration::<Descent>(config),
+        ]
+    }
+
+    /// The types of the Largest screen's commands.
+    fn largest_declarations(config: &Config) -> Vec<Declaration> {
+        vec![
+            declaration::<LargestQuery>(config),
+            declaration::<Unchanged>(config),
+            declaration::<LargestPage>(config),
+            declaration::<LargestRow>(config),
+            declaration::<ItemKind>(config),
+            declaration::<Offer>(config),
+            declaration::<Withheld>(config),
+            declaration::<KindCount>(config),
+            declaration::<PlaceCount>(config),
+            declaration::<OwnPlace>(config),
+            declaration::<OwnRow>(config),
         ]
     }
 

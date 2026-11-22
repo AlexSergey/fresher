@@ -13,10 +13,11 @@ mod tests {
     use std::collections::BTreeSet;
 
     use crate::{
-        Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CommandError, Completeness,
-        DangerLevel, Ended, KnownFolder, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotScanned, PartKind, Place,
-        PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome, SettingsSchema, SkipCode, SkipReason,
-        Text, TextArg, TextKey, ToolId, TrashState, VolumeMap,
+        Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CategoryText, CommandError,
+        Completeness, DangerLevel, Ended, ItemKind, KnownFolder, MapPart, ModuleGroup, ModuleOutcome, MountKind,
+        NotScanned, PartKind, Place, PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome,
+        SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey, ToolId, TrashState, Unchanged, VolumeMap,
+        Withheld,
     };
 
     use crate::cleanup::outcome_sample;
@@ -91,6 +92,13 @@ mod tests {
         let failures = outcome_sample::failures().into_iter().map(|failure| failure.text().key().clone());
         let put_backs = outcome_sample::put_back_outcomes().into_iter().map(|outcome| outcome.text().key().clone());
         let storage = storage_keys();
+        let largest = ItemKind::ALL
+            .map(ItemKind::text_key)
+            .into_iter()
+            .chain(Withheld::ALL.map(Withheld::text_key))
+            .chain(Unchanged::ALL.map(Unchanged::text_key))
+            .chain(own_file_keys())
+            .chain([unpacked().key().clone()]);
         let start = std::iter::once(key("core.start.failed".into()));
         let trash = [sandbox_trash(), SandboxTrashAt::System.text()].map(|text| text.key().clone());
         let left_out = left_out_summaries().into_iter().map(|text| text.key().clone());
@@ -121,7 +129,27 @@ mod tests {
             .chain(trash)
             .chain(left_out)
             .chain(settings)
+            .chain(largest)
             .collect()
+    }
+
+    /// The own-file category's five texts, the title of a picked item and the two reasons.
+    fn own_file_keys() -> Vec<TextKey> {
+        let category = crate::own_file();
+        let texts = CategoryText::ALL.map(|text| category.text_key(text));
+        let others =
+            ["title", "reason.file", "reason.folder"].map(|name| TextKey::new(format!("core.own-file.{name}")));
+        texts.into_iter().chain(others.into_iter().map(Result::unwrap)).collect()
+    }
+
+    /// The line under an archive's row, with the arg the engine passes.
+    fn unpacked() -> Text {
+        Text::new(TextKey::new("core.largest.unpacked").unwrap()).with("folder", TextArg::Text("Movie".into()))
+    }
+
+    /// The title of a picked item, with the arg the engine passes.
+    fn own_title() -> Text {
+        crate::own_file_title("Movie.mov")
     }
 
     /// The storage map's keys: every part's name and description, the remainder's names, its reasons, the named
@@ -191,7 +219,7 @@ mod tests {
             .chain(failures)
             .chain(purgeable_note())
             .chain(left_out_summaries())
-            .chain([sandbox_trash()])
+            .chain([sandbox_trash(), unpacked(), own_title()])
             .collect()
     }
 

@@ -25,9 +25,11 @@ mod ignore;
 mod ignore_module_tests;
 #[cfg(test)]
 mod insight_tests;
+mod largest;
 #[cfg(test)]
 mod left_out_tests;
 mod left_outs;
+mod own;
 mod places;
 mod registry;
 mod results;

@@ -30,6 +30,13 @@
               "outsideScan": true,
               "reasons": [
                 {
+                  "folders": 1,
+                  "kind": "unreadable",
+                  "needs": {
+                    "kind": "all-files"
+                  }
+                },
+                {
                   "kind": "snapshots-and-bookkeeping"
                 },
                 {

@@ -4,12 +4,13 @@ use std::time::{Duration, SystemTime};
 
 use fresher_core::{
     Access, BundleId, Capability, CategoryDescriptor, CategoryId, DangerLevel, GuardedFolder, IdError, ModuleId,
-    RunningApp, SettingKey, SkipCode, SystemVersion, TextKey, is_kebab_case,
+    OWN_FILE_ID, RunningApp, SettingKey, SkipCode, SystemVersion, TextKey, is_kebab_case, own_file,
 };
 use fresher_testing::{AppBundle, TreeDescription, time_at_age};
 use serde::{Deserialize, Serialize};
 
 use crate::demo::RawDemo;
+use crate::largest::{LargestExpectation, RawLargest};
 use crate::world::{StatedTool, ToolProblem};
 use crate::{CaseError, Demo};
 
@@ -57,6 +58,7 @@ pub struct Case {
     tools: Vec<StatedTool>,
     expect: Option<Expectation>,
     map: Option<MapExpectation>,
+    largest: Option<LargestExpectation>,
     left_out: Vec<LeftOutExpectation>,
     insights: Vec<InsightExpectation>,
 }
@@ -137,8 +139,8 @@ struct RawCaseFile {
     cases: Vec<RawCase>,
 }
 
-// Its files are every key but `name`, `kind`, `spotlight`, `access`, `macos`, `expect`, `map`, `left-out`, `running`,
-// `elsewhere`, `receipt`, `tool` and `insight` (`[[case.running]]`, `[[case.elsewhere]]`, `[[case.receipt]]`,
+// Its files are every key but `name`, `kind`, `spotlight`, `access`, `macos`, `expect`, `map`, `largest`, `left-out`,
+// `running`, `elsewhere`, `receipt`, `tool` and `insight` (`[[case.running]]`, `[[case.elsewhere]]`, `[[case.receipt]]`,
 // `[[case.tool]]` and `[[case.insight]]`, taken out first), read as a `TreeDescription`, which refuses an unknown one;
 // each `[[case.app]]` loses its `running` first.
 #[derive(Deserialize)]
@@ -150,6 +152,7 @@ struct RawCase {
     macos: Option<String>,
     expect: Option<RawExpectation>,
     map: Option<RawMap>,
+    largest: Option<RawLargest>,
     #[serde(default, rename = "left-out")]
     left_out: Vec<RawLeftOut>,
     #[serde(flatten)]
@@ -502,6 +505,10 @@ impl Case {
             (CaseKind::Positive, Some(raw)) => Some(PendingExpectation::from_raw(&name, &tree, raw)?),
         };
         let map = raw.map.map(|map| MapExpectation::from_raw(&name, raw.kind, &tree, map)).transpose()?;
+        let largest = raw.largest.map(|raw| LargestExpectation::from_raw(&name, &tree, raw)).transpose()?;
+        if largest.is_none() && expect.as_ref().is_some_and(|expect| expect.category == OWN_FILE_ID) {
+            return Err(CaseError::OwnFileWithoutLargest { case: name });
+        }
         let left_out =
             raw.left_out.into_iter().map(|raw| PendingLeftOut::from_raw(&name, raw)).collect::<Result<_, _>>()?;
         let spotlight_off = matches!(raw.spotlight, Some(RawSpotlight::Off));
@@ -532,6 +539,7 @@ impl Case {
             tools,
             expect: None,
             map,
+            largest,
             left_out: vec![],
             insights,
         };
@@ -607,6 +615,11 @@ impl Case {
     /// Where the storage map must show the case's files, when the case says.
     pub const fn map(&self) -> Option<&MapExpectation> {
         self.map.as_ref()
+    }
+
+    /// What the Largest screen must show of the case's files, when the case says.
+    pub const fn largest(&self) -> Option<&LargestExpectation> {
+        self.largest.as_ref()
     }
 
     /// The insights the case expects its file's module to describe.
@@ -947,14 +960,21 @@ fn module_of(id: &str) -> &str {
     id.split_once('.').map_or(id, |(module, _)| module)
 }
 
-/// Checks a category id `<module>.<name>` read from a case file, without keeping it.
+/// Checks a category id `<module>.<name>` read from a case file, without keeping it: a module's, or the core's own
+/// `core.own-file` (a row picked on the Largest screen).
 pub(crate) fn check_category(id: &str) -> Result<(), IdError> {
+    if id == OWN_FILE_ID {
+        return Ok(());
+    }
     ModuleId::check(module_of(id))?;
     CategoryId::check(module_of(id), id)
 }
 
 /// The category id `<module>.<name>` of a checked, kept id.
 pub(crate) fn category_id(id: &'static str) -> Result<CategoryId, IdError> {
+    if id == OWN_FILE_ID {
+        return Ok(own_file().id());
+    }
     CategoryId::new(ModuleId::new(module_of(id))?, id)
 }
 
@@ -1123,6 +1143,13 @@ after-cleanup = "in-trash"
             let text = file(&[&cache("low").replace("\"positive\"", "\"negative\"")]);
 
             assert!(matches!(refused(&text), CaseError::NegativeWithExpect { case } if case.contains("Trash")));
+        }
+
+        #[test]
+        fn an_own_file_expectation_without_largest_is_refused() {
+            let text = file(&[&cache("high").replace("trial.caches", "core.own-file")]);
+
+            assert!(matches!(refused(&text), CaseError::OwnFileWithoutLargest { case } if case.contains("Trash")));
         }
 
         #[test]
@@ -1633,6 +1660,18 @@ after-cleanup = "in-trash"
         }
 
         #[test]
+        fn a_core_category_other_than_own_file_is_refused() {
+            for category in ["core.own-files", "core.caches"] {
+                let text = file(&[&cache("high").replace("trial.caches", category)]);
+
+                assert!(
+                    matches!(refused(&text), CaseError::Module { .. } | CaseError::CategoryId { .. }),
+                    "{category}"
+                );
+            }
+        }
+
+        #[test]
         fn a_tree_error_names_its_case() {
             let text = file(&[&NEGATIVE.replace("size", "age = \"3w\"\nsize")]);
 
@@ -1947,6 +1986,15 @@ after-cleanup = "in-trash"
             let parsed = CaseFile::parse(&file(&[NEGATIVE])).unwrap();
 
             assert_eq!(parsed.cases()[0].access(), []);
+        }
+
+        #[test]
+        fn the_core_s_own_file_category_is_read() {
+            let own = cache("high").replace("trial.caches", "core.own-file");
+            let parsed = CaseFile::parse(&file(&[&format!("{own}[case.largest]\nshown = \"offered\"\n")])).unwrap();
+
+            parsed.check(&[fresher_core::own_file()], &[]).unwrap();
+            assert_eq!(parsed.cases()[0].expect().unwrap().category(), fresher_core::own_file().id());
         }
 
         #[test]

@@ -18,6 +18,7 @@ use crate::cleanup::blocked;
 use crate::cleanup::context::Context;
 use crate::engine::{CleanupPorts, Shared};
 use crate::error::{EngineError, lock, lock_anyway};
+use crate::own::check_picks;
 use crate::state::{OperationThread, Running};
 
 /// The journal is made durable after this many outcomes…
@@ -29,8 +30,9 @@ const SYNC_INTERVAL: Duration = Duration::from_secs(1);
 ///
 /// Refused while an operation runs (`Busy`), without a pending plan or for one that expired or that the echo does not
 /// name (`PlanGone`), for an echo that differs from the plan (`PlanMismatch`), for a plan whose every item was left
-/// out (`NothingToClean`), and when cleaning is blocked or the journal cannot begin (`CleaningBlocked`): nothing is
-/// acted on or journalled then. The plan is consumed whatever the answer.
+/// out (`NothingToClean`), for a plan holding a row the user picked that is no longer offered (`PlanGone`), and when
+/// cleaning is blocked or the journal cannot begin (`CleaningBlocked`): nothing is acted on or journalled then. The
+/// plan is consumed whatever the answer.
 pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<CleanupId, CommandError> {
     let mut machine = lock(&shared.machine)?;
     machine.idle()?;
@@ -47,6 +49,7 @@ pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<Clean
     if confirmed.items().is_empty() {
         return Err(CommandError::NothingToClean);
     }
+    check_picks(shared, confirmed.items())?;
     let cx = Context::now(shared)?;
     let before = Space::measure(&*ports.volumes, confirmed.plan().roots());
     let cleanup = ports.journal.begin(&BeginRecord::new(now, &confirmed, before.volumes.clone())).map_err(|error| {

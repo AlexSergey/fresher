@@ -13,7 +13,9 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub use core_schema::{IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, SCAN_ROOTS};
+pub use core_schema::{
+    IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, LARGEST_MIN_SIZE, SCAN_ROOTS, min_size_of,
+};
 pub use days::DaySetting;
 pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
 

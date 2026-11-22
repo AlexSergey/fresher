@@ -1,18 +1,20 @@
 import type { Page } from '@playwright/test';
 
 import type {
+  Coverage,
+  Dictionary,
   Event,
   Finding,
   FindingsQuery,
   MeaningGroup,
   ModuleInfo,
   Overview,
-  PlaceView,
   Refusal,
   SettingUpdate,
   StorageMap,
 } from '../src/ipc/bindings.generated';
 
+import coreTexts from '../../../crates/core/locales/en.json' with { type: 'json' };
 import { type CommandKey, COMMANDS } from '../src/ipc';
 import {
   APP_CACHES_BROWSERS_DICTIONARY,
@@ -51,9 +53,9 @@ import {
   movedDetailOf,
   planOf,
 } from '../src/test/cleanup-plan';
-import { DEMO_DESCENT, DEMO_PLACE } from '../src/test/demo-place';
 import {
   ACCESS_DICTIONARY,
+  accessStatus,
   BUSY,
   DEMO_FAILED,
   DEMO_FAILED_SCAN,
@@ -121,6 +123,7 @@ import {
   JETBRAINS_SETTINGS,
 } from '../src/test/jetbrains-scan';
 import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
+import { LARGEST_DICTIONARY, LARGEST_ROWS, ownFindingOf } from '../src/test/largest-scan';
 import {
   LOCAL_AI_MODELS_DICTIONARY,
   LOCAL_AI_MODELS_FINDINGS,
@@ -164,7 +167,6 @@ import {
   DEMO_MAP_NO_SCAN,
   DEMO_MAP_SCANNING,
   DEMO_MEANING_SCANNING,
-  EMPTY_PLACE,
   meaningFor,
   STORAGE_DICTIONARY,
 } from '../src/test/storage-map';
@@ -174,7 +176,6 @@ import {
   TEMP_MAP,
   TEMP_MODULES,
   TEMP_OVERVIEW,
-  TEMP_PLACES,
   TEMP_SCAN,
   TEMP_SETTINGS,
 } from '../src/test/temp-scan';
@@ -211,6 +212,7 @@ import {
 } from '../src/test/xcode-scan';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
+import { LARGEST_HOOK, mockLargest, ownIdOf } from './support/largest-mock';
 
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
@@ -225,6 +227,8 @@ export type CoreScript = {
   // The scan streams one event every `interval` ms, as the engine does, each asked of Node as JSON and parsed in the
   // page as the channel does (the page never holds the whole scan); meanwhile `get_overview` answers the totals of the findings streamed so far, and `scanned` from the last event on.
   readonly interval?: number;
+  // The Largest screen's commands: the Files list, the home's folders and the pick of a row (support/largest-mock.ts).
+  readonly largest?: boolean;
   // The by-meaning groups once the scan ended, in place of the demo volume's; the volume's own lines follow them.
   readonly meaning?: readonly MeaningGroup[];
   readonly refusals?: Partial<Readonly<Record<CommandKey, Refusal>>>;
@@ -234,16 +238,14 @@ export type CoreScript = {
   readonly scanning?: Overview;
   readonly stop?: { readonly events: readonly Event[]; readonly overview: Overview };
   // What `cancel_scan` streams in place of the held events, and the overview after it.
-  // The storage map and the places after the scan, in place of the demo volume's.
-  readonly storage?: { readonly map: StorageMap; readonly places: Readonly<Record<string, PlaceView>> };
+  // The storage map after the scan, in place of the demo volume's.
+  readonly storage?: { readonly map: StorageMap };
 };
 
-// What the storage map's commands answer in one phase of the scan: the places by their node's index, any other
-// empty, unless the script answers them; a place is refused as busy while a scan runs (`null`), as the engine does.
+// What the storage map's commands answer in one phase of the scan.
 type StorageAnswers = {
   readonly map: StorageMap;
   readonly meaning: readonly MeaningGroup[];
-  readonly places: null | Readonly<Record<string, PlaceView>>;
 };
 
 // The demo volume's map while the scan runs and once it ended with `scanned` (its categories, as the core would list
@@ -259,29 +261,26 @@ const storageOfScan = (
       meaning === undefined
         ? meaningFor(scanned?.totals ?? [])
         : [...meaning, ...meaningFor([]).filter(({ kind }) => kind !== 'app')],
-    places: { 0: DEMO_PLACE, 1: DEMO_DESCENT, ...storage?.places },
   },
-  scanning: { map: DEMO_MAP_SCANNING, meaning: DEMO_MEANING_SCANNING, places: null },
+  scanning: { map: DEMO_MAP_SCANNING, meaning: DEMO_MEANING_SCANNING },
 });
 
 type ByCommand = {
   readonly answers: Readonly<Record<string, unknown>>;
   readonly busy: Refusal;
   readonly cancelScan: string;
-  // What a place the scan has no answer for shows.
-  readonly emptyPlace: PlaceView;
   readonly eventAt: string;
   readonly getFindings: string;
   readonly getOverview: string;
   readonly getStorageMap: string;
   readonly getStorageMeaning: string;
-  readonly getStoragePlace: string;
   readonly getTrash: string;
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
   readonly ignoredPathsHook: string;
   readonly ignoreHook: string;
   readonly interval: null | number;
+  readonly largestHook: string;
   readonly openTrash: string;
   readonly overviewOf: string;
   // How many events a scan paced by `interval` streams.
@@ -344,24 +343,25 @@ const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Rea
 // finding whose path is ignored or inside an ignored path, and its total with it; the overview's category totals are not
 // recomputed for an ignored item (a simplification: the core's own e2e proves them).
 export const mockCore = async (page: Page, script: CoreScript = {}): Promise<void> => {
-  const findings = (script.scan ?? []).flatMap((event) => (event.type === 'findings-added' ? event.findings : []));
+  const findings: Finding[] = (script.scan ?? []).flatMap((event) =>
+    event.type === 'findings-added' ? event.findings : [],
+  );
   const setup: ByCommand = {
     answers: byCommand(withRefreshAccess(script.answers)),
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
-    emptyPlace: EMPTY_PLACE,
     eventAt: EVENT_AT,
     getFindings: COMMANDS.getFindings,
     getOverview: COMMANDS.getOverview,
     getStorageMap: COMMANDS.getStorageMap,
     getStorageMeaning: COMMANDS.getStorageMeaning,
-    getStoragePlace: COMMANDS.getStoragePlace,
     getTrash: COMMANDS.getTrash,
     hold: script.hold ?? null,
     hooks: CLEANUP_HOOKS,
     ignoredPathsHook: IGNORED_PATHS_HOOK,
     ignoreHook: IGNORE_HOOK,
     interval: script.interval ?? null,
+    largestHook: LARGEST_HOOK,
     openTrash: COMMANDS.openTrash,
     overviewOf: OVERVIEW_OF,
     paced: script.interval === undefined ? 0 : (script.scan ?? []).length,
@@ -397,8 +397,6 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     let streamed = 0;
     let held: readonly Event[] = [];
     let running = false;
-    // The places of the last scan by their node's index; `null` while a scan runs, so they are refused as busy.
-    let places: StorageAnswers['places'] = {};
     // The Trash lines the last `get_trash` answered, and the Trashes `open_trash` was asked to open.
     let listed = 0;
     const opened: number[] = [];
@@ -421,7 +419,6 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     const storageOf = (storage: StorageAnswers): void => {
       answers[core.getStorageMap] = storage.map;
       answers[core.getStorageMeaning] = storage.meaning;
-      places = storage.places;
     };
 
     const finish = (events: readonly Event[], overview: null | Overview): void => {
@@ -491,21 +488,6 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       },
     });
 
-    // A place of the last scan by its node's index, unless the script answers it; refused as busy while a scan runs.
-    const placeOf = (args: Readonly<Record<string, unknown>>): Promise<unknown> => {
-      const { index } = args.node as { readonly index: number };
-
-      if (core.getStoragePlace in core.answers) {
-        return Promise.resolve(answers[core.getStoragePlace]);
-      }
-      if (places === null) {
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- the core rejects with a plain object
-        return Promise.reject(core.busy);
-      }
-
-      return Promise.resolve(places[String(index)] ?? core.emptyPlace);
-    };
-
     // `get_trash` answers the script's view (none by default); `open_trash` records the index, or refuses one the last
     // answer did not have.
     const trashOf = (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> | undefined => {
@@ -544,16 +526,22 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
           | undefined
         >
       )[core.ignoreHook];
+      const largest = (
+        globalThis as unknown as Record<
+          string,
+          ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
+        >
+      )[core.largestHook];
       const answered =
         command in core.refusals
           ? undefined
-          : (cleanup?.(command, args) ?? ignoring?.(command, args, answers) ?? trashOf(command, args));
+          : (cleanup?.(command, args) ??
+            ignoring?.(command, args, answers) ??
+            largest?.(command, args) ??
+            trashOf(command, args));
 
       if (answered !== undefined) {
         return answered;
-      }
-      if (command === core.getStoragePlace && !(command in core.refusals)) {
-        return placeOf(args);
       }
       if (command === core.subscribe) {
         channel = (args.channel as { readonly id: number }).id;
@@ -628,8 +616,10 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
   if (script.ignoring === true) {
     await mockIgnore(page, findings);
   }
+  const moved = script.largest === true ? await mockLargest(page, findings) : undefined;
+
   if (script.cleanup !== undefined) {
-    await mockCleanup(page, findings, script.cleanup);
+    await mockCleanup(page, findings, script.cleanup, moved);
   }
 };
 
@@ -655,7 +645,62 @@ const ANSWERS = {
   updateSetting: null,
 } as const;
 
+const DESKTOP = { kind: 'folder', value: 'desktop' } as const;
+
 const LARGE = largeScan({ categories: 3, count: 1000 });
+
+// The core's texts of the Largest screen, of its refusal and of the Desktop the scan did not enter, with the cleanup's.
+const LARGEST_SCREEN_DICTIONARY: Dictionary = {
+  ...CLEANUP_DICTIONARY,
+  ...LARGEST_DICTIONARY,
+  ...Object.fromEntries(
+    Object.entries(coreTexts as Dictionary).filter(
+      ([key]) =>
+        key.startsWith('core.access.desktop.') ||
+        key.startsWith('core.access.all-files.') ||
+        key === 'core.error.not-own-item',
+    ),
+  ),
+};
+
+// The demo scan whose coverage did not enter the Desktop (not asked yet).
+const LARGEST_COVERAGE: Coverage = { notEntered: [{ access: 'not-asked', capability: DESKTOP }], unreadable: [] };
+
+const LARGEST_SCAN: readonly Event[] = DEMO_SCAN.map((event) =>
+  event.type === 'scan-coverage' ? { ...event, coverage: LARGEST_COVERAGE } : event,
+);
+
+const LARGEST_SCANNED: NonNullable<Overview['lastScan']> = {
+  ...(DEMO_OVERVIEW.lastScan as NonNullable<Overview['lastScan']>),
+  coverage: LARGEST_COVERAGE,
+};
+
+const LARGEST_OVERVIEW: Overview = { ...DEMO_OVERVIEW, lastScan: LARGEST_SCANNED };
+
+const LARGEST_ANSWERS = {
+  ...ANSWERS,
+  getAccessStatus: accessStatus([
+    [{ kind: 'all-files' }, 'granted'],
+    [DESKTOP, 'not-asked'],
+  ]),
+  getDictionary: { ...ANSWERS.getDictionary, ...LARGEST_SCREEN_DICTIONARY },
+};
+
+// The cleanup of the first row of the Largest list when the user picks it: the disk image goes to the Trash (a cleanup
+// of own files does not touch the scan's totals, but it changed the disk, so the list says to scan again).
+const largestCleanup = (): CleanupScript => {
+  const [row] = LARGEST_ROWS;
+  const plan = planOf([
+    ownFindingOf(row as (typeof LARGEST_ROWS)[number], ownIdOf((row as (typeof LARGEST_ROWS)[number]).node.id)),
+  ]);
+  const detail = movedDetailOf(plan, 3, 1_735_819_200);
+
+  return {
+    after: { ...LARGEST_OVERVIEW, lastScan: { ...LARGEST_SCANNED, changedSince: 3 } },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 12_000_000_000 },
+  };
+};
 
 // The demo scan's texts with the cleanup's.
 const CLEANING_ANSWERS = { ...ANSWERS, getDictionary: { ...ANSWERS.getDictionary, ...CLEANUP_DICTIONARY } };
@@ -1219,6 +1264,15 @@ export const SCRIPTS = {
     scan: LARGE.events,
     scanned: LARGE.overview,
   },
+  // The demo scan with the Desktop not entered, and the Largest screen over it: the list, the home's folders, the pick
+  // of a row. The cleanup moves the disk image, the first row, and the history holds it.
+  largest: {
+    answers: LARGEST_ANSWERS,
+    cleanup: largestCleanup(),
+    largest: true,
+    scan: LARGEST_SCAN,
+    scanned: LARGEST_OVERVIEW,
+  },
   // The demo scan held after its first batch and progress, until `releaseScan` or Stop (partial, the first batch).
   live: {
     answers: ANSWERS,
@@ -1302,14 +1356,14 @@ export const SCRIPTS = {
     scanned: STALE_PROJECTS_OVERVIEW,
   },
   // The temporary files module's scan, streamed at once, with cleanup, ignoring, and the two temporary folders as
-  // places of the storage map.
+  // places of the storage map's volume.
   temp: {
     answers: TEMP_ANSWERS,
     cleanup: TEMP_CLEANUP,
     ignoring: true,
     scan: TEMP_SCAN,
     scanned: TEMP_OVERVIEW,
-    storage: { map: TEMP_MAP, places: TEMP_PLACES },
+    storage: { map: TEMP_MAP },
   },
   // The demo scan; the Trash holds 23 GB, 20 GB of it from earlier cleanups.
   trash: { answers: { ...ANSWERS, getTrash: TRASH_ONE }, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },

@@ -136,6 +136,33 @@ pub enum CaseError {
     /// A `[settings]` key that is not `<module>.<name>` in kebab case.
     #[error("the setting `{key}` is not a key `<module>.<name>` in kebab case")]
     SettingKey { key: String },
+    /// `[case.largest]`'s `shown` is none of the four.
+    #[error("case \"{case}\": `[case.largest]` shows {shown:?}; `shown` is offered, absent, withheld or not-seen")]
+    LargestShown { case: String, shown: String },
+    /// `[case.largest]` has a `withheld` without `shown = "withheld"`, or `shown = "withheld"` without one.
+    #[error("case \"{case}\": `[case.largest]` gives `withheld` with `shown = \"withheld\"`, and only with it")]
+    LargestWithheld { case: String },
+    /// `[case.largest]`'s `withheld` is no reason a row is withheld for.
+    #[error("case \"{case}\": `{reason}` in `[case.largest]` is not a reason a row is withheld for")]
+    LargestWithheldReason { case: String, reason: String },
+    /// `[case.largest]` has a `kind` or an `unpacked` without `shown = "offered"`.
+    #[error("case \"{case}\": `[case.largest]` gives `{field}` with `shown = \"offered\"` only")]
+    LargestOfferedOnly { case: String, field: &'static str },
+    /// `[case.largest]`'s `kind` is no kind of a row.
+    #[error("case \"{case}\": `{kind}` in `[case.largest]` is not a kind of a row")]
+    LargestKind { case: String, kind: String },
+    /// `[case.largest]`'s `unpacked` is not one plain file name.
+    #[error("case \"{case}\": `unpacked` in `[case.largest]` must be one plain folder name, not {name:?}")]
+    LargestUnpacked { case: String, name: String },
+    /// `[case.largest]` has no `at` where one is required (withheld, not-seen) or the case writes no file to default to.
+    #[error("case \"{case}\": `[case.largest]` needs an `at`, one of the case's paths or their folders")]
+    LargestWithoutAt { case: String },
+    /// `[case.largest]`'s `at` is not a plain path among the case's paths or their folders.
+    #[error("case \"{case}\": the largest `at` {at} is not one of the case's paths or their folders")]
+    LargestAtOutsideTheCase { case: String, at: PathBuf },
+    /// A `core.own-file` expectation in a case without `[case.largest]`: nothing would pick the file.
+    #[error("case \"{case}\": `core.own-file` is picked on the Largest screen; add a `[case.largest]`")]
+    OwnFileWithoutLargest { case: String },
     /// A `[settings]` value that is not a bool, an integer or a string.
     #[error("the setting `{key}` must be a bool, an integer or a string")]
     SettingValue { key: String },

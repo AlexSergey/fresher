@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{CategoryId, Sizes, TextKey, Timestamp, Unreadable};
+use crate::{ByteSize, CategoryId, Sizes, TextKey, Timestamp, Unreadable};
 
 /// The tree of one committed scan. Never changes: a new scan commits a new state with a new id.
 pub trait DiskState: Send + Sync {
@@ -31,6 +31,31 @@ pub trait DiskState: Send + Sync {
     fn owned(&self) -> Vec<(NodeId, CategoryId)>;
     /// The node at `path`, compared by components; `None` outside every root or for no node.
     fn find(&self, path: &Path) -> Option<NodeId>;
+    /// The items below `root` (never `root` itself), the largest allocated size first, ties in path order, at most
+    /// `limit`: each node `rule` calls an item, of at least `min` allocated bytes. Never asks `rule` about, enters or
+    /// answers a node a category claimed, a link, a special entry or a hard link counted at another path; never enters
+    /// a folder smaller than `min` (nothing in it can reach it). `limit` is capped at one more than `MAX_ITEMS`, so a
+    /// caller asking for that one more can tell that more were left. `None` for a node of another state.
+    fn items(&self, root: NodeId, rule: &dyn ItemRule, min: ByteSize, limit: u32) -> Option<Vec<NodeId>>;
+}
+
+/// How [`DiskState::items`] treats one node below its root.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ItemVisit {
+    /// Not answered and not entered.
+    Skip,
+    /// Answered as one item (when large enough) and not entered.
+    Item,
+    /// Entered; never answered itself. A file and a collapsed subtree have nothing to enter: they count as
+    /// [`ItemVisit::Item`].
+    Enter,
+}
+
+/// The caller's rule of an items query: what a node is, by its name (lossy UTF-8), its kind and its depth below the
+/// query's root (a child of the root is 1).
+pub trait ItemRule {
+    /// How the query treats the node `name` of `kind` at `depth` below the root.
+    fn visit(&self, name: &str, kind: NodeKind, depth: u32) -> ItemVisit;
 }
 
 /// The id of one committed state in a session.

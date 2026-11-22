@@ -17,6 +17,10 @@ mod harness;
 mod insight;
 #[cfg(test)]
 #[expect(dead_code, reason = "the world scan uses a part of the autotest's helpers")]
+#[path = "sandboxes/largest.rs"]
+mod largest;
+#[cfg(test)]
+#[expect(dead_code, reason = "the world scan uses a part of the autotest's helpers")]
 #[path = "sandboxes/left_out.rs"]
 mod left_out;
 #[cfg(test)]

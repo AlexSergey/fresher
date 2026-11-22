@@ -27,6 +27,7 @@ export const screenKey = (screen: Screen): string => {
     case 'cleanup':
       return `cleanup:${String(screen.cleanup)}`;
     case 'cleanups':
+    case 'largest':
     case 'review':
     case 'scan':
     case 'settings':

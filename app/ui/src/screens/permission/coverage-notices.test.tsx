@@ -89,7 +89,6 @@ const show = async ({
     getSettings: () => settingsWith(desktopOn),
     getStorageMap: () => null,
     getStorageMeaning: () => [],
-    getStoragePlace: () => null,
     ...answers,
   });
   render(

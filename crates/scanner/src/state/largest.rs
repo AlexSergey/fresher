@@ -36,7 +36,12 @@ pub(super) struct Largest {
 
 impl Largest {
     pub(super) fn new(limit: u32) -> Self {
-        let limit = usize::try_from(limit.min(MAX_ANSWERS)).unwrap_or(0);
+        Self::capped(limit, MAX_ANSWERS)
+    }
+
+    /// Keeps at most `limit`, itself capped at `cap`.
+    pub(super) fn capped(limit: u32, cap: u32) -> Self {
+        let limit = usize::try_from(limit.min(cap)).unwrap_or(0);
         Self { heap: BinaryHeap::with_capacity(limit.saturating_add(1)), limit }
     }
 

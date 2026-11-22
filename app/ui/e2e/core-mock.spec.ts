@@ -7,6 +7,8 @@ import type {
   Finding,
   FindingsPage,
   FindingsQuery,
+  LargestPage,
+  LargestQuery,
   Overview,
 } from '../src/ipc/bindings.generated';
 
@@ -17,6 +19,7 @@ import { pageOf } from '../src/test/page-of';
 import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
 import { mockCore, SCRIPTS } from './core-mock';
 import { scanButton } from './support/cards';
+import { largestAnswerOf, pickAnswerOf, placeAnswerOf } from './support/largest-mock';
 
 // The mocked core pages through a scan's findings as the engine does, so the e2e tests of the lists page for real.
 
@@ -66,6 +69,8 @@ const getOverview = (page: Page): Promise<Overview> =>
 
     return (await internals?.invoke(command, {})) as Overview;
   }, COMMANDS.getOverview);
+
+const ANY: LargestQuery = { kind: null, limit: 100, offset: 0, place: null, unchanged: 'any' };
 
 const DEMO_QUERY: FindingsQuery = { category: 'demo.caches', limit: 10, module: 'demo', offset: 0, order: 'largest' };
 
@@ -118,6 +123,63 @@ test.describe('negative cases', () => {
     await page.goto('/');
 
     expect(await getFindings(page, QUERY)).toEqual({ findings: [], offset: 100, total: 0 });
+  });
+
+  test('a withheld row is never picked, and an unknown node either', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+
+    const refusals = await page.evaluate(
+      async ({ command, nodes }) => {
+        const internals = (
+          globalThis as unknown as Record<string, { invoke: (...args: unknown[]) => Promise<unknown> }>
+        ).__TAURI_INTERNALS__;
+
+        const refused: unknown[] = [];
+
+        for (const node of nodes) {
+          refused.push(
+            await internals?.invoke(command, { node }).then(
+              () => null,
+              (refusal: unknown) => refusal,
+            ),
+          );
+        }
+
+        return refused;
+      },
+      {
+        command: COMMANDS.pickOwnItem,
+        nodes: [
+          { index: 103, state: 1 },
+          { index: 11, state: 1 },
+          { index: 999, state: 1 },
+        ],
+      },
+    );
+
+    expect(refusals).toMatchObject([
+      { error: { code: 'not-own-item' } },
+      { error: { code: 'not-own-item' } },
+      { error: { code: 'not-own-item' } },
+    ]);
+  });
+
+  test('a folder that does not open is refused as the core refuses it', () => {
+    expect(placeAnswerOf({ index: 11, state: 1 }, 0, 100)).toBe('not-own-item');
+    expect(placeAnswerOf({ index: 999, state: 1 }, 0, 100)).toBe('stale-node');
+  });
+
+  test('a file that is not offered has no pick', () => {
+    expect(pickAnswerOf({ index: 103, state: 1 })).toBeNull();
+    expect(pickAnswerOf({ index: 101, state: 2 })).toBeNull();
+  });
+
+  test('a row a cleanup moved leaves the list and cannot be picked again', () => {
+    const picks = { gone: new Set([101]), ids: new Map<number, number>() };
+
+    expect(largestAnswerOf(ANY, picks).rows.map((row) => row.node.id.index)).not.toContain(101);
+    expect(pickAnswerOf({ index: 101, state: 1 }, picks)).toBeNull();
   });
 });
 
@@ -190,5 +252,70 @@ test.describe('positive cases', () => {
 
     expect(streaming.found.allocated).toBeLessThan(SCAN.overview.found.allocated);
     await expect.poll(() => getOverview(page)).toEqual(SCAN.overview);
+  });
+
+  test('the Files list keeps the rows under the kind, the place and the unchanged filters, largest first', () => {
+    const names = (query: Partial<LargestQuery>): string[] =>
+      largestAnswerOf({ ...ANY, ...query }).rows.map((row) => row.node.name);
+
+    expect(names({})).toStrictEqual([
+      'ubuntu-24.04.dmg',
+      'Windows 11.pvm',
+      'Photos Library.photoslibrary',
+      'holiday-2022.mov',
+      'project-backup.zip',
+    ]);
+    expect(names({ kind: 'video' })).toStrictEqual(['holiday-2022.mov']);
+    expect(names({ place: { index: 12, state: 1 } })).toStrictEqual(['ubuntu-24.04.dmg']);
+    expect(names({ unchanged: 'two-years' })).toStrictEqual(['ubuntu-24.04.dmg', 'holiday-2022.mov']);
+  });
+
+  test('the kinds and the folders are counted under the other filters', () => {
+    const answer = largestAnswerOf({ ...ANY, unchanged: 'two-years' });
+
+    expect(answer.kinds).toStrictEqual([
+      { count: 1, kind: 'disk-image' },
+      { count: 1, kind: 'video' },
+    ]);
+    expect(answer.places.map(({ count, folder }) => [folder.name, count])).toStrictEqual([
+      ['Downloads', 1],
+      ['Movies', 1],
+    ]);
+    expect(largestAnswerOf({ ...ANY, kind: 'video' }).kinds).toHaveLength(5);
+  });
+
+  test('the home lists its folders largest first and a folder that opens lists what it holds', () => {
+    const home = placeAnswerOf(null, 0, 100);
+    const movies = placeAnswerOf({ index: 15, state: 1 }, 0, 100);
+
+    expect(home).toMatchObject({ total: 6 });
+    expect(typeof home === 'string' ? [] : home.rows.map((row) => row.node.name)).toStrictEqual([
+      'Library',
+      'Downloads',
+      'Parallels',
+      'Pictures',
+      'Movies',
+      'Documents',
+    ]);
+    expect(typeof movies === 'string' ? [] : movies.rows.map((row) => row.node.name)).toStrictEqual([
+      'holiday-2022.mov',
+    ]);
+    expect(typeof movies === 'string' ? [] : movies.path.map((node) => node.name)).toStrictEqual(['someone', 'Movies']);
+  });
+
+  test('a pick answers the core’s High finding, the same one twice, and the page tells it was picked', async ({
+    page,
+  }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+
+    const node = { index: 101, state: 1 };
+    const first = await call<Finding>(page, COMMANDS.pickOwnItem, { node });
+    const second = await call<Finding>(page, COMMANDS.pickOwnItem, { node });
+    const listed = await call<LargestPage>(page, COMMANDS.getLargest, { query: ANY });
+
+    expect(first).toMatchObject({ category: 'core.own-file', danger: 'high' });
+    expect(second).toStrictEqual(first);
+    expect(listed.rows.map((row) => row.picked)).toStrictEqual([first.id, null, null, null, null]);
   });
 });

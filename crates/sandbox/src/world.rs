@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::case::{RawAccess, is_bundle_name, is_pkg_name, is_plain, stated_capability};
 use crate::demo::RawVolume;
+use crate::stated_access::StatedAccess;
 use crate::{CaseFile, DemoSizes, DemoVolume, Sandbox, SandboxError};
 
 mod commands;
@@ -299,8 +300,8 @@ impl World {
     /// capability the system grants has a state: every file `Unknown`, a stated folder or other apps' data as stated,
     /// every other `NotAsked`. Each stated folder is guarded at `home/<Folder>`, other apps' data at
     /// `home/Library/Containers` and `home/Library/Group Containers`, and trying a place answers `Granted` for
-    /// `granted` and `not-asked` (the simulated prompt is accepted), `Denied` for `denied`.
-    pub fn access(&self, home: &Path) -> Option<FakeAccess> {
+    /// `granted` and `not-asked` (the simulated prompt is accepted), `Denied` for `denied`. A scan root `~` is `home`.
+    pub fn access(&self, home: &Path) -> Option<StatedAccess> {
         if self.access.is_empty() {
             return None;
         }
@@ -317,10 +318,11 @@ impl World {
             })
             .collect();
         let fake = FakeAccess::with(&states).home(home);
-        Some(self.access.iter().fold(fake, |fake, &(capability, access)| {
+        let fake = self.access.iter().fold(fake, |fake, &(capability, access)| {
             let answer = if access == Access::Denied { Access::Denied } else { Access::Granted };
             places(capability).iter().fold(fake, |fake, place| fake.guard(place, capability).answering(place, answer))
-        }))
+        });
+        Some(StatedAccess::new(fake, home))
     }
 
     /// Whether the world states the macOS version or any installer receipt.

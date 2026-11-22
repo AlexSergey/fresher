@@ -1,4 +1,4 @@
-import type { CategoryTotal, MapPart, MeaningGroup, PartKind, PlaceView, StorageMap } from '../ipc/bindings.generated';
+import type { CategoryTotal, MapPart, MeaningGroup, PartKind, StorageMap } from '../ipc/bindings.generated';
 
 const GB = 1_000_000_000;
 
@@ -44,8 +44,6 @@ export const SAMPLE_MEANING: readonly MeaningGroup[] = SAMPLE_PARTS.map((sample)
   kind: 'part',
   value: sample,
 }));
-
-export const EMPTY_PLACE: PlaceView = { offset: 0, path: [], rows: [], total: 0 };
 
 // The core's texts of the storage map (crates/core/locales/en.json, `core.storage.*`), for the tests and the stories.
 export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {

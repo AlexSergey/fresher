@@ -16,6 +16,8 @@ pub(crate) enum EngineError {
     ScanIdsExhausted,
     #[error("the plan ids ran out")]
     PlanIdsExhausted,
+    #[error("the finding ids ran out")]
+    FindingIdsExhausted,
     #[error("the plan could not be made: {0}")]
     Plan(PlanError),
     #[error("the rehearsal answered {answers} times for {items} items")]
@@ -61,6 +63,7 @@ mod tests {
                 EngineError::Spawn { kind: io::ErrorKind::OutOfMemory },
                 EngineError::ScanIdsExhausted,
                 EngineError::PlanIdsExhausted,
+                EngineError::FindingIdsExhausted,
                 EngineError::Plan(fresher_core::PlanError::Overflow),
                 EngineError::Rehearsal { items: 2, answers: 1 },
                 EngineError::Journal(fresher_core::JournalError::ReadOnly),

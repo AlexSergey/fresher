@@ -12,6 +12,7 @@ use crate::cleanup::context::Context;
 use crate::cleanup::{blocked, plan, view};
 use crate::engine::Shared;
 use crate::error::{EngineError, lock};
+use crate::own::offered_picks;
 
 /// The plan waiting for its confirmation, the id of the last plan made, and how many times a plan died: a plan
 /// prepared while one died is not kept.
@@ -61,17 +62,21 @@ impl Pending {
     }
 }
 
-/// Prepares the plan of `selection` over the last scan: refused while an operation runs (`Busy`), before any scan
-/// (`NoScan`), for a selection the builder refuses, or when cleaning is blocked. The findings the builder keeps are
-/// rehearsed (`Depth::Quick`) with the context as it stands now; the plan, frozen, replaces the pending one.
+/// Prepares the plan of `selection` over the last scan and the rows the user picked that are still offered now:
+/// refused while an operation runs (`Busy`), before any scan (`NoScan`), for a selection the builder refuses, or when
+/// cleaning is blocked. The findings the builder keeps are rehearsed (`Depth::Quick`) with the context as it stands
+/// now; the plan, frozen, replaces the pending one.
 pub(crate) fn prepare(shared: &Shared, selection: &CleanupSelection) -> Result<CleanupPlanView, CommandError> {
     lock(&shared.machine)?.idle()?;
     let deaths = lock(&shared.pending)?.kill();
+    let picks = offered_picks(shared)?;
     let (scan, roots, selected) = {
         let results = lock(&shared.results)?;
         let last = results.last().ok_or(CommandError::NoScan)?;
         let categories: Vec<_> = shared.registry.categories().map(CategoryDescriptor::id).collect();
-        let selected: Vec<_> = plan::expand(selection, &results.visible(), &categories)?.into_iter().cloned().collect();
+        // The picks' ids follow every id of the scan: the list stays in id order, as the builder needs.
+        let findings: Vec<_> = results.visible().into_iter().chain(picks).collect();
+        let selected: Vec<_> = plan::expand(selection, &findings, &categories)?.into_iter().cloned().collect();
         (last.scan, results.walked_roots(), selected)
     };
     let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?;

@@ -4,14 +4,15 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use fresher_core::{
-    ByteSize, CategoryId, ChildOrder, Completeness, DiskState, NodeId, NodeInfo, NodeKind, NodePage, NotScanned, Sizes,
-    StateId, Timestamp, UnreadablePlace,
+    ByteSize, CategoryId, ChildOrder, Completeness, DiskState, ItemRule, NodeId, NodeInfo, NodeKind, NodePage,
+    NotScanned, Sizes, StateId, Timestamp, UnreadablePlace,
 };
 
 use crate::state::search::Lowered;
 use crate::tree::arena::Tree;
 use crate::tree::node::{Flag, Node, NodeIndex};
 
+mod items;
 mod largest;
 mod search;
 
@@ -202,8 +203,17 @@ impl DiskState for TreeState {
     fn find(&self, path: &Path) -> Option<NodeId> {
         self.id_of(self.tree.lookup(path)?)
     }
+
+    /// One depth-first pass from `root`; at most 10 000.
+    fn items(&self, root: NodeId, rule: &dyn ItemRule, min: ByteSize, limit: u32) -> Option<Vec<NodeId>> {
+        let root = self.index(root)?;
+        let found = items::items(&self.tree, root, rule, min.bytes(), limit);
+        Some(found.into_iter().filter_map(|index| self.id_of(index)).collect())
+    }
 }
 
+#[cfg(test)]
+mod items_tests;
 #[cfg(test)]
 mod query_tests;
 #[cfg(test)]

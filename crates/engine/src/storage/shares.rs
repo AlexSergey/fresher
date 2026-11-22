@@ -151,6 +151,16 @@ impl Shares {
         }
     }
 
+    /// Whether a module claimed `id` or a node inside it, its category ignored or not.
+    pub(crate) fn holds_owned(&self, id: NodeId) -> bool {
+        self.owned.contains_key(&id)
+    }
+
+    /// Whether a module claimed a folder strictly above `path`, its category ignored or not.
+    pub(crate) fn inside_owned(&self, path: &Path) -> bool {
+        path.ancestors().skip(1).any(|ancestor| self.owners.contains_key(ancestor))
+    }
+
     /// The category of the counted owner `id` and the bytes it keeps itself; `None` for a node that is not a counted
     /// owner.
     pub(crate) fn kept_by(&self, id: NodeId) -> Option<(CategoryId, Sizes)> {

@@ -8,6 +8,7 @@ import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { DOCKER_DICTIONARY } from '../src/test/docker-scan';
 import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
+import { LARGEST_DICTIONARY } from '../src/test/largest-scan';
 import { LOCAL_AI_MODELS_DICTIONARY } from '../src/test/local-ai-models-scan';
 import { LOGS_DICTIONARY } from '../src/test/logs-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
@@ -318,6 +319,53 @@ const trashLine = (page: Page): Locator => page.getByRole('region', { name: 'The
 
 const openedTrashes = (page: Page): Promise<readonly number[]> =>
   page.evaluate(() => (globalThis as unknown as { __openedTrash: number[] }).__openedTrash);
+
+// The Largest screen's own texts, as the core's locale file has them.
+const lgt = (key: string): string => LARGEST_DICTIONARY[`core.largest.${key}`] ?? '';
+
+const LARGEST = {
+  archive: 'project-backup.zip',
+  disk: 'ubuntu-24.04.dmg',
+  movie: 'holiday-2022.mov',
+  photos: 'Photos Library.photoslibrary',
+  vm: 'Windows 11.pvm',
+} as const;
+
+const largestFiles = (page: Page): Locator => page.getByRole('list', { name: 'Largest files, largest first' });
+
+const largestFolders = (page: Page): Locator => page.getByRole('list', { name: 'Folders, largest first' });
+
+const largestRow = (list: Locator, name: string): Locator => list.getByRole('listitem').filter({ hasText: name });
+
+const tick = (row: Locator, name: string): Locator =>
+  row.getByRole('checkbox', { name: new RegExp(`^Choose ${name}`) });
+
+// Ticks a row: the core picks it first, so the box is checked when its answer comes, not when it is clicked.
+const pickRow = async (row: Locator, name: string): Promise<void> => {
+  await tick(row, name).click();
+  await expect(tick(row, name)).toBeChecked();
+};
+
+// Scans the Largest script and opens the screen: the Files list.
+const openLargest = async (page: Page): Promise<void> => {
+  await scanned(page, SCRIPTS.largest);
+  await page.getByRole('navigation').getByRole('button', { name: 'Largest' }).click();
+  await expect(heading(page, 'Largest files and folders')).toBeFocused();
+  await expect(largestFiles(page)).toBeVisible();
+};
+
+const showFolders = async (page: Page): Promise<void> => {
+  await page.getByRole('tab', { name: 'Folders' }).click();
+  await expect(largestFolders(page)).toBeVisible();
+};
+
+// Picks the disk image on Largest and opens the review.
+const reviewDisk = async (page: Page): Promise<void> => {
+  await openLargest(page);
+  await pickRow(largestRow(largestFiles(page), LARGEST.disk), LARGEST.disk);
+  await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+  await expect(heading(page, 'Review')).toBeFocused();
+};
 
 test.describe('negative cases', () => {
   test('an empty Trash shows no Trash line', async ({ page }) => {
@@ -815,6 +863,50 @@ test.describe('negative cases', () => {
     await releaseScan(page);
     await scanFinished(page);
     await expect(described(page)).toBeVisible();
+  });
+
+  test('nothing on Largest is ticked when it opens', async ({ page }) => {
+    await openLargest(page);
+
+    await expect(page.getByRole('checkbox', { checked: true })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: /^Choose / })).toHaveCount(4);
+    await expect(page.getByRole('button', { name: /select all/i })).toHaveCount(0);
+    await expect(selectionBar(page)).toHaveCount(0);
+  });
+
+  test('a withheld row cannot be ticked and says why', async ({ page }) => {
+    await openLargest(page);
+
+    const row = largestRow(largestFiles(page), LARGEST.photos);
+    await expect(row.getByRole('checkbox')).toHaveCount(0);
+    await expect(row).toContainText(lgt('withheld.read-in-part'));
+  });
+
+  test('a standard folder opens but cannot be chosen', async ({ page }) => {
+    await openLargest(page);
+    await showFolders(page);
+
+    const movies = largestRow(largestFolders(page), 'Movies');
+    await expect(movies.getByRole('checkbox')).toHaveCount(0);
+    await expect(movies).toContainText(lgt('withheld.standard-folder'));
+    await movies.getByRole('button', { name: 'Open' }).click();
+    await expect(largestRow(largestFolders(page), LARGEST.movie)).toBeVisible();
+    await expect(largestRow(largestFolders(page), LARGEST.movie).getByRole('checkbox')).toHaveCount(1);
+
+    await page.getByRole('navigation', { name: 'Where you are' }).getByRole('button', { name: 'Home' }).click();
+    const library = largestRow(largestFolders(page), 'Library');
+    await expect(library.getByRole('checkbox')).toHaveCount(0);
+    await expect(library.getByRole('button', { name: 'Open' })).toHaveCount(0);
+    await expect(library).toContainText(lgt('withheld.library'));
+  });
+
+  test('the folders Fresher did not see are named above the list', async ({ page }) => {
+    await openLargest(page);
+
+    const notice = page.getByRole('region', { name: 'Desktop folder' });
+    await expect(notice).toContainText('Your Desktop was not looked at.');
+    const [noticeBox, listBox] = await Promise.all([notice.boundingBox(), largestFiles(page).boundingBox()]);
+    expect((noticeBox?.y ?? 0) < (listBox?.y ?? 0)).toBe(true);
   });
 });
 
@@ -2604,5 +2696,107 @@ test.describe('positive cases', () => {
     await expect(screen.getByRole('listitem').filter({ has: page.getByRole('heading', { level: 3 }) })).toHaveCount(0);
     await expect(screen.getByRole('button', { name: 'Copy' })).toHaveCount(0);
     await expect(screen).toContainText(dk('runtime.docker-desktop.gives-back'));
+  });
+
+  test('Largest lists the largest files with kind, place and size', async ({ page }) => {
+    await openLargest(page);
+
+    const row = largestRow(largestFiles(page), LARGEST.disk);
+    await expect(row).toContainText('Disk image');
+    await expect(row).toContainText('~/Downloads');
+    await expect(row).toContainText('12 GB');
+    await expect(largestFiles(page).getByRole('listitem').first()).toContainText(LARGEST.disk);
+    await expect(largestFiles(page).getByRole('listitem').last()).toContainText(LARGEST.archive);
+  });
+
+  test('a filter narrows the list', async ({ page }) => {
+    await openLargest(page);
+
+    await page.getByLabel('Kind').selectOption({ label: 'Video (1)' });
+    await expect(largestFiles(page).getByRole('listitem')).toHaveCount(1);
+    await expect(largestFiles(page)).toContainText(LARGEST.movie);
+
+    await page.getByLabel('Kind').selectOption({ label: 'Any kind' });
+    await page.getByLabel('Not changed for').selectOption({ label: lgt('unchanged.two-years') });
+    await expect(largestFiles(page).getByRole('listitem')).toHaveCount(2);
+    await expect(largestFiles(page)).not.toContainText(LARGEST.vm);
+  });
+
+  test('an archive names the folder beside it', async ({ page }) => {
+    await openLargest(page);
+
+    await expect(largestRow(largestFiles(page), LARGEST.archive)).toContainText(
+      lgt('unpacked').replace('{folder}', 'project-backup'),
+    );
+  });
+
+  test('the folders view opens a folder and goes back by its way', async ({ page }) => {
+    await openLargest(page);
+    await showFolders(page);
+
+    await expect(largestFolders(page).getByRole('listitem')).toHaveCount(6);
+    await largestRow(largestFolders(page), 'Parallels').getByRole('button', { name: 'Open' }).click();
+    await expect(heading(page, 'Largest files and folders')).toBeFocused();
+    await expect(largestFolders(page).getByRole('listitem')).toHaveCount(1);
+    await expect(largestFolders(page)).toContainText(LARGEST.vm);
+    await expect(page.getByRole('navigation', { name: 'Where you are' }).getByText('Parallels')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+
+    await page.getByRole('navigation', { name: 'Where you are' }).getByRole('button', { name: 'Home' }).click();
+    await expect(largestFolders(page).getByRole('listitem')).toHaveCount(6);
+  });
+
+  test('a ticked file is reviewed under Your own files at High', async ({ page }) => {
+    await openLargest(page);
+
+    await pickRow(largestRow(largestFiles(page), LARGEST.disk), LARGEST.disk);
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    const own = page.getByRole('region', { name: 'Your own files' });
+    await expect(own).toContainText(LARGEST.disk);
+    await expect(own).toContainText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '');
+    await expect(page.getByRole('region', { name: 'High risk' })).toContainText('Your own files');
+
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await expect(dialog).toContainText('High');
+    await expect(dialog).toContainText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '');
+    await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  });
+
+  test('a picked file goes to the Trash and leaves the list', async ({ page }) => {
+    await reviewDisk(page);
+
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 1 item to the Trash');
+
+    await page.getByRole('navigation').getByRole('button', { name: 'Largest' }).click();
+    await expect(largestFiles(page)).toBeVisible();
+    await expect(largestFiles(page)).not.toContainText(LARGEST.disk);
+    await expect(largestFiles(page).getByRole('listitem')).toHaveCount(4);
+    await expect(
+      page.getByText('A cleanup changed the disk since this scan. Scan again for exact sizes.'),
+    ).toBeVisible();
+  });
+
+  test('a picked file comes back by put back', async ({ page }) => {
+    await reviewDisk(page);
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: LARGEST.disk });
+    await expect(item).toContainText('In the Trash.');
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
   });
 });

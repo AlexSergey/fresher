@@ -88,11 +88,14 @@ pub enum CommandError {
     /// No Trash of the last `get_trash` answer has this index.
     #[error("there is no Trash {index} in the last answer")]
     UnknownTrash { index: u32 },
+    /// A pick of an item the Largest screen does not offer, or one that is not there.
+    #[error("the item cannot be chosen")]
+    NotOwnItem,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 28] = [
+    pub const CODES: [&str; 29] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -121,6 +124,7 @@ impl CommandError {
         "unknown-group",
         "nothing-to-reveal",
         "unknown-trash",
+        "not-own-item",
     ];
 
     /// The `code` the error is serialized with.
@@ -154,6 +158,7 @@ impl CommandError {
             Self::UnknownGroup { .. } => "unknown-group",
             Self::NothingToReveal => "nothing-to-reveal",
             Self::UnknownTrash { .. } => "unknown-trash",
+            Self::NotOwnItem => "not-own-item",
         }
     }
 
@@ -188,7 +193,8 @@ impl CommandError {
             | Self::CannotIgnore
             | Self::UnknownVolume
             | Self::NothingToReveal
-            | Self::UnknownTrash { .. } => text,
+            | Self::UnknownTrash { .. }
+            | Self::NotOwnItem => text,
         }
     }
 }
@@ -243,7 +249,8 @@ pub(crate) mod tests {
             | CommandError::UnknownVolume
             | CommandError::UnknownGroup { .. }
             | CommandError::NothingToReveal
-            | CommandError::UnknownTrash { .. } => error,
+            | CommandError::UnknownTrash { .. }
+            | CommandError::NotOwnItem => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -274,6 +281,7 @@ pub(crate) mod tests {
             sample(CommandError::UnknownGroup { id: "debug".into() }),
             sample(CommandError::NothingToReveal),
             sample(CommandError::UnknownTrash { index: 3 }),
+            sample(CommandError::NotOwnItem),
         ]
     }
 
@@ -385,6 +393,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
                     vec![],
                     vec![],
                 ]

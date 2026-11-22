@@ -192,6 +192,7 @@ test.describe('negative cases', () => {
     await expect(heading(page, 'Scan')).toBeFocused();
 
     for (const [nav, name] of [
+      ['Largest', 'Largest files and folders'],
       [/^Review/, 'Review'],
       ['Cleanups', 'Cleanups'],
       ['Settings', 'Settings'],

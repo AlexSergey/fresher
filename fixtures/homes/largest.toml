@@ -1,0 +1,88 @@
+# The home of the Largest screen's core end-to-end flows (crates/e2e/tests/largest.rs), laid out as a sandbox lays out
+# its home (`home/`); the flows add the rest of the sandbox's layout and its marker, and set the smallest size listed
+# to 10 MB. Every large file holds data (12 to 16 MiB), so what the list ranks and what a cleanup frees are real.
+
+# Never listed: a trial cache the `trial` module claims (its marker beside it).
+[[marker]]
+path = "home/project"
+
+[[file]]
+path = "home/project/fresher-trial-cache/blob.bin"
+size = 12582912
+fill = "data"
+age = "400d"
+
+# Never listed: the home's Library, the home's Trash, a hidden folder and an app bundle.
+[[file]]
+path = "home/Library/Application Support/Big/data.bin"
+size = 12582912
+fill = "data"
+age = "400d"
+
+[[file]]
+path = "home/.Trash/old.dmg"
+size = 12582912
+fill = "data"
+age = "400d"
+
+[[file]]
+path = "home/.android/avd/disk.img"
+size = 12582912
+fill = "data"
+age = "400d"
+
+[[file]]
+path = "home/Applications/Tool.app/Contents/Resources/big.bin"
+size = 12582912
+fill = "data"
+age = "400d"
+
+# Below the minimum (8 MiB, under 10 MB): never listed.
+[[file]]
+path = "home/Downloads/small.zip"
+size = 8388608
+fill = "data"
+age = "400d"
+
+# A link to a listed file: never listed itself.
+[[symlink]]
+path = "home/link-to-big"
+target = "Movies/Trip.mov"
+
+# Listed: a disk image, a video, a package (one row, its inner disk never listed), an archive beside the folder it may
+# have been unpacked into, and a file in a folder the user may pick whole.
+[[file]]
+path = "home/Downloads/Installer.dmg"
+size = 16777216
+fill = "data"
+age = "30d"
+
+[[file]]
+path = "home/Movies/Trip.mov"
+size = 14680064
+fill = "data"
+age = "800d"
+
+[[file]]
+path = "home/VMs/Old.utm/Images/disk.qcow2"
+size = 12582912
+fill = "data"
+age = "400d"
+
+[[file]]
+path = "home/Downloads/Photos.zip"
+size = 12582912
+fill = "data"
+age = "200d"
+
+[[file]]
+path = "home/Downloads/Photos/IMG_0001.jpg"
+size = 4096
+fill = "data"
+age = "200d"
+
+[[file]]
+path = "home/Old projects/archive/data.bin"
+size = 12582912
+fill = "data"
+age = "1000d"

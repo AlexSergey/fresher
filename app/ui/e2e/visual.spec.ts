@@ -474,6 +474,51 @@ test.describe('positive cases', () => {
       await looksTheSame(page, 'cleanup-result-stopped.png');
     });
 
+    test('the largest files after a scan', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page, '2.6 GB');
+      await go(page, 'Largest', 'Largest files and folders');
+      await expect(page.getByText('ubuntu-24.04.dmg', { exact: true })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Desktop folder' })).toBeVisible();
+      await expect(page.getByText('Photos Library.photoslibrary', { exact: true })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'largest.png');
+    });
+
+    test('the largest folders after a scan', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page, '2.6 GB');
+      await go(page, 'Largest', 'Largest files and folders');
+      await page.getByRole('tab', { name: 'Folders' }).click();
+      await expect(page.getByRole('list', { name: 'Folders, largest first' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'largest-folders.png');
+    });
+
+    test('a picked file in the review, in the High zone', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page, '2.6 GB');
+      await go(page, 'Largest', 'Largest files and folders');
+      await page.getByRole('checkbox', { name: /^Choose ubuntu-24\.04\.dmg/ }).click();
+      await expect(page.getByRole('region', { name: 'Selection' })).toContainText('1 item selected');
+      await go(page, /^Review/, 'Review');
+      await expect(page.getByRole('region', { name: 'Your own files' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'largest-review.png');
+    });
+
+    test('the largest files before a scan', async ({ page }) => {
+      await open(page, SCRIPTS.demo);
+      await go(page, 'Largest', 'Largest files and folders');
+      await expect(page.getByText('Scan first to see your largest files.')).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'largest-no-scan.png');
+    });
+
     test('the cleanups', async ({ page }) => {
       await open(page, SCRIPTS.cleaning);
       await go(page, 'Cleanups', 'Cleanups');

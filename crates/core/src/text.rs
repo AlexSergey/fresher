@@ -15,8 +15,17 @@ use crate::{ByteSize, Timestamp};
 /// template names it, so the sentence stays plain whatever the detail says.
 pub const DETAIL_ARG: &str = "detail";
 
+/// A segment after the namespace that is a quantity with its unit (`10-mb`, the name of a choice): digits, a hyphen,
+/// then a kebab-case word. A plain word that starts with a digit (`1npm`) is not one.
+fn is_digit_led_segment(segment: &str) -> bool {
+    segment.split_once('-').is_some_and(|(number, unit)| {
+        !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit()) && is_kebab_case(unit)
+    })
+}
+
 /// A key of the dictionary: two or more dot-separated kebab-case segments, the first one the namespace
-/// (`core.error.busy`, `demo.caches.name`).
+/// (`core.error.busy`, `demo.caches.name`); a segment after the namespace may start with a digit
+/// (`core.largest.min-size.options.10-mb`).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, TS)]
 pub struct TextKey(String);
 
@@ -30,7 +39,10 @@ pub struct TextKeyError {
 impl TextKey {
     pub fn new(key: impl Into<String>) -> Result<Self, TextKeyError> {
         let key = key.into();
-        let valid = key.contains('.') && key.split('.').all(is_kebab_case);
+        let mut segments = key.split('.');
+        let valid = key.contains('.')
+            && segments.next().is_some_and(is_kebab_case)
+            && segments.all(|segment| is_kebab_case(segment) || is_digit_led_segment(segment));
         if valid { Ok(Self(key)) } else { Err(TextKeyError { key }) }
     }
 
@@ -112,6 +124,15 @@ mod tests {
                 assert!(TextKey::new(key).is_err(), "{key:?}");
             }
         }
+
+        #[test]
+        fn rejects_a_digit_led_namespace_and_a_malformed_digit_led_segment() {
+            for key in
+                ["10-mb.name", "core.10-", "core.1--mb", "core.1_mb", "core.1MB", "core.1npm", "core.10", "core.1a-mb"]
+            {
+                assert!(TextKey::new(key).is_err(), "{key:?}");
+            }
+        }
     }
 
     mod positive {
@@ -124,6 +145,13 @@ mod tests {
             assert_eq!(key.namespace(), "node-modules");
             assert_eq!(key.as_str(), "node-modules.stale.if-removed");
             assert_eq!(key.to_string(), "node-modules.stale.if-removed");
+        }
+
+        #[test]
+        fn accepts_a_digit_led_segment_after_the_namespace() {
+            let key = TextKey::new("core.largest.min-size.options.10-mb").unwrap();
+
+            assert_eq!(key.namespace(), "core");
         }
 
         #[test]

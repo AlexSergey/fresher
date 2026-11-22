@@ -14,6 +14,7 @@ mod dev_runs;
 mod dry_run;
 mod events;
 mod identity;
+mod largest_commands;
 #[cfg(debug_assertions)]
 mod sandbox;
 mod settings_commands;
@@ -79,7 +80,9 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         settings_commands::get_own_data,
         storage_commands::get_storage_map,
         storage_commands::get_storage_meaning,
-        storage_commands::get_storage_place,
+        largest_commands::get_largest,
+        largest_commands::get_largest_place,
+        largest_commands::pick_own_item,
         commands::get_dictionary,
         commands::get_access_status,
         commands::refresh_access,

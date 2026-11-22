@@ -91,6 +91,12 @@ impl CategoryId {
         Ok(())
     }
 
+    /// The core's own category for the items the user picks by hand (`core.own-file`): the only category in the
+    /// core's namespace, so it has its own constructor and no module can take the namespace.
+    pub(crate) const fn own_file() -> Self {
+        Self("core.own-file")
+    }
+
     pub const fn as_str(self) -> &'static str {
         self.0
     }
@@ -266,6 +272,14 @@ mod tests {
             assert_eq!(category.as_str(), "node-modules.stale-2");
             assert_eq!(category.module(), module);
             assert_eq!(ToolId::new("docker").unwrap().as_str(), "docker");
+        }
+
+        #[test]
+        fn the_own_file_category_is_valid_and_the_systems() {
+            let own = CategoryId::own_file();
+
+            assert_eq!(CategoryId::new(ModuleId::system(), "core.own-file"), Ok(own));
+            assert_eq!(own.module(), ModuleId::system());
         }
 
         #[test]

@@ -412,6 +412,26 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the largest files', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page, '2.6 GB');
+      await go(page, 'Largest', 'Largest files and folders');
+      await expect(page.getByText('ubuntu-24.04.dmg', { exact: true })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Desktop folder' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the largest folders', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page, '2.6 GB');
+      await go(page, 'Largest', 'Largest files and folders');
+      await page.getByRole('tab', { name: 'Folders' }).click();
+      await expect(page.getByRole('list', { name: 'Folders, largest first' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the cleanups and one cleanup', async ({ page }) => {
       await open(page, SCRIPTS.cleaning);
       await go(page, 'Cleanups', 'Cleanups');

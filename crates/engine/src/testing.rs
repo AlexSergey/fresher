@@ -12,8 +12,8 @@ use fresher_core::{
     AutoEmpty, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext,
     ConfirmedPlan, DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink,
     Interest, ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
-    ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind,
-    SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
+    ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal,
+    ScanKind, SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
     Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress,
     WalkRequest, WalkSummary,
 };
@@ -577,7 +577,7 @@ impl Cleaner for HeldCleaner {
         })
     }
 
-    fn protection(&self) -> fresher_core::Protection {
+    fn protection(&self) -> Protection {
         self.inner.protection()
     }
 
@@ -886,5 +886,46 @@ mod tests {
 
             assert_eq!(found, [(1, PathBuf::from("/home/app")), (0, PathBuf::from("/home/app/node_modules"))]);
         }
+    }
+}
+
+/// A cleaner that acts as the fake one but protects what it is given.
+#[derive(Debug)]
+pub(crate) struct Protecting {
+    inner: FakeCleaner,
+    protection: Protection,
+}
+
+impl Protecting {
+    pub(crate) fn new(protection: Protection) -> Self {
+        Self { inner: FakeCleaner::default(), protection }
+    }
+}
+
+impl Cleaner for Protecting {
+    fn rehearse(&self, roots: &[PathBuf], items: &[PlanItem], cx: &CleanupContext<'_>, depth: Depth) -> Vec<Rehearsal> {
+        self.inner.rehearse(roots, items, cx, depth)
+    }
+
+    fn execute(
+        &self,
+        plan: ConfirmedPlan,
+        cx: &CleanupContext<'_>,
+        cancel: &CancelToken,
+        out: &mut dyn FnMut(ItemDone),
+    ) -> Ended {
+        self.inner.execute(plan, cx, cancel, out)
+    }
+
+    fn protection(&self) -> Protection {
+        self.protection.clone()
+    }
+
+    fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {
+        self.inner.locate(items)
+    }
+
+    fn put_back(&self, item: &TrashedItem, cx: &CleanupContext<'_>) -> PutBackOutcome {
+        self.inner.put_back(item, cx)
     }
 }

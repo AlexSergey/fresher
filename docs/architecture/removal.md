@@ -20,9 +20,10 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
 
 ## The flow
 
-1. **Rehearse** (`pipeline.rs`): the engine's plan builder asks for every check of every item (`Depth::Quick`, no
-   folder walk) and gets each item's identity or why it would be skipped. A full rehearsal is the same with
-   `Depth::Full`. An item of several paths runs every check on each part, in order: the first part refused skips the
+1. **Rehearse** (`pipeline.rs`): the engine's plan builder (its inputs are the scan's findings and the picked own
+   files of the Largest screen, plan 035: a picked file joins as one more finding of `core.own-file`, nothing else
+   changes) asks for every check of every item (`Depth::Quick`, no folder walk) and gets each item's identity or why
+   it would be skipped. A full rehearsal is the same with `Depth::Full`. An item of several paths runs every check on each part, in order: the first part refused skips the
    item with that part's reason, else it answers every part's identity (`PassedTogether`).
    A rehearsal holds an unconfirmed plan's items and no `Act`, so it cannot call a removal: the types say so.
 2. **Execute** (`pipeline.rs`): only a `ConfirmedPlan`, taken by value, so it runs once. Item by item in plan order,

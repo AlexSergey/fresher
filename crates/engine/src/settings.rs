@@ -4,10 +4,10 @@
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    CategoryId, CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS,
-    IgnoredEntry, ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SettingDescriptor,
-    SettingEffect, SettingKey, SettingUpdate, SettingValue, SettingsFile, SettingsSchema, SettingsStore, SettingsView,
-    StoreError, StoredSettings, Subject,
+    ByteSize, CategoryId, CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS,
+    IgnoredEntry, LARGEST_MIN_SIZE, ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS,
+    SettingDescriptor, SettingEffect, SettingKey, SettingUpdate, SettingValue, SettingsFile, SettingsSchema,
+    SettingsStore, SettingsView, StoreError, StoredSettings, Subject, min_size_of,
 };
 
 use crate::Registry;
@@ -195,6 +195,14 @@ impl Settings {
         match self.resolved.get(SCAN_ROOTS) {
             Some(SettingValue::Folders(roots)) => roots.clone(),
             _ => Vec::new(),
+        }
+    }
+
+    /// The smallest size the Largest screen lists; a choice that is not one is the default's.
+    pub(crate) fn largest_min_size(&self) -> ByteSize {
+        match self.resolved.get(LARGEST_MIN_SIZE) {
+            Some(SettingValue::Choice(choice)) => min_size_of(choice),
+            _ => min_size_of(""),
         }
     }
 

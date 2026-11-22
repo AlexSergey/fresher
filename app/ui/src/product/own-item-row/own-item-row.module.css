@@ -1,0 +1,30 @@
+/*
+ * An item of the Largest screen: a name over two lines of small text, so the row is taller than a finding's. The size
+ * sits in a column of fixed width, so the sizes line up down the list.
+ */
+@layer components {
+  /* The frame of these rows: their height and the width of the size column. */
+  .rows {
+    --size-row: 64px;
+    --own-item-size-width: 80px;
+  }
+
+  .line {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The empty place of the checkbox (16 px) on a row that cannot be chosen. */
+  .noCheckbox {
+    display: inline-block;
+    width: var(--space-4);
+  }
+
+  .value {
+    display: inline-flex;
+    width: var(--own-item-size-width);
+    justify-content: flex-end;
+    color: var(--text-primary);
+  }
+}

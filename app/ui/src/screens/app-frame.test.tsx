@@ -131,7 +131,7 @@ describe('AppFrame', () => {
 
       await renderFrame();
 
-      expect(navItems()).toStrictEqual(['Scan', 'Review', 'Cleanups', 'Settings']);
+      expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Review', 'Cleanups', 'Settings']);
       expect(screen.queryByRole('button', { name: /^Demo module/u })).toBeNull();
     });
 
@@ -203,12 +203,12 @@ describe('AppFrame', () => {
       expect(within(card as HTMLElement).getByRole('button', { name: /Details/ })).toHaveFocus();
     });
 
-    it('the sidebar lists Scan, Review, Cleanups and Settings, with Scan current on the scan screen', async () => {
+    it('the sidebar lists Scan, Largest, Review, Cleanups and Settings, with Scan current on the scan screen', async () => {
       core({ getOverview: () => DEMO_OVERVIEW });
 
       await renderFrame();
 
-      expect(navItems()).toStrictEqual(['Scan', 'Review', 'Cleanups', 'Settings']);
+      expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Review', 'Cleanups', 'Settings']);
       expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toBeInTheDocument();
     });
 
@@ -265,6 +265,22 @@ describe('AppFrame', () => {
       expect(heading).toHaveFocus();
       expect(screen.getByRole('button', { name: 'Cleanups' })).toHaveAttribute('aria-current', 'page');
       expect(navigation.getScreen()).toStrictEqual({ kind: 'cleanups' });
+    });
+
+    it('Largest opens its screen with its heading focused and the entry current', async () => {
+      core();
+      const { navigation } = await renderFrame();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Largest' }));
+
+      const heading = screen.getByRole('heading', { level: 1 });
+      expect(heading).toHaveTextContent('Largest files and folders');
+      expect(heading).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Largest' })).toHaveAttribute('aria-current', 'page');
+      expect(
+        within(screen.getByRole('navigation', { name: 'Screens' })).getByRole('button', { name: 'Scan' }),
+      ).not.toHaveAttribute('aria-current');
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'largest' });
     });
 
     it("a category's details render with its name, the focus on its heading and Scan current", async () => {

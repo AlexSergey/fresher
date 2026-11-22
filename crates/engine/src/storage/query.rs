@@ -19,10 +19,10 @@ use crate::storage::roots::{RootVolumes, expand_home};
 use crate::storage::volume::{RootOnVolume, VolumeInput, volume_map};
 
 /// The most rows one place page holds, like every disk query.
-const MAX_LIMIT: u32 = FindingsQuery::MAX_LIMIT;
+pub(crate) const MAX_LIMIT: u32 = FindingsQuery::MAX_LIMIT;
 
 /// What a map query read under the results' lock.
-enum Snapshot {
+pub(crate) enum Snapshot {
     NoScan,
     Scanning { roots: Vec<PathBuf>, explained: Vec<Sizes>, volumes: RootVolumes },
     Complete(Committed),
@@ -94,7 +94,7 @@ impl Engine {
 
     /// The phase and what it reads, taken under the results' lock: the home is located before, so no port is asked
     /// under it.
-    fn snapshot(&self) -> Result<Snapshot, CommandError> {
+    pub(crate) fn snapshot(&self) -> Result<Snapshot, CommandError> {
         let home = self.shared.home();
         let results = lock(&self.shared.results)?;
         if results.is_scanning() {

@@ -275,6 +275,7 @@ mod tests {
                 [
                     "core.motion",
                     "core.scan.roots",
+                    "core.largest.min-size",
                     "core.access.desktop",
                     "core.access.documents",
                     "core.access.downloads",

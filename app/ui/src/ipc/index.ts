@@ -16,15 +16,20 @@ import type {
   DemoPlay,
   Dictionary,
   Event,
+  Finding,
   FindingId,
   FindingsPage,
   FindingsQuery,
   IgnoredEntry,
   IgnoreTarget,
+  LargestPage,
+  LargestQuery,
   MeaningGroup,
   ModuleInfo,
+  NodeId,
   Overview,
   OwnData,
+  OwnPlace,
   PlanId,
   PutBackReport,
   PutBackRequest,
@@ -54,18 +59,20 @@ export const COMMANDS = {
   getCleanups: 'get_cleanups',
   getDictionary: 'get_dictionary',
   getFindings: 'get_findings',
+  getLargest: 'get_largest',
+  getLargestPlace: 'get_largest_place',
   getModules: 'get_modules',
   getOverview: 'get_overview',
   getOwnData: 'get_own_data',
   getSettings: 'get_settings',
   getStorageMap: 'get_storage_map',
   getStorageMeaning: 'get_storage_meaning',
-  getStoragePlace: 'get_storage_place',
   getTrash: 'get_trash',
   ignore: 'ignore',
   openAccessSettings: 'open_access_settings',
   openTrash: 'open_trash',
   pickFolder: 'pick_folder',
+  pickOwnItem: 'pick_own_item',
   prepareCleanup: 'prepare_cleanup',
   putBack: 'put_back',
   quitAfterCleanup: 'quit_after_cleanup',
@@ -142,6 +149,16 @@ export const getOverview = (): Promise<Overview> => call('getOverview');
 export const getModules = (): Promise<readonly ModuleInfo[]> => call('getModules');
 
 export const getFindings = (query: FindingsQuery): Promise<FindingsPage> => call('getFindings', { query });
+
+// One page of the Files list of the last scan: the largest files and folders below the home, largest first.
+export const getLargest = (query: LargestQuery): Promise<LargestPage> => call('getLargest', { query });
+
+// One page of the folder `folder` of the home (the home itself for `null`), largest first.
+export const getLargestPlace = (folder: NodeId | null, offset: number, limit: number): Promise<OwnPlace> =>
+  call('getLargestPlace', { folder, limit, offset });
+
+// The user ticked an item of Largest: the core refuses it unless it offers it, and answers the finding it becomes.
+export const pickOwnItem = (node: NodeId): Promise<Finding> => call('pickOwnItem', { node });
 
 export const getSettings = (): Promise<SettingsView> => call('getSettings');
 

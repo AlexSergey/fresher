@@ -13,6 +13,7 @@ use fresher_core::{
 };
 
 use crate::claims::Claims;
+use crate::largest::ItemsSlot;
 use crate::settings::Ignored;
 use crate::storage::attribution::AppPlaces;
 use crate::storage::roots::RootVolumes;
@@ -25,6 +26,10 @@ use crate::storage::shares::Shares;
 /// ignores are kept but left out of every answer, so a restore shows them again at once.
 pub(crate) struct Results {
     findings: Vec<Finding>,
+    /// The rows of the Largest screen the user picked, in id order: never in a total, a page, the claims or the shares.
+    own: Vec<Finding>,
+    /// The paths of the picks a cleanup removed since `state` was kept: the Largest screen leaves them out.
+    gone: Vec<PathBuf>,
     ignored: Ignored,
     roots: Vec<PathBuf>,
     /// The places the current scan walks outside its roots.
@@ -37,6 +42,8 @@ pub(crate) struct Results {
     places: Option<Arc<AppPlaces>>,
     /// The shares of `state` under `ignored`: built on the first map query, a new one with each state or ignore lists.
     shares: Arc<OnceLock<Shares>>,
+    /// The Largest screen's items of `state`: built on the first query, a new slot with each state.
+    largest: ItemsSlot,
     /// The volumes of `state`'s roots, read at its commit.
     state_volumes: RootVolumes,
     /// The places walked outside the roots by the scan that committed `state`.
@@ -57,6 +64,8 @@ impl fmt::Debug for Results {
         formatter
             .debug_struct("Results")
             .field("findings", &self.findings.len())
+            .field("own", &self.own.len())
+            .field("gone", &self.gone)
             .field("ignored", &self.ignored)
             .field("roots", &self.roots)
             .field("walked", &self.walked)
@@ -66,6 +75,7 @@ impl fmt::Debug for Results {
             .field("state", &self.state.as_ref().map(|state| state.id()))
             .field("places", &self.places.is_some())
             .field("shares", &self.shares.get().is_some())
+            .field("largest", &self.largest.lock().is_ok_and(|items| items.is_some()))
             .field("state_volumes", &self.state_volumes)
             .field("state_walked", &self.state_walked)
             .field("state_findings", &self.state_findings.len())
@@ -90,6 +100,8 @@ impl Results {
     pub(crate) fn new() -> Self {
         Self {
             findings: Vec::new(),
+            own: Vec::new(),
+            gone: Vec::new(),
             ignored: Ignored::default(),
             roots: Vec::new(),
             walked: Vec::new(),
@@ -99,6 +111,7 @@ impl Results {
             state: None,
             places: None,
             shares: Arc::new(OnceLock::new()),
+            largest: ItemsSlot::default(),
             state_volumes: RootVolumes::default(),
             state_walked: Arc::from([]),
             state_findings: Arc::from([]),
@@ -108,10 +121,12 @@ impl Results {
         }
     }
 
-    /// Forgets the previous scan's findings for those of a scan of `roots` and of the `places` outside them, whose
-    /// volumes are `volumes`; gives the first id of the new scan (`None` when the ids ran out).
+    /// Forgets the previous scan's findings and the picks for those of a scan of `roots` and of the `places` outside
+    /// them, whose volumes are `volumes`; gives the first id of the new scan (`None` when the ids ran out). The paths
+    /// the picks removed stay until a new state is kept: they are of the state still kept.
     pub(crate) fn begin(&mut self, roots: &[PathBuf], places: &[Place], volumes: RootVolumes) -> Option<u32> {
         self.findings.clear();
+        self.own.clear();
         roots.clone_into(&mut self.roots);
         places.clone_into(&mut self.walked);
         self.volumes = volumes;
@@ -140,6 +155,29 @@ impl Results {
     /// The findings of the current scan, in id order, the ignored ones too.
     pub(crate) fn findings(&self) -> &[Finding] {
         &self.findings
+    }
+
+    /// The rows the user picked on the Largest screen, in id order.
+    #[cfg(test)]
+    pub(crate) fn own(&self) -> &[Finding] {
+        &self.own
+    }
+
+    /// The pick of the row at `path`, if the user picked it.
+    pub(crate) fn own_by_path(&self, path: &Path) -> Option<&Finding> {
+        by_path(&self.own, path)
+    }
+
+    /// Keeps `finding`, a row the user picked, numbered by `take_id`.
+    pub(crate) fn pick(&mut self, finding: Finding) {
+        self.own.push(finding);
+    }
+
+    /// The next free finding id, taken: the next scan's ids follow it. `None` when the ids ran out.
+    pub(crate) fn take_id(&mut self) -> Option<FindingId> {
+        let id = self.next_id?;
+        self.next_id = id.checked_add(1);
+        Some(FindingId::new(id))
     }
 
     /// The findings the user sees, in id order: those the ignore lists do not hide.
@@ -192,27 +230,32 @@ impl Results {
         self.roots.iter().cloned().chain(self.walked.iter().map(|place| place.path.clone())).collect()
     }
 
-    /// Drops `removed` from the findings, and with them every finding at or below the path of one of `cleared` (those
-    /// of `removed` whose whole path went: what was inside went too, a finding left out `Covered` among it), and their
-    /// claims: the totals are of what is left. Answers what was dropped: `removed`, then the findings below, in id
-    /// order. A finding that was counted less for one nested in it keeps its counted size, since what was inside it
-    /// is gone too.
+    /// Drops `removed` from the findings and the picks, and with them every finding or pick at or below the path of
+    /// one of `cleared` (those of `removed` whose whole path went: what was inside went too, a finding left out
+    /// `Covered` among it), and their claims: the totals are of what is left. The path of every pick dropped is kept
+    /// as gone. Answers what was dropped: `removed`, then the findings and picks below, in id order. A finding that
+    /// was counted less for one nested in it keeps its counted size, since what was inside it is gone too.
     pub(crate) fn remove(&mut self, removed: &[FindingId], cleared: &[FindingId]) -> Vec<FindingId> {
         let mut dropped: HashSet<FindingId> = removed.iter().copied().collect();
         let gone: HashSet<PathBuf> = cleared
             .iter()
-            .filter_map(|&id| self.findings.binary_search_by_key(&id, Finding::id).ok())
-            .filter_map(|index| path(&self.findings[index]).map(Path::to_path_buf))
+            .filter_map(|&id| by_id(&self.findings, id).or_else(|| by_id(&self.own, id)))
+            .filter_map(|finding| path(finding).map(Path::to_path_buf))
             .collect();
         let below = |finding: &Finding| path(finding).is_some_and(|path| path.ancestors().any(|at| gone.contains(at)));
         let inside: Vec<FindingId> = self
             .findings
             .iter()
+            .chain(&self.own)
             .filter(|finding| !dropped.contains(&finding.id()) && below(finding))
             .map(Finding::id)
             .collect();
         dropped.extend(&inside);
         self.findings.retain(|finding| !dropped.contains(&finding.id()));
+        let (left, removed_own): (Vec<Finding>, Vec<Finding>) =
+            std::mem::take(&mut self.own).into_iter().partition(|finding| !dropped.contains(&finding.id()));
+        self.own = left;
+        self.gone.extend(removed_own.iter().filter_map(path).map(Path::to_path_buf));
         if let Some(claims) = &mut self.claims {
             claims.forget(&dropped);
         }
@@ -244,10 +287,14 @@ impl Results {
 
     /// Keeps `state`, the disk state a scan committed, and the owners of its places, in place of the previous ones.
     /// Its roots' `volumes` and the current findings that name their app are kept with it.
+    /// The picks and the paths they removed are forgotten: they were of the previous state.
     pub(crate) fn keep_state(&mut self, state: Arc<dyn DiskState>, places: AppPlaces, volumes: RootVolumes) {
         self.state = Some(state);
+        self.own.clear();
+        self.gone.clear();
         self.places = Some(Arc::new(places));
         self.shares = Arc::new(OnceLock::new());
+        self.largest = ItemsSlot::default();
         self.state_volumes = volumes;
         self.state_walked = Arc::from(self.walked.as_slice());
         self.state_findings =
@@ -264,6 +311,9 @@ impl Results {
             state: self.state.clone()?,
             places: self.places.clone()?,
             shares: Arc::clone(&self.shares),
+            largest: Arc::clone(&self.largest),
+            own: Arc::from(self.own.as_slice()),
+            gone: Arc::from(self.gone.as_slice()),
             ignored: self.ignored.clone(),
             volumes: self.state_volumes.clone(),
             walked: Arc::clone(&self.state_walked),
@@ -304,10 +354,11 @@ impl Results {
         explained
     }
 
+    /// The finding `id` the user sees, or the pick `id`.
     pub(crate) fn finding(&self, id: FindingId) -> Result<Finding, CommandError> {
-        let index = self.findings.binary_search_by_key(&id, Finding::id);
-        let found = index.ok().map(|index| &self.findings[index]).filter(|finding| !self.ignored.hides(finding));
-        found.cloned().ok_or(CommandError::UnknownFinding { id })
+        let found = by_id(&self.findings, id).filter(|finding| !self.ignored.hides(finding));
+        let pick = || by_id(&self.own, id).filter(|finding| !self.ignored.hides(finding));
+        found.or_else(pick).cloned().ok_or(CommandError::UnknownFinding { id })
     }
 
     pub(crate) fn page(&self, filter: Filter<'_>) -> FindingsPage {
@@ -378,6 +429,12 @@ pub(crate) struct Committed {
     pub(crate) walked: Arc<[Place]>,
     /// The findings of the scan that committed the state that name their app, the ignored ones too.
     pub(crate) findings: Arc<[Finding]>,
+    /// The Largest screen's items of the state, kept in the results.
+    pub(crate) largest: ItemsSlot,
+    /// The rows the user picked, in id order.
+    pub(crate) own: Arc<[Finding]>,
+    /// The paths of the picks a cleanup removed since the state was kept.
+    pub(crate) gone: Arc<[PathBuf]>,
     shares: Arc<OnceLock<Shares>>,
     ignored: Ignored,
 }
@@ -387,12 +444,27 @@ impl Committed {
     pub(crate) fn shares(&self) -> &Shares {
         self.shares.get_or_init(|| Shares::of(&*self.state, &self.ignored))
     }
+
+    /// The paths the ignore list taken with the state holds.
+    pub(crate) fn ignored_paths(&self) -> &[PathBuf] {
+        &self.ignored.paths
+    }
 }
 
 impl fmt::Debug for Committed {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.debug_struct("Committed").field("state", &self.state.id()).finish_non_exhaustive()
     }
+}
+
+/// The finding `id` of `findings`, in id order.
+fn by_id(findings: &[Finding], id: FindingId) -> Option<&Finding> {
+    findings.binary_search_by_key(&id, Finding::id).ok().map(|index| &findings[index])
+}
+
+/// The finding of `findings` about `path`.
+pub(crate) fn by_path<'a>(findings: &'a [Finding], path: &Path) -> Option<&'a Finding> {
+    findings.iter().find(|finding| self::path(finding) == Some(path))
 }
 
 /// The path a finding is about; `None` for a tool's object.
@@ -421,6 +493,8 @@ mod tests {
     };
 
     use crate::results::{Filter, Results};
+    use crate::storage::attribution::AppPlaces;
+    use crate::storage::roots::RootVolumes;
     use crate::testing::{category, finding};
 
     fn alpha() -> CategoryDescriptor {
@@ -465,6 +539,29 @@ mod tests {
         results.findings().iter().map(|finding| finding.id().get()).collect()
     }
 
+    /// The paths the picks removed from the kept state.
+    fn gone(results: &Results) -> Vec<std::path::PathBuf> {
+        results.committed().unwrap().gone.to_vec()
+    }
+
+    /// `results` with a pick of `path`, numbered by the results.
+    fn picked(results: &mut Results, path: &str) -> Finding {
+        let id = results.take_id().unwrap();
+        let pick = Finding::new(id, finding(&fresher_core::own_file(), path, sizes(100)), Removability::Removable);
+        results.pick(pick.clone());
+        pick
+    }
+
+    /// An empty state `id`, kept as a scan commits it.
+    fn keep_state(results: &mut Results, id: u32) {
+        let state = fresher_testing::FixedDiskState::new(
+            fresher_core::StateId::new(id),
+            fresher_core::Timestamp::from_secs(0),
+            [],
+        );
+        results.keep_state(std::sync::Arc::new(state), AppPlaces::default(), RootVolumes::default());
+    }
+
     fn page_ids(results: &Results, order: FindingOrder, offset: u32, limit: u32) -> Vec<u32> {
         let filter = Filter { module: None, category: None, order, offset, limit };
         results.page(filter).findings.iter().map(|finding| finding.id().get()).collect()
@@ -475,8 +572,48 @@ mod tests {
 
         use fresher_core::FindingId;
 
-        use super::{alpha, at, beta, ids, page_ids, results, sizes};
-        use crate::results::{Filter, add};
+        use super::{alpha, at, beta, gone, ids, keep_state, page_ids, picked, results, sizes};
+        use crate::results::{Filter, Results, add};
+
+        #[test]
+        fn a_picked_finding_is_in_no_total_page_or_share() {
+            let mut results = at(&["/f/a"]);
+            results.set_next_id(Some(2));
+            picked(&mut results, "/f/mine.iso");
+
+            assert_eq!(results.totals([alpha(), fresher_core::own_file()].iter()).1, sizes(1));
+            assert_eq!(page_ids(&results, FindingOrder::Found, 0, 10), [1]);
+            assert_eq!(page_ids(&results, FindingOrder::Largest, 0, 10), [1]);
+            assert_eq!(results.visible().len(), 1);
+            assert_eq!(results.explained_under(&["/f".into()]), [sizes(1)]);
+            assert_eq!(ids(&results), [1]);
+        }
+
+        #[test]
+        fn a_new_scan_forgets_the_picks() {
+            let mut results = at(&["/f/a"]);
+            results.set_next_id(Some(2));
+            let pick = picked(&mut results, "/f/mine.iso");
+
+            let first = results.begin(&[], &[], crate::storage::roots::RootVolumes::default());
+
+            assert_eq!(results.own(), []);
+            assert_eq!(first, Some(pick.id().get() + 1));
+            assert!(results.finding(pick.id()).is_err());
+        }
+
+        #[test]
+        fn a_new_state_forgets_the_gone_paths() {
+            let mut results = Results::new();
+            keep_state(&mut results, 1);
+            let pick = picked(&mut results, "/f/mine.iso");
+            results.remove(&[pick.id()], &[pick.id()]);
+            assert_eq!(gone(&results), [std::path::PathBuf::from("/f/mine.iso")]);
+
+            keep_state(&mut results, 2);
+
+            assert_eq!(gone(&results), Vec::<std::path::PathBuf>::new());
+        }
 
         #[test]
         fn only_the_findings_below_a_wholly_removed_one_go_with_it() {
@@ -557,8 +694,39 @@ mod tests {
 
         use fresher_core::FindingId;
 
-        use super::{alpha, at, beta, ids, page_ids, results, sizes};
+        use super::{alpha, at, beta, gone, ids, keep_state, page_ids, picked, results, sizes};
         use crate::results::Filter;
+
+        #[test]
+        fn a_removed_pick_is_dropped_and_its_path_is_gone() {
+            let mut results = at(&["/f/a"]);
+            keep_state(&mut results, 1);
+            results.set_next_id(Some(2));
+            let folder = picked(&mut results, "/f/mine");
+            let inside = picked(&mut results, "/f/mine/in.iso");
+            let other = picked(&mut results, "/f/other.iso");
+
+            let removed = results.remove(&[folder.id()], &[folder.id()]);
+
+            assert_eq!(removed, [folder.id(), inside.id()]);
+            assert_eq!(results.own(), [other]);
+            assert_eq!(
+                gone(&results),
+                [std::path::PathBuf::from("/f/mine"), std::path::PathBuf::from("/f/mine/in.iso")]
+            );
+            assert_eq!(ids(&results), [1]);
+        }
+
+        #[test]
+        fn a_picked_finding_is_found_by_id() {
+            let mut results = at(&["/f/a"]);
+            results.set_next_id(Some(2));
+            let pick = picked(&mut results, "/f/mine.iso");
+
+            assert_eq!(results.finding(pick.id()), Ok(pick.clone()));
+            assert_eq!(results.own_by_path(std::path::Path::new("/f/mine.iso")), Some(&pick));
+            assert_eq!(results.finding(FindingId::new(1)).map(|found| found.id()), Ok(FindingId::new(1)));
+        }
 
         #[test]
         fn the_findings_at_or_below_a_wholly_removed_one_go_with_it() {

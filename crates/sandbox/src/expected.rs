@@ -2,23 +2,24 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::time::SystemTime;
 
-use fresher_core::{Access, Capability, DangerLevel, ModuleId, SkipCode, Timestamp};
+use fresher_core::{Access, Capability, DangerLevel, Dictionary, ModuleId, SkipCode, Timestamp, core_dictionary};
 use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
 use crate::generate::LeftOutFile;
 use crate::world::folder_name;
 use crate::{
-    AfterCleanup, Case, CaseFile, CaseKind, Expectation, InsightExpectation, LeftOutExpectation, MapExpectation,
-    MapPartName,
+    AfterCleanup, Case, CaseFile, CaseKind, Expectation, InsightExpectation, LargestExpectation, LeftOutExpectation,
+    MapExpectation, MapPartName, Shown,
 };
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
 /// it allows, refuses or has not been asked for, the facts its files state (which Finder never shows; times counted
-/// from `now`), its left-outs and where the storage map shows it; then the command that opens the app on the sandbox
-/// at `sandbox`. A demo world lists only its scenery cases' names: nothing it shows is checked. A case file left out
-/// of the sandbox is named after them, with the path it clashed on.
+/// from `now`), its left-outs, where the storage map shows it and what the Largest screen shows of it; then the command that
+/// opens the app on the sandbox at `sandbox`. A demo world lists only its scenery cases' names: nothing it shows is
+/// checked. A case file left out of the sandbox is named after them, with the path it clashed on.
 pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &Path, now: SystemTime) -> String {
+    let texts = core_dictionary().ok();
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
     );
@@ -70,6 +71,9 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
             }
             if let Some(map) = case.map() {
                 let _ = writeln!(text, "  - {}.", map_sentence(map));
+            }
+            if let Some(largest) = case.largest() {
+                let _ = writeln!(text, "  - {}", largest_sentence(largest, texts.as_ref()));
             }
             for insight in case.insights() {
                 let _ = writeln!(text, "  - {}", insight_sentence(insight));
@@ -210,6 +214,32 @@ fn map_sentence(map: &MapExpectation) -> String {
     }
 }
 
+/// What the Largest screen shows at the case's `at`, with the kind's name and the reason's sentence from the core's
+/// dictionary (their ids when it cannot be read).
+fn largest_sentence(largest: &LargestExpectation, texts: Option<&Dictionary>) -> String {
+    let text = |key: fresher_core::TextKey| {
+        texts.and_then(|texts| texts.get(key.as_str())).map_or_else(|| key.as_str().to_owned(), str::to_owned)
+    };
+    let at = largest.at().display();
+    match largest.shown() {
+        Shown::Offered => {
+            let kind = largest.kind().map(|kind| format!(" as *{}*", text(kind.text_key()))).unwrap_or_default();
+            let unpacked =
+                largest.unpacked().map(|folder| format!(" It names `{folder}` beside it.")).unwrap_or_default();
+            format!("On Largest, `{at}` is listed{kind} and can be chosen.{unpacked}")
+        }
+        Shown::Absent => format!("On Largest, nothing at or below `{at}` is listed."),
+        Shown::Withheld => {
+            let reason = largest.withheld().map(|reason| text(reason.text_key())).unwrap_or_default();
+            format!("On Largest → Folders, `{at}` cannot be chosen: {}.", reason.trim_end_matches('.'))
+        }
+        Shown::NotSeen => format!(
+            "On Largest, nothing in `{at}` is listed, and the notice above the list says Fresher did not look there \
+             and how to allow it."
+        ),
+    }
+}
+
 /// The case's paths that are not below another of its paths, each in backticks.
 fn top_paths(case: &Case) -> String {
     let paths: Vec<&Path> = case.tree().paths().collect();
@@ -326,6 +356,28 @@ reason = "in-use"
         }
 
         #[test]
+        fn a_case_without_a_largest_table_says_nothing_of_largest() {
+            let text = checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            assert!(!text.contains("Largest"), "{text}");
+        }
+
+        #[test]
+        fn without_the_dictionary_the_kind_and_the_reason_are_named_by_their_keys() {
+            let cases = "feature = \"large-files\"\n[[case]]\nname = \"a\"\nkind = \"negative\"\n[[case.file]]\n\
+                         path = \"home/Movies/b.txt\"\n[case.largest]\nshown = \"withheld\"\nat = \"home/Movies\"\n\
+                         withheld = \"standard-folder\"\n";
+            let parsed = CaseFile::parse(cases).unwrap();
+
+            let sentence = crate::expected::largest_sentence(parsed.cases()[0].largest().unwrap(), None);
+
+            assert_eq!(
+                sentence,
+                "On Largest → Folders, `home/Movies` cannot be chosen: core.largest.withheld.standard-folder."
+            );
+        }
+
+        #[test]
         fn a_negative_of_a_file_with_a_module_names_the_module() {
             let cases = CASES.replace("feature = \"trial\"\n", "feature = \"trial\"\nmodule = \"trial\"\n");
 
@@ -427,6 +479,42 @@ reason = "in-use"
             assert!(lines[2].starts_with("- [ ] **a cache goes to the Trash**"));
             assert_eq!(lines[3], "  - on the overview, by place: `home/work/fresher-trial-cache` is explained.");
             assert!(lines[4].starts_with("- [ ] **a busy cache is skipped**"));
+        }
+
+        #[test]
+        fn the_checklist_says_what_largest_shows() {
+            let cases = format!(
+                "feature = \"large-files\"\n{}{}{}{}",
+                "[[case]]\nname = \"a\"\nkind = \"negative\"\n[[case.file]]\npath = \"home/Library/a.bin\"\n\
+                 [case.largest]\nshown = \"absent\"\n",
+                "[[case]]\nname = \"b\"\nkind = \"negative\"\n[[case.file]]\npath = \"home/Movies/b.txt\"\n\
+                 [case.largest]\nshown = \"withheld\"\nat = \"home/Movies\"\nwithheld = \"standard-folder\"\n",
+                "[[case]]\nname = \"c\"\nkind = \"negative\"\n[[case.file]]\npath = \"home/Documents/c.iso\"\n\
+                 [case.largest]\nshown = \"not-seen\"\nat = \"home/Documents\"\n",
+                "[[case]]\nname = \"d\"\nkind = \"positive\"\n[[case.file]]\npath = \"home/A/Photos.zip\"\n\
+                 [case.expect]\nitem = \"home/A/Photos.zip\"\ncategory = \"core.own-file\"\ndanger = \"high\"\n\
+                 after-cleanup = \"in-trash\"\n[case.largest]\nshown = \"offered\"\nkind = \"archive\"\n\
+                 unpacked = \"Photos\"\n[[case]]\nname = \"e\"\nkind = \"positive\"\n[[case.file]]\n\
+                 path = \"home/B/x.bin\"\n[case.expect]\nitem = \"home/B\"\ncategory = \"core.own-file\"\n\
+                 danger = \"high\"\nafter-cleanup = \"in-trash\"\n[case.largest]\nshown = \"offered\"\nat = \"home/B\"\n",
+            );
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - On Largest, nothing at or below `home/Library/a.bin` is listed.",
+                    "  - On Largest → Folders, `home/Movies` cannot be chosen: A standard folder of your Mac. Open it to \
+                     choose what is inside.",
+                    "  - On Largest, nothing in `home/Documents` is listed, and the notice above the list says Fresher \
+                     did not look there and how to allow it.",
+                    "  - On Largest, `home/A/Photos.zip` is listed as *Archive* and can be chosen. It names `Photos` \
+                     beside it.",
+                    "  - On Largest, `home/B` is listed and can be chosen.",
+                ]
+            );
         }
 
         #[test]

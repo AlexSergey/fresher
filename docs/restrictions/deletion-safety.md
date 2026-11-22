@@ -133,7 +133,7 @@ The app deletes files from a real person's disk. These rules hold in every versi
 ## Unknown is not junk
 
 - **Rule:** a rule claims a path only when it can tell what it is. Unrecognized space is shown, never offered as junk.
-  **Two exceptions:**
+  **Two exceptions, and one case that is not a claim:**
   - (plan [017](../plans/017-temp-files/readme.md), decision 6) a top-level item of the user's own temporary folder
     (`$TMPDIR`) or the user's own item in `/private/tmp` is claimed by the place's contract whatever its name — macOS
     itself removes anything there after three days — and offered only after every row of the `temp` module's
@@ -147,6 +147,16 @@ The app deletes files from a real person's disk. These rules hold in every versi
     device, the user's and unflagged, not locked, and unchanged for more than the setting's days
     ([`../categories/logs-app-logs.md`](../categories/logs-app-logs.md),
     [`../categories/logs-crash-reports.md`](../categories/logs-crash-reports.md)). No folder is claimed.
+  - (plan [035](../plans/035-large-files/readme.md), agent's call 2) the Largest screen's rows are claimed by no rule
+    and never offered as junk: they are the home's large items, shown with their real names and kinds. A row becomes
+    an item only when the user ticks it and the engine judges it offered at that moment (never the home itself,
+    `~/Library`, the Trash, a hidden name, an app, a package's inside, a link, a place not scanned, a standard folder, a
+    protected place, a folder holding what a module claims, a place read in part, an ignored path, or a row a cleanup
+    removed); it is then a finding of the core's own category `core.own-file`, at **High**, never pre-selected and
+    never picked by a category, held apart from the scan's findings (in no total, card, findings page, claim or the
+    storage map's explained part), judged again when the plan is prepared and when it is confirmed, and removed only
+    through the normal confirmation, to the Trash by default
+    ([`../categories/core-own-file.md`](../categories/core-own-file.md)).
 
   Nowhere else does a name the app cannot read count.
 - **Why:** rule 1 of [`../rules.md`](../rules.md): a false positive is worse than a missed gigabyte. The exceptions
@@ -155,7 +165,15 @@ The app deletes files from a real person's disk. These rules hold in every versi
 - **Enforced by:** every rule's negative tests; for the first exception, the `temp` module's decision tests
   (`modules/temp/src/decide.rs`), its fixtures and its sandbox case file (`fixtures/sandboxes/temp.toml`), and the
   protection list above (nothing outside the two places); for the second, the `logs` module's decision tests
-  (`modules/logs/src/decide.rs`, `names.rs`), its fixtures and its case file (`fixtures/sandboxes/logs.toml`).
+  (`modules/logs/src/decide.rs`, `names.rs`), its fixtures and its case file (`fixtures/sandboxes/logs.toml`); for
+  the Largest screen, the one judgement of every row (`crates/engine/src/largest/judge.rs` and its tests), the pick
+  (`crates/engine/src/own.rs`: `Engine::pick_own_item` refuses `not-own-item` unless the row is offered now; its tests
+  in `own_tests.rs`, negatives first: claimed, standard folder, the home, `Library`, hidden, ignored, holding claimed
+  bytes, removed, stale, before and during a scan, a pick ignored before its plan, a pick no longer offered at the
+  confirmation, a category pick of `core.own-file`), the picks kept apart (`crates/engine/src/results.rs`,
+  `a_picked_finding_is_in_no_total_page_or_share`), the plan's input (`crates/engine/src/cleanup/pending.rs`: the
+  visible findings, then the picks still offered) and the confirmation's check (`crates/engine/src/cleanup/operation.rs`,
+  `check_picks`).
 
 ## Settings never weaken deletion safety
 
