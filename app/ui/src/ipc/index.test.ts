@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Event, FindingsQuery, Refusal, Sizes, TrashView } from './bindings.generated';
+import type { DemoOutcome, DemoPlay, Event, FindingsQuery, Refusal, Sizes, TrashView } from './bindings.generated';
 
 import {
   cancelCleanup,
@@ -8,6 +8,8 @@ import {
   CommandFailed,
   COMMANDS,
   confirmCleanup,
+  demoFinished,
+  demoPlay,
   discardCleanup,
   failureOf,
   getAccessStatus,
@@ -56,6 +58,16 @@ const TRASH: TrashView = {
       waiting: SIZES,
     },
   ],
+};
+
+const PLAY: DemoPlay = {
+  private: ['/Users/me', '/private/tmp/fresher-demo/overview-1'],
+  scenario: {
+    name: 'overview',
+    steps: [{ kind: 'click', target: { name: { kind: 'exact', text: 'Scan' }, role: 'button' } }],
+    window: { height: 720, width: 1100 },
+    world: 'developer-mac',
+  },
 };
 
 // Answers that record the arguments each command was given, in order.
@@ -136,6 +148,22 @@ describe('the IPC module', () => {
       const error: unknown = await openAccessSettings('all-files').catch((failure: unknown) => failure);
 
       expect(failureOf(error)).toEqual({ kind: 'unreachable' });
+    });
+
+    it('rejects the demo commands with `CommandFailed` when the shell refuses them', async () => {
+      const outcome: DemoOutcome = { elapsedMs: 900, kind: 'finished' };
+      mockCore({
+        demoFinished: () => {
+          throw new Error('the app is not in demo mode');
+        },
+      });
+
+      const finished: unknown = await demoFinished(outcome).catch((failure: unknown) => failure);
+      const played: unknown = await demoPlay().catch((failure: unknown) => failure);
+
+      expect(finished).toBeInstanceOf(CommandFailed);
+      expect(failureOf(finished)).toEqual({ kind: 'unreachable' });
+      expect(played).toBeInstanceOf(CommandFailed);
     });
 
     it('cannot push events before anything subscribed', () => {
@@ -278,6 +306,24 @@ describe('the IPC module', () => {
         'reveal_finding',
         'relaunch',
       ]);
+    });
+
+    it('passes the demo commands their arguments by name', async () => {
+      const outcome: DemoOutcome = { kind: 'failed', reason: 'no button Scan', step: 3 };
+      const { answer, seen } = recorder();
+      mockCore({ demoFinished: answer(null), demoPlay: answer(PLAY) });
+
+      await expect(demoPlay()).resolves.toEqual(PLAY);
+      await demoFinished(outcome);
+
+      expect(seen).toStrictEqual([{}, { outcome }]);
+      expect([COMMANDS.demoPlay, COMMANDS.demoFinished]).toEqual(['demo_play', 'demo_finished']);
+    });
+
+    it('answers `null` from demo_play outside demo mode', async () => {
+      mockCore({ demoPlay: () => null });
+
+      await expect(demoPlay()).resolves.toBeNull();
     });
 
     it('delivers the events of the subscribed channel', async () => {

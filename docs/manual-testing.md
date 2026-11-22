@@ -366,6 +366,19 @@ beyond the one read.
 - [ ] Known flaky in the autotests, not a defect of the app: the chromium screenshot
       `category-details-app-leftovers-chosen` fails now and then in the full run and passes alone.
 
+### 1.21 Demo recordings: the world and the check ([038/04/02](./plans/038-demo-recordings/04-finish/02-docs-and-conclusions.md))
+
+Quit any development window first (the app is single-instance). Section 2.19 is the recording itself.
+
+- [ ] `npm run dev:sandbox -- fixtures/demos/developer-mac.toml`: the world looks like a believable developer's Mac
+      (the banner shows, as in any sandbox). The ring shows a 460 GB disk with 444 GB used; the cards are sized in
+      gigabytes (Xcode build data, caches of the package managers, three apps' caches, leftovers of two removed apps,
+      two models, old toolchains, Downloads, logs). Nothing names your home folder or your user name. Quit the window.
+- [ ] `npm run demo:check -- all`: both scenarios, `cleanup` and `overview`, print `played in N s` with N at most 20 and
+      the command ends 0. A failure names the step and the reason: write it down.
+- [ ] Each run made a new folder `/private/tmp/fresher-demo/<scenario>-<n>`; nothing was removed. They stay until macOS
+      clears `/private/tmp`; remove them by hand if you want the space back.
+
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
@@ -730,6 +743,22 @@ du -sh ~/Library/"Group Containers"/HUAQ24HBR6.dev.orbstack/data/data.img
       asked.
 - [ ] The facts to verify, corrected in `runtimes.toml`, the texts and the category docs where they differ: see the
       plan's list in [`deferred/user-review-2026-11-22.md`](./deferred/user-review-2026-11-22.md), "Plan 032".
+
+### 2.19 Demo recordings: the recording on the screen ([038/04/02](./plans/038-demo-recordings/04-finish/02-docs-and-conclusions.md))
+
+Run after 1.21. This is the one run that captures your screen; no private data is on it (the world is made up), but it
+needs a permission and a plain desktop.
+
+- [ ] Give the terminal the Screen Recording permission (System Settings, Privacy & Security, Screen & System Audio
+      Recording) and set a plain wallpaper (the sidebar's blur shows it). Quit any development window.
+- [ ] `npm run demo:record -- overview`: the window opens at the top left, plays, closes; the command prints the GIF's
+      and the video's paths. If the capture fails (`avfoundation` on macOS 27 is not verified), write the message
+      down: the fix is to switch `captureCommand` to `screencapture -v`.
+- [ ] Open `assets/demo/overview.gif` and `NO_COMMIT/demo/overview.mp4`: only the window, no cursor of the Mac, the
+      drawn pointer, no banner, no real path or name, sizes in gigabytes, the world's disk in the ring, the GIF under
+      5 MiB, the corners and the title bar cropped cleanly.
+- [ ] If the GIF is good, commit it (plan 040 places it in the README); if it is over budget or ugly, write down why.
+- [ ] Optional: `npm run demo:record -- cleanup` and look at the cleanup's result and its freed-space line.
 
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 

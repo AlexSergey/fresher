@@ -179,3 +179,41 @@ Plan [032](../plans/032-docker/readme.md), awaiting the user's walk.
 - **Known gaps**: a UI that connects after a restore shows no insight until the next scan; `npm run sandbox -- all`
   leaves three of Docker's four case files out (the runtimes' fixed paths); the other runtimes are deferred; the
   unreadable reason is not logged.
+
+## 038 — Demo recordings
+
+Plan [038](../plans/038-demo-recordings/readme.md), awaiting the user's walk.
+
+- **Walks by hand** (items 1.21 and 2.19 of [`../manual-testing.md`](../manual-testing.md)):
+  - quit any development window; `npm run demo:check -- all`: both scenarios print `played in N s` (N at most 20);
+  - give the terminal the Screen Recording permission (System Settings, Privacy & Security, Screen & System Audio
+    Recording); set a plain wallpaper (the sidebar's blur shows it); `npm run demo:record -- overview`;
+  - look at `assets/demo/overview.gif` and `NO_COMMIT/demo/overview.mp4`: the window only, no cursor of the Mac, the
+    drawn pointer, no banner, no real path or name, sizes in gigabytes, the world's disk in the ring, under 5 MiB;
+  - commit the GIF if it is good (plan 040 places it in the README);
+  - `npm run dev:sandbox -- fixtures/demos/developer-mac.toml`: the world looks believable by hand (the banner shows
+    there, as in any sandbox).
+- **Facts not verified** (nothing was played or captured while building):
+  - `avfoundation` screen capture on macOS 27 with the terminal's Screen Recording permission (if it fails, switch
+    `captureCommand` to `screencapture -v`); that `"Capture screen 0"` is the main display's device name;
+  - that `tauri dev` ends when the app exits; the crop of the window's rectangle (rounded corners, the overlay title
+    bar); the cleanup's result and the freed-space line with a stated volume; how long the first build takes before the
+    window appears;
+  - that the finder and the scroll step behave in the real window as they do in the unit tests.
+- **Agent's calls worth a second look** ([`00-design.md`](../plans/038-demo-recordings/00-design.md)):
+  - the GIF committed with a 5 MiB exception in the staged-files guard ([`../hacks/`](../hacks/README.md)), or hosted
+    as a release asset;
+  - the stated `allocated` fact and the stated volume, which apply only in a sandbox (the volume is not named in the
+    banner); the vibrancy kept; the two demo command names in the release bundle's command table;
+  - the player exists only in development builds (the recorder runs `tauri dev`);
+  - demo folders are new on every run, `/private/tmp/fresher-demo/<scenario>-<n>`, and nothing is ever removed (no
+    second deletion point): old folders stay until macOS clears `/private/tmp`;
+  - the player refuses at run time any control named like a permanent delete, `Delete` or `Remove`, by prefix: it may
+    over-refuse a harmless control (safer);
+  - the demo world leaves out xcode, docker, trash, jetbrains and Ollama (reasons in its head comment).
+- **An accessibility gap worth a fix**: every category card's "Details" button has the same accessible name, so a
+  scenario cannot open one category and a screen reader hears the same name again and again. A name such as "Details
+  of {name}" fixes both; it is a UI change outside this plan.
+- **Known gaps**: no scenario for the screens of plans 031 to 037 yet
+  ([deferred](./demo-scenarios-for-new-screens.md)); no CI run of `demo:check` (it needs a window); automatic
+  screenshots not built.

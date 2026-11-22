@@ -911,3 +911,54 @@ export type PutBackItem = { index: number, outcome: PutBackOutcome, text: Text, 
  * How putting an item back ended. Put back never replaces anything.
  */
 export type PutBackOutcome = { "kind": "put-back" } | { "kind": "not-trashed" } | { "kind": "gone" } | { "kind": "replaced" } | { "kind": "occupied" } | { "kind": "no-parent" } | { "kind": "refused", reason: SkipCode, } | { "kind": "failed" };
+
+/**
+ * What the shell answers the UI in demo mode: the scenario, and the texts the picture must never show (the real
+ * home folder's path and the sandbox folder's path).
+ */
+export type DemoPlay = { scenario: Scenario, private: Array<string>, };
+
+/**
+ * A demo scenario: the world it is played on, the window's size and the steps the player plays, in order.
+ */
+export type Scenario = { name: string, world: string, window: DemoWindow, steps: Array<Step>, };
+
+/**
+ * The size of the app's window during a demo, in logical points.
+ */
+export type DemoWindow = { width: number, height: number, };
+
+/**
+ * One step of a scenario.
+ */
+export type Step = { "kind": "click", target: Target, } | { "kind": "hover", target: Target, } | { "kind": "scroll", target: Target, by: number, } | { "kind": "wait", until: Wait, } | { "kind": "pause", ms: number, };
+
+/**
+ * An element of the interface, as the e2e tests address one: its accessible role and name.
+ */
+export type Target = { role: Role, name: NameMatch, };
+
+/**
+ * The accessible role of a target.
+ */
+export type Role = "button" | "link" | "tab" | "checkbox" | "switch" | "heading" | "region" | "dialog" | "row";
+
+/**
+ * How a target's accessible name is matched; the text is never empty.
+ */
+export type NameMatch = { "kind": "exact", text: string, } | { "kind": "start", text: string, };
+
+/**
+ * What a wait step waits for.
+ */
+export type Wait = { "kind": "state", state: AppState, } | { "kind": "target", target: Target, };
+
+/**
+ * A named state of the app a scenario can wait for.
+ */
+export type AppState = "scan-finished" | "cleanup-finished";
+
+/**
+ * How a played scenario ended, as the UI reports it.
+ */
+export type DemoOutcome = { "kind": "finished", elapsedMs: number, } | { "kind": "failed", step: number, reason: string, };

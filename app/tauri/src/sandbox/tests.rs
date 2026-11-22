@@ -547,6 +547,15 @@ mod negative {
     }
 
     #[test]
+    fn the_real_ports_of_a_world_stating_no_volume_answer_the_macs() {
+        let world = World::new();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        assert!(ports.volumes.space(world.sandbox().path()).is_ok());
+    }
+
+    #[test]
     fn a_world_that_is_not_valid_does_not_start() {
         let world = World::new();
         fs::write(world.sandbox().world(), "[[running]]\nname = \"CLion\"\nbundle-ids = [\"not an id\"]\n").unwrap();
@@ -774,6 +783,25 @@ mod positive {
 
         let now = ports.clock.now();
         assert!(now >= start && now < start + std::time::Duration::from_secs(60), "{now:?}");
+    }
+
+    #[test]
+    fn the_real_ports_of_a_world_stating_a_volume_answer_its_space() {
+        let world = World::new();
+        let volume =
+            "[volume]\nname = \"Macintosh HD\"\ncapacity = 994662584320\nused = 701202362368\nfree = 293460221952\n";
+        fs::write(world.sandbox().world(), volume).unwrap();
+
+        let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
+
+        let space = ports.volumes.space(world.sandbox().path()).unwrap();
+        let bytes = fresher_core::ByteSize::new;
+        assert_eq!(space.name, "Macintosh HD");
+        assert_eq!(
+            (space.capacity, space.used, space.free),
+            (bytes(994_662_584_320), bytes(701_202_362_368), bytes(293_460_221_952))
+        );
+        assert!(ports.volumes.identify(world.sandbox().path()).is_ok());
     }
 
     #[test]

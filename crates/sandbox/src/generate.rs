@@ -24,7 +24,8 @@ pub struct Generated {
 
 /// Writes the case files `files` into the sandbox folder `into`: the marker (the signature, then a line naming the
 /// case files), the layout, every case's tree (its ages counted back from `now`), `EXPECTED.md` and `world.toml` (`now`,
-/// the running apps the cases declare and the facts their files state).
+/// the running apps the cases declare and the facts their files state). A demo world is generated at its own `now`
+/// (`Demo::now`), which the caller passes.
 ///
 /// Refuses a folder that `real_protection` (the real Mac's list) refuses, that is a link or reached through one inside
 /// the sandbox, or that is not empty and holds no valid marker of `user`. On a sandbox it made before it tops up:
@@ -549,14 +550,15 @@ name = "Mine"
         use std::fs;
         use std::os::unix::fs::MetadataExt as _;
 
-        use fresher_core::{KnownFolder, KnownFolders, SANDBOX_MARKER, SANDBOX_SIGNATURE, SettingsStore as _};
+        use fresher_core::{
+            KnownFolder, KnownFolders, Protection, SANDBOX_MARKER, SANDBOX_SIGNATURE, SettingsStore as _,
+        };
         use fresher_store::{DataFolder, FileSettingsStore};
         use fresher_testing::{EntryKind, TreeReport};
         use serde_json::json;
 
         use super::{TRIAL, apps, run, trial, user};
-        use crate::Sandbox;
-        use crate::without_clashes;
+        use crate::{Sandbox, World, generate, without_clashes};
 
         #[test]
         fn files_that_write_different_paths_are_all_kept() {
@@ -667,6 +669,49 @@ name = "Mine"
             run(&[trial()], &outer.path().join("link/sandbox")).unwrap();
 
             assert!(real.path().join("sandbox").join(SANDBOX_MARKER).is_file());
+        }
+
+        #[test]
+        fn a_demo_world_is_generated_at_its_own_now() {
+            let world = crate::CaseFile::parse(
+                r#"
+feature = "developer-mac"
+[demo]
+now = 1795000000
+shows = ["trial.caches"]
+
+[[case]]
+name = "Xcode's build products"
+kind = "scenery"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Atlas-bxkqzr/Atlas.bin"
+size = 4096
+age = "40d"
+
+[[case]]
+name = "a browser's cache"
+kind = "scenery"
+[[case.file]]
+path = "home/Library/Caches/com.example.Browser/data.bin"
+size = 1024
+age = "3d"
+"#,
+            )
+            .unwrap();
+            let folder = tempfile::tempdir().unwrap();
+            let now = world.demo().unwrap().now();
+
+            generate(&[world], folder.path(), now, &Protection::default(), user(folder.path())).unwrap();
+
+            let day = std::time::Duration::from_hours(24);
+            for (path, age) in [
+                ("home/Library/Developer/Xcode/DerivedData/Atlas-bxkqzr/Atlas.bin", 40 * day),
+                ("home/Library/Caches/com.example.Browser/data.bin", 3 * day),
+            ] {
+                assert_eq!(fs::metadata(folder.path().join(path)).unwrap().modified().unwrap(), now - age, "{path}");
+            }
+            let sandbox = Sandbox::open(folder.path(), user(folder.path())).unwrap();
+            assert_eq!(World::read(&sandbox).unwrap().now(), Some(now));
         }
 
         #[test]

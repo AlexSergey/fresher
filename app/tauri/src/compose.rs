@@ -77,6 +77,10 @@ pub(crate) enum ComposeError {
     #[cfg(debug_assertions)]
     #[error("sandbox mode is refused: {0}")]
     Sandbox(#[from] crate::sandbox::SandboxRefusal),
+    /// A development build asked for a demo it cannot play: it does not start rather than play elsewhere.
+    #[cfg(debug_assertions)]
+    #[error("demo mode is refused: {0}")]
+    DemoMode(#[from] crate::demo::DemoRefusal),
     #[cfg(debug_assertions)]
     #[error("the demo module cannot be built: {0}")]
     Demo(#[from] fresher_module_demo::DemoError),
@@ -118,6 +122,9 @@ pub(crate) struct Start {
     /// The development run record, when the launcher asked for one (`FRESHER_DEV_RUNS`).
     #[cfg(debug_assertions)]
     pub(crate) run: Option<crate::dev_runs::run::Run>,
+    /// The scenario to play, when the launcher asked for one (`FRESHER_DEMO`, in sandbox mode only).
+    #[cfg(debug_assertions)]
+    pub(crate) demo: Option<crate::demo::DemoMode>,
 }
 
 /// The app's start: in a development build whose environment (read through `var`) names a sandbox in
@@ -140,10 +147,15 @@ pub(crate) fn start(
         let (engine, sandbox) =
             crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
         let build = crate::sandbox::build(&sandbox, mode.trash())?;
+        // The real home is still `home` here: the demo keeps it, and the checked sandbox folder, off the page.
+        let demo = crate::demo::DemoMode::from_env(&var, Some(sandbox.path()), mode.trash(), &home)?;
         let home = sandbox.home();
         let run = begin_run(launch.as_ref(), &build, &home, &engine)?;
-        return Ok(Start { engine, data_folder: sandbox.data_folder(), home, build, run });
+        return Ok(Start { engine, data_folder: sandbox.data_folder(), home, build, run, demo });
     }
+    // Outside sandbox mode a demo is refused before any engine is made.
+    #[cfg(debug_assertions)]
+    let demo = crate::demo::DemoMode::from_env(&var, None, crate::sandbox::SandboxTrash::Sandbox, &home)?;
     let engine = engine(&data_folder, &home)?;
     let build = own_build();
     #[cfg(debug_assertions)]
@@ -155,6 +167,8 @@ pub(crate) fn start(
         build,
         #[cfg(debug_assertions)]
         run,
+        #[cfg(debug_assertions)]
+        demo,
     })
 }
 
@@ -644,6 +658,20 @@ mod tests {
 
             assert!(
                 matches!(start, Err(ComposeError::DevRuns(crate::dev_runs::DevRunsRefusal::NotAbsolute { .. }))),
+                "{start:?}"
+            );
+        }
+
+        #[cfg(debug_assertions)]
+        #[test]
+        fn a_demo_without_a_sandbox_stops_the_start() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            let var = |name: &str| (name == "FRESHER_DEMO").then(|| "/private/tmp/overview.toml".into());
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), var);
+
+            assert!(
+                matches!(start, Err(ComposeError::DemoMode(crate::demo::DemoRefusal::WithoutSandbox))),
                 "{start:?}"
             );
         }

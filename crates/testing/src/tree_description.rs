@@ -173,6 +173,20 @@ impl TreeDescription {
         self.files.iter().map(|spec| spec.path.as_path())
     }
 
+    /// The relative path and declared size of every sparse file the tree writes (no data, no text, no stated kind)
+    /// whose size is above 0, in the order written: what a demo world states as taking its declared size.
+    pub fn sparse_files(&self) -> impl Iterator<Item = (&Path, u64)> {
+        self.files
+            .iter()
+            .filter(|spec| {
+                spec.fill.unwrap_or_default() == Fill::Sparse
+                    && spec.text.is_none()
+                    && spec.kind.is_none()
+                    && spec.size > 0
+            })
+            .map(|spec| (spec.path.as_path(), spec.size))
+    }
+
     /// The targets of the hard links, relative to the tree's root as written; a symlink's target is any path.
     pub fn hardlink_targets(&self) -> impl Iterator<Item = &Path> {
         self.hardlinks.iter().map(|spec| spec.target.as_path())
@@ -202,8 +216,14 @@ impl TreeDescription {
             let stamp = |offset: Option<&str>| -> Result<Option<Timestamp>, FixtureError> {
                 Ok(time_of(path, offset, None, now)?.map(Timestamp::from_system_time))
             };
-            let facts =
-                Stated { changed: stamp(changed)?, accessed: stamp(accessed)?, owner, flags: flags.clone(), kind };
+            let facts = Stated {
+                changed: stamp(changed)?,
+                accessed: stamp(accessed)?,
+                owner,
+                flags: flags.clone(),
+                kind,
+                allocated: None,
+            };
             if !facts.is_empty() {
                 stated.push((path.clone(), facts));
             }
@@ -816,6 +836,21 @@ mod tests {
             assert!(matches!(error, FixtureError::PathThroughLink { .. }));
             assert_eq!(std::fs::read_link(folder.path().join("out")).unwrap(), std::path::Path::new("/tmp"));
         }
+
+        #[test]
+        fn sparse_files_skip_data_text_tag_stated_kind_and_empty_files() {
+            let description = parse(
+                "[[file]]\npath = \"data\"\nsize = 4096\nfill = \"data\"\n\
+                 [[file]]\npath = \"text\"\ntext = \"hello\"\n\
+                 [[file]]\npath = \"CACHEDIR.TAG\"\nfill = \"cachedir-tag\"\n\
+                 [[file]]\npath = \"sock\"\nsize = 10\nkind = \"socket\"\n\
+                 [[file]]\npath = \"empty\"\n\
+                 [[dir]]\npath = \"folder\"\n",
+            )
+            .unwrap();
+
+            assert_eq!(description.sparse_files().count(), 0);
+        }
     }
 
     mod positive {
@@ -831,6 +866,23 @@ mod tests {
 
         fn now() -> SystemTime {
             SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW)
+        }
+
+        #[test]
+        fn sparse_files_list_each_sparse_file_with_its_declared_size() {
+            let description = TreeDescription::from_toml_str(
+                "[[file]]\npath = \"home/big.bin\"\nsize = 6442450944\n\
+                 [[file]]\npath = \"home/data.bin\"\nsize = 10\nfill = \"data\"\n\
+                 [[file]]\npath = \"home/named.bin\"\nsize = 2048\nfill = \"sparse\"\n",
+            )
+            .unwrap();
+
+            let sparse: Vec<_> = description.sparse_files().collect();
+
+            assert_eq!(
+                sparse,
+                [(std::path::Path::new("home/big.bin"), 6_442_450_944), (std::path::Path::new("home/named.bin"), 2048)]
+            );
         }
 
         // FixtureTree and build_at agree on every fixture home.

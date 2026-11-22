@@ -22,6 +22,8 @@
     "check:secrets": "gitleaks git --pre-commit --staged --redact --no-banner",
     "check:staged": "node scripts/check-staged.ts",
     "check:typos": "typos",
+    "demo:check": "node scripts/demo-record.ts --check",
+    "demo:record": "node scripts/demo-record.ts",
     "dev": "node scripts/dev.ts",
     "dev:sandbox": "node scripts/sandbox-dev.ts",
     "dev-runs:check": "node scripts/dev-runs-check.ts",

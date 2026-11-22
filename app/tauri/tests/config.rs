@@ -26,7 +26,8 @@ mod support {
 
     /// The commands in `tauri::generate_handler!` of `src/lib.rs`, without their module path.
     pub(crate) fn handler_commands() -> Vec<String> {
-        let listed = names(between(&read("src/lib.rs"), "generate_handler![", "]"), "");
+        // The list ends at its own closing bracket; a `#[cfg(...)]` of a debug-only command holds one too.
+        let listed = names(between(&read("src/lib.rs"), "generate_handler![", "\n    ]"), "");
         listed.iter().map(|name| name.rsplit("::").next().unwrap_or(name).to_owned()).collect()
     }
 

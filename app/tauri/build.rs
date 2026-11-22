@@ -1,6 +1,8 @@
 //! The app manifest allowlists exactly the app's own commands; `capabilities/default.json` grants each one.
 
 /// Every command in `tauri::generate_handler!` (`src/lib.rs`), in the same order.
+/// The last two, `demo_play` and `demo_finished`, are handled in debug builds only (`src/demo.rs`): a release build
+/// has no such command, so their grants reach nothing.
 const COMMANDS: &[&str] = &[
     "app_info",
     "subscribe",
@@ -36,6 +38,8 @@ const COMMANDS: &[&str] = &[
     "get_trash",
     "open_trash",
     "quit_after_cleanup",
+    "demo_play",
+    "demo_finished",
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

@@ -39,6 +39,14 @@
 - **Why:** generated files are rewritten by their tools; large or secret files do not belong in git.
 - **Enforced by:** `.gitignore`; the staged-files guard and gitleaks in the pre-commit hook (plan 001).
 
+## Assets
+
+- **Rule:** `assets/` holds the demo GIFs and the images the README uses, nothing else. A GIF in `assets/demo/` is
+  recorded by `npm run demo:record`, within the recorder's budget (up to 5 MiB); every other committed file keeps the
+  1 MiB limit.
+- **Why:** the README shows the app; media belongs in one folder, apart from the code.
+- **Enforced by:** the staged-files guard (docs/hacks), the recorder's budget check.
+
 ## Hooks are never bypassed
 
 - **Rule:** no `--no-verify`; what a hook reports is fixed.

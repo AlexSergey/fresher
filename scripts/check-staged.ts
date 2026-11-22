@@ -16,6 +16,10 @@ export type Violation = {
 
 export const MAX_FILE_SIZE = 1024 * 1024;
 
+// Demo GIFs recorded by `npm run demo:record` (docs/hacks/README.md, "Demo GIFs up to 5 MiB").
+export const GIF_FOLDER = 'assets/demo/';
+export const MAX_GIF_SIZE = 5 * 1024 * 1024;
+
 // Files allowed over the size limit, each with its reason in docs/hacks/README.md.
 const SIZE_EXCEPTIONS = new Set(['app/tauri/icons/icon.icns']);
 
@@ -23,6 +27,9 @@ const DATABASE_EXTENSIONS = new Set(['.db', '.sqlite', '.sqlite3']);
 const SIGNING_EXTENSIONS = new Set(['.cer', '.mobileprovision', '.p8', '.p12', '.provisionprofile']);
 
 const isEnvFile = (name: string): boolean => (name === '.env' || name.startsWith('.env.')) && name !== '.env.example';
+
+const isDemoGif = (file: StagedFile): boolean =>
+  path.dirname(file.path) === GIF_FOLDER.slice(0, -1) && path.extname(file.path).toLowerCase() === '.gif';
 
 const checkFile = (file: StagedFile): null | Violation => {
   const name = path.basename(file.path);
@@ -38,6 +45,10 @@ const checkFile = (file: StagedFile): null | Violation => {
 
   if (isEnvFile(name)) {
     return { path: file.path, reason: 'an environment file is never committed (only .env.example)' };
+  }
+
+  if (isDemoGif(file)) {
+    return file.size > MAX_GIF_SIZE ? { path: file.path, reason: 'a demo GIF is over 5 MiB' } : null;
   }
 
   if (file.size > MAX_FILE_SIZE && !SIZE_EXCEPTIONS.has(file.path)) {

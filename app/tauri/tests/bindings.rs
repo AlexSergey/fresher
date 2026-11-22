@@ -30,6 +30,7 @@ mod support {
         AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, MountKind, PartKind, PlaceName,
         PlaceRow, PlaceShare, PlaceView, RemainderReason, StorageMap, VolumeMap,
     };
+    use fresher_sandbox::{AppState, DemoOutcome, DemoPlay, DemoWindow, NameMatch, Role, Scenario, Step, Target, Wait};
     use ts_rs::{Config, TS};
 
     /// One exported type: its TypeScript name, its declaration and the names of the types it refers to.
@@ -140,6 +141,7 @@ mod support {
         ];
         declarations.extend(storage_declarations(&config));
         declarations.extend(cleanup_declarations(&config));
+        declarations.extend(demo_declarations(&config));
         declarations
     }
 
@@ -202,6 +204,22 @@ mod support {
             declaration::<PutBackReport>(config),
             declaration::<PutBackItem>(config),
             declaration::<PutBackOutcome>(config),
+        ]
+    }
+
+    /// The types of the debug-only demo commands, from the sandbox crate (`app/tauri/src/demo.rs`).
+    fn demo_declarations(config: &Config) -> Vec<Declaration> {
+        vec![
+            declaration::<DemoPlay>(config),
+            declaration::<Scenario>(config),
+            declaration::<DemoWindow>(config),
+            declaration::<Step>(config),
+            declaration::<Target>(config),
+            declaration::<Role>(config),
+            declaration::<NameMatch>(config),
+            declaration::<Wait>(config),
+            declaration::<AppState>(config),
+            declaration::<DemoOutcome>(config),
         ]
     }
 

@@ -4,7 +4,9 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use fresher_core::{Access, BundleId, Capability, GuardedFolder, Receipt, RunningApp, SystemVersion, Timestamp};
+use fresher_core::{
+    Access, BundleId, ByteSize, Capability, GuardedFolder, Receipt, RunningApp, SystemVersion, Timestamp,
+};
 use fresher_testing::{
     FakeAccess, FakeInstallRecords, FakeRunningApps, Stated, StatedFacts, StatedFlag, StatedKind, StatedOwner,
     time_at_age,
@@ -12,9 +14,12 @@ use fresher_testing::{
 use serde::{Deserialize, Serialize};
 
 use crate::case::{RawAccess, is_bundle_name, is_pkg_name, is_plain, stated_capability};
-use crate::{CaseFile, Sandbox, SandboxError};
+use crate::demo::RawVolume;
+use crate::{CaseFile, DemoSizes, DemoVolume, Sandbox, SandboxError};
 
 mod commands;
+#[cfg(test)]
+mod demo_tests;
 
 pub use commands::WorldCommands;
 pub(crate) use commands::{StatedTool, ToolProblem};
@@ -27,9 +32,10 @@ const ELSEWHERE_FOLDER: &str = "Volumes/Elsewhere";
 
 /// What the case files declare about the Mac beyond their files: the apps that are open, what Spotlight answers, what
 /// the guarded folders allow, the installer receipts and the macOS version, the moment the sandbox was generated, and
-/// the facts its entries state instead of having them (an old status change, an owner, a flag, a socket). Written as
-/// `world.toml` at the sandbox's top; sandbox mode and the autotest take the running apps, Spotlight's answers, the
-/// access, the clock's start and the stated facts from it, never from the real Mac.
+/// the facts its entries state instead of having them (an old status change, an owner, a flag, a socket, the space a
+/// sparse file of a demo world takes), and the volume a demo world states it is on. Written as `world.toml` at the
+/// sandbox's top; sandbox mode and the autotest take the running apps, Spotlight's answers, the access, the clock's
+/// start, the stated facts and the volume's space from it, never from the real Mac.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct World {
     /// The generator's "now", in seconds since the Unix epoch: every age of the case files counts back from it.
@@ -51,6 +57,8 @@ pub struct World {
     entries: Vec<(PathBuf, Stated)>,
     /// The calls of programs the case files answer, each once, in the order of the files and their cases.
     tools: Vec<StatedTool>,
+    /// The volume a demo world states it is on; `None` leaves the Mac's.
+    volume: Option<DemoVolume>,
 }
 
 impl Default for World {
@@ -67,6 +75,7 @@ impl Default for World {
             receipts: Vec::new(),
             entries: Vec::new(),
             tools: Vec::new(),
+            volume: None,
         }
     }
 }
@@ -93,6 +102,8 @@ struct RawWorld {
     entries: Vec<RawEntry>,
     #[serde(default, rename = "tool", skip_serializing_if = "Vec::is_empty")]
     tools: Vec<RawTool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    volume: Option<RawVolume>,
 }
 
 /// A `[[tool]]`: a call of a program, relative to the sandbox, and what it answers.
@@ -130,6 +141,8 @@ struct RawEntry {
     flags: BTreeSet<StatedFlag>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     kind: Option<StatedKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    allocated: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -160,7 +173,9 @@ impl World {
     /// counted back from `now`), in the order of the files and their cases; Spotlight is off when any case says so; a
     /// folder (or other apps' data) whose access two cases state differently takes the most restrictive (`denied`, then
     /// `not-asked`, then `granted`); a call of a program stated twice is kept once, and refused when its answers
-    /// differ.
+    /// differ. A demo world with `sizes = "as-declared"` states, for every sparse file of its cases, an allocated size
+    /// equal to its declared size (in the entry of its path when that path states other facts); the demo worlds'
+    /// volume is one (two different ones are refused).
     pub fn of(files: &[CaseFile], now: SystemTime) -> Result<Self, SandboxError> {
         let mut running = Vec::new();
         let mut entries = Vec::new();
@@ -171,7 +186,12 @@ impl World {
         let mut receipts = Vec::new();
         let tools = commands::join_tools(files.iter().flat_map(CaseFile::cases).flat_map(|case| case.tools().to_vec()))
             .map_err(|program| SandboxError::ToolTwice { program })?;
-        for case in files.iter().flat_map(CaseFile::cases) {
+        let volume = one_volume(files)?;
+        let cases = files.iter().flat_map(|file| {
+            let as_declared = file.demo().is_some_and(|demo| demo.sizes() == DemoSizes::AsDeclared);
+            file.cases().iter().map(move |case| (case, as_declared))
+        });
+        for (case, as_declared) in cases {
             elsewhere.extend(case.elsewhere().iter().cloned());
             spotlight_on &= !case.spotlight_off();
             for &(capability, stated) in case.access() {
@@ -196,7 +216,11 @@ impl World {
                 let installed = time_at_age(age, now).and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok());
                 receipts.push((package.clone(), installed.map_or(0, |since| since.as_secs())));
             }
+            let first = entries.len();
             entries.extend(case.tree().stated(now).map_err(|source| SandboxError::Tree { source })?);
+            if as_declared {
+                state_allocated(&mut entries, first, case.tree().sparse_files());
+            }
             // An app's bundle id was checked when its case was read.
             running.extend(case.running_apps().filter_map(|app| {
                 let id = BundleId::new(app.bundle_id.as_str()).ok()?;
@@ -206,7 +230,7 @@ impl World {
         }
         let now = now.duration_since(SystemTime::UNIX_EPOCH).ok().map(|since| since.as_secs());
         let access = access.into_iter().collect();
-        Ok(Self { now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools })
+        Ok(Self { now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools, volume })
     }
 
     /// The world of `sandbox`, read from its `world.toml`, through no link; a missing file is an empty world. Anything
@@ -350,6 +374,12 @@ impl World {
         !self.tools.is_empty()
     }
 
+    /// The volume a demo world states it is on: its space is answered for every path in sandbox mode. `None` leaves
+    /// the Mac's.
+    pub const fn volume(&self) -> Option<&DemoVolume> {
+        self.volume.as_ref()
+    }
+
     /// The programs as sandbox mode runs them in the sandbox at `sandbox` (the canonical sandbox folder): the stated
     /// calls answered, every other call recorded and answered `NotInstalled`; nothing is ever run.
     pub fn commands(&self, sandbox: &Path) -> WorldCommands {
@@ -376,6 +406,7 @@ impl World {
                 owner: stated.owner,
                 flags: stated.flags.clone(),
                 kind: stated.kind,
+                allocated: stated.allocated.map(ByteSize::bytes),
             })
             .collect();
         let elsewhere = self
@@ -415,8 +446,14 @@ impl World {
             receipts,
             entries,
             tools,
+            volume: self.volume.as_ref().map(DemoVolume::to_raw),
         })
         .map_err(|error| SandboxError::World { path: "world.toml".into(), reason: error.to_string() })?;
+        Ok(format!("{}{body}", self.head()))
+    }
+
+    /// The comment at the top of `world.toml`.
+    fn head(&self) -> String {
         // The facts', Spotlight's and the access's lines only when there are any: a world without them is written as
         // before.
         let spotlight = if self.declares_spotlight() {
@@ -445,10 +482,21 @@ impl World {
         } else {
             ""
         };
-        let facts = if self.entries.is_empty() {
-            ""
+        let allocated = self.entries.iter().any(|(_, stated)| stated.allocated.is_some());
+        let facts = match (self.entries.is_empty(), allocated) {
+            (true, _) => "",
+            (false, false) => {
+                "# Each [[entry]] states facts of a path that the disk does not have (Finder never shows them).\n"
+            }
+            (false, true) => {
+                "# Each [[entry]] states facts of a path that the disk does not have (Finder never shows them);\n\
+                 # `allocated` is the space a sparse file of a demo world takes on disk: its declared size.\n"
+            }
+        };
+        let volume = if self.volume.is_some() {
+            "# [volume] is the volume's space the app answers for every path in sandbox mode, in bytes.\n"
         } else {
-            "# Each [[entry]] states facts of a path that the disk does not have (Finder never shows them).\n"
+            ""
         };
         let tools = if self.declares_tools() {
             "# Each [[tool]] is what a program below the sandbox answers to exactly its arguments in sandbox mode; no\n\
@@ -456,10 +504,10 @@ impl World {
         } else {
             ""
         };
-        Ok(format!(
+        format!(
             "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written by the\n\
-             # generator from the case files.\n{spotlight}{access}{installs}{facts}{tools}{body}"
-        ))
+             # generator from the case files.\n{spotlight}{access}{installs}{facts}{tools}{volume}"
+        )
     }
 
     fn parse(text: &str) -> Result<Self, String> {
@@ -493,6 +541,7 @@ impl World {
                     owner: entry.owner,
                     flags: entry.flags,
                     kind: entry.kind,
+                    allocated: entry.allocated.map(ByteSize::new),
                 };
                 if stated.is_empty() {
                     return Err(format!("the entry `{at}` states nothing"));
@@ -553,7 +602,38 @@ impl World {
             format!("the tool `{}` is stated twice with the same arguments and different answers", program.display())
         })?;
         let spotlight_on = raw.spotlight.is_none();
-        Ok(Self { now: raw.now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools })
+        let volume = raw
+            .volume
+            .map(|volume| DemoVolume::from_raw(volume).map_err(|reason| format!("[volume]: {reason}")))
+            .transpose()?;
+        Ok(Self { now: raw.now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools, volume })
+    }
+}
+
+/// The volume the demo worlds of `files` state: one, however many files state it; two different ones are refused.
+fn one_volume(files: &[CaseFile]) -> Result<Option<DemoVolume>, SandboxError> {
+    let mut volumes = files.iter().filter_map(CaseFile::demo).filter_map(|demo| demo.volume());
+    let Some(first) = volumes.next() else { return Ok(None) };
+    if let Some(second) = volumes.find(|volume| *volume != first) {
+        return Err(SandboxError::VolumesDiffer { first: first.name().to_owned(), second: second.name().to_owned() });
+    }
+    Ok(Some(first.clone()))
+}
+
+/// States, for each of `sparse` (a case's sparse files and their declared sizes), an allocated size equal to its size:
+/// in the entry of its path among `entries[first..]` (the case's own stated facts) when there is one, else in a new
+/// entry.
+fn state_allocated<'a>(
+    entries: &mut Vec<(PathBuf, Stated)>,
+    first: usize,
+    sparse: impl Iterator<Item = (&'a Path, u64)>,
+) {
+    for (path, size) in sparse {
+        let allocated = Some(ByteSize::new(size));
+        match entries[first..].iter_mut().find(|(stated, _)| stated == path) {
+            Some((_, stated)) => stated.allocated = allocated,
+            None => entries.push((path.to_path_buf(), Stated { allocated, ..Stated::default() })),
+        }
     }
 }
 

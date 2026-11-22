@@ -18,4 +18,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* A demo records the window without the banner of the development build. */
+  :global(html[data-demo='playing']) .banner {
+    display: none;
+  }
 }

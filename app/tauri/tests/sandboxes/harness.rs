@@ -15,11 +15,11 @@ use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, access_of, sandbox_en
 use fresher_core::{
     Access, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, Confirmation, Event, Finding,
     FindingOrder, FindingsQuery, LeftOutCount, RecordedOutcome, SANDBOX_MARKER, Subject, TrashState, VolumeFacts,
-    VolumeId,
+    VolumeId, Volumes,
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_macos::{current_user, protection, user_temp_dir};
-use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, Sandbox, WorldCommands, generate};
+use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, Sandbox, StatedSpace, WorldCommands, generate};
 use fresher_testing::{FIXTURE_NOW, FakeAccess, FakeClock, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport};
 use serde_json::{Value, json};
 use tempfile::TempDir;
@@ -182,13 +182,13 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
 
 /// A temporary folder holding the sandbox and a stand-in for the real Mac: its home, and the development build's data
 /// folder (never made).
-struct World {
+pub(crate) struct World {
     folder: TempDir,
     name: String,
 }
 
 impl World {
-    fn new(name: &str) -> Result<Self, Failure> {
+    pub(crate) fn new(name: &str) -> Result<Self, Failure> {
         let folder = tempfile::tempdir().map_err(|error| failure(name, error))?;
         let real_home = folder.path().join("real-home");
         fs::create_dir(&real_home).map_err(|error| failure(name, error))?;
@@ -204,16 +204,22 @@ impl World {
     }
 
     /// The sandbox folder at its canonical path, as the generator writes it.
-    fn sandbox(&self) -> PathBuf {
+    pub(crate) fn sandbox(&self) -> PathBuf {
         fs::canonicalize(self.folder.path()).unwrap_or_else(|_| self.folder.path().to_path_buf()).join(SANDBOX)
     }
 
     /// `files` generated into the sandbox, and the sandbox mode's engine on it with fakes for every port it keeps
     /// real, the sandbox on a fake volume sized by its files, and the world's commands it runs; only `module`
     /// registered when one is named.
-    fn engine(&self, files: &[CaseFile], module: Option<&str>) -> Result<(Engine, Arc<WorldCommands>), Failure> {
+    pub(crate) fn engine(
+        &self,
+        files: &[CaseFile],
+        module: Option<&str>,
+    ) -> Result<(Engine, Arc<WorldCommands>), Failure> {
         let name = &self.name;
-        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
+        let fixture_now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
+        // A demo world is generated at its own moment.
+        let now = files.iter().find_map(CaseFile::demo).map_or(fixture_now, fresher_sandbox::Demo::now);
         let user_temp = user_temp_dir().ok();
         let real = protection(&self.real_home(), &self.real_data(), None, user_temp.as_deref())
             .map_err(|error| failure(name, error))?;
@@ -280,9 +286,15 @@ fn fakes(
 ) -> Option<SandboxPorts> {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
     let now = world.now()?.duration_since(SystemTime::UNIX_EPOCH).ok()?;
+    let volumes = FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size));
+    // A demo world's volume is the one the app answers, as in sandbox mode.
+    let volumes: Arc<dyn Volumes> = match world.volume() {
+        Some(volume) => Arc::new(StatedSpace::new(Arc::new(volumes), volume)),
+        None => Arc::new(volumes),
+    };
     Some(SandboxPorts {
         clock: Arc::new(FakeClock::at(now.as_secs())),
-        volumes: Arc::new(FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size))),
+        volumes,
         open_files: Arc::new(FakeOpenFiles::default()),
         running: Arc::new(world.running_apps()),
         commands,
@@ -320,7 +332,7 @@ fn report_of(name: &str, sandbox: &Path) -> Result<TreeReport, Failure> {
 }
 
 /// A full scan, waited for: what its modules left out and what they described, as each reported it.
-fn scan(name: &str, engine: &Engine) -> Result<(Vec<LeftOutCount>, Described), Failure> {
+pub(crate) fn scan(name: &str, engine: &Engine) -> Result<(Vec<LeftOutCount>, Described), Failure> {
     let events = engine.subscribe();
     engine.start_scan(ScanMode::Full).map_err(|error| failure(name, format!("the scan does not start: {error:?}")))?;
     let (mut left_out, mut described) = (Vec::new(), Vec::new());
@@ -350,7 +362,7 @@ fn until(name: &str, events: &Receiver<Event>, mut is_last: impl FnMut(&Event) -
 
 /// Every finding of the scan, of every registered module, by subject and category, so the findings' ids never order
 /// the report.
-fn findings(name: &str, engine: &Engine) -> Result<Vec<Finding>, Failure> {
+pub(crate) fn findings(name: &str, engine: &Engine) -> Result<Vec<Finding>, Failure> {
     let query = FindingsQuery::new(None, None, FindingOrder::Found, 0, 1000);
     let mut page = engine.findings(&query).map_err(|error| failure(name, format!("{error:?}")))?;
     if page.total as usize > page.findings.len() {

@@ -1,12 +1,14 @@
 //! The facts a test tree or a sandbox states instead of making them: a status-change time no tool can set, an owner
-//! or a system flag only root can set, a socket or a pipe whose path would be too long. [`FactsLens`] reports them
+//! or a system flag only root can set, a socket or a pipe whose path would be too long, the space a sparse file of a
+//! demo world takes. [`FactsLens`] reports them
 //! over a real reader, for exactly the stated paths; nothing else changes, and Finder never shows them.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Timestamp,
+    ByteSize, EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Sizes,
+    Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -65,6 +67,8 @@ pub struct Stated {
     /// When not empty, the entry's flags: every flag the disk has is replaced.
     pub flags: BTreeSet<StatedFlag>,
     pub kind: Option<StatedKind>,
+    /// The space it takes on disk, stated: a sparse file of a demo world takes its declared size.
+    pub allocated: Option<ByteSize>,
 }
 
 impl Stated {
@@ -73,10 +77,16 @@ impl Stated {
         *self == Self::default()
     }
 
-    /// `entry` with the stated facts in place of its own.
+    /// `entry` with the stated facts in place of its own; a stated `allocated` replaces the allocated and reclaimable
+    /// sizes of a file and keeps its logical size, and a folder is never given one.
     pub fn apply(&self, entry: RawEntry) -> RawEntry {
+        let sizes = match self.allocated {
+            Some(allocated) if entry.kind != EntryKind::Folder => Sizes::complete(entry.sizes.logical, allocated),
+            _ => entry.sizes,
+        };
         RawEntry {
             kind: if self.kind.is_some() { EntryKind::Other } else { entry.kind },
+            sizes,
             changed: self.changed.or(entry.changed),
             accessed: self.accessed.or(entry.accessed),
             access: self.apply_access(entry.access),
@@ -164,7 +174,7 @@ impl StatedFacts {
 }
 
 /// A [`FolderReader`] that answers every call with the wrapped reader, then reports, for a stated entry only, its
-/// stated status change, access, owner, flags and kind instead of the disk's.
+/// stated status change, access, owner, flags, kind and allocated size instead of the disk's.
 #[derive(Debug)]
 pub struct FactsLens<R> {
     inner: R,
@@ -212,7 +222,8 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use fresher_core::{
-        EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Sizes, Timestamp,
+        ByteSize, EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Sizes,
+        Timestamp,
     };
 
     use super::{FactsLens, Stated, StatedFacts, StatedFlag, StatedKind, StatedOwner};
@@ -279,10 +290,15 @@ mod tests {
                 accessed: Some(Timestamp::from_secs(6)),
                 owner: Some(StatedOwner::System),
                 flags: [StatedFlag::NoUnlink, StatedFlag::Restricted].into(),
-                kind: None,
+                ..Stated::default()
             },
         );
         facts
+    }
+
+    /// A sparse file of 100 bytes: it takes nothing on disk.
+    fn sparse() -> RawEntry {
+        RawEntry { sizes: Sizes::complete(ByteSize::new(100), ByteSize::ZERO), ..plain() }
     }
 
     fn listing(reader: &dyn FolderReader, path: &str) -> Vec<(String, RawEntry)> {
@@ -294,9 +310,28 @@ mod tests {
     mod negative {
         use std::path::Path;
 
-        use fresher_core::FolderReader as _;
+        use fresher_core::{ByteSize, EntryKind, FolderReader as _, RawEntry, Timestamp};
 
-        use super::{FactsLens, Stated, StatedFacts, facts, listing, reader};
+        use super::{FactsLens, Stated, StatedFacts, StatedOwner, facts, listing, reader, sparse};
+
+        #[test]
+        fn no_stated_allocated_size_leaves_the_sizes_as_they_are() {
+            let stated = Stated {
+                owner: Some(StatedOwner::System),
+                changed: Some(Timestamp::from_secs(5)),
+                ..Stated::default()
+            };
+
+            assert_eq!(stated.apply(sparse()).sizes, sparse().sizes);
+        }
+
+        #[test]
+        fn a_folder_keeps_its_sizes_whatever_is_stated() {
+            let folder = RawEntry { kind: EntryKind::Folder, ..sparse() };
+            let stated = Stated { allocated: Some(ByteSize::new(4096)), ..Stated::default() };
+
+            assert_eq!(stated.apply(folder).sizes, folder.sizes);
+        }
 
         #[test]
         fn an_entry_not_stated_reads_as_the_reader_reads_it() {
@@ -335,9 +370,21 @@ mod tests {
     mod positive {
         use std::path::Path;
 
-        use fresher_core::{EntryKind, FolderReader as _, Timestamp};
+        use fresher_core::{ByteSize, Completeness, EntryKind, FolderReader as _, Timestamp};
 
-        use super::{FactsLens, facts, listing, reader};
+        use super::{FactsLens, Stated, facts, listing, reader, sparse};
+
+        #[test]
+        fn a_stated_allocated_size_replaces_allocated_and_reclaimable_and_keeps_logical() {
+            let stated = Stated { allocated: Some(ByteSize::new(100)), ..Stated::default() };
+
+            let sizes = stated.apply(sparse()).sizes;
+
+            assert_eq!(
+                (sizes.logical, sizes.allocated, sizes.reclaimable, sizes.completeness),
+                (ByteSize::new(100), ByteSize::new(100), ByteSize::new(100), Completeness::Complete)
+            );
+        }
 
         #[test]
         fn a_stated_socket_is_another_kind_with_its_own_times() {

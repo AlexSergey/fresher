@@ -47,6 +47,15 @@ Every place where the code takes a shortcut or makes a non-obvious decision, and
 - **Why:** macOS needs the 1024 px size in the icon set for Retina displays.
 - **If cleaned up:** removing the exception blocks every commit that touches the icon.
 
+## Demo GIFs up to 5 MiB
+
+- **What:** `assets/demo/*.gif` are allowed up to 5 MiB by the staged-files guard; every other file keeps 1 MiB.
+- **Where:** `GIF_FOLDER` and `MAX_GIF_SIZE` in `scripts/check-staged.ts`; `*.gif binary` in `.gitattributes`.
+- **Why:** an animated picture of 20 s at 800 px does not fit 1 MiB.
+- **Cost:** the history grows with every re-recording.
+- **If cleaned up:** the limit blocks every commit of a recorded GIF; to undo, host the GIFs as release assets
+  (plan 040) and drop the exception.
+
 ## node:test for the repository scripts
 
 - **What:** `scripts/*.test.ts` use `node:test`, not Vitest; ESLint's Vitest rules apply to `app/ui` only and

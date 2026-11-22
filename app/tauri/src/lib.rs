@@ -7,6 +7,8 @@ mod adapters;
 mod commands;
 mod compose;
 #[cfg(debug_assertions)]
+mod demo;
+#[cfg(debug_assertions)]
 mod dev_runs;
 #[cfg(debug_assertions)]
 mod dry_run;
@@ -95,6 +97,10 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         commands::get_trash,
         commands::open_trash,
         commands::quit_after_cleanup,
+        #[cfg(debug_assertions)]
+        demo::demo_play,
+        #[cfg(debug_assertions)]
+        demo::demo_finished,
     ]
 }
 
@@ -115,7 +121,19 @@ fn start(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         build,
         #[cfg(debug_assertions)]
         run,
+        #[cfg(debug_assertions)]
+        demo,
     } = start;
+    // Demo mode sizes and places the window before the UI asks for its scenario; every development build manages
+    // the mode, `None` without `FRESHER_DEMO`.
+    #[cfg(debug_assertions)]
+    if let Some(mode) = &demo
+        && let Some(window) = app.get_webview_window(shell::MAIN_WINDOW)
+    {
+        mode.place(&window);
+    }
+    #[cfg(debug_assertions)]
+    app.manage(demo);
     // The record subscribes before the restore, so the restored scan is recorded.
     #[cfg(debug_assertions)]
     let recorded = run.map(|run| {

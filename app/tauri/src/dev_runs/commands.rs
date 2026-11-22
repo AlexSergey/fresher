@@ -6,7 +6,7 @@ use tauri::{Manager, Runtime};
 use super::DevRuns;
 
 /// The commands that change something or reach outside the app: each call is recorded with its arguments.
-pub(crate) const ACTIONS: [&str; 19] = [
+pub(crate) const ACTIONS: [&str; 20] = [
     "start_scan",
     "cancel_scan",
     "update_setting",
@@ -26,11 +26,12 @@ pub(crate) const ACTIONS: [&str; 19] = [
     "open_trash",
     "quit_after_cleanup",
     "pick_folder",
+    "demo_finished",
 ];
 
 /// The commands that only read: never recorded. A test checks every command is in one of the two lists.
 #[cfg_attr(not(test), expect(dead_code, reason = "only the classification test reads it"))]
-pub(crate) const READS: [&str; 15] = [
+pub(crate) const READS: [&str; 16] = [
     "app_info",
     "subscribe",
     "get_overview",
@@ -46,6 +47,7 @@ pub(crate) const READS: [&str; 15] = [
     "get_cleanups",
     "get_cleanup",
     "get_trash",
+    "demo_play",
 ];
 
 pub(crate) fn is_action(command: &str) -> bool {

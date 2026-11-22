@@ -12,6 +12,8 @@ import type {
   CleanupsPage,
   CleanupsQuery,
   Confirmation,
+  DemoOutcome,
+  DemoPlay,
   Dictionary,
   Event,
   FindingId,
@@ -44,6 +46,8 @@ export const COMMANDS = {
   cancelCleanup: 'cancel_cleanup',
   cancelScan: 'cancel_scan',
   confirmCleanup: 'confirm_cleanup',
+  demoFinished: 'demo_finished',
+  demoPlay: 'demo_play',
   discardCleanup: 'discard_cleanup',
   getAccessStatus: 'get_access_status',
   getCleanup: 'get_cleanup',
@@ -210,3 +214,9 @@ export const revealInTrash = (item: CleanupItemRef): Promise<void> => call('reve
 
 // The user chose to quit during a cleanup: it stops after the item in hand, then the app quits.
 export const quitAfterCleanup = (): Promise<void> => call('quitAfterCleanup');
+
+// Debug builds only: the scenario a demo plays, or `null` outside demo mode.
+export const demoPlay = (): Promise<DemoPlay | null> => call('demoPlay');
+
+// Debug builds only: the demo ended with `outcome`; the app writes the result and quits.
+export const demoFinished = (outcome: DemoOutcome): Promise<void> => call('demoFinished', { outcome });

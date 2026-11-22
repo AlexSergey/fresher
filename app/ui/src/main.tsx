@@ -18,8 +18,15 @@ if (inApp()) {
   document.documentElement.dataset.window = 'vibrant';
 }
 
+const store = createCoreStore();
+
 createRoot(root).render(
   <StrictMode>
-    <App store={createCoreStore()} />
+    <App store={store} />
   </StrictMode>,
 );
+
+// Debug builds only: the release bundle has no player, the chunk is not even imported.
+if (import.meta.env.DEV && inApp()) {
+  void import('./demo/start').then(({ startDemo }) => startDemo(store));
+}

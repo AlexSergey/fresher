@@ -15,7 +15,7 @@ use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
     MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection,
 };
-use fresher_sandbox::{Sandbox, World};
+use fresher_sandbox::{Sandbox, StatedSpace, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
 use fresher_system::{
     AppSearch, COMMAND_TIMEOUT, DeclaredSearch, MacFinderSettings, MacInstalledApps, ProcessCommandRunner,
@@ -169,7 +169,9 @@ impl SandboxPorts {
     /// states (a stand-in that knows nothing without one), the receipts and the macOS version its world states (none,
     /// and a version that fails, without them: never the Mac's), the facts its entries state, and the commands its
     /// world answers: a program it does not state answers not installed and is never run, with or without stated
-    /// tools; only `/usr/bin/open`, the system's interface (Show in Finder, System Settings), runs for real.
+    /// tools; only `/usr/bin/open`, the system's interface (Show in Finder, System Settings), runs for real. A demo
+    /// world that states its volume has that volume's space answered for every path (`StatedSpace`), so the app never
+    /// shows the developer's disk; which volume a path is on stays the Mac's.
     pub(crate) fn real(sandbox: &Sandbox) -> Result<Self, SandboxRefusal> {
         let world = World::read(sandbox).map_err(SandboxRefusal::World)?;
         let clock: Arc<dyn Clock> = match world.now() {
@@ -178,9 +180,13 @@ impl SandboxPorts {
         };
         // The Mac's access is never asked: the sandbox's world is not the Mac's (docs/hacks/).
         let access = access_of(&world, &sandbox.home(), Arc::new(UnknownAccess));
+        let volumes: Arc<dyn Volumes> = match world.volume() {
+            Some(volume) => Arc::new(StatedSpace::new(Arc::new(MacVolumes::new()), volume)),
+            None => Arc::new(MacVolumes::new()),
+        };
         Ok(Self {
             clock,
-            volumes: Arc::new(MacVolumes::new()),
+            volumes,
             open_files: Arc::new(MacOpenFiles::new()),
             running: Arc::new(world.running_apps()),
             commands: Arc::new(SandboxCommands {

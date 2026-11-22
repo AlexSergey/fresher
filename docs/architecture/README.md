@@ -60,7 +60,7 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 | `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
 | `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `logs` (the old log files and crash reports of the user's `~/Library/Logs`, one finding per file, group System); `dev-caches` (the package managers', Go's and Xcode's caches); `app-leftovers` (the data of apps no longer installed, group Apps); `app-caches` (the `Caches/<bundle id>` folders of installed apps, emptied while the app is closed, and the cache folders a table ties to an installed browser or web-engine app, group System); `downloads` (unfinished downloads, installers of installed apps, old macOS installers and big files not opened in `~/Downloads`, group Your files, only once the folder is allowed); `stale-projects` (the artifact folders of projects nothing changed in for a year, and the Rust build caches unused for a week, group Development; decided from the projects in `finish`); `local-ai-models` (the models of Hugging Face, LM Studio and Ollama, group Development; one finding per model, decided in `finish`; an Ollama model is one finding of several paths, its manifests and the layers no other model names); `unused-toolchains` (the rustup toolchains and, behind a switch off by default, the nvm Node versions nothing points at, group Development; decided in `finish` from the pointer and pin files it reads); `xcode` (Xcode's device support, previews, simulator caches and archives, group Development; four categories, decided in `finish` while Xcode and the Simulator are closed); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
-| `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos, store |
+| `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); also the demo worlds and the scenarios of the recordings (plan 038, exported to the UI with `ts-rs`); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos, store |
 | `fresher-e2e`         | `crates/e2e`     | end-to-end and golden tests of the core (tests only)                                                                                                                                    | anything      |
 | `fresher-app`         | `app/tauri`      | the composition root: real adapters, module registration, commands, the event channel                                                                                                   | anything      |
 
@@ -106,6 +106,11 @@ Rules of the layout:
   shows a banner naming the sandbox and listing what its world simulates (`Build::Sandbox.simulated`, a list of `Simulated`: running apps always, Spotlight,
   access and installs when the world states them: "Simulated: open apps, Spotlight, access, installs."; a development build outside one: "nothing
   can be removed outside a sandbox"; nothing in a release build). A release build has no such branch.
+- **Demo mode** (plan [038](../plans/038-demo-recordings/readme.md), a debug build only, `app/tauri/src/demo.rs`, beside
+  sandbox mode): `FRESHER_DEMO=<absolute scenario path>` with `FRESHER_SANDBOX` (refused without it) sizes and places
+  the window and registers two commands under `#[cfg(debug_assertions)]`: `demo_play` returns the scenario and the
+  private texts (and writes the window's rectangle for the recorder), `demo_finished` writes the result and ends the
+  app. Neither exists in a release build; the core is not involved.
 - **The development run record** (plan [026](../plans/026-dev-run-record/readme.md), debug builds only,
   `app/tauri/src/dev_runs/`): when `FRESHER_DEV_RUNS` names a folder (set by `npm run dev`), the composition begins a
   run; the app subscribes it to the engine before the last scan is restored and wraps the generated invoke handler, so
@@ -511,6 +516,14 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   to Scan when a shown category is no longer among the categories the core lists. The sidebar has Scan, Review,
   Cleanups and Settings and scrolls in a short window. When the focused element leaves the screen, the focus goes to the
   screen's heading (`screens/keep-focus.ts`).
+
+### The demo player
+
+`app/ui/src/demo/` (plan [038](../plans/038-demo-recordings/readme.md)) plays a scenario on the real interface for the
+recordings: a finder of targets by role and name, a drawn pointer, the steps, the player and its start. It is a lazy
+chunk imported in `main.tsx` only under `import.meta.env.DEV && inApp()`, so a release bundle has none of it (a check:
+`data-demo-player` is absent from `app/ui/dist`). It asks the shell through the one IPC module and does nothing outside
+demo mode.
 
 ### The window
 

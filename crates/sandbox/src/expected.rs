@@ -16,14 +16,22 @@ use crate::{
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
 /// it allows, refuses or has not been asked for, the facts its files state (which Finder never shows; times counted
 /// from `now`), its left-outs and where the storage map shows it; then the command that opens the app on the sandbox
-/// at `sandbox`. A case file left out of the sandbox is named after them, with the path it clashed on.
+/// at `sandbox`. A demo world lists only its scenery cases' names: nothing it shows is checked. A case file left out
+/// of the sandbox is named after them, with the path it clashed on.
 pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &Path, now: SystemTime) -> String {
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
     );
     for file in files {
+        if file.demo().is_some() {
+            let _ = write!(text, "\n## {}\n\nA demo world: what it shows is not checked.\n\n", file.feature());
+            for case in file.cases() {
+                let _ = writeln!(text, "- {}", case.name());
+            }
+            continue;
+        }
         let _ = write!(text, "\n## {}\n\nFrom `fixtures/sandboxes/{}.toml`.\n\n", file.feature(), file.feature());
-        let ordered = [CaseKind::Negative, CaseKind::Positive]
+        let ordered = [CaseKind::Negative, CaseKind::Positive, CaseKind::Scenery]
             .into_iter()
             .flat_map(|kind| file.cases().iter().filter(move |case| case.kind() == kind));
         for case in ordered {
@@ -563,6 +571,30 @@ reason = "in-use"
             );
             assert!(text.contains("From `fixtures/sandboxes/trial.toml`."));
             assert!(text.ends_with("```sh\nnpm run dev:sandbox -- /tmp/sandbox/trial\n```\n"));
+        }
+
+        #[test]
+        fn a_demo_world_lists_its_scenery_cases_and_checks_nothing() {
+            let world = "feature = \"developer-mac\"\n[demo]\nnow = 1795000000\nshows = [\"trial.caches\"]\n\
+                         [[case]]\nname = \"Xcode's build products\"\nkind = \"scenery\"\n\
+                         [[case.file]]\npath = \"home/Library/Developer/Atlas.bin\"\nsize = 4096\n\
+                         [[case]]\nname = \"a browser's cache\"\nkind = \"scenery\"\n\
+                         [[case.file]]\npath = \"home/Library/Caches/cache.bin\"\nage = \"3d\"\n";
+
+            let text = checklist(
+                &[CaseFile::parse(world).unwrap()],
+                &[],
+                Path::new("/private/tmp/fresher-demo/overview"),
+                super::now(),
+            );
+
+            assert_eq!(
+                text,
+                "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and \
+                 tick each case.\n\n## developer-mac\n\nA demo world: what it shows is not checked.\n\n\
+                 - Xcode's build products\n- a browser's cache\n\n## Open the app on it\n\n```sh\n\
+                 npm run dev:sandbox -- /private/tmp/fresher-demo/overview\n```\n"
+            );
         }
     }
 }

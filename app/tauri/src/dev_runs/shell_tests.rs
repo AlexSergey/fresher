@@ -201,7 +201,8 @@ mod positive {
     fn every_command_of_the_handler_is_an_action_or_a_read() {
         let source = include_str!("../lib.rs");
         let (_, after) = source.split_once("generate_handler![").unwrap();
-        let (list, _) = after.split_once(']').unwrap();
+        // The list ends at its own closing bracket; a `#[cfg(...)]` of a debug-only command holds one too.
+        let (list, _) = after.split_once("\n    ]").unwrap();
         let handled: BTreeSet<&str> = list
             .split(',')
             .map(str::trim)

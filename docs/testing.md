@@ -55,6 +55,8 @@ cleanups of a hundred items through the real journal.
 - Rust unit tests sit next to the code (`#[cfg(test)] mod tests { mod negative {…} mod positive {…} }`); integration
   tests in each crate's `tests/`. Helpers of an integration test go in a `#[cfg(test)]` module, so Clippy treats them
   as test code.
+- `fixtures/demos/` — the demo worlds (`<world>.toml`) and the scenarios (`scenarios/<name>.toml`) of plan 038; scanned
+  by `app/tauri/tests/demos.rs`, played by `npm run demo:check` ("Demo recordings").
 - `crates/testing` — shared test helpers: `FixtureTree` (a fake home folder from TOML), `TreeReport` (a deterministic
   listing for golden files), `FakeClock`, `FakeTrash`, `FakeCommandRunner`. The ports they fake (`Clock`, `Trash`,
   `CommandRunner`) live in `fresher-core`. For the cleanup ([`architecture/removal.md`](./architecture/removal.md)):
@@ -841,6 +843,23 @@ fails the run, naming the key. In `npm run sandbox -- all`, two files that set o
 refused, as a path written twice is. A settings file left from an earlier run, or written by the app, stays when the
 sandbox is regenerated; `rm -rf sandbox/<feature>` resets it.
 
+A case file may be a **demo world** (plan 038): a header `[demo]` makes it a believable made-up Mac for the recordings
+instead of a test. `now` (seconds since the Unix epoch, above 0 and not after the wall clock) is the world's own clock:
+the generator writes the files and `world.toml` at it, so ages in the picture never change; `sizes` is `"sparse"`
+(the default: a sparse file takes no disk, as in every other file) or `"as-declared"` (every sparse file of the world
+states an **allocated** size equal to its declared size, so gigabytes show as gigabytes); `shows` lists the category
+ids the world must offer (at least one, each a valid id, no duplicate). `[demo.volume]` (`name`, `capacity`, `used`,
+`free`; `used + free` at most `capacity`) states the disk the ring and the storage map show, in `world.toml`'s `[volume]`;
+two demo files stating different volumes are refused. A demo file has only cases of a third kind, `kind = "scenery"`:
+part of the picture, never checked by the autotest. A scenery case has no `expect`, `map`, `left-out` or `insight`
+and a demo file has no `module`; a scenery case outside a demo file, and a negative or positive case inside one, are
+refused. `EXPECTED.md` of a demo world lists its cases and says what they show is not checked. The stated `allocated`
+size is a fact of `Stated` (`crates/testing`), written under an `[[entry]]` of `world.toml` only by a demo world: sandbox
+mode reports it instead of the disk's allocated size, the cleaner still reads the disk, and nothing of it exists outside
+a sandbox. `[volume]` is answered by `StatedSpace` (sandbox mode and the demo scan test) for `Volumes::space`; identify
+and available stay the Mac's. Demo worlds live in `fixtures/demos/<world>.toml`; the generator takes one (or any case
+file) by path, `npm run sandbox -- fixtures/demos/developer-mac.toml`, into `sandbox/<file stem>/`.
+
 ### Sandbox mode
 
 `npm run dev:sandbox -- <feature|path> [--real-trash]` (`scripts/sandbox-dev.ts`) generates `sandbox/<feature>/` when it
@@ -856,6 +875,52 @@ permission grants are apart from the release's. `npm run dev:sandbox` and `npm r
 running: that window keeps its own mode (its banner, or the lack of one, shows which) and the log warns; quit it first.
 Before a plan that adds or changes a module or a category is done, its finish runs `npm run dev:sandbox -- <feature>`
 and walks `EXPECTED.md` by hand.
+
+### Demo recordings
+
+Plan [038](./plans/038-demo-recordings/readme.md): a command plays a scenario in the real app on a demo world and
+records the window. Development builds only; nothing of it is in a release bundle.
+
+**The scenario** is `fixtures/demos/scenarios/<name>.toml`: `world` (a file of `fixtures/demos/`), `window` (`width`
+900 to 1600, `height` 600 to 1000, logical pixels) and `[[step]]` entries, each with exactly one key: `click`, `hover`,
+`scroll` (a target and `by`, pixels, not 0), `wait` (a named state, `scan-finished` or `cleanup-finished`, or a target
+that appears) and `pause` (1 to 10 000 ms; a scenario's pauses add up to at most 20 000 ms). A target is `{ role,
+name }` (the whole accessible name) or `{ role, name-start }`, the role one of `button`, `link`, `tab`, `checkbox`,
+`switch`, `heading`, `region`, `dialog`, `row`. `fresher-sandbox` parses it (`Scenario::parse`) and refuses a scenario
+naming the step; a test traces every target to a text of the UI, the core or a module, and refuses a step on the
+permanent delete. The types are exported to the UI with `ts-rs`.
+
+**Demo mode**: `fresher-sandbox demo <scenario> [--into <dir>]` writes the scenario's world into a **new** folder,
+`/private/tmp/fresher-demo/<scenario>-<n>` (the first free `n`), and prints it; an existing `--into` is refused and
+nothing is ever removed or overwritten (old folders stay until macOS clears `/private/tmp`). The app, started with
+`FRESHER_SANDBOX=<that folder>` and `FRESHER_DEMO=<absolute path of the scenario>` (debug builds only; `FRESHER_DEMO`
+without a sandbox stops the start), sizes the window to the scenario, places it at (80, 80) and, through two commands
+(`demo_play`, `demo_finished`), writes two files at the sandbox's root for the recorder: `demo-window.json` (the
+window's rectangle on its screen in physical pixels and the scale) and `demo-result.json` (`finished` with the elapsed
+milliseconds, or `failed` with the step and the reason), then exits 0 or 1.
+
+**The player** (`app/ui/src/demo/`, imported only under `import.meta.env.DEV` inside the app): waits 1500 ms (lead-in),
+then plays each step with a drawn pointer that glides to its target in 600 ms. A target must match exactly one visible
+element within 5 s, a named state within 60 s. After each step it checks the page's text for the private texts (the real
+home's path and the sandbox's, `/tmp` alias included) and fails on a hit. It refuses at run time any control named like
+the permanent delete, `Delete` or `Remove` (a prefix match, so it over-refuses). The build banner is hidden while a demo
+plays.
+
+**Commands** (`scripts/demo-record.ts`; both need `cargo`, `node` and **no other development window running**:
+single-instance hands the launch to it):
+
+- `npm run demo:check -- <scenario|all>` plays without capturing. It needs no permission. Run it before a release and
+  whenever a scenario or a screen it touches changes. It prints `played in N s` and fails naming the step.
+- `npm run demo:record -- <scenario|all>` plays and captures the main screen with `ffmpeg` (`avfoundation`; the
+  terminal needs the Screen Recording permission), crops the window, and writes `NO_COMMIT/demo/<scenario>.mp4`
+  (full resolution, out of git) and `assets/demo/<scenario>.gif` (800 px, 12 frames a second, at most 20 s and 5 MiB; a
+  larger one is refused and not written). Temporary files are in `NO_COMMIT/demo/tmp/`. `ffmpeg` is a development tool
+  ([`dependencies.md`](./dependencies.md)); the 5 MiB limit of the staged-files guard is in
+  [`hacks/`](./hacks/README.md).
+
+The demo worlds' scan test: `cargo nextest run -p fresher-app --test demos` scans every world of `fixtures/demos/` in
+sandbox mode with every module and fails when a category of its `shows` offers nothing, so a world that stops showing a
+module fails in CI. The scripts' tests (`scripts/demo-record.test.ts`) use a fake spawner: nothing is captured.
 
 ### The development run record
 
@@ -893,6 +958,8 @@ record against the disk, read-only, and writes `<record>.check.md` beside it (ne
 | `npm run dev`                  | the development build on the real Mac, recorded; every cleanup a dry run              |
 | `npm run dev:sandbox -- <feature>` | the development build in sandbox mode on `sandbox/<feature>/` (`--real-trash`) |
 | `npm run dev-runs:check -- <record.json>` | checks a development run record against the disk, writes `<record>.check.md` |
+| `npm run demo:check -- <scenario\|all>` | plays a demo scenario in the app without capturing ("Demo recordings") |
+| `npm run demo:record -- <scenario\|all>` | plays it and records `assets/demo/<scenario>.gif` and `NO_COMMIT/demo/<scenario>.mp4` |
 | `npm run sandbox:test`         | the autotest of every case file of `fixtures/sandboxes/` ("Sandboxes")                |
 | `npm run build:e2e -w app/ui`  | the app and the gallery into `app/ui/dist-e2e/` (the e2e suite builds it itself)      |
 | `npm run test:perf -w app/ui`  | the performance spec, headed, by hand on a quiet Mac                                  |

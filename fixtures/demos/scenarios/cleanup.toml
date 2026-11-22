@@ -1,0 +1,45 @@
+# A cleanup, start to finish: scan, tick the largest Safe category, review it, confirm the move to the Trash (never
+# the permanent choice), read the result, open Cleanups and its cleanup, put everything back. Screens: Scan, Review,
+# the confirm dialog, the cleanup's result, Cleanups, one cleanup. About 9 s of pauses.
+# The scenario's wait ends at the result; putting back has no state a target can name, so a pause covers it.
+world = "developer-mac"
+window = { width = 1100, height = 720 }
+
+[[step]]
+pause = 600
+[[step]]
+click = { role = "button", name = "Scan" }
+[[step]]
+wait = "scan-finished"
+[[step]]
+pause = 800
+[[step]]
+click = { role = "checkbox", name = "Select Xcode build data" }
+[[step]]
+pause = 600
+[[step]]
+click = { role = "button", name = "Review" }
+[[step]]
+pause = 1200
+[[step]]
+click = { role = "button", name = "Move to Trash…" }
+[[step]]
+pause = 1200
+[[step]]
+click = { role = "button", name = "Move to Trash" }
+[[step]]
+wait = "cleanup-finished"
+[[step]]
+pause = 1500
+[[step]]
+click = { role = "button", name = "Cleanups" }
+[[step]]
+pause = 800
+[[step]]
+click = { role = "button", name-start = "Cleanup of" }
+[[step]]
+pause = 800
+[[step]]
+click = { role = "button", name = "Put back all still in the Trash" }
+[[step]]
+pause = 1500

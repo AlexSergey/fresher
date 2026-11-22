@@ -9,15 +9,18 @@ use fresher_core::{
 use fresher_testing::{AppBundle, TreeDescription, time_at_age};
 use serde::{Deserialize, Serialize};
 
-use crate::CaseError;
+use crate::demo::RawDemo;
 use crate::world::{StatedTool, ToolProblem};
+use crate::{CaseError, Demo};
 
 /// The cases of one feature (`fixtures/sandboxes/<feature>.toml`), checked when parsed: names unique, negatives
-/// first, every path plain and inside the sandbox, no path written by two cases, every positive's item its own.
+/// first, every path plain and inside the sandbox, no path written by two cases, every positive's item its own. A
+/// demo world (`fixtures/demos/<world>.toml`) has a `[demo]` header, no module and scenery cases only.
 #[derive(Clone, Debug)]
 pub struct CaseFile {
     feature: String,
     module: Option<ModuleId>,
+    demo: Option<Demo>,
     /// The file's `[settings]`: the values of the modules' settings, shared by every case of the file.
     settings: BTreeMap<String, toml::Value>,
     cases: Vec<Case>,
@@ -64,6 +67,8 @@ pub struct Case {
 pub enum CaseKind {
     Negative,
     Positive,
+    /// A part of a demo world: what it shows is not checked.
+    Scenery,
 }
 
 /// What a positive case expects: the finding's item, its category and danger, and what a cleanup does with it.
@@ -125,6 +130,7 @@ pub enum AfterCleanup {
 struct RawCaseFile {
     feature: String,
     module: Option<String>,
+    demo: Option<RawDemo>,
     #[serde(default)]
     settings: BTreeMap<String, toml::Value>,
     #[serde(default, rename = "case")]
@@ -287,6 +293,9 @@ impl CaseFile {
         if let Some(module) = &raw.module {
             ModuleId::check(module).map_err(|source| CaseError::Module { module: module.clone(), source })?;
         }
+        if raw.demo.is_some() && raw.module.is_some() {
+            return Err(CaseError::DemoWithModule { feature: raw.feature });
+        }
         check_settings(&raw.settings)?;
         let mut names = HashSet::new();
         let mut written: HashMap<PathBuf, String> = HashMap::new();
@@ -294,6 +303,13 @@ impl CaseFile {
         let mut insights: HashMap<String, String> = HashMap::new();
         let mut cases = Vec::with_capacity(raw.cases.len());
         for raw_case in raw.cases {
+            match (raw.demo.is_some(), raw_case.kind) {
+                (true, CaseKind::Negative | CaseKind::Positive) => {
+                    return Err(CaseError::CheckedCaseInDemo { case: raw_case.name });
+                }
+                (false, CaseKind::Scenery) => return Err(CaseError::SceneryOutsideDemo { case: raw_case.name }),
+                (true, CaseKind::Scenery) | (false, CaseKind::Negative | CaseKind::Positive) => {}
+            }
             let (case, pending) = Case::from_raw(raw_case)?;
             if !names.insert(case.name.clone()) {
                 return Err(CaseError::DuplicateName { case: case.name });
@@ -303,7 +319,8 @@ impl CaseFile {
                 CaseKind::Negative if seen_positive => {
                     return Err(CaseError::PositiveBeforeNegative { case: case.name });
                 }
-                CaseKind::Negative => {}
+                // A demo file has scenery only: there is no order to keep.
+                CaseKind::Negative | CaseKind::Scenery => {}
             }
             for insight in &case.insights {
                 if let Some(other) = insights.insert(insight.identity.clone(), case.name.clone()) {
@@ -324,6 +341,7 @@ impl CaseFile {
             .module
             .map(|module| ModuleId::new(leak(module.clone())).map_err(|source| CaseError::Module { module, source }))
             .transpose()?;
+        let demo = raw.demo.map(|demo| Demo::from_raw(&raw.feature, demo)).transpose()?;
         let cases = cases
             .into_iter()
             .map(|(mut case, pending)| {
@@ -336,7 +354,7 @@ impl CaseFile {
                 Ok(case)
             })
             .collect::<Result<_, CaseError>>()?;
-        Ok(Self { feature: raw.feature, module, settings: raw.settings, cases })
+        Ok(Self { feature: raw.feature, module, demo, settings: raw.settings, cases })
     }
 
     /// Checks every expectation against the categories and the declared problems of the modules: the category
@@ -406,6 +424,11 @@ impl CaseFile {
         self.module
     }
 
+    /// The `[demo]` header of a demo world; `None` for a test's case file.
+    pub const fn demo(&self) -> Option<&Demo> {
+        self.demo.as_ref()
+    }
+
     /// The cases, negatives first.
     pub fn cases(&self) -> &[Case] {
         &self.cases
@@ -467,10 +490,15 @@ impl Case {
         check_apps(&name, &tree)?;
         let running = tree.apps().iter().zip(running).filter(|(_, running)| *running).map(|(app, _)| app.path.clone());
         let running = running.collect();
+        if raw.kind == CaseKind::Scenery
+            && (raw.expect.is_some() || raw.map.is_some() || !raw.left_out.is_empty() || !insights.is_empty())
+        {
+            return Err(CaseError::SceneryWithExpectation { case: name });
+        }
         let expect = match (raw.kind, raw.expect) {
             (CaseKind::Negative, Some(_)) => return Err(CaseError::NegativeWithExpect { case: name }),
             (CaseKind::Positive, None) => return Err(CaseError::PositiveWithoutExpect { case: name }),
-            (CaseKind::Negative, None) => None,
+            (CaseKind::Negative | CaseKind::Scenery, _) => None,
             (CaseKind::Positive, Some(raw)) => Some(PendingExpectation::from_raw(&name, &tree, raw)?),
         };
         let map = raw.map.map(|map| MapExpectation::from_raw(&name, raw.kind, &tree, map)).transpose()?;
@@ -515,7 +543,8 @@ impl Case {
         &self.name
     }
 
-    /// Whether the case is negative (never offered) or positive (offered and cleaned as expected).
+    /// Whether the case is negative (never offered), positive (offered and cleaned as expected) or scenery (a part of
+    /// a demo world, not checked).
     pub const fn kind(&self) -> CaseKind {
         self.kind
     }
@@ -614,7 +643,9 @@ impl MapExpectation {
     fn from_raw(case: &str, kind: CaseKind, tree: &TreeDescription, raw: RawMap) -> Result<Self, CaseError> {
         match (kind, raw.part) {
             (CaseKind::Negative, MapPartName::YourFolders) | (CaseKind::Positive, MapPartName::Explained) => {}
-            (_, part) => return Err(CaseError::MapOnTheWrongKind { case: case.into(), part }),
+            (CaseKind::Negative | CaseKind::Positive | CaseKind::Scenery, part) => {
+                return Err(CaseError::MapOnTheWrongKind { case: case.into(), part });
+            }
         }
         let at = match raw.at {
             Some(at) => at,
@@ -917,13 +948,13 @@ fn module_of(id: &str) -> &str {
 }
 
 /// Checks a category id `<module>.<name>` read from a case file, without keeping it.
-fn check_category(id: &str) -> Result<(), IdError> {
+pub(crate) fn check_category(id: &str) -> Result<(), IdError> {
     ModuleId::check(module_of(id))?;
     CategoryId::check(module_of(id), id)
 }
 
 /// The category id `<module>.<name>` of a checked, kept id.
-fn category_id(id: &'static str) -> Result<CategoryId, IdError> {
+pub(crate) fn category_id(id: &'static str) -> Result<CategoryId, IdError> {
     CategoryId::new(ModuleId::new(module_of(id))?, id)
 }
 
@@ -936,7 +967,7 @@ fn merge_trees<'a>(mut cases: impl Iterator<Item = &'a Case>) -> Result<TreeDesc
 
 /// The core's ids hold `&'static str`; an id read from a case file lives for the rest of the process. Only the ids of
 /// an accepted file are kept, and a dev-only tool reads a handful of them, so the leak is bounded.
-fn leak(text: String) -> &'static str {
+pub(crate) fn leak(text: String) -> &'static str {
     Box::leak(text.into_boxed_str())
 }
 

@@ -1,0 +1,413 @@
+# A demo world: a believable developer's Mac for the demo recordings (plan 038). Nothing in it is checked but `shows`:
+# the category ids the scan of the whole app must offer (`app/tauri/tests/demos.rs` scans it with every module and fails
+# naming a category that offers nothing). Every case is scenery. The files are sparse and `sizes = "as-declared"` states
+# each one's declared size as the space it takes, so the app shows tens of gigabytes that cost no disk; `[demo.volume]`
+# states the disk, whose used space exceeds the world's total by about 300 GB (the rest of the Mac). Every name is made
+# up: no real person, company or product; the apps' bundle ids are under `com.example.` or are those of the tools the
+# app cleans.
+#
+# Left out on purpose: the `xcode`, `docker`, `trash`, `jetbrains` and Ollama stories (their shapes need an external
+# program's answer, a Trash the sandbox keeps apart, or multi-file stores whose sizes must agree, which a sparse world
+# does not model); the `stale-projects` other kinds of build output; and a permission card (access is stated granted
+# for every guarded folder the modules read, so none shows).
+feature = "developer-mac"
+
+[settings]
+"unused-toolchains.node-versions" = true
+
+[demo]
+now = 1795000000
+sizes = "as-declared"
+shows = [
+  "dev-caches.xcode-derived-data",
+  "dev-caches.npm",
+  "dev-caches.homebrew",
+  "dev-caches.cargo",
+  "dev-caches.gradle",
+  "app-caches.library-caches",
+  "app-caches.browsers",
+  "app-leftovers.caches",
+  "app-leftovers.settings",
+  "app-leftovers.data",
+  "local-ai-models.lm-studio",
+  "unused-toolchains.rust",
+  "unused-toolchains.node",
+  "downloads.installers",
+  "downloads.unfinished",
+  "downloads.large-untouched",
+  "downloads.macos-installers",
+  "logs.app-logs",
+  "logs.crash-reports",
+  "stale-projects.dependencies",
+  "temp.old-files",
+]
+
+[demo.volume]
+name = "Macintosh HD"
+capacity = 494384795648
+used = 444000000000
+free = 50384795648
+
+[[case]]
+name = "Xcode build products of three projects"
+kind = "scenery"
+[[case.app]]
+path = "Applications/Xcode.app"
+bundle-id = "com.apple.dt.Xcode"
+name = "Xcode"
+version = "16.2"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Harbor-bcdefghijklmnopqrstuvwxyzabc/info.plist"
+size = 256
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Harbor-bcdefghijklmnopqrstuvwxyzabc/Build/Products/Debug/Harbor.app/Harbor"
+size = 18400000000
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Harbor-bcdefghijklmnopqrstuvwxyzabc/Index.noindex/DataStore/records"
+size = 2100000000
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Lantern-cdefghijklmnopqrstuvwxyzabcd/info.plist"
+size = 256
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Lantern-cdefghijklmnopqrstuvwxyzabcd/Build/Products/Debug/Lantern.app/Lantern"
+size = 11200000000
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Lantern-cdefghijklmnopqrstuvwxyzabcd/Index.noindex/DataStore/records"
+size = 1300000000
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Pebble-defghijklmnopqrstuvwxyzabcde/info.plist"
+size = 256
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/DerivedData/Pebble-defghijklmnopqrstuvwxyzabcde/Build/Products/Debug/Pebble.app/Pebble"
+size = 5600000000
+
+[[case]]
+name = "npm, Homebrew, Cargo and Gradle caches"
+kind = "scenery"
+[[case.file]]
+path = "home/.npm/_cacache/index-v5/ab/cd/entry"
+size = 512
+fill = "data"
+[[case.file]]
+path = "home/.npm/_cacache/content-v2/sha512/ab/cd/blob"
+size = 4700000000
+[[case.file]]
+path = "home/Library/Caches/Homebrew/api/formula.jws.json"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/Homebrew/downloads/0123abcd--toolbox-3.2.bottle.tar.gz"
+size = 2900000000
+[[case.file]]
+path = "home/.cargo/registry/CACHEDIR.TAG"
+fill = "cachedir-tag"
+[[case.file]]
+path = "home/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/bundle-4.1.0.crate"
+size = 5300000000
+[[case.file]]
+path = "home/.gradle/caches/CACHEDIR.TAG"
+fill = "cachedir-tag"
+[[case.file]]
+path = "home/.gradle/caches/modules-2/files-2.1/libs.jar"
+size = 8700000000
+[[case.file]]
+path = "home/.gradle/caches/modules-2/modules-2.lock"
+size = 17
+fill = "data"
+
+[[case]]
+name = "the caches of three installed apps and two browsers"
+kind = "scenery"
+[[case.app]]
+path = "Applications/Scribe.app"
+bundle-id = "com.example.Scribe"
+name = "Scribe"
+version = "1.8"
+[[case.app]]
+path = "Applications/Player.app"
+bundle-id = "com.example.Player"
+name = "Player"
+version = "3.2"
+[[case.app]]
+path = "Applications/Atlas.app"
+bundle-id = "com.example.Atlas"
+name = "Atlas"
+version = "2.0"
+[[case.app]]
+path = "Applications/Chromium.app"
+bundle-id = "org.chromium.Chromium"
+name = "Chromium"
+version = "131.0"
+[[case.app]]
+path = "Applications/Firefox.app"
+bundle-id = "org.mozilla.firefox"
+name = "Firefox"
+version = "133.0"
+[[case.file]]
+path = "home/Library/Caches/com.example.Scribe/Cache.db"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/com.example.Scribe/fsCachedData/a"
+size = 1800000000
+[[case.file]]
+path = "home/Library/Caches/com.example.Player/Cache.db"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/com.example.Player/fsCachedData/a"
+size = 3900000000
+[[case.file]]
+path = "home/Library/Caches/com.example.Atlas/Cache.db"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/com.example.Atlas/fsCachedData/a"
+size = 700000000
+[[case.file]]
+path = "home/Library/Caches/Chromium/Default/Cache/Cache_Data/data_0"
+size = 2600000000
+[[case.file]]
+path = "home/Library/Caches/Chromium/Default/Code Cache/js/index"
+size = 600000000
+[[case.file]]
+path = "home/Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2/entries/x"
+size = 1400000000
+
+[[case]]
+name = "the leftovers of two removed apps"
+kind = "scenery"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Sketchpad.savedState"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Tunes.savedState"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Sketchpad"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Sketchpad/blobs"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Application Support/com.example.Tunes"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Sketchpad.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Tunes.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Sketchpad/Cache.db"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Sketchpad/blobs/a"
+size = 1400000000
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Preferences/com.example.Sketchpad.plist"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Application Support/com.example.Tunes/library.db"
+size = 3200000000
+age = "40d"
+changed = "40d"
+
+[[case]]
+name = "two local AI models"
+kind = "scenery"
+[[case.file]]
+path = "home/.lmstudio/models/example-labs/chat-7b-q4/model.gguf"
+size = 7100000000
+[[case.file]]
+path = "home/.lmstudio/models/example-labs/coder-8b-q4/model.gguf"
+size = 4800000000
+
+[[case]]
+name = "an old Node version and an old Rust toolchain"
+kind = "scenery"
+access = { desktop = "granted", documents = "granted", downloads = "granted" }
+[[case.file]]
+path = "home/.rustup/settings.toml"
+text = "default_toolchain = \"1.82.0-aarch64-apple-darwin\"\n"
+[[case.file]]
+path = "home/.rustup/toolchains/1.82.0-aarch64-apple-darwin/bin/rustc"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.rustup/toolchains/1.70.0-aarch64-apple-darwin/bin/rustc"
+size = 1600000000
+[[case.file]]
+path = "home/.nvm/alias/default"
+text = "22\n"
+[[case.file]]
+path = "home/.nvm/versions/node/v22.12.0/bin/node"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/.nvm/versions/node/v16.20.2/bin/node"
+size = 350000000
+
+[[case]]
+name = "old installers and a big disk image in Downloads"
+kind = "scenery"
+access = { downloads = "granted" }
+macos = "15.4"
+[[case.app]]
+path = "Applications/Folio.app"
+bundle-id = "com.example.Folio"
+name = "Folio"
+version = "4.1"
+[[case.file]]
+path = "home/Downloads/Folio-4.1.dmg"
+size = 320000000
+age = "20d"
+changed = "20d"
+[[case.file]]
+path = "home/Downloads/render.mp4.crdownload"
+size = 1100000000
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Downloads/dev-vm-2024.iso"
+size = 14200000000
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Downloads/Install macOS Sonoma.app/Contents/Info.plist"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+
+[[case]]
+name = "old logs"
+kind = "scenery"
+[[case.file]]
+path = "home/Library/Logs/Scribe/scribe.1.log"
+size = 640000000
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "home/Library/Logs/DiagnosticReports/Scribe-2026-10-01-101010.ips"
+size = 65536
+fill = "data"
+age = "30d"
+changed = "30d"
+
+[[case]]
+name = "a stale project"
+kind = "scenery"
+[[case.dir]]
+path = "home/Code"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/.git"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/.git/refs"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/.git/refs/heads"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/node_modules"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/node_modules/react"
+age = "400d"
+changed = "400d"
+[[case.dir]]
+path = "home/Code/old-web/src"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/package.json"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/src/index.ts"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/.git/refs/heads/main"
+size = 4096
+fill = "data"
+age = "400d"
+changed = "400d"
+[[case.file]]
+path = "home/Code/old-web/node_modules/react/index.js"
+size = 3200000000
+age = "400d"
+changed = "400d"
+
+[[case]]
+name = "temporary files"
+kind = "scenery"
+[[case.file]]
+path = "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
+size = 900000000
+age = "30d"
+changed = "30d"
+[[case.file]]
+path = "private/tmp/old-build.log"
+size = 1100000000
+age = "10d"
+changed = "10d"
+
+[[case]]
+name = "the user's own files that are never offered"
+kind = "scenery"
+[[case.file]]
+path = "home/Documents/Taxes/2025/return.pdf"
+size = 18000000
+[[case.file]]
+path = "home/Documents/Work/Designs/archive.zip"
+size = 2600000000
+[[case.file]]
+path = "home/Pictures/Photos Library.photoslibrary/originals/0/IMG_0001.heic"
+size = 17800000000
+[[case.file]]
+path = "home/Movies/Holiday/Cut.mov"
+size = 9400000000
+[[case.file]]
+path = "home/Music/Library/Albums/mix.flac"
+size = 3100000000
+[[case.file]]
+path = "home/Desktop/notes.md"
+size = 1000000

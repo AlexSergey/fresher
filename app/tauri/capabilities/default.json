@@ -38,6 +38,8 @@
     "allow-get-trash",
     "allow-open-trash",
     "allow-quit-after-cleanup",
+    "allow-demo-play",
+    "allow-demo-finished",
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize"
   ]

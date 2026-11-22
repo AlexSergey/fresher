@@ -31,7 +31,7 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, cleaner, core, engine, macos, module-app-caches, module-app-leftovers, module-demo, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-logs, module-stale-projects, module-temp, module-trial, module-unused-toolchains, module-xcode, rules, sandbox, scanner, store, system, testing |
 | `toml`                         | 1.2.1   | MIT OR Apache-2.0         | module-app-caches, module-app-leftovers, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-stale-projects, module-unused-toolchains, module-xcode, rules, sandbox, testing |
 | `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, module-downloads, scanner, store, system                        |
-| `ts-rs`                        | 12.0.1  | MIT                       | app, core                                                                           |
+| `ts-rs`                        | 12.0.1  | MIT                       | app, core, sandbox                                                                  |
 
 The full tree is `Cargo.lock`: 510 packages for every platform, our own crates included. Every licence in it is on the
 allowlist, or is a choice (`A OR B`) that includes an allowed one, except the MPL-2.0 crates that Tauri needs:
@@ -158,3 +158,8 @@ Installed once per machine ([`quality.md`](./quality.md), "Setting up a machine"
 | `typos-cli`      | 1.52.2   | Apache-2.0 OR MIT | spelling                                              |
 | `taplo`          | 0.10.0   | MIT               | TOML formatting                                       |
 | `actionlint`     | 1.7.12   | MIT               | GitHub Actions workflows                              |
+| `ffmpeg`         | 7.1.1    | GPL-2.0-or-later  | `npm run demo:record` only; never shipped             |
+
+`ffmpeg` is installed by the developer (`brew install ffmpeg`), not by the repository. 7.1.1 is the Homebrew build
+checked on 2026-11-22; its licence is GPL-2.0-or-later as Homebrew builds it (LGPL-2.1-or-later without
+`--enable-gpl`). Only `npm run demo:record` uses it, to encode the recordings; it is never shipped.

@@ -1,0 +1,31 @@
+/*
+ * The pointer of a demo: an arrow drawn over the page, which glides to what the scenario clicks. It never takes an
+ * event, so the page under it behaves as it does for the user.
+ */
+@layer components {
+  .pointer {
+    position: fixed;
+    z-index: 2147483647;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+    transition: transform 600ms ease-in-out;
+  }
+
+  .arrow {
+    width: 100%;
+    height: 100%;
+    fill: var(--text-primary);
+    stroke: var(--surface-raised);
+    stroke-linejoin: round;
+    stroke-width: 1.25;
+    transform-origin: 3px 2px;
+    transition: transform 80ms ease-out;
+  }
+
+  .pressed {
+    transform: scale(0.8);
+  }
+}

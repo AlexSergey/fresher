@@ -36,6 +36,7 @@ Before planning or implementing anything, read:
 | `app/ui/`    | the user interface                                                  | TypeScript, React, Vite   |
 | `fixtures/`  | small fake file trees and golden reports used by tests              | —                         |
 | `scripts/`   | repository guards run by the git hooks                              | TypeScript (Node) / shell |
+| `assets/`    | the demo GIFs and images the README uses (`assets/demo/*.gif`)      | binary media              |
 | `docs/`      | ALL documentation: goal, rules, architecture, categories, plans     | Markdown                  |
 | `NO_COMMIT/` | local experiments and scratch work; ignored by git, never committed | anything                  |
 

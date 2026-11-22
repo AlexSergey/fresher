@@ -142,6 +142,22 @@ pub enum CaseError {
     /// Two case files set one setting to different values: a sandbox has one value.
     #[error("the setting `{key}` is set to different values by two case files; a sandbox has one")]
     SettingTwice { key: String },
+    /// A demo world names a `module`: it shows every module at once.
+    #[error("the case file `{feature}` is a demo world: it shows every module, so it names no `module`")]
+    DemoWithModule { feature: String },
+    /// A negative or positive case in a demo world, whose cases are scenery only.
+    #[error("case \"{case}\": a demo world has scenery cases only; give it `kind = \"scenery\"`")]
+    CheckedCaseInDemo { case: String },
+    /// A scenery case in a case file without a `[demo]` header.
+    #[error("case \"{case}\": a scenery case belongs to a demo world; its case file needs a `[demo]` header")]
+    SceneryOutsideDemo { case: String },
+    /// A scenery case with `[case.expect]`, `[case.map]`, `[[case.left-out]]` or `[[case.insight]]`: nothing it shows
+    /// is checked.
+    #[error("case \"{case}\": a scenery case is not checked; remove its `expect`, `map`, `left-out` and `insight`")]
+    SceneryWithExpectation { case: String },
+    /// The `[demo]` header breaks a check; the reason names the field.
+    #[error("the `[demo]` header of `{feature}` is not valid: {reason}")]
+    Demo { feature: String, reason: String },
     /// The cases together break a check of the tree, such as the fill cap of a sandbox.
     #[error("the cases do not make one sandbox: {source}")]
     Sandbox { source: FixtureError },
@@ -177,6 +193,9 @@ pub enum SandboxError {
     /// Two case files write one path into one sandbox.
     #[error("the path {path} is written by both `{first}` and `{second}`")]
     PathWrittenTwice { path: PathBuf, first: String, second: String },
+    /// Two demo worlds state different volumes: one sandbox is on one disk.
+    #[error("the demo worlds state two volumes, {first} and {second}; a sandbox is on one")]
+    VolumesDiffer { first: String, second: String },
     /// Two cases state different macOS versions: one sandbox has one.
     #[error("the cases state two macOS versions, {first} and {second}; a sandbox has one")]
     MacosVersions { first: String, second: String },

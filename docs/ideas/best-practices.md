@@ -121,7 +121,7 @@ The same problem on other operating systems gives ideas that carry over to macOS
 25. **Empty a cache folder, keep the folder.**
 26. **Hard-blocked user folders** — the home folder and its standard folders can never be removed as a whole, a guard
     below every rule.
-27. **Demo mode and automatic screenshots** — made-up data for recordings, tests and an always-current README.
+27. **Demo mode and automatic screenshots** — made-up data for recordings, tests and an always-current README. Recordings are built (plan [038](../plans/038-demo-recordings/readme.md)); automatic screenshots stay an idea.
 28. **"Safe, but unticked"** — safe categories whose rebuild costs time are offered, not pre-selected (the Metal shader
     cache on macOS).
 29. **A read-only scan report** the user can attach to a bug report.
