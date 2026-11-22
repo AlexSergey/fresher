@@ -291,6 +291,17 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] Ignore one item, then the category, then the module; restore each.
 - [ ] `npm run dev:sandbox -- jetbrains` and `-- app-leftovers`: their logs are still offered by their own modules only.
 
+### 1.16 Browser and web-engine caches ([034/03/01](./plans/034-browser-caches/03-finish/01-docs-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/app-caches-browsers && npm run dev:sandbox -- app-caches-browsers`. Scan; walk `EXPECTED.md`,
+      negatives first: nothing of a negative is offered by `app-caches`; Chromium's three caches and Redis Insight's
+      `Cache` are offered at Low, titled `Chromium, Default: Cache` and the like.
+- [ ] The storage map: `Profile 2` in your folders, the caches in Chromium's line.
+- [ ] Select everything; confirm to the Trash. Each cache folder is still there and empty. Cleanups, put back:
+      every entry is back in its own folder.
+- [ ] `npm run dev:sandbox -- app-caches-browsers-open`: Chrome's two caches are kept "This app, or a part of it, is
+      open..."; Redis Insight's `GPUCache` is offered.
+
 ### 1.14 The scan screen and ignoring one item ([027/04/02](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md), [028/02/02](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md))
 
 - [ ] `rm -rf sandbox/trial && npm run dev:sandbox -- trial` (and `app-leftovers` for the choices). Walk the boxes of 027/04/02 "By the user": the sidebar,
@@ -596,6 +607,24 @@ find ~/Library/Logs -type f -mtime +7 -exec ls -lS {} + | head -10
 - [ ] The largest ten findings, looked at read-only: none is state an app reads back.
 - [ ] How many findings the Mac shows and whether Details stays usable; the scan time beside plan 030's.
 
+### 2.14 Browser and web-engine caches ([034/03/01](./plans/034-browser-caches/03-finish/01-docs-and-conclusions.md))
+
+`npm run dev`, a scan of `~` (a dry run on the real Mac), with Chrome, Chromium and Firefox closed. Compare with this
+read-only command:
+
+```sh
+du -sh ~/Library/Caches/Google/Chrome/*/{Cache,"Code Cache"} ~/Library/Caches/Chromium/*/{Cache,"Code Cache"} \
+  ~/Library/Caches/Firefox/Profiles/*/{cache2,startupCache} 2>/dev/null
+```
+
+- [ ] Every offered browser cache is checked against `du`; its title names the right browser, profile and folder.
+- [ ] With Chrome open, its caches are left out; quit it and rescan: they are offered.
+- [ ] Nothing under `Application Support/Google`, `Application Support/Firefox` or `Application Support/Chromium` is
+      offered; `~/Library/Caches/Google/Chrome-headless` is not offered.
+- [ ] Facts not verified here: Redis Insight's caches with the app open and closed; whether a browser accepts its
+      emptied `Cache` folder on the next start without a warning (a release build, once, Chrome and Firefox);
+      Firefox's `startupCache` emptied while the profile is closed.
+
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 
 Scan time is compared once per module generation, not per plan; do it with the baseline worktrees of section 4.2, since
@@ -880,6 +909,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)            | pending                        | 1.11, 2.10 |
 | [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)            | pending                        | 1.12, 2.11 |
 | [030/03/02 runs and conclusions](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md)      | pending                        | 1.13, 2.12    |
+| [034/03/01](./plans/034-browser-caches/03-finish/01-docs-and-conclusions.md) | pending | 1.16, 2.14 |
 | [027/04/02 checks and the walk](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md)           | pending                        | 1.14          |
 | [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)            | pending                        | 1.14          |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |

@@ -163,6 +163,15 @@ cleanups of a hundred items through the real journal.
   held open is skipped in use, a restored scan leaves every log out `scan-again` until a scan, fourteen days in the
   settings file keep a ten-day-old log, a cleanup moves the old files to the Trash and keeps their folders, and put
   back returns them byte for byte (`fixtures/golden/logs-flow.json`, the first scan's report).
+  `tests/app_caches_browsers.rs` runs the same module's browser and web-engine rows beside the same modules over
+  `fixtures/homes/app-caches-browsers-flow.toml` (Google Chrome's caches of two profiles under `Library/Caches` beside
+  a profile folder the table does not name, Chrome's profile data in its support folder, Redis Insight's caches beside
+  its cookies and local storage) with a scripted open browser: no folder is offered by two modules, a profile's and an
+  app's data are never offered and stay byte for byte through a cleanup of every finding, an open browser's caches
+  wait (`app-open`) while Redis Insight's are offered, until a rescan after it quits, a file held open skips its cache
+  in use with nothing of it moved, a cleanup empties each cache and keeps it with its entries in the Trash and put
+  back returns them, and the storage map counts the caches in their app's line
+  (`fixtures/golden/app-caches-browsers-flow.json`).
   `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
@@ -186,8 +195,9 @@ cleanups of a hundred items through the real journal.
   since moves the offer from one toolchain to another).
   The homes' shared helpers live one per concern in `tests/support/` (`events.rs`, `report.rs`, `tree.rs`), each
   pulled in with `#[path]` only by the tests that use it. The sandbox flow homes (`temp_home`, `dev_caches_home`,
-  `app_leftovers_home`, `app_caches_home`, `local_ai_models_home`, `local_ai_models_ollama_home`,
-  `unused_toolchains_home`) share one harness there, one file per concern: `home.rs` (the sandbox's layout and the
+  `app_leftovers_home`, `app_caches_home`, `app_caches_browsers_home`, `local_ai_models_home`,
+  `local_ai_models_ollama_home`, `unused_toolchains_home`) share one harness there, one file per concern: `home.rs`
+  (the sandbox's layout and the
   `Flow`), `home_engine.rs` (the engine assembled from the parts a home gives: its modules, its fakes, its avoid list),
   `home_scan.rs` (the scans and the findings), `home_rescan.rs` (the scripted change journal and a scan that must be a
   rescan) and `home_cleanup.rs` (the cleanup, the outcomes, the journal's records and the relative report); each home
@@ -218,6 +228,9 @@ cleanups of a hundred items through the real journal.
   mock plays it (`SCRIPTS.appCaches`) on the card, the category's Details (visual and axe), the review naming Low, a
   cleanup that empties and the put back; the "Emptied. The folder itself stays." line is the cleanup detail row of an
   item whose entries were not trashed, since the result summary counts what went to the Trash.
+  `src/test/app-caches-browsers-scan.ts` is the same module's browser and web-engine caches (Chrome folders titled by
+  browser, profile and folder, Redis Insight's by app and folder, Firefox's cache left out as open); the e2e mock plays
+  it (`SCRIPTS.appCachesBrowsers`) on the cards, the Details, the review and a cleanup that empties.
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
   (one event every so many ms, each asked of Node, as the engine streams), Scan's totals during and after the scan,
@@ -454,6 +467,16 @@ The case files:
   an installed app (`[[case.app]]` with `running = true`), so `EXPECTED.md` reads "Installed: Mailer (open)". Their
   checklist sentence names the module, which matters in `npm run dev:sandbox -- app-leftovers`, where the full app
   also offers that file's installed Editor's cache through `app-caches`.
+- `app-caches-browsers.toml` and `app-caches-browsers-open.toml`: the `app-caches` module's browser and web-engine
+  rows. A browser's cache with no installed browser (Firefox here), what a profile keeps beside its caches
+  (`image_cache`, `Storage`), a web-engine app's own data (cookies, local storage, settings), a cache-named folder of an
+  app not in the table and a link named like a cache are never claimed; in the second file an open browser's two
+  caches are left out (`app-open`). A browser profile's `Cache` and `Code Cache`, a second profile's cache (its own
+  item) and a web-engine app's cache, also while a browser is open, are emptied (Low, the folder stays, its contents
+  go to the Trash). The world is shared by every case file of `npm run sandbox -- all`: Google Chrome is only the open
+  browser (the second file, and `downloads-browser-open.toml`), Chromium is the closed one, Firefox is never installed
+  and Redis Insight is installed and closed in both files (at `Applications/RedisInsight.app` in the second, so `all`
+  leaves out neither file).
 - `app-leftovers.toml` and `app-leftovers-spotlight-off.toml`: the `app-leftovers` module. The first: a name that is
   not an app's id, Apple's own files, a tool's files with no app behind them (no saved state proves an app), an
   installed app's files (its helper's and a related id's too), a link at a place, a group container and a container

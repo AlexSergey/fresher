@@ -5,6 +5,9 @@
 //! is reviewed.
 
 #[cfg(test)]
+#[path = "support/plain.rs"]
+mod plain;
+#[cfg(test)]
 mod support;
 
 use std::collections::BTreeMap;
@@ -32,7 +35,7 @@ mod negative {
     use fresher_testing::{FakeInstalledApps, FakeRunningApps};
 
     use crate::left_out;
-    use crate::support::{
+    use crate::plain::{
         editor_system, kept, kept_system, kept_with, not_claimed, not_claimed_with, offered_system, offered_with,
     };
 
@@ -78,7 +81,8 @@ mod negative {
 mod positive {
     use fresher_core::{BundleId, DangerLevel, Removal, Subject, TextArg};
 
-    use crate::support::{fixtures, kept, not_claimed, offered, offered_system, offered_with};
+    use crate::plain::{kept, not_claimed, offered, offered_system, offered_with};
+    use crate::support::fixtures;
     use crate::{identities, left_out};
 
     /// Per finding: its folder, the title key, its app's id and name.

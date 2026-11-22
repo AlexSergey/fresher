@@ -1,5 +1,6 @@
 //! Which installed app a folder of `Caches` is named after (design, section 2), on plain values. Never by name and
-//! never the other way round: a vendor's folder `com.example` names no app, though apps' ids lie under it.
+//! never the other way round: a vendor's folder `com.example` names no app, though apps' ids lie under it. A row of
+//! `apps.toml` names its app by the row's bundle id instead (plan 034, design section 2).
 
 use std::ffi::OsStr;
 use std::iter;
@@ -33,6 +34,13 @@ pub(crate) fn owner<'a>(name: &str, apps: &'a [InstalledApp]) -> Option<Owner<'a
     Some(Owner { app, own: name.eq_ignore_ascii_case(app.bundle_id.as_str()) })
 }
 
+/// The installed app among `apps` whose bundle id is `id` (ids compare ignoring case), the first by path among copies:
+/// never a helper's id, never an id under it or above it. The folder is the app's own.
+pub(crate) fn installed<'a>(id: &BundleId, apps: &'a [InstalledApp]) -> Option<Owner<'a>> {
+    let app = apps.iter().filter(|app| app.bundle_id == *id).min_by(|first, second| first.path.cmp(&second.path))?;
+    Some(Owner { app, own: true })
+}
+
 #[cfg(test)]
 mod tests {
     use fresher_core::{BundleId, InstalledApp};
@@ -51,8 +59,26 @@ mod tests {
         use std::ffi::OsStr;
         use std::os::unix::ffi::OsStrExt as _;
 
+        use fresher_core::BundleId;
+
         use super::{app, editor};
-        use crate::owner::{id_of, owner};
+        use crate::owner::{id_of, installed, owner};
+
+        #[test]
+        fn no_installed_app_has_the_row_s_id() {
+            let chrome = BundleId::new("com.google.Chrome").unwrap();
+            let helped = app("com.example.Browser", "Browser", &["com.google.Chrome.helper"]);
+            let near = [app("com.google.Chromex", "Chromex", &[]), app("com.google", "Google", &[])];
+
+            assert_eq!(installed(&chrome, &[]), None);
+            assert_eq!(installed(&chrome, &[editor()]), None);
+            assert_eq!(
+                installed(&BundleId::new("com.google.Chrome.helper").unwrap(), std::slice::from_ref(&helped)),
+                None
+            );
+            assert_eq!(installed(&chrome, &[helped]), None);
+            assert_eq!(installed(&chrome, &near), None);
+        }
 
         #[test]
         fn a_name_without_a_dot_has_no_id() {
@@ -94,10 +120,40 @@ mod tests {
         use std::ffi::OsStr;
         use std::path::PathBuf;
 
-        use fresher_core::InstalledApp;
+        use fresher_core::{BundleId, InstalledApp};
 
         use super::{app, editor};
-        use crate::owner::{id_of, owner};
+        use crate::owner::{id_of, installed, owner};
+
+        #[test]
+        fn the_app_with_the_row_s_id_owns_it() {
+            let apps = [editor(), app("com.google.Chrome", "Google Chrome", &["com.google.Chrome.helper"])];
+
+            let found = installed(&BundleId::new("com.google.Chrome").unwrap(), &apps).unwrap();
+
+            assert_eq!(found.app, &apps[1]);
+            assert!(found.own);
+        }
+
+        #[test]
+        fn the_row_s_id_is_found_ignoring_case() {
+            let apps = [app("org.RedisLabs.RedisInsight-V2", "Redis Insight", &[])];
+
+            let found = installed(&BundleId::new("ORG.redislabs.redisinsight-v2").unwrap(), &apps).unwrap();
+
+            assert_eq!(found.app, &apps[0]);
+        }
+
+        #[test]
+        fn two_copies_are_one_owner_first_by_path() {
+            let copy = InstalledApp { path: PathBuf::from("/Applications/Old/Editor.app"), ..editor() };
+            let apps = [editor(), copy];
+
+            let found = installed(&BundleId::new("com.example.Editor").unwrap(), &apps).unwrap();
+
+            assert_eq!(found.app.path, PathBuf::from("/Applications/Editor.app"));
+            assert!(found.own);
+        }
 
         #[test]
         fn an_id_shaped_name_has_its_id() {

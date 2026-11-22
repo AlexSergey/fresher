@@ -1,0 +1,139 @@
+# The app-caches module's browser and web-engine rows: a browser's caches per profile (`Cache`, `Code Cache`) under
+# `home/Library/Caches`, and a web-engine app's caches under `home/Library/Application Support`. Only the folders the
+# table names are claimed, and only for an installed app; what a profile or an app keeps beside them is never offered.
+# An emptied cache folder stays, its contents go to the Trash. The world is shared by every case file of
+# `npm run sandbox -- all`: Google Chrome is open in `downloads-browser-open.toml` (and `app-caches-browsers-open.toml`),
+# so here Chromium is the closed browser, Chrome never appears, Firefox is never installed (its case is the
+# not-installed one) and Redis Insight is installed and closed here and in the open file. Every path is apart from
+# every other case file's. Files are small and filled with data, so the map's numbers are blocks.
+feature = "app-caches-browsers"
+module = "app-caches"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a browser's cache with no installed browser is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2/entries/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "what a profile keeps beside its caches is never claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Chromium.app"
+bundle-id = "org.chromium.Chromium"
+name = "Chromium"
+[[case.file]]
+path = "home/Library/Caches/Chromium/Profile 2/image_cache/x"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/Chromium/Profile 2/Storage/ext/x"
+size = 4096
+fill = "data"
+[case.map]
+part = "your-folders"
+at = "home/Library/Caches/Chromium/Profile 2"
+
+[[case]]
+name = "a web-engine app's own data is never claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Redis Insight.app"
+bundle-id = "org.RedisLabs.RedisInsight-V2"
+name = "Redis Insight"
+[[case.file]]
+path = "home/Library/Application Support/RedisInsight/Cookies"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Application Support/RedisInsight/config.json"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a cache-named folder of an app not in the table is never claimed"
+kind = "negative"
+[[case.app]]
+path = "Applications/OtherChat.app"
+bundle-id = "com.example.OtherChat"
+name = "OtherChat"
+[[case.file]]
+path = "home/Library/Application Support/OtherChat/Cache/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a link named like a cache is never claimed"
+kind = "negative"
+[[case.symlink]]
+path = "home/Library/Caches/Chromium/Profile 3/Cache"
+target = "../../../../Projects/kept-cache"
+[[case.file]]
+path = "home/Projects/kept-cache/x"
+size = 4096
+fill = "data"
+
+# Then the positive cases.
+
+[[case]]
+name = "a browser profile's cache is emptied"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/Chromium/Default/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/Chromium/Default/Cache"
+category = "app-caches.browsers"
+danger = "low"
+after-cleanup = "emptied"
+[case.map]
+part = "explained"
+at = "home/Library/Caches/Chromium/Default/Cache"
+
+[[case]]
+name = "a browser profile's code cache is emptied"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/Chromium/Default/Code Cache/js/index"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/Chromium/Default/Code Cache"
+category = "app-caches.browsers"
+danger = "low"
+after-cleanup = "emptied"
+
+[[case]]
+name = "a second profile's cache is its own item"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Caches/Chromium/Profile 1/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Caches/Chromium/Profile 1/Cache"
+category = "app-caches.browsers"
+danger = "low"
+after-cleanup = "emptied"
+
+[[case]]
+name = "a web-engine app's cache is emptied"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Application Support/RedisInsight/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Application Support/RedisInsight/Cache"
+category = "app-caches.web-engine"
+danger = "low"
+after-cleanup = "emptied"

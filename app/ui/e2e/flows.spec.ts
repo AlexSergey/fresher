@@ -236,9 +236,14 @@ const ac = (key: string): string => {
 };
 
 const AC_NAME = ac('library-caches.name');
+const AC_BROWSERS = ac('browsers.name');
+const AC_WEB_ENGINE = ac('web-engine.name');
 
 // The installed app caches script, scanned.
 const openAppCaches = (page: Page): Promise<void> => scanned(page, SCRIPTS.appCaches);
+
+// The browser and web-engine caches script, scanned.
+const openBrowserCaches = (page: Page): Promise<void> => scanned(page, SCRIPTS.appCachesBrowsers);
 
 // The unused toolchains module's own texts, as its locale file has them.
 const ut = (key: string): string => {
@@ -2001,6 +2006,102 @@ test.describe('positive cases', () => {
     const emptied = items.getByRole('listitem').filter({ hasText: 'com.example.Editor.Helper' });
     await expect(emptied).toContainText('Emptied. The folder itself stays.');
     const item = items.getByRole('listitem').filter({ hasText: /^com\.example\.Editor(?!\.)/ });
+    await expect(item).toContainText('In the Trash.');
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test("an open browser's cache cannot be selected", async ({ page }) => {
+    await openBrowserCaches(page);
+    await openDetails(page, AC_BROWSERS);
+
+    const category = details(page);
+    await expect(category).toContainText('1 item left out (30 MB)');
+    await expect(category).toContainText(ac('left-out.app-open'));
+    await expect(category.getByRole('checkbox', { name: /Firefox/ })).toHaveCount(0);
+    await expect(category.getByRole('checkbox', { name: /^Select Google Chrome/ })).toHaveCount(3);
+  });
+
+  test('browser caches show their card with its size and item count', async ({ page }) => {
+    await openBrowserCaches(page);
+
+    const card = cards(page).filter({ hasText: AC_BROWSERS });
+    await expect(card).toContainText('640 MB');
+    await expect(card).toContainText('3 items');
+  });
+
+  test('browser caches show their danger and their four texts', async ({ page }) => {
+    await openBrowserCaches(page);
+
+    await openDetails(page, AC_BROWSERS);
+
+    const category = details(page);
+    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('Low');
+    for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(category).toContainText(ac(`browsers.${text}`));
+    }
+  });
+
+  test("a browser cache's finding names its browser, profile and folder", async ({ page }) => {
+    await openBrowserCaches(page);
+
+    await openDetails(page, AC_BROWSERS);
+
+    const items = details(page);
+    await expect(items).toContainText('Google Chrome, Default: Cache');
+    await expect(items).toContainText('Google Chrome, Default: Code Cache');
+    await expect(items).toContainText('Google Chrome, Profile 1: Cache');
+    const reason = ac('reason');
+    await expect(items).toContainText(reason.replaceAll('{app}', 'Google Chrome').replace('{size}', '400 MB'));
+  });
+
+  test('caches of web-based apps show their card and their findings', async ({ page }) => {
+    await openBrowserCaches(page);
+
+    const card = cards(page).filter({ hasText: AC_WEB_ENGINE });
+    await expect(card).toContainText('25 MB');
+    await expect(card).toContainText('2 items');
+    await openDetails(page, AC_WEB_ENGINE);
+
+    const items = details(page);
+    await expect(items).toContainText('Redis Insight: Cache');
+    await expect(items).toContainText('Redis Insight: GPUCache');
+    for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(items).toContainText(ac(`web-engine.${text}`));
+    }
+  });
+
+  test('selecting browser caches makes the review name Low', async ({ page }) => {
+    await openBrowserCaches(page);
+
+    await page.getByRole('checkbox', { name: `Select ${AC_BROWSERS}` }).check();
+
+    await expect(selectionBar(page)).toContainText('3 items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await expect(dialog).toContainText('Low');
+    await expect(dialog).toContainText(ac('browsers.if-removed'));
+  });
+
+  test('a browser cache is emptied and comes back by put back', async ({ page }) => {
+    await openBrowserCaches(page);
+    await openDetails(page, AC_BROWSERS);
+    await page.getByRole('checkbox', { name: 'Select Google Chrome, Default: Cache' }).check();
+    await page.getByRole('checkbox', { name: 'Select Google Chrome, Default: Code Cache' }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 2 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: /^Cache/ });
+    const empty = items.getByRole('listitem').filter({ hasText: /^Code Cache/ });
+    await expect(empty).toContainText('Emptied. The folder itself stays.');
+    await expect(empty).not.toContainText('In the Trash.');
     await expect(item).toContainText('In the Trash.');
     await item.getByRole('button', { name: 'Put back' }).click();
     await expect(item).toContainText('Put back where it was.');

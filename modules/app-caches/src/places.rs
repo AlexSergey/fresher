@@ -49,7 +49,7 @@ pub(crate) struct Places {
 
 impl Places {
     pub(crate) fn shipped() -> Result<Self, PlacesError> {
-        Self::parse(SHIPPED, &crate::categories::CATEGORIES)
+        Self::parse(SHIPPED, &crate::categories::PLACE_CATEGORIES)
     }
 
     /// A table read from `text` and checked against the module's `categories`: at least one row; row ids in kebab
@@ -119,7 +119,7 @@ fn check_against_others(row: &Row, before: &[Row]) -> Result<(), PlacesError> {
 }
 
 /// A row id is one kebab-case segment of a text key.
-fn is_row_id(id: &str) -> bool {
+pub(crate) fn is_row_id(id: &str) -> bool {
     !id.contains('.') && TextKey::new(format!("app-caches.row.{id}")).is_ok()
 }
 

@@ -1,0 +1,59 @@
+# A home for the app-caches module where every cache of the tables is offered, every app installed and closed: Chrome
+# in two profiles, Firefox in one, and Redis Insight's five cache folders. Beside them, never claimed: Chrome's
+# `image_cache`, and Redis Insight's `Cookies`, `Local Storage` and `config.json`.
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/Code Cache/js/index"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Profile 1/Cache/Cache_Data/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2/entries/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Firefox/Profiles/abcd1234.default-release/startupCache/startupCache.8.little"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/Cache/Cache_Data/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/Code Cache/js/index"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/GPUCache/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/DawnGraphiteCache/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/DawnWebGPUCache/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/image_cache/x"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/Cookies"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/config.json"
+size = 4096

@@ -42,3 +42,39 @@ Plan [033](../plans/033-logs/readme.md), awaiting the user's walk.
     not claimed.
 - **Known gaps**: the deferred item [`logs-more-places.md`](./logs-more-places.md); the logs of other users'
   processes held open are not seen by the cleaner ([known issue](../known-issues/cleaner-other-users-processes.md)).
+
+## 034 — Browser and web-engine caches
+
+Plan [034](../plans/034-browser-caches/readme.md).
+
+- **Walks by hand**:
+  - `rm -rf sandbox/app-caches-browsers && npm run dev:sandbox -- app-caches-browsers`. Walk `EXPECTED.md`: no negative
+    is offered; Chromium's three caches and Redis Insight's `Cache` are offered at Low, titled `Chromium, Default:
+    Cache` and the like; the storage map shows `Profile 2` in your folders and the caches in Chromium's line; select
+    all, confirm to the Trash, each cache folder is still there and empty, put back restores.
+  - `npm run dev:sandbox -- app-caches-browsers-open`: Chrome's two caches are kept with "This app, or a part of it, is
+    open…"; Redis Insight's `GPUCache` is offered.
+- **Dry run on the real Mac** (`npm run dev`, a development build is a dry run): with Chrome, Chromium and Firefox
+  closed, each offered cache is checked against `du -sh ~/Library/Caches/Google/Chrome/*/{Cache,"Code Cache"}
+  ~/Library/Caches/Chromium/*/{Cache,"Code Cache"} ~/Library/Caches/Firefox/Profiles/*/{cache2,startupCache}`; with
+  Chrome open, its caches are left out; nothing under `Application Support/Google`, `.../Firefox` or `.../Chromium` is
+  offered; `~/Library/Caches/Google/Chrome-headless` is not offered. The items are 1.16 and 2.14 of
+  [`../manual-testing.md`](../manual-testing.md).
+- **Facts not verified here**: Redis Insight's caches with the app open and closed (not run on this Mac); whether a
+  browser accepts its emptied `Cache` folder on the next start without a warning (expected: yes; check Chrome and
+  Firefox once after a real cleanup in a release build); Firefox's `startupCache` emptied while the profile is closed.
+  The second sandbox case file puts Redis Insight at `Applications/RedisInsight.app` (the brief said `Redis
+  Insight.app`): the shared sandbox world leaves out a case file that writes a path an earlier file wrote; the bundle
+  id and the name are the same.
+- **Candidate rows to check on a real install** (each needs the bundle id from `Info.plist`, the folders with `ls`,
+  then a row): Microsoft Edge (`com.microsoft.edgemac`, expected `~/Library/Caches/Microsoft Edge/<profile>/`), Brave
+  (`com.brave.Browser`, `~/Library/Caches/BraveSoftware/Brave-Browser/<profile>/`), Vivaldi, Arc; Visual Studio Code
+  (`com.microsoft.VSCode`, `~/Library/Application Support/Code/`), Slack, Discord, Cursor; all expected, none checked.
+  Only four rows ship: Chrome, Chromium, Firefox and Redis Insight.
+- **Agent's calls worth a second look**: one finding per cache folder rather than per profile (design call 5); only the
+  four checked rows ship (call 4); no browser support-folder caches, they need Full Disk Access to verify (call 6);
+  Firefox's `startupCache` in, `safebrowsing` and `thumbnails` out (call 7); the title shows the raw folder name
+  (`Code Cache`, `cache2`) (call 8); the calls taken while building, in the plan's
+  [conclusions](../plans/034-browser-caches/readme.md#conclusions).
+- **Known gaps**: whatever the plan's conclusions list (one webkit hover flake in the UI run, which passed on rerun; the
+  chromium baseline `category-details-app-leftovers-chosen` known flaky).

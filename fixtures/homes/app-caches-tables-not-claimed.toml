@@ -1,0 +1,61 @@
+# A home for the app-caches module where nothing of the browser and web-engine tables may be claimed, scanned with
+# Google Chrome (`com.google.Chrome`, helper `com.google.Chrome.helper`) and `OtherChat` (`com.example.OtherChat`)
+# installed: Chromium is not installed; `image_cache` and `Storage` are not in Chrome's row; `cache` in `Profile 2` is
+# a case variant (names are exact); `Profile 3/Cache` is a link to a folder outside; `Profile 4/Code Cache` is a file;
+# `Profile 5/Cache` holds nothing; `Profile 6` is a link to a folder outside that holds `Cache`; `Chrome/Cache` has no
+# profile above it (the row needs one name more); `OtherChat`'s cache-named folder is an app not in the table; `RedisInsight`'s data is not claimed, its app is not installed here.
+
+[[file]]
+path = "Library/Caches/Chromium/Default/Cache/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/image_cache/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/Storage/ext/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Profile 2/cache/data_0"
+size = 4096
+
+[[symlink]]
+path = "Library/Caches/Google/Chrome/Profile 3/Cache"
+target = "../../../../../elsewhere/kept"
+
+[[file]]
+path = "elsewhere/kept/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Profile 4/Code Cache"
+size = 4096
+
+[[dir]]
+path = "Library/Caches/Google/Chrome/Profile 5/Cache"
+
+[[symlink]]
+path = "Library/Caches/Google/Chrome/Profile 6"
+target = "../../../../elsewhere/profile"
+
+[[file]]
+path = "elsewhere/profile/Cache/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Cache/x"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/OtherChat/Cache/x"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/Cookies"
+size = 4096
+
+[[file]]
+path = "Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+size = 4096

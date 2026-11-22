@@ -22,18 +22,29 @@ import { FINDING_DICTIONARY } from './finding-fixtures';
 
 const MB = 1_000_000;
 
-const sized = (bytes: number): Sizes => ({
+export const sized = (bytes: number): Sizes => ({
   allocated: bytes,
   completeness: 'complete',
   logical: bytes,
   reclaimable: bytes,
 });
 
-const text = (value: string): TextArg => ({ kind: 'text', value });
+export const text = (value: string): TextArg => ({ kind: 'text', value });
 
 const CACHES = '/Users/someone/Library/Caches';
 
 export const APP_CACHES = 'app-caches.library-caches';
+
+type CacheFinding = {
+  readonly app: string;
+  readonly bytes: number;
+  readonly category: string;
+  readonly id: number;
+  readonly identity: string;
+  readonly name: string;
+  readonly path: string;
+  readonly title: Finding['title'];
+};
 
 type Spec = {
   readonly app: string;
@@ -43,32 +54,40 @@ type Spec = {
   readonly name: string;
 };
 
-// The module's finding: the folder of the app's own id is titled by the app, any other folder by the app and the
-// folder; its identity is the row's id and the folder; it empties the folder.
-const findingOf = (spec: Spec): Finding => {
-  const own = spec.folder === spec.app;
-  const path = `${CACHES}/${spec.folder}`;
+// The module's finding of a cache folder: Low, reasoned by the app and the size, it empties the folder.
+export const cacheFinding = (spec: CacheFinding): Finding => ({
+  app: spec.app,
+  category: spec.category,
+  danger: 'low',
+  id: spec.id,
+  key: { identity: spec.identity, module: 'app-caches' },
+  module: 'app-caches',
+  reason: {
+    args: { app: text(spec.name), size: { kind: 'size', value: spec.bytes } },
+    key: 'app-caches.reason',
+  },
+  removability: 'removable',
+  removal: { kind: 'empty-folder', value: spec.path },
+  sizes: sized(spec.bytes),
+  subject: { kind: 'path', value: spec.path },
+  title: spec.title,
+});
 
-  return {
+// A folder of Library's Caches: the one of the app's own id is titled by the app, any other by the app and the folder.
+const findingOf = (spec: Spec): Finding =>
+  cacheFinding({
     app: spec.app,
+    bytes: spec.bytes,
     category: APP_CACHES,
-    danger: 'low',
     id: spec.id,
-    key: { identity: `library-caches/${spec.folder}`, module: 'app-caches' },
-    module: 'app-caches',
-    reason: {
-      args: { app: text(spec.name), size: { kind: 'size', value: spec.bytes } },
-      key: 'app-caches.reason',
-    },
-    removability: 'removable',
-    removal: { kind: 'empty-folder', value: path },
-    sizes: sized(spec.bytes),
-    subject: { kind: 'path', value: path },
-    title: own
-      ? { args: { app: text(spec.name) }, key: 'app-caches.title.own' }
-      : { args: { app: text(spec.name), folder: text(spec.folder) }, key: 'app-caches.title.part' },
-  };
-};
+    identity: `library-caches/${spec.folder}`,
+    name: spec.name,
+    path: `${CACHES}/${spec.folder}`,
+    title:
+      spec.folder === spec.app
+        ? { args: { app: text(spec.name) }, key: 'app-caches.title.own' }
+        : { args: { app: text(spec.name), folder: text(spec.folder) }, key: 'app-caches.title.part' },
+  });
 
 export const APP_CACHES_FINDINGS: readonly Finding[] = [
   findingOf({ app: 'com.example.Editor', bytes: 920 * MB, folder: 'com.example.Editor', id: 701, name: 'Editor' }),
@@ -88,10 +107,14 @@ export const APP_CACHES_FINDINGS: readonly Finding[] = [
   }),
 ];
 
-// `get_modules`: the module in the group System, its one category, the core's generic switch, no choice.
+// `get_modules`: the module in the group System, its three categories, the core's generic switch, no choice.
 export const APP_CACHES_MODULES: readonly ModuleInfo[] = [
   {
-    categories: [readyCategory(APP_CACHES, 'low')],
+    categories: [
+      readyCategory(APP_CACHES, 'low'),
+      readyCategory('app-caches.browsers', 'low'),
+      readyCategory('app-caches.web-engine', 'low'),
+    ],
     choices: [],
     group: 'system',
     id: 'app-caches',

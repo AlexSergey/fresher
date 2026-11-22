@@ -2,16 +2,26 @@
 //! its texts and left-out reasons, and its removals.
 
 #[cfg(test)]
+#[path = "support/plain.rs"]
+mod plain;
+#[cfg(test)]
 mod support;
+#[cfg(test)]
+#[path = "support/tables.rs"]
+mod tables;
 
 use fresher_testing::{FakeInstalledApps, FakeRunningApps, ModuleRun};
 
-use crate::support::{
+use crate::plain::{
     editor_system, kept, kept_system, kept_with, not_claimed, not_claimed_with, offered, offered_system, offered_with,
 };
+use crate::tables::{
+    tables_kept, tables_kept_system, tables_kept_with, tables_not_claimed, tables_offered, tables_offered_system,
+    tables_offered_with,
+};
 
-/// The run of every home with its default system, of the kept home with each port failing, and of the offered home
-/// handed in reverse.
+/// The run of every home with its default system, of the kept homes with each port failing, of the tables' offered home
+/// with the installed apps failing, and of the offered homes handed in reverse.
 fn every_run() -> Vec<ModuleRun> {
     let runs = [
         not_claimed(),
@@ -21,6 +31,13 @@ fn every_run() -> Vec<ModuleRun> {
         kept_with(kept_system().apps(FakeInstalledApps::failing("no app list"))),
         not_claimed_with(editor_system().apps(FakeInstalledApps::failing("no app list"))),
         offered_with(offered_system().reversed()),
+        tables_not_claimed(),
+        tables_kept(),
+        tables_offered(),
+        tables_kept_with(tables_kept_system().running(FakeRunningApps::failing("no process list"))),
+        tables_kept_with(tables_kept_system().apps(FakeInstalledApps::failing("no app list"))),
+        tables_offered_with(tables_offered_system().apps(FakeInstalledApps::failing("no app list"))),
+        tables_offered_with(tables_offered_system().reversed()),
     ];
     runs.into_iter().map(|(_, run)| run).collect()
 }

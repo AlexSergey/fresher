@@ -1,0 +1,1349 @@
+{
+  "journal": [
+    {
+      "format": "cleanup-journal",
+      "version": 2
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "items": [
+        {
+          "action": "empty",
+          "category": "app-caches.web-engine",
+          "danger": "low",
+          "key": "redis-insight/Cache",
+          "more": [],
+          "path": "~/home/Library/Application Support/RedisInsight/Cache",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Redis Insight"
+              },
+              "size": {
+                "kind": "size",
+                "value": 4096
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          }
+        },
+        {
+          "action": "empty",
+          "category": "app-caches.web-engine",
+          "danger": "low",
+          "key": "redis-insight/GPUCache",
+          "more": [],
+          "path": "~/home/Library/Application Support/RedisInsight/GPUCache",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Redis Insight"
+              },
+              "size": {
+                "kind": "size",
+                "value": 4096
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          }
+        },
+        {
+          "action": "empty",
+          "category": "app-caches.browsers",
+          "danger": "low",
+          "key": "chrome/Default/Cache",
+          "more": [],
+          "path": "~/home/Library/Caches/Google/Chrome/Default/Cache",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Google Chrome"
+              },
+              "size": {
+                "kind": "size",
+                "value": 12288
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 12288,
+            "completeness": "complete",
+            "logical": 12288,
+            "reclaimable": 12288
+          }
+        },
+        {
+          "action": "empty",
+          "category": "app-caches.browsers",
+          "danger": "low",
+          "key": "chrome/Default/Code Cache",
+          "more": [],
+          "path": "~/home/Library/Caches/Google/Chrome/Default/Code Cache",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Google Chrome"
+              },
+              "size": {
+                "kind": "size",
+                "value": 4096
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          }
+        },
+        {
+          "action": "empty",
+          "category": "app-caches.browsers",
+          "danger": "low",
+          "key": "chrome/Profile 1/Cache",
+          "more": [],
+          "path": "~/home/Library/Caches/Google/Chrome/Profile 1/Cache",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Google Chrome"
+              },
+              "size": {
+                "kind": "size",
+                "value": 4096
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          }
+        },
+        {
+          "action": "empty",
+          "category": "app-caches.library-caches",
+          "danger": "low",
+          "key": "library-caches/com.example.Editor",
+          "more": [],
+          "path": "~/home/Library/Caches/com.example.Editor",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Editor"
+              },
+              "size": {
+                "kind": "size",
+                "value": 4096
+              }
+            },
+            "key": "app-caches.reason"
+          },
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          }
+        }
+      ],
+      "method": "trash",
+      "roots": [
+        "~"
+      ],
+      "space": [],
+      "type": "begin"
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Cache_Data",
+          "original": "~/home/Library/Application Support/RedisInsight/Cache/Cache_Data"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/data_0",
+          "original": "~/home/Library/Application Support/RedisInsight/GPUCache/data_0"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Cache_Data",
+          "original": "~/home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/js",
+          "original": "~/home/Library/Caches/Google/Chrome/Default/Code Cache/js"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Cache_Data",
+          "original": "~/home/Library/Caches/Google/Chrome/Profile 1/Cache/Cache_Data"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Cache.db",
+          "original": "~/home/Library/Caches/com.example.Editor/Cache.db"
+        }
+      ],
+      "type": "item",
+      "went": null
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "ended": "completed",
+      "space": [],
+      "type": "end"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    },
+    {
+      "at": 1767225600,
+      "back": [],
+      "cleanup": 1,
+      "outcome": {
+        "kind": "put-back"
+      },
+      "type": "put-back"
+    }
+  ],
+  "leftOut": [],
+  "offered": [
+    [
+      "app-caches.browsers",
+      "home/Library/Caches/Google/Chrome/Default/Cache"
+    ],
+    [
+      "app-caches.browsers",
+      "home/Library/Caches/Google/Chrome/Default/Code Cache"
+    ],
+    [
+      "app-caches.browsers",
+      "home/Library/Caches/Google/Chrome/Profile 1/Cache"
+    ],
+    [
+      "app-caches.library-caches",
+      "home/Library/Caches/com.example.Editor"
+    ],
+    [
+      "app-caches.web-engine",
+      "home/Library/Application Support/RedisInsight/Cache"
+    ],
+    [
+      "app-caches.web-engine",
+      "home/Library/Application Support/RedisInsight/GPUCache"
+    ],
+    [
+      "app-leftovers.caches",
+      "home/Library/Caches/com.example.Gone"
+    ],
+    [
+      "app-leftovers.caches",
+      "home/Library/Saved Application State/com.example.Gone.savedState"
+    ],
+    [
+      "dev-caches.yarn",
+      "home/Library/Caches/Yarn"
+    ],
+    [
+      "jetbrains.caches",
+      "home/Library/Caches/JetBrains/WebStorm2024.3"
+    ]
+  ],
+  "outcomes": [
+    [
+      "home/Library/Application Support/RedisInsight/Cache",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ],
+    [
+      "home/Library/Application Support/RedisInsight/GPUCache",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ],
+    [
+      "home/Library/Caches/Google/Chrome/Default/Cache",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ],
+    [
+      "home/Library/Caches/Google/Chrome/Default/Code Cache",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ],
+    [
+      "home/Library/Caches/Google/Chrome/Profile 1/Cache",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ],
+    [
+      "home/Library/Caches/com.example.Editor",
+      {
+        "kind": "emptied",
+        "moved": 1,
+        "skipped": 0
+      }
+    ]
+  ],
+  "plan": {
+    "groups": [
+      {
+        "action": "empty",
+        "category": "app-caches.library-caches",
+        "items": [
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Caches/com.example.Editor",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 4096
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 4096,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                }
+              },
+              "key": "app-caches.title.own"
+            }
+          }
+        ],
+        "summary": {
+          "count": 1,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          }
+        }
+      },
+      {
+        "action": "empty",
+        "category": "app-caches.browsers",
+        "items": [
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Caches/Google/Chrome/Default/Cache",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Google Chrome"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 12288
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 12288,
+              "completeness": "complete",
+              "logical": 12288,
+              "reclaimable": 12288
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Google Chrome"
+                },
+                "folder": {
+                  "kind": "text",
+                  "value": "Cache"
+                },
+                "profile": {
+                  "kind": "text",
+                  "value": "Default"
+                }
+              },
+              "key": "app-caches.title.profile"
+            }
+          },
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Caches/Google/Chrome/Default/Code Cache",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Google Chrome"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 4096
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 4096,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Google Chrome"
+                },
+                "folder": {
+                  "kind": "text",
+                  "value": "Code Cache"
+                },
+                "profile": {
+                  "kind": "text",
+                  "value": "Default"
+                }
+              },
+              "key": "app-caches.title.profile"
+            }
+          },
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Caches/Google/Chrome/Profile 1/Cache",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Google Chrome"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 4096
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 4096,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Google Chrome"
+                },
+                "folder": {
+                  "kind": "text",
+                  "value": "Cache"
+                },
+                "profile": {
+                  "kind": "text",
+                  "value": "Profile 1"
+                }
+              },
+              "key": "app-caches.title.profile"
+            }
+          }
+        ],
+        "summary": {
+          "count": 3,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 20480,
+            "completeness": "complete",
+            "logical": 20480,
+            "reclaimable": 20480
+          }
+        }
+      },
+      {
+        "action": "empty",
+        "category": "app-caches.web-engine",
+        "items": [
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Application Support/RedisInsight/Cache",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Redis Insight"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 4096
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 4096,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Redis Insight"
+                },
+                "folder": {
+                  "kind": "text",
+                  "value": "Cache"
+                }
+              },
+              "key": "app-caches.title.part"
+            }
+          },
+          {
+            "danger": "low",
+            "more": [],
+            "path": "~/home/Library/Application Support/RedisInsight/GPUCache",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Redis Insight"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 4096
+                }
+              },
+              "key": "app-caches.reason"
+            },
+            "sizes": {
+              "allocated": 4096,
+              "completeness": "complete",
+              "logical": 4096,
+              "reclaimable": 4096
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Redis Insight"
+                },
+                "folder": {
+                  "kind": "text",
+                  "value": "GPUCache"
+                }
+              },
+              "key": "app-caches.title.part"
+            }
+          }
+        ],
+        "summary": {
+          "count": 2,
+          "highest": "low",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 8192,
+            "completeness": "complete",
+            "logical": 8192,
+            "reclaimable": 8192
+          }
+        }
+      }
+    ],
+    "leftOut": [],
+    "permanentAvailable": true,
+    "plan": 1,
+    "summary": {
+      "count": 6,
+      "highest": "low",
+      "irreversible": 0,
+      "sizes": {
+        "allocated": 32768,
+        "completeness": "complete",
+        "logical": 32768,
+        "reclaimable": 32768
+      }
+    }
+  },
+  "putBack": {
+    "items": [
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      },
+      {
+        "outcome": {
+          "kind": "put-back"
+        },
+        "text": {
+          "args": {},
+          "key": "core.cleanup.put-back.put-back"
+        }
+      }
+    ]
+  },
+  "treeAfterCleanup": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Cache_Data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Cache_Data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Cache_Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache_Data/data_1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/Cache_Data/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/data_0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/js"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/js/index"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/Google"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/Google/Chrome"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/Google/Chrome/Default"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/Cookies"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/History"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/Login Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/Preferences"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/RedisInsight/Cookies"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/GPUCache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Local Storage"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Local Storage/leveldb"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/Code Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/image_cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Default/image_cache/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Profile 1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Profile 1/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn/v6"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Yarn/v6/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Gone"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Gone/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State/com.example.Gone.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Saved Application State/com.example.Gone.savedState/data.data"
+      }
+    ],
+    "total_logical_size": 81920
+  },
+  "treeAfterPutBack": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/Google"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/Google/Chrome"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/Google/Chrome/Default"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/Cookies"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/History"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/Login Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/Google/Chrome/Default/Preferences"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Cache/Cache_Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/RedisInsight/Cache/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/RedisInsight/Cookies"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/GPUCache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/RedisInsight/GPUCache/data_0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Local Storage"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/RedisInsight/Local Storage/leveldb"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/Cache/Cache_Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_1"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Default/Cache/Cache_Data/index"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/Code Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/Code Cache/js"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Default/Code Cache/js/index"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Default/image_cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Default/image_cache/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Profile 1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Profile 1/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Google/Chrome/Profile 1/Cache/Cache_Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Google/Chrome/Profile 1/Cache/Cache_Data/data_0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/Yarn/v6"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/Yarn/v6/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editor"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Editor/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Gone"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Gone/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State/com.example.Gone.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Saved Application State/com.example.Gone.savedState/data.data"
+      }
+    ],
+    "total_logical_size": 81920
+  }
+}

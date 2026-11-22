@@ -238,8 +238,14 @@ running apps only when a candidate reaches the row that needs them (a folder who
 `app-open`). The exclusion table (`exclude.toml`: `com.apple.` and Fresher's own id) keeps what is never claimed. It is
 the first real module whose removal is `Removal::EmptyFolder`: the folder stays and its entries go to the Trash one by
 one (the cleaner's `Emptied`), and one finding is one folder, named after its app and counted in the app's line of the
-storage map (`NewFinding::for_app`). The web-engine caches in `Application Support`, browsers' and game launchers'
-caches are named after the app's name, not its bundle id, so they wait for a table that ties a name to an id
+storage map (`NewFinding::for_app`). A second table, `apps.toml` (plan 034), ties a place named after an app (not its
+bundle id) to the app by its bundle id and names the exact cache folders inside it (rules as data): a `*` in its path
+stands for a profile, only a name listed in `caches` is ever claimed, and the row's category is `browsers` or
+`web-engine`. A match of a table row finds its owner by the row's id (the installed app whose bundle id equals it,
+first by path; never by the folder's name), and the rest of the decision is the same eleven rows (the exclusion table
+keeps the row's id, and an app that is not installed claims nothing). One finding per cache folder, emptied
+(`Removal::EmptyFolder`), titled by app, profile and folder. What stays deferred: rows for apps not checked yet, the
+browsers' support-folder caches, game launchers and Safari
 ([`deferred`](../deferred/installed-app-caches-more-places.md)).
 
 **`downloads` is code with data tables, and the example of a module whose categories need a guarded folder**: every

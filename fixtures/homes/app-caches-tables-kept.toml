@@ -1,0 +1,25 @@
+# A home for the app-caches module where every app of the tables is installed and each cache is kept for its own
+# reason: Chrome's `Default/Cache` holds a socket (stated); Redis Insight's `GPUCache` holds a file with the user's lock
+# (stated); Firefox is running; only Chromium's helper `org.chromium.Chromium.helper` runs, and the installed Chromium
+# declares it. Scanned with the running apps failing, the last two are kept for that.
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/Cache/data_0"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Google/Chrome/Default/Cache/s"
+kind = "socket"
+
+[[file]]
+path = "Library/Application Support/RedisInsight/GPUCache/data_0"
+size = 4096
+flags = ["user-lock"]
+
+[[file]]
+path = "Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2/entries/x"
+size = 4096
+
+[[file]]
+path = "Library/Caches/Chromium/Default/Code Cache/js/index"
+size = 4096

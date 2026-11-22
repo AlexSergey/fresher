@@ -1,0 +1,47 @@
+# The app-caches module's browser rows while a browser is open: its caches are kept (it writes there as it works), a
+# web-engine app's cache still goes. A file of its own, since the open app is shared by every case of a file. Google
+# Chrome is the open browser of the shared world (`downloads-browser-open.toml` runs it too); the paths are apart from
+# every other case file's: Redis Insight sits at `Applications/RedisInsight.app` here, since `all` would leave this
+# file out for writing the other file's `Applications/Redis Insight.app` again.
+feature = "app-caches-browsers-open"
+module = "app-caches"
+
+[[case]]
+name = "an open browser's caches are kept"
+kind = "negative"
+[[case.app]]
+path = "Applications/Google Chrome.app"
+bundle-id = "com.google.Chrome"
+name = "Google Chrome"
+running = true
+[[case.file]]
+path = "home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Caches/Google/Chrome/Default/Code Cache/js/index"
+size = 4096
+fill = "data"
+[[case.left-out]]
+category = "app-caches.browsers"
+reason = "app-caches.left-out.app-open"
+items = 2
+
+# Then the positive case.
+
+[[case]]
+name = "a web-engine app's cache still goes while a browser is open"
+kind = "positive"
+[[case.app]]
+path = "Applications/RedisInsight.app"
+bundle-id = "org.RedisLabs.RedisInsight-V2"
+name = "Redis Insight"
+[[case.file]]
+path = "home/Library/Application Support/RedisInsight/GPUCache/data_0"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Application Support/RedisInsight/GPUCache"
+category = "app-caches.web-engine"
+danger = "low"
+after-cleanup = "emptied"

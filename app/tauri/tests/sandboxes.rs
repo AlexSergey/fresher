@@ -258,6 +258,8 @@ mod positive {
     case_files! {
         app_caches => "app-caches",
         app_caches_app_open => "app-caches-app-open",
+        app_caches_browsers => "app-caches-browsers",
+        app_caches_browsers_open => "app-caches-browsers-open",
         app_leftovers => "app-leftovers",
         app_leftovers_spotlight_off => "app-leftovers-spotlight-off",
         cleanup_guards => "cleanup-guards",

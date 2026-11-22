@@ -35,4 +35,8 @@ managers and build caches. The caches of installed, everyday apps are not covere
 Open questions: how sure the generic finder must be before it claims a folder (the layout alone, or the layout and a
 known file inside it); whether offline data of a chat app (downloaded media) is a cache or the user's data.
 
-**Drafted in plan [034](../plans/034-browser-caches/readme.md)** (2026-11-22): browsers and known web-engine apps, by a table, never a generic finder. Game launchers, the Metal shader cache, Safari and containers stay [deferred](../deferred/installed-app-caches-more-places.md).
+**Built by plan [034](../plans/034-browser-caches/readme.md)** (2026-11-22): browsers and known web-engine apps, by a
+table (`apps.toml`), never a generic finder. Four rows ship, each checked on a real install: Chrome, Chromium, Firefox
+and Redis Insight. Still [deferred](../deferred/installed-app-caches-more-places.md): rows for apps not checked yet
+(Edge, Brave, Visual Studio Code, Slack, Discord and others), the browsers' support-folder caches, `Service Worker`
+and `CachedData`, game launchers, the Metal shader cache, Safari and containers.

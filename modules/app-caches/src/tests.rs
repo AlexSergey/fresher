@@ -11,14 +11,38 @@ use fresher_core::{
 use fresher_testing::{FakeClock, FakeCommandRunner, FakeInstalledApps, FakeKnownFolders, FakeRunningApps};
 
 use crate::AppCachesModule;
+use crate::gathered::Source;
 
 const NOW: u64 = 1_767_225_600;
 const EDITOR: &str = "com.example.Editor";
 const HELPER: &str = "com.example.Editor.Helper";
 const VIEWER: &str = "com.example.Viewer";
+const CHROME: &str = "com.google.Chrome";
+const REDIS_INSIGHT: &str = "org.RedisLabs.RedisInsight-V2";
 
-/// The interest of the shipped table's one row.
+/// The interest of the shipped places table's one row.
 const CACHES: usize = 0;
+/// The interest of a cache of a row of the shipped apps table: Chrome is row 0, Chromium row 1, Redis Insight row 3.
+fn app_interest(row: usize, cache: usize) -> usize {
+    let module = AppCachesModule::new().unwrap();
+    module.sources.iter().position(|source| *source == Source::App { row, cache }).unwrap()
+}
+
+fn chrome_cache() -> usize {
+    app_interest(0, 0)
+}
+
+fn chrome_code_cache() -> usize {
+    app_interest(0, 1)
+}
+
+fn chromium_cache() -> usize {
+    app_interest(1, 0)
+}
+
+fn redis_insight_gpu_cache() -> usize {
+    app_interest(3, 2)
+}
 
 /// Keeps everything the module reports, in order.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -58,9 +82,14 @@ fn app(id: &str, name: &str, helpers: &[&str]) -> InstalledApp {
     InstalledApp { helpers: helpers.iter().map(|helper| BundleId::new(*helper).unwrap()).collect(), ..app }
 }
 
-/// Editor with its helper, and a viewer.
+/// Editor with its helper, a viewer, Google Chrome with its helper, and Redis Insight; Chromium is not installed.
 fn installed() -> Vec<InstalledApp> {
-    vec![app(EDITOR, "Editor", &[HELPER]), app(VIEWER, "Viewer", &[])]
+    vec![
+        app(EDITOR, "Editor", &[HELPER]),
+        app(VIEWER, "Viewer", &[]),
+        app(CHROME, "Google Chrome", &["com.google.Chrome.helper"]),
+        app(REDIS_INSIGHT, "Redis Insight", &[]),
+    ]
 }
 
 /// A folder of the user's named `name` in `/home/Library/Caches`, read in full, of `bytes` logical bytes.
@@ -95,6 +124,25 @@ fn mixed() -> Vec<Match> {
         cache("Notes", 60),
         cache("com.example.Editor.Empty", 0),
         Match { kind: EntryKind::Symlink, ..cache("com.example.Editor.Link", 70) },
+    ]
+}
+
+/// A folder of the user's at `place` in `/home/Library`, matched by `interest`, read in full, of `bytes` logical bytes.
+fn table_cache(interest: usize, place: &str, bytes: u64) -> Match {
+    Match { interest, path: Path::new("/home/Library").join(place), ..cache(EDITOR, bytes) }
+}
+
+/// Caches of the apps table: two profiles of Chrome, a socket in a third, Chromium (not installed), Redis Insight.
+fn browsers() -> Vec<Match> {
+    vec![
+        table_cache(chrome_cache(), "Caches/Google/Chrome/Default/Cache", 4000),
+        table_cache(chrome_code_cache(), "Caches/Google/Chrome/Profile 1/Code Cache", 5000),
+        Match {
+            inside: Some(Inside { special: true, ..Inside::EMPTY }),
+            ..table_cache(chrome_code_cache(), "Caches/Google/Chrome/Guest Profile/Code Cache", 80)
+        },
+        table_cache(chromium_cache(), "Caches/Chromium/Default/Cache", 6000),
+        table_cache(redis_insight_gpu_cache(), "Application Support/RedisInsight/GPUCache", 7000),
     ]
 }
 
@@ -161,17 +209,70 @@ fn running(name: &str, ids: &[&str]) -> fresher_core::RunningApp {
 }
 
 mod negative {
-    use fresher_core::{CancelToken, Match, Module as _, ModuleError};
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt as _;
+    use std::path::Path;
+
+    use fresher_core::{CancelToken, Match, Module as _, ModuleError, Removal, Subject};
     use fresher_testing::{FakeInstalledApps, FakeRunningApps};
 
-    use super::{EDITOR, HELPER, Recorded, Scan, cache, mixed, running};
+    use super::{
+        CHROME, EDITOR, HELPER, Recorded, Scan, browsers, cache, chrome_cache, mixed, redis_insight_gpu_cache, running,
+        table_cache,
+    };
     use crate::AppCachesModule;
 
     #[test]
     fn a_match_of_no_interest_is_not_claimed() {
-        let stray = Match { interest: 99, ..cache(EDITOR, 1000) };
+        let past_the_last = AppCachesModule::new().unwrap().interests().len();
+        for interest in [past_the_last, 99] {
+            let stray = Match { interest, ..cache(EDITOR, 1000) };
 
-        assert_eq!(Scan::new().run(&[stray]), Recorded::default());
+            assert_eq!(Scan::new().run(&[stray]), Recorded::default(), "{interest}");
+        }
+    }
+
+    #[test]
+    fn a_profile_s_finding_never_names_another_path() {
+        let matches = browsers();
+
+        let recorded = Scan::new().run(&matches);
+
+        assert_eq!(recorded.findings.len(), 3);
+        for finding in &recorded.findings {
+            let Subject::Path(path) = finding.subject() else { unreachable!("{finding:?}") };
+            assert!(matches.iter().any(|found| &found.path == path), "{path:?}");
+            assert_eq!(finding.removal(), &Removal::EmptyFolder(path.clone()));
+        }
+    }
+
+    #[test]
+    fn an_open_browser_s_caches_are_left_out_in_its_category() {
+        let scan = Scan::running(FakeRunningApps::new(vec![running("Google Chrome", &[CHROME])]));
+
+        let recorded = scan.run(&browsers());
+
+        assert_eq!(recorded.identities(), ["redis-insight/GPUCache"]);
+        assert_eq!(
+            recorded.left_out(),
+            [
+                ("app-caches.browsers", "app-caches.left-out.app-open", 4000),
+                ("app-caches.browsers", "app-caches.left-out.special", 80),
+                ("app-caches.browsers", "app-caches.left-out.app-open", 5000),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_cache_whose_profile_or_name_is_not_in_utf8_gets_no_finding() {
+        let profile = Path::new("Caches/Google/Chrome").join(OsStr::from_bytes(b"Profile \xff")).join("Cache");
+        let name = Path::new("Application Support/RedisInsight").join(OsStr::from_bytes(b"GPUCache\xff"));
+        let odd = [
+            Match { path: Path::new("/home/Library").join(profile), ..table_cache(chrome_cache(), "", 4000) },
+            Match { path: Path::new("/home/Library").join(name), ..table_cache(redis_insight_gpu_cache(), "", 10) },
+        ];
+
+        assert_eq!(Scan::new().run(&odd), Recorded::default());
     }
 
     #[test]
@@ -291,8 +392,90 @@ mod positive {
     use fresher_core::{BundleId, ByteSize, DangerLevel, Module as _, ModuleGroup, Removal, Subject, TextArg, TextKey};
     use fresher_testing::FakeRunningApps;
 
-    use super::{EDITOR, HELPER, Scan, cache, mixed, running};
+    use super::{
+        CHROME, EDITOR, HELPER, REDIS_INSIGHT, Scan, browsers, cache, chrome_code_cache, mixed,
+        redis_insight_gpu_cache, running, table_cache,
+    };
     use crate::AppCachesModule;
+    use crate::gathered::Source;
+
+    #[test]
+    fn a_browser_cache_is_titled_by_its_browser_profile_and_folder() {
+        let found = table_cache(chrome_code_cache(), "Caches/Google/Chrome/Profile 1/Code Cache", 5000);
+
+        let recorded = Scan::new().run(&[found]);
+
+        let finding = &recorded.findings[0];
+        assert_eq!(finding.title().key().as_str(), "app-caches.title.profile");
+        assert_eq!(finding.title().args().get("app"), Some(&TextArg::Text("Google Chrome".into())));
+        assert_eq!(finding.title().args().get("profile"), Some(&TextArg::Text("Profile 1".into())));
+        assert_eq!(finding.title().args().get("folder"), Some(&TextArg::Text("Code Cache".into())));
+        assert_eq!(finding.reason().key().as_str(), "app-caches.reason");
+        assert_eq!(finding.reason().args().get("app"), Some(&TextArg::Text("Google Chrome".into())));
+        assert_eq!(finding.reason().args().get("size"), Some(&TextArg::Size(ByteSize::new(5000))));
+        assert_eq!(finding.category().as_str(), "app-caches.browsers");
+        assert_eq!(finding.danger(), DangerLevel::Low);
+    }
+
+    #[test]
+    fn a_web_engine_cache_is_titled_by_its_app_and_folder() {
+        let found = table_cache(redis_insight_gpu_cache(), "Application Support/RedisInsight/GPUCache", 7000);
+
+        let recorded = Scan::new().run(&[found]);
+
+        let finding = &recorded.findings[0];
+        assert_eq!(finding.title().key().as_str(), "app-caches.title.part");
+        assert_eq!(finding.title().args().get("app"), Some(&TextArg::Text("Redis Insight".into())));
+        assert_eq!(finding.title().args().get("folder"), Some(&TextArg::Text("GPUCache".into())));
+        assert_eq!(finding.title().args().get("profile"), None);
+        assert_eq!(finding.reason().args().get("size"), Some(&TextArg::Size(ByteSize::new(7000))));
+        assert_eq!(finding.category().as_str(), "app-caches.web-engine");
+        assert_eq!(finding.danger(), DangerLevel::Low);
+    }
+
+    #[test]
+    fn a_table_finding_empties_its_folder_and_is_counted_in_the_app_s_line() {
+        let matches = browsers();
+
+        let recorded = Scan::new().run(&matches);
+
+        for finding in &recorded.findings {
+            let Subject::Path(path) = finding.subject() else { unreachable!("{finding:?}") };
+            assert_eq!(finding.removal(), &Removal::EmptyFolder(path.clone()));
+            let found = matches.iter().find(|found| &found.path == path).unwrap();
+            assert_eq!(finding.sizes(), found.sizes);
+            assert!(finding.app_name().is_none());
+        }
+        let apps: Vec<Option<&str>> =
+            recorded.findings.iter().map(|finding| finding.app().map(BundleId::as_str)).collect();
+        assert_eq!(apps, [Some(REDIS_INSIGHT), Some(CHROME), Some(CHROME)]);
+    }
+
+    #[test]
+    fn table_identities_name_the_row_the_profile_and_the_cache() {
+        let recorded = Scan::new().run(&browsers());
+
+        assert_eq!(
+            recorded.identities(),
+            ["redis-insight/GPUCache", "chrome/Default/Cache", "chrome/Profile 1/Code Cache"]
+        );
+    }
+
+    #[test]
+    fn the_library_caches_row_reports_as_before() {
+        let scan = Scan::running(FakeRunningApps::new(vec![running("Viewer", &["com.example.Viewer"])]));
+        let both: Vec<_> = mixed().into_iter().chain(browsers()).collect();
+
+        let alone = scan.run(&mixed());
+        let together = scan.run(&both);
+
+        let library = |category: &str| category == "app-caches.library-caches";
+        let findings: Vec<_> =
+            together.findings.iter().filter(|finding| library(finding.category().as_str())).cloned().collect();
+        let left_out: Vec<_> = together.left_out().into_iter().filter(|(category, _, _)| library(category)).collect();
+        assert_eq!(findings, alone.findings);
+        assert_eq!(left_out, alone.left_out());
+    }
 
     #[test]
     fn the_module_is_in_the_system_group_with_no_setting() {
@@ -304,13 +487,23 @@ mod positive {
     }
 
     #[test]
-    fn the_only_category_is_the_library_caches_at_low_danger() {
+    fn the_three_categories_are_listed_in_order_at_low_danger() {
         let module = AppCachesModule::new().unwrap();
 
-        let categories = module.descriptor().categories();
-        assert_eq!(categories.len(), 1);
-        assert_eq!(categories[0].id().as_str(), "app-caches.library-caches");
-        assert_eq!(categories[0].danger(), DangerLevel::Low);
+        let categories: Vec<(&str, DangerLevel)> = module
+            .descriptor()
+            .categories()
+            .iter()
+            .map(|category| (category.id().as_str(), category.danger()))
+            .collect();
+        assert_eq!(
+            categories,
+            [
+                ("app-caches.library-caches", DangerLevel::Low),
+                ("app-caches.browsers", DangerLevel::Low),
+                ("app-caches.web-engine", DangerLevel::Low),
+            ]
+        );
     }
 
     #[test]
@@ -330,11 +523,15 @@ mod positive {
     }
 
     #[test]
-    fn the_one_interest_is_the_shipped_places_whole_claim() {
+    fn the_interests_are_the_shipped_place_then_one_per_cache_of_the_apps_table() {
         let module = AppCachesModule::new().unwrap();
 
-        assert_eq!(module.interests().len(), 1);
+        assert_eq!(module.interests().len(), 12);
         assert!(module.interests()[0].matches_only_bundle_ids());
+        assert!(module.interests()[1..].iter().all(|interest| !interest.matches_only_bundle_ids()));
+        assert_eq!(module.sources[0], Source::Place { row: 0 });
+        assert_eq!(module.sources[1], Source::App { row: 0, cache: 0 });
+        assert_eq!(module.sources[11], Source::App { row: 3, cache: 4 });
     }
 
     #[test]
@@ -395,11 +592,13 @@ mod property {
     use fresher_testing::FakeRunningApps;
     use proptest::prelude::*;
 
-    use super::{Scan, mixed, running};
+    use super::{Scan, browsers, mixed, running};
 
-    /// Some of `mixed()`, in any order.
+    /// Some of `mixed()` and `browsers()`, in any order.
     fn any_matches() -> impl Strategy<Value = Vec<fresher_core::Match>> {
-        proptest::sample::subsequence(mixed(), 0..=mixed().len()).prop_shuffle()
+        let all: Vec<_> = mixed().into_iter().chain(browsers()).collect();
+        let count = all.len();
+        proptest::sample::subsequence(all, 0..=count).prop_shuffle()
     }
 
     proptest! {

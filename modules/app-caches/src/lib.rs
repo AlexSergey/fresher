@@ -5,9 +5,14 @@
 //! closed, at Low danger, and removing one empties the folder into the Trash and keeps the folder. It never claims a
 //! name that is not a bundle id, anything of Apple's or Fresher's own, a folder whose owner is not an installed app
 //! (a removed app's cache is `app-leftovers`' own), nor any folder while its app runs. It runs no command.
+//!
+//! A second table, `apps.toml`, ties cache folders to an installed browser or web-engine app by the row's bundle id,
+//! never by a folder's name: only the folders it names exactly, one finding per cache folder of each profile for a
+//! browser, never the history, cookies or other data beside them. The same decision applies, under the same rules.
 
 #![forbid(unsafe_code)]
 
+mod apps;
 mod categories;
 mod decide;
 mod exclude;
@@ -23,11 +28,13 @@ use fresher_core::{
     Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, RunningSet, TextKeyError,
 };
 
+use crate::apps::Apps;
+pub use crate::apps::AppsError;
 use crate::categories::CATEGORIES;
-use crate::decide::{NoSystem, decide};
+use crate::decide::{Naming, NoSystem, decide};
 use crate::exclude::Exclude;
 pub use crate::exclude::ExcludeError;
-use crate::gathered::{Candidate, Gathered};
+use crate::gathered::{Candidate, Gathered, Source};
 use crate::places::Places;
 pub use crate::places::PlacesError;
 use crate::report::Report;
@@ -47,6 +54,8 @@ pub enum AppCachesError {
     Places(#[from] PlacesError),
     #[error(transparent)]
     Exclude(#[from] ExcludeError),
+    #[error(transparent)]
+    Apps(#[from] AppsError),
 }
 
 /// The `app-caches` module.
@@ -54,9 +63,12 @@ pub enum AppCachesError {
 pub struct AppCachesModule {
     descriptor: ModuleDescriptor,
     places: Places,
+    apps: Apps,
     exclude: Exclude,
-    /// One interest per row of `places`, in its order.
+    /// One interest per row of `places`, in its order, then one per cache of each row of `apps`, in its order.
     interests: Vec<Interest>,
+    /// What each interest is, by the same index.
+    sources: Vec<Source>,
     report: Report,
     /// The matches of the scan, waiting for its `finish`.
     gathered: Gathered,
@@ -81,9 +93,15 @@ impl AppCachesModule {
             .with_problems(report.problems())?;
         // A bad table fails here, when the module is built.
         let places = Places::shipped()?;
+        let apps = Apps::shipped()?;
         let exclude = Exclude::shipped()?;
-        let interests = places.interests()?;
-        Ok(Self { descriptor, places, exclude, interests, report, gathered: Gathered::default() })
+        let mut interests = places.interests()?;
+        let mut sources: Vec<Source> = (0..interests.len()).map(|row| Source::Place { row }).collect();
+        for (interest, row, cache) in apps.interests()? {
+            interests.push(interest);
+            sources.push(Source::App { row, cache });
+        }
+        Ok(Self { descriptor, places, apps, exclude, interests, sources, report, gathered: Gathered::default() })
     }
 }
 
@@ -96,11 +114,12 @@ impl Module for AppCachesModule {
         &self.interests
     }
 
-    /// Keeps a match of a place for the scan's `finish`; a match of no interest is not claimed.
+    /// Keeps a match of one of the module's interests, with its source, for the scan's `finish`; a match of no
+    /// interest is not claimed.
     fn on_match(&self, matched: &Match, cx: &ModuleContext<'_>, _: &mut dyn FindingSink) -> Result<(), ModuleError> {
-        if matched.interest < self.places.rows().len() {
+        if let Some(&source) = self.sources.get(matched.interest) {
             let candidate = Candidate {
-                row: matched.interest,
+                source,
                 path: matched.path.clone(),
                 kind: matched.kind,
                 sizes: matched.sizes,
@@ -122,14 +141,23 @@ impl Module for AppCachesModule {
         }
         let apps = cx.system().installed_apps().map_err(|_| NoSystem);
         let running: OnceCell<Result<&RunningSet, NoSystem>> = OnceCell::new();
-        let rows = self.places.rows();
         for candidate in &candidates {
             if cx.cancel().is_cancelled() {
                 return Err(ModuleError::Cancelled);
             }
-            let Some(row) = rows.get(candidate.row) else { continue };
             let ask = || *running.get_or_init(|| cx.system().running_apps().map_err(|_| NoSystem));
-            self.report.tell(row, candidate, decide(candidate, &self.exclude, apps, ask), out);
+            match candidate.source {
+                Source::Place { row } => {
+                    let Some(row) = self.places.rows().get(row) else { continue };
+                    let verdict = decide(candidate, Naming::FolderName, &self.exclude, apps, ask);
+                    self.report.tell_place(row, candidate, verdict, out);
+                }
+                Source::App { row, .. } => {
+                    let Some(row) = self.apps.rows().get(row) else { continue };
+                    let verdict = decide(candidate, Naming::Table(&row.bundle_id), &self.exclude, apps, ask);
+                    self.report.tell_app(row, candidate, verdict, out);
+                }
+            }
         }
         Ok(())
     }

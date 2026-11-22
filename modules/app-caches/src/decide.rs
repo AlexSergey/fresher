@@ -1,11 +1,11 @@
 //! Whether a folder of `Caches` is offered as an installed app's cache, kept or not claimed: the rows of the design's
 //! section 4, in their order, on plain values. Nothing here reads the disk or asks the system but through `running`.
 
-use fresher_core::{EntryKind, InstalledApp, RunningSet};
+use fresher_core::{BundleId, EntryKind, InstalledApp, RunningSet};
 
 use crate::exclude::Exclude;
 use crate::gathered::Candidate;
-use crate::owner::{Owner, id_of, owner};
+use crate::owner::{Owner, id_of, installed, owner};
 
 /// One of the system's lists (the installed or the running apps) could not be read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,12 +45,22 @@ pub(crate) enum Verdict<'a> {
     Offered(Owner<'a>),
 }
 
-/// The first row that applies to `candidate`:
+/// How a candidate names its app.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Naming<'t> {
+    /// By the folder's own name, a bundle id (a row of `places.toml`).
+    FolderName,
+    /// By the bundle id of its row of `apps.toml`; the folder's name says nothing of its app.
+    Table(&'t BundleId),
+}
+
+/// The first row that applies to `candidate`, its app named by `naming`:
 ///
 /// 1. not a folder (a file, a link, a socket): not claimed;
-/// 2. the name gives no id, or `exclude` keeps the id: not claimed;
+/// 2. `FolderName`: the name gives no id, or `exclude` keeps the id; `Table(id)`: `exclude` keeps `id`: not claimed;
 /// 3. the installed apps cannot be listed: not claimed, and nothing said;
-/// 4. no installed app names it: not claimed;
+/// 4. `FolderName`: no installed app names the folder (`owner`); `Table(id)`: no installed app has `id`
+///    (`installed`): not claimed;
 /// 5. not read in full: not claimed;
 /// 6. nothing in it (logical size 0): not claimed;
 /// 7. a socket, a pipe or a device inside: `Special`;
@@ -63,6 +73,7 @@ pub(crate) enum Verdict<'a> {
 /// asked.
 pub(crate) fn decide<'a, 'r>(
     candidate: &Candidate,
+    naming: Naming<'_>,
     exclude: &Exclude,
     apps: Result<&'a [InstalledApp], NoSystem>,
     running: impl FnOnce() -> Result<&'r RunningSet, NoSystem>,
@@ -70,12 +81,20 @@ pub(crate) fn decide<'a, 'r>(
     if candidate.kind != EntryKind::Folder {
         return Verdict::NotClaimed;
     }
-    let Some(id) = candidate.path.file_name().and_then(id_of) else { return Verdict::NotClaimed };
+    let named = match naming {
+        Naming::FolderName => candidate.path.file_name().and_then(id_of),
+        Naming::Table(id) => Some(id.clone()),
+    };
+    let Some(id) = named else { return Verdict::NotClaimed };
     if exclude.keeps(&id) {
         return Verdict::NotClaimed;
     }
     let Ok(apps) = apps else { return Verdict::NotClaimed };
-    let Some(owner) = owner(id.as_str(), apps) else { return Verdict::NotClaimed };
+    let found = match naming {
+        Naming::FolderName => owner(id.as_str(), apps),
+        Naming::Table(_) => installed(&id, apps),
+    };
+    let Some(owner) = found else { return Verdict::NotClaimed };
     let Some(inside) = candidate.inside.filter(|inside| inside.complete) else { return Verdict::NotClaimed };
     if candidate.sizes.logical.bytes() == 0 {
         return Verdict::NotClaimed;

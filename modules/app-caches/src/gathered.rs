@@ -6,11 +6,18 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use fresher_core::{CancelToken, EntryFacts, EntryKind, Inside, Sizes};
 
-/// A match of a place: an entry named like a bundle id the module may offer as one app's cache.
+/// What one interest of the module is: a row of `places.toml`, or one cache of a row of `apps.toml`, by index.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Source {
+    Place { row: usize },
+    App { row: usize, cache: usize },
+}
+
+/// A match of an interest: an entry the module may offer as one app's cache.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Candidate {
-    /// The index of the row in the places table.
-    pub(crate) row: usize,
+    /// The interest's source: the row of a table it matched.
+    pub(crate) source: Source,
     pub(crate) path: PathBuf,
     pub(crate) kind: EntryKind,
     pub(crate) sizes: Sizes,
@@ -35,13 +42,13 @@ impl Gathered {
         }
     }
 
-    /// The candidates gathered for the scan of `token`, sorted by path then row; nothing is kept after.
+    /// The candidates gathered for the scan of `token`, sorted by path then source; nothing is kept after.
     pub(crate) fn take(&self, token: &CancelToken) -> Vec<Candidate> {
         let mut candidates = match self.lock().take() {
             Some((kept, candidates)) if kept.is_same(token) => candidates,
             _ => Vec::new(),
         };
-        candidates.sort_by(|first, second| (&first.path, first.row).cmp(&(&second.path, second.row)));
+        candidates.sort_by(|first, second| (&first.path, first.source).cmp(&(&second.path, second.source)));
         candidates
     }
 
@@ -55,11 +62,11 @@ impl Gathered {
 mod tests {
     use fresher_core::{EntryFacts, EntryKind, Inside, Sizes};
 
-    use crate::gathered::Candidate;
+    use crate::gathered::{Candidate, Source};
 
     fn candidate(row: usize, path: &str) -> Candidate {
         Candidate {
-            row,
+            source: Source::Place { row },
             path: path.into(),
             kind: EntryKind::Folder,
             sizes: Sizes::ZERO,
@@ -102,19 +109,19 @@ mod tests {
         use fresher_core::CancelToken;
 
         use super::candidate;
-        use crate::gathered::Gathered;
+        use crate::gathered::{Gathered, Source};
 
         #[test]
-        fn the_candidates_are_handed_sorted_by_path_then_row() {
+        fn the_candidates_are_handed_sorted_by_path_then_source() {
             let gathered = Gathered::default();
             let token = CancelToken::new();
             gathered.add(&token, candidate(2, "/home/Library/Caches/com.example.B"));
             gathered.add(&token, candidate(1, "/home/Library/Caches/com.example.A"));
             gathered.add(&token, candidate(0, "/home/Library/Caches/com.example.A"));
 
-            let rows: Vec<usize> = gathered.take(&token).iter().map(|candidate| candidate.row).collect();
+            let sources: Vec<Source> = gathered.take(&token).iter().map(|candidate| candidate.source).collect();
 
-            assert_eq!(rows, [0, 1, 2]);
+            assert_eq!(sources, [Source::Place { row: 0 }, Source::Place { row: 1 }, Source::Place { row: 2 }]);
         }
     }
 }

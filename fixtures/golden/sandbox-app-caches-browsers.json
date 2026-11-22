@@ -1,0 +1,513 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "empty",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Application Support/RedisInsight/Cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "empty",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Caches/Chromium/Default/Cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "empty",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Caches/Chromium/Default/Code Cache",
+        "trash": "in-trash"
+      },
+      {
+        "action": "empty",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Caches/Chromium/Profile 1/Cache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "org.RedisLabs.RedisInsight-V2",
+      "category": "app-caches.web-engine",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Application Support/RedisInsight/Cache"
+    },
+    {
+      "app": "org.chromium.Chromium",
+      "category": "app-caches.browsers",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Caches/Chromium/Default/Cache"
+    },
+    {
+      "app": "org.chromium.Chromium",
+      "category": "app-caches.browsers",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Caches/Chromium/Default/Code Cache"
+    },
+    {
+      "app": "org.chromium.Chromium",
+      "category": "app-caches.browsers",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Caches/Chromium/Profile 1/Cache"
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Caches/Chromium/Profile 2",
+        "case": "what a profile keeps beside its caches is never claimed",
+        "path": [
+          "home/Library/Caches/Chromium/Profile 2"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Library/Caches/Chromium/Profile 2/Storage"
+          },
+          {
+            "allocated": 4096,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Library/Caches/Chromium/Profile 2/image_cache"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Caches/Chromium/Default/Cache",
+        "case": "a browser profile's cache is emptied",
+        "path": [
+          "home/Library/Caches/Chromium/Default/Cache"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Library/Caches/Chromium/Default/Cache"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 16384,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 32768,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67110251,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738146965,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 120,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Chromium.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Chromium.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 366,
+        "path": "Applications/Chromium.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Chromium.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/OtherChat.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/OtherChat.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 367,
+        "path": "Applications/OtherChat.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/OtherChat.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Redis Insight.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Redis Insight.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 379,
+        "path": "Applications/Redis Insight.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Redis Insight.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Cache_Data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Cache_Data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Cache_Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Cache_Data/data_0"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Cache_Data/data_0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/js"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/js/index"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/OtherChat"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/OtherChat/Cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/OtherChat/Cache/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/RedisInsight"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/RedisInsight/Cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/RedisInsight/Cookies"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/RedisInsight/Local Storage"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/RedisInsight/Local Storage/leveldb"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/RedisInsight/config.json"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Default/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Default/Code Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 1"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 1/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 2/Storage"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 2/Storage/ext"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Chromium/Profile 2/Storage/ext/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 2/image_cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Chromium/Profile 2/image_cache/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 3"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Chromium/Profile 3/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Firefox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Firefox/Profiles"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Firefox/Profiles/abcd1234.default-release"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2/entries"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2/entries/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects/kept-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Projects/kept-cache/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 50539
+  }
+}

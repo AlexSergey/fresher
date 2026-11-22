@@ -1,0 +1,124 @@
+# The home of the app-caches module's browser and web-engine core end-to-end flows
+# (crates/e2e/tests/app_caches_browsers.rs), laid out as a sandbox lays out its home (`home/`); the flows add the rest
+# of the sandbox's layout and its marker.
+# Google Chrome keeps the caches of two profiles under `Library/Caches/Google/Chrome` (`Default`'s `Cache` and
+# `Code Cache`, `Profile 1`'s `Cache`) beside `Default`'s `image_cache`, which is not a table cache, and its profile
+# data in its support folder (history, cookies, passwords, preferences), never touched. Redis Insight keeps `Cache`
+# and `GPUCache` in its support folder beside its cookies and local storage.
+# The other modules' answers beside them: the removed `com.example.Gone`, unchanged for 40 days, has a cache and a
+# saved state (`app-leftovers`'), Yarn's cache (`dev-caches`'), an older JetBrains IDE (WebStorm 2024.3, 2025.3 in
+# use, `jetbrains`') and the installed `com.example.Editor`'s id-named cache (`app-caches.library-caches`).
+
+[[file]]
+path = "home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data/index"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_1"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Google/Chrome/Default/Code Cache/js/index"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Google/Chrome/Profile 1/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Google/Chrome/Default/image_cache/x"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/Google/Chrome/Default/History"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/Google/Chrome/Default/Cookies"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/Google/Chrome/Default/Login Data"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/Google/Chrome/Default/Preferences"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/RedisInsight/Cache/Cache_Data/data_0"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/RedisInsight/GPUCache/data_0"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/RedisInsight/Cookies"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/RedisInsight/Local Storage/leveldb/000003.log"
+size = 4096
+fill = "data"
+
+[[dir]]
+path = "home/Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/Yarn/v6/x"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2024.3/index/data.bin"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/JetBrains/WebStorm2025.3/index/data.bin"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor/Cache.db"
+size = 4096
+fill = "data"

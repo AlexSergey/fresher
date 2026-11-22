@@ -1,0 +1,573 @@
+{
+  "kept": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "app-caches.web-engine",
+        "reason": "app-caches.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-caches.browsers",
+        "reason": "app-caches.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-caches.browsers",
+        "reason": "app-caches.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "app-caches.browsers",
+        "reason": "app-caches.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "app": "com.google.Chrome",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "key": {
+          "identity": "chrome/Default/Cache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/Google/Chrome/Default/Cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Google/Chrome/Default/Cache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Cache"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "Default"
+            }
+          },
+          "key": "app-caches.title.profile"
+        }
+      },
+      {
+        "app": "com.google.Chrome",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "key": {
+          "identity": "chrome/Default/Code Cache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/Google/Chrome/Default/Code Cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Google/Chrome/Default/Code Cache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Code Cache"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "Default"
+            }
+          },
+          "key": "app-caches.title.profile"
+        }
+      },
+      {
+        "app": "com.google.Chrome",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "key": {
+          "identity": "chrome/Profile 1/Cache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/Google/Chrome/Profile 1/Cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Google/Chrome/Profile 1/Cache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Cache"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "Profile 1"
+            }
+          },
+          "key": "app-caches.title.profile"
+        }
+      },
+      {
+        "app": "org.mozilla.firefox",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "key": {
+          "identity": "firefox/abcd1234.default-release/cache2",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Firefox"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Firefox"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "cache2"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "abcd1234.default-release"
+            }
+          },
+          "key": "app-caches.title.profile"
+        }
+      },
+      {
+        "app": "org.mozilla.firefox",
+        "category": "app-caches.browsers",
+        "danger": "low",
+        "key": {
+          "identity": "firefox/abcd1234.default-release/startupCache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Firefox"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Caches/Firefox/Profiles/abcd1234.default-release/startupCache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Caches/Firefox/Profiles/abcd1234.default-release/startupCache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Firefox"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "startupCache"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "abcd1234.default-release"
+            }
+          },
+          "key": "app-caches.title.profile"
+        }
+      },
+      {
+        "app": "org.RedisLabs.RedisInsight-V2",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "key": {
+          "identity": "redis-insight/Cache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Application Support/RedisInsight/Cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/RedisInsight/Cache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Cache"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      },
+      {
+        "app": "org.RedisLabs.RedisInsight-V2",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "key": {
+          "identity": "redis-insight/Code Cache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Application Support/RedisInsight/Code Cache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/RedisInsight/Code Cache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Code Cache"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      },
+      {
+        "app": "org.RedisLabs.RedisInsight-V2",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "key": {
+          "identity": "redis-insight/DawnGraphiteCache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Application Support/RedisInsight/DawnGraphiteCache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/RedisInsight/DawnGraphiteCache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "DawnGraphiteCache"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      },
+      {
+        "app": "org.RedisLabs.RedisInsight-V2",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "key": {
+          "identity": "redis-insight/DawnWebGPUCache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Application Support/RedisInsight/DawnWebGPUCache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/RedisInsight/DawnWebGPUCache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "DawnWebGPUCache"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      },
+      {
+        "app": "org.RedisLabs.RedisInsight-V2",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "key": {
+          "identity": "redis-insight/GPUCache",
+          "module": "app-caches"
+        },
+        "reason": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            }
+          },
+          "key": "app-caches.reason"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Application Support/RedisInsight/GPUCache"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Application Support/RedisInsight/GPUCache"
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "GPUCache"
+            }
+          },
+          "key": "app-caches.title.part"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

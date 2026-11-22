@@ -15,6 +15,13 @@ import type {
 
 import { type CommandKey, COMMANDS } from '../src/ipc';
 import {
+  APP_CACHES_BROWSERS_DICTIONARY,
+  APP_CACHES_BROWSERS_FINDINGS,
+  APP_CACHES_BROWSERS_OVERVIEW,
+  APP_CACHES_BROWSERS_SCAN,
+  APP_CACHES_BROWSERS_TOTALS,
+} from '../src/test/app-caches-browsers-scan';
+import {
   APP_CACHES_DICTIONARY,
   APP_CACHES_FINDINGS,
   APP_CACHES_MODULES,
@@ -788,6 +795,32 @@ const appCachesCleanup = (): CleanupScript => {
   };
 };
 
+// The cleanup of the browser caches' first two folders (Chrome's Default Cache and Code Cache): each is emptied into
+// the Trash, but Code Cache held nothing that could go, so nothing of it is in the Trash. Three items stay, 115 MB.
+const appCachesBrowsersCleanup = (): CleanupScript => {
+  const plan = planOf(APP_CACHES_BROWSERS_FINDINGS.filter(({ id }) => id === 801 || id === 802));
+  const detail = emptiedDetailOf(plan, 3, 1_735_819_200, [
+    { moved: 4, skipped: 0 },
+    { moved: 0, skipped: 0 },
+  ]);
+
+  return {
+    after: {
+      ...APP_CACHES_BROWSERS_OVERVIEW,
+      found: sizedOf(115_000_000),
+      totals: APP_CACHES_BROWSERS_TOTALS.map((total) =>
+        total.category === 'app-caches.browsers' ? { ...total, count: 1, sizes: sizedOf(90_000_000) } : total,
+      ),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 400_000_000 },
+    outcomes: [
+      { kind: 'emptied', moved: 4, skipped: 0 },
+      { kind: 'emptied', moved: 0, skipped: 0 },
+    ],
+  };
+};
+
 // What the app caches script answers before a scan: the module, its texts and settings.
 const APP_CACHES_ANSWERS = {
   ...ANSWERS,
@@ -795,6 +828,12 @@ const APP_CACHES_ANSWERS = {
   getModules: APP_CACHES_MODULES,
   getSettings: APP_CACHES_SETTINGS,
   updateSetting: null,
+} as const;
+
+// What the browser caches script answers before a scan: the module with its three categories, its texts, settings.
+const APP_CACHES_BROWSERS_ANSWERS = {
+  ...APP_CACHES_ANSWERS,
+  getDictionary: { ...APP_CACHES_BROWSERS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
 } as const;
 
 // The cleanup of the first local AI model (`meta/tiny`): the Hugging Face models stay with one model, 2 GB wait.
@@ -925,6 +964,14 @@ export const SCRIPTS = {
     ignoring: true,
     scan: APP_CACHES_SCAN,
     scanned: APP_CACHES_OVERVIEW,
+  },
+  // The browser and web-engine caches scan, streamed at once; the cleanup empties Chrome's Default caches.
+  appCachesBrowsers: {
+    answers: APP_CACHES_BROWSERS_ANSWERS,
+    cleanup: appCachesBrowsersCleanup(),
+    ignoring: true,
+    scan: APP_CACHES_BROWSERS_SCAN,
+    scanned: APP_CACHES_BROWSERS_OVERVIEW,
   },
   // The removed apps' leftovers scan, streamed at once, with cleanup, ignoring and its storage meaning.
   appLeftovers: {

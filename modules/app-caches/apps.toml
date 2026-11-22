@@ -1,0 +1,46 @@
+# The cache folders of browsers and web-engine apps (plan 034, design section 1), one row per app.
+# `id`: the row's id, kebab case: the start of its findings' identities (`<id>/<profile>/<cache>`, `<id>/<cache>`).
+# `category`: one of the table's two categories the row's findings are in.
+# `bundle-id`: the app that must be installed, and closed, for its caches to be offered; never told by a folder name.
+# `folder`: the known folder the row's place is under, as rules write it.
+# `path`: plain folder names under `folder`; one `*` at most stands for a profile, and it is never the first name.
+#   The first name is never shaped as a bundle id: those names are `library-caches`' and `app-leftovers`'.
+# `caches`: the exact names inside the place that are caches. A name not in `caches` is never touched: a profile's
+#   history, cookies and passwords sit beside its caches.
+# A row is added only after it was checked on a real install.
+
+# Checked on Google Chrome: `~/Library/Caches/Google/Chrome/<profile>/{Cache,Code Cache}`, beside `Storage`.
+[[app]]
+id = "chrome"
+category = "app-caches.browsers"
+bundle-id = "com.google.Chrome"
+folder = "app-caches"
+path = "Google/Chrome/*"
+caches = ["Cache", "Code Cache"]
+
+# Checked on Chromium: `~/Library/Caches/Chromium/<profile>/{Cache,Code Cache}`.
+[[app]]
+id = "chromium"
+category = "app-caches.browsers"
+bundle-id = "org.chromium.Chromium"
+folder = "app-caches"
+path = "Chromium/*"
+caches = ["Cache", "Code Cache"]
+
+# Checked on Firefox: `~/Library/Caches/Firefox/Profiles/<profile>/{cache2,startupCache}`, beside `safebrowsing`.
+[[app]]
+id = "firefox"
+category = "app-caches.browsers"
+bundle-id = "org.mozilla.firefox"
+folder = "app-caches"
+path = "Firefox/Profiles/*"
+caches = ["cache2", "startupCache"]
+
+# Checked on Redis Insight: its support folder holds these caches beside `Cookies`, `Local Storage` and `config.json`.
+[[app]]
+id = "redis-insight"
+category = "app-caches.web-engine"
+bundle-id = "org.RedisLabs.RedisInsight-V2"
+folder = "app-support"
+path = "RedisInsight"
+caches = ["Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache"]

@@ -1,5 +1,5 @@
-//! The fixture homes of the app-caches module's tests, the system each is scanned with, and one run of the module on
-//! each. The installed and running apps are given to the module as fakes; facts the disk cannot be made to show (a
+//! What the app-caches module's tests share: the homes' loader, the system a home is scanned with, and one run of the
+//! module on a home. The homes are in `plain.rs` and `tables.rs`, each used by the test files that need it. The installed and running apps are given to the module as fakes; facts the disk cannot be made to show (a
 //! socket, the user's lock) are stated by the home.
 
 use std::path::{Path, PathBuf};
@@ -9,7 +9,7 @@ use fresher_core::{BundleId, InstalledApp};
 use fresher_module_app_caches::AppCachesModule;
 use fresher_testing::{
     FIXTURE_NOW, FakeInstalledApps, FakeRunningApps, FixtureTree, MatchOrder, ModuleRun, Ports, installed_app,
-    run_module, running_app,
+    run_module,
 };
 
 /// The repository's `fixtures` folder.
@@ -59,7 +59,7 @@ impl System {
 }
 
 /// The home `name` scanned with `system`, the clock at `FIXTURE_NOW`.
-fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
+pub(crate) fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
     let tree = home(name);
     let ports = Ports {
         apps: Arc::new(system.apps),
@@ -69,56 +69,4 @@ fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
     };
     let run = run_module(&app_caches(), &tree, &ports).unwrap();
     (tree, run)
-}
-
-/// The not-claimed home's system: `com.example.Editor` and its helper installed.
-pub(crate) fn editor_system() -> System {
-    System::with(vec![app("Editor", "com.example.Editor", &["com.example.Editor.Helper"])])
-}
-
-/// The kept home's system: its four apps installed, `com.example.Open` and `com.example.Agent`'s helper running.
-pub(crate) fn kept_system() -> System {
-    let apps = ["Busy", "Locked", "Open"].map(|name| app(name, &format!("com.example.{name}"), &[])).to_vec();
-    let agent = app("Agent", "com.example.Agent", &["com.example.Agent.Menu"]);
-    let running = FakeRunningApps::new(vec![
-        running_app("Open", &["com.example.Open"]).unwrap(),
-        running_app("Menu", &["com.example.Agent.Menu"]).unwrap(),
-    ]);
-    System::with([apps, vec![agent]].concat()).running(running)
-}
-
-/// The offered home's system: the editor with its helper, and the suite and its pro edition, installed.
-pub(crate) fn offered_system() -> System {
-    System::with(vec![
-        app("Editor", "com.example.Editor", &["com.example.Editor.Helper"]),
-        app("Suite", "com.example.Suite", &[]),
-        app("Suite Pro", "com.example.Suite.Pro", &[]),
-    ])
-}
-
-/// Names and ids nothing may claim, scanned with `system`.
-pub(crate) fn not_claimed_with(system: System) -> (FixtureTree, ModuleRun) {
-    scan("app-caches-not-claimed", system)
-}
-
-pub(crate) fn not_claimed() -> (FixtureTree, ModuleRun) {
-    not_claimed_with(editor_system())
-}
-
-/// One folder per reason to keep it, scanned with `system`.
-pub(crate) fn kept_with(system: System) -> (FixtureTree, ModuleRun) {
-    scan("app-caches-kept", system)
-}
-
-pub(crate) fn kept() -> (FixtureTree, ModuleRun) {
-    kept_with(kept_system())
-}
-
-/// Every cache of an installed app, scanned with `system`.
-pub(crate) fn offered_with(system: System) -> (FixtureTree, ModuleRun) {
-    scan("app-caches-offered", system)
-}
-
-pub(crate) fn offered() -> (FixtureTree, ModuleRun) {
-    offered_with(offered_system())
 }

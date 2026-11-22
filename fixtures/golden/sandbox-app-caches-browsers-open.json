@@ -1,0 +1,267 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "empty",
+        "category": "app-caches.web-engine",
+        "danger": "low",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Application Support/RedisInsight/GPUCache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "org.RedisLabs.RedisInsight-V2",
+      "category": "app-caches.web-engine",
+      "danger": "low",
+      "logical": 4096,
+      "module": "app-caches",
+      "subject": "home/Library/Application Support/RedisInsight/GPUCache"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "app-caches.browsers",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "app-caches.left-out.app-open"
+      },
+      "sizes": {
+        "allocated": 8192,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 8192
+      }
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 4096,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 8192,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67109961,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738184119,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 125,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Google Chrome.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Google Chrome.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 367,
+        "path": "Applications/Google Chrome.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Google Chrome.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/RedisInsight.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/RedisInsight.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 379,
+        "path": "Applications/RedisInsight.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/RedisInsight.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/data_0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/RedisInsight"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/RedisInsight/GPUCache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google/Chrome"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google/Chrome/Default"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google/Chrome/Default/Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Google/Chrome/Default/Cache/Cache_Data/data_0"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google/Chrome/Default/Code Cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/Google/Chrome/Default/Code Cache/js"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/Google/Chrome/Default/Code Cache/js/index"
+      },
+      {
+        "kind": "file",
+        "logical_size": 226,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 13385
+  }
+}

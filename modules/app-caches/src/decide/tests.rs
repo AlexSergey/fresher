@@ -1,17 +1,20 @@
-//! The decision on plain values: one test per row, each keep before the offers, then a property.
+//! The decision on plain values: one test per row, each keep before the offers, then a property; for a folder named
+//! by its name, then for a cache folder of a table row.
 
 use std::cell::Cell;
 use std::path::Path;
 
 use fresher_core::{BundleId, ByteSize, EntryFacts, EntryKind, Inside, InstalledApp, RunningApp, RunningSet, Sizes};
 
-use crate::decide::{NoSystem, Verdict, decide};
+use crate::decide::{Naming, NoSystem, Verdict, decide};
 use crate::exclude::Exclude;
-use crate::gathered::Candidate;
+use crate::gathered::{Candidate, Source};
 
 const CACHES: &str = "/home/Library/Caches";
 const EDITOR: &str = "com.example.Editor";
 const HELPER: &str = "com.example.Editor.Helper";
+const CHROME: &str = "com.google.Chrome";
+const CHROME_HELPER: &str = "com.google.Chrome.helper";
 
 /// An installed app of `id` named `name`, with the helpers `helpers`.
 fn app(id: &str, name: &str, helpers: &[&str]) -> InstalledApp {
@@ -19,20 +22,21 @@ fn app(id: &str, name: &str, helpers: &[&str]) -> InstalledApp {
     InstalledApp { helpers: helpers.iter().map(|helper| BundleId::new(*helper).unwrap()).collect(), ..app }
 }
 
-/// Editor with its helper, a viewer, Safari and Fresher itself.
+/// Editor with its helper, a viewer, Safari, Fresher itself and Google Chrome with its helper.
 fn installed() -> Vec<InstalledApp> {
     vec![
         app(EDITOR, "Editor", &[HELPER]),
         app("com.example.Viewer", "Viewer", &[]),
         app("com.apple.Safari", "Safari", &[]),
         app("io.github.alexsergey.fresher", "Fresher", &["io.github.alexsergey.fresher.dev"]),
+        app(CHROME, "Google Chrome", &[CHROME_HELPER]),
     ]
 }
 
 /// A folder of the user's named `name` in `Caches`, read in full, of 1000 logical bytes.
 fn folder(name: &str) -> Candidate {
     Candidate {
-        row: 0,
+        source: Source::Place { row: 0 },
         path: Path::new(CACHES).join(name),
         kind: EntryKind::Folder,
         sizes: Sizes::complete(ByteSize::new(1000), ByteSize::new(4096)),
@@ -41,21 +45,47 @@ fn folder(name: &str) -> Candidate {
     }
 }
 
+/// A cache folder named `name` of a browser's profile `Default`, matched by a table row, read in full, of 1000
+/// logical bytes.
+fn table(name: &str) -> Candidate {
+    let path = Path::new(CACHES).join("Google/Chrome/Default").join(name);
+    Candidate { source: Source::App { row: 0, cache: 0 }, path, ..folder(EDITOR) }
+}
+
 fn running(apps: &[(&str, &[&str])]) -> RunningSet {
     let apps: Vec<RunningApp> =
         apps.iter().map(|(name, ids)| fresher_testing::running_app(name, ids).unwrap()).collect();
     RunningSet::new(apps)
 }
 
-/// The verdict on `candidate` with `apps` installed and `open` running, and how many times the running apps were
-/// asked.
+/// The verdict on `candidate`, named by its folder's name, with `apps` installed and `open` running, and how many
+/// times the running apps were asked.
 fn verdict<'a>(
     candidate: &Candidate,
     apps: Result<&'a [InstalledApp], NoSystem>,
     open: Result<&RunningSet, NoSystem>,
 ) -> (Verdict<'a>, usize) {
+    decided(candidate, Naming::FolderName, apps, open)
+}
+
+/// The verdict on `candidate` of a table row of the bundle id `id`, as `verdict`.
+fn table_verdict<'a>(
+    candidate: &Candidate,
+    id: &str,
+    apps: Result<&'a [InstalledApp], NoSystem>,
+    open: Result<&RunningSet, NoSystem>,
+) -> (Verdict<'a>, usize) {
+    decided(candidate, Naming::Table(&BundleId::new(id).unwrap()), apps, open)
+}
+
+fn decided<'a>(
+    candidate: &Candidate,
+    naming: Naming<'_>,
+    apps: Result<&'a [InstalledApp], NoSystem>,
+    open: Result<&RunningSet, NoSystem>,
+) -> (Verdict<'a>, usize) {
     let (exclude, asked) = (Exclude::shipped().unwrap(), Cell::new(0));
-    let found = decide(candidate, &exclude, apps, || {
+    let found = decide(candidate, naming, &exclude, apps, || {
         asked.set(asked.get() + 1);
         open
     });
@@ -65,7 +95,7 @@ fn verdict<'a>(
 mod negative {
     use fresher_core::{EntryFacts, EntryKind, Inside, Sizes};
 
-    use super::{EDITOR, HELPER, folder, installed, running, verdict};
+    use super::{CHROME, CHROME_HELPER, EDITOR, HELPER, folder, installed, running, table, table_verdict, verdict};
     use crate::decide::{NoSystem, Reason, Verdict};
     use crate::gathered::Candidate;
 
@@ -189,12 +219,113 @@ mod negative {
 
         assert_eq!(found, (Verdict::LeftOut(Reason::AppOpen), 1));
     }
+
+    #[test]
+    fn a_table_link_or_file_is_not_claimed() {
+        let (apps, none) = (installed(), running(&[]));
+        for kind in [EntryKind::File, EntryKind::Symlink, EntryKind::Other] {
+            let found = Candidate { kind, ..table("Cache") };
+
+            assert_eq!(table_verdict(&found, CHROME, Ok(&apps), Ok(&none)), (Verdict::NotClaimed, 0), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn a_table_row_whose_id_is_excluded_is_not_claimed() {
+        let (apps, none) = (installed(), running(&[]));
+        for id in ["com.apple.Safari", "io.github.alexsergey.fresher", "io.github.alexsergey.fresher.dev"] {
+            assert_eq!(table_verdict(&table("Cache"), id, Ok(&apps), Ok(&none)), (Verdict::NotClaimed, 0), "{id}");
+        }
+    }
+
+    #[test]
+    fn a_table_row_is_not_claimed_when_the_installed_apps_cannot_be_listed() {
+        let none = running(&[]);
+
+        assert_eq!(table_verdict(&table("Cache"), CHROME, Err(NoSystem), Ok(&none)), (Verdict::NotClaimed, 0));
+    }
+
+    #[test]
+    fn a_table_row_whose_app_is_not_installed_is_not_claimed() {
+        let (apps, none) = (installed(), running(&[]));
+        for id in ["org.chromium.Chromium", CHROME_HELPER, HELPER, "com.google", "com.google.Chromex"] {
+            assert_eq!(table_verdict(&table("Cache"), id, Ok(&apps), Ok(&none)), (Verdict::NotClaimed, 0), "{id}");
+        }
+        let named_after_an_app = table(CHROME);
+        assert_eq!(
+            table_verdict(&named_after_an_app, "org.chromium.Chromium", Ok(&apps), Ok(&none)),
+            (Verdict::NotClaimed, 0)
+        );
+    }
+
+    #[test]
+    fn a_table_cache_read_in_part_or_empty_is_not_claimed() {
+        let (apps, none) = (installed(), running(&[]));
+        let empty = Candidate { sizes: Sizes::ZERO, ..table("Cache") };
+        let unread = Candidate { inside: None, ..table("Cache") };
+        let part = Candidate { inside: Some(Inside { complete: false, ..Inside::EMPTY }), ..table("Cache") };
+        for found in [empty, unread, part] {
+            assert_eq!(table_verdict(&found, CHROME, Ok(&apps), Ok(&none)), (Verdict::NotClaimed, 0), "{found:?}");
+        }
+    }
+
+    #[test]
+    fn a_table_cache_holding_a_socket_is_kept_special() {
+        let (apps, none) = (installed(), running(&[]));
+        let found = Candidate { inside: Some(Inside { special: true, ..Inside::EMPTY }), ..table("Cache") };
+
+        assert_eq!(table_verdict(&found, CHROME, Ok(&apps), Ok(&none)), (Verdict::LeftOut(Reason::Special), 0));
+    }
+
+    #[test]
+    fn a_table_cache_not_yours_is_kept() {
+        let (apps, none) = (installed(), running(&[]));
+        let theirs =
+            Candidate { facts: EntryFacts { owned_by_user: false, ..EntryFacts::REMOVABLE }, ..table("Cache") };
+        let locked =
+            Candidate { facts: EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE }, ..table("Cache") };
+        let foreign = Candidate { inside: Some(Inside { foreign: true, ..Inside::EMPTY }), ..table("Cache") };
+        for found in [theirs, locked, foreign] {
+            let kept = (Verdict::LeftOut(Reason::NotYours), 0);
+            assert_eq!(table_verdict(&found, CHROME, Ok(&apps), Ok(&none)), kept, "{found:?}");
+        }
+    }
+
+    #[test]
+    fn a_table_cache_is_kept_when_the_running_apps_cannot_be_listed() {
+        let apps = installed();
+
+        let found = table_verdict(&table("Cache"), CHROME, Ok(&apps), Err(NoSystem));
+
+        assert_eq!(found, (Verdict::LeftOut(Reason::NoSystem), 1));
+    }
+
+    #[test]
+    fn a_table_cache_is_kept_while_its_browser_runs() {
+        let apps = installed();
+        let open = running(&[("Mail", &["com.example.Mail"]), ("Google Chrome", &["COM.GOOGLE.CHROME"])]);
+        for name in ["Cache", "Code Cache"] {
+            let found = table_verdict(&table(name), CHROME, Ok(&apps), Ok(&open));
+
+            assert_eq!(found, (Verdict::LeftOut(Reason::AppOpen), 1), "{name}");
+        }
+    }
+
+    #[test]
+    fn a_table_cache_is_kept_while_only_a_helper_runs() {
+        let apps = installed();
+        let helper = running(&[("Google Chrome Helper", &[CHROME_HELPER])]);
+
+        let found = table_verdict(&table("Cache"), CHROME, Ok(&apps), Ok(&helper));
+
+        assert_eq!(found, (Verdict::LeftOut(Reason::AppOpen), 1));
+    }
 }
 
 mod positive {
     use fresher_core::{EntryFacts, Inside};
 
-    use super::{EDITOR, HELPER, folder, installed, running, verdict};
+    use super::{CHROME, EDITOR, HELPER, folder, installed, running, table, table_verdict, verdict};
     use crate::decide::Verdict;
     use crate::gathered::Candidate;
     use crate::owner::Owner;
@@ -228,31 +359,34 @@ mod positive {
         assert_eq!(owner.app.bundle_id.as_str(), EDITOR);
         assert_eq!(owner.app.name, "Editor");
     }
+
+    #[test]
+    fn a_table_cache_of_a_closed_installed_app_is_offered() {
+        let apps = installed();
+        let others = running(&[("Editor", &[EDITOR]), ("Viewer", &["com.example.Viewer"])]);
+        let offered = (Verdict::Offered(Owner { app: &apps[4], own: true }), 1);
+
+        for name in ["Cache", "Code Cache", "com.example.Gone"] {
+            assert_eq!(table_verdict(&table(name), CHROME, Ok(&apps), Ok(&others)), offered, "{name}");
+        }
+        assert_eq!(table_verdict(&table("Cache"), "COM.GOOGLE.chrome", Ok(&apps), Ok(&others)), offered);
+    }
 }
 
 mod property {
-    use fresher_core::{ByteSize, EntryFacts, EntryKind, Inside, RunningSet, Sizes};
+    use fresher_core::{ByteSize, EntryFacts, EntryKind, Inside, InstalledApp, RunningSet, Sizes};
     use proptest::prelude::*;
 
-    use super::{folder, installed, running, verdict};
+    use super::{CHROME, folder, installed, running, table, table_verdict, verdict};
     use crate::decide::{NoSystem, Reason, Verdict};
     use crate::gathered::Candidate;
 
-    /// A folder of `Caches` of any name and state, most often one an installed app owns.
-    fn any_candidate() -> impl Strategy<Value = Candidate> {
+    /// The facts drawn for a candidate: its kind, its flags, whether it was read in full, and its logical bytes.
+    fn any_state() -> impl Strategy<Value = (EntryKind, EntryFacts, Option<Inside>, Sizes)> {
         let kind = prop_oneof![6 => Just(EntryKind::Folder), 1 => Just(EntryKind::File), 1 => Just(EntryKind::Symlink)];
-        let name = prop_oneof![
-            Just("com.example.Editor".to_owned()),
-            Just("com.example.Editor.Helper".to_owned()),
-            Just("com.example.Viewer.Cache".to_owned()),
-            Just("com.apple.Safari".to_owned()),
-            Just("com.example.Gone".to_owned()),
-            Just("com.example".to_owned()),
-            "[A-Za-z.]{0,16}",
-        ];
         let flags = proptest::collection::vec(proptest::bool::weighted(0.1), 6);
         let read = prop_oneof![1 => Just(None), 8 => proptest::bool::weighted(0.9).prop_map(Some)];
-        (kind, name, flags, read, 0..3_u64).prop_map(|(kind, name, flags, read, bytes)| {
+        (kind, flags, read, 0..3_u64).prop_map(|(kind, flags, read, bytes)| {
             let facts = EntryFacts {
                 owned_by_user: !flags[0],
                 user_immutable: flags[1],
@@ -262,8 +396,58 @@ mod property {
             };
             let inside =
                 read.map(|complete| Inside { special: flags[4], foreign: flags[5], complete, ..Inside::EMPTY });
-            let sizes = Sizes::complete(ByteSize::new(bytes), ByteSize::new(bytes));
-            Candidate { kind, sizes, facts, inside, ..folder(&name) }
+            (kind, facts, inside, Sizes::complete(ByteSize::new(bytes), ByteSize::new(bytes)))
+        })
+    }
+
+    /// A system state: the installed apps listed or not, and the running apps listed, with Editor and Chrome, or not.
+    fn open_apps<'a>(
+        apps: &'a [InstalledApp],
+        listed: bool,
+        open: Option<bool>,
+        busy: &'a RunningSet,
+        none: &'a RunningSet,
+    ) -> (Result<&'a [InstalledApp], NoSystem>, Result<&'a RunningSet, NoSystem>) {
+        let apps = if listed { Ok(apps) } else { Err(NoSystem) };
+        let open = match open {
+            None => Err(NoSystem),
+            Some(true) => Ok(busy),
+            Some(false) => Ok(none),
+        };
+        (apps, open)
+    }
+
+    /// A folder of `Caches` of any name and state, most often one an installed app owns.
+    fn any_candidate() -> impl Strategy<Value = Candidate> {
+        let name = prop_oneof![
+            Just("com.example.Editor".to_owned()),
+            Just("com.example.Editor.Helper".to_owned()),
+            Just("com.example.Viewer.Cache".to_owned()),
+            Just("com.apple.Safari".to_owned()),
+            Just("com.example.Gone".to_owned()),
+            Just("com.example".to_owned()),
+            "[A-Za-z.]{0,16}",
+        ];
+        (name, any_state()).prop_map(|(name, (kind, facts, inside, sizes))| Candidate {
+            kind,
+            sizes,
+            facts,
+            inside,
+            ..folder(&name)
+        })
+    }
+
+    /// A cache folder of a table row in any state, under a row id most often installed.
+    fn any_table_candidate() -> impl Strategy<Value = (Candidate, &'static str)> {
+        let id = prop_oneof![
+            4 => Just(CHROME),
+            1 => Just("org.chromium.Chromium"),
+            1 => Just("com.google.Chrome.helper"),
+            1 => Just("com.apple.Safari"),
+        ];
+        let name = prop_oneof![Just("Cache"), Just("Code Cache")];
+        (id, name, any_state()).prop_map(|(id, name, (kind, facts, inside, sizes))| {
+            (Candidate { kind, sizes, facts, inside, ..table(name) }, id)
         })
     }
 
@@ -274,17 +458,25 @@ mod property {
             listed in proptest::bool::weighted(0.9),
             open in proptest::option::weighted(0.8, proptest::bool::ANY),
         ) {
-            let apps = installed();
-            let apps = if listed { Ok(apps.as_slice()) } else { Err(NoSystem) };
-            let editor: RunningSet = running(&[("Editor", &["com.example.Editor"])]);
-            let none = running(&[]);
-            let open = match open {
-                None => Err(NoSystem),
-                Some(true) => Ok(&editor),
-                Some(false) => Ok(&none),
-            };
+            let (installed, busy, none) = (installed(), running(&[("Editor", &["com.example.Editor"])]), running(&[]));
+            let (apps, open) = open_apps(&installed, listed, open, &busy, &none);
 
             let (decided, asked) = verdict(&found, apps, open);
+
+            let stopped = matches!(decided, Verdict::NotClaimed | Verdict::LeftOut(Reason::Special | Reason::NotYours));
+            prop_assert_eq!(asked, usize::from(!stopped));
+        }
+
+        #[test]
+        fn a_table_candidate_stopped_before_row_9_never_asks_the_running_apps(
+            (found, id) in any_table_candidate(),
+            listed in proptest::bool::weighted(0.9),
+            open in proptest::option::weighted(0.8, proptest::bool::ANY),
+        ) {
+            let (installed, busy, none) = (installed(), running(&[("Google Chrome", &[CHROME])]), running(&[]));
+            let (apps, open) = open_apps(&installed, listed, open, &busy, &none);
+
+            let (decided, asked) = table_verdict(&found, id, apps, open);
 
             let stopped = matches!(decided, Verdict::NotClaimed | Verdict::LeftOut(Reason::Special | Reason::NotYours));
             prop_assert_eq!(asked, usize::from(!stopped));

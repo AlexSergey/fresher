@@ -233,6 +233,8 @@ test.describe('positive cases', () => {
       ['logs', 'Old logs of your apps', '1 item left out (3 MB)'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)'],
       ['appCaches', 'Caches of your apps', '1 item left out (90 MB)'],
+      ['appCachesBrowsers', 'Browser caches', '1 item left out (30 MB)'],
+      ['appCachesBrowsers', 'Caches of web-based apps', 'Redis Insight: GPUCache'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)'],
       ['staleProjects', 'Packages of old projects', '2 items left out (1.3 GB)'],
