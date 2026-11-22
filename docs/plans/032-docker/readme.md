@@ -1,7 +1,7 @@
 # 032 — Docker
 
 **Status:** 📝 draft · **Version:** 0.1.0 · **Date:** 2026-11-22 ·
-**Modules:** core, engine, cleaner, testing, sandbox, modules, e2e, app, app/ui, docs
+**Modules:** core, engine, testing, sandbox, modules, e2e, app, app/ui, docs
 
 A one-file draft: the design in short, with the recommended decisions taken as agent's calls. Plans, steps and
 `00-design.md` are written when the draft is approved.
@@ -9,70 +9,71 @@ A one-file draft: the design in short, with the recommended decisions taken as a
 ## Intent
 
 The user's task (translated): "Look at which baseline features we lack for releasing version 0.1.0 and draft plans for
-them, with our sandbox testing and architecture in mind."
+them, with our sandbox testing and architecture in mind." And on this plan (2026-11-22): "Perhaps just describe: your
+Docker takes this and this — here is the command to clean it if you need."
 
 [`goal.md`](../../goal.md), section 4, and the README promise Docker; nothing is built. It is the largest single
 consumer on many developers' Macs and the most dangerous one: a volume may hold the only copy of a database.
 
 ## Goals
 
-1. Images, containers, volumes and build cache are separate categories, each with its level and consequence.
-2. Everything goes through the Docker command line; Docker's files are never touched
-   ([`restrictions/deletion-safety.md`](../../restrictions/deletion-safety.md)).
+1. The user sees what Docker takes, split into images, containers, volumes and build cache, in plain English.
+2. For each part the app gives the exact command that frees it and says what running it costs.
 3. The user understands why the Mac may get nothing back at once.
 
 ## Non-goals
 
+- **Removing anything of Docker's** (decision 1): the app runs no command that changes Docker and offers no Docker
+  item in a confirmation.
 - Starting Docker, changing its settings, shrinking or deleting its disk image.
 - Other runtimes' own commands; a runtime that answers the `docker` command is covered, the rest is not.
 
 ## Design
 
-A new module `docker` (`fresher-module-docker`, group **Development**). It reads `docker system df -v` and
-`docker ... ls` as JSON through `CommandRunner` with fixed arguments and a timeout; one finding per object.
+A new module `docker` (`fresher-module-docker`, group **Development**). It only reads: `docker system df -v` as JSON
+through `CommandRunner`, with fixed arguments and a timeout. Its page is an explanation, not a list of findings.
 
-| Category                    | Level  | Offered                                                    |
-| --------------------------- | ------ | ---------------------------------------------------------- |
-| `docker.build-cache`        | Low    | the build cache, as one finding                            |
-| `docker.dangling-images`    | Low    | untagged images no container uses                          |
-| `docker.unused-images`      | Medium | tagged images no container uses                            |
-| `docker.stopped-containers` | High   | containers that are not running; never pre-selected        |
-| `docker.volumes`            | High   | volumes no container uses; never pre-selected              |
+| Part               | What the app says                                         | The command it shows        | The warning beside it                         |
+| ------------------ | --------------------------------------------------------- | --------------------------- | --------------------------------------------- |
+| Build cache        | size; rebuilt by the next build                           | `docker builder prune`      | the next builds are slower                    |
+| Unused images      | size and count, untagged apart from tagged                | `docker image prune` (`-a`) | pulled or built again when needed             |
+| Stopped containers | size and count                                            | `docker container prune`    | anything written inside them is lost          |
+| Unused volumes     | size and count                                            | `docker volume prune`       | may hold the only copy of a database          |
 
-- Removal is one command per object by id, never `--force`, never a blanket `prune`. An object that came into use
-  since the scan is refused by Docker itself and reported as skipped.
+- Each command has a **Copy** button and one sentence on what it removes; the app never runs it. The riskier a part,
+  the more plainly its warning reads; the volumes' line carries the High level's wording.
 - **The disk image card.** Docker runs in a virtual machine whose whole disk is one file. Finder shows that file at
   its maximum, not at what it takes, and space freed inside returns to macOS only when the runtime shrinks the file.
-  The card gives three numbers in plain English: **maximum size** ("Docker may grow up to 64 GB"), **on your disk**
-  (the allocated size, what the Mac actually loses), **used inside Docker** (from the command line). Information
-  only: deleting the file would wipe every image, container and volume. The categories are its breakdown and are
-  never added to the map's totals a second time. With Docker stopped the card shows the two file numbers.
+  The card gives three numbers: **maximum size** ("Docker may grow up to 64 GB"), **on your disk** (the allocated
+  size, what the Mac actually loses), **used inside Docker** (from the command line). With Docker stopped it shows
+  the two file numbers and "start Docker to see what is inside"; the app never starts it.
+- **Counted once**: the parts are the breakdown of the disk image's line on the storage map, never extra space, and
+  never part of the "can be cleaned" total — the app cleans none of it.
+- Docker not installed: the module is silent.
 - **Facts to check in the design**: how and when each runtime shrinks its disk (later, on restart, by a setting), and
-  where the other runtimes that answer `docker` keep theirs. The card points the user at the runtime's own way to
-  shrink; the app does not run it.
-- The result says "freed inside Docker; macOS gets it back when Docker shrinks its disk".
-- Docker not installed: the module is silent. Installed but not running: one line, "start Docker to see what is
-  inside"; the app never starts it.
+  where the other runtimes that answer `docker` keep theirs. The card points at the runtime's own way to shrink.
+- How an information-only module sits on the scan screen (a card with no selection, beside the storage map's lines) is
+  the design's first question: today every module's card selects items.
 
 **Sandbox.** `fixtures/sandboxes/docker.toml`, `docker-stopped.toml` and `docker-absent.toml`, negatives first: no
-`docker` program, the daemon not answering, an image a container uses, a volume a container mounts, a running
-container, an answer the module cannot parse (claims nothing); then one positive per category. The answers come from
-the sandbox world's `[[world.tool]]` (see plan [031](../031-xcode/readme.md)); the fake runner also records the
-removal commands, and the golden report holds them. The finish walks `EXPECTED.md` in sandbox mode, then a run on the
-developer's Mac with a throwaway image and volume.
+`docker` program, the daemon not answering, an answer the module cannot parse (says nothing rather than guess), a
+world where a removal command would be a test failure (the fake runner refuses every argument list but the read);
+then the four parts and the card. The answers come from the sandbox world's `[[world.tool]]` (see plan
+[031](../031-xcode/readme.md)). Golden report, UI e2e of the page and the copy buttons, and the finish walks
+`EXPECTED.md` in sandbox mode, then a look on the developer's Mac.
 
 ## Plans (after approval)
 
-| #   | Plan        | What                                                                       |
-| --- | ----------- | -------------------------------------------------------------------------- |
-| 01  | Tool world  | only if plan 031 has not built it                                          |
-| 02  | Module      | reading the answers, the decisions, the texts, the category files          |
-| 03  | Removal     | the per-object commands, skips, the result's wording                       |
-| 04  | Disk image  | the card and the single count on the storage map                           |
-| 05  | End to end  | case files, golden reports, the core e2e flow, the UI                      |
-| 06  | Finish      | docs, the run on the developer's Mac                                       |
+| #   | Plan       | What                                                              |
+| --- | ---------- | ----------------------------------------------------------------- |
+| 01  | Tool world | only if plan 031 has not built it                                 |
+| 02  | Module     | reading the answers, the parts, the texts and commands            |
+| 03  | Disk image | the card and the single count on the storage map                  |
+| 04  | Screen     | the information-only card and page, Copy                          |
+| 05  | End to end | case files, golden reports, e2e                                   |
+| 06  | Finish     | docs, the README's Docker line, the look on the developer's Mac   |
 
-Depends on plans 008, 009, 011, 012 and 015.
+Depends on plans 009, 011, 012, 015 and 027.
 
 ## Ideas this touches
 
@@ -81,21 +82,20 @@ the idea "Why Docker does not give the space back" (2026-11-15, the agent's prop
 
 ## Open questions
 
-1. **A Docker removal cannot go to the Trash.** Rule 2 makes a permanent delete "a separate explicit choice". The
-   recommendation: Docker items always show "removed for good, cannot be put back" in the confirmation and need the
-   same explicit tick as a permanent delete; a confirmation mixing them with files asks for it once, for the Docker
-   items only.
+None.
 
 ## Decisions
 
-None yet.
+1. **Docker is described, not cleaned** (the user, 2026-11-22): the app shows what Docker takes and the command that
+   frees each part; the user runs it if they want. This also settles how a removal that cannot go to the Trash would
+   have met rule 2: there is none.
 
 ## Agent's calls (to check)
 
-1. **One command per object, by id**; no `prune`, no force.
-2. **Containers and volumes are never pre-selected.**
-3. **Only what answers the `docker` command.**
-4. **The disk image is information only**, and shrinking it is pointed at, never run.
+1. **The whole-kind commands** (`prune`) are shown, each with its warning, rather than one command per object.
+2. **Only what answers the `docker` command.**
+3. **Docker's space is never in the "can be cleaned" total.**
+4. **No category files**: the module has no cleanable category; its texts live in the core's dictionary.
 
 ## Conclusions
 
