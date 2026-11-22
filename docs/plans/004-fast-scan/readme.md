@@ -69,7 +69,7 @@ side, regenerate it (`cargo metadata --format-version 1 > /dev/null`) and run th
 [snapshots and watch mode](../../ideas/architecture/snapshots-and-watch-mode.md) (this plan takes proposed decisions
 1–8, 11 and replaces 9: a compact file instead of an SQLite `items` table), [macOS specifics](../../ideas/architecture/macos.md)
 (cloud files, clones, the Full Disk Access error), [storage history](../../ideas/storage-history.md) (built later on
-the cache generations), the [large files finder](../../ideas/large-files-finder.md) (the kept file records), the
+the cache generations), the [large files finder](../035-large-files/readme.md) (the kept file records), the
 [duplicate finder](../../ideas/duplicate-finder.md) (sizes, links and clone ids are already in the tree), the
 [storage explainer](../../ideas/storage-explainer.md) (one claim per path).
 

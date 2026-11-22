@@ -23,7 +23,7 @@ differ, the plan's are the ones that count.
 | Parallel `getattrlistbulk` walk of a home folder (1.74 million entries), cheap attributes | **12.5 s** warm · **24.9 s** cold, right after a restart (~70 000 entries/s, 11 MB of memory) · thread count (10 or 30) does not matter         |
 | The same walk with private size asked for                                                 | **32–41 s** warm · **44.4 s** right after the cold cheap walk (partly warm, so a true cold run is slower)                                       |
 | The same walk: logical, allocated and private size                                        | 1014 GiB logical, 103.9 GiB allocated, 98.6 GiB private — ~5.3 GiB sits in blocks shared between files; logical size is useless as "space used" |
-| Docker's disk image                                                                       | 460 GiB logical, 5.6 GiB allocated ([why Docker does not give the space back](../container-disk-image.md))                                      |
+| Docker's disk image                                                                       | 460 GiB logical, 5.6 GiB allocated ([why Docker does not give the space back](../../plans/032-docker/readme.md))                                      |
 
 Not measured: BLAKE3 and xxh3.
 
@@ -40,7 +40,7 @@ The most useful finding, for plan 004 to check its clone accounting against:
   many of them as the reference count says — the group's allocated size is freed, not the sum of its private sizes
   (0). Partly rewritten clones cannot be resolved this way and stay at the lower bound.
 - Freed space shows up only after the Trash is emptied
-  ([the Trash holds the freed space](../trash-holds-freed-space.md)) and only for blocks no APFS local snapshot still
+  ([the Trash holds the freed space](../../plans/037-trash/readme.md)) and only for blocks no APFS local snapshot still
   holds.
 
 ## Fast rescans

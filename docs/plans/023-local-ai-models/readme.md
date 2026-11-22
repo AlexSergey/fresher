@@ -89,7 +89,7 @@ and run the checks.
   apps' models stay ideas.
 - [Ollama's models](../029-ollama-models/readme.md): a new deferred item, written with this plan.
 - [Developer environment cleaner](../../ideas/developer-environment-cleaner.md),
-  [large files](../../ideas/large-files-finder.md): touched, not changed (a model in a project stays a user file).
+  [large files](../035-large-files/readme.md): touched, not changed (a model in a project stays a user file).
 
 ## Risks
 

@@ -91,7 +91,7 @@ second step to merge rebases, regenerates the bindings and the baselines it touc
 
 - [Intelligent Storage Explainer](../../ideas/storage-explainer.md): the ring's legend with its "i" is a step toward
   every gigabyte explained; the remainder keeps its reasons, never a catch-all.
-- [Large Files Finder](../../ideas/large-files-finder.md) and [Application Footprint](../../ideas/application-footprint.md):
+- [Large Files Finder](../035-large-files/readme.md) and [Application Footprint](../036-uninstall/readme.md):
   the view by place and the apps' rows leave the UI; a later folder or app view starts from the core's queries kept
   here, recorded in the new deferred item `place-queries-without-ui` (04/01).
 - [A way up from a folder opened from the by-meaning view](../../deferred/way-up-from-meaning.md) (due "with the next

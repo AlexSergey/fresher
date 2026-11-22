@@ -26,14 +26,14 @@ reports, and which has no "Other".
 
 ## Non-goals
 
-- The treemap and other rich charts (the [large files finder](../../ideas/large-files-finder.md)); this plan's
+- The treemap and other rich charts (the [large files finder](../035-large-files/readme.md)); this plan's
   place view is the list such a chart would sit on.
 - Cleaning anything from the map's system parts; the map adds no category and no removal.
 - Listing local snapshots with their dates and sizes, and thinning them (decision 5): the
   [system data analyzer](../../ideas/system-data-analyzer.md)'s own module, later.
 - Growth since the last scan: plan [010](../010-history/readme.md) adds it to the by-meaning view when it exists.
 - What waits in the Trash from this app's own cleanups (the journal's share): the
-  [Trash idea](../../ideas/trash-holds-freed-space.md); this plan only names the Trash's folder as a place.
+  [Trash idea](../037-trash/readme.md); this plan only names the Trash's folder as a place.
 
 ## What already exists (plans 003, 004, 008, 009)
 

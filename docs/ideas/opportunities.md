@@ -5,9 +5,9 @@
 | Direction              | Market                       | Fresher's opportunity | Idea                                                           |
 | ---------------------- | ---------------------------- | ------------------------- | -------------------------------------------------------------- |
 | Cache cleaning         | well covered                 | go deeper                 | [`system-junk-cleaner.md`](./system-junk-cleaner.md)           |
-| Large files            | well covered                 | faster                    | [`large-files-finder.md`](./large-files-finder.md)             |
+| Large files            | well covered                 | faster                    | [plan 035](../plans/035-large-files/readme.md)             |
 | Duplicates             | well covered                 | more accurate             | [`duplicate-finder.md`](./duplicate-finder.md)                 |
-| Uninstaller            | well covered                 | better linking of files   | [`smart-uninstaller.md`](./smart-uninstaller.md)               |
+| Uninstaller            | well covered                 | better linking of files   | [plan 036](../plans/036-uninstall/readme.md)               |
 | RAM monitor            | well covered                 | integrate with disk       | [`app-resource-profile.md`](./app-resource-profile.md)         |
 | CPU monitor            | well covered                 | integrate with disk       | [`app-resource-profile.md`](./app-resource-profile.md)         |
 | Disk analyzer          | well covered                 | universal                 | [`storage-explainer.md`](./storage-explainer.md)               |

@@ -110,7 +110,7 @@ and run the checks.
 
 - [Uninstalled app leftovers](../../ideas/uninstalled-app-leftovers.md): becomes this plan, the vendor-uninstaller
   question included (the same rows cover it); group containers, launch agents, folders named after the app's name and
-  a per-app choice stay there. [Smart uninstaller](../../ideas/smart-uninstaller.md) stays an idea.
+  a per-app choice stay there. [Smart uninstaller](../036-uninstall/readme.md) stays an idea.
 - A removed app's name in the storage map (a deferred item): done in 01/04; its file is removed.
 - The module harnesses of the core e2e share their code (a deferred item): done in 03/02; its file is removed.
 - [The sandbox world](../../deferred/sandbox-world.md): Spotlight's answers taken in 03/01; the rest stays deferred.

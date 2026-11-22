@@ -31,16 +31,26 @@ the "before" side does not.
 ## Design
 
 - A sidebar entry **Apps**: installed apps with their real size — the bundle plus the data the existing modules tie to
-  its bundle id (`app-caches`, `app-leftovers`' matching, the storage map's app lines) — and the last time used.
+  its bundle id (`app-caches`, `app-leftovers`' matching, the storage map's app lines) — as one number with a
+  breakdown (bundle, support files, caches, logs), largest first, and the last time used. A filter "not opened for"
+  makes the most useful sentence the app can say: "you have not opened this in 8 months and it takes 14 GB".
+- An app's page links to its cleanable categories, so cleaning its cache is one click away from uninstalling it.
+- An app whose footprint grows between scans is named by watch mode: plan [010](../010-history/readme.md)'s, on
+  this plan's numbers.
 - **Uninstall…** on an app opens the normal confirmation with two choices, each with its sentence (rule 7):
   - "Remove the app, keep its settings and data" — the bundle, caches, logs, saved state (the default);
   - "Remove the app and everything it left" — also settings (Medium) and the support folder (High), listed item by
     item.
-- The same proof as plan 019, run before removal: bundle id, helpers' ids, the same refusals (group containers, files
-  another installed app shares, links).
+- The same proof as plan 019, run before removal: bundle id, helpers' ids, the same refusals (files another installed
+  app shares, links). A group container is offered only when the team identifier ties it to this app alone. The
+  app's own launch agents and helper tools are listed among its files.
+- Moving another developer's bundle needs the system's App Management permission: asked for at the first uninstall,
+  with the reason, never earlier (plan [006](../006-permissions/readme.md) left it to this plan).
+- **A fact to check in the design**: the last-used date — Spotlight's metadata or the launch database — whichever
+  answers without an extra permission.
 - The app and its helpers must be closed; the app is never quit for the user (`running`, left out with the reason).
 - An app from the App Store is removed like any other bundle. An app a package manager installed is shown with "installed by
-  `<manager>`; uninstall it there" and not offered. A bundle the user cannot move without administrator rights is not
+  `<manager>`; uninstall it there" and not offered; running the manager's own uninstall command is a later step. A bundle the user cannot move without administrator rights is not
   offered, with the reason.
 - Everything goes to the Trash; the cleanup journal puts the whole app back.
 
@@ -64,7 +74,8 @@ Depends on plans 008, 009, 019, 027 and 030.
 
 ## Ideas this touches
 
-[Smart Uninstaller](../../ideas/smart-uninstaller.md), [Application Footprint](../../ideas/application-footprint.md).
+This plan replaces the ideas "Smart Uninstaller" and "Application Footprint" (2026-11-15, the user's); everything
+they held is above. [App Resource Profile](../../ideas/app-resource-profile.md) would extend the Apps list.
 
 ## Open questions
 
@@ -78,7 +89,7 @@ None yet.
 
 1. **Keeping settings and data is the default choice.**
 2. **Package-managed apps are shown, not removed** in the first version.
-3. **No drag and drop, no Trash watcher.**
+3. **No drag and drop of an app onto the window** in the first version, and no Trash watcher at all.
 4. **The Apps list shows size and last used only**; no resource profile.
 
 ## Conclusions

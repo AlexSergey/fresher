@@ -38,9 +38,9 @@ In order; 03/01 and 03/02 (pure readers) may be built in parallel with 05.
 
 [macOS specifics](../../ideas/architecture/macos.md) ("finding what belongs to an app"),
 [rules as data](../../ideas/architecture/rules-as-data.md) (project artifacts),
-[stale project cleanup](../../ideas/stale-project-cleanup.md), [application footprint](../../ideas/application-footprint.md),
+[stale project cleanup](../../ideas/stale-project-cleanup.md), [application footprint](../036-uninstall/readme.md),
 [uninstalled app leftovers](../../ideas/uninstalled-app-leftovers.md), the
-[smart uninstaller](../../ideas/smart-uninstaller.md). None is built here: they are the consumers.
+[smart uninstaller](../036-uninstall/readme.md). None is built here: they are the consumers.
 
 ## Conclusions
 

@@ -113,11 +113,11 @@ and run the checks.
 
 - [Downloads and installers](../../ideas/downloads-and-installers.md): becomes this plan; looking outside
   `~/Downloads` stays there.
-- [Large files finder](../../ideas/large-files-finder.md): may reuse the large-untouched rule (the status change as
+- [Large files finder](../035-large-files/readme.md): may reuse the large-untouched rule (the status change as
   "not opened").
 - [Duplicate finder](../../ideas/duplicate-finder.md): copies of a download (`file (1).dmg`) are left to it.
-- [Smart uninstaller](../../ideas/smart-uninstaller.md): macOS installers in `/Applications` are left to it.
-- [The Trash holds the freed space](../../ideas/trash-holds-freed-space.md): installers are large; the result already
+- [Smart uninstaller](../036-uninstall/readme.md): macOS installers in `/Applications` are left to it.
+- [The Trash holds the freed space](../037-trash/readme.md): installers are large; the result already
   says "moved to the Trash".
 - A shared day setting in the core (a deferred item): done in 01/01; its file is removed.
 - [The sandbox world](../../deferred/sandbox-world.md): access, installs and an app's change time taken in 02; the

@@ -24,15 +24,20 @@ categories; the core's place queries wait without a UI
 
 ## Non-goals
 
-- A treemap or sunburst, duplicates, similar images: later, on the same data.
+- A treemap or sunburst: later, as a second view of the same result — the chart and the list are two views of one
+  list, never two scans. Duplicates and similar images: their own idea.
 - Anything inside `Library`, app bundles, or a place a module already explains.
 
 ## Design
 
 - A sidebar entry **Largest**: a ranked list of the files and folders of the home that no module claims, largest
   first. A package (a photo library, a virtual machine, a project bundle) is one row, never opened.
-- Each row: name, place, kind in plain English ("Disk image", "Archive", "Video"), size, last opened. Filters: kind,
-  "not opened for", minimum size (100 MB by default, a setting).
+- Each row: name, place, kind in plain English ("Disk image", "Archive", "Video"), the app that made it when it can
+  be told, size, last opened. Filters: kind, place, "not opened for", minimum size (100 MB by default, a setting).
+- **Likely leftovers are pointed out**, still with the user deciding: an archive beside its extracted folder
+  ("`Foo.zip` and `Foo/`"). Installers of installed apps stay plan [020](../020-downloads/readme.md)'s.
+- **A fact to check in the design**: "last opened" from Spotlight's last-used date where it exists, the access time
+  otherwise, and which of them a guarded folder gives without a prompt.
 - A folder row drills down into its children — the core's place queries get their UI back, which closes the deferred
   item.
 - A selected row goes through the normal Review and confirmation, at **High**, with the sentence "This is your own
@@ -64,8 +69,9 @@ Depends on plans 004, 006, 008, 012 and 027.
 
 ## Ideas this touches
 
-[Large Files Finder](../../ideas/large-files-finder.md); the "big download not opened" rule of plan
-[020](../020-downloads/readme.md) stays a category of its own.
+This plan replaces the idea "Large Files Finder" (2026-11-15, the user's); everything it held is above. The "big
+download not opened" rule of plan [020](../020-downloads/readme.md) stays a category of its own.
+[Duplicate Finder](../../ideas/duplicate-finder.md) would sit on the same rows.
 
 ## Open questions
 

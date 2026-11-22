@@ -57,7 +57,7 @@ Read-only, on the developer's Mac on 2026-11-18:
 ## Non-goals (each stays in its idea)
 
 - Docker images, containers, volumes, build cache and its disk image:
-  [container disk image](../../ideas/container-disk-image.md) and the Docker line of
+  [container disk image](../032-docker/readme.md) and the Docker line of
   [Developer Environment Cleaner](../../ideas/developer-environment-cleaner.md) — always through the Docker CLI.
 - Simulators, simulator runtimes, device support files, Xcode Archives (High: shipped builds' symbols), and derived
   data's shared `ModuleCache.noindex`: the Xcode line of the same idea.

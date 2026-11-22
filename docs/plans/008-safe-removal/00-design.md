@@ -184,7 +184,7 @@ Pure logic in `crates/engine/src/cleanup/plan.rs`, over the current results; the
   "Delete permanently". Its description: "Frees the space now. You cannot put these items back." The method applies to
   the plan's path items; a tool's items are irreversible either way and the dialog says so in their group.
 - The dialog says, for the Trash: "You get the space back when you empty the Trash."
-  ([the Trash holds the freed space](../../ideas/trash-holds-freed-space.md), its open question 2: yes, before).
+  ([the Trash holds the freed space](../037-trash/readme.md), its open question 2: yes, before).
 - Items left out are listed under "These will not be removed", each with its reason, and are not in the count.
 
 ### 5. The guard: checks right before each item

@@ -33,7 +33,7 @@ installers, big files downloaded once and forgotten. Nothing removes them, and t
 
 - Mounting a disk image, expanding an archive or running an installer to find out what is inside.
 - Looking outside `~/Downloads` (the Desktop, a browser's custom folder), or below its first level.
-- `Install macOS ….app` in `/Applications`: the [smart uninstaller](../../ideas/smart-uninstaller.md)'s ground.
+- `Install macOS ….app` in `/Applications`: the [smart uninstaller](../036-uninstall/readme.md)'s ground.
 - Archives (`.zip`, `.tar.gz`) whose content was already expanded next to them: a separate idea.
 - Duplicates of a download (`file (1).dmg`): the [duplicate finder](../../ideas/duplicate-finder.md).
 - Removing an unfinished download and its browser's record of it together: the browser's own list is not touched.

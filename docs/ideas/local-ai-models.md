@@ -44,7 +44,7 @@ of gigabytes disappear without any app pointing at them.
 - **A model in use**: the tool's server is running and has it loaded — skipped and reported
   ([`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md), items in use).
 - Model folders the user keeps in their own projects (weights next to code, an image-generation app's `models/` inside
-  a workspace) are user files: shown in the [large files](./large-files-finder.md) view, never claimed by this rule.
+  a workspace) are user files: shown in the [large files](../plans/035-large-files/readme.md) view, never claimed by this rule.
 
 Open questions:
 

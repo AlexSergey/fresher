@@ -99,11 +99,11 @@ regenerate them and run the checks.
 - The [storage explainer](../../ideas/storage-explainer.md) and the
   [system data analyzer](../../ideas/system-data-analyzer.md): the parts and the reconciliation line become this plan;
   the analyzer's snapshot listing and thinning stay an idea (decision 5).
-- The [application footprint](../../ideas/application-footprint.md): the per-app line of the by-meaning view; the
+- The [application footprint](../036-uninstall/readme.md): the per-app line of the by-meaning view; the
   last-used date stays an idea.
-- [The Trash holds the freed space](../../ideas/trash-holds-freed-space.md): the Trash is a named place of your
+- [The Trash holds the freed space](../037-trash/readme.md): the Trash is a named place of your
   folders; the journal's share stays an idea.
-- The [large files finder](../../ideas/large-files-finder.md): the by-place view is the list its chart would sit on;
+- The [large files finder](../035-large-files/readme.md): the by-place view is the list its chart would sit on;
   the chart stays an idea.
 - [macOS specifics](../../ideas/architecture/macos.md): purgeable space, local snapshots, the system's volumes.
 

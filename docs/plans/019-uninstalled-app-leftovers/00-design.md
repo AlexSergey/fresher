@@ -31,7 +31,7 @@ app. The idea: [uninstalled app leftovers](../../ideas/uninstalled-app-leftovers
 
 ## Non-goals (each stays in its idea)
 
-- Removing an installed app with its data: [smart uninstaller](../../ideas/smart-uninstaller.md).
+- Removing an installed app with its data: [smart uninstaller](../036-uninstall/readme.md).
 - Group containers (`~/Library/Group Containers/<team>.<name>`): shared by a developer's apps and not named after one
   app's id (the user's decision 1); a later addition.
 - Launch agents, login items and helper tools (`~/Library/LaunchAgents/<id>*.plist`): removing a loaded agent needs

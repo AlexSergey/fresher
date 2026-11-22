@@ -103,7 +103,7 @@ The same problem on other operating systems gives ideas that carry over to macOS
    [`cleanup-preview-and-safe-removal.md`](./cleanup-preview-and-safe-removal.md).
 10. **Show the exact action** in the confirmation: every item, its size, the operation that will run.
 11. **Never pre-select** large or old files, shared files, synced or iCloud paths, virtual machine bundles.
-12. **Uninstall keeps personal data by default** — [`smart-uninstaller.md`](./smart-uninstaller.md).
+12. **Uninstall keeps personal data by default** — [plan 036](../plans/036-uninstall/readme.md).
 13. **Exclude with one click**, protecting the folders above it too — [`ignore-list.md`](./ignore-list.md).
 14. **Purgeable space and snapshots in their own honest category** —
     [`system-data-analyzer.md`](./system-data-analyzer.md).

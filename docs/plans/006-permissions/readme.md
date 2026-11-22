@@ -72,7 +72,7 @@ side, regenerate it and run the checks.
 
 [macOS specifics](../../ideas/architecture/macos.md) (Full Disk Access by probing, re-check on focus),
 [scanning](../../ideas/architecture/scanning.md) (errors by kind, "312 folders could not be read"), the
-[smart uninstaller](../../ideas/smart-uninstaller.md) (App Management, left to its plan), the
+[smart uninstaller](../036-uninstall/readme.md) (App Management, left to its plan), the
 [external drive analyzer](../../ideas/external-drive-analyzer.md) (removable and network volumes as an opt-in), and
 honest sizes from [best practices](../../ideas/best-practices.md) (`42 GB+`).
 

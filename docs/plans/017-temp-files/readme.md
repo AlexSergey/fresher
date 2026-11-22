@@ -97,7 +97,7 @@ and run the checks.
   crash reports, caches and logs stay there.
 - [Downloads and installers](../../ideas/downloads-and-installers.md) (new, the user's decision 2): partial downloads
   and old installers, out of this module.
-- [The Trash holds the freed space](../../ideas/trash-holds-freed-space.md): the category's "if removed" says the space
+- [The Trash holds the freed space](../037-trash/readme.md): the category's "if removed" says the space
   comes back when the Trash is emptied.
 - The [Storage Leak Detector](../../ideas/storage-leak-detector.md): temporary folders that keep growing are its signal;
   this plan's places and subtree times are what it would read.

@@ -85,7 +85,7 @@ and run the checks.
 - The [uninstalled app leftovers](../../ideas/uninstalled-app-leftovers.md): an IDE that is no longer installed is
   offered here, in its own category, after the setting's days (decision 10, which replaces decision 3); the idea's
   own module would take every other app's.
-- The [application footprint](../../ideas/application-footprint.md): the IDE's line in the storage map now holds its
+- The [application footprint](../036-uninstall/readme.md): the IDE's line in the storage map now holds its
   older versions' data.
 - The deferred [sandbox world](../../deferred/sandbox-world.md): its installed and running apps are built here; the
   rest stays deferred (updated in this plan's commit).

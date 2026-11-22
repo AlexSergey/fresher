@@ -98,7 +98,7 @@ the checks. The core's dictionary (`crates/core/locales/en.json`) gets its keys 
   [cleanup journal](../../ideas/cleanup-journal.md): both become this plan; their open questions are answered in the
   design (put back from the history; no quarantine folder of our own).
 - The [cleanup simulator](../../ideas/cleanup-simulator.md): the rehearsal and the dry run.
-- [The Trash holds the freed space](../../ideas/trash-holds-freed-space.md): "moved", the measured space, the Trash
+- [The Trash holds the freed space](../037-trash/readme.md): "moved", the measured space, the Trash
   sentence in the confirmation, "waiting in the Trash from cleanups".
 - [Safety in the types](../../ideas/architecture/safety-in-types.md): the confirmation, `Act`, `Verified`,
   `PermanentConsent`, the echo, the compile-fail tests. `Evidence` instead of a free-text reason is left to the module
