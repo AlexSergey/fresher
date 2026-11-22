@@ -1,0 +1,355 @@
+{
+  "findings": [
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/Vendor/Updater/1.0/updater.log",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 20
+          },
+          "folder": {
+            "kind": "text",
+            "value": "Vendor/Updater/1.0"
+          }
+        },
+        "key": "logs.reason.folder"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/Vendor/Updater/1.0/updater.log"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 12288,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/Vendor/Updater/1.0/updater.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "updater.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/Writer/writer.1.log",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          },
+          "folder": {
+            "kind": "text",
+            "value": "Writer"
+          }
+        },
+        "key": "logs.reason.folder"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/Writer/writer.1.log"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 16384,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/Writer/writer.1.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "writer.1.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/Writer/writer.10d.log",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 10
+          },
+          "folder": {
+            "kind": "text",
+            "value": "Writer"
+          }
+        },
+        "key": "logs.reason.folder"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/Writer/writer.10d.log"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 5120,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/Writer/writer.10d.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "writer.10d.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/a/b/c/d/e/six.log",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          },
+          "folder": {
+            "kind": "text",
+            "value": "a/b/c/d/e"
+          }
+        },
+        "key": "logs.reason.folder"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/a/b/c/d/e/six.log"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 6144,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/a/b/c/d/e/six.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "six.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/com.example.Tool.log",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          }
+        },
+        "key": "logs.reason.top"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/com.example.Tool.log"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/com.example.Tool.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "com.example.Tool.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/old-tool.log",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          }
+        },
+        "key": "logs.reason.top"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/old-tool.log"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/old-tool.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "old-tool.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.crash-reports",
+      "danger": "safe",
+      "key": {
+        "identity": "crash-reports/Retired/Old-2026-09-01-000000.ips",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 60
+          }
+        },
+        "key": "logs.reason.report"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/DiagnosticReports/Retired/Old-2026-09-01-000000.ips"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 24576,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/DiagnosticReports/Retired/Old-2026-09-01-000000.ips"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "Old-2026-09-01-000000.ips"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.crash-reports",
+      "danger": "safe",
+      "key": {
+        "identity": "crash-reports/Writer-2026-10-01-101010.ips",
+        "module": "logs"
+      },
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          }
+        },
+        "key": "logs.reason.report"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 20480,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "Writer-2026-10-01-101010.ips"
+          }
+        },
+        "key": "logs.title"
+      }
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "logs.app-logs",
+      "reason": "logs.left-out.recent",
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "outcome": {
+    "kind": "completed"
+  }
+}

@@ -1,0 +1,55 @@
+# A home for the logs module in which nothing is offered: every file is kept. Four are left out as recent (written
+# yesterday, six days ago, dated in the future, and rotated: old contents but a status change yesterday), a socket as
+# special, a root-owned file and another user's file as not yours, and a file locked in Finder as locked. Owners and
+# flags are stated: only root can make them. Times count back from `FIXTURE_NOW`.
+
+[[file]]
+path = "Library/Logs/Keeper/fresh.log"
+size = 4096
+age = "1d"
+changed = "1d"
+
+[[file]]
+path = "Library/Logs/Keeper/six-days.log"
+size = 4096
+age = "6d"
+changed = "6d"
+
+[[file]]
+path = "Library/Logs/Keeper/future.log"
+size = 4096
+age = "-2d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Keeper/rotated.log"
+size = 4096
+age = "30d"
+changed = "1d"
+
+[[file]]
+path = "Library/Logs/Keeper/s.sock"
+age = "30d"
+changed = "30d"
+kind = "socket"
+
+[[file]]
+path = "Library/Logs/Keeper/root.log"
+size = 4096
+age = "30d"
+changed = "30d"
+owner = "system"
+
+[[file]]
+path = "Library/Logs/Keeper/theirs.log"
+size = 4096
+age = "30d"
+changed = "30d"
+owner = "other-user"
+
+[[file]]
+path = "Library/Logs/Keeper/locked.log"
+size = 4096
+age = "30d"
+changed = "30d"
+flags = ["user-lock"]

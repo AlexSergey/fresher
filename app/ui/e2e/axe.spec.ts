@@ -107,6 +107,17 @@ const tempSettings = async (page: Page): Promise<void> => {
   await days.scrollIntoViewIfNeeded();
 };
 
+// Settings, with the logs module's days field in view.
+const logsSettings = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.logs);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeFocused();
+  const days = page.getByRole('spinbutton', { name: 'Offer logs and crash reports unchanged for' });
+  await expect(days).toHaveValue('7');
+  await days.scrollIntoViewIfNeeded();
+};
+
 // Ollama's models ticked, the review open and the confirmation asked for, the first model's other files listed.
 const ollamaConfirmation = async (page: Page): Promise<Locator> => {
   await mockCore(page, SCRIPTS.localAiModelsOllama);
@@ -219,6 +230,7 @@ test.describe('positive cases', () => {
     for (const [script, category, line] of [
       ['jetbrains', 'Settings and plugins of older JetBrains IDE versions', '2 items left out (600 MB)'],
       ['temp', 'Old temporary files', '4,712 items left out (790 MB)'],
+      ['logs', 'Old logs of your apps', '1 item left out (3 MB)'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)'],
       ['appCaches', 'Caches of your apps', '1 item left out (90 MB)'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)'],
@@ -261,6 +273,12 @@ test.describe('positive cases', () => {
     test('the details of a downloads category before Downloads is allowed', async ({ page }) => {
       await detailsAfter(page, SCRIPTS.downloadsUnavailable, 'Unfinished downloads');
       await expect(page.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the settings with the days field of Logs and crash reports', async ({ page }) => {
+      await logsSettings(page);
 
       expect(await violations(page)).toStrictEqual([]);
     });

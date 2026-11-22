@@ -1,0 +1,59 @@
+# A home for the logs module with old files that are all offered, and one that is kept: a top-level log, a
+# top-level file named as a bundle id (only a folder of that shape is another module's), logs in a folder and four
+# folders deep, a log five folders deep (six names), a log 10 days old (offered at the default 7 days, kept at 14),
+# and crash reports in `DiagnosticReports` and in a folder below it. The fresh log beside the old ones is kept as
+# recent. Times count back from `FIXTURE_NOW`; the status changes are stated.
+
+[[file]]
+path = "Library/Logs/old-tool.log"
+size = 8192
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/com.example.Tool.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Writer/writer.1.log"
+size = 16384
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Vendor/Updater/1.0/updater.log"
+size = 12288
+age = "20d"
+changed = "20d"
+
+[[file]]
+path = "Library/Logs/a/b/c/d/e/six.log"
+size = 6144
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Writer/writer.10d.log"
+size = 5120
+age = "10d"
+changed = "10d"
+
+[[file]]
+path = "Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+size = 20480
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/DiagnosticReports/Retired/Old-2026-09-01-000000.ips"
+size = 24576
+age = "60d"
+changed = "60d"
+
+[[file]]
+path = "Library/Logs/Writer/writer.log"
+size = 4096
+age = "1d"
+changed = "1d"

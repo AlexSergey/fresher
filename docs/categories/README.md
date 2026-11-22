@@ -88,5 +88,7 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `unused-toolchains.rust` | Low | none (the module's code, `modules/unused-toolchains`) | [`unused-toolchains-rust.md`](./unused-toolchains-rust.md) |
 | `unused-toolchains.node` | Medium | none (the module's code, `modules/unused-toolchains`) | [`unused-toolchains-node.md`](./unused-toolchains-node.md) |
 | `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |
+| `logs.app-logs`                 | Safe         | none (the module's code, `modules/logs`)       | [`logs-app-logs.md`](./logs-app-logs.md)                                 |
+| `logs.crash-reports`            | Safe         | none (the module's code, `modules/logs`)       | [`logs-crash-reports.md`](./logs-crash-reports.md)                       |
 
 The next ones (`node_modules`, Docker) come with the plans that implement their rules.

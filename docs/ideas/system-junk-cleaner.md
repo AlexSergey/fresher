@@ -28,4 +28,4 @@ Open questions:
 - Should an app be asked to quit before its cache is removed (some apps misbehave when the cache vanishes while
   running)?
 
-**Drafted in plan [033](../plans/033-logs/readme.md)** (2026-11-22): the user's logs and crash reports. User caches are plans [030](../plans/030-installed-app-caches/readme.md) and [034](../plans/034-browser-caches/readme.md). **Still an idea:** old device software updates, Mail's downloads, and the system-wide places that need administrator rights.
+**Built in plan [033](../plans/033-logs/readme.md)** (2026-11-22, awaiting the user's walk): the user's logs and crash reports, one finding per file. User caches are plans [030](../plans/030-installed-app-caches/readme.md) and [034](../plans/034-browser-caches/readme.md). **Still an idea:** old device software updates, Mail's downloads, and the system-wide places that need administrator rights.

@@ -8,6 +8,7 @@ import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
 import { LOCAL_AI_MODELS_DICTIONARY } from '../src/test/local-ai-models-scan';
+import { LOGS_DICTIONARY } from '../src/test/logs-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
@@ -110,6 +111,11 @@ const tmp = (key: string): string => TEMP_DICTIONARY[`temp.${key}`] ?? '';
 
 const TEMP_CATEGORY = tmp('old-files.name');
 
+// The logs module's own texts, as its locale file has them.
+const lg = (key: string): string => LOGS_DICTIONARY[`logs.${key}`] ?? '';
+
+const LOGS_CATEGORY = lg('app-logs.name');
+
 // Counts the setting updates the page sends to the core from here on.
 const recordUpdates = (page: Page): Promise<void> =>
   page.evaluate((command) => {
@@ -131,6 +137,9 @@ const sentUpdates = (page: Page): Promise<number> =>
 
 // Scans the temporary files script.
 const openTemp = (page: Page): Promise<void> => scanned(page, SCRIPTS.temp);
+
+// Scans the logs script.
+const openLogs = (page: Page): Promise<void> => scanned(page, SCRIPTS.logs);
 
 // The developer caches module's own texts, as its locale file has them.
 const dev = (key: string): string => DEV_CACHES_DICTIONARY[`dev-caches.${key}`] ?? '';
@@ -368,6 +377,17 @@ test.describe('negative cases', () => {
     await category.getByRole('checkbox', { name: `Select all ${TEMP_CATEGORY}` }).check();
     await expect(selectionBar(page)).toContainText('5 items selected');
     await expect(selectionBar(page)).not.toContainText('4,712');
+  });
+
+  test('the left-out line of the logs is not an item: nothing on it can be selected', async ({ page }) => {
+    await openLogs(page);
+    await openDetails(page, LOGS_CATEGORY);
+
+    const category = details(page);
+    await expect(category).toContainText(`1 item left out (3 MB): ${lg('left-out.recent')}`);
+    await expect(category.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await category.getByRole('checkbox', { name: `Select all ${LOGS_CATEGORY}` }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
   });
 
   test('Select all of the Safe zone ticks nothing in the other zones', async ({ page }) => {
@@ -1260,6 +1280,94 @@ test.describe('positive cases', () => {
     const item = items.getByRole('listitem').filter({ hasText: 'pip-unpack-ak3j2' }).first();
     await item.getByRole('button', { name: 'Put back' }).click();
     await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('old logs and old crash reports show their cards with their sizes and item counts', async ({ page }) => {
+    await openLogs(page);
+
+    await expect(cards(page)).toHaveCount(2);
+    const logs = page.getByRole('checkbox', { name: `Select ${LOGS_CATEGORY}` });
+    await expect(logs).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: `Select ${lg('crash-reports.name')}` })).toBeVisible();
+    await expect(cards(page).filter({ hasText: LOGS_CATEGORY })).toContainText('44 MB');
+    await expect(cards(page).filter({ hasText: LOGS_CATEGORY })).toContainText('2 items');
+    await expect(cards(page).filter({ hasText: lg('crash-reports.name') })).toContainText('1 item');
+  });
+
+  test('the details of Old logs of your apps show the category, Safe and its texts', async ({ page }) => {
+    await openLogs(page);
+
+    await openDetails(page, LOGS_CATEGORY);
+
+    const category = details(page);
+    await expect(category).toContainText('Safe');
+    await expect(category).toContainText('2 items');
+    for (const key of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(category).toContainText(lg(`app-logs.${key}`));
+    }
+  });
+
+  test("an old log's finding names its file, its folder and its age", async ({ page }) => {
+    await openLogs(page);
+
+    await openDetails(page, LOGS_CATEGORY);
+
+    const category = details(page);
+    await expect(category).toContainText('writer.1.log');
+    await expect(category).toContainText('In Writer in your Logs folder, unchanged for 30 days.');
+    await expect(category).toContainText('old-tool.log');
+    await expect(category).toContainText('In your Logs folder, unchanged for 30 days.');
+  });
+
+  test('selecting the logs makes the review name Safe', async ({ page }) => {
+    await openLogs(page);
+    await page.getByRole('checkbox', { name: `Select ${LOGS_CATEGORY}` }).check();
+
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+
+    await expect(heading(page, 'Review')).toBeFocused();
+    await expect(page.getByRole('list', { name: `The items of ${LOGS_CATEGORY}` })).toContainText('old-tool.log');
+    await removeButton(page).click();
+    await expect(page.getByRole('dialog', { name: 'Move 2 items to the Trash?' })).toContainText('Safe');
+  });
+
+  test('the old logs go from the review to the Trash, and the cleanup is put back from the Cleanups', async ({
+    page,
+  }) => {
+    await openLogs(page);
+    await page.getByRole('checkbox', { name: `Select ${LOGS_CATEGORY}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await expect(dialog).toContainText(lg('app-logs.if-removed'));
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 2 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    const item = items.getByRole('listitem').filter({ hasText: 'old-tool.log' }).first();
+    await item.getByRole('button', { name: 'Put back' }).click();
+    await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('Settings shows the logs switch and the days field, which cannot go below 7', async ({ page }) => {
+    await mockCore(page, SCRIPTS.logs);
+    await page.goto('/');
+    await openSettings(page);
+
+    const days = page.getByRole('spinbutton', { name: lg('older-than-days.label') });
+    await expect(days).toHaveValue('7');
+    await expect(page.getByText(lg('older-than-days.description'))).toBeVisible();
+    await expect(page.getByRole('switch', { name: lg('enabled.label') })).toBeChecked();
+    await recordUpdates(page);
+
+    await days.fill('6');
+
+    await expect(page.getByText('Enter a whole number from 7 to 90.')).toBeVisible();
+    expect(await sentUpdates(page)).toBe(0);
   });
 
   test('Settings has the number field at 7 days with its text, and 14 is accepted', async ({ page }) => {

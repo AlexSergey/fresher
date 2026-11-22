@@ -275,6 +275,7 @@ mod positive {
         local_ai_models_ollama => "local-ai-models-ollama",
         local_ai_models_ollama_download => "local-ai-models-ollama-download",
         local_ai_models_ollama_unreadable => "local-ai-models-ollama-unreadable",
+        logs => "logs",
         stale_projects => "stale-projects",
         storage_map => "storage-map",
         temp => "temp",

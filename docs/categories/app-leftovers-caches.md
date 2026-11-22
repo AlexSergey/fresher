@@ -52,6 +52,9 @@ by name. The items go to the Trash; the app runs no command, and
 an item a process holds open when you confirm is skipped. If the app is on a drive that is not connected now, nothing
 can find it: its files wait the days unchanged, each finding says to keep them in that case, and you confirm each.
 
+The old files inside an installed app's `Logs/<id>` folder are not offered by [Old logs of your apps](./logs-app-logs.md)
+either: this module claims every id-named folder of `Logs` whole. Other old files of `~/Library/Logs` are that category's.
+
 Containers: Fresher does not read `Containers/<id>`, the folder of a sandboxed app, even when it may open
 `Containers`: a container neither proves its app nor is offered. An installed app's extension keeps its own container
 under its own id, which Fresher cannot always tie to the app, so a container could prove, and get offered, the files

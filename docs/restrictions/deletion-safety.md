@@ -133,18 +133,29 @@ The app deletes files from a real person's disk. These rules hold in every versi
 ## Unknown is not junk
 
 - **Rule:** a rule claims a path only when it can tell what it is. Unrecognized space is shown, never offered as junk.
-  **The one exception** (plan [017](../plans/017-temp-files/readme.md), decision 6): a top-level item of the user's own
-  temporary folder (`$TMPDIR`) or the user's own item in `/private/tmp` is claimed by the place's contract whatever
-  its name — macOS itself removes anything there after three days — and offered only after every row of the `temp`
-  module's decision: not restored, no lock name, no socket or pipe, the user's and unflagged, not locked, the open
-  apps listed and none named by it, read in full, and unchanged for more than the setting's days
-  ([`../categories/temp-old-files.md`](../categories/temp-old-files.md)). Nowhere else does a name the app cannot
-  read count.
-- **Why:** rule 1 of [`../rules.md`](../rules.md): a false positive is worse than a missed gigabyte. The exception
-  holds because the place's contract, not the name, says what the item is: working files that the system clears.
-- **Enforced by:** every rule's negative tests; for the exception, the `temp` module's decision tests
+  **Two exceptions:**
+  - (plan [017](../plans/017-temp-files/readme.md), decision 6) a top-level item of the user's own temporary folder
+    (`$TMPDIR`) or the user's own item in `/private/tmp` is claimed by the place's contract whatever its name — macOS
+    itself removes anything there after three days — and offered only after every row of the `temp` module's
+    decision: not restored, no lock name, no socket or pipe, the user's and unflagged, not locked, the open apps
+    listed and none named by it, read in full, and unchanged for more than the setting's days
+    ([`../categories/temp-old-files.md`](../categories/temp-old-files.md));
+  - (plan [033](../plans/033-logs/readme.md), agent's call 1) a regular file under the user's `~/Library/Logs`, up to
+    six names deep, is claimed by the place's contract whatever its name — it is the place macOS gives apps for their
+    logs — and offered, to the Trash, only after every row of the `logs` module's decision: not another module's
+    place (`JetBrains/`, a bundle-id-shaped top folder), not a state or lock name, not restored, no socket, pipe or
+    device, the user's and unflagged, not locked, and unchanged for more than the setting's days
+    ([`../categories/logs-app-logs.md`](../categories/logs-app-logs.md),
+    [`../categories/logs-crash-reports.md`](../categories/logs-crash-reports.md)). No folder is claimed.
+
+  Nowhere else does a name the app cannot read count.
+- **Why:** rule 1 of [`../rules.md`](../rules.md): a false positive is worse than a missed gigabyte. The exceptions
+  hold because the place's contract, not the name, says what the item is: working files that the system clears, and
+  the logs apps write to the place made for them.
+- **Enforced by:** every rule's negative tests; for the first exception, the `temp` module's decision tests
   (`modules/temp/src/decide.rs`), its fixtures and its sandbox case file (`fixtures/sandboxes/temp.toml`), and the
-  protection list above (nothing outside the two places).
+  protection list above (nothing outside the two places); for the second, the `logs` module's decision tests
+  (`modules/logs/src/decide.rs`, `names.rs`), its fixtures and its case file (`fixtures/sandboxes/logs.toml`).
 
 ## Settings never weaken deletion safety
 

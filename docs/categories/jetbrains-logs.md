@@ -32,6 +32,9 @@ Refused, so never claimed: `WebStorm2024`, `WebStorm2024.3.1`, `WebStorm2024.3.b
 before the 2020 versions (no `JetBrains/` folder). `PyCharmCE2024.1` belongs to PyCharm Community Edition, never to
 PyCharm.
 
+Other old files of `~/Library/Logs`, outside `JetBrains/`, are offered by [Old logs of your apps](./logs-app-logs.md); this
+folder stays this module's own.
+
 For each product, the first answer that applies, for every folder of the product:
 
 | # | Situation                                                                                 | Result                                       |

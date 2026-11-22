@@ -1,0 +1,91 @@
+# The home of the logs module's core end-to-end flows (crates/e2e/tests/logs.rs), laid out as a sandbox lays out its
+# home (`home/`); the flows add the rest of the sandbox's layout and its marker.
+# Under `Library/Logs`: an app's folder with an old rotated log and the fresh log beside it (one day), a vendor's
+# nested folder with an old log and an old state file (no one's), a top-level log ten days old and an old crash
+# report; old entries are unchanged for 30 days. Beside them, the removed `com.example.Gone`'s leftovers (its logs,
+# caches and saved state, unchanged for 40 days, not installed: `app-leftovers` offers them) and an older JetBrains
+# IDE's logs (WebStorm 2024.3, 2025.3 installed: `jetbrains` offers the folder). Every file holds data, so a put back
+# is compared byte for byte.
+
+[[file]]
+path = "home/Library/Logs/Writer/writer.1.log"
+size = 65536
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/Writer/writer.log"
+size = 4096
+age = "1d"
+changed = "1d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/Vendor/Updater/updater.log"
+size = 8192
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/Vendor/Updater/state.plist"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/notes-10d.log"
+size = 4096
+age = "10d"
+changed = "10d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+size = 16384
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Logs/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Logs/com.example.Gone/app.log"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Caches/com.example.Gone"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Caches/com.example.Gone/Cache.db"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[dir]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState"
+age = "40d"
+changed = "40d"
+
+[[file]]
+path = "home/Library/Saved Application State/com.example.Gone.savedState/data.data"
+size = 4096
+age = "40d"
+changed = "40d"
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/JetBrains/WebStorm2024.3/idea.log"
+size = 8192
+fill = "data"

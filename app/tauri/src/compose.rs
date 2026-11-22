@@ -57,6 +57,8 @@ pub(crate) enum ComposeError {
     AppLeftovers(#[from] fresher_module_app_leftovers::AppLeftoversError),
     #[error("the app-caches module cannot be built: {0}")]
     AppCaches(#[from] fresher_module_app_caches::AppCachesError),
+    #[error("the logs module cannot be built: {0}")]
+    Logs(#[from] fresher_module_logs::LogsError),
     #[error("the downloads module cannot be built: {0}")]
     Downloads(#[from] fresher_module_downloads::DownloadsError),
     #[error("the stale-projects module cannot be built: {0}")]
@@ -423,6 +425,7 @@ fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
         Box::new(fresher_module_dev_caches::DevCachesModule::new()?),
         Box::new(fresher_module_app_leftovers::AppLeftoversModule::new()?),
         Box::new(fresher_module_app_caches::AppCachesModule::new()?),
+        Box::new(fresher_module_logs::LogsModule::new()?),
         Box::new(fresher_module_downloads::DownloadsModule::new()?),
         Box::new(fresher_module_stale_projects::StaleProjectsModule::new()?),
         Box::new(fresher_module_local_ai_models::LocalAiModelsModule::new()?),
@@ -743,6 +746,7 @@ mod tests {
                     "dev-caches",
                     "app-leftovers",
                     "app-caches",
+                    "logs",
                     "downloads",
                     "stale-projects",
                     "local-ai-models",
@@ -757,6 +761,7 @@ mod tests {
                     "dev-caches",
                     "app-leftovers",
                     "app-caches",
+                    "logs",
                     "downloads",
                     "stale-projects",
                     "local-ai-models",

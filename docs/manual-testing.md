@@ -281,6 +281,16 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
       that file's negatives read "never offered by `app-leftovers`", which still holds.
 - [ ] Ignore one cache, then the category, then the module; restore each.
 
+### 1.15 Logs and crash reports ([033/03/01](./plans/033-logs/03-finish/01-docs-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/logs && npm run dev:sandbox -- logs`. Scan; walk `EXPECTED.md`, negatives first: nothing of a
+      negative is offered by `logs`; the fresh, six-day, socket, system and locked cases read as kept with their
+      reasons; each positive is offered at Safe with its title and reason.
+- [ ] Select everything; Review names Safe; confirm to the Trash. Every log folder is still there. Cleanups, put back.
+- [ ] Settings: raise "Offer logs and crash reports unchanged for" to 14 days and rescan; the files of 7 to 14 days are kept.
+- [ ] Ignore one item, then the category, then the module; restore each.
+- [ ] `npm run dev:sandbox -- jetbrains` and `-- app-leftovers`: their logs are still offered by their own modules only.
+
 ### 1.14 The scan screen and ignoring one item ([027/04/02](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md), [028/02/02](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md))
 
 - [ ] `rm -rf sandbox/trial && npm run dev:sandbox -- trial` (and `app-leftovers` for the choices). Walk the boxes of 027/04/02 "By the user": the sidebar,
@@ -569,6 +579,22 @@ mdls -name kMDItemCFBundleIdentifier -raw /Applications/*.app 2>/dev/null | tr '
       data gets an `exclude.toml` row with its why); how many small findings a real Mac shows (under 1 MB), and
       whether a size floor is needed; an app with an always-running helper (a menu bar agent): whether its cache is
       never offered; an updater's cache holding a pending update.
+
+### 2.13 Logs and crash reports ([033/03/01](./plans/033-logs/03-finish/01-docs-and-conclusions.md))
+
+`npm run dev`, a scan of `~` (a dry run on the real Mac). Compare with:
+
+```sh
+find ~/Library/Logs -type f -mtime +7 | wc -l
+find ~/Library/Logs -type f -mtime +7 -exec ls -lS {} + | head -10
+```
+
+- [ ] Every offered file is under `~/Library/Logs` and older than 7 days; the count is near the `find` count (fewer by
+      links, state and lock files, `JetBrains`, the bundle-id-shaped folders' files and files changed (ctime) within
+      the week).
+- [ ] Nothing under `Logs/JetBrains` or a `com.*`-shaped folder is offered by `logs`.
+- [ ] The largest ten findings, looked at read-only: none is state an app reads back.
+- [ ] How many findings the Mac shows and whether Details stays usable; the scan time beside plan 030's.
 
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 

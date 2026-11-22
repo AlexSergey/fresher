@@ -118,6 +118,14 @@ import {
   LOCAL_AI_MODELS_TOTALS,
 } from '../src/test/local-ai-models-scan';
 import {
+  LOGS_DICTIONARY,
+  LOGS_FINDINGS,
+  LOGS_MODULES,
+  LOGS_OVERVIEW,
+  LOGS_SCAN,
+  LOGS_SETTINGS,
+} from '../src/test/logs-scan';
+import {
   OLLAMA_DOWNLOAD_OVERVIEW,
   OLLAMA_DOWNLOAD_SCAN,
   OLLAMA_FINDINGS,
@@ -877,6 +885,28 @@ const TEMP_CLEANUP: CleanupScript = {
   history: { blocked: null, cleanups: [TEMP_CLEANUP_DETAIL.summary], offset: 0, total: 1, waiting: 837_000_000 },
 };
 
+// The cleanup of the two old logs: nothing is left, and the history holds that one cleanup.
+const LOGS_CLEANUP_DETAIL = movedDetailOf(planOf(LOGS_FINDINGS.slice(0, 2)), 3, 1_735_819_200);
+
+const LOGS_CLEANUP: CleanupScript = {
+  after: {
+    ...LOGS_OVERVIEW,
+    found: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+    totals: [],
+  },
+  details: [LOGS_CLEANUP_DETAIL],
+  history: { blocked: null, cleanups: [LOGS_CLEANUP_DETAIL.summary], offset: 0, total: 1, waiting: 44_000_000 },
+};
+
+// What the logs scripts answer before a scan: the module, its texts and settings.
+const LOGS_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...LOGS_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: LOGS_MODULES,
+  getSettings: LOGS_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // What the temporary files scripts answer before a scan: the module, its texts and settings, the ignore tabs' texts.
 const TEMP_ANSWERS = {
   ...ANSWERS,
@@ -1054,6 +1084,14 @@ export const SCRIPTS = {
     ignoring: true,
     scan: OLLAMA_DOWNLOAD_SCAN,
     scanned: OLLAMA_DOWNLOAD_OVERVIEW,
+  },
+  // The logs module's scan, streamed at once, with cleanup and ignoring.
+  logs: {
+    answers: LOGS_ANSWERS,
+    cleanup: LOGS_CLEANUP,
+    ignoring: true,
+    scan: LOGS_SCAN,
+    scanned: LOGS_OVERVIEW,
   },
   // Some folders could not be read: the scan ends partial, the caches' size a lower bound.
   partial: { answers: ANSWERS, scan: DEMO_PARTIAL_SCAN, scanned: DEMO_PARTIAL },

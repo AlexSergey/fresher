@@ -10,7 +10,8 @@ describes each removal as data. This page is the pattern every module plan follo
 its kind and owner, and `dev-caches` (`modules/dev-caches/`, plan
 [018](../plans/018-developer-caches/readme.md)) the example of a module with a data table of places and signs, and `local-ai-models` (`modules/local-ai-models/`, plan
 [023](../plans/023-local-ai-models/readme.md)) the example of a module with one finding per model, named from its folder, and `unused-toolchains` (`modules/unused-toolchains`, plan
-[024](../plans/024-unused-toolchains/readme.md)) the example of a module that reads small files and judges each version by what points at it. Set up by plan
+[024](../plans/024-unused-toolchains/readme.md)) the example of a module that reads small files and judges each version by what points at it, and `logs` (`modules/logs/`, plan
+[033](../plans/033-logs/readme.md)) the example of a module that claims every file of a place by the place's contract and decides each one by its age. Set up by plan
 [002/06](../plans/002-base-architecture/06-module-kit/readme.md).
 
 ## The crate
@@ -323,6 +324,18 @@ could not be read) is a `left_out` with its reason. Every category needs Desktop
 on in the sandbox. The removal is the version's folder moved to the Trash, never the manager's own command (nvm is a
 shell function, and neither command can run in a sandbox). The other managers are
 [deferred](../deferred/other-toolchain-versions.md), each for the fact it needs.
+
+**`logs` is code, and the example of a module that claims a whole place by its contract**: the user's
+`~/Library/Logs` is the place made for logs, so every regular file in it is claimed whatever its name, the second
+exception of "Unknown is not junk" ([`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md)). It
+declares six `Claim::Item` interests, `Pattern::Under(KnownFolder::Logs, ...)` from one name to six names deep, so
+no folder is made opaque and the walk keeps its shape. `on_match` makes one decision per file (the shape of `temp`:
+`decide.rs`, a pure function of rows checked in order): a folder, a link, a state or lock file and what another module
+claims whole (`JetBrains`, a folder shaped as a bundle id) are not claimed; a special entry, a file not the user's and a
+locked file are left out with a reason, and so is a file changed within the setting's days. `Logs` is shared with
+`jetbrains` and `app-leftovers`, whose whole claims hide their folders from this module; the split is refused by name
+in `logs` as well, so it holds even if their claims change. The module asks for no installed or running apps: the
+cleaner's open-file check protects a log in use.
 
 A module may mix both: its own interests come after the rules' ones, so `matched.interest` still indexes the rules
 first.

@@ -23,6 +23,7 @@ fresher-module-temp = { path = "../../modules/temp" }
 fresher-module-dev-caches = { path = "../../modules/dev-caches" }
 fresher-module-app-leftovers = { path = "../../modules/app-leftovers" }
 fresher-module-app-caches = { path = "../../modules/app-caches" }
+fresher-module-logs = { path = "../../modules/logs" }
 fresher-module-downloads = { path = "../../modules/downloads" }
 fresher-module-stale-projects = { path = "../../modules/stale-projects" }
 fresher-module-local-ai-models = { path = "../../modules/local-ai-models" }

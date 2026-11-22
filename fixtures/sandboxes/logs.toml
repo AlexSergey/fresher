@@ -1,0 +1,201 @@
+# The logs module: the old files under `home/Library/Logs`, crash reports (`DiagnosticReports`) apart. A file goes to
+# the Trash and its folder stays. Every old entry states `age` and `changed` (30 days unless said; a status change
+# cannot be set back on disk), and the positives' files use `fill = "data"`, so the map's numbers are blocks. The
+# other modules' folders here are not this module's: in the full app `jetbrains` and `app-leftovers` decide them. Every
+# path is used by one case only and every name is apart from every other case file's, so `npm run sandbox -- all`
+# leaves out no file it did not leave out before.
+feature = "logs"
+module = "logs"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a fresh log is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/Notes/notes.log"
+size = 4096
+age = "1d"
+changed = "1d"
+[[case.left-out]]
+category = "logs.app-logs"
+reason = "logs.left-out.recent"
+items = 1
+[case.map]
+part = "your-folders"
+at = "home/Library/Logs/Notes"
+
+[[case]]
+name = "six days old is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/Notes2/six.log"
+size = 4096
+age = "6d"
+changed = "6d"
+[[case.left-out]]
+category = "logs.app-logs"
+reason = "logs.left-out.recent"
+items = 1
+
+[[case]]
+name = "a removed app's log folder is not this module's"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/com.example.Departed/app.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[case]]
+name = "a JetBrains IDE's log folder is not this module's"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/JetBrains/GoLand2024.2/idea.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[case]]
+name = "a link in the logs is never claimed and its target stays"
+kind = "negative"
+[[case.symlink]]
+path = "home/Library/Logs/linked.log"
+target = "../../Documents/logs-kept/kept.log"
+[[case.file]]
+path = "home/Documents/logs-kept/kept.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[case]]
+name = "a socket in a log folder is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/Server/s.sock"
+age = "30d"
+changed = "30d"
+kind = "socket"
+[[case.left-out]]
+category = "logs.app-logs"
+reason = "logs.left-out.special"
+items = 1
+
+[[case]]
+name = "an app's state and lock files in the logs are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/Agent/heartbeat_last.plist"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+[[case.file]]
+path = "home/Library/Logs/Agent/run.pid"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+
+[[case]]
+name = "a log of the system is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/Daemon/root.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+owner = "system"
+[[case.left-out]]
+category = "logs.app-logs"
+reason = "logs.left-out.not-yours"
+items = 1
+
+[[case]]
+name = "a log you locked is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Logs/Diary/locked.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+flags = ["user-lock"]
+[[case.left-out]]
+category = "logs.app-logs"
+reason = "logs.left-out.locked"
+items = 1
+
+[[case]]
+name = "a folder named Logs outside the Library is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Documents/Logs/old.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+
+# Then the positive cases: each file is offered, goes to the Trash and leaves its folder.
+
+[[case]]
+name = "an old log of an installed app goes to the Trash and its folder stays"
+kind = "positive"
+[[case.app]]
+path = "Applications/Scribbler.app"
+bundle-id = "com.example.Scribbler"
+name = "Scribbler"
+[[case.file]]
+path = "home/Library/Logs/Scribbler/scribbler.1.log"
+size = 65536
+age = "30d"
+changed = "30d"
+fill = "data"
+[case.expect]
+item = "home/Library/Logs/Scribbler/scribbler.1.log"
+category = "logs.app-logs"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Logs/Scribbler/scribbler.1.log"
+
+[[case]]
+name = "an old log with no app behind it goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Logs/old-tool.log"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+[case.expect]
+item = "home/Library/Logs/old-tool.log"
+category = "logs.app-logs"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Logs/old-tool.log"
+
+[[case]]
+name = "an old crash report goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips"
+size = 4096
+age = "30d"
+changed = "30d"
+fill = "data"
+[case.expect]
+item = "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips"
+category = "logs.crash-reports"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips"

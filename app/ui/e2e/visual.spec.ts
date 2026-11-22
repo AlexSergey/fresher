@@ -87,6 +87,17 @@ const tempSettings = async (page: Page): Promise<void> => {
   await days.scrollIntoViewIfNeeded();
 };
 
+// Settings, with the logs module's days field in view.
+const logsSettings = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.logs);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeFocused();
+  const days = page.getByRole('spinbutton', { name: 'Offer logs and crash reports unchanged for' });
+  await expect(days).toHaveValue('7');
+  await days.scrollIntoViewIfNeeded();
+};
+
 // WebStorm's three categories ticked, the review open and the confirmation (it names Medium) asked for.
 const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
   await mockCore(page, SCRIPTS.jetbrains);
@@ -203,6 +214,7 @@ test.describe('positive cases', () => {
         'category-details-jetbrains.png',
       ],
       ['temp', 'Old temporary files', '3 items left out (12 MB)', 'category-details-temp.png'],
+      ['logs', 'Old logs of your apps', '1 item left out (3 MB)', 'category-details-logs.png'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)', 'category-details-dev-caches.png'],
       ['appCaches', 'Caches of your apps', '1 item left out (90 MB)', 'category-details-app-caches.png'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)', 'category-details-app-leftovers.png'],
@@ -428,6 +440,13 @@ test.describe('positive cases', () => {
       await expect(page.getByRole('switch', { name: 'Demo module' })).toBeChecked();
 
       await looksTheSame(page, 'settings.png');
+    });
+
+    test('the days field of Logs and crash reports', async ({ page }) => {
+      await logsSettings(page);
+      await expect(page.getByText('From 7 to 90 days')).toBeVisible();
+
+      await looksTheSame(page, 'settings-logs.png');
     });
 
     test('the number field of Temporary files', async ({ page }) => {

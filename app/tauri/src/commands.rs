@@ -657,6 +657,7 @@ mod tests {
                     "dev-caches",
                     "app-leftovers",
                     "app-caches",
+                    "logs",
                     "downloads",
                     "stale-projects",
                     "local-ai-models",

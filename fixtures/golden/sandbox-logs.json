@@ -1,0 +1,471 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "logs.crash-reports",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "logs.app-logs",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Logs/Scribbler/scribbler.1.log",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "logs.app-logs",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Logs/old-tool.log",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "logs.crash-reports",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "logs",
+      "subject": "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips"
+    },
+    {
+      "app": null,
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "logical": 65536,
+      "module": "logs",
+      "subject": "home/Library/Logs/Scribbler/scribbler.1.log"
+    },
+    {
+      "app": null,
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "logs",
+      "subject": "home/Library/Logs/old-tool.log"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "logs.app-logs",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "logs.left-out.locked"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "logs.left-out.not-yours"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "items": 2,
+      "reason": {
+        "args": {},
+        "key": "logs.left-out.recent"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 0
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "logs.left-out.special"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 0,
+        "reclaimable": 0
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Logs/Notes",
+        "case": "a fresh log is kept",
+        "path": [
+          "home/Library/Logs/Notes"
+        ],
+        "rows": [
+          {
+            "allocated": 0,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Library/Logs/Notes/notes.log"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Logs/Scribbler/scribbler.1.log",
+        "case": "an old log of an installed app goes to the Trash and its folder stays",
+        "path": [
+          "home/Library/Logs/Scribbler/scribbler.1.log"
+        ],
+        "rows": [
+          {
+            "allocated": 65536,
+            "explained": 65536,
+            "logical": 65536,
+            "path": "home/Library/Logs/Scribbler/scribbler.1.log"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Logs/old-tool.log",
+        "case": "an old log with no app behind it goes to the Trash",
+        "path": [
+          "home/Library/Logs/old-tool.log"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Library/Logs/old-tool.log"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips",
+        "case": "an old crash report goes to the Trash",
+        "path": [
+          "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Library/Logs/DiagnosticReports/Scribbler-2026-10-01-101010.ips"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 73728,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 24576,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67127146,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "folders": 1,
+                  "kind": "unreadable",
+                  "needs": {
+                    "kind": "all-files"
+                  }
+                },
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738080918,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 105,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Scribbler.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Scribbler.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 367,
+        "path": "Applications/Scribbler.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Scribbler.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Scribbler-2026-10-01-101010.ips"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/old-tool.log"
+      },
+      {
+        "kind": "file",
+        "logical_size": 65536,
+        "path": "home/.Trash/scribbler.1.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents/Logs"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Documents/Logs/old.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Documents/logs-kept"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Documents/logs-kept/kept.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Agent"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/Agent/heartbeat_last.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/Agent/run.pid"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Daemon"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/Daemon/root.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/DiagnosticReports"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Diary"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/Diary/locked.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/JetBrains"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/JetBrains/GoLand2024.2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/JetBrains/GoLand2024.2/idea.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Notes"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/Notes/notes.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Notes2"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/Notes2/six.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Scribbler"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Server"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/Library/Logs/Server/s.sock"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/com.example.Departed"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/com.example.Departed/app.log"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Logs/linked.log"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1426,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 116586
+  }
+}

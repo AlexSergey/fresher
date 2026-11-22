@@ -1,0 +1,105 @@
+# A home for the logs module in which nothing is offered and nothing is left out, because none of it is the module's
+# to claim: a removed app's folder and a bundle-id-named folder (other modules' places), JetBrains' folder, a link, an
+# empty folder, state and lock names, a file seven names deep (beyond the module's reach), and folders named alike
+# outside `Library/Logs`. Every item is 30 days old; the status changes are stated.
+
+[[file]]
+path = "Library/Logs/com.example.Gone/app.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/com.apple.Safari/x.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/JetBrains/WebStorm2024.3/idea.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/JetBrains/stray.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Documents/kept.log"
+size = 2048
+age = "30d"
+changed = "30d"
+
+[[symlink]]
+path = "Library/Logs/linked.log"
+target = "../../Documents/kept.log"
+age = "30d"
+changed = "30d"
+
+[[dir]]
+path = "Library/Logs/Empty"
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/heartbeat_last.plist"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/state.db"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/index.sqlite"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/index.sqlite-wal"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/index.sqlite-shm"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/run.lock"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/Agent/server.pid"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Library/Logs/a/b/c/d/e/f/deep.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Documents/Logs/old.log"
+size = 4096
+age = "30d"
+changed = "30d"
+
+[[file]]
+path = "Logs/old.log"
+size = 4096
+age = "30d"
+changed = "30d"

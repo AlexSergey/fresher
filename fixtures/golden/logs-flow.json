@@ -1,0 +1,225 @@
+{
+  "leftOut": {
+    "app-leftovers": [],
+    "jetbrains": [],
+    "logs": [
+      [
+        "logs.app-logs",
+        "logs.left-out.recent",
+        1
+      ]
+    ]
+  },
+  "logsFindings": [
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/Vendor/Updater/updater.log",
+        "module": "logs"
+      },
+      "module": "logs",
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          },
+          "folder": {
+            "kind": "text",
+            "value": "Vendor/Updater"
+          }
+        },
+        "key": "logs.reason.folder"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/home/Library/Logs/Vendor/Updater/updater.log"
+      },
+      "sizes": {
+        "allocated": 8192,
+        "completeness": "complete",
+        "logical": 8192,
+        "reclaimable": 8192
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/home/Library/Logs/Vendor/Updater/updater.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "updater.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/Writer/writer.1.log",
+        "module": "logs"
+      },
+      "module": "logs",
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          },
+          "folder": {
+            "kind": "text",
+            "value": "Writer"
+          }
+        },
+        "key": "logs.reason.folder"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/home/Library/Logs/Writer/writer.1.log"
+      },
+      "sizes": {
+        "allocated": 65536,
+        "completeness": "complete",
+        "logical": 65536,
+        "reclaimable": 65536
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/home/Library/Logs/Writer/writer.1.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "writer.1.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.app-logs",
+      "danger": "safe",
+      "key": {
+        "identity": "app-logs/notes-10d.log",
+        "module": "logs"
+      },
+      "module": "logs",
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 10
+          }
+        },
+        "key": "logs.reason.top"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/home/Library/Logs/notes-10d.log"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/home/Library/Logs/notes-10d.log"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "notes-10d.log"
+          }
+        },
+        "key": "logs.title"
+      }
+    },
+    {
+      "category": "logs.crash-reports",
+      "danger": "safe",
+      "key": {
+        "identity": "crash-reports/Writer-2026-10-01-101010.ips",
+        "module": "logs"
+      },
+      "module": "logs",
+      "reason": {
+        "args": {
+          "days": {
+            "kind": "count",
+            "value": 30
+          }
+        },
+        "key": "logs.reason.report"
+      },
+      "removability": "removable",
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "~/home/Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+      },
+      "sizes": {
+        "allocated": 16384,
+        "completeness": "complete",
+        "logical": 16384,
+        "reclaimable": 16384
+      },
+      "subject": {
+        "kind": "path",
+        "value": "~/home/Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "Writer-2026-10-01-101010.ips"
+          }
+        },
+        "key": "logs.title"
+      }
+    }
+  ],
+  "offered": [
+    [
+      "app-leftovers.caches",
+      "home/Library/Caches/com.example.Gone"
+    ],
+    [
+      "app-leftovers.caches",
+      "home/Library/Logs/com.example.Gone"
+    ],
+    [
+      "app-leftovers.caches",
+      "home/Library/Saved Application State/com.example.Gone.savedState"
+    ],
+    [
+      "jetbrains.logs",
+      "home/Library/Logs/JetBrains/WebStorm2024.3"
+    ],
+    [
+      "logs.app-logs",
+      "home/Library/Logs/Vendor/Updater/updater.log"
+    ],
+    [
+      "logs.app-logs",
+      "home/Library/Logs/Writer/writer.1.log"
+    ],
+    [
+      "logs.app-logs",
+      "home/Library/Logs/notes-10d.log"
+    ],
+    [
+      "logs.crash-reports",
+      "home/Library/Logs/DiagnosticReports/Writer-2026-10-01-101010.ips"
+    ]
+  ]
+}

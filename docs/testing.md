@@ -157,6 +157,12 @@ cleanups of a hundred items through the real journal.
   quits, a restored scan judges the open apps again, a file held open skips its folder in use with nothing of it moved,
   a cleanup empties each folder and keeps it with its entries in the Trash, put back returns them beside a file the app
   wrote since, and the storage map counts both folders in the app's line (`fixtures/golden/app-caches-flow.json`).
+  `tests/logs.rs` runs the `logs` module's flows beside the other modules of `Library/Logs` (`jetbrains`,
+  `app-leftovers`) over `fixtures/homes/logs-flow.toml`: no path is offered by two modules (the removed app's and the
+  older IDE's log folders are theirs, a state file no one's), a fresh log stays through a cleanup of everything, a log
+  held open is skipped in use, a restored scan leaves every log out `scan-again` until a scan, fourteen days in the
+  settings file keep a ten-day-old log, a cleanup moves the old files to the Trash and keeps their folders, and put
+  back returns them byte for byte (`fixtures/golden/logs-flow.json`, the first scan's report).
   `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
@@ -527,6 +533,13 @@ The case files:
   unreadable manifest and a download in progress keep every Ollama model. Each writes the lone layer of the first file
   too, so in `npm run sandbox -- all` they are left out whole and named in `EXPECTED.md`; write them by name
   ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+
+- `logs.toml`: the `logs` module, offered from `home/Library/Logs`. A removed app's or a JetBrains IDE's folder (other
+  modules' to decide), a link, an app's state and lock files, a folder named `Logs` outside the Library are never
+  claimed; a log changed yesterday or 6 days ago, a socket, the system's log and a log you locked are left out
+  (`recent`, `special`, `not-yours`, `locked`). An old log of an installed app (its folder stays), an old log with no app behind
+  it and an old crash report (`DiagnosticReports`) go to the Trash as Safe. Every old entry states its age and status
+  change (30 days).
 
 - `stale-projects.toml`: the `stale-projects` module, offered from the folders under `home` the walk reads
   (`home/Code`). Source, `.git` and the project folder, `dist` and `.next`, a `node_modules` without a project, a link
