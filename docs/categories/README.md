@@ -17,9 +17,9 @@ confirmation screen, and the confirmation names the highest level among the sele
 | Level      | Meaning                                                                                          | Examples                                                                   |
 | ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | logs, Xcode derived data, a removed app's caches, an IDE's caches          |
-| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, a browser's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download, an unused Rust toolchain |
+| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, a browser's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, Docker build cache, an unfinished download, an unused Rust toolchain, old device support files |
 | **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, unused Docker images, an unused Node version |
-| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder, a big download you have not opened |
+| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, stopped containers, iOS device backups, a removed app's support folder, a big download you have not opened, Xcode archives |
 
 The levels are final for a category in its default form; a rule may raise (never lower) a level for a specific finding,
 for example a `node_modules` of a project touched yesterday.
@@ -92,5 +92,9 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `temp.old-files`                | Safe         | none (the module's code, `modules/temp`)       | [`temp-old-files.md`](./temp-old-files.md)                               |
 | `logs.app-logs`                 | Safe         | none (the module's code, `modules/logs`)       | [`logs-app-logs.md`](./logs-app-logs.md)                                 |
 | `logs.crash-reports`            | Safe         | none (the module's code, `modules/logs`)       | [`logs-crash-reports.md`](./logs-crash-reports.md)                       |
+| `xcode.device-support`          | Low          | none (the module's code, `modules/xcode`)      | [`xcode-device-support.md`](./xcode-device-support.md)                   |
+| `xcode.previews`                | Safe         | none (the module's code, `modules/xcode`)      | [`xcode-previews.md`](./xcode-previews.md)                               |
+| `xcode.simulator-caches`        | Safe         | none (the module's code, `modules/xcode`)      | [`xcode-simulator-caches.md`](./xcode-simulator-caches.md)               |
+| `xcode.archives`                | High         | none (the module's code, `modules/xcode`)      | [`xcode-archives.md`](./xcode-archives.md)                               |
 
 The next ones (`node_modules`, Docker) come with the plans that implement their rules.

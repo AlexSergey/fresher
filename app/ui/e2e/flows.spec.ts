@@ -12,6 +12,7 @@ import { LOGS_DICTIONARY } from '../src/test/logs-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
+import { XCODE_DICTIONARY } from '../src/test/xcode-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
 import {
   cardNames,
@@ -244,6 +245,24 @@ const openAppCaches = (page: Page): Promise<void> => scanned(page, SCRIPTS.appCa
 
 // The browser and web-engine caches script, scanned.
 const openBrowserCaches = (page: Page): Promise<void> => scanned(page, SCRIPTS.appCachesBrowsers);
+
+// The Xcode module's own texts, as its locale file has them.
+const xc = (key: string): string => {
+  const value = XCODE_DICTIONARY[`xcode.${key}`];
+  if (value === undefined) {
+    throw new Error(`no text xcode.${key}`);
+  }
+
+  return value;
+};
+
+const XC_DEVICE_SUPPORT = xc('device-support.name');
+const XC_PREVIEWS = xc('previews.name');
+const XC_SIMULATOR = xc('simulator-caches.name');
+const XC_ARCHIVES = xc('archives.name');
+
+// The Xcode script, scanned.
+const openXcode = (page: Page): Promise<void> => scanned(page, SCRIPTS.xcode);
 
 // The unused toolchains module's own texts, as its locale file has them.
 const ut = (key: string): string => {
@@ -652,6 +671,33 @@ test.describe('negative cases', () => {
     await expect(heading(page, 'Review')).toBeFocused();
     await expect(page.getByRole('list', { name: `The items of ${TEMP_CATEGORY}` })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Options for / })).toHaveCount(0);
+  });
+
+  test("nothing of Xcode's is selected before the user picks it", async ({ page }) => {
+    await openXcode(page);
+
+    for (const name of [XC_DEVICE_SUPPORT, XC_PREVIEWS, XC_SIMULATOR, XC_ARCHIVES]) {
+      await expect(page.getByRole('checkbox', { name: `Select ${name}` })).not.toBeChecked();
+    }
+    await expect(selectionBar(page)).toHaveCount(0);
+    await zone(page, 'Safe to remove').getByRole('checkbox', { name: 'Select all' }).check();
+    await expect(page.getByRole('checkbox', { name: `Select ${XC_PREVIEWS}` })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${XC_SIMULATOR}` })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${XC_DEVICE_SUPPORT}` })).not.toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${XC_ARCHIVES}` })).not.toBeChecked();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+  });
+
+  test('a left-out device support folder cannot be selected', async ({ page }) => {
+    await openXcode(page);
+
+    await openDetails(page, XC_DEVICE_SUPPORT);
+
+    await expect(details(page)).toContainText(`1 item left out (300 MB): ${xc('left-out.special')}`);
+    await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
+    await page.getByRole('checkbox', { name: `Select all ${XC_DEVICE_SUPPORT}` }).check();
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).not.toContainText('300 MB');
   });
 });
 
@@ -2114,6 +2160,96 @@ test.describe('positive cases', () => {
 
     await expect(page.getByRole('switch', { name: ac('enabled.label') })).toBeChecked();
     await expect(page.getByText(ac('enabled.description'))).toBeVisible();
+  });
+
+  test("Xcode's categories show their cards with their sizes", async ({ page }) => {
+    await openXcode(page);
+
+    for (const [name, size] of [
+      [XC_DEVICE_SUPPORT, '7.3 GB'],
+      [XC_PREVIEWS, '640 MB'],
+      [XC_SIMULATOR, '1.2 GB'],
+      [XC_ARCHIVES, '860 MB'],
+    ] as const) {
+      await expect(cards(page).filter({ hasText: name })).toContainText(size);
+    }
+  });
+
+  test('the archives show High and their four texts', async ({ page }) => {
+    await openXcode(page);
+
+    await openDetails(page, XC_ARCHIVES);
+
+    const category = details(page);
+    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('High');
+    for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
+      await expect(category).toContainText(xc(`archives.${text}`));
+    }
+  });
+
+  test('a device support finding names its platform, version and build', async ({ page }) => {
+    await openXcode(page);
+
+    await openDetails(page, XC_DEVICE_SUPPORT);
+
+    const items = details(page);
+    await expect(items).toContainText('iOS 15.0 (19A346)');
+    await expect(items).toContainText('iOS 17.2 (21C62)');
+    const plain = xc('reason.device-support');
+    await expect(items).toContainText(
+      plain.replaceAll('{platform}', 'iOS').replace('{version}', '15.0').replace('{size}', '3.2 GB'),
+    );
+    const recent = xc('reason.device-support-recent');
+    await expect(items).toContainText(
+      recent.replaceAll('{platform}', 'iOS').replace('{version}', '17.2').replace('{size}', '4.1 GB'),
+    );
+  });
+
+  test('choosing an archive makes the review name High', async ({ page }) => {
+    await openXcode(page);
+
+    await page.getByRole('checkbox', { name: `Select ${XC_ARCHIVES}` }).check();
+
+    await expect(selectionBar(page)).toContainText('1 item selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await expect(dialog).toContainText('High');
+    await expect(dialog).toContainText(xc('archives.if-removed'));
+  });
+
+  test('a cleanup moves the archive and empties the caches, and put back brings the archive back', async ({ page }) => {
+    await openXcode(page);
+    for (const name of [XC_PREVIEWS, XC_SIMULATOR, XC_ARCHIVES]) {
+      await page.getByRole('checkbox', { name: `Select ${name}` }).check();
+    }
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Moved 3 items to the Trash');
+    await result.getByRole('button', { name: 'See this cleanup' }).click();
+    const items = page.getByRole('list', { name: 'The items of this cleanup' });
+    await expect(items.getByRole('listitem').filter({ hasText: 'Xcode previews' })).toContainText('In the Trash.');
+    await expect(items.getByRole('listitem').filter({ hasText: 'Simulator caches' })).toContainText(
+      'Emptied. The folder itself stays.',
+    );
+    const archive = items.getByRole('listitem').filter({ hasText: '.xcarchive' });
+    await expect(archive).toContainText('In the Trash.');
+    await archive.getByRole('button', { name: 'Put back' }).click();
+    await expect(archive).toContainText('Put back where it was.');
+  });
+
+  test("Settings shows the switch for Xcode's files", async ({ page }) => {
+    await mockCore(page, SCRIPTS.xcode);
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('switch', { name: xc('enabled.label') })).toBeChecked();
+    await expect(page.getByText(xc('enabled.description'))).toBeVisible();
   });
 
   test('unused toolchain versions show on Scan with their size', async ({ page }) => {

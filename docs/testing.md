@@ -157,6 +157,14 @@ cleanups of a hundred items through the real journal.
   quits, a restored scan judges the open apps again, a file held open skips its folder in use with nothing of it moved,
   a cleanup empties each folder and keeps it with its entries in the Trash, put back returns them beside a file the app
   wrote since, and the storage map counts both folders in the app's line (`fixtures/golden/app-caches-flow.json`).
+  `tests/xcode.rs` runs the `xcode` module's flows beside `dev-caches`, the other module of `Library/Developer`, over
+  `fixtures/homes/xcode-flow.toml` with Xcode installed and the open apps scripted per scan: the derived data project
+  is offered by `dev-caches` only, every candidate waits (`app-open`) while Xcode or the Simulator is open until a
+  rescan after it quits, a file held open inside the simulators' caches skips that item in use while the rest go, a
+  cleanup moves the device support folders and the archive to the Trash and empties the previews and the simulators'
+  caches, keeping the folders, put back returns the archive byte for byte and the emptied caches beside a file written
+  since, a restored scan offers the same with Xcode closed and leaves everything out with it open, and the storage map
+  counts every finding of both modules in Xcode's line (`fixtures/golden/xcode-flow.json`).
   `tests/logs.rs` runs the `logs` module's flows beside the other modules of `Library/Logs` (`jetbrains`,
   `app-leftovers`) over `fixtures/homes/logs-flow.toml`: no path is offered by two modules (the removed app's and the
   older IDE's log folders are theirs, a state file no one's), a fresh log stays through a cleanup of everything, a log
@@ -231,6 +239,10 @@ cleanups of a hundred items through the real journal.
   `src/test/app-caches-browsers-scan.ts` is the same module's browser and web-engine caches (Chrome folders titled by
   browser, profile and folder, Redis Insight's by app and folder, Firefox's cache left out as open); the e2e mock plays
   it (`SCRIPTS.appCachesBrowsers`) on the cards, the Details, the review and a cleanup that empties.
+  `src/test/xcode-scan.ts` is the scan of the `xcode` module in the group Development (two device support folders, the
+  previews, the simulators' caches and an archive, each for the app Xcode, and one device support folder left out as
+  special; texts read from the module's `en.json`); the e2e mock plays it (`SCRIPTS.xcode`) on the cards, the Details
+  (visual and axe), the review naming High, a cleanup that empties the caches and moves the archive, and the put back.
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
   (one event every so many ms, each asked of Node, as the engine streams), Scan's totals during and after the scan,
@@ -603,6 +615,16 @@ The case files:
   in `C/`, `0/`, `X/`, `T/TemporaryItems`, `~/Library/Autosave Information`, another user's `T` and editor files in
   the home are never claimed, nor the target of a link; an old file, an old folder, your old item in `private/tmp`,
   an installed app's folder, seven days and one second, and an old link (as itself) go to the Trash.
+- `xcode.toml` and `xcode-open.toml`: the `xcode` module, offered from `home/Library/Developer/`. A folder that is not
+  a system version, a device support folder without its symbols, a link where a version's folder would be (and its
+  target), Xcode's own settings, a folder named like an archive without its contents list and the simulator devices
+  are never claimed; a device support folder holding a socket is left out (`special`), and, in the second file, with
+  Xcode open, a device support folder, an archive and the simulators' caches are left out (`app-open`); an iOS and a
+  watch's device support version and an archive go to the Trash (Low, Low, High), the previews and the simulators'
+  caches are emptied (Safe, the folder stays, its contents go to the Trash). `DerivedData` is `dev-caches`'. The
+  open Xcode is a `[[case.running]]`, shared by every case of a file, so it has a file of its own. `all` writes every
+  path but, with Xcode open in the joined world, `xcode.toml`'s positives are left out as `app-open`: walk `xcode` by
+  name.
 
 A case file's paths are its own across every case file, so `npm run sandbox -- all` can write them into one sandbox;
 a file that writes a path an earlier file wrote is left out of `all` whole, named on stderr and in `EXPECTED.md`, and is

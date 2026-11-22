@@ -5,7 +5,9 @@
 ## What it is
 
 What Xcode makes while it builds and indexes a project: compiled files, the code index and build logs, one folder per
-project. Made by Xcode, Apple's app for building apps.
+project. Made by Xcode, Apple's app for building apps. Xcode's other data (device support, previews, the simulators'
+caches and archives) is in the four categories of the `xcode` module
+([`xcode-device-support.md`](./xcode-device-support.md) and its three siblings).
 
 ## Where it lives
 

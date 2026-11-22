@@ -1244,6 +1244,7 @@ dependencies = [
  "fresher-module-temp",
  "fresher-module-trial",
  "fresher-module-unused-toolchains",
+ "fresher-module-xcode",
  "fresher-sandbox",
  "fresher-scanner",
  "fresher-store",
@@ -1307,6 +1308,7 @@ dependencies = [
  "fresher-module-temp",
  "fresher-module-trial",
  "fresher-module-unused-toolchains",
+ "fresher-module-xcode",
  "fresher-sandbox",
  "fresher-scanner",
  "fresher-store",
@@ -1478,6 +1480,19 @@ dependencies = [
 
 [[package]]
 name = "fresher-module-unused-toolchains"
+version = "0.1.0"
+dependencies = [
+ "fresher-core",
+ "fresher-testing",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "toml 1.2.1+spec-1.1.0",
+]
+
+[[package]]
+name = "fresher-module-xcode"
 version = "0.1.0"
 dependencies = [
  "fresher-core",

@@ -1,0 +1,504 @@
+{
+  "kept-no-system": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "xcode.simulator-caches",
+        "reason": "xcode.left-out.no-system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.archives",
+        "reason": "xcode.left-out.no-system",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 256,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.device-support",
+        "reason": "xcode.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.device-support",
+        "reason": "xcode.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "kept-simulator-open": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "xcode.simulator-caches",
+        "reason": "xcode.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.archives",
+        "reason": "xcode.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 256,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.device-support",
+        "reason": "xcode.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.device-support",
+        "reason": "xcode.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "kept-xcode-open": {
+    "findings": [],
+    "leftOut": [
+      {
+        "category": "xcode.simulator-caches",
+        "reason": "xcode.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.archives",
+        "reason": "xcode.left-out.app-open",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 256,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.device-support",
+        "reason": "xcode.left-out.special",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      },
+      {
+        "category": "xcode.device-support",
+        "reason": "xcode.left-out.not-yours",
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "not-claimed": {
+    "findings": [],
+    "outcome": {
+      "kind": "completed"
+    }
+  },
+  "offered": {
+    "findings": [
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.archives",
+        "danger": "high",
+        "key": {
+          "identity": "archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "date": {
+              "kind": "text",
+              "value": "2026-03-01"
+            },
+            "size": {
+              "kind": "size",
+              "value": 8448
+            }
+          },
+          "key": "xcode.reason.archive"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8448,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Shop 01-03-2026, 10.15"
+            }
+          },
+          "key": "xcode.title.archive"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.device-support",
+        "danger": "low",
+        "key": {
+          "identity": "ios-device-support/15.0 (19A346)",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.0"
+            }
+          },
+          "key": "xcode.reason.device-support"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)"
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19A346"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.0"
+            }
+          },
+          "key": "xcode.title.device-support"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.device-support",
+        "danger": "low",
+        "key": {
+          "identity": "ios-device-support/16.4.1 (20E252)",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "size": {
+              "kind": "size",
+              "value": 8192
+            },
+            "version": {
+              "kind": "text",
+              "value": "16.4.1"
+            }
+          },
+          "key": "xcode.reason.device-support-recent"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/iOS DeviceSupport/16.4.1 (20E252)"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 8192,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/iOS DeviceSupport/16.4.1 (20E252)"
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "20E252"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "16.4.1"
+            }
+          },
+          "key": "xcode.title.device-support"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.device-support",
+        "danger": "low",
+        "key": {
+          "identity": "ios-device-support/iPhone15,2 17.2 (21C62)",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "size": {
+              "kind": "size",
+              "value": 12288
+            },
+            "version": {
+              "kind": "text",
+              "value": "17.2"
+            }
+          },
+          "key": "xcode.reason.device-support-recent"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/iOS DeviceSupport/iPhone15,2 17.2 (21C62)"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 12288,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/iOS DeviceSupport/iPhone15,2 17.2 (21C62)"
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "21C62"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "17.2"
+            }
+          },
+          "key": "xcode.title.device-support"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.previews",
+        "danger": "safe",
+        "key": {
+          "identity": "previews",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "size": {
+              "kind": "size",
+              "value": 256
+            }
+          },
+          "key": "xcode.reason.previews"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Developer/Xcode/UserData/Previews"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 256,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/UserData/Previews"
+        },
+        "title": {
+          "args": {},
+          "key": "xcode.title.previews"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.simulator-caches",
+        "danger": "safe",
+        "key": {
+          "identity": "simulator-caches",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "size": {
+              "kind": "size",
+              "value": 16384
+            }
+          },
+          "key": "xcode.reason.simulator-caches"
+        },
+        "removal": {
+          "kind": "empty-folder",
+          "value": "Library/Developer/CoreSimulator/Caches"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 16384,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/CoreSimulator/Caches"
+        },
+        "title": {
+          "args": {},
+          "key": "xcode.title.simulator-caches"
+        }
+      },
+      {
+        "app": "com.apple.dt.Xcode",
+        "category": "xcode.device-support",
+        "danger": "low",
+        "key": {
+          "identity": "watchos-device-support/Watch6,1 10.0 (21R355)",
+          "module": "xcode"
+        },
+        "reason": {
+          "args": {
+            "platform": {
+              "kind": "text",
+              "value": "watchOS"
+            },
+            "size": {
+              "kind": "size",
+              "value": 4096
+            },
+            "version": {
+              "kind": "text",
+              "value": "10.0"
+            }
+          },
+          "key": "xcode.reason.device-support-recent"
+        },
+        "removal": {
+          "kind": "move-to-trash",
+          "value": "Library/Developer/Xcode/watchOS DeviceSupport/Watch6,1 10.0 (21R355)"
+        },
+        "sizes": {
+          "allocated": 0,
+          "completeness": "complete",
+          "logical": 4096,
+          "reclaimable": 0
+        },
+        "subject": {
+          "kind": "path",
+          "value": "Library/Developer/Xcode/watchOS DeviceSupport/Watch6,1 10.0 (21R355)"
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "21R355"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "watchOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "10.0"
+            }
+          },
+          "key": "xcode.title.device-support"
+        }
+      }
+    ],
+    "outcome": {
+      "kind": "completed"
+    }
+  }
+}

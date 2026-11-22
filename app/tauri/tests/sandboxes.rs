@@ -286,6 +286,8 @@ mod positive {
         unused_toolchains_documents_denied => "unused-toolchains-documents-denied",
         unused_toolchains_off => "unused-toolchains-off",
         unused_toolchains_unknown => "unused-toolchains-unknown",
+        xcode => "xcode",
+        xcode_open => "xcode-open",
     }
 
     /// A module whose findings are made up rather than read from the disk: no sandbox can show them.

@@ -244,6 +244,14 @@ test.describe('positive cases', () => {
       });
     }
 
+    test('of the Xcode archives, at the High level', async ({ page }) => {
+      await detailsAfter(page, SCRIPTS.xcode, 'Xcode archives');
+      await expect(details(page).getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'category-details-xcode-archives.png');
+    });
+
     test("of Ollama's models", async ({ page }) => {
       await detailsAfter(page, SCRIPTS.localAiModelsOllama, 'Ollama models');
       await expect(details(page).getByRole('checkbox', { name: /^Select all/ })).toBeVisible();

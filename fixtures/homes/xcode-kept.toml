@@ -1,0 +1,26 @@
+# A home for the Xcode module where each folder is kept for its own reason: the first device support folder holds a
+# socket (stated: a socket's path is too long to make here); the second holds a file with the user's lock (stated);
+# the simulator cache and the archive are the user's. Scanned with Xcode running, with only the Simulator running and
+# with the running apps failing: the last two folders are kept as `app-open` or `no-system`; the first two give their
+# reasons in every run.
+
+[[file]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)/Symbols/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)/Symbols/x.sock"
+kind = "socket"
+
+[[file]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/15.1 (19B74)/Symbols/x"
+size = 4096
+flags = ["user-lock"]
+
+[[file]]
+path = "Library/Developer/CoreSimulator/Caches/dyld/24D70/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive/Info.plist"
+size = 256

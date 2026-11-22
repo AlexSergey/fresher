@@ -1,0 +1,512 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "empty",
+        "category": "xcode.simulator-caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Developer/CoreSimulator/Caches",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "xcode.archives",
+        "danger": "high",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive",
+        "trash": "in-trash"
+      },
+      {
+        "action": "empty",
+        "category": "xcode.previews",
+        "danger": "safe",
+        "outcome": {
+          "kind": "emptied",
+          "moved": 1,
+          "skipped": 0
+        },
+        "path": "home/Library/Developer/Xcode/UserData/Previews",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "xcode.device-support",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)",
+        "trash": "in-trash"
+      },
+      {
+        "action": "remove",
+        "category": "xcode.device-support",
+        "danger": "low",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Developer/Xcode/watchOS DeviceSupport/Watch6,1 10.0 (21R355)",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.apple.dt.Xcode",
+      "category": "xcode.simulator-caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "xcode",
+      "subject": "home/Library/Developer/CoreSimulator/Caches"
+    },
+    {
+      "app": "com.apple.dt.Xcode",
+      "category": "xcode.archives",
+      "danger": "high",
+      "logical": 8192,
+      "module": "xcode",
+      "subject": "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+    },
+    {
+      "app": "com.apple.dt.Xcode",
+      "category": "xcode.previews",
+      "danger": "safe",
+      "logical": 8192,
+      "module": "xcode",
+      "subject": "home/Library/Developer/Xcode/UserData/Previews"
+    },
+    {
+      "app": "com.apple.dt.Xcode",
+      "category": "xcode.device-support",
+      "danger": "low",
+      "logical": 8192,
+      "module": "xcode",
+      "subject": "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)"
+    },
+    {
+      "app": "com.apple.dt.Xcode",
+      "category": "xcode.device-support",
+      "danger": "low",
+      "logical": 4096,
+      "module": "xcode",
+      "subject": "home/Library/Developer/Xcode/watchOS DeviceSupport/Watch6,1 10.0 (21R355)"
+    }
+  ],
+  "leftOut": [
+    {
+      "category": "xcode.device-support",
+      "items": 1,
+      "reason": {
+        "args": {},
+        "key": "xcode.left-out.special"
+      },
+      "sizes": {
+        "allocated": 4096,
+        "completeness": "complete",
+        "logical": 4096,
+        "reclaimable": 4096
+      }
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive",
+        "case": "an archive goes to the Trash",
+        "path": [
+          "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+        ],
+        "rows": [
+          {
+            "allocated": 8192,
+            "explained": 8192,
+            "logical": 8192,
+            "path": "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 32768,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 28672,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67109319,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738135609,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 106,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/15.0 (19A346)"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/15.0 (19A346)/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/15.0 (19A346)/Symbols"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/15.0 (19A346)/Symbols/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Shop 01-03-2026, 10.15.xcarchive"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Shop 01-03-2026, 10.15.xcarchive/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Shop 01-03-2026, 10.15.xcarchive/dSYMs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Shop 01-03-2026, 10.15.xcarchive/dSYMs/Shop.app.dSYM"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Shop 01-03-2026, 10.15.xcarchive/dSYMs/Shop.app.dSYM/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Simulator Devices"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Simulator Devices/a"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Simulator Devices/a/data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Simulator Devices/device_set.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Watch6,1 10.0 (21R355)"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Watch6,1 10.0 (21R355)/Symbols"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/Watch6,1 10.0 (21R355)/Symbols/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/dyld"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/dyld/24D70"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/dyld/24D70/runtime"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/dyld/24D70/runtime/cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/CoreSimulator"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/CoreSimulator/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/CoreSimulator/Devices"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/CoreSimulator/Devices/00000000-0000-4000-8000-000000000001"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/CoreSimulator/Devices/00000000-0000-4000-8000-000000000001/device.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/Archives"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/Archives/2026-02-01"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/Archives/2026-02-01/Fake.xcarchive"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/Archives/2026-02-01/Fake.xcarchive/Products"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/Archives/2026-02-01/Fake.xcarchive/Products/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/Archives/2026-03-01"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/UserData"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/UserData/KeyBindings"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/UserData/KeyBindings/Default.idekeybindings"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/UserData/Previews"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)/Symbols"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)/Symbols/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)/s"
+      },
+      {
+        "kind": "symlink",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/16.4 (20E247)"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/17.0 (21A329)"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/17.0 (21A329)/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/Notes"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/Notes/Symbols"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Developer/Xcode/iOS DeviceSupport/Notes/Symbols/x"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Developer/Xcode/watchOS DeviceSupport"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects/kept"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Projects/kept/Symbols"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Projects/kept/Symbols/x"
+      },
+      {
+        "kind": "file",
+        "logical_size": 349,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 61895
+  }
+}

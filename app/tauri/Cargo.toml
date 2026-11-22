@@ -28,6 +28,7 @@ fresher-module-downloads = { path = "../../modules/downloads" }
 fresher-module-stale-projects = { path = "../../modules/stale-projects" }
 fresher-module-local-ai-models = { path = "../../modules/local-ai-models" }
 fresher-module-unused-toolchains = { path = "../../modules/unused-toolchains" }
+fresher-module-xcode = { path = "../../modules/xcode" }
 # Registered in debug builds only (`src/compose.rs`); Cargo cannot make a dependency depend on `debug_assertions`.
 fresher-module-demo = { path = "../../modules/demo" }
 fresher-module-trial = { path = "../../modules/trial" }

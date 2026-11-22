@@ -13,6 +13,10 @@ the whole sandbox, so `app-leftovers.toml`'s positives (and any module's that as
 joins as Spotlight does: the most restrictive wins, so `downloads-denied.toml` denies Downloads for every case file of
 `all`, and `downloads.toml`'s positives are not offered there.
 
+The same holds for Xcode: `xcode-open.toml`'s running Xcode joins the shared world of `all`, so every positive of
+`xcode.toml` is left out there as `app-open`; and `dev-caches-xcode-open.toml` does the same to the derived data project
+of `dev-caches.toml`, which is not offered there.
+
 The installed-app worlds interact too: in `all`, `app-caches` offers the cache of every app installed by any file, so
 `app-leftovers.toml`'s installed Editor (its `Library/Caches/com.example.Editor`) is offered by `app-caches` there, which
 that file's checklist does not say.

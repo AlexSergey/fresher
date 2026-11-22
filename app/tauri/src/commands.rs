@@ -662,6 +662,7 @@ mod tests {
                     "stale-projects",
                     "local-ai-models",
                     "unused-toolchains",
+                    "xcode",
                     "demo",
                     "trial"
                 ]

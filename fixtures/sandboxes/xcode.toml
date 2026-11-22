@@ -1,0 +1,160 @@
+# The xcode module: the device support folders, the previews, the simulators' caches and the archives Xcode keeps in
+# `home/Library/Developer/`. Every path is under it; files are small and filled with data, so the map's numbers are
+# blocks. The simulator devices and `DerivedData` are not this module's (the devices wait for a listing that can never
+# start an installer; `DerivedData` is `dev-caches`'). An open Xcode is shared by every case of a file, so
+# `xcode-open.toml` is a file of its own. The names are apart from every other case file's, so no path is written twice
+# in `npm run sandbox -- all`.
+feature = "xcode"
+module = "xcode"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a folder that is not a system version is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/Notes/Symbols/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a device support folder without its symbols is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/17.0 (21A329)/Info.plist"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a link where a version's folder would be is never claimed"
+kind = "negative"
+[[case.symlink]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/16.4 (20E247)"
+target = "../../../../Projects/kept"
+[[case.file]]
+path = "home/Projects/kept/Symbols/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "Xcode's own settings are never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/UserData/KeyBindings/Default.idekeybindings"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a folder named like an archive without its contents list is never claimed"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/Archives/2026-02-01/Fake.xcarchive/Products/x"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "simulator devices are not offered"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/CoreSimulator/Devices/00000000-0000-4000-8000-000000000001/device.plist"
+size = 4096
+fill = "data"
+
+[[case]]
+name = "a device support folder holding a socket is kept"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)/Symbols/x"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)/s"
+kind = "socket"
+[[case.left-out]]
+category = "xcode.device-support"
+reason = "xcode.left-out.special"
+items = 1
+
+# Then the positive cases.
+
+# With the socket case's 16.0 it is one of the two newest iOS versions, so its reason is the "recent" one; the level
+# stays Low.
+[[case]]
+name = "a device support version goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)/Symbols/x"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)/Info.plist"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)"
+category = "xcode.device-support"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "a watch's device support goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Developer/Xcode/watchOS DeviceSupport/Watch6,1 10.0 (21R355)/Symbols/x"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Developer/Xcode/watchOS DeviceSupport/Watch6,1 10.0 (21R355)"
+category = "xcode.device-support"
+danger = "low"
+after-cleanup = "in-trash"
+
+[[case]]
+name = "the previews are emptied"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Developer/Xcode/UserData/Previews/Simulator Devices/device_set.plist"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/UserData/Previews/Simulator Devices/a/data"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Developer/Xcode/UserData/Previews"
+category = "xcode.previews"
+danger = "safe"
+after-cleanup = "emptied"
+
+[[case]]
+name = "the simulators' caches are emptied"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Developer/CoreSimulator/Caches/dyld/24D70/runtime/cache"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Developer/CoreSimulator/Caches"
+category = "xcode.simulator-caches"
+danger = "safe"
+after-cleanup = "emptied"
+
+[[case]]
+name = "an archive goes to the Trash"
+kind = "positive"
+[[case.file]]
+path = "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive/Info.plist"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive/dSYMs/Shop.app.dSYM/x"
+size = 4096
+fill = "data"
+[case.expect]
+item = "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+category = "xcode.archives"
+danger = "high"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"

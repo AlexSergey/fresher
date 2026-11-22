@@ -184,6 +184,15 @@ import {
   UNUSED_TOOLCHAINS_SETTINGS,
   UNUSED_TOOLCHAINS_TOTALS,
 } from '../src/test/unused-toolchains-scan';
+import {
+  XCODE_DICTIONARY,
+  XCODE_FINDINGS,
+  XCODE_MODULES,
+  XCODE_OVERVIEW,
+  XCODE_SCAN,
+  XCODE_SETTINGS,
+  XCODE_TOTALS,
+} from '../src/test/xcode-scan';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
 
@@ -821,6 +830,37 @@ const appCachesBrowsersCleanup = (): CleanupScript => {
   };
 };
 
+// The cleanup of the previews, the simulator caches and the archive: the previews are emptied into the Trash (the
+// folder stays), the simulator caches had nothing left to move (the folder emptied itself between the scan and the
+// cleanup; a file held open would skip the item as in use instead), the archive is moved. Only the device support is left, 7.3 GB; 1.5 GB wait in the Trash.
+const xcodeCleanup = (): CleanupScript => {
+  const plan = planOf(XCODE_FINDINGS.filter(({ id }) => id >= 803));
+  const detail = emptiedDetailOf(plan, 3, 1_735_819_200, [
+    { moved: 4, skipped: 0 },
+    { moved: 0, skipped: 0 },
+  ]);
+
+  return {
+    after: {
+      ...XCODE_OVERVIEW,
+      found: sizedOf(7_300_000_000),
+      totals: XCODE_TOTALS.filter(({ category }) => category === 'xcode.device-support'),
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 1_500_000_000 },
+    outcomes: [{ kind: 'emptied', moved: 4, skipped: 0 }, { kind: 'emptied', moved: 0, skipped: 0 }, { kind: 'moved' }],
+  };
+};
+
+// What the Xcode script answers before a scan: the module, its texts and settings.
+const XCODE_ANSWERS = {
+  ...ANSWERS,
+  getDictionary: { ...XCODE_DICTIONARY, ...STORAGE_DICTIONARY, ...CLEANUP_DICTIONARY },
+  getModules: XCODE_MODULES,
+  getSettings: XCODE_SETTINGS,
+  updateSetting: null,
+} as const;
+
 // What the app caches script answers before a scan: the module, its texts and settings.
 const APP_CACHES_ANSWERS = {
   ...ANSWERS,
@@ -1205,5 +1245,13 @@ export const SCRIPTS = {
     },
     scan: UNUSED_TOOLCHAINS_NO_DOCUMENTS_SCAN,
     scanned: UNUSED_TOOLCHAINS_NO_DOCUMENTS_OVERVIEW,
+  },
+  // The Xcode scan, streamed at once; the cleanup empties the two caches and moves the archive.
+  xcode: {
+    answers: XCODE_ANSWERS,
+    cleanup: xcodeCleanup(),
+    ignoring: true,
+    scan: XCODE_SCAN,
+    scanned: XCODE_OVERVIEW,
   },
 } as const satisfies Readonly<Record<string, CoreScript>>;

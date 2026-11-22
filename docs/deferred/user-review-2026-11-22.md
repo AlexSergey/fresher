@@ -78,3 +78,33 @@ Plan [034](../plans/034-browser-caches/readme.md).
   [conclusions](../plans/034-browser-caches/readme.md#conclusions).
 - **Known gaps**: whatever the plan's conclusions list (one webkit hover flake in the UI run, which passed on rerun; the
   chromium baseline `category-details-app-leftovers-chosen` known flaky).
+
+## 031 — Xcode and simulators
+
+Plan [031](../plans/031-xcode/readme.md), awaiting the user's walk.
+
+- **Walks by hand**:
+  - `rm -rf sandbox/xcode && npm run dev:sandbox -- xcode`. Walk `EXPECTED.md` line by line, negatives first: nothing of
+    a negative is offered by `xcode`; the socket case reads as kept with its reason; the two device support folders are
+    Low, "Xcode previews" and "Simulator caches" Safe, the archive High; every reason names a size. The storage map has
+    every offered item in Xcode's line. Select all: the review names High; confirm to the Trash; the previews and the
+    simulator caches are still there and empty; put back restores the archive byte for byte.
+  - `npm run dev:sandbox -- xcode-open`: the three items are kept "Xcode or the Simulator is open…".
+    `npm run dev:sandbox -- dev-caches`: DerivedData is still `dev-caches`'.
+  - The dry run on the Mac against `du` and `ls` (items 1.18 and 2.16 of [`../manual-testing.md`](../manual-testing.md),
+    step [031/03/02](../plans/031-xcode/03-finish/02-run-and-conclusions.md)). In `npm run sandbox -- all` with
+    Xcode open (from `xcode-open`) the positives of `xcode` are left out as open: walk them by name.
+- **The big change from the draft**: simulator devices are deferred ([`xcode-simulator-devices`](./xcode-simulator-devices.md)).
+  During planning `xcrun simctl list` started `xcodebuild -runFirstLaunch` on this Mac (killed, nothing installed), so
+  the module runs no command; confirm or overrule. Plan 032 now builds the sandbox's tool world.
+- **Facts not verified here** (this Mac has no device support, previews or archives): the device support folders'
+  names (with or without a model prefix, and whether a suffix follows the build, e.g. ` arm64e`, seen on some Xcode
+  versions: such a name is not claimed today, a safe miss) and their `Symbols` sign; the previews' folder and its `Simulator Devices`
+  sign on a recent Xcode; an archive's `Info.plist` and the dated folder's name; whether `CoreSimulator/Caches` holds
+  anything but `dyld`. A difference is a correction in `places.toml`, the names, the texts and the category docs.
+- **Agent's calls worth a second look**: archives are High (nothing pre-selected; only Safe goes in bulk); the two
+  newest device support versions are offered at Low with their own reason; one list of apps (Xcode or the Simulator)
+  for every category; every finding in Xcode's line; no scan bench. A file held open inside the simulator caches skips
+  the whole item (`InUse`), as the cleaner does for any emptied folder; the plan's step 02/02 was corrected.
+- **Known gaps**: archives in a custom folder are not read; `~/Library/Caches/com.apple.dt.Xcode` is not offered;
+  simulator devices and runtimes; `XCTestDevices` and `DVTDownloads` were not looked at.

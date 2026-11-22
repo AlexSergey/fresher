@@ -1,0 +1,55 @@
+# The home of the xcode module's core end-to-end flows (crates/e2e/tests/xcode.rs), laid out as a sandbox lays out its
+# home (`home/`); the flows add the rest of the sandbox's layout and its marker. Xcode is installed (the flows say so).
+# Under `Library/Developer`: device support of three iOS versions, the previews, the simulators' caches (one entry,
+# `dyld`, of two files) and an archive with its debug symbols, the `xcode` module's six folders; and a derived data
+# project beside them, `dev-caches`' to offer, never `xcode`'s.
+
+[[file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)/Symbols/x"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/16.4.1 (20E252)/Symbols/x"
+size = 8192
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/17.2 (21C62)/Symbols/x"
+size = 12288
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/UserData/Previews/Simulator Devices/device_set.plist"
+size = 256
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/CoreSimulator/Caches/dyld/24D70/runtime/cache"
+size = 16384
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/CoreSimulator/Caches/dyld/24D70/runtime/cache.map"
+size = 1024
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive/Info.plist"
+size = 256
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive/dSYMs/x"
+size = 8192
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/DerivedData/App-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 256
+fill = "data"
+
+[[file]]
+path = "home/Library/Developer/Xcode/DerivedData/App-abcdefghijklmnopqrstuvwxyzab/Build/o"
+size = 4096
+fill = "data"

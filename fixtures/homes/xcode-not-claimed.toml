@@ -1,0 +1,60 @@
+# A home for the Xcode module where nothing is claimed and nothing is left out: a device support folder without a
+# version (`Notes`), one without `Symbols`, one that is a file, one that is a link to a folder outside holding
+# `Symbols`, an empty `Symbols` (logical 0); Xcode's own settings in `UserData`; previews without
+# `Simulator Devices`; an archive with no dated folder, one without `Info.plist`, one whose folder has no suffix;
+# a derived data project (the dev-caches module's); a simulator device (deferred). The link is listed, never followed.
+
+[[file]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/Notes/Symbols/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/17.0 (21A329)/Info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/16.0 (20A362)"
+size = 256
+
+[[symlink]]
+path = "Library/Developer/Xcode/iOS DeviceSupport/16.4 (20E247)"
+target = "../../../../elsewhere/Device"
+
+[[file]]
+path = "elsewhere/Device/Symbols/x"
+size = 4096
+
+[[dir]]
+path = "Library/Developer/Xcode/tvOS DeviceSupport/17.0 (21J354)/Symbols"
+
+[[file]]
+path = "Library/Developer/Xcode/UserData/KeyBindings/Default.idekeybindings"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/UserData/IDEPreferencesController.xcuserstate"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/UserData/Previews/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/Archives/Loose.xcarchive/Info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/Archives/2026-03-01/Fake.xcarchive/Products/x"
+size = 4096
+
+[[file]]
+path = "Library/Developer/Xcode/Archives/2026-03-01/Notes/Info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/Xcode/DerivedData/App-abcdefghijklmnopqrstuvwxyzab/info.plist"
+size = 256
+
+[[file]]
+path = "Library/Developer/CoreSimulator/Devices/0A1B2C3D-4E5F-6071-8293-A4B5C6D7E8F9/device.plist"
+size = 256

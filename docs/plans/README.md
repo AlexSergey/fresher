@@ -77,7 +77,7 @@ an automated release are decided before the first release ([`../deferred/release
 | 024 | [Unused toolchain versions](./024-unused-toolchains/readme.md)     | 🔨 in progress | 0.1.0   | core, testing, sandbox, modules, e2e, app, app/ui, docs |
 | 029 | [Ollama's models](./029-ollama-models/readme.md)                   | 🔨 in progress | 0.1.0   | core, engine, cleaner, store, testing, modules, sandbox, e2e, app, app/ui, docs |
 | 030 | [Installed app caches](./030-installed-app-caches/readme.md)       | 🔨 in progress | 0.1.0   | modules, testing, sandbox, e2e, app, app/ui, docs |
-| 031 | [Xcode and simulators](./031-xcode/readme.md)                      | 📝 draft       | 0.1.0   | core, testing, sandbox, modules, e2e, app, app/ui, docs |
+| 031 | [Xcode and simulators](./031-xcode/readme.md)                      | 🔨 in progress (awaiting the user's walk) | 0.1.0   | modules, testing, sandbox, e2e, app, app/ui, docs |
 | 032 | [Docker](./032-docker/readme.md)                                   | 📝 draft       | 0.1.0   | core, engine, testing, sandbox, modules, e2e, app, app/ui, docs |
 | 033 | [Logs and crash reports](./033-logs/readme.md)                     | 🔨 in progress | 0.1.0   | modules, testing, sandbox, e2e, app, app/ui, docs |
 | 034 | [Browser and web-engine caches](./034-browser-caches/readme.md)    | 🔨 in progress | 0.1.0   | modules, testing, sandbox, e2e, app, app/ui, docs |

@@ -1,0 +1,96 @@
+{
+  "offered": [
+    [
+      "dev-caches.xcode-derived-data",
+      "home/Library/Developer/Xcode/DerivedData/App-abcdefghijklmnopqrstuvwxyzab"
+    ],
+    [
+      "xcode.archives",
+      "home/Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive"
+    ],
+    [
+      "xcode.device-support",
+      "home/Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)"
+    ],
+    [
+      "xcode.device-support",
+      "home/Library/Developer/Xcode/iOS DeviceSupport/16.4.1 (20E252)"
+    ],
+    [
+      "xcode.device-support",
+      "home/Library/Developer/Xcode/iOS DeviceSupport/17.2 (21C62)"
+    ],
+    [
+      "xcode.previews",
+      "home/Library/Developer/Xcode/UserData/Previews"
+    ],
+    [
+      "xcode.simulator-caches",
+      "home/Library/Developer/CoreSimulator/Caches"
+    ]
+  ],
+  "xcodeLine": {
+    "kind": "app",
+    "value": {
+      "app": {
+        "id": "com.apple.dt.Xcode",
+        "installed": true,
+        "name": "Xcode"
+      },
+      "categories": [
+        {
+          "category": "xcode.device-support",
+          "sizes": {
+            "allocated": 24576,
+            "completeness": "complete",
+            "logical": 24576,
+            "reclaimable": 24576
+          }
+        },
+        {
+          "category": "xcode.simulator-caches",
+          "sizes": {
+            "allocated": 20480,
+            "completeness": "complete",
+            "logical": 17408,
+            "reclaimable": 20480
+          }
+        },
+        {
+          "category": "xcode.archives",
+          "sizes": {
+            "allocated": 12288,
+            "completeness": "complete",
+            "logical": 8448,
+            "reclaimable": 12288
+          }
+        },
+        {
+          "category": "dev-caches.xcode-derived-data",
+          "sizes": {
+            "allocated": 8192,
+            "completeness": "complete",
+            "logical": 4352,
+            "reclaimable": 8192
+          }
+        },
+        {
+          "category": "xcode.previews",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 256,
+            "reclaimable": 4096
+          }
+        }
+      ],
+      "data": [],
+      "sizes": {
+        "allocated": 69632,
+        "completeness": "complete",
+        "logical": 55040,
+        "reclaimable": 69632
+      }
+    }
+  }
+}

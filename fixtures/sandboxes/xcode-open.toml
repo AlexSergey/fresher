@@ -1,0 +1,44 @@
+# The xcode module while Xcode is open: its device support folders, archives and the simulators' caches are kept (Xcode
+# writes there as it works). A file of its own, since the open app is shared by every case of a file; the files are
+# named apart from `xcode.toml`'s.
+feature = "xcode-open"
+module = "xcode"
+
+[[case]]
+name = "a device support folder is kept while Xcode is open"
+kind = "negative"
+[[case.running]]
+name = "Xcode"
+bundle-ids = ["com.apple.dt.Xcode"]
+[[case.file]]
+path = "home/Library/Developer/Xcode/iOS DeviceSupport/14.0 (18A373)/Symbols/x"
+size = 4096
+fill = "data"
+[[case.left-out]]
+category = "xcode.device-support"
+reason = "xcode.left-out.app-open"
+items = 1
+
+[[case]]
+name = "an archive is kept while Xcode is open"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/Xcode/Archives/2026-01-15/Notes 15-01-2026, 09.00.xcarchive/Info.plist"
+size = 4096
+fill = "data"
+[[case.left-out]]
+category = "xcode.archives"
+reason = "xcode.left-out.app-open"
+items = 1
+
+[[case]]
+name = "the simulators' caches are kept while Xcode is open"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Developer/CoreSimulator/Caches/dyld/23A344/cache"
+size = 4096
+fill = "data"
+[[case.left-out]]
+category = "xcode.simulator-caches"
+reason = "xcode.left-out.app-open"
+items = 1

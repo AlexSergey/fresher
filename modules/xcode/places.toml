@@ -1,0 +1,81 @@
+# The places the Xcode module looks in (plan 031, design section 2), one row per place.
+# `id`: the row's id, kebab case: the start of its findings' identities (`<id>/<folder name>`).
+# `category`: the module's category the row's findings are in.
+# `folder`: the known folder the row's place is under, as rules write it.
+# `path`: plain folder names; `*` stands for one whole name. A `fixed` row has no `*`; a `device-support` or
+#   `archive` row ends in `*`.
+# `shape`: what the row's folder must look like to be claimed: `device-support` (`[<model> ]<version> (<build>)`),
+#   `fixed` (one folder, its name is not judged) or `archive` (a `.xcarchive` folder under a dated parent).
+# `platform`: the platform a device support row stands for (`iOS`, `watchOS`, `tvOS`, `visionOS`); only on those rows.
+# `sign`: names that must be inside the folder, or it is not claimed.
+# `removal`: `trash` moves the folder to the Trash; `empty-folder` empties it into the Trash and keeps the folder.
+#
+# The paths and signs of device support, previews and archives are "to verify" on a Mac that has them (plan 031,
+# 03/02). A wrong path or sign claims nothing.
+
+[[place]]
+id = "ios-device-support"
+category = "xcode.device-support"
+folder = "library"
+path = "Developer/Xcode/iOS DeviceSupport/*"
+shape = "device-support"
+platform = "iOS"
+sign = ["Symbols"]
+removal = "trash"
+
+[[place]]
+id = "watchos-device-support"
+category = "xcode.device-support"
+folder = "library"
+path = "Developer/Xcode/watchOS DeviceSupport/*"
+shape = "device-support"
+platform = "watchOS"
+sign = ["Symbols"]
+removal = "trash"
+
+[[place]]
+id = "tvos-device-support"
+category = "xcode.device-support"
+folder = "library"
+path = "Developer/Xcode/tvOS DeviceSupport/*"
+shape = "device-support"
+platform = "tvOS"
+sign = ["Symbols"]
+removal = "trash"
+
+[[place]]
+id = "visionos-device-support"
+category = "xcode.device-support"
+folder = "library"
+path = "Developer/Xcode/visionOS DeviceSupport/*"
+shape = "device-support"
+platform = "visionOS"
+sign = ["Symbols"]
+removal = "trash"
+
+[[place]]
+id = "previews"
+category = "xcode.previews"
+folder = "library"
+path = "Developer/Xcode/UserData/Previews"
+shape = "fixed"
+sign = ["Simulator Devices"]
+removal = "empty-folder"
+
+[[place]]
+id = "simulator-caches"
+category = "xcode.simulator-caches"
+folder = "library"
+path = "Developer/CoreSimulator/Caches"
+shape = "fixed"
+sign = ["dyld"]
+removal = "empty-folder"
+
+[[place]]
+id = "archives"
+category = "xcode.archives"
+folder = "library"
+path = "Developer/Xcode/Archives/*/*"
+shape = "archive"
+sign = ["Info.plist"]
+removal = "trash"

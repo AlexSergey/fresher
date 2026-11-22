@@ -48,6 +48,8 @@ built. The design is in plan 007's [`00-design.md`](../plans/007-safe-developmen
 then, sandbox mode keeps volumes, open files, commands and access real and read-only, and the autotests use empty
 fakes; the running apps and the clock's start already come from the sandbox's `world.toml` in both (plan 016), the
 stated file facts too (plan 017), Spotlight's answers (plan 019), the access of the guarded folders and the installs (plan 020).
+Plan [031](../plans/031-xcode/readme.md) dropped its tool category (the simulator devices are deferred, see [Xcode's
+simulator devices](./xcode-simulator-devices.md)), so plan 032 is the first module that needs `[[world.tool]]`.
 
 ## What doing it needs
 

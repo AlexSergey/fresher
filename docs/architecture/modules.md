@@ -216,6 +216,16 @@ apps (derived data is left out while Xcode is open). Like `jetbrains`, the decis
 table of nine rows) and every cache it recognizes and does not offer is a `left_out` with its reason (not the user's,
 a special entry inside, its app is open, the running apps could not be read).
 
+**`xcode` is code with a data table, and the example of a module with one table of places across four categories**:
+its places (`places.toml`) have three shapes: a version-named folder (`<platform> DeviceSupport/<version> (<build>)`), a
+fixed folder (`UserData/Previews`, `CoreSimulator/Caches`) and a dated archive (`Archives/<date>/<name>.xcarchive`).
+Each is claimed whole and only when a sign is held inside it (`Symbols`, `Simulator Devices`, `dyld`, `Info.plist`); a
+folder of another shape or without its sign is not claimed. Every candidate is kept while Xcode or the Simulator runs
+(the running apps asked at most once, only when a candidate reaches that row), and the module removes by two means in
+one category set: the Trash for device support and archives, `EmptyFolder` for previews and simulator caches. The two
+newest versions per platform get their own reason, never another level. Simulator devices are deferred: listing them
+needs a tool that can start a system installer ([`xcode-simulator-devices.md`](../deferred/xcode-simulator-devices.md)).
+
 **`app-leftovers` is code with data tables, and the example of a module that decides per app**: its places
 (`places.toml`: eight places in `~/Library`, nine rows with a suffix, a kind, a category and whether the row proves an
 id; app containers are not read) match only names shaped as a bundle id (`Interest::only_bundle_ids()`), and a name without the row's suffix is not

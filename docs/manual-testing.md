@@ -302,6 +302,21 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] `npm run dev:sandbox -- app-caches-browsers-open`: Chrome's two caches are kept "This app, or a part of it, is
       open..."; Redis Insight's `GPUCache` is offered.
 
+### 1.18 Xcode and simulators ([031/03/02](./plans/031-xcode/03-finish/02-run-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/xcode && npm run dev:sandbox -- xcode`. Scan; walk `EXPECTED.md` line by line, negatives first:
+      nothing of a negative is offered by `xcode` (`Notes`, the folder without symbols, the link, Xcode's key bindings,
+      the fake archive, the simulator device); the socket case reads as kept with its reason; each positive is offered
+      in its category at its level: `iOS 15.0 (19A346)` and `watchOS 10.0 (21R355)` Low, "Xcode previews" and
+      "Simulator caches" Safe, `Shop 01-03-2026, 10.15` High; every reason names a size.
+- [ ] The storage map: every offered item in Xcode's line.
+- [ ] Select everything; the review names High; confirm to the Trash: the two device support folders and the archive
+      are in `home/.Trash`; `Previews` and `CoreSimulator/Caches` are still there and empty. Cleanups, put back: the
+      archive is back, byte for byte.
+- [ ] `npm run dev:sandbox -- xcode-open`: the three items are kept "Xcode or the Simulator is open...".
+- [ ] `npm run dev:sandbox -- dev-caches`: DerivedData is still `dev-caches`' and nothing of it is offered by `xcode`.
+- [ ] Ignore one archive, then the category, then the module; restore each.
+
 ### 1.14 The scan screen and ignoring one item ([027/04/02](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md), [028/02/02](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md))
 
 - [ ] `rm -rf sandbox/trial && npm run dev:sandbox -- trial` (and `app-leftovers` for the choices). Walk the boxes of 027/04/02 "By the user": the sidebar,
@@ -625,6 +640,25 @@ du -sh ~/Library/Caches/Google/Chrome/*/{Cache,"Code Cache"} ~/Library/Caches/Ch
       emptied `Cache` folder on the next start without a warning (a release build, once, Chrome and Firefox);
       Firefox's `startupCache` emptied while the profile is closed.
 
+### 2.16 Xcode and simulators ([031/03/02](./plans/031-xcode/03-finish/02-run-and-conclusions.md))
+
+`npm run dev`, a scan of `~` (a dry run on the real Mac). Compare with these read-only commands (never run `simctl`):
+
+```sh
+du -sh ~/Library/Developer/Xcode/* ~/Library/Developer/CoreSimulator/* 2>/dev/null
+ls ~/Library/Developer/Xcode/*DeviceSupport 2>/dev/null
+ls ~/Library/Developer/Xcode/Archives/* 2>/dev/null
+ls ~/Library/Developer/Xcode/UserData/Previews 2>/dev/null
+```
+
+- [ ] Every offered item checked by hand: its folder, its size against `du`, its title.
+- [ ] Nothing of `UserData` but `Previews`, nothing of `DerivedData` (that is `dev-caches`), no simulator device.
+- [ ] With Xcode open: everything left out; quit it and rescan: offered.
+- [ ] The facts to verify, each corrected in `places.toml`, the names, the texts and the category docs where they
+      differ: the device support folders' names (with or without a model prefix) and their `Symbols` sign, on a Mac
+      that has connected a device; the previews' folder and its `Simulator Devices` sign on a recent Xcode; an
+      archive's `Info.plist` and the dated folder's name; whether `CoreSimulator/Caches` holds anything but `dyld`.
+
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 
 Scan time is compared once per module generation, not per plan; do it with the baseline worktrees of section 4.2, since
@@ -912,6 +946,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [034/03/01](./plans/034-browser-caches/03-finish/01-docs-and-conclusions.md) | pending | 1.16, 2.14 |
 | [027/04/02 checks and the walk](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md)           | pending                        | 1.14          |
 | [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)            | pending                        | 1.14          |
+| [031/03/02 runs and conclusions](./plans/031-xcode/03-finish/02-run-and-conclusions.md)                    | pending                        | 1.18, 2.16    |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

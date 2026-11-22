@@ -29,6 +29,7 @@ fresher-module-stale-projects = { path = "../../modules/stale-projects" }
 fresher-module-temp = { path = "../../modules/temp" }
 fresher-module-trial = { path = "../../modules/trial" }
 fresher-module-unused-toolchains = { path = "../../modules/unused-toolchains" }
+fresher-module-xcode = { path = "../../modules/xcode" }
 fresher-sandbox = { path = "../sandbox" }
 fresher-scanner = { path = "../scanner" }
 fresher-store = { path = "../store" }

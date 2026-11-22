@@ -265,6 +265,13 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the details of the Xcode archives', async ({ page }) => {
+      await detailsAfter(page, SCRIPTS.xcode, 'Xcode archives');
+      await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the details of an unused toolchains category before Documents is allowed', async ({ page }) => {
       await detailsAfter(page, SCRIPTS.unusedToolchainsNoDocuments, 'Unused Rust toolchains');
       await expect(page.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
