@@ -18,7 +18,8 @@ use fresher_macos::{
 use fresher_sandbox::{Sandbox, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, DeclaredSearch, MacInstalledApps, ProcessCommandRunner, StartedClock, SystemClock,
+    AppSearch, COMMAND_TIMEOUT, DeclaredSearch, MacFinderSettings, MacInstalledApps, ProcessCommandRunner,
+    StartedClock, SystemClock,
 };
 use fresher_testing::{FactsLens, FakeTrash, StatedFacts, StatedInstalledApps};
 
@@ -31,6 +32,8 @@ const SANDBOX_VARIABLE: &str = "FRESHER_SANDBOX";
 const TRASH_VARIABLE: &str = "FRESHER_SANDBOX_TRASH";
 /// The one value of [`TRASH_VARIABLE`].
 const REAL_TRASH: &str = "real";
+/// The user's Trash, in the home.
+const HOME_TRASH: &str = ".Trash";
 
 /// Where a cleanup in sandbox mode moves items.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -229,9 +232,10 @@ pub(crate) fn compose(
     let joined = real
         .joined(&protection(&home, data.path(), None, real_temp.as_deref())?)?
         .joined(&sandbox.places_protection()?)?;
-    let trash: Arc<dyn Trash> = match mode.trash() {
-        SandboxTrash::Sandbox => Arc::new(FakeTrash::new(sandbox.trash())),
-        SandboxTrash::Real => Arc::new(MacTrash::new()),
+    // With the system's Trash, the sandbox's items land in the Mac's own home Trash: the Trash view counts it too.
+    let (trash, trashes): (Arc<dyn Trash>, Vec<PathBuf>) = match mode.trash() {
+        SandboxTrash::Sandbox => (Arc::new(FakeTrash::new(sandbox.trash())), Vec::new()),
+        SandboxTrash::Real => (Arc::new(MacTrash::new()), vec![real_home.join(HOME_TRASH)]),
     };
     let cleaner = CleanerPorts {
         trash,
@@ -245,6 +249,8 @@ pub(crate) fn compose(
         cleaner: Arc::new(cleaner),
         journal: Arc::new(FileCleanupJournal::open(&data)),
         volumes: Arc::clone(&ports.volumes),
+        finder: Arc::new(MacFinderSettings::new(Arc::clone(&ports.commands))),
+        trashes,
     };
     // Sandbox mode keeps a standing avoid list, the guarded places of both homes: its access is a stand-in, since the
     // sandbox's world is not the Mac's, and a scan root outside the sandbox, such as the real home, must raise no

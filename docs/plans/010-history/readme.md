@@ -44,6 +44,8 @@ states, so it works for the dates where a state is still kept; elsewhere the com
   "this folder grew".
 - With the [cleanup journal](../008-safe-removal/readme.md): "cleaned on 3 November, 4 GB came back since" — the
   clearest sign of an app that keeps accumulating junk.
+- The journal names every item a cleanup moved, so the comparison reports their space as cleaned by Fresher, and the
+  growth of the Trash folders is attributed to no app ([plan 037](../037-trash/00-design.md), section 6).
 - Ignored sections and items are not tracked ([ignore list](../../ideas/ignore-list.md)); restoring one starts its
   history again.
 

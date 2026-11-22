@@ -9,9 +9,10 @@ use std::time::Duration;
 use fresher_core::{
     Access, AccessProbe, AccessStatus, CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal,
     CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary,
-    DiskState, DiskWalk, EngineStatus, Event, Finding, FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo,
-    Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate,
-    SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, Volumes, WalkMode,
+    DiskState, DiskWalk, EngineStatus, Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery,
+    KnownFolder, ModuleInfo, Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect,
+    SettingKey, SettingUpdate, SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, TrashView, Volumes,
+    WalkMode,
 };
 
 use crate::access::AccessView;
@@ -47,13 +48,18 @@ impl std::fmt::Debug for Ports {
     }
 }
 
-/// The ports a cleanup uses: the cleaner (the only code that removes), the journal of cleanups, and the volumes whose
-/// available space a cleanup measures.
+/// The ports a cleanup uses: the cleaner (the only code that removes), the journal of cleanups, the volumes whose
+/// available space a cleanup measures, Finder's settings and the Trash folders beyond the home's.
 #[derive(Clone)]
 pub struct CleanupPorts {
     pub cleaner: Arc<dyn Cleaner>,
     pub journal: Arc<dyn CleanupJournal>,
     pub volumes: Arc<dyn Volumes>,
+    /// Finder's 30-day setting, for the Trash line's date.
+    pub finder: Arc<dyn FinderSettings>,
+    /// Trash folders the Trash view counts besides the home's and the volumes' own: in sandbox mode with the system's
+    /// Trash, the Mac's own home Trash. Empty everywhere else.
+    pub trashes: Vec<PathBuf>,
 }
 
 impl std::fmt::Debug for CleanupPorts {
@@ -90,6 +96,8 @@ pub(crate) struct Shared {
     /// `None`: the engine cannot clean, and refuses every cleanup (`CleaningBlocked`).
     pub(crate) cleanup: Option<CleanupPorts>,
     pub(crate) pending: Mutex<Pending>,
+    /// The Trash folders of the last `trash` answer, by index: what `open_trash` opens.
+    pub(crate) trash_folders: Mutex<Vec<PathBuf>>,
 }
 
 impl Shared {
@@ -142,6 +150,7 @@ impl Engine {
             access,
             cleanup,
             pending: Mutex::new(Pending::default()),
+            trash_folders: Mutex::new(Vec::new()),
         };
         Ok(Self { shared: Arc::new(shared) })
     }
@@ -427,6 +436,19 @@ impl Engine {
     /// Shows item `item` of cleanup `id` in the Trash, selected; refused when it is not in the Trash now.
     pub fn reveal_in_trash(&self, id: CleanupId, item: u32) -> Result<(), CommandError> {
         cleanup::reveal(&self.shared, id, item)
+    }
+
+    /// What waits in each Trash and how much of it this app's cleanups put there: the last scan's measure, and the
+    /// journal's items found in the Trash again now. Reads only; a journal that cannot be read counts nothing from
+    /// cleanups.
+    pub fn trash(&self) -> TrashView {
+        cleanup::trash_view(&self.shared)
+    }
+
+    /// Opens Trash `index` of the last `trash` answer in Finder; `UnknownTrash` for an index it did not have. Opens,
+    /// nothing more.
+    pub fn open_trash(&self, index: u32) -> Result<(), CommandError> {
+        cleanup::open_trash(&self.shared, index)
     }
 }
 

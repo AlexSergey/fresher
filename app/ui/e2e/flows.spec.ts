@@ -293,7 +293,46 @@ test.afterEach(async ({ page }) => {
   await expectNoCspViolation(page);
 });
 
+const trashLine = (page: Page): Locator => page.getByRole('region', { name: 'The Trash' });
+
+const openedTrashes = (page: Page): Promise<readonly number[]> =>
+  page.evaluate(() => (globalThis as unknown as { __openedTrash: number[] }).__openedTrash);
+
 test.describe('negative cases', () => {
+  test('an empty Trash shows no Trash line', async ({ page }) => {
+    await scanned(page, SCRIPTS.demo);
+
+    await expect(trashLine(page)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Open Trash' })).toHaveCount(0);
+  });
+
+  test('the Trash line offers no way to empty the Trash', async ({ page }) => {
+    await scanned(page, SCRIPTS.trashTwo);
+
+    await expect(trashLine(page).getByRole('button')).toHaveText(['Open Trash', 'Open Trash']);
+    await expect(page.getByRole('button', { name: /empty/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /empty/i })).toHaveCount(0);
+  });
+
+  test('the result offers no way to empty the Trash', async ({ page }) => {
+    await mockCore(page, SCRIPTS.trashCleaning);
+    await reviewAll(page);
+    await removeButton(page).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+
+    await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /empty/i })).toHaveCount(0);
+  });
+
+  test('a Trash that was not measured says so and shows only the share', async ({ page }) => {
+    await scanned(page, SCRIPTS.trashNotMeasured);
+
+    await expect(trashLine(page)).toContainText(
+      'Waiting in the Trash from cleanups here: 1.2 GB. The rest of the Trash was not measured.',
+    );
+    await expect(trashLine(page)).not.toContainText('of it from cleanups here');
+  });
+
   test('nothing ignored shows no ignored line on the overview', async ({ page }) => {
     await openIgnoring(page);
 
@@ -702,6 +741,61 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('the scan screen shows what waits in the Trash and how much is from cleanups here', async ({ page }) => {
+    await scanned(page, SCRIPTS.trash);
+
+    await expect(trashLine(page)).toContainText('Waiting in the Trash: 23 GB, 20 GB of it from cleanups here.');
+    await expect(trashLine(page)).not.toContainText('Finder removes them');
+  });
+
+  test('Open Trash asks the core to open that Trash', async ({ page }) => {
+    await scanned(page, SCRIPTS.trashTwo);
+
+    await trashLine(page).getByRole('button', { name: 'Open Trash' }).nth(1).click();
+
+    await expect.poll(() => openedTrashes(page)).toEqual([1]);
+  });
+
+  test('after a cleanup to the Trash the line shows the moved items', async ({ page }) => {
+    await mockCore(page, SCRIPTS.trashCleaning);
+    await reviewAll(page);
+    await expect(trashLine(page)).toHaveCount(0);
+    await removeButton(page).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('region', { name: 'Moved to the Trash' }).getByRole('button', { name: 'Done' }).click();
+    await navScan(page).click();
+
+    await expect(trashLine(page)).toContainText('Waiting in the Trash: 4.1 GB, all of it from cleanups here.');
+  });
+
+  test('the result invites the user to look at the Trash and empty it themselves', async ({ page }) => {
+    await mockCore(page, SCRIPTS.trashCleaning);
+    await reviewAll(page);
+    await removeButton(page).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+
+    const result = page.getByRole('region', { name: 'Moved to the Trash' });
+    await expect(result).toContainText('Look at what is there and empty it yourself if you no longer need it.');
+    await expect(result.getByRole('button', { name: 'Show in the Trash' })).toHaveAccessibleDescription(
+      'Look at what is there and empty it yourself if you no longer need it.',
+    );
+  });
+
+  test('two Trashes show a line each with their volume’s name', async ({ page }) => {
+    await scanned(page, SCRIPTS.trashTwo);
+
+    const lines = trashLine(page);
+    await expect(lines).toContainText('Macintosh HD');
+    await expect(lines).toContainText('Backup');
+    await expect(lines.getByRole('button', { name: 'Open Trash' })).toHaveCount(2);
+  });
+
+  test('Finder’s 30-day setting shows the date the share leaves by itself', async ({ page }) => {
+    await scanned(page, SCRIPTS.trashDated);
+
+    await expect(trashLine(page)).toContainText('Finder removes them by itself by Jan 1, 2026.');
+  });
+
   test("Ignore this category from a card's menu takes it out of every total", async ({ page }) => {
     await openIgnoring(page);
 

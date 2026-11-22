@@ -12,8 +12,9 @@ use fresher_cleaner::DryRunToken;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, FolderReader, InstallRecords, InstalledApps, KnownFolders, Module,
-    ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError, SystemPorts, Volumes,
+    AccessProbe, Build, Clock, CommandRunner, FinderSettings, FolderReader, InstallRecords, InstalledApps,
+    KnownFolders, Module, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError, SystemPorts,
+    Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 #[cfg(not(debug_assertions))]
@@ -26,8 +27,9 @@ use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacInstallRecords, MacInstalledApps, MacKnownFolders,
-    MacMounts, MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch, SystemClock, macos_version,
+    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacFinderSettings, MacInstallRecords, MacInstalledApps,
+    MacKnownFolders, MacMounts, MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch, SystemClock,
+    macos_version,
 };
 
 /// Why the app could not start its engine.
@@ -207,7 +209,8 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
         clock: Arc::clone(&clock),
     };
     let user_temp = user_temp();
-    let cleanup = cleanup(home, user_temp.as_deref(), &folder, cleaner, Arc::clone(&volumes), reach())?;
+    let finder = Arc::new(MacFinderSettings::new(Arc::clone(&commands)));
+    let cleanup = cleanup(home, user_temp.as_deref(), &folder, cleaner, Arc::clone(&volumes), finder, reach())?;
     let known_folders: Arc<dyn KnownFolders> = match user_temp {
         Some(temp) => Arc::new(MacKnownFolders::new(home).with_user_temp(temp)),
         None => Arc::new(MacKnownFolders::new(home)),
@@ -301,7 +304,9 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         Arc::new(FileScanCache::new(folder.clone())),
         known_folders_anchor(&*known_folders),
         options,
-    );
+    )
+    // One clock dates the scan's states and the journal's records, so the Trash view can compare them.
+    .with_clock(Arc::clone(&clock));
     let system_ui = Arc::new(MacSystemUi::new(Arc::clone(&commands)));
     let ports = Ports {
         walk: Arc::new(walk),
@@ -329,18 +334,20 @@ fn system_ports(
 
 /// What a cleanup goes through: a cleaner with `reach`, acting as the user who runs the app, kept from the protected
 /// places of `home` and `user_temp` (with the app's data `folder` and its bundle), over `ports`; the journal in
-/// `folder`; and the `volumes` whose space a cleanup measures.
+/// `folder`; the `volumes` whose space a cleanup measures; and Finder's settings, read through `finder`.
 pub(crate) fn cleanup(
     home: &Path,
     user_temp: Option<&Path>,
     folder: &DataFolder,
     ports: CleanerPorts,
     volumes: Arc<dyn Volumes>,
+    finder: Arc<dyn FinderSettings>,
     reach: Reach,
 ) -> Result<CleanupPorts, ComposeError> {
     let protection = real_protection(home, folder.path(), user_temp)?;
     let cleaner = DiskCleaner::new(reach, current_user(), home.to_path_buf(), protection, ports);
-    Ok(CleanupPorts { cleaner: Arc::new(cleaner), journal: Arc::new(FileCleanupJournal::open(folder)), volumes })
+    let journal = Arc::new(FileCleanupJournal::open(folder));
+    Ok(CleanupPorts { cleaner: Arc::new(cleaner), journal, volumes, finder, trashes: Vec::new() })
 }
 
 /// The protected places of this Mac for `home`, with the app's `data_folder`, in a built app its bundle, and the

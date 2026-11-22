@@ -31,7 +31,8 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
    action and the plan's method call for, then the item's `ItemDone` to the engine before the next item starts. An
    item of several paths passes every check on every part, each against its own confirmed identity and held open,
    before its first part is acted on (**Together**, below).
-3. **Locate and put back** (`put_back.rs`): where each item moved to the Trash is now, and moving one back.
+3. **Locate and put back** (`put_back.rs`): where each item moved to the Trash is now, and moving one back. What waits in the Trash after a move is shown by the Trash line
+   ([`README.md`](./README.md), "Data"); nothing here empties it.
 
 ## Reach and the sandbox
 

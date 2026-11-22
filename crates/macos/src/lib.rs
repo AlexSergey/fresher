@@ -31,8 +31,8 @@ pub use ffi::confstr::user_temp_dir;
 pub use journal::MacChangeJournal;
 pub use open_files::MacOpenFiles;
 pub use privacy::{
-    Guard, OPEN, Pane, Probe, classify, fda_candidates, full_disk_access, guarded_places, open_args, pane_address,
-    pane_of, places_that_prompt, reveal_args, try_inside, try_place, volume_guard,
+    Guard, OPEN, Pane, Probe, classify, fda_candidates, full_disk_access, guarded_places, open_args, open_folder_args,
+    pane_address, pane_of, places_that_prompt, reveal_args, try_inside, try_place, volume_guard,
 };
 pub use process::{Process, current_user, peak_memory, running_processes};
 pub use protection::{is_user_temp, protection};

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Access, Overview, StorageMap } from '../../ipc/bindings.generated';
+import type { Access, Overview, StorageMap, TrashView } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse } from '../../ipc/mock';
@@ -89,6 +89,18 @@ const core = (answers: Partial<CoreAnswers> = {}, access: Access = 'granted'): v
 
 const GB = 1_000_000_000;
 
+const TRASH: TrashView = {
+  trashes: [
+    {
+      fromCleanups: { allocated: GB, completeness: 'complete', logical: GB, reclaimable: GB },
+      goneBy: null,
+      index: 0,
+      volume: 'Macintosh HD',
+      waiting: { allocated: 3 * GB, completeness: 'complete', logical: 3 * GB, reclaimable: 3 * GB },
+    },
+  ],
+};
+
 // The scanning map with `gigabytes` more explained, taken from what is not scanned yet: the sum holds.
 const fill = (map: StorageMap, gigabytes: number): StorageMap => ({
   ...map,
@@ -134,6 +146,23 @@ afterEach(async () => {
 
 describe('ScanScreen', () => {
   describe('negative cases', () => {
+    it('shows no Trash line when the core cannot tell what waits there', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW });
+
+      await renderOverview();
+
+      await screen.findByRole('list', { name: 'Safe to remove' });
+      expect(screen.queryByRole('region', { name: 'The Trash' })).toBeNull();
+    });
+
+    it('shows no Trash line during a scan', async () => {
+      core({ getOverview: () => SCANNING, getTrash: () => TRASH });
+
+      await renderOverview();
+
+      expect(screen.queryByRole('region', { name: 'The Trash' })).toBeNull();
+    });
+
     it('says nothing of ignored things or a rescan when there are none', async () => {
       core({ getOverview: () => DEMO_OVERVIEW });
       await renderOverview();
@@ -267,6 +296,19 @@ describe('ScanScreen', () => {
   });
 
   describe('positive cases', () => {
+    it('shows what waits in the Trash and opens it by its index', async () => {
+      const opened = vi.fn(() => null);
+      core({ getOverview: () => DEMO_OVERVIEW, getTrash: () => TRASH, openTrash: opened });
+      await renderOverview();
+
+      expect(await screen.findByText('Waiting in the Trash: 3 GB, 1 GB of it from cleanups here.')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Open Trash' }));
+
+      await waitFor(() => {
+        expect(opened).toHaveBeenCalledWith({ index: 0 });
+      });
+    });
+
     it('counts what is ignored and opens the settings to show it', async () => {
       const lastScan = DEMO_OVERVIEW.lastScan === null ? null : { ...DEMO_OVERVIEW.lastScan, settingsChanged: true };
       core({

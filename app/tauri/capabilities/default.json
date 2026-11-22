@@ -35,6 +35,8 @@
     "allow-get-cleanup",
     "allow-put-back",
     "allow-reveal-in-trash",
+    "allow-get-trash",
+    "allow-open-trash",
     "allow-quit-after-cleanup",
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize"

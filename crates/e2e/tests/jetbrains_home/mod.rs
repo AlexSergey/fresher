@@ -255,7 +255,13 @@ fn engine(fixture: &Path, data: &Path, apps: Apps) -> Engine {
     let user = fs::metadata(fixture).unwrap().uid();
     let protection = Protection::new(vec![], vec![], vec![]).unwrap();
     let disk = Arc::new(DiskCleaner::new(Reach::Sandbox, user, root, protection, cleaner_ports));
-    let cleanup = CleanupPorts { cleaner: disk, journal: Arc::new(FileCleanupJournal::open(&folder)), volumes };
+    let cleanup = CleanupPorts {
+        cleaner: disk,
+        journal: Arc::new(FileCleanupJournal::open(&folder)),
+        volumes,
+        finder: Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown)),
+        trashes: Vec::new(),
+    };
     let mut registry = Registry::new().unwrap();
     registry.register(Box::new(JetBrainsModule::new().unwrap())).unwrap();
     Engine::with_cleanup(registry, ports, cleanup).unwrap()

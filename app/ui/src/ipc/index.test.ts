@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Event, FindingsQuery, Refusal } from './bindings.generated';
+import type { Event, FindingsQuery, Refusal, Sizes, TrashView } from './bindings.generated';
 
 import {
   cancelCleanup,
@@ -21,8 +21,10 @@ import {
   getSettings,
   getStorageMap,
   getStorageMeaning,
+  getTrash,
   ignore,
   openAccessSettings,
+  openTrash,
   pickFolder,
   prepareCleanup,
   putBack,
@@ -41,6 +43,20 @@ import { DEMO_PLAN, HISTORY, MOVED_DETAIL } from '../test/cleanup-plan';
 import { allFiles, BUSY, DEMO_SCAN, IDLE } from '../test/demo-scan';
 import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { mockCore, pushEvents, refuse, sampleStorageAnswers } from './mock';
+
+const SIZES: Sizes = { allocated: 4096, completeness: 'complete', logical: 100, reclaimable: 4096 };
+
+const TRASH: TrashView = {
+  trashes: [
+    {
+      fromCleanups: SIZES,
+      goneBy: null,
+      index: 0,
+      volume: null,
+      waiting: SIZES,
+    },
+  ],
+};
 
 // Answers that record the arguments each command was given, in order.
 const recorder = (): {
@@ -204,6 +220,8 @@ describe('the IPC module', () => {
         discardCleanup: answer(null),
         getCleanup: answer(MOVED_DETAIL),
         getCleanups: answer(HISTORY),
+        getTrash: answer(TRASH),
+        openTrash: answer(null),
         prepareCleanup: answer(DEMO_PLAN),
         putBack: answer({ items: [] }),
         quitAfterCleanup: answer(null),
@@ -218,6 +236,8 @@ describe('the IPC module', () => {
       await expect(getCleanup(3)).resolves.toEqual(MOVED_DETAIL);
       await expect(putBack({ cleanup: 3, items: null })).resolves.toEqual({ items: [] });
       await revealInTrash({ cleanup: 3, item: 0 });
+      await expect(getTrash()).resolves.toEqual(TRASH);
+      await openTrash(1);
       await quitAfterCleanup();
 
       expect(seen).toStrictEqual([
@@ -229,6 +249,8 @@ describe('the IPC module', () => {
         { cleanup: 3 },
         { request: { cleanup: 3, items: null } },
         { item: { cleanup: 3, item: 0 } },
+        {},
+        { index: 1 },
         {},
       ]);
     });

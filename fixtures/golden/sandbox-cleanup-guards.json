@@ -124,6 +124,26 @@
       }
     ]
   },
+  "trash": {
+    "after": [
+      {
+        "fromCleanups": 20480,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 24576
+      }
+    ],
+    "before": [
+      {
+        "fromCleanups": 0,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 4096
+      }
+    ]
+  },
   "treeAfter": {
     "entries": [
       {

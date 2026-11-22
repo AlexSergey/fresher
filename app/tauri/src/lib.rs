@@ -92,6 +92,8 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         commands::get_cleanup,
         commands::put_back,
         commands::reveal_in_trash,
+        commands::get_trash,
+        commands::open_trash,
         commands::quit_after_cleanup,
     ]
 }

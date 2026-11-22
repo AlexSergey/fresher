@@ -1,21 +1,22 @@
 //! The engine of a flow home, assembled as sandbox mode composes it from the parts a home gives: the real scanner, its
 //! reader seen through the facts lens; the real settings file, scan cache and journal in the sandbox's data folder;
 //! the real `DiskCleaner` reaching only inside the sandbox folder, with the sandbox's places protection and a fake
-//! Trash at `home/.Trash`. Pulled in with `#[path]`, beside `home.rs`, only by the homes that use it.
+//! Trash at `home/.Trash` (or at a second Trash a flow names in its `Extras`). Pulled in with `#[path]`, beside
+//! `home.rs`, only by the homes that use it.
 
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
-use fresher_core::{Access, ByteSize, Capability, Module, Protection, SystemPorts, VolumeFacts, VolumeId};
+use fresher_core::{Access, AutoEmpty, ByteSize, Capability, Module, Protection, SystemPorts, VolumeFacts, VolumeId};
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry};
 use fresher_sandbox::Sandbox;
 use fresher_scanner::{Scanner, ScannerOptions, StdReader, known_folders_anchor};
 use fresher_store::{DataFolder, FileCleanupJournal, FileScanCache, FileSettingsStore};
 use fresher_testing::{
-    FactsLens, FakeAccess, FakeChangeJournal, FakeClock, FakeCommandRunner, FakeInstallRecords, FakeInstalledApps,
-    FakeOpenFiles, FakeRunningApps, FakeSystemUi, FakeTrash, FakeVolumes, StatedFacts,
+    FactsLens, FakeAccess, FakeChangeJournal, FakeClock, FakeCommandRunner, FakeFinderSettings, FakeInstallRecords,
+    FakeInstalledApps, FakeOpenFiles, FakeRunningApps, FakeSystemUi, FakeTrash, FakeVolumes, StatedFacts,
 };
 
 use super::home::user;
@@ -42,6 +43,23 @@ pub(crate) struct Parts {
     pub(crate) avoid: Vec<PathBuf>,
 }
 
+/// What only some flows set besides the parts: the system's interface they read back, Finder's Trash setting, and a
+/// second Trash.
+pub(crate) struct Extras {
+    pub(crate) system_ui: Arc<FakeSystemUi>,
+    pub(crate) finder: AutoEmpty,
+    /// A second Trash outside the sandbox: the fake Trash moves there instead of `home/.Trash`, and the composition
+    /// names it among the Trash folders. `None`: the home's Trash only.
+    pub(crate) other_trash: Option<PathBuf>,
+}
+
+impl Default for Extras {
+    /// A fresh system interface, Finder's setting unknown, the home's Trash only.
+    fn default() -> Self {
+        Self { system_ui: Arc::new(FakeSystemUi::default()), finder: AutoEmpty::Unknown, other_trash: None }
+    }
+}
+
 /// The access of a home that needs none: Full Disk Access `Unknown`, as sandbox mode stands in for it.
 pub(crate) fn unknown_access() -> Arc<FakeAccess> {
     Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)]))
@@ -54,6 +72,17 @@ pub(crate) fn no_installs() -> Arc<FakeInstallRecords> {
 
 /// The engine of `given` on `sandbox`, its reader stating `stated`, its cleaner meeting `open_files`.
 pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<FakeOpenFiles>, given: Parts) -> Engine {
+    engine_with(sandbox, stated, open_files, given, Extras::default())
+}
+
+/// The engine of `engine` with `extras` in place of the defaults.
+pub(crate) fn engine_with(
+    sandbox: &Sandbox,
+    stated: &StatedFacts,
+    open_files: &Arc<FakeOpenFiles>,
+    given: Parts,
+    extras: Extras,
+) -> Engine {
     let data = sandbox.data_folder();
     let folder = DataFolder::open(&data).unwrap();
     let clock = given.clock;
@@ -86,11 +115,11 @@ pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<F
         clock: Arc::clone(&clock) as _,
         commands: Arc::clone(&commands) as _,
         access: given.access,
-        system_ui: Arc::new(FakeSystemUi::default()),
+        system_ui: extras.system_ui,
         system,
     };
     let cleaner_ports = CleanerPorts {
-        trash: Arc::new(FakeTrash::new(sandbox.trash())),
+        trash: Arc::new(FakeTrash::new(extras.other_trash.clone().unwrap_or_else(|| sandbox.trash()))),
         open_files: Arc::clone(open_files) as _,
         running,
         commands,
@@ -100,7 +129,13 @@ pub(crate) fn engine(sandbox: &Sandbox, stated: &StatedFacts, open_files: &Arc<F
     let reach = Reach::SandboxFolder(SandboxFolder::new(sandbox.path(), user, &Protection::default()).unwrap());
     let protection = sandbox.places_protection().unwrap();
     let disk = Arc::new(DiskCleaner::new(reach, user, sandbox.home(), protection, cleaner_ports));
-    let cleanup = CleanupPorts { cleaner: disk, journal: Arc::new(FileCleanupJournal::open(&folder)), volumes };
+    let cleanup = CleanupPorts {
+        cleaner: disk,
+        journal: Arc::new(FileCleanupJournal::open(&folder)),
+        volumes,
+        finder: Arc::new(FakeFinderSettings::new(extras.finder)),
+        trashes: extras.other_trash.into_iter().collect(),
+    };
     let mut registry = Registry::new().unwrap();
     for module in given.modules {
         registry.register(module).unwrap();

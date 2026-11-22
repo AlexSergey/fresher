@@ -1,0 +1,179 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "trial.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/trash-work/fresher-trial-cache",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": null,
+      "category": "trial.caches",
+      "danger": "safe",
+      "logical": 4194304,
+      "module": "trial",
+      "subject": "home/trash-work/fresher-trial-cache"
+    }
+  ],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 4194304,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 2101248,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67105112,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 731905704,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [
+      {
+        "fromCleanups": 4194304,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 6291456
+      }
+    ],
+    "before": [
+      {
+        "fromCleanups": 0,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 2097152
+      }
+    ]
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 106,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/fresher-trial-cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 2097152,
+        "path": "home/.Trash/old-report.pdf"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/trash-work"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/trash-work/.fresher-sandbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 155,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 6291800
+  }
+}

@@ -153,6 +153,7 @@
   "core.error.unknown-locale": "There are no texts for the language {locale}.",
   "core.error.unknown-module": "There is no part of the app called {id}. Restart the app and try again.",
   "core.error.unknown-setting": "There is no setting called {key}. Restart the app and try again.",
+  "core.error.unknown-trash": "This Trash is no longer listed. Look again on the scan screen.",
   "core.error.unknown-volume": "This disk is no longer listed. Open Scan again.",
   "core.group.apps.description": "What apps leave behind, such as the files of apps you removed.",
   "core.group.apps.name": "Apps",

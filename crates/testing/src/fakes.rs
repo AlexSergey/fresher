@@ -145,6 +145,14 @@ impl FakeCommandRunner {
         self
     }
 
+    /// Answers `command` with the exit status `status` and `stderr` on its error output.
+    #[must_use]
+    pub fn exiting_with_stderr(mut self, command: &str, status: i32, stderr: &str) -> Self {
+        let output = CommandOutput { status, stdout: String::new(), stderr: stderr.into() };
+        self.answers.insert(command.into(), Ok(output));
+        self
+    }
+
     /// Answers `command` with an error.
     #[must_use]
     pub fn failing(mut self, command: &str, error: CommandRunError) -> Self {

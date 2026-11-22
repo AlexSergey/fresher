@@ -96,6 +96,10 @@
       }
     ]
   },
+  "trash": {
+    "after": [],
+    "before": []
+  },
   "treeAfter": {
     "entries": [
       {

@@ -62,7 +62,7 @@ pub use cleanup::{
     MAX_PLAN_ITEMS, Method, OutcomeCounts, PLAN_LIFETIME, PartlyWay, PermanentConsent, PlanError, PlanGroup, PlanId,
     PlanItem, PlanItemView, PlanSummary, Protected, Protection, ProtectionError, PutBackItem, PutBackOutcome,
     PutBackRecord, PutBackReport, PutBackRequest, RecordedCleanup, RecordedOutcome, Rehearsal, SANDBOX_MARKER,
-    SANDBOX_SIGNATURE, SkipCode, SkipReason, TrashState, TrashedItem, VolumeSpace,
+    SANDBOX_SIGNATURE, SkipCode, SkipReason, TrashLine, TrashState, TrashView, TrashedItem, VolumeSpace,
 };
 pub use command::{
     CategoryInfo, CategoryTotal, ChoiceInfo, EngineStatus, FindingOrder, FindingsPage, FindingsQuery, HiddenBy,
@@ -91,8 +91,8 @@ pub use module::{
     DescriptorError, FindingSink, Locales, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,
 };
 pub use ports::{
-    AccessProbe, Clock, CommandOutput, CommandRunError, CommandRunner, Landed, OpenFiles, OpenFilesError, OpenSet,
-    SystemUi, SystemUiError, Trash, TrashError,
+    AccessProbe, AutoEmpty, Clock, CommandOutput, CommandRunError, CommandRunner, FinderSettings, Landed, OpenFiles,
+    OpenFilesError, OpenSet, SystemUi, SystemUiError, Trash, TrashError,
 };
 pub use removability::{EntryFacts, Removability};
 pub use removal::{MAX_PARTS, Parts, Removal, RemovalError, ToolCommand};

@@ -147,7 +147,8 @@ Rules of the layout:
 | `DiskState`      | `fresher-scanner`'s `TreeState`, returned by `DiskWalk::commit`                                                 | `FixedDiskState` (a tree from paths and sizes)              |
 | `SettingsStore`  | `fresher-store` (`FileSettingsStore`)                                                                           | in memory, in the engine's tests                            |
 | `AccessProbe`    | `fresher-system`'s `MacAccess` (`fresher-macos::privacy`: the guarded places, checks that never prompt, its own tries remembered); in sandbox mode the app's `UnknownAccess` | `FakeAccess` (any state, guarded places, tries)             |
-| `SystemUi`       | `fresher-system`'s `MacSystemUi` (`/usr/bin/open` with a settings pane's address, or `-R` and a path)            | `FakeSystemUi` (records every call)                         |
+| `SystemUi`       | `fresher-system`'s `MacSystemUi` (`/usr/bin/open` with a settings pane's address, `-R` and a path, or `open_folder`: a folder's absolute path, which Finder opens) | `FakeSystemUi` (records every call)                         |
+| `FinderSettings` | `fresher-system`'s `MacFinderSettings` (`defaults read com.apple.finder FXRemoveOldTrashItems` through the `CommandRunner`: `1` is After30Days, `0` or a missing key Never, anything else Unknown; it never writes a setting) | `FakeFinderSettings` (a fixed answer)                       |
 
 The stand-ins until a later plan are listed in [`../hacks/`](../hacks/README.md).
 
@@ -265,6 +266,22 @@ No database: the app keeps its own state in small plain files, with nothing to i
   `cleanups.previous.jsonl` and a new one starts, so a cleanup never spans two files and the journal keeps about
   8 MiB of the 50 MB budget (a hundred cleanups of a hundred items take 6.9 MB); the oldest generation drops off by
   that rename. History reads the previous generation, then the current one, line by line.
+- **The Trash view** (plan [037](../plans/037-trash/readme.md); `TrashView`, one `TrashLine` per Trash folder that
+  holds something, built by `Engine::trash`, read by the `get_trash` command). A line is `index`, `volume` (a name,
+  none for the home's own), `waiting` (what is there, in bytes on disk, or none when it is not known),
+  `fromCleanups` (what this app's cleanups put there) and `goneBy` (a moment). The folders are the home's Trash, the
+  Trashes of the volumes (`<mount point>/.Trashes/<uid>`) and, in sandbox mode with `--real-trash`, the Mac's home
+  Trash; an item that landed elsewhere is never counted. `fromCleanups` comes from the cleanup journal: every item of
+  every cleanup still found in a known Trash, each item's allocated size once; an item put back, emptied from the
+  Trash or replaced counts nothing. `waiting` is the last scan's measure of the folder (a scanned node of its state)
+  plus what cleanups moved there since that scan, never below `fromCleanups`; with no scan of the folder it is none.
+  There is no walk of the Trash of its own, so the first number stays the scan's measure until the next scan
+  ([`../known-issues/app-trash-waiting-stale-after-emptying.md`](../known-issues/app-trash-waiting-stale-after-emptying.md)).
+  `goneBy` is the latest end of a cleanup in that Trash plus 30 days, only when Finder's setting says After30Days and
+  the date is still ahead. A line is left out when there is nothing waiting and no share. No path crosses the IPC:
+  the UI names a Trash by its `index`, and `open_trash(index)` refuses an index that is not in the last answer
+  (`unknown-trash`). The app never empties a Trash, and nothing in the core can: `open_trash` only asks the system to
+  open the folder in Finder.
 - History points (plan 010) choose their files in their own plan, under the same policy.
 
 ## The storage map
@@ -451,6 +468,12 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   space measured beside the estimate). The Cleanups screen (`screens/cleanups/`) lists the history from the journal;
   one cleanup shows each item with its outcome and puts back one item or all still in the Trash. Every text of an
   outcome or a reason comes from the core.
+- **The Trash line** (plan 037; `product/trash-line/`, fed by `screens/scan/use-trash.ts`): under the scan screen's
+  ring, one line per `TrashLine` of `get_trash`, "Waiting in the Trash: 23 GB, 20 GB of it from cleanups here", the
+  date the app's share leaves by itself when the core gives one, and **Open Trash**, the only action (never one that
+  empties; a test fails on any button named so). The view is asked again on mount, after a scan, after a finished
+  cleanup and when the window gains focus; a failed call hides the line and shows nothing. The result of a cleanup
+  keeps "Show in the Trash" and adds an invitation to look and empty it by hand.
 - **The quit question** (`screens/quit-question.tsx`): while a cleanup runs, closing the window or the app menu's
   Quit (⌘Q, an item of the app's own in `app/tauri/src/shell.rs`) publishes `quit-requested`, and the UI asks; **Stop
   and quit** stops after the item in flight. The Dock's Quit cannot be held

@@ -398,8 +398,27 @@ test.describe('positive cases', () => {
       const dialog = await confirmation(page, SCRIPTS.cleaning);
       await dialog.getByRole('button', { name: 'Move to Trash' }).click();
       await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
+      await page.mouse.move(0, 0);
 
       await looksTheSame(page, 'cleanup-result.png');
+    });
+
+    test('the scan screen with the Trash line', async ({ page }) => {
+      await open(page, SCRIPTS.trash);
+      await scan(page, '2.6 GB');
+      await expect(page.getByRole('region', { name: 'The Trash' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'scan-trash.png');
+    });
+
+    test('the scan screen with two Trash lines', async ({ page }) => {
+      await open(page, SCRIPTS.trashTwo);
+      await scan(page, '2.6 GB');
+      await expect(page.getByRole('region', { name: 'The Trash' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'scan-trash-two.png');
     });
 
     test('the result of a stopped cleanup', async ({ page }) => {

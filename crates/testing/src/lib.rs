@@ -54,8 +54,8 @@ pub use special_files::make_pipe;
 pub use stated_apps::StatedInstalledApps;
 pub use swapper::Swapper;
 pub use system_fakes::{
-    FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, fake_system, installed_app, running_app,
-    signed_by,
+    FakeFinderSettings, FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, fake_system, installed_app,
+    running_app, signed_by,
 };
 pub use tree_description::{FIXTURE_NOW, TreeDescription, time_at_age};
 pub use tree_report::{EntryKind, TreeEntry, TreeReport};

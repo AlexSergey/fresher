@@ -85,11 +85,14 @@ pub enum CommandError {
     /// A finding without a path of its own (a tool's object): there is nothing to show in Finder.
     #[error("the finding has no path to reveal")]
     NothingToReveal,
+    /// No Trash of the last `get_trash` answer has this index.
+    #[error("there is no Trash {index} in the last answer")]
+    UnknownTrash { index: u32 },
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 27] = [
+    pub const CODES: [&str; 28] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -117,6 +120,7 @@ impl CommandError {
         "unknown-volume",
         "unknown-group",
         "nothing-to-reveal",
+        "unknown-trash",
     ];
 
     /// The `code` the error is serialized with.
@@ -149,6 +153,7 @@ impl CommandError {
             Self::UnknownVolume => "unknown-volume",
             Self::UnknownGroup { .. } => "unknown-group",
             Self::NothingToReveal => "nothing-to-reveal",
+            Self::UnknownTrash { .. } => "unknown-trash",
         }
     }
 
@@ -182,7 +187,8 @@ impl CommandError {
             | Self::NotInTrash
             | Self::CannotIgnore
             | Self::UnknownVolume
-            | Self::NothingToReveal => text,
+            | Self::NothingToReveal
+            | Self::UnknownTrash { .. } => text,
         }
     }
 }
@@ -236,7 +242,8 @@ pub(crate) mod tests {
             | CommandError::CannotIgnore
             | CommandError::UnknownVolume
             | CommandError::UnknownGroup { .. }
-            | CommandError::NothingToReveal => error,
+            | CommandError::NothingToReveal
+            | CommandError::UnknownTrash { .. } => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -266,6 +273,7 @@ pub(crate) mod tests {
             sample(CommandError::UnknownVolume),
             sample(CommandError::UnknownGroup { id: "debug".into() }),
             sample(CommandError::NothingToReveal),
+            sample(CommandError::UnknownTrash { index: 3 }),
         ]
     }
 
@@ -377,6 +385,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
                     vec![],
                 ]
             );

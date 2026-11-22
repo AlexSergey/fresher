@@ -17,6 +17,9 @@ mod left_out;
 #[cfg(test)]
 #[path = "sandboxes/map.rs"]
 mod map;
+#[cfg(test)]
+#[path = "sandboxes/trash.rs"]
+mod trash;
 
 /// One `#[test]` per case file: `test_name => "file name without .toml"`, sorted by file name.
 macro_rules! case_files {
@@ -245,6 +248,127 @@ mod negative {
 
         assert_eq!(failure.case, "unreadable", "{failure}");
     }
+
+    mod trash {
+        use fresher_core::{
+            ActionKind, ByteSize, CleanupDetail, CleanupId, CleanupItemView, CleanupSummary, DangerLevel, Ended,
+            Method, OutcomeCounts, RecordedOutcome, Sizes, Timestamp, TrashLine, TrashState, TrashView,
+        };
+
+        use crate::trash::{check_after, check_before};
+
+        fn sizes(allocated: u64) -> Sizes {
+            Sizes::complete(ByteSize::new(allocated), ByteSize::new(allocated))
+        }
+
+        fn line(index: u32, waiting: Option<u64>, from_cleanups: u64) -> TrashLine {
+            TrashLine {
+                index,
+                volume: None,
+                waiting: waiting.map(sizes),
+                from_cleanups: sizes(from_cleanups),
+                gone_by: None,
+            }
+        }
+
+        fn view(lines: Vec<TrashLine>) -> TrashView {
+            TrashView { trashes: lines }
+        }
+
+        /// A finished cleanup to the Trash of one item of `allocated` bytes, still in the Trash.
+        fn detail(allocated: u64) -> CleanupDetail {
+            let summary = CleanupSummary {
+                cleanup: CleanupId::new(1),
+                started: Timestamp::from_secs(0),
+                method: Method::Trash,
+                ended: Ended::Completed,
+                count: 1,
+                counts: OutcomeCounts::default(),
+                moved: sizes(allocated),
+                deleted: Sizes::ZERO,
+                in_trash: 1,
+            };
+            let item = CleanupItemView {
+                index: 0,
+                path: None,
+                category: "trial.caches".into(),
+                danger: DangerLevel::Safe,
+                sizes: sizes(allocated),
+                action: ActionKind::Remove,
+                outcome: RecordedOutcome::Moved,
+                trash: Some(TrashState::InTrash),
+                put_back: None,
+            };
+            CleanupDetail { summary, items: vec![item] }
+        }
+
+        #[test]
+        fn a_share_before_the_first_cleanup_fails() {
+            let failure = check_before("early", &view(vec![line(0, Some(8192), 4096)])).unwrap_err();
+
+            assert_eq!(failure.case, "early", "{failure}");
+            assert!(failure.problem.contains("expected 0 bytes from cleanups, line 0 has 4096"), "{failure}");
+        }
+
+        #[test]
+        fn a_share_other_than_the_cleanups_fails_with_both_numbers() {
+            let failure =
+                check_after("differs", &view(vec![line(0, Some(16384), 8192)]), Some(&detail(4096))).unwrap_err();
+
+            assert_eq!(failure.case, "differs", "{failure}");
+            assert!(failure.problem.contains("expected 4096 bytes"), "{failure}");
+            assert!(failure.problem.contains("it has 8192"), "{failure}");
+        }
+
+        #[test]
+        fn a_share_with_no_cleanup_fails() {
+            let failure = check_after("none", &view(vec![line(0, Some(4096), 4096)]), None).unwrap_err();
+
+            assert!(failure.problem.contains("expected 0 bytes from cleanups, line 0 has 4096"), "{failure}");
+        }
+
+        #[test]
+        fn no_share_after_a_cleanup_to_the_trash_fails() {
+            let failure = check_after("missing", &view(vec![line(0, Some(4096), 0)]), Some(&detail(4096))).unwrap_err();
+
+            assert!(
+                failure.problem.contains("expected 4096 bytes from cleanups in line 0, no line has any"),
+                "{failure}"
+            );
+        }
+
+        #[test]
+        fn a_share_in_a_line_other_than_the_first_fails() {
+            let lines = vec![line(0, Some(8192), 0), line(1, None, 4096)];
+
+            let failure = check_after("elsewhere", &view(lines), Some(&detail(4096))).unwrap_err();
+
+            assert!(failure.problem.contains("in line 0, line 1 has 4096"), "{failure}");
+        }
+
+        #[test]
+        fn a_share_with_no_waiting_measure_fails() {
+            let failure = check_after("unmeasured", &view(vec![line(0, None, 4096)]), Some(&detail(4096))).unwrap_err();
+
+            assert!(failure.problem.contains("no waiting measure"), "{failure}");
+        }
+
+        #[test]
+        fn a_share_above_what_waits_fails() {
+            let failure = check_after("over", &view(vec![line(0, Some(2048), 4096)]), Some(&detail(4096))).unwrap_err();
+
+            assert!(failure.problem.contains("only 2048 waiting"), "{failure}");
+        }
+
+        #[test]
+        fn a_trash_split_into_two_lines_with_a_share_fails() {
+            let lines = vec![line(0, Some(4096), 2048), line(1, None, 2048)];
+
+            let failure = check_after("split", &view(lines), Some(&detail(4096))).unwrap_err();
+
+            assert!(failure.problem.contains("line 0 has 2048, line 1 has 2048"), "{failure}");
+        }
+    }
 }
 
 mod positive {
@@ -281,6 +405,8 @@ mod positive {
         stale_projects => "stale-projects",
         storage_map => "storage-map",
         temp => "temp",
+        trash => "trash",
+        trash_empty => "trash-empty",
         trial => "trial",
         unused_toolchains => "unused-toolchains",
         unused_toolchains_documents_denied => "unused-toolchains-documents-denied",

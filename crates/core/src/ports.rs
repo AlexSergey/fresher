@@ -138,6 +138,8 @@ pub trait SystemUi: Send + Sync {
     fn open_access_settings(&self, capability: &Capability) -> Result<(), SystemUiError>;
     /// Shows a file or folder in the system's file manager, selected.
     fn reveal(&self, path: &Path) -> Result<(), SystemUiError>;
+    /// Opens a folder in the system's file manager, as the user would by double-clicking it.
+    fn open_folder(&self, path: &Path) -> Result<(), SystemUiError>;
 }
 
 /// Why the system's interface did not do what it was asked.
@@ -148,6 +150,23 @@ pub enum SystemUiError {
     Unsupported,
     #[error("the system's interface failed: {reason}")]
     Failed { reason: String },
+}
+
+/// Whether Finder removes items from the Trash 30 days after they were put there (Finder → Settings → Advanced).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AutoEmpty {
+    /// The setting is on: an item leaves the Trash by itself 30 days after it was put there.
+    After30Days,
+    /// The setting is off: items stay in the Trash until the user empties it.
+    Never,
+    /// The setting could not be read.
+    Unknown,
+}
+
+/// Finder's settings the app reads, never writes.
+pub trait FinderSettings: Send + Sync {
+    /// Whether Finder empties old items from the Trash by itself.
+    fn trash_auto_empty(&self) -> AutoEmpty;
 }
 
 #[cfg(test)]

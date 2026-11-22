@@ -85,6 +85,7 @@ export const ResultSummary = ({
   const motion = useMotion();
   const titleId = useId();
   const problemsId = useId();
+  const inviteId = useId();
   const trash = report.method === 'trash';
   const sizes = trash ? report.moved : report.deleted;
   // The number counts from 0: it mounts at 0 and is given the size on the next frame.
@@ -93,6 +94,7 @@ export const ResultSummary = ({
   const [waved, setWaved] = useState(false);
   const waving = motion === 'full' && !waved;
   const { counts } = report;
+  const invited = trash && counts.moved > 0 && onShowInTrash !== undefined;
   const removed = trash ? counts.moved + counts.emptied : counts.deleted + counts.emptied;
 
   useEffect(() => {
@@ -161,14 +163,21 @@ export const ResultSummary = ({
         </div>
       )}
       <div className={styles.actions}>
-        {trash && counts.moved > 0 && onShowInTrash !== undefined ? (
-          <Button onClick={onShowInTrash}>{t('ui.result.show-in-trash')}</Button>
+        {invited ? (
+          <Button aria-describedby={inviteId} onClick={onShowInTrash}>
+            {t('ui.result.show-in-trash')}
+          </Button>
         ) : null}
         {onSeeCleanup === undefined ? null : <Button onClick={onSeeCleanup}>{t('ui.result.see-cleanup')}</Button>}
         <Button onClick={onDone} variant="primary">
           {t('ui.result.done')}
         </Button>
       </div>
+      {invited ? (
+        <p className={styles.invite} id={inviteId}>
+          {t('ui.trash.invite')}
+        </p>
+      ) : null}
     </section>
   );
 };

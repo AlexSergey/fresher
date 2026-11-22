@@ -7,7 +7,7 @@ use fresher_core::{
     AccessStatus, AppInfo, Build, Capability, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView,
     CleanupSelection, CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingId, FindingsPage,
     FindingsQuery, IgnoreTarget, IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest,
-    Refusal, ScanId, SettingUpdate, SettingsView,
+    Refusal, ScanId, SettingUpdate, SettingsView, TrashView,
 };
 use fresher_engine::{Engine, ScanMode};
 use tauri::ipc::Channel;
@@ -168,6 +168,18 @@ pub(crate) fn reveal_in_trash(engine: State<'_, Engine>, item: CleanupItemRef) -
     engine.reveal_in_trash(item.cleanup(), item.item()).map_err(Refusal::from)
 }
 
+/// What waits in each Trash and how much of it this app's cleanups put there: the scan screen's Trash line.
+#[tauri::command(async)]
+pub(crate) fn get_trash(engine: State<'_, Engine>) -> TrashView {
+    engine.trash()
+}
+
+/// "Open Trash": opens a Trash of the last answer in Finder; takes its index, never a path. Never empties it.
+#[tauri::command(async)]
+pub(crate) fn open_trash(engine: State<'_, Engine>, index: u32) -> Result<(), Refusal> {
+    engine.open_trash(index).map_err(Refusal::from)
+}
+
 /// The user chose to quit during a cleanup: it stops after the item in flight, then the app quits.
 #[tauri::command(async)]
 pub(crate) fn quit_after_cleanup<R: Runtime>(app: AppHandle<R>) {
@@ -208,8 +220,8 @@ mod tests {
         use super::first_page;
         use crate::commands::{
             cancel_cleanup, cancel_scan, confirm_cleanup, discard_cleanup, get_cleanup, get_cleanups, get_dictionary,
-            get_findings, open_access_settings, prepare_cleanup, put_back, reveal_finding, reveal_in_trash, start_scan,
-            subscribe, update_setting,
+            get_findings, open_access_settings, open_trash, prepare_cleanup, put_back, reveal_finding, reveal_in_trash,
+            start_scan, subscribe, update_setting,
         };
         use crate::testing::{
             Shell, caches, echo, is_scan_finished, recording_channel, scan, trial_home, until_finished,
@@ -431,6 +443,15 @@ mod tests {
         }
 
         #[test]
+        fn open_trash_of_an_index_never_answered_is_refused() {
+            let shell = Shell::new();
+
+            let refused = open_trash(shell.engine(), 0);
+
+            assert_eq!(refused, Err(Refusal::from(CommandError::UnknownTrash { index: 0 })));
+        }
+
+        #[test]
         fn reveal_finding_of_an_unknown_id_is_refused() {
             let shell = Shell::new();
             let finding = serde_json::from_value(json!(9)).unwrap();
@@ -486,10 +507,17 @@ mod tests {
         use super::first_page;
         use crate::commands::{
             app_info, confirm_cleanup, get_access_status, get_cleanup, get_cleanups, get_dictionary, get_findings,
-            get_modules, get_overview, get_settings, open_access_settings, prepare_cleanup, put_back, refresh_access,
-            start_scan, subscribe, update_setting,
+            get_modules, get_overview, get_settings, get_trash, open_access_settings, prepare_cleanup, put_back,
+            refresh_access, start_scan, subscribe, update_setting,
         };
         use crate::testing::{Shell, caches, echo, recording_channel, scan, trial_home, until_finished};
+
+        #[test]
+        fn get_trash_on_a_fresh_engine_answers_no_line() {
+            let shell = Shell::new();
+
+            assert_eq!(get_trash(shell.engine()).trashes.len(), 0);
+        }
 
         #[test]
         fn prepare_then_confirm_cleans_a_sandbox_through_the_commands() {

@@ -14,6 +14,7 @@ import type {
   PutBackRequest,
   Refusal,
   SkipReason,
+  TrashView,
 } from '../../src/ipc/bindings.generated';
 
 import { COMMANDS } from '../../src/ipc';
@@ -36,6 +37,8 @@ export type CleanupScript = {
   readonly leftOut?: Readonly<Record<number, SkipReason>>;
   // How each item of the plan ends, by its index; done the method's way when not given.
   readonly outcomes?: readonly ItemOutcome[];
+  // What `get_trash` answers once a cleanup finished (the Trash then holds what it moved).
+  readonly trashAfterCleanup?: TrashView;
 };
 
 // The names the core mock's own script shares with this one, on `globalThis`.
@@ -68,6 +71,7 @@ type Setup = {
   readonly hooks: typeof CLEANUP_HOOKS;
   readonly mismatch: Refusal;
   readonly names: { readonly cleanupOf: string; readonly planOf: string; readonly release: string };
+  readonly trashAfter: null | TrashView;
 };
 
 const NO_HISTORY: CleanupsPage = { blocked: null, cleanups: [], offset: 0, total: 0, waiting: 0 };
@@ -150,6 +154,12 @@ export const mockCleanup = async (page: Page, findings: readonly Finding[], scri
           (scope[setup.hooks.answer] as (command: string, value: unknown) => void)(
             setup.commands.getOverview,
             setup.after,
+          );
+        }
+        if (setup.trashAfter !== null) {
+          (scope[setup.hooks.answer] as (command: string, value: unknown) => void)(
+            setup.commands.getTrash,
+            setup.trashAfter,
           );
         }
         send(events);
@@ -286,6 +296,7 @@ export const mockCleanup = async (page: Page, findings: readonly Finding[], scri
       hooks: CLEANUP_HOOKS,
       mismatch: PLAN_MISMATCH,
       names: { cleanupOf: CLEANUP_OF, planOf: PLAN_OF, release: RELEASE },
+      trashAfter: script.trashAfterCleanup ?? null,
     } satisfies Setup,
   );
 };

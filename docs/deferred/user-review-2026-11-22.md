@@ -108,3 +108,34 @@ Plan [031](../plans/031-xcode/readme.md), awaiting the user's walk.
   the whole item (`InUse`), as the cleaner does for any emptied folder; the plan's step 02/02 was corrected.
 - **Known gaps**: archives in a custom folder are not read; `~/Library/Caches/com.apple.dt.Xcode` is not offered;
   simulator devices and runtimes; `XCTestDevices` and `DVTDownloads` were not looked at.
+
+## 037 — The Trash holds the freed space
+
+Plan [037](../plans/037-trash/readme.md), awaiting the user's walk.
+
+- **Walks by hand**: the sandbox walks (`trash-empty` and `trash`, each also with `--real-trash`) and the dry run on
+  the real Mac, items 1.17 and 2.15 of [`../manual-testing.md`](../manual-testing.md), step
+  [037/04/01](../plans/037-trash/04-finish/01-docs-and-conclusions.md).
+- **Your decision kept**: the app never empties the Trash and never offers to; no button anywhere is named so, and a
+  test and an e2e scenario fail on one.
+- **Facts not verified**: Finder's 30-day key (`defaults read com.apple.finder FXRemoveOldTrashItems` prints `1` with
+  the setting on); `open ~/.Trash` opens Finder's Trash window with and without Full Disk Access; a USB disk's
+  `.Trashes/<uid>` gets its own line named after the disk; the time `get_trash` takes on a Mac with a long history
+  (it reads the whole journal on each call).
+- **Agent's calls worth a second look**: 3 (Show in the Trash kept on the result, Open Trash only on the line), 4 (the
+  first number is the last scan's measure plus the cleanups since, stale until the next scan after the user empties
+  the Trash), 5 (the date for the app's share only), 7 (every golden gains a `trash` section), 10 (refresh on focus),
+  11 (the history's per-page sum); and what was decided while building: only the known Trash folders count (the home's,
+  a volume's `.Trashes/<uid>`, and with `--real-trash` the Mac's home Trash), so an item that landed elsewhere is
+  never a line; the scanner now shares the composition's clock (no change in the normal app, where both were the
+  system clock; it keeps the scan's date and the journal's times comparable in sandbox mode); `--real-trash` shows the
+  real home Trash as a second known Trash; Finder's setting is read through `defaults` and never written.
+- **Known gaps**: the stale first number ([known issue](../known-issues/app-trash-waiting-stale-after-emptying.md));
+  the history's per-page sum; a second volume's Trash measured only when a scan root holds it; the sandbox clock
+  restarts at each launch, so after a relaunch the line can count cleanups twice
+  ([known issue](../known-issues/app-sandbox-clock-restarts-each-launch.md)); sandbox dates follow the generation's
+  clock ([known issue](../known-issues/app-sandbox-scan-dated-at-generation.md)).
+- **A test baseline to look at**: the chromium screenshot `category-details-app-leftovers-chosen` failed even alone in
+  one full run of the plan's last Playwright pass. It is the known flaky baseline (item 1.14 of the manual testing doc); on the final
+  commit it passes alone and fails when its whole spec runs (the diff is the whole page drawn at another scroll
+  offset, not a Trash change, as the details screen has no Trash line). It was not run on main from this branch.

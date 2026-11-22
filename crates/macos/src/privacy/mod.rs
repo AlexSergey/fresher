@@ -11,7 +11,7 @@ mod places;
 mod volumes;
 
 pub use check::{Probe, classify, fda_candidates, full_disk_access, try_inside, try_place};
-pub use panes::{OPEN, Pane, open_args, pane_address, pane_of, reveal_args};
+pub use panes::{OPEN, Pane, open_args, open_folder_args, pane_address, pane_of, reveal_args};
 pub use places::{Guard, guarded_places, places_that_prompt};
 pub use volumes::volume_guard;
 

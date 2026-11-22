@@ -278,5 +278,13 @@
   "ui.storage-map.parts": "Parts of {name}",
   "ui.storage-map.title": "{name} · {kind}",
   "ui.storage-map.unreadable.one": "{count} folder could not be read.",
-  "ui.storage-map.unreadable.other": "{count} folders could not be read."
+  "ui.storage-map.unreadable.other": "{count} folders could not be read.",
+  "ui.trash.gone-by": "Finder removes them by itself by {date}.",
+  "ui.trash.invite": "Look at what is there and empty it yourself if you no longer need it.",
+  "ui.trash.label": "The Trash",
+  "ui.trash.open": "Open Trash",
+  "ui.trash.share-only": "Waiting in the Trash from cleanups here: {share}. The rest of the Trash was not measured.",
+  "ui.trash.waiting": "Waiting in the Trash: {size}.",
+  "ui.trash.waiting-all-ours": "Waiting in the Trash: {size}, all of it from cleanups here.",
+  "ui.trash.waiting-share": "Waiting in the Trash: {size}, {share} of it from cleanups here."
 }

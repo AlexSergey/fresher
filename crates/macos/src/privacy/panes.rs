@@ -55,6 +55,12 @@ pub fn reveal_args(path: &Path) -> [&OsStr; 2] {
     [OsStr::new("-R"), path.as_os_str()]
 }
 
+/// The arguments of [`OPEN`] that open the folder `path` in Finder: the path alone, kept as one `OsStr`, never
+/// formatted.
+pub fn open_folder_args(path: &Path) -> [&OsStr; 1] {
+    [path.as_os_str()]
+}
+
 #[cfg(test)]
 mod tests {
     mod negative {
@@ -62,7 +68,7 @@ mod tests {
         use std::path::Path;
 
         use crate::privacy::panes::ADDRESSES;
-        use crate::privacy::{Guard, Pane, pane_of, reveal_args};
+        use crate::privacy::{Guard, Pane, open_folder_args, pane_of, reveal_args};
 
         #[test]
         fn reveal_keeps_a_path_with_spaces_and_quotes_as_one_argument() {
@@ -71,6 +77,15 @@ mod tests {
             assert_eq!(args.len(), 2);
             assert_eq!(args[0], OsStr::new("-R"));
             assert_eq!(args[1], path.as_os_str());
+        }
+
+        #[test]
+        fn open_folder_keeps_a_path_with_spaces_and_quotes_as_one_argument() {
+            let path = Path::new("/Users/a b/it's \"x\"/.Trash");
+
+            let args = open_folder_args(path);
+
+            assert_eq!(args, [path.as_os_str()]);
         }
 
         #[test]

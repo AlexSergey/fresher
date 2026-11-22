@@ -33,6 +33,8 @@ const COMMANDS: &[&str] = &[
     "get_cleanup",
     "put_back",
     "reveal_in_trash",
+    "get_trash",
+    "open_trash",
     "quit_after_cleanup",
 ];
 

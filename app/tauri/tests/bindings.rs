@@ -23,8 +23,8 @@ mod support {
         PutBackOutcome, PutBackReport, PutBackRequest, RecordedOutcome, Refusal, Removability, Removal, ScanId,
         ScanKind, ScanOutcome, SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingProblem,
         SettingUpdate, SettingValue, SettingsFile, SettingsView, Simulated, Sizes, SkipCode, SkipReason, StateId,
-        Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashState, Unit, Unreadable, UnreadableCount,
-        UnreadablePlace, VolumeKind,
+        Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashLine, TrashState, TrashView, Unit,
+        Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
     };
     use fresher_core::{
         AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, MountKind, PartKind, PlaceName,
@@ -185,6 +185,8 @@ mod support {
             declaration::<BlockedReason>(config),
             declaration::<CleanupsQuery>(config),
             declaration::<CleanupsPage>(config),
+            declaration::<TrashView>(config),
+            declaration::<TrashLine>(config),
             declaration::<CleanupSummary>(config),
             declaration::<CleanupDetail>(config),
             declaration::<CleanupItemView>(config),

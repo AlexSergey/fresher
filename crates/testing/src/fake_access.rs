@@ -88,6 +88,7 @@ impl AccessProbe for FakeAccess {
 pub enum SystemUiCall {
     OpenAccessSettings(Capability),
     Reveal(PathBuf),
+    OpenFolder(PathBuf),
 }
 
 /// Records every call of the system's interface; it can be told to fail them all.
@@ -121,6 +122,10 @@ impl SystemUi for FakeSystemUi {
 
     fn reveal(&self, path: &Path) -> Result<(), SystemUiError> {
         self.record(SystemUiCall::Reveal(path.to_path_buf()))
+    }
+
+    fn open_folder(&self, path: &Path) -> Result<(), SystemUiError> {
+        self.record(SystemUiCall::OpenFolder(path.to_path_buf()))
     }
 }
 
@@ -172,8 +177,9 @@ mod tests {
             let ui = FakeSystemUi::failing(error.clone());
 
             assert_eq!(ui.open_access_settings(&Capability::AllFiles), Err(error.clone()));
-            assert_eq!(ui.reveal(&PathBuf::from("/home/a")), Err(error));
-            assert_eq!(ui.calls().len(), 2);
+            assert_eq!(ui.reveal(&PathBuf::from("/home/a")), Err(error.clone()));
+            assert_eq!(ui.open_folder(&PathBuf::from("/home/a/.Trash")), Err(error));
+            assert_eq!(ui.calls().len(), 3);
             assert_eq!(ui.calls()[0], SystemUiCall::OpenAccessSettings(Capability::AllFiles));
         }
     }
@@ -253,10 +259,15 @@ mod tests {
 
             ui.open_access_settings(&DESKTOP).unwrap();
             ui.reveal(&PathBuf::from("/home/a")).unwrap();
+            ui.open_folder(&PathBuf::from("/home/a/.Trash")).unwrap();
 
             assert_eq!(
                 ui.calls(),
-                [SystemUiCall::OpenAccessSettings(DESKTOP), SystemUiCall::Reveal(PathBuf::from("/home/a"))]
+                [
+                    SystemUiCall::OpenAccessSettings(DESKTOP),
+                    SystemUiCall::Reveal(PathBuf::from("/home/a")),
+                    SystemUiCall::OpenFolder(PathBuf::from("/home/a/.Trash")),
+                ]
             );
         }
     }

@@ -182,6 +182,22 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the Scan screen with the Trash line', async ({ page }) => {
+      await open(page, SCRIPTS.trashDated);
+      await scan(page, '2.6 GB');
+      await expect(page.getByRole('region', { name: 'The Trash' })).toContainText('Finder removes them');
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the Scan screen with two Trash lines', async ({ page }) => {
+      await open(page, SCRIPTS.trashTwo);
+      await scan(page, '2.6 GB');
+      await expect(page.getByRole('region', { name: 'The Trash' }).getByRole('button')).toHaveCount(2);
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the Scan screen after a partial scan', async ({ page }) => {
       await open(page, SCRIPTS.partial);
       await scan(page, '2.6 GB');

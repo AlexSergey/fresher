@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use fresher_core::{CancelToken, Capability, CommandRunner, SystemUi, SystemUiError};
-use fresher_macos::{OPEN, open_args, pane_of, reveal_args};
+use fresher_macos::{OPEN, open_args, open_folder_args, pane_of, reveal_args};
 
 use crate::access::guard_of;
 
@@ -48,6 +48,17 @@ impl SystemUi for MacSystemUi {
         let not_text = || SystemUiError::Failed { reason: "the path is not valid UTF-8".into() };
         let args = [flag.to_str().ok_or_else(not_text)?, path.to_str().ok_or_else(not_text)?];
         self.open(&args)
+    }
+
+    /// Refuses a path that is not absolute before anything runs: `open` would resolve it against its own folder.
+    fn open_folder(&self, path: &Path) -> Result<(), SystemUiError> {
+        if !path.is_absolute() {
+            return Err(SystemUiError::Failed { reason: "the path is not absolute".into() });
+        }
+        let [path] = open_folder_args(path);
+        let path =
+            path.to_str().ok_or_else(|| SystemUiError::Failed { reason: "the path is not valid UTF-8".into() })?;
+        self.open(&[path])
     }
 }
 
@@ -108,6 +119,40 @@ mod tests {
             assert!(matches!(result, Err(SystemUiError::Failed { .. })), "{result:?}");
             assert_eq!(runner.calls(), Vec::<String>::new());
         }
+
+        #[test]
+        fn a_relative_folder_is_not_opened_and_nothing_runs() {
+            let runner = Arc::new(FakeCommandRunner::default());
+
+            let result = ui(&runner).open_folder(Path::new(".Trash"));
+
+            assert_eq!(result, Err(SystemUiError::Failed { reason: "the path is not absolute".into() }));
+            assert_eq!(runner.calls(), Vec::<String>::new());
+        }
+
+        #[test]
+        fn a_folder_path_that_is_not_utf8_is_not_opened() {
+            let runner = Arc::new(FakeCommandRunner::default());
+            let path = Path::new(OsStr::from_bytes(b"/tmp/not-\xFF-text"));
+
+            let result = ui(&runner).open_folder(path);
+
+            assert!(matches!(result, Err(SystemUiError::Failed { .. })), "{result:?}");
+            assert_eq!(runner.calls(), Vec::<String>::new());
+        }
+
+        #[test]
+        fn a_failing_open_of_a_folder_is_a_system_ui_error() {
+            let exiting = Arc::new(FakeCommandRunner::default().exiting("/usr/bin/open /tmp/x", 1));
+            let error = CommandRunError::Failed { program: "/usr/bin/open".into(), reason: "no".into() };
+            let failing = Arc::new(FakeCommandRunner::default().failing("/usr/bin/open /tmp/x", error));
+
+            let exited = ui(&exiting).open_folder(Path::new("/tmp/x"));
+            let failed = ui(&failing).open_folder(Path::new("/tmp/x"));
+
+            assert!(matches!(exited, Err(SystemUiError::Failed { .. })), "{exited:?}");
+            assert!(matches!(failed, Err(SystemUiError::Failed { .. })), "{failed:?}");
+        }
     }
 
     mod positive {
@@ -157,6 +202,14 @@ mod tests {
 
             assert_eq!(ui(&runner).reveal(Path::new("/Users/a b/it's")), Ok(()));
             assert_eq!(runner.calls(), ["/usr/bin/open -R /Users/a b/it's"]);
+        }
+
+        #[test]
+        fn open_folder_runs_open_with_the_path_alone() {
+            let runner = Arc::new(FakeCommandRunner::default().answering("/usr/bin/open /tmp/x", ""));
+
+            assert_eq!(ui(&runner).open_folder(Path::new("/tmp/x")), Ok(()));
+            assert_eq!(runner.calls(), ["/usr/bin/open /tmp/x"]);
         }
     }
 }

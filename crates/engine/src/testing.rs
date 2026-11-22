@@ -9,16 +9,17 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan,
-    DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest,
-    ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
-    Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore,
-    Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand,
-    ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    AutoEmpty, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext,
+    ConfirmedPlan, DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink,
+    Interest, ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
+    ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, PutBackOutcome, Rehearsal, Removal, ScanKind,
+    SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
+    Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress,
+    WalkRequest, WalkSummary,
 };
 use fresher_testing::{
-    FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeSystemUi, FakeVolumes, FixedDiskState,
-    MemoryCleanupJournal,
+    FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeFinderSettings, FakeSystemUi, FakeVolumes,
+    FixedDiskState, MemoryCleanupJournal,
 };
 
 use crate::{CleanupPorts, Engine, Ports, Registry};
@@ -661,6 +662,7 @@ pub(crate) struct Fixture {
     pub(crate) cleaner: Arc<dyn Cleaner>,
     pub(crate) journal: Arc<MemoryCleanupJournal>,
     pub(crate) volumes: Arc<FakeVolumes>,
+    pub(crate) finder: Arc<FakeFinderSettings>,
 }
 
 impl Fixture {
@@ -677,6 +679,7 @@ impl Fixture {
             cleaner: Arc::new(FakeCleaner::default()),
             journal: Arc::default(),
             volumes: Arc::default(),
+            finder: Arc::new(FakeFinderSettings::new(AutoEmpty::Unknown)),
         }
     }
 
@@ -693,6 +696,11 @@ impl Fixture {
 
     pub(crate) fn volumes(mut self, volumes: FakeVolumes) -> Self {
         self.volumes = Arc::new(volumes);
+        self
+    }
+
+    pub(crate) fn finder(mut self, finder: FakeFinderSettings) -> Self {
+        self.finder = Arc::new(finder);
         self
     }
 
@@ -740,7 +748,13 @@ impl Fixture {
             system_ui: self.system_ui,
             system: self.system,
         };
-        let cleanup = CleanupPorts { cleaner: self.cleaner, journal: self.journal, volumes: self.volumes };
+        let cleanup = CleanupPorts {
+            cleaner: self.cleaner,
+            journal: self.journal,
+            volumes: self.volumes,
+            finder: self.finder,
+            trashes: Vec::new(),
+        };
         Engine::with_cleanup(registry, ports, cleanup).unwrap()
     }
 }

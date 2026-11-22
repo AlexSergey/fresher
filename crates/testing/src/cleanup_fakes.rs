@@ -61,6 +61,7 @@ impl OpenFiles for FakeOpenFiles {
 pub struct MemoryCleanupJournal {
     cleanups: Mutex<Vec<RecordedCleanup>>,
     read_only: bool,
+    unreadable: bool,
     writes_left: Option<Mutex<u32>>,
     syncs: Mutex<u32>,
 }
@@ -69,6 +70,11 @@ impl MemoryCleanupJournal {
     /// A journal written by a newer version of the app: read, never written.
     pub fn read_only() -> Self {
         Self { read_only: true, ..Self::default() }
+    }
+
+    /// A journal that cannot be read: every page and record answers an error.
+    pub fn unreadable() -> Self {
+        Self { unreadable: true, ..Self::default() }
     }
 
     /// A journal whose first `writes` records are written, and every one after fails.
@@ -84,6 +90,13 @@ impl MemoryCleanupJournal {
     /// How many times the records were made durable.
     pub fn syncs(&self) -> u32 {
         *lock(&self.syncs)
+    }
+
+    fn read(&self) -> Result<(), JournalError> {
+        if self.unreadable {
+            return Err(JournalError::Failed { reason: "unreadable by the test".into() });
+        }
+        Ok(())
     }
 
     fn write(&self) -> Result<(), JournalError> {
@@ -152,6 +165,7 @@ impl CleanupJournal for MemoryCleanupJournal {
     }
 
     fn cleanups(&self, offset: u32, limit: u32) -> Result<JournalPage, JournalError> {
+        self.read()?;
         let cleanups = lock(&self.cleanups);
         let page =
             cleanups.iter().rev().skip(offset as usize).take(limit as usize).map(RecordedCleanup::summary).collect();
@@ -159,6 +173,7 @@ impl CleanupJournal for MemoryCleanupJournal {
     }
 
     fn cleanup(&self, id: CleanupId) -> Result<Option<RecordedCleanup>, JournalError> {
+        self.read()?;
         Ok(lock(&self.cleanups).iter().find(|cleanup| cleanup.cleanup == id).cloned())
     }
 }
@@ -504,6 +519,16 @@ mod tests {
             journal.begin(&begin).unwrap();
 
             assert!(matches!(journal.begin(&begin), Err(JournalError::Failed { .. })));
+        }
+
+        #[test]
+        fn an_unreadable_memory_journal_answers_errors_on_every_read() {
+            let journal = MemoryCleanupJournal::unreadable();
+            let begin = BeginRecord::new(Timestamp::from_secs(1), &confirmed("trash"), vec![]);
+            let id = journal.begin(&begin).unwrap();
+
+            assert!(matches!(journal.cleanups(0, 10), Err(JournalError::Failed { .. })));
+            assert!(matches!(journal.cleanup(id), Err(JournalError::Failed { .. })));
         }
 
         #[test]

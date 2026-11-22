@@ -260,6 +260,48 @@ fn until(events: &Receiver<Event>, mut is_last: impl FnMut(&Event) -> bool) {
     while !is_last(&events.recv_timeout(Duration::from_secs(30)).unwrap()) {}
 }
 
+/// The Trash view of sandbox mode with `trash`, after a cleanup in the journal that moved a 5-byte file to the Mac's
+/// own home Trash (the stand-in real home's `.Trash`), where it still is.
+fn trash_after_a_move_to_the_macs_trash(world: &World, trash: SandboxTrash) -> fresher_core::TrashView {
+    use std::os::unix::fs::MetadataExt as _;
+
+    use fresher_core::{
+        ActionKind, BeginRecord, CleanupJournal as _, DangerLevel, EndRecord, Ended, EntryKind, ItemIdentity,
+        ItemRecord, JournalItem, Method, RecordedOutcome, Sizes, Text, TextKey, Timestamp, TrashedItem,
+    };
+
+    let landed = world.real_home().join(".Trash/old.log");
+    fs::create_dir_all(landed.parent().unwrap()).unwrap();
+    fs::write(&landed, b"hello").unwrap();
+    let metadata = fs::symlink_metadata(&landed).unwrap();
+    let identity = ItemIdentity::new(metadata.dev(), metadata.ino(), EntryKind::File);
+    let original = world.sandbox().home().join("Library/Logs/old.log");
+    let journal = fresher_store::FileCleanupJournal::open(
+        &fresher_store::DataFolder::open(world.sandbox().data_folder()).unwrap(),
+    );
+    let item = JournalItem {
+        index: 0,
+        path: Some(original.clone()),
+        identity: Some(identity),
+        more: Vec::new(),
+        action: ActionKind::Remove,
+        category: "trial.caches".into(),
+        key: "old.log".into(),
+        reason: Text::new(TextKey::new("test.finding.reason").unwrap()),
+        danger: DangerLevel::Safe,
+        sizes: Sizes::complete(ByteSize::new(5), ByteSize::new(4_096)),
+    };
+    let at = Timestamp::from_secs(FIXTURE_NOW);
+    let begin = BeginRecord { at, method: Method::Trash, roots: vec![], space: vec![], items: vec![item] };
+    let id = journal.begin(&begin).unwrap();
+    let trashed = vec![TrashedItem { original, landed, identity }];
+    journal.item(&ItemRecord { cleanup: id, index: 0, outcome: RecordedOutcome::Moved, trashed, went: None }).unwrap();
+    journal.end(&EndRecord { cleanup: id, at, ended: Ended::Completed, space: vec![] }).unwrap();
+    let mode = SandboxMode::new(world.folder.path(), trash);
+    let (engine, _) = compose(&mode, &world.real_home(), &world.real_data(), |_| Ok(fakes())).unwrap();
+    engine.trash()
+}
+
 /// An environment of `vars`, as `std::env::var_os` reads it.
 fn env(vars: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {
     let vars: Vec<(String, OsString)> = vars.iter().map(|(name, value)| ((*name).into(), (*value).into())).collect();
@@ -282,6 +324,15 @@ mod negative {
             Err(ComposeError::Sandbox(refusal)) => Some(refusal),
             _ => None,
         }
+    }
+
+    #[test]
+    fn the_sandboxs_own_trash_does_not_count_the_macs_home_trash() {
+        let world = World::new();
+
+        let view = super::trash_after_a_move_to_the_macs_trash(&world, crate::sandbox::SandboxTrash::Sandbox);
+
+        assert_eq!(view.trashes, []);
     }
 
     #[test]
@@ -813,5 +864,30 @@ mod positive {
         assert!(home.join("bare/fresher-trial-cache/blob.bin").is_file(), "the negative is untouched");
         assert!(home.join("work").join(SANDBOX_MARKER).is_file());
         assert!(fs::read_dir(world.real_home()).unwrap().next().is_none());
+    }
+
+    #[test]
+    fn the_systems_trash_counts_the_macs_home_trash() {
+        let world = World::new();
+
+        let view = super::trash_after_a_move_to_the_macs_trash(&world, SandboxTrash::Real);
+
+        assert_eq!(view.trashes.len(), 1, "{view:?}");
+        assert_eq!(view.trashes[0].from_cleanups.allocated, fresher_core::ByteSize::new(4_096));
+        assert_eq!(view.trashes[0].waiting, None, "the sandbox's scan never measures the Mac's Trash");
+    }
+
+    #[test]
+    fn the_scan_and_the_journal_are_dated_by_one_clock() {
+        let world = World::new();
+        let engine = world.start();
+
+        scan(&engine);
+        clean(&engine, &prepare(&engine));
+
+        // The fake clock of `fakes` stands still: the scan's state and the cleanup carry its moment, not the Mac's.
+        let now = fresher_core::Timestamp::from_secs(fresher_testing::FIXTURE_NOW);
+        assert_eq!(engine.disk_state().unwrap().unwrap().taken(), now);
+        assert_eq!(engine.cleanups(0, 1).cleanups[0].started, now);
     }
 }

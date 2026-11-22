@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use fresher_core::{
     BlockedReason, ByteSize, CleanupDetail, CleanupId, CleanupItemView, CleanupJournal, CleanupSummary, CleanupsPage,
     CleanupsQuery, CommandError, JournalItem, JournalState, PutBackItem, PutBackOutcome, PutBackRecord, PutBackReport,
-    RecordedCleanup, RecordedOutcome, SkipCode, Timestamp, TrashState, TrashedItem,
+    RecordedCleanup, RecordedOutcome, Sizes, SkipCode, Timestamp, TrashState, TrashedItem,
 };
 
 use crate::cleanup::context::Context;
@@ -154,17 +154,17 @@ fn last_put_back(recorded: &RecordedCleanup, index: u32) -> Option<PutBackOutcom
 
 /// Where each item of one cleanup moved to the Trash and not put back is now, entry by entry (an emptied folder has
 /// one entry per item that went).
-struct Located {
+pub(crate) struct Located {
     /// Per item index with entries in the Trash: each entry and its state.
     items: Vec<(u32, Vec<(TrashedItem, TrashState)>)>,
     /// The items put back.
     returned: Vec<u32>,
-    /// The allocated size of each item, by index.
-    sizes: Vec<(u32, u64)>,
+    /// The sizes of each item, by index.
+    sizes: Vec<(u32, Sizes)>,
 }
 
 impl Located {
-    fn of(ports: &CleanupPorts, recorded: &RecordedCleanup) -> Self {
+    pub(crate) fn of(ports: &CleanupPorts, recorded: &RecordedCleanup) -> Self {
         let put_back = |index: u32| {
             recorded.put_backs.iter().any(|record| record.index == index && record.outcome == PutBackOutcome::PutBack)
         };
@@ -181,7 +181,7 @@ impl Located {
                 record.trashed.iter().cloned().zip(states.into_iter().chain(std::iter::repeat(TrashState::Gone)));
             items.push((item.index, entries.collect()));
         }
-        let sizes = recorded.begin.items.iter().map(|item| (item.index, item.sizes.allocated.bytes())).collect();
+        let sizes = recorded.begin.items.iter().map(|item| (item.index, item.sizes)).collect();
         Self { items, returned, sizes }
     }
 
@@ -218,8 +218,17 @@ impl Located {
 
     /// The allocated size of the items still in the Trash.
     fn waiting(&self) -> u64 {
-        let size = |index: u32| self.sizes.iter().find(|(item, _)| *item == index).map_or(0, |&(_, size)| size);
-        self.still_in_trash().map(size).fold(0, u64::saturating_add)
+        self.still_in_trash().map(|index| self.sizes_of(index).allocated.bytes()).fold(0, u64::saturating_add)
+    }
+
+    /// Each item still in the Trash, once: its index, its sizes and its first entry there.
+    pub(crate) fn waiting_items(&self) -> impl Iterator<Item = (u32, Sizes, &TrashedItem)> {
+        self.still_in_trash()
+            .filter_map(|index| self.in_trash_entries(index).next().map(|entry| (index, self.sizes_of(index), entry)))
+    }
+
+    fn sizes_of(&self, index: u32) -> Sizes {
+        self.sizes.iter().find(|(item, _)| *item == index).map_or(Sizes::ZERO, |&(_, sizes)| sizes)
     }
 
     /// Puts item `index` back, entry by entry: only the entries still in the Trash are tried. Answers `NotTrashed` for

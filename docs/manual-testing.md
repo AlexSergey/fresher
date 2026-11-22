@@ -317,6 +317,22 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] `npm run dev:sandbox -- dev-caches`: DerivedData is still `dev-caches`' and nothing of it is offered by `xcode`.
 - [ ] Ignore one archive, then the category, then the module; restore each.
 
+### 1.17 The Trash line ([037/04/01](./plans/037-trash/04-finish/01-docs-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/trash-empty && npm run dev:sandbox -- trash-empty`. Scan: no Trash line. Clean the trial cache
+      to the Trash: the result says "Moved to the Trash", "You get the space back when you empty the Trash.", and the
+      invitation under Show in the Trash; back on the scan screen the line reads "Waiting in the Trash: 1 MB, all of
+      it from cleanups here." Open Trash opens `sandbox/trash-empty/home/.Trash` in Finder.
+- [ ] `rm -rf sandbox/trash && npm run dev:sandbox -- trash`. Scan: "Waiting in the Trash: 2 MB." Clean: "Waiting in
+      the Trash: 6 MB, 4 MB of it from cleanups here." Remove the cache's entry from `home/.Trash` in Finder and come
+      back to the window: the share is gone, the first number stays until a new scan
+      ([known issue](./known-issues/app-trash-waiting-stale-after-emptying.md)). Put back from Cleanups: the share is
+      gone.
+- [ ] Both again with `--real-trash`: the moved items wait in the Mac's Trash; a second line reads "Waiting in the
+      Trash from cleanups here: ... The rest of the Trash was not measured."; Open Trash on it opens the Mac's Trash.
+      Put the items back afterwards.
+- [ ] No button anywhere says Empty; the Trash line and the result only invite.
+
 ### 1.14 The scan screen and ignoring one item ([027/04/02](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md), [028/02/02](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md))
 
 - [ ] `rm -rf sandbox/trial && npm run dev:sandbox -- trial` (and `app-leftovers` for the choices). Walk the boxes of 027/04/02 "By the user": the sidebar,
@@ -639,6 +655,17 @@ du -sh ~/Library/Caches/Google/Chrome/*/{Cache,"Code Cache"} ~/Library/Caches/Ch
 - [ ] Facts not verified here: Redis Insight's caches with the app open and closed; whether a browser accepts its
       emptied `Cache` folder on the next start without a warning (a release build, once, Chrome and Firefox);
       Firefox's `startupCache` emptied while the profile is closed.
+
+### 2.15 The Trash line ([037/04/01](./plans/037-trash/04-finish/01-docs-and-conclusions.md))
+
+`npm run dev`, a scan of `~` (a dry run on the real Mac).
+
+- [ ] With Full Disk Access: the line's first number against `du -sh ~/.Trash`; without it: the line shows only a
+      share, or nothing.
+- [ ] Finder, Settings, Advanced, "Remove items from the Trash after 30 days" on: `defaults read com.apple.finder
+      FXRemoveOldTrashItems` prints `1`; the line shows a date only when a share is there.
+- [ ] With a USB disk holding something in its Trash and scanned: a line of its own, named after the disk.
+- [ ] Open Trash opens Finder's Trash window (`open ~/.Trash` does the same, with and without Full Disk Access).
 
 ### 2.16 Xcode and simulators ([031/03/02](./plans/031-xcode/03-finish/02-run-and-conclusions.md))
 

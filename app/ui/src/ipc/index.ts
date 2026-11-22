@@ -31,6 +31,7 @@ import type {
   SettingsView,
   SettingUpdate,
   StorageMap,
+  TrashView,
 } from './bindings.generated';
 
 export { inApp } from './runtime';
@@ -56,8 +57,10 @@ export const COMMANDS = {
   getStorageMap: 'get_storage_map',
   getStorageMeaning: 'get_storage_meaning',
   getStoragePlace: 'get_storage_place',
+  getTrash: 'get_trash',
   ignore: 'ignore',
   openAccessSettings: 'open_access_settings',
+  openTrash: 'open_trash',
   pickFolder: 'pick_folder',
   prepareCleanup: 'prepare_cleanup',
   putBack: 'put_back',
@@ -196,6 +199,12 @@ export const getCleanups = (query: CleanupsQuery): Promise<CleanupsPage> => call
 export const getCleanup = (cleanup: CleanupId): Promise<CleanupDetail> => call('getCleanup', { cleanup });
 
 export const putBack = (request: PutBackRequest): Promise<PutBackReport> => call('putBack', { request });
+
+// What waits in each Trash and how much of it this app's cleanups put there; no path in the answer.
+export const getTrash = (): Promise<TrashView> => call('getTrash');
+
+// "Open Trash": opens Trash `index` of the last answer in Finder; never empties it.
+export const openTrash = (index: number): Promise<void> => call('openTrash', { index });
 
 export const revealInTrash = (item: CleanupItemRef): Promise<void> => call('revealInTrash', { item });
 

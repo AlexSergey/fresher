@@ -300,6 +300,18 @@
       }
     ]
   },
+  "trash": {
+    "after": [
+      {
+        "fromCleanups": 1773568,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 1773568
+      }
+    ],
+    "before": []
+  },
   "treeAfter": {
     "entries": [
       {

@@ -36,7 +36,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, };
 
 /**
  * The answer of `get_overview`.
@@ -774,6 +774,37 @@ waiting: ByteSize,
  * Why no new cleanup can be recorded now, when the journal is read-only; the history is still shown.
  */
 blocked: BlockedReason | null, };
+
+/**
+ * The answer of `get_trash`: each Trash that holds something, the home volume's first.
+ */
+export type TrashView = { trashes: Array<TrashLine>, };
+
+/**
+ * One Trash: what waits there, and the part of it the app's cleanups moved there.
+ */
+export type TrashLine = { 
+/**
+ * What `open_trash` names it by: its place in this answer.
+ */
+index: number, 
+/**
+ * Its volume's name; `None` when the volume could not be read.
+ */
+volume: string | null, 
+/**
+ * Everything in this Trash: the last scan's measure plus what cleanups moved there since and is still there;
+ * `None` when no scan measured it.
+ */
+waiting: Sizes | null, 
+/**
+ * What the app's cleanups moved there and is still there, found again now.
+ */
+fromCleanups: Sizes, 
+/**
+ * With Finder's 30-day setting on: when the last of `from_cleanups` leaves the Trash by itself; `None` otherwise.
+ */
+goneBy: Timestamp | null, };
 
 /**
  * One cleanup of the history.

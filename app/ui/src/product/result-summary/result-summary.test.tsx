@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CleanupReport } from '../../ipc/bindings.generated';
+import type { CleanupReport, ItemOutcome } from '../../ipc/bindings.generated';
 
 import { DURATION } from '../../design/tokens/motion';
 import { setCoreDictionary } from '../../i18n';
@@ -9,6 +9,7 @@ import { fakeFrames, fakeReducedMotion, setMotion } from '../../test/animation';
 import {
   CLEANUP_DICTIONARY,
   DELETED_REPORT,
+  DEMO_PLAN,
   MOVED_REPORT,
   reportOf,
   STOPPED_REPORT,
@@ -27,6 +28,12 @@ const PROBLEMS: ResultSummaryProps['problems'] = [
   { outcome: { kind: 'skipped', reason: { app: 'Safari', kind: 'in-use' } }, title: title('editor-cache') },
   { outcome: { kind: 'failed', reason: { args: {}, key: 'test.failed' } }, title: title('installer.dmg') },
   { outcome: { kind: 'skipped', reason: { kind: 'vanished' } }, title: null },
+];
+
+const ALL_SKIPPED: readonly ItemOutcome[] = [
+  { kind: 'skipped', reason: { kind: 'vanished' } },
+  { kind: 'skipped', reason: { kind: 'vanished' } },
+  { kind: 'skipped', reason: { kind: 'vanished' } },
 ];
 
 const TRASH_NOTE = "Cleanups move items to the sandbox's Trash: /Users/dev/box/home/.Trash";
@@ -64,6 +71,24 @@ afterEach(async () => {
 
 describe('ResultSummary', () => {
   describe('negative cases', () => {
+    it('does not invite to the Trash after a permanent delete', () => {
+      renderSummary({ report: DELETED_REPORT });
+
+      expect(screen.queryByText(/empty it yourself/u)).toBeNull();
+    });
+
+    it('does not invite to the Trash when nothing moved', () => {
+      renderSummary({ report: reportOf(DEMO_PLAN, { measured: 0, outcomes: ALL_SKIPPED }) });
+
+      expect(screen.queryByText(/empty it yourself/u)).toBeNull();
+    });
+
+    it('does not invite to the Trash without the way to show it', () => {
+      render(<ResultSummary onDone={vi.fn()} problems={[]} report={MOVED_REPORT} />);
+
+      expect(screen.queryByText(/empty it yourself/u)).toBeNull();
+    });
+
     it('the number does not count under reduced motion', async () => {
       await setMotion('reduced');
       fakeFrames();
@@ -167,6 +192,14 @@ describe('ResultSummary', () => {
   });
 
   describe('positive cases', () => {
+    it('invites to look in the Trash after a move, tied to Show in the Trash', () => {
+      renderSummary();
+
+      expect(screen.getByRole('button', { name: 'Show in the Trash' })).toHaveAccessibleDescription(
+        'Look at what is there and empty it yourself if you no longer need it.',
+      );
+    });
+
     it('a trash cleanup shows its trash note under its lines', () => {
       renderSummary({ trashNote: TRASH_NOTE });
 

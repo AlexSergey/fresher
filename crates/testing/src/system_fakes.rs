@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use fresher_core::{
-    AppIdError, BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, Receipt, RunningApp,
-    RunningApps, SystemError, SystemPorts, SystemVersion, TeamId, Timestamp,
+    AppIdError, AutoEmpty, BundleId, CancelToken, FinderSettings, InstallRecords, InstalledApp, InstalledApps,
+    InstalledList, Receipt, RunningApp, RunningApps, SystemError, SystemPorts, SystemVersion, TeamId, Timestamp,
 };
 
 use crate::fakes::lock;
@@ -146,6 +146,23 @@ impl InstalledApps for FakeInstalledApps {
 
     fn search_complete(&self, _cancel: &CancelToken) -> Result<(), SystemError> {
         self.search.clone()
+    }
+}
+
+/// Finder's settings as a test states them.
+#[derive(Clone, Copy, Debug)]
+pub struct FakeFinderSettings(AutoEmpty);
+
+impl FakeFinderSettings {
+    /// Finder answers `answer` for its Trash setting.
+    pub fn new(answer: AutoEmpty) -> Self {
+        Self(answer)
+    }
+}
+
+impl FinderSettings for FakeFinderSettings {
+    fn trash_auto_empty(&self) -> AutoEmpty {
+        self.0
     }
 }
 
@@ -334,12 +351,20 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{InstalledApps, InstalledList, RunningApps};
+        use fresher_core::{AutoEmpty, FinderSettings, InstalledApps, InstalledList, RunningApps};
 
         use crate::{
-            FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, installed_app, running_app, signed_by,
+            FakeFinderSettings, FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, installed_app,
+            running_app, signed_by,
         };
         use fresher_core::{InstallRecords, Receipt, SystemVersion, Timestamp};
+
+        #[test]
+        fn finder_settings_answer_what_the_test_states() {
+            for answer in [AutoEmpty::After30Days, AutoEmpty::Never, AutoEmpty::Unknown] {
+                assert_eq!(FakeFinderSettings::new(answer).trash_auto_empty(), answer);
+            }
+        }
 
         #[test]
         fn a_fake_system_has_the_home_layout_and_nothing_else() {

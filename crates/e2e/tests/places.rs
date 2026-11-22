@@ -223,7 +223,13 @@ mod home {
         let home = root.join("home");
         let cleaner = Arc::new(DiskCleaner::new(Reach::Sandbox, user, home, Protection::default(), cleaner_ports));
         let journal = Arc::new(FileCleanupJournal::open(&DataFolder::open(data).unwrap()));
-        let cleanup = CleanupPorts { cleaner: Arc::clone(&cleaner) as _, journal, volumes };
+        let cleanup = CleanupPorts {
+            cleaner: Arc::clone(&cleaner) as _,
+            journal,
+            volumes,
+            finder: Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown)),
+            trashes: Vec::new(),
+        };
         let mut registry = Registry::new().unwrap();
         registry.register(Box::new(TempModule::new(folder))).unwrap();
         (Engine::with_cleanup(registry, ports, cleanup).unwrap(), cleaner)

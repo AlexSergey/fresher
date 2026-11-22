@@ -9,6 +9,7 @@ import { ScanHero } from '../../product/scan-hero/scan-hero';
 import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { explainedTone } from '../../product/storage-map/parts';
 import { StorageMap } from '../../product/storage-map/storage-map';
+import { TrashLines } from '../../product/trash-line/trash-line';
 import { useNavigation } from '../../state/navigation';
 import { summarize } from '../../state/selection-summary';
 import { useStorageMeaning } from '../../state/storage';
@@ -25,10 +26,11 @@ import { moduleProgress } from './module-progress';
 import { phaseOf, scanFailure } from './phase';
 import styles from './scan-screen.module.css';
 import { ScanZones } from './scan-zones';
+import { openTrashLine, useTrash } from './use-trash';
 
 // "Where did my space go?": the scan hero (the home volume's ring and legend), a notice when the scan is incomplete, the
-// notices of what a missing permission kept the scan from seeing, the map of each other volume (collapsed), then
-// the home volume's category cards in their danger zones, each with its Select all, and the selection bar. Before the
+// notices of what a missing permission kept the scan from seeing, what waits in the Trash with Open Trash, the map of
+// each other volume (collapsed), then the home volume's category cards in their danger zones, each with its Select all, and the selection bar. Before the
 // first scan, only the hero, what a scan does and the other volumes.
 // One control per action: the toolbar's Scan again only after a finished or partial scan; before the first scan the
 // ring holds Scan, during a scan the progress holds Stop, and after a failed scan the hero's error holds Try again.
@@ -45,6 +47,7 @@ export const ScanScreen = (): JSX.Element => {
   const started = useCore((state) => state.scanModules);
   const selection = useCore((state) => state.selection);
   const storageMap = useCore((state) => state.storageMap);
+  const trash = useTrash();
   const accessStatus = useAccessStatus();
   const categoryAccess = accessOfCategories(modules, accessStatus);
 
@@ -92,6 +95,7 @@ export const ScanScreen = (): JSX.Element => {
         ) : null}
         <RescanNotice />
         <CoverageNotices />
+        {scanning ? null : <TrashLines lines={trash} onOpen={openTrashLine(store)} />}
         {volumes.slice(1).map((volume, index) => (
           <StorageMap
             collapsible

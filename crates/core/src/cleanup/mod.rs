@@ -8,6 +8,7 @@ mod plan;
 mod port;
 mod protection;
 mod sandbox;
+mod trash;
 mod view;
 
 pub use confirm::{Act, ConfirmError, Confirmation, ConfirmedMethod, ConfirmedPlan, EchoField, PermanentConsent};
@@ -27,6 +28,7 @@ pub use port::{Cleaner, CleanupContext, Depth, ItemDone, Rehearsal, TrashedItem}
 pub(crate) use protection::is_plain;
 pub use protection::{Protected, Protection, ProtectionError};
 pub use sandbox::{SANDBOX_MARKER, SANDBOX_SIGNATURE};
+pub use trash::{TrashLine, TrashView};
 pub use view::{
     CleanupDetail, CleanupItemRef, CleanupItemView, CleanupPlanView, CleanupSummary, CleanupsPage, CleanupsQuery,
     PlanGroup, PlanItemView, PutBackItem, PutBackReport, PutBackRequest,

@@ -213,7 +213,8 @@ impl Shell {
         let disk = FakeVolumes::disk("Test disk", ByteSize::new(1_000), ByteSize::new(400), ByteSize::new(600));
         let volumes = Arc::new(FakeVolumes::default().with_space(&home, disk));
         // The test's home lies in the user's temporary folder: the real Mac's list carves it out, as the app's does.
-        let mut cleanup = cleanup(&home, user_temp().as_deref(), &data, cleaner, volumes, reach).unwrap();
+        let finder = Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown));
+        let mut cleanup = cleanup(&home, user_temp().as_deref(), &data, cleaner, volumes, finder, reach).unwrap();
         if held {
             cleanup = CleanupPorts { cleaner: Arc::new(HeldCleaner(cleanup.cleaner)), ..cleanup };
         }

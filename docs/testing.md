@@ -180,6 +180,12 @@ cleanups of a hundred items through the real journal.
   in use with nothing of it moved, a cleanup empties each cache and keeps it with its entries in the Trash and put
   back returns them, and the storage map counts the caches in their app's line
   (`fixtures/golden/app-caches-browsers-flow.json`).
+  `tests/trash.rs` runs the Trash view's flows (plan 037) over `fixtures/homes/trash.toml` on the real scanner,
+  cleaner and journal with a fake Trash and a fake Finder: what the user put in the Trash counts in `waiting` only, a
+  cleanup's items count in both numbers, an item put back, emptied from the Trash, moved permanently or skipped
+  counts nothing, a rescan takes the cleanup into its measure and adds nothing twice, a Trash on a second folder
+  gets its own line, `open_trash` opens the folder it names and refuses an index it did not list, and Finder's
+  30-day setting dates the share.
   `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
@@ -243,6 +249,10 @@ cleanups of a hundred items through the real journal.
   previews, the simulators' caches and an archive, each for the app Xcode, and one device support folder left out as
   special; texts read from the module's `en.json`); the e2e mock plays it (`SCRIPTS.xcode`) on the cards, the Details
   (visual and axe), the review naming High, a cleanup that empties the caches and moves the archive, and the put back.
+- `src/test/trash-view.ts` holds the samples of the Trash view (a line with a share, a dated one, one not measured, two
+  Trashes); the e2e mock plays them (`SCRIPTS.trash`, `trashDated`, `trashCleaning`, `trashNotMeasured`, `trashTwo`,
+  `get_trash` and `open_trash`, which refuses an unlisted index) on the scan screen (visual and axe), a cleanup that
+  grows the line, Open Trash, and a result with no button named "empty".
 - UI e2e and visual tests: `app/ui/e2e/`, the core mocked with `e2e/core-mock.ts` (answers, refusals, the events a
   scan streams through the channel, a scan held mid-stream until `releaseScan` or Stop, a scan paced by `interval`
   (one event every so many ms, each asked of Node, as the engine streams), Scan's totals during and after the scan,
@@ -507,6 +517,10 @@ The case files:
   file hard-linked into a trial cache keeps its content under its own name; the scan keeps out of `Documents` (a place
   that may prompt); an item inside the hard-blocked `Library/Caches` goes on its own; a trial cache inside the Trash is
   offered but left out as protected.
+- `trash.toml`: the Trash line, on the `trial` module. What the user put in the Trash is never offered and counts in
+  the first number only (what waits there); a trial cache's cleanup adds to both numbers.
+- `trash-empty.toml`: the Trash line with an empty Trash, on the `trial` module. Nothing is said before the cleanup;
+  after it, everything in the Trash is from cleanups here.
 - `storage-map.toml`: the storage map, on the `trial` module, every case with a `[case.map]`. A folder no module
   claims, a look-alike of a trial cache, a hard-linked file (its two names take its blocks once) and the Trash are the
   user's own folders, never explained; a folder that is almost one child opens through it (`home/Library` down to
@@ -651,6 +665,15 @@ were moved in, so the findings' ids, which differ from run to run, never show in
 volume with 4 KiB blocks, as on every Mac and in CI (macOS): a byte of data takes one block and a sparse file none. A
 golden check fails with that message on a volume that differs. A failure names its case. Guards: every case file has
 a test, and every module the app registers (but `demo`, whose findings are made up) has a case file naming it.
+
+Every report also holds the engine's Trash view (`trash`: `before` and `after` the cleanup, each line's `index`,
+`volume`, `waiting` and `fromCleanups` in bytes on disk, and `goneBy`, never a path), and every run checks two
+invariants on it. Before the cleanup, no line has a share from cleanups: nothing came from cleanups before the first
+one. After it, the share is exactly the allocated sizes of the cleanup's items found in the Trash, all of it in line
+0 (the sandbox's `home/.Trash`), whose `waiting` is known and not below it; with nothing moved, no line has a share.
+A split of one Trash into two lines (the same folder spelled two ways) fails them, and so does a share counted
+twice. `goneBy` is `null` in every golden, since the autotest's fake command runner answers no `defaults`. A failure
+names the case file and both numbers.
 
 A case file checks left-outs exactly: the scan's `ModuleFinished.left_out` of every registered module, summed per
 category and reason, must equal the sum of the file's `[[case.left-out]]` expectations in items. A pair a module

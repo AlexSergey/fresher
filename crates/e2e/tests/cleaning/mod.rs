@@ -190,7 +190,13 @@ pub(crate) fn home_sharing(setup: Setup, data: Arc<tempfile::TempDir>) -> Home {
     };
     let volumes = FakeVolumes::default()
         .with(&fixture, VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) });
-    let cleanup = CleanupPorts { cleaner, journal, volumes: Arc::new(volumes) };
+    let cleanup = CleanupPorts {
+        cleaner,
+        journal,
+        volumes: Arc::new(volumes),
+        finder: Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown)),
+        trashes: Vec::new(),
+    };
     let mut registry = Registry::new().unwrap();
     registry.register(Box::new(TrialModule::new().unwrap())).unwrap();
     registry.register(Box::new(BuildModule::new())).unwrap();

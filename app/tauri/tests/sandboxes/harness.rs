@@ -117,7 +117,7 @@ pub(crate) fn registered_modules() -> Vec<String> {
 }
 
 /// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation. The storage map
-/// is checked after the scan and before the cleanup.
+/// is checked after the scan and before the cleanup, the Trash view both before and after it.
 pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let file = CaseFile::parse(text).map_err(|error| failure(name, format!("the case file is refused: {error}")))?;
     let world = World::new(name)?;
@@ -141,8 +141,12 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
         }
     }
     let map = check_map(name, &file, &engine, &sandbox, &findings)?;
+    let trash_before = engine.trash();
+    crate::trash::check_before(name, &trash_before)?;
     let (view, detail) = clean(name, &engine, &positives)?;
     let (view, detail) = (view.as_ref(), detail.as_ref());
+    let trash_after = engine.trash();
+    crate::trash::check_after(name, &trash_after, detail)?;
 
     let after = report_of(name, &sandbox)?;
     for case in file.cases() {
@@ -158,6 +162,7 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
         "findings": findings.iter().map(|finding| finding_report(finding, &sandbox)).collect::<Vec<_>>(),
         "map": map,
         "cleanup": cleanup_report(&sandbox, &findings, view, detail),
+        "trash": { "before": crate::trash::report(&trash_before), "after": crate::trash::report(&trash_after) },
         "treeAfter": tree_report(&after),
     });
     if let Some(left_out) = crate::left_out::report(&left_out) {

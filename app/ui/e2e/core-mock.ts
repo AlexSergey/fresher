@@ -171,6 +171,14 @@ import {
   TEMP_SETTINGS,
 } from '../src/test/temp-scan';
 import {
+  TRASH_AFTER_CLEANUP,
+  TRASH_NOT_MEASURED,
+  TRASH_ONE,
+  TRASH_ONE_DATED,
+  TRASH_TWO,
+  UNKNOWN_TRASH,
+} from '../src/test/trash-view';
+import {
   UNUSED_TOOLCHAINS_DEFAULT_SETTINGS,
   UNUSED_TOOLCHAINS_DICTIONARY,
   UNUSED_TOOLCHAINS_FINDINGS,
@@ -260,11 +268,13 @@ type ByCommand = {
   readonly getStorageMap: string;
   readonly getStorageMeaning: string;
   readonly getStoragePlace: string;
+  readonly getTrash: string;
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
   readonly ignoredPathsHook: string;
   readonly ignoreHook: string;
   readonly interval: null | number;
+  readonly openTrash: string;
   readonly overviewOf: string;
   // How many events a scan paced by `interval` streams.
   readonly paced: number;
@@ -278,6 +288,7 @@ type ByCommand = {
   readonly stop: NonNullable<CoreScript['stop']> | null;
   readonly storage: { readonly scanned: StorageAnswers; readonly scanning: StorageAnswers };
   readonly subscribe: string;
+  readonly unknownTrash: Refusal;
   readonly updateSetting: string;
 };
 
@@ -337,11 +348,13 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     getStorageMap: COMMANDS.getStorageMap,
     getStorageMeaning: COMMANDS.getStorageMeaning,
     getStoragePlace: COMMANDS.getStoragePlace,
+    getTrash: COMMANDS.getTrash,
     hold: script.hold ?? null,
     hooks: CLEANUP_HOOKS,
     ignoredPathsHook: IGNORED_PATHS_HOOK,
     ignoreHook: IGNORE_HOOK,
     interval: script.interval ?? null,
+    openTrash: COMMANDS.openTrash,
     overviewOf: OVERVIEW_OF,
     paced: script.interval === undefined ? 0 : (script.scan ?? []).length,
     pageOf: PAGE_OF,
@@ -354,6 +367,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     stop: script.stop ?? null,
     storage: storageOfScan(script.scanned ?? null, script.meaning, script.storage),
     subscribe: COMMANDS.subscribe,
+    unknownTrash: UNKNOWN_TRASH,
     updateSetting: COMMANDS.updateSetting,
   };
 
@@ -377,6 +391,11 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     let running = false;
     // The places of the last scan by their node's index; `null` while a scan runs, so they are refused as busy.
     let places: StorageAnswers['places'] = {};
+    // The Trash lines the last `get_trash` answered, and the Trashes `open_trash` was asked to open.
+    let listed = 0;
+    const opened: number[] = [];
+
+    Object.assign(globalThis, { __openedTrash: opened });
 
     const send = (events: readonly Event[]): void => {
       const deliver = channel === undefined ? undefined : callbacks.get(channel);
@@ -479,6 +498,30 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       return Promise.resolve(places[String(index)] ?? core.emptyPlace);
     };
 
+    // `get_trash` answers the script's view (none by default); `open_trash` records the index, or refuses one the last
+    // answer did not have.
+    const trashOf = (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> | undefined => {
+      if (command !== core.getTrash && command !== core.openTrash) {
+        return undefined;
+      }
+      if (command === core.getTrash) {
+        const view = (answers[command] ?? { trashes: [] }) as { readonly trashes: readonly unknown[] };
+
+        listed = view.trashes.length;
+
+        return Promise.resolve(view);
+      }
+      const index = args.index as number;
+
+      if (!Number.isInteger(index) || index < 0 || index >= listed) {
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- the core rejects a plain object
+        return Promise.reject({ ...core.unknownTrash, error: { code: 'unknown-trash', index } });
+      }
+      opened.push(index);
+
+      return Promise.resolve(null);
+    };
+
     const invoke = (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> => {
       const cleanup = (
         globalThis as unknown as Record<
@@ -494,7 +537,9 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
         >
       )[core.ignoreHook];
       const answered =
-        command in core.refusals ? undefined : (cleanup?.(command, args) ?? ignoring?.(command, args, answers));
+        command in core.refusals
+          ? undefined
+          : (cleanup?.(command, args) ?? ignoring?.(command, args, answers) ?? trashOf(command, args));
 
       if (answered !== undefined) {
         return answered;
@@ -832,7 +877,8 @@ const appCachesBrowsersCleanup = (): CleanupScript => {
 
 // The cleanup of the previews, the simulator caches and the archive: the previews are emptied into the Trash (the
 // folder stays), the simulator caches had nothing left to move (the folder emptied itself between the scan and the
-// cleanup; a file held open would skip the item as in use instead), the archive is moved. Only the device support is left, 7.3 GB; 1.5 GB wait in the Trash.
+// cleanup; a file held open would skip the item as in use instead), the archive is moved. Only the device support is
+// left, 7.3 GB; 1.5 GB wait in the Trash. The mock states the Trash line alone, without a matching cleanup history.
 const xcodeCleanup = (): CleanupScript => {
   const plan = planOf(XCODE_FINDINGS.filter(({ id }) => id >= 803));
   const detail = emptiedDetailOf(plan, 3, 1_735_819_200, [
@@ -1225,6 +1271,25 @@ export const SCRIPTS = {
     scanned: TEMP_OVERVIEW,
     storage: { map: TEMP_MAP, places: TEMP_PLACES },
   },
+  // The demo scan; the Trash holds 23 GB, 20 GB of it from earlier cleanups.
+  trash: { answers: { ...ANSWERS, getTrash: TRASH_ONE }, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
+  // The same, with a cleanup of the demo plan: nothing waits before it, its share does after it.
+  trashCleaning: {
+    answers: { ...CLEANING_ANSWERS, getTrash: { trashes: [] } },
+    cleanup: { ...CLEANUP, trashAfterCleanup: TRASH_AFTER_CLEANUP },
+    scan: DEMO_SCAN,
+    scanned: DEMO_OVERVIEW,
+  },
+  // The same with Finder's 30-day setting: the share's date is shown.
+  trashDated: { answers: { ...ANSWERS, getTrash: TRASH_ONE_DATED }, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
+  // The same, the Trash not measured: only the share of the cleanups is known.
+  trashNotMeasured: {
+    answers: { ...ANSWERS, getTrash: TRASH_NOT_MEASURED },
+    scan: DEMO_SCAN,
+    scanned: DEMO_OVERVIEW,
+  },
+  // Two Trashes, the second volume's not measured.
+  trashTwo: { answers: { ...ANSWERS, getTrash: TRASH_TWO }, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
   // The demo scan held before its first event: the core runs it, the app does not know yet.
   unannounced: { answers: ANSWERS, hold: 0, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },
   // The unused toolchains scan, streamed at once, with the Node switch on; the cleanup moves a Rust toolchain.

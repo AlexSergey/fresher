@@ -1,0 +1,26 @@
+# The home of the Trash view's core end-to-end flows (crates/e2e/tests/trash.rs), laid out as a sandbox lays out its
+# home (`home/`); the flows add the rest of the sandbox's layout, its marker and a marker next to each trial cache.
+# Two trial caches the `trial` module claims (moved to the Trash), a file the user put in the home's Trash before any
+# scan, and a plain file no one claims. Every file holds data.
+
+[[file]]
+path = "home/work-a/fresher-trial-cache/blob.bin"
+size = 65536
+fill = "data"
+
+[[file]]
+path = "home/work-b/fresher-trial-cache/blob.bin"
+size = 32768
+fill = "data"
+
+# The user's own file in the Trash: it counts in what waits there, never in what cleanups put there.
+[[file]]
+path = "home/.Trash/old-notes.txt"
+size = 16384
+fill = "data"
+
+# Not a trial folder: never claimed, never moved.
+[[file]]
+path = "home/plain/keep.txt"
+size = 512
+fill = "data"

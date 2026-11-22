@@ -194,6 +194,18 @@
       }
     ]
   },
+  "trash": {
+    "after": [
+      {
+        "fromCleanups": 32768,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 32768
+      }
+    ],
+    "before": []
+  },
   "treeAfter": {
     "entries": [
       {

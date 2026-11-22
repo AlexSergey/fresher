@@ -94,6 +94,25 @@ test.describe('negative cases', () => {
     expect(answered.total).toBe(1);
   });
 
+  test('open_trash refuses an index the last get_trash answer did not have', async ({ page }) => {
+    await mockCore(page, SCRIPTS.trash);
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Open Trash' })).toBeVisible();
+
+    const refusal = await page.evaluate(async (command) => {
+      const internals = (globalThis as unknown as Record<string, { invoke: (...args: unknown[]) => Promise<unknown> }>)
+        .__TAURI_INTERNALS__;
+
+      return internals?.invoke(command, { index: 1 }).then(
+        () => null,
+        (error: unknown) => error,
+      );
+    }, COMMANDS.openTrash);
+
+    expect(refusal).toMatchObject({ error: { code: 'unknown-trash', index: 1 } });
+    expect(await page.evaluate(() => (globalThis as unknown as { __openedTrash: number[] }).__openedTrash)).toEqual([]);
+  });
+
   test('has no findings before a scan', async ({ page }) => {
     await mockCore(page, { answers, scan: SCAN.events });
     await page.goto('/');

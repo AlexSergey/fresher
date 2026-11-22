@@ -172,6 +172,14 @@ The app deletes files from a real person's disk. These rules hold in every versi
   (`cleanup/context.rs`; a list it refuses blocks the cleanup). Tests: `crates/engine/src/ignore.rs`,
   `crates/e2e/tests/ignore.rs`; cleaning blocked on an unloaded file: `crates/engine/src/cleanup/blocked.rs`.
 
+## The Trash is never emptied
+
+- **Rule:** the app never empties the Trash and never offers to (the user's decision of 2026-11-22). It only shows what
+  waits there and opens the Trash folder in Finder; emptying it is the user's act, in Finder.
+- **Why:** rule 1 of [`../rules.md`](../rules.md): what is in the Trash is the last copy the user can still bring back.
+- **Enforced by:** the engine's `trash.rs` only reads (no remove call), `open_trash` takes an index of a listed Trash and
+  never a path; a test that no "empty" wording appears in the UI; review.
+
 ## No administrator rights
 
 - **Rule:** the app never elevates: no privileged helper, no launch daemon, no password prompt, no `sudo`. An item the

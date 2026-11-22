@@ -1,0 +1,27 @@
+# The Trash line: what the user put in the Trash counts in the first number only; a cleanup adds to both.
+feature = "trash"
+module = "trial"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "a file you put in the Trash is never offered and counts only in the first number"
+kind = "negative"
+[[case.file]]
+path = "home/.Trash/old-report.pdf"
+size = 2097152
+fill = "data"
+
+[[case]]
+name = "a trial cache goes to the Trash and adds to both numbers"
+kind = "positive"
+[[case.marker]]
+path = "home/trash-work"
+[[case.file]]
+path = "home/trash-work/fresher-trial-cache/blob.bin"
+size = 4194304
+fill = "data"
+[case.expect]
+item = "home/trash-work/fresher-trial-cache"
+category = "trial.caches"
+danger = "safe"
+after-cleanup = "in-trash"
