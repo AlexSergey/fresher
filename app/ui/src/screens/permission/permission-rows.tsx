@@ -146,7 +146,7 @@ export const PermissionRows = ({
                 <span className={styles.note}>{text(id, 'denied')}</span>
               </div>
             ) : isOptIn(capability) || access === 'granted' ? null : (
-              <p className={styles.note}>{text(id, 'how')}</p>
+              <p className={styles.note}>{text(id, access === 'not-asked' ? 'missing' : 'how')}</p>
             )}
           </Row>
         );

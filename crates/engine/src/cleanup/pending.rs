@@ -3,22 +3,45 @@
 //! changes what is scanned changes, or [`PLAN_LIFETIME`](fresher_core::PLAN_LIFETIME) has passed (the confirmation
 //! checks that).
 
+use std::path::PathBuf;
+
 use fresher_core::{
-    CategoryDescriptor, CleanupPlan, CleanupPlanView, CleanupSelection, CommandError, Depth, PlanError, PlanId,
-    Timestamp,
+    AppId, BundleId, CategoryDescriptor, CleanupPlan, CleanupPlanView, CleanupSelection, CommandError, Depth, Finding,
+    PlanError, PlanId, ScanId, Timestamp,
 };
 
-use crate::cleanup::context::Context;
+use crate::cleanup::context::{Context, Scope};
 use crate::cleanup::{blocked, plan, view};
 use crate::engine::Shared;
 use crate::error::{EngineError, lock};
 use crate::own::offered_picks;
 
-/// The plan waiting for its confirmation, the id of the last plan made, and how many times a plan died: a plan
-/// prepared while one died is not kept.
+/// What the pending plan was made for: its confirmation is judged and cleaned for it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) enum Purpose {
+    /// The findings and picks the user selected.
+    #[default]
+    Selection,
+    /// The uninstall of app `id`, of bundle id `app`, whose bundle is `bundle` as the system listed it.
+    Uninstall { id: AppId, app: BundleId, bundle: PathBuf },
+}
+
+impl Purpose {
+    /// The scope of the cleanup context the plan is rehearsed and cleaned with.
+    pub(crate) const fn scope(&self) -> Scope {
+        match self {
+            Self::Selection => Scope::Cleanup,
+            Self::Uninstall { .. } => Scope::Uninstall,
+        }
+    }
+}
+
+/// The plan waiting for its confirmation and what it was made for, the id of the last plan made, and how many times a
+/// plan died: a plan prepared while one died is not kept.
 #[derive(Debug, Default)]
 pub(crate) struct Pending {
     plan: Option<CleanupPlan>,
+    purpose: Purpose,
     last_id: u32,
     deaths: u64,
 }
@@ -27,8 +50,15 @@ impl Pending {
     /// The pending plan dies, if there is one; answers the count a plan prepared from now on must find to be kept.
     pub(crate) fn kill(&mut self) -> u64 {
         self.plan = None;
+        self.purpose = Purpose::Selection;
         self.deaths = self.deaths.wrapping_add(1);
         self.deaths
+    }
+
+    /// The pending plan and what it was made for, if there is one.
+    #[cfg(test)]
+    pub(crate) fn pending(&self) -> Option<(&CleanupPlan, &Purpose)> {
+        self.plan.as_ref().map(|plan| (plan, &self.purpose))
     }
 
     /// The pending plan dies when it is `id`; any other id changes nothing.
@@ -38,18 +68,21 @@ impl Pending {
         }
     }
 
-    /// Takes the pending plan for its confirmation: it is pending no more, whatever the confirmation says.
-    pub(crate) fn take(&mut self) -> Option<CleanupPlan> {
+    /// Takes the pending plan and its purpose for its confirmation: it is pending no more, whatever the confirmation
+    /// says.
+    pub(crate) fn take(&mut self) -> Option<(CleanupPlan, Purpose)> {
         let plan = self.plan.take();
+        let purpose = std::mem::take(&mut self.purpose);
         self.kill();
-        plan
+        plan.map(|plan| (plan, purpose))
     }
 
-    /// Keeps the plan `make` builds with the next id, when no plan died since `deaths` was answered; `PlanGone`
-    /// otherwise.
+    /// Keeps the plan `make` builds with the next id, for `purpose`, when no plan died since `deaths` was answered;
+    /// `PlanGone` otherwise.
     fn keep(
         &mut self,
         deaths: u64,
+        purpose: Purpose,
         make: impl FnOnce(PlanId) -> Result<CleanupPlan, CommandError>,
     ) -> Result<&CleanupPlan, CommandError> {
         if deaths != self.deaths {
@@ -58,6 +91,7 @@ impl Pending {
         let id = self.last_id.checked_add(1).ok_or(EngineError::PlanIdsExhausted)?;
         let plan = make(PlanId::new(id))?;
         self.last_id = id;
+        self.purpose = purpose;
         Ok(self.plan.insert(plan))
     }
 }
@@ -79,10 +113,32 @@ pub(crate) fn prepare(shared: &Shared, selection: &CleanupSelection) -> Result<C
         let selected: Vec<_> = plan::expand(selection, &findings, &categories)?.into_iter().cloned().collect();
         (last.scan, results.walked_roots(), selected)
     };
-    let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?;
     let selected: Vec<_> = selected.iter().collect();
-    let sorted = plan::sort_out(&selected, &[]);
-    let cx = Context::now(shared)?;
+    rehearse_and_keep(shared, Planned { deaths, scan, roots, purpose: Purpose::Selection }, &selected)
+}
+
+/// What a plan is made of besides its findings.
+#[derive(Debug)]
+pub(crate) struct Planned {
+    /// The deaths count answered when the pending plan was killed.
+    pub(crate) deaths: u64,
+    pub(crate) scan: ScanId,
+    pub(crate) roots: Vec<PathBuf>,
+    pub(crate) purpose: Purpose,
+}
+
+/// The tail every plan is made by: refused when cleaning is blocked; `selected` (in the confirmation's order) sorted
+/// out, the findings kept rehearsed (`Depth::Quick`) with the context of the purpose's scope as it stands now, frozen,
+/// and kept as the pending plan, unless an operation started or a plan died meanwhile.
+pub(crate) fn rehearse_and_keep(
+    shared: &Shared,
+    planned: Planned,
+    selected: &[&Finding],
+) -> Result<CleanupPlanView, CommandError> {
+    let Planned { deaths, scan, roots, purpose } = planned;
+    let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?;
+    let sorted = plan::sort_out(selected, &[]);
+    let cx = Context::now(shared, purpose.scope())?;
     let answers = ports.cleaner.rehearse(&roots, &plan::to_rehearse(&sorted), &cx.borrow(), Depth::Quick);
     let (items, left_out) = plan::freeze(sorted, answers)?;
     let made = Timestamp::from_system_time(shared.ports.clock.now());
@@ -90,13 +146,14 @@ pub(crate) fn prepare(shared: &Shared, selection: &CleanupSelection) -> Result<C
     let machine = lock(&shared.machine)?;
     machine.idle()?;
     let mut pending = lock(&shared.pending)?;
-    let plan = pending.keep(deaths, |id| {
+    let view_purpose = purpose.clone();
+    let plan = pending.keep(deaths, purpose, |id| {
         CleanupPlan::new(id, made, scan, roots, items, left_out).map_err(|error| match error {
             PlanError::TooManyItems { limit } => CommandError::TooManyItems { limit },
             error @ (PlanError::Duplicate { .. } | PlanError::Overflow) => EngineError::Plan(error).into(),
         })
     })?;
-    Ok(view::of(plan)?)
+    Ok(view::of(plan, &view_purpose)?)
 }
 
 #[cfg(test)]
@@ -273,7 +330,8 @@ mod tests {
             let deaths = pending.kill();
             pending.kill();
 
-            let kept = pending.keep(deaths, |_| unreachable!("a plan is not made"));
+            let kept = pending
+                .keep(deaths, crate::cleanup::pending::Purpose::Selection, |_| unreachable!("a plan is not made"));
 
             assert_eq!(kept.err(), Some(CommandError::PlanGone));
         }

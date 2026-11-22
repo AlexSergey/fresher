@@ -198,6 +198,15 @@ cleanups of a hundred items through the real journal.
   confirmed plan at High to the Trash and leave the list, put back returns a file byte for byte, a restored scan lists
   the same rows and a rescan after put back lists the file again (`fixtures/golden/largest-flow.json`, the first scan's
   Files page and the home's Folders page).
+  `tests/uninstall.rs` runs the uninstall's flows (plan 036) over `fixtures/homes/uninstall-flow.toml` with the real
+  scanner, cleaner, journal and the real joined protection (the sandbox's apps folder opened for whole bundles by the
+  same call as `/Applications`), a fake Trash and a stated bundle reader: an ordinary cleanup never moves a bundle in
+  either apps folder (mutation-checked against the engine's second wall); a part replaced, held open or grown, an app
+  opened after the plan, a bundle swapped for a link or renamed to another case after the plan, and a bundle moved and
+  scanned again all move nothing (or kill the plan); a second copy of the app keeps the data; a look-alike id's cache
+  stays; keep-data moves the app, its caches, logs, saved state and launch agent and keeps the rest; everything moves
+  every part (the group container only when other apps' data is granted); put back brings the whole app back
+  (`fixtures/golden/uninstall-flow.json`).
   `tests/local_ai_models.rs` runs the `local-ai-models` module's flows alone over `fixtures/homes/local-ai-models-flow.toml`
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
@@ -300,6 +309,10 @@ cleanups of a hundred items through the real journal.
   another macOS version, which draws text a few pixels differently, so CI runs the suite with `--ignore-snapshots`
   (every other check still runs) and turns on full keyboard access (`AppleKeyboardUIMode` 3), without which WebKit's
   Tab skips buttons. When the runner has the developer's macOS version, CI can compare the screenshots again.
+- **The Apps screens' flows** (plan 036, `e2e/apps.spec.ts`, `e2e/support/apps-mock.ts`): the list, its filter and each
+  not-offered reason; the app's page with its footprint item by item; the two choices (radios, by keyboard); the
+  notice of App Management; a refused uninstall reloading the page; the confirmation with one item and "and N more
+  files"; Review showing a refusal. Scenarios `apps` and `appsDenied`; the gallery holds the product components.
 - **The Scan screen's flows** (`e2e/scan.spec.ts`, `e2e/flows.spec.ts`): the ring and the legend highlight each other
   and the legend's "i" opens the core's description; a card's settings menu opens, closes on Escape and works by
   keyboard (Ignore category, Ignore module); a finding row's menu on a category's details closes on Escape,
@@ -551,6 +564,14 @@ The case files:
   folder and a folder chosen whole are picked as the screen's tick does and go to the Trash as `core.own-file` (High).
   The list ranks by allocated bytes, so its files are filled with data (12 to 16 MiB); nothing lies in `Downloads` or
   `Desktop`, which other case files' worlds deny in `all`.
+- `uninstall.toml` and `uninstall-open.toml`: the Apps screen, on the `trial` module (plan 036). An app of the system and
+  one with Apple's id are not listed; an app Homebrew installed and one owned by the system are listed and never
+  offered; a look-alike id's cache beside an uninstalled app stays; Keeper with keep-data moves its bundle, caches,
+  logs and saved state and keeps its settings (a 1 MiB plist: the scan folds a smaller file no module asks for, so a
+  footprint may miss it, see [`deferred/uninstall-small-library-parts.md`](./deferred/uninstall-small-library-parts.md))
+  and support; Purger with everything also moves its settings and a launch agent; Twin, two copies of one id, keeps
+  the data as shared. The second file has an open app, kept, and a closed one uninstalled beside it. Cleanups puts each
+  back.
 - `trial.toml`: the `trial` module. A look-alike folder, a trial folder with no marker next to it, a file named like a
   trial folder and a plain file next to a marker are never offered; a cache next to a marker goes to the Trash, a kept
   folder is emptied.
@@ -778,6 +799,15 @@ at = "home/VMs/Old.utm"      # optional for offered and absent (by default the c
 kind = "virtual-machine"     # optional, offered only: an ItemKind as serialized
 withheld = "standard-folder" # required for withheld, refused otherwise: a Withheld as serialized
 unpacked = "Photos"          # optional, offered only: the folder the row names beside an archive
+[case.uninstall]             # optional, on any case with a [[case.app]]
+app = "Applications/Keeper.app"   # one of the case's [[case.app]]
+# exactly one of the three forms:
+listed = false               # the Apps screen does not list it (an app of the system, Apple's id)
+offered = false              # listed, never offered, with `reason` (a NotOffered code as serialized)
+reason = "installed-by"      # required with offered = false, refused otherwise
+choice = "keep-data"         # keep-data | everything: the plan's paths are checked, then it is confirmed
+trashed = ["Applications/Keeper.app", "home/Library/Caches/com.example.Keeper"]   # the bundle first; in the sandbox's Trash afterwards
+kept = ["home/Library/Application Support/com.example.Keeper"]   # in place afterwards
 ```
 
 A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
@@ -856,6 +886,21 @@ the rows that hold the case's files: `explained` in full, or for `your-folders` 
 below or above `at`. A place that opens with no rows — a folder the scan does not go into, such as a claimed one, a
 folder whose small files the scan folds into it, or a file — is checked by its own row in its folder's view. The
 golden report holds the map's parts and, for every `at`, the folders the view went through and its rows.
+
+`[case.uninstall]` (plan 036) says what the Apps screen shows of one of the case's apps and what its uninstall does:
+`listed = false` is an app that is not in the list, `offered = false` with a `reason` an app that is listed and never
+offered, and a `choice` with `trashed` and `kept` an app that is uninstalled. A negative case takes the first two forms
+and a positive the third; `trashed` is the exact set of paths the plan moves (the bundle first, which the case file
+refuses otherwise), each one the case writes, and the sandbox's Trash must hold exactly one new entry per path with
+the bytes that path held. The autotest (`app/tauri/tests/sandboxes/uninstall.rs`) lists the apps after the scan,
+checks every expectation, prepares and confirms the choice with the module's cleanup, checks that every path that is
+not `trashed` is in place, and puts the cleanup back. A positive uninstall's bundle may not be written to by another
+case. `EXPECTED.md` writes a line per expectation from the core's dictionary and, for a positive, "uninstalled on the
+Apps screen". Three keys of `[[case.app]]` state facts a run by hand cannot make: `last-used` (an age, Spotlight's
+date), `installed-by` (`homebrew:<token>`, a package manager's link) and `owner` (`system` or `other`, the bundle's
+owner, as a `[[case.file]]`'s); `world.toml`'s `[[entry]]` carries `last-used` and `installed-by` and the sandbox reads
+them through `StatedInstalledApps`. The golden report holds an `apps` section (name, bundle, sizes, breakdown, offer)
+and an `uninstalls` section only for a case file with a `[case.uninstall]`.
 
 `[case.largest]` says what the Largest screen shows at the case's `at` (one of its paths or their folders): `offered`
 is a Files row at `at` that can be chosen, of `kind` and naming `unpacked` beside it when the case says (a folder with

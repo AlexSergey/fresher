@@ -19,7 +19,9 @@ use fresher_core::{
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_macos::{current_user, protection, user_temp_dir};
-use fresher_sandbox::{AfterCleanup, Case, CaseFile, Expectation, Sandbox, StatedSpace, WorldCommands, generate};
+use fresher_sandbox::{
+    AfterCleanup, Case, CaseFile, CaseKind, Expectation, Sandbox, StatedSpace, WorldCommands, generate,
+};
 use fresher_testing::{FIXTURE_NOW, FakeAccess, FakeClock, FakeOpenFiles, FakeVolumes, TreeEntry, TreeReport};
 use serde_json::{Value, json};
 use tempfile::TempDir;
@@ -117,7 +119,8 @@ pub(crate) fn registered_modules() -> Vec<String> {
 
 /// Runs the case file `text`, named `name` in failures: the report, or the first broken expectation. The Largest screen
 /// (its picks joining the findings) and the storage map are checked after the scan and before the cleanup, the Trash
-/// view both before and after it; a program the case file
+/// view both before and after it, the Apps screen and each uninstall (put back at once) after it; a program the case
+/// file
 /// does not state fails the run after the scan and after the cleanup; the insights its module described must be the
 /// ones its cases expect.
 pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
@@ -151,6 +154,8 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let mut positives = Vec::new();
     for case in file.cases() {
         match case.expect() {
+            // A positive without `[case.expect]` is an uninstall, checked on the Apps screen.
+            None if case.kind() == CaseKind::Positive => {}
             None => check_not_offered(case, &file, &sandbox, &findings)?,
             Some(expect) => positives.push(check_offered(case, expect, &sandbox, &findings)?),
         }
@@ -163,10 +168,13 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let (view, detail) = (view.as_ref(), detail.as_ref());
     let trash_after = engine.trash();
     crate::trash::check_after(name, &trash_after, detail)?;
+    let uninstalls = crate::uninstall::check_uninstalls(name, &file, &engine, &sandbox)?;
+    check_no_unstated_calls(name, &commands)?;
 
     let after = report_of(name, &sandbox)?;
     for case in file.cases() {
         match case.expect() {
+            None if case.kind() == CaseKind::Positive => {}
             None => check_untouched(case, &before, &after)?,
             Some(expect) => check_after(case, expect, &sandbox, &findings, view, detail)?,
         }
@@ -189,6 +197,10 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     }
     if let Some(largest) = largest {
         report["largest"] = largest;
+    }
+    if let Some((apps, uninstalls)) = uninstalls {
+        report["apps"] = apps;
+        report["uninstalls"] = uninstalls;
     }
     Ok(report)
 }
@@ -360,7 +372,11 @@ pub(crate) fn scan(name: &str, engine: &Engine) -> Result<(Vec<LeftOutCount>, De
 }
 
 /// Waits for the first event that `is_last`; on a timeout, the failure names the last event seen.
-fn until(name: &str, events: &Receiver<Event>, mut is_last: impl FnMut(&Event) -> bool) -> Result<(), Failure> {
+pub(crate) fn until(
+    name: &str,
+    events: &Receiver<Event>,
+    mut is_last: impl FnMut(&Event) -> bool,
+) -> Result<(), Failure> {
     let mut last: Option<Event> = None;
     loop {
         let event = events.recv_timeout(WAIT).map_err(|error| {

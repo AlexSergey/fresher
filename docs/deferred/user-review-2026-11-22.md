@@ -249,3 +249,67 @@ Plan [035](../plans/035-large-files/readme.md), awaiting the user's walk.
   behaviour); the confirmation has no separate High tick yet (plan 039).
 - **Known gaps**: [`largest-files-more.md`](./largest-files-more.md); the folders' sizes after a cleanup stay the
   scan's until a rescan; a folder's "Changed" is its own time.
+
+## 036 — Uninstall an app
+
+Plan [036](../plans/036-uninstall/readme.md), awaiting the user's walk.
+
+- **The top item to review: `/Applications` opens its whole app bundles, for an uninstall only**
+  ([`deletion-safety.md`](../restrictions/deletion-safety.md), [`removal.md`](../architecture/removal.md)). The walls:
+  - the protection is lexical: only `<folder>/<name>.app` and `<folder>/<sub>/<name>.app` pass; nothing inside a bundle,
+    the folder itself or `<folder>/<sub>`; Fresher's own bundle never;
+  - a link named `X.app` passes the protection by its name, so the listing and the uninstall plan refuse links (the
+    listing reads each bundle with `lstat`), and the cleaner opens no link;
+  - a bundle that matches a never or ignored place ignoring case is refused (`fresher.app` against Fresher's own);
+  - the plan is made only from the listing and refused unless the bundle's canonical path equals the listed path byte
+    for byte and is a real folder with `Contents/Info.plist`, at prepare and at confirm;
+  - limits: no Unicode case folding or normalisation in the protection (mitigated by the canonical check), and the
+    cleaner's own check compares names as written for every protected place (a pre-existing gap, not touched because
+    the cleaner is frozen in this plan): a **security-audit item** for plan 041
+    ([`../known-issues/core-protection-passes-a-bundle-shaped-link.md`](../known-issues/core-protection-passes-a-bundle-shaped-link.md),
+    [`../known-issues/cleaner-protection-compares-names-as-written.md`](../known-issues/cleaner-protection-compares-names-as-written.md)).
+- **A behaviour change outside the Apps screen**: ordinary cleanups now refuse `~/Applications` as well as
+  `/Applications` (a Largest pick of a folder there is left out as protected); only an uninstall opens them.
+- **Who is offered**: App Store apps (owned by root) and any root-owned app are listed and not offered, with Show in
+  Finder; Homebrew casks are listed and not offered (installed by the manager, with its command to copy); an
+  incomplete installed list (an unreadable folder) keeps every part of every app but the bundle, so only the bundle
+  goes.
+- **An uninstall always goes to the Trash** (the controller's ruling on the final review): its confirmation offers no
+  "Delete permanently", and the engine refuses a permanent confirmation of it (`PlanMismatch`), nothing acted on.
+- **App Management is learned passively**: `NotAsked` until the first uninstall, then `Granted` once the bundle moved
+  (also when only some of the other parts went) or `Denied` after any Trash refusal of the bundle; an uninstall from
+  `~/Applications` teaches nothing. That is over-broad (the cleaner maps every refusal to one failure) and macOS's
+  behaviour is unverified
+  ([`../deferred/app-management-denied-from-not-allowed.md`](../deferred/app-management-denied-from-not-allowed.md)).
+- **`id -G` is run** (read-only, through the command runner, by full path, fails closed) to read the user's groups, so
+  an app in `/Applications` owned by root and the admin group is told from one that needs an administrator.
+- **The default choice**: "keep its settings and data" is Medium and also moves the launch agents (login items) with
+  the caches, logs and saved windows; "everything it left" is High and adds settings, website data, support,
+  containers and group containers.
+- **Walks by hand**: `rm -rf sandbox/uninstall && npm run dev:sandbox -- uninstall`, walk `EXPECTED.md` line by line,
+  negatives first (Chess and Notes not listed; Brewed shows Homebrew's sentence and command; Rooted shows "needs an
+  administrator" and Show in Finder; Keeperx's cache untouched); uninstall Keeper with the default choice, then Purger
+  with everything; read the confirmation (one item, "and N more files"); Cleanups, put back each; the Twin case.
+  `npm run dev:sandbox -- uninstall-open`: Mailbox shows "open"; Sketch goes (item 1.22 of
+  [`../manual-testing.md`](../manual-testing.md)).
+- **The dry run on the developer's Mac** (`npm run dev`, a scan of `~`, then Apps; item 2.20): the list against
+  `ls -l /Applications` (owners), `ls /opt/homebrew/Caskroom` (the Homebrew apps), the sizes against `du -sh
+  /Applications/<app>.app` for three apps; the App Store apps not offered; an uninstall of one app is "a dry run"
+  (nothing moves).
+- **Facts not verified**: whether macOS asks for App Management, refuses silently or shows its own notice on the first
+  bundle moved (a release build, one throwaway app the user installs for it); the pane's address
+  `Privacy_AppBundles`; whether moving a bundle with the Trash call keeps Finder's "Put Back"; how long the first
+  measure takes on a Mac with Xcode.
+- **Agent's calls worth a second look** ([`00-design.md`](../plans/036-uninstall/00-design.md)): 3 (last used), 5 (App
+  Store apps not offered), 7 (places as code), 8 (more than 64 paths refused), 9 (one item of several paths), 10 (the
+  apps folder's opening), 14 (the selection kept). From the build: a vendor app whose group containers carry another
+  team's prefix keeps them (`team-shared`), so a TeamPrefixed vendor's data stays; a part named only by a helper id
+  outside the app's own id prefix is kept. From the final review: another installed app whose team id cannot be read
+  never counts as the same team, so with "everything" a group container of the app's own team may go to the Trash
+  while that other app still uses it (it comes back by put back).
+- **Known gaps**: files under the app's name, system-wide files, containers without other apps' data, no watch mode
+  ([`../deferred/uninstall-system-files.md`](../deferred/uninstall-system-files.md)); the scan folds small Library files,
+  so a settings plist or a launch agent under 1 MiB may be missing from the footprint and an uninstall leaves it
+  ([`../deferred/uninstall-small-library-parts.md`](../deferred/uninstall-small-library-parts.md)); an app opened
+  between the confirmation and the move is not asked again
+  ([`../known-issues/cleaner-app-opened-after-the-confirmation.md`](../known-issues/cleaner-app-opened-after-the-confirmation.md)).

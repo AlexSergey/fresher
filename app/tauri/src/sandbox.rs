@@ -9,7 +9,7 @@ use std::sync::Arc;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
     AccessProbe, Build, Clock, CommandRunner, InstallRecords, InstalledApps, KnownFolders, ModuleId, OpenFiles,
-    RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
+    Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
@@ -18,8 +18,8 @@ use fresher_macos::{
 use fresher_sandbox::{Sandbox, StatedSpace, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, DeclaredSearch, MacFinderSettings, MacInstalledApps, ProcessCommandRunner,
-    StartedClock, SystemClock,
+    AppSearch, BundleReader, COMMAND_TIMEOUT, DeclaredSearch, MacFinderSettings, MacInstalledApps,
+    ProcessCommandRunner, StartedClock, SystemClock,
 };
 use fresher_testing::{FactsLens, FakeTrash, StatedFacts, StatedInstalledApps};
 
@@ -38,6 +38,8 @@ const TRASH_VARIABLE: &str = "FRESHER_SANDBOX_TRASH";
 const REAL_TRASH: &str = "real";
 /// The user's Trash, in the home.
 const HOME_TRASH: &str = ".Trash";
+/// The sandbox's apps folder, at its top: the stand-in of `/Applications`.
+const APPS_FOLDER: &str = "Applications";
 
 /// Where a cleanup in sandbox mode moves items.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -244,10 +246,12 @@ pub(crate) fn compose(
     // Each list keeps its own carve-outs: the real Mac stays safe whatever a bug does, and the sandbox behaves like a
     // Mac (its `Documents` whole, its `.Trash` never touched, its own `T` carved out of its users' folders). The
     // Mac's lists carve the real user's `T` out of every user's temporary folders, so a sandbox generated there stays
-    // reachable; the sandbox's `T` is no user's of the Mac, so it is carved by a list of its own.
+    // reachable; the sandbox's `T` is no user's of the Mac, so it is carved by a list of its own. The sandbox's apps
+    // folder is a list of its own too, opened like `/Applications`: a whole bundle may go, nothing inside one.
     let joined = real
         .joined(&protection(&home, data.path(), None, real_temp.as_deref())?)?
-        .joined(&sandbox.places_protection()?)?;
+        .joined(&sandbox.places_protection()?)?
+        .joined(&apps_protection(&sandbox)?)?;
     // With the system's Trash, the sandbox's items land in the Mac's own home Trash: the Trash view counts it too.
     let (trash, trashes): (Arc<dyn Trash>, Vec<PathBuf>) = match mode.trash() {
         SandboxTrash::Sandbox => (Arc::new(FakeTrash::new(sandbox.trash())), Vec::new()),
@@ -296,6 +300,13 @@ pub(crate) fn compose(
     Ok((engine, sandbox))
 }
 
+/// The sandbox's apps folder, the stand-in of `/Applications`, as the Mac's list has it: a never place that lets
+/// through exactly a whole app bundle at its top or one folder below.
+fn apps_protection(sandbox: &Sandbox) -> Result<Protection, ProtectionError> {
+    let apps = sandbox.path().join(APPS_FOLDER);
+    Protection::new(vec![apps.clone()], Vec::new(), Vec::new())?.with_app_folders(&[apps])
+}
+
 /// What the app's search answers in the sandbox at `path`: its listed apps, the apps its world declares elsewhere,
 /// and whether its Spotlight is on.
 fn app_search(world: &World, path: &Path) -> DeclaredSearch {
@@ -303,14 +314,16 @@ fn app_search(world: &World, path: &Path) -> DeclaredSearch {
 }
 
 /// The apps of the sandbox at `path`: the ones in its apps folders and its world's declared ones (Spotlight would
-/// answer the real Mac's), each with the change time the world states for its bundle.
+/// answer the real Mac's), each with the change time the world states for its bundle. Its bundles are measured on its
+/// own disk; the Mac's Spotlight and Caskrooms are never asked.
 fn installed_apps(
     world: &World,
     path: &Path,
     known_folders: Arc<dyn KnownFolders>,
     stated: &StatedFacts,
 ) -> Arc<dyn InstalledApps> {
-    let listed = MacInstalledApps::new(known_folders, AppSearch::Declared(app_search(world, path)));
+    let listed = MacInstalledApps::new(known_folders, AppSearch::Declared(app_search(world, path)))
+        .with_bundle_reader(BundleReader::stated(), current_user());
     Arc::new(StatedInstalledApps::new(Arc::new(listed), stated.clone()))
 }
 

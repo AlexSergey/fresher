@@ -1,13 +1,14 @@
 //! Fakes of the system's facts: the installed apps and the running apps a test makes up.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use fresher_core::{
-    AppIdError, AutoEmpty, BundleId, CancelToken, FinderSettings, InstallRecords, InstalledApp, InstalledApps,
-    InstalledList, Receipt, RunningApp, RunningApps, SystemError, SystemPorts, SystemVersion, TeamId, Timestamp,
+    AppIdError, AutoEmpty, BundleFacts, BundleId, ByteSize, CancelToken, EntryFacts, FinderSettings, InstallRecords,
+    InstalledApp, InstalledApps, InstalledList, Receipt, RunningApp, RunningApps, Sizes, SystemError, SystemPorts,
+    SystemVersion, TeamId, Timestamp,
 };
 
 use crate::fakes::lock;
@@ -66,7 +67,12 @@ pub struct FakeInstalledApps {
     then: Vec<Result<InstalledList, SystemError>>,
     elsewhere: Vec<InstalledApp>,
     search: Result<(), SystemError>,
+    /// The answer for each bundle's facts, by the bundle's path.
+    bundles: HashMap<PathBuf, Result<BundleFacts, SystemError>>,
+    /// The bundles with facts that are not on disk as listed (a link, another name's case or form, no `Info.plist`).
+    strays: Vec<PathBuf>,
     calls: AtomicUsize,
+    bundle_calls: AtomicUsize,
 }
 
 impl FakeInstalledApps {
@@ -76,7 +82,30 @@ impl FakeInstalledApps {
     }
 
     fn answering(answer: Result<InstalledList, SystemError>) -> Self {
-        Self { answer, then: Vec::new(), elsewhere: Vec::new(), search: Ok(()), calls: AtomicUsize::new(0) }
+        Self {
+            answer,
+            then: Vec::new(),
+            elsewhere: Vec::new(),
+            search: Ok(()),
+            bundles: HashMap::new(),
+            strays: Vec::new(),
+            calls: AtomicUsize::new(0),
+            bundle_calls: AtomicUsize::new(0),
+        }
+    }
+
+    /// The same apps, and `facts` answered for the bundle at `path`; any other bundle's facts are an error.
+    #[must_use]
+    pub fn with_bundle(mut self, path: impl Into<PathBuf>, facts: Result<BundleFacts, SystemError>) -> Self {
+        self.bundles.insert(path.into(), facts);
+        self
+    }
+
+    /// The same apps, and the bundle at `path` no longer on disk as listed: `is_as_listed` answers `false` for it.
+    #[must_use]
+    pub fn with_stray_bundle(mut self, path: impl Into<PathBuf>) -> Self {
+        self.strays.push(path.into());
+        self
     }
 
     /// Answers `apps` once the answers before it have been given: the apps installed or removed between scans.
@@ -118,6 +147,11 @@ impl FakeInstalledApps {
     pub fn calls(&self) -> usize {
         self.calls.load(Ordering::SeqCst)
     }
+
+    /// How many bundles' facts were asked.
+    pub fn bundle_calls(&self) -> usize {
+        self.bundle_calls.load(Ordering::SeqCst)
+    }
 }
 
 impl Default for FakeInstalledApps {
@@ -146,6 +180,30 @@ impl InstalledApps for FakeInstalledApps {
 
     fn search_complete(&self, _cancel: &CancelToken) -> Result<(), SystemError> {
         self.search.clone()
+    }
+
+    fn bundle(&self, app: &InstalledApp, _cancel: &CancelToken) -> Result<BundleFacts, SystemError> {
+        self.bundle_calls.fetch_add(1, Ordering::SeqCst);
+        self.bundles
+            .get(&app.path)
+            .cloned()
+            .unwrap_or_else(|| Err(SystemError { reason: "no facts stated for this bundle".into() }))
+    }
+
+    /// A bundle is on disk as listed when its facts are stated and it is no stray.
+    fn is_as_listed(&self, path: &Path) -> bool {
+        self.bundles.get(path).is_some_and(Result::is_ok) && !self.strays.iter().any(|stray| stray == path)
+    }
+}
+
+/// The facts of a bundle of `logical` bytes that take as many on disk, completely known: the user may move it, no
+/// last use is known and no package manager installed it.
+pub fn bundle_facts(logical: u64) -> BundleFacts {
+    BundleFacts {
+        sizes: Sizes::complete(ByteSize::new(logical), ByteSize::new(logical)),
+        entry: EntryFacts::REMOVABLE,
+        last_used: None,
+        installed_by: None,
     }
 }
 
@@ -300,6 +358,16 @@ mod tests {
         }
 
         #[test]
+        fn a_fake_answers_no_bundle_it_was_not_given() {
+            let app = crate::installed_app("com.example.Tool", "Tool", "1.0").unwrap();
+            let other = fresher_core::InstalledApp { path: "/Applications/Other.app".into(), ..app.clone() };
+            let apps = FakeInstalledApps::new(vec![app.clone()]).with_bundle(&other.path, Ok(crate::bundle_facts(1)));
+
+            assert!(apps.bundle(&app, &fresher_core::CancelToken::new()).is_err());
+            assert!(FakeInstalledApps::default().bundle(&app, &fresher_core::CancelToken::new()).is_err());
+        }
+
+        #[test]
         fn the_default_install_records_have_no_receipts_and_no_version() {
             let records = FakeInstallRecords::default();
 
@@ -351,12 +419,35 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::{AutoEmpty, FinderSettings, InstalledApps, InstalledList, RunningApps};
+        use fresher_core::{
+            AutoEmpty, ByteSize, CancelToken, Completeness, EntryFacts, FinderSettings, InstalledApps, InstalledList,
+            RunningApps, SystemError,
+        };
 
         use crate::{
-            FakeFinderSettings, FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, installed_app,
-            running_app, signed_by,
+            FakeFinderSettings, FakeInstallRecords, FakeInstalledApps, FakeRunningApps, bundle_facts, changed_at,
+            installed_app, running_app, signed_by,
         };
+
+        #[test]
+        fn a_fake_answers_the_bundle_it_was_given() {
+            let app = installed_app("com.example.Tool", "Tool", "1.0").unwrap();
+            let failing = fresher_core::InstalledApp { path: "/Applications/Locked.app".into(), ..app.clone() };
+            let unread = SystemError { reason: "the bundle cannot be read".into() };
+            let apps = FakeInstalledApps::new(vec![app.clone(), failing.clone()])
+                .with_bundle(&app.path, Ok(bundle_facts(4096)))
+                .with_bundle(&failing.path, Err(unread.clone()));
+
+            let facts = apps.bundle(&app, &CancelToken::new()).unwrap();
+
+            assert_eq!(facts, bundle_facts(4096));
+            assert_eq!((facts.sizes.logical, facts.sizes.allocated), (ByteSize::new(4096), ByteSize::new(4096)));
+            assert_eq!(facts.sizes.completeness, Completeness::Complete);
+            assert_eq!(facts.entry, EntryFacts::REMOVABLE);
+            assert_eq!((facts.last_used, facts.installed_by), (None, None));
+            assert_eq!(apps.bundle(&failing, &CancelToken::new()), Err(unread));
+            assert_eq!(apps.bundle_calls(), 2);
+        }
         use fresher_core::{InstallRecords, Receipt, SystemVersion, Timestamp};
 
         #[test]
@@ -406,11 +497,11 @@ mod tests {
             let apps = FakeInstalledApps::new(vec![listed]).with_elsewhere(vec![far]);
             let ids = |ids: &[&str]| ids.iter().map(|id| fresher_core::BundleId::new(*id).unwrap()).collect::<Vec<_>>();
 
-            let found = apps.find(&ids(&["com.example.Far", "com.example.Editor"]), &fresher_core::CancelToken::new());
+            let found = apps.find(&ids(&["com.example.Far", "com.example.Editor"]), &CancelToken::new());
 
             assert_eq!(found, Ok(vec!["/Applications/Editor.app".into(), "/Volumes/Drive/Far.app".into()]));
-            assert_eq!(apps.find(&ids(&["com.example.None"]), &fresher_core::CancelToken::new()), Ok(vec![]));
-            assert_eq!(apps.search_complete(&fresher_core::CancelToken::new()), Ok(()));
+            assert_eq!(apps.find(&ids(&["com.example.None"]), &CancelToken::new()), Ok(vec![]));
+            assert_eq!(apps.search_complete(&CancelToken::new()), Ok(()));
         }
 
         #[test]
@@ -418,7 +509,7 @@ mod tests {
             let editor = installed_app("com.example.Editor", "Editor", "1").unwrap();
             let apps = FakeInstalledApps::new(Vec::new()).then(vec![editor.clone()]);
             let ids = [fresher_core::BundleId::new("com.example.Editor").unwrap()];
-            let cancel = fresher_core::CancelToken::new();
+            let cancel = CancelToken::new();
 
             assert_eq!(apps.find(&ids, &cancel), Ok(vec![]));
             assert_eq!(apps.list(), Ok(InstalledList::default()));

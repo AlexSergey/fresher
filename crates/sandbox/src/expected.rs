@@ -9,13 +9,14 @@ use crate::generate::LeftOutFile;
 use crate::world::folder_name;
 use crate::{
     AfterCleanup, Case, CaseFile, CaseKind, Expectation, InsightExpectation, LargestExpectation, LeftOutExpectation,
-    MapExpectation, MapPartName, Shown,
+    MapExpectation, MapPartName, Shown, Uninstall, UninstallExpectation,
 };
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
 /// it allows, refuses or has not been asked for, the facts its files state (which Finder never shows; times counted
-/// from `now`), its left-outs, where the storage map shows it and what the Largest screen shows of it; then the command that
+/// from `now`), its left-outs, where the storage map shows it, what the Largest screen shows of it and what the Apps
+/// screen shows of its app and its uninstall does; then the command that
 /// opens the app on the sandbox at `sandbox`. A demo world lists only its scenery cases' names: nothing it shows is
 /// checked. A case file left out of the sandbox is named after them, with the path it clashed on.
 pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &Path, now: SystemTime) -> String {
@@ -75,6 +76,9 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
             if let Some(largest) = case.largest() {
                 let _ = writeln!(text, "  - {}", largest_sentence(largest, texts.as_ref()));
             }
+            if let Some(uninstall) = case.uninstall() {
+                let _ = writeln!(text, "  - {}", uninstall_sentence(uninstall, case, texts.as_ref()));
+            }
             for insight in case.insights() {
                 let _ = writeln!(text, "  - {}", insight_sentence(insight));
             }
@@ -100,6 +104,10 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
 /// `<module>`", one of a file with no module "never offered".
 fn sentence(case: &Case, module: Option<ModuleId>) -> String {
     match case.expect() {
+        None if case.kind() == CaseKind::Positive => match case.uninstall() {
+            Some(uninstall) => format!("uninstalled on the Apps screen: `{}`", uninstall.app().display()),
+            None => String::new(),
+        },
         None => {
             let by = module.map_or_else(String::new, |module| format!(" by `{}`", module.as_str()));
             format!("never offered{by}: {}; still there after the cleanup", top_paths(case))
@@ -133,9 +141,11 @@ fn access_sentence(capability: Capability, access: Access) -> String {
     let folder = match capability {
         Capability::Folder(folder) => folder_name(folder),
         // A case states only the folders and other apps' data (`stated_capability`); the rest read the same.
-        Capability::OtherAppsData | Capability::AllFiles | Capability::Volume(_) | Capability::Tool(_) => {
-            "other apps' data"
-        }
+        Capability::OtherAppsData
+        | Capability::AllFiles
+        | Capability::Volume(_)
+        | Capability::AppManagement
+        | Capability::Tool(_) => "other apps' data",
     };
     match access {
         // A case states only the first three; the other two never reach a checklist and read as allowed and refused.
@@ -172,6 +182,10 @@ fn stated_sentence(stated: &Stated, now: SystemTime) -> String {
     }));
     parts.extend(stated.changed.map(|time| format!("changed {}", when(time, now))));
     parts.extend(stated.accessed.map(|time| format!("last read {}", when(time, now))));
+    parts.extend(stated.last_used.map(|time| format!("last used {}", when(time, now))));
+    parts.extend(
+        stated.installed_by.as_ref().map(|by| format!("installed by {} as `{}`", by.manager().name(), by.token())),
+    );
     parts.join(", ")
 }
 
@@ -237,6 +251,38 @@ fn largest_sentence(largest: &LargestExpectation, texts: Option<&Dictionary>) ->
             "On Largest, nothing in `{at}` is listed, and the notice above the list says Fresher did not look there \
              and how to allow it."
         ),
+    }
+}
+
+/// What the Apps screen shows of the case's app and what its uninstall does, with the reason's sentence and the
+/// choice's label from the core's dictionary (their ids when it cannot be read); the app is named as its bundle names
+/// it.
+fn uninstall_sentence(uninstall: &UninstallExpectation, case: &Case, texts: Option<&Dictionary>) -> String {
+    let text = |key: fresher_core::TextKey| {
+        texts.and_then(|texts| texts.get(key.as_str())).map_or_else(|| key.as_str().to_owned(), str::to_owned)
+    };
+    let app = case.tree().apps().iter().find(|app| app.path == uninstall.app());
+    let name = app.map_or_else(|| uninstall.app().display().to_string(), |app| app.name.clone());
+    let paths = |paths: &[std::path::PathBuf]| -> String {
+        paths.iter().map(|path| format!("`{}`", path.display())).collect::<Vec<_>>().join(", ")
+    };
+    match uninstall.expected() {
+        Uninstall::NotListed => format!("Apps: `{name}` is not listed."),
+        Uninstall::NotOffered(reason) => {
+            let manager = app.and_then(|app| app.manager().ok().flatten());
+            let manager = manager.map_or(fresher_core::Manager::Homebrew.name(), |by| by.manager().name());
+            let sentence = text(reason.text_key()).replace("{manager}", manager);
+            format!("Apps: `{name}` is shown and not offered: {sentence}")
+        }
+        Uninstall::Chosen { choice, trashed, kept } => {
+            let stay = if kept.is_empty() { "nothing".to_owned() } else { paths(kept) };
+            format!(
+                "Apps: uninstall `{name}` with \"{}\": these go to the Trash: {}; these stay: {stay}. Then Cleanups → \
+                 put back: all of them are back.",
+                text(choice.label_key()),
+                paths(trashed)
+            )
+        }
     }
 }
 
@@ -515,6 +561,65 @@ reason = "in-use"
                     "  - On Largest, `home/B` is listed and can be chosen.",
                 ]
             );
+        }
+
+        #[test]
+        fn the_checklist_says_what_the_apps_screen_shows_and_the_uninstall_does() {
+            let app = |path: &str, id: &str, name: &str, extra: &str| {
+                format!("[[case.app]]\npath = \"{path}\"\nbundle-id = \"{id}\"\nname = \"{name}\"\n{extra}")
+            };
+            let brewed =
+                app("Applications/Brewed.app", "com.example.Brewed", "Brewed", "installed-by = \"homebrew:brewed\"\n");
+            let keeper = app("Applications/Keeper.app", "com.example.Keeper", "Keeper", "last-used = \"240d\"\n");
+            let cases = [
+                "feature = \"uninstall\"\nmodule = \"trial\"\n".to_owned(),
+                format!(
+                    "[[case]]\nname = \"a\"\nkind = \"negative\"\n{}[case.uninstall]\n\
+                     app = \"Applications/Notes.app\"\nlisted = false\n",
+                    app("Applications/Notes.app", "com.apple.Notes", "Notes", "")
+                ),
+                format!(
+                    "[[case]]\nname = \"b\"\nkind = \"negative\"\n{brewed}[case.uninstall]\n\
+                     app = \"Applications/Brewed.app\"\noffered = false\nreason = \"installed-by\"\n"
+                ),
+                format!(
+                    "[[case]]\nname = \"c\"\nkind = \"positive\"\n{keeper}[[case.file]]\n\
+                     path = \"home/Library/Caches/com.example.Keeper/a.bin\"\n[[case.file]]\n\
+                     path = \"home/Library/Preferences/com.example.Keeper.plist\"\n[case.uninstall]\n\
+                     app = \"Applications/Keeper.app\"\nchoice = \"keep-data\"\n\
+                     trashed = [\"Applications/Keeper.app\", \"home/Library/Caches/com.example.Keeper\"]\n\
+                     kept = [\"home/Library/Preferences/com.example.Keeper.plist\"]\n"
+                ),
+                format!(
+                    "[[case]]\nname = \"d\"\nkind = \"positive\"\n{}[case.uninstall]\n\
+                     app = \"Applications/Purger.app\"\nchoice = \"everything\"\ntrashed = [\"Applications/Purger.app\"]\n",
+                    app("Applications/Purger.app", "com.example.Purger", "Purger", "")
+                ),
+            ]
+            .concat();
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - Apps")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - Apps: `Notes` is not listed.",
+                    "  - Apps: `Brewed` is shown and not offered: Homebrew installed this app. Uninstall it with \
+                     Homebrew, so it stays in step.",
+                    "  - Apps: uninstall `Keeper` with \"Remove the app, keep its settings and data\": these go to the \
+                     Trash: `Applications/Keeper.app`, `home/Library/Caches/com.example.Keeper`; these stay: \
+                     `home/Library/Preferences/com.example.Keeper.plist`. Then Cleanups → put back: all of them are back.",
+                    "  - Apps: uninstall `Purger` with \"Remove the app and everything it left\": these go to the Trash: \
+                     `Applications/Purger.app`; these stay: nothing. Then Cleanups → put back: all of them are back.",
+                ]
+            );
+            assert!(text.contains("**c**: uninstalled on the Apps screen: `Applications/Keeper.app`."), "{text}");
+            assert!(
+                text.contains("  - `Applications/Brewed.app` stated: installed by Homebrew as `brewed`."),
+                "{text}"
+            );
+            assert!(text.contains("  - `Applications/Keeper.app` stated: last used 240 days ago."), "{text}");
         }
 
         #[test]

@@ -1,0 +1,99 @@
+/*
+ * What an app would lose: a section per kind with its name, and under it a row per item: its level, which choice takes
+ * it and its size, with the path on demand. A kept row is muted.
+ */
+@layer components {
+  .list {
+    display: grid;
+    gap: var(--space-4);
+    justify-self: stretch;
+  }
+
+  .section {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .kind {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-body-strong-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-strong-line);
+  }
+
+  .rows {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-2);
+    list-style: none;
+  }
+
+  .row {
+    display: grid;
+    padding: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    gap: var(--space-2);
+  }
+
+  .kept {
+    color: var(--text-tertiary);
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .goes {
+    flex: 1;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+  }
+
+  .size {
+    flex: none;
+    color: var(--text-primary);
+  }
+
+  .kept .size {
+    color: var(--text-secondary);
+  }
+
+  .reason {
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1);
+    line-height: var(--type-footnote-line);
+  }
+
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: var(--type-footnote-size);
+    gap: var(--space-1);
+    justify-self: start;
+  }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+
+  .path {
+    min-width: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+  }
+}

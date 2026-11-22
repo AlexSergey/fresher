@@ -4,6 +4,7 @@
 
 #[cfg(any(debug_assertions, test))]
 mod adapters;
+mod apps_commands;
 mod commands;
 mod compose;
 #[cfg(debug_assertions)]
@@ -83,6 +84,10 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         largest_commands::get_largest,
         largest_commands::get_largest_place,
         largest_commands::pick_own_item,
+        apps_commands::get_apps,
+        apps_commands::get_app,
+        apps_commands::reveal_app,
+        apps_commands::prepare_uninstall,
         commands::get_dictionary,
         commands::get_access_status,
         commands::refresh_access,

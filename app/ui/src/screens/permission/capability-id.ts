@@ -5,6 +5,7 @@ import type { Capability } from '../../ipc/bindings.generated';
 export const idOf = (capability: Capability): null | string => {
   switch (capability.kind) {
     case 'all-files':
+    case 'app-management':
     case 'other-apps-data':
       return capability.kind;
     case 'folder':

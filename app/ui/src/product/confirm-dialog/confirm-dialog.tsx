@@ -265,10 +265,22 @@ const LeftOutList = ({ items }: { readonly items: readonly LeftOut[] }): JSX.Ele
   </section>
 );
 
-const titleOf = (plan: CleanupPlanView, permanent: boolean): string => {
+// How the plan's items go: each by its tool (nothing can be put back), each to the Trash with no other choice (an
+// uninstall), or to the Trash unless the user chooses a permanent delete. The core's plan says which.
+type Way = 'choice' | 'tools' | 'trash';
+
+const wayOf = (plan: CleanupPlanView): Way => {
+  if (plan.permanentAvailable) {
+    return 'choice';
+  }
+
+  return plan.groups.every((group) => group.action === 'tool') ? 'tools' : 'trash';
+};
+
+const titleOf = (plan: CleanupPlanView, way: Way, permanent: boolean): string => {
   const count = { count: { kind: 'count', value: plan.summary.count } } as const;
 
-  if (!plan.permanentAvailable) {
+  if (way === 'tools') {
     return t('ui.confirm.title-tool', count);
   }
 
@@ -294,11 +306,12 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
   }
 
   const { summary } = plan;
-  const method: Method = permanent && plan.permanentAvailable ? 'permanent' : 'trash';
+  const way = wayOf(plan);
+  const method: Method = permanent && way === 'choice' ? 'permanent' : 'trash';
   const level = levelName(summary.highest);
   const size = honestSize(summary.sizes);
   // A plan of tool items only goes by their tools: it cannot be put back, whatever the method.
-  const irreversible = method === 'permanent' || !plan.permanentAvailable;
+  const irreversible = method === 'permanent' || way === 'tools';
 
   // Every item was left out: there is nothing to confirm, only the reasons to read.
   if (summary.count === 0) {
@@ -344,9 +357,9 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
             }}
             variant={irreversible ? 'danger' : 'primary'}
           >
-            {plan.permanentAvailable
-              ? t(method === 'permanent' ? 'ui.confirm.delete' : 'ui.confirm.trash')
-              : t('ui.confirm.remove')}
+            {way === 'tools'
+              ? t('ui.confirm.remove')
+              : t(method === 'permanent' ? 'ui.confirm.delete' : 'ui.confirm.trash')}
           </Button>
         </>
       }
@@ -354,7 +367,7 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
       onClose={onCancel}
       open={open}
       size="large"
-      title={titleOf(plan, method === 'permanent')}
+      title={titleOf(plan, way, method === 'permanent')}
     >
       <div className={styles.content}>
         <div className={styles.summary}>
@@ -368,17 +381,19 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
           <Group group={group} key={`${group.category} ${group.action}`} method={method} />
         ))}
         {plan.leftOut.length === 0 ? null : <LeftOutList items={plan.leftOut} />}
-        {plan.permanentAvailable ? (
+        {way === 'tools' ? null : (
           <div className={styles.choice}>
             {method === 'trash' ? <p className={styles.space}>{t('ui.confirm.space-later')}</p> : null}
-            <Checkbox
-              checked={permanent}
-              description={t('ui.confirm.permanent-description')}
-              label={t('ui.confirm.permanent')}
-              onChange={setPermanent}
-            />
+            {way === 'choice' ? (
+              <Checkbox
+                checked={permanent}
+                description={t('ui.confirm.permanent-description')}
+                label={t('ui.confirm.permanent')}
+                onChange={setPermanent}
+              />
+            ) : null}
           </div>
-        ) : null}
+        )}
       </div>
     </Dialog>
   );

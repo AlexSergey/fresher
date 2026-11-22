@@ -555,6 +555,60 @@ test.describe('positive cases', () => {
     });
   });
 
+  test.describe('apps', () => {
+    const openApp = async (page: Page, script: CoreScript, name: string): Promise<void> => {
+      await open(page, script);
+      await scan(page, '1.1 GB');
+      await go(page, 'Apps', 'Apps');
+      await page
+        .getByRole('list', { name: 'Apps, largest first' })
+        .getByRole('listitem')
+        .filter({ hasText: name })
+        .first()
+        .click();
+      await expect(page.getByRole('heading', { level: 1, name })).toBeFocused();
+    };
+
+    test('the list of apps', async ({ page }) => {
+      await open(page, SCRIPTS.apps);
+      await scan(page, '1.1 GB');
+      await go(page, 'Apps', 'Apps');
+      await expect(page.getByRole('list', { name: 'Apps, largest first' })).toContainText('Disk Tool');
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'apps-list.png');
+    });
+
+    test('the page of an app that is offered', async ({ page }) => {
+      await openApp(page, SCRIPTS.apps, 'Video Studio');
+      await expect(page.getByRole('radio', { name: /keep its settings and data/ })).toBeChecked();
+      await page.getByRole('button', { name: 'Uninstall…' }).scrollIntoViewIfNeeded();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'app-page-offered.png');
+    });
+
+    test('the page of an app that is not offered', async ({ page }) => {
+      await openApp(page, SCRIPTS.apps, 'Terminal Pro');
+      await expect(page.locator('code')).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'app-page-not-offered.png');
+    });
+
+    test('the confirmation of an uninstall with everything', async ({ page }) => {
+      await openApp(page, SCRIPTS.apps, 'Video Studio');
+      await page.getByRole('radio', { name: /everything it left/ }).check();
+      await page.getByRole('button', { name: 'Uninstall…' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+      await dialog.getByRole('button', { name: /more files that go with it/ }).click();
+      await expect(dialog.getByRole('list', { name: /^The other files that go with/ })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'apps-confirmation.png');
+    });
+  });
+
   test.describe('settings', () => {
     test('settings of every kind', async ({ page }) => {
       await open(page, SCRIPTS.settings);

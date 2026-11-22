@@ -222,7 +222,7 @@ mod negative {
         let engine = scanned();
         let movie = pick(&engine, "/home/Downloads/movie.mov");
         let view = engine.prepare_cleanup(&select(&[movie.id().get()], &[])).unwrap();
-        engine.shared.results.lock().unwrap().remove(&[movie.id()], &[movie.id()]);
+        engine.shared.results.lock().unwrap().remove(&[movie.id()], &[movie.id()], &[]);
 
         assert_eq!(engine.confirm_cleanup(&echo(&view, "trash")), Err(CommandError::PlanGone));
     }
@@ -261,7 +261,7 @@ mod negative {
     fn a_removed_row_cannot_be_picked_again() {
         let engine = scanned();
         let movie = pick(&engine, "/home/Downloads/movie.mov");
-        engine.shared.results.lock().unwrap().remove(&[movie.id()], &[movie.id()]);
+        engine.shared.results.lock().unwrap().remove(&[movie.id()], &[movie.id()], &[]);
 
         assert_eq!(engine.pick_own_item(node(&engine, "/home/Downloads/movie.mov")), Err(CommandError::NotOwnItem));
     }
@@ -400,7 +400,7 @@ mod positive {
         let many = node(&engine, "/home/Many");
         let removed = [pick(&engine, "/home/Many/f003.bin"), pick(&engine, "/home/Many/f150.bin")];
         let ids: Vec<_> = removed.iter().map(fresher_core::Finding::id).collect();
-        engine.shared.results.lock().unwrap().remove(&ids, &ids);
+        engine.shared.results.lock().unwrap().remove(&ids, &ids, &[]);
 
         let mut names = Vec::new();
         let total = loop {

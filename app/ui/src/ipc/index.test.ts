@@ -13,6 +13,8 @@ import {
   discardCleanup,
   failureOf,
   getAccessStatus,
+  getApp,
+  getApps,
   getCleanup,
   getCleanups,
   getDictionary,
@@ -38,6 +40,7 @@ import {
   relaunch,
   resetSettings,
   restoreIgnored,
+  revealApp,
   revealFinding,
   revealInTrash,
   startScan,
@@ -252,6 +255,19 @@ describe('the IPC module', () => {
       await expect(getStorageMeaning(1)).resolves.toEqual([]);
 
       expect(seen).toStrictEqual([{ volume: 1 }]);
+    });
+
+    it('passes the Apps commands their arguments by name', async () => {
+      const { answer, seen } = recorder();
+      const app = { index: 2, state: 1 };
+      mockCore({ getApp: answer(null), getApps: answer(null), revealApp: answer(null) });
+
+      await getApps({ unused: 'a-year' });
+      await getApp(app);
+      await revealApp(app);
+
+      expect(seen).toStrictEqual([{ query: { unused: 'a-year' } }, { app }, { app }]);
+      expect([COMMANDS.getApps, COMMANDS.getApp, COMMANDS.revealApp]).toEqual(['get_apps', 'get_app', 'reveal_app']);
     });
 
     it('passes the Largest commands their arguments by name', async () => {

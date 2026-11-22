@@ -32,6 +32,7 @@ import {
   APP_CACHES_SETTINGS,
   APP_CACHES_TOTALS,
 } from '../src/test/app-caches-scan';
+import { uninstallPlanOf, VIDEO_STUDIO_DETAIL } from '../src/test/app-detail';
 import {
   APP_LEFTOVERS_DICTIONARY,
   APP_LEFTOVERS_FINDINGS,
@@ -43,6 +44,7 @@ import {
   APP_LEFTOVERS_TOTALS,
   scanOf,
 } from '../src/test/app-leftovers-scan';
+import { APPS_DICTIONARY } from '../src/test/apps-list';
 import {
   CLEANUP_DICTIONARY,
   DELETED_DETAIL,
@@ -210,6 +212,7 @@ import {
   XCODE_SETTINGS,
   XCODE_TOTALS,
 } from '../src/test/xcode-scan';
+import { APPS_HOOK, mockApps } from './support/apps-mock';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
 import { LARGEST_HOOK, mockLargest, ownIdOf } from './support/largest-mock';
@@ -218,6 +221,9 @@ import { LARGEST_HOOK, mockLargest, ownIdOf } from './support/largest-mock';
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
 export type CoreScript = {
   readonly answers?: Partial<Readonly<Record<CommandKey, unknown>>>;
+  // The Apps screen's commands: the list, an app's page and Show in Finder (support/apps-mock.ts); `denied` is the world
+  // after macOS refused to let Fresher move an app.
+  readonly apps?: { readonly denied?: boolean };
   // The cleanup commands over the scan's findings (support/cleanup-mock.ts); without it they are not answered.
   readonly cleanup?: CleanupScript;
   // The scan streams this many events, then waits for `releaseScan` (or Stop): the live states can be looked at.
@@ -267,6 +273,7 @@ const storageOfScan = (
 
 type ByCommand = {
   readonly answers: Readonly<Record<string, unknown>>;
+  readonly appsHook: string;
   readonly busy: Refusal;
   readonly cancelScan: string;
   readonly eventAt: string;
@@ -348,6 +355,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
   );
   const setup: ByCommand = {
     answers: byCommand(withRefreshAccess(script.answers)),
+    appsHook: APPS_HOOK,
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
     eventAt: EVENT_AT,
@@ -532,12 +540,19 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
           ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
         >
       )[core.largestHook];
+      const apps = (
+        globalThis as unknown as Record<
+          string,
+          ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
+        >
+      )[core.appsHook];
       const answered =
         command in core.refusals
           ? undefined
           : (cleanup?.(command, args) ??
             ignoring?.(command, args, answers) ??
             largest?.(command, args) ??
+            apps?.(command, args) ??
             trashOf(command, args));
 
       if (answered !== undefined) {
@@ -617,6 +632,10 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     await mockIgnore(page, findings);
   }
   const moved = script.largest === true ? await mockLargest(page, findings) : undefined;
+
+  if (script.apps !== undefined) {
+    await mockApps(page, script.apps);
+  }
 
   if (script.cleanup !== undefined) {
     await mockCleanup(page, findings, script.cleanup, moved);
@@ -978,6 +997,32 @@ const APP_CACHES_ANSWERS = {
   updateSetting: null,
 } as const;
 
+// The caches scan with the Apps screen over it: the list, an app's page and the uninstall of Video Studio, whose
+// category of cleanable caches is the module's own. The history already holds that uninstall, keep-data, in the Trash.
+const APPS_ANSWERS = {
+  ...APP_CACHES_ANSWERS,
+  getDictionary: { ...APP_CACHES_ANSWERS.getDictionary, ...APPS_DICTIONARY },
+} as const;
+
+const appsAccess = (management: 'denied' | 'not-asked'): ReturnType<typeof accessStatus> =>
+  accessStatus([
+    [{ kind: 'all-files' }, 'granted'],
+    [{ kind: 'app-management' }, management],
+  ]);
+
+const appsCleanup = (): CleanupScript => {
+  const detail = movedDetailOf(uninstallPlanOf(VIDEO_STUDIO_DETAIL, 'keep-data'), 3, 1_735_819_200);
+
+  return {
+    after: {
+      ...APP_CACHES_OVERVIEW,
+      lastScan: APP_CACHES_OVERVIEW.lastScan === null ? null : { ...APP_CACHES_OVERVIEW.lastScan, changedSince: 3 },
+    },
+    details: [detail],
+    history: { blocked: null, cleanups: [detail.summary], offset: 0, total: 1, waiting: 3_472_000_000 },
+  };
+};
+
 // What the browser caches script answers before a scan: the module with its three categories, its texts, settings.
 const APP_CACHES_BROWSERS_ANSWERS = {
   ...APP_CACHES_ANSWERS,
@@ -1142,6 +1187,25 @@ export const SCRIPTS = {
         ...APP_LEFTOVERS_TOTALS,
       ],
     },
+  },
+  // The caches scan with the Apps screen: five apps, the uninstall of Video Studio and its history entry.
+  apps: {
+    answers: { ...APPS_ANSWERS, getAccessStatus: appsAccess('not-asked') },
+    apps: {},
+    cleanup: appsCleanup(),
+    ignoring: true,
+    scan: APP_CACHES_SCAN,
+    scanned: APP_CACHES_OVERVIEW,
+  },
+  // The same world after macOS refused to let Fresher move an app: Video Studio's page says so, and asks for the
+  // permission.
+  appsDenied: {
+    answers: { ...APPS_ANSWERS, getAccessStatus: appsAccess('denied') },
+    apps: { denied: true },
+    cleanup: appsCleanup(),
+    ignoring: true,
+    scan: APP_CACHES_SCAN,
+    scanned: APP_CACHES_OVERVIEW,
   },
   // The demo scan, then a cleanup of what is picked: the core's plan, the cleanup streamed at once, a history.
   cleaning: { answers: CLEANING_ANSWERS, cleanup: CLEANUP, scan: DEMO_SCAN, scanned: DEMO_OVERVIEW },

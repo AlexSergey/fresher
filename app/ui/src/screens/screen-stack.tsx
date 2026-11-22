@@ -22,16 +22,19 @@ const FADE_OUT: readonly Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
 // The screens of one kind share one scroll position; a category's details and a cleanup keep their own.
 export const screenKey = (screen: Screen): string => {
   switch (screen.kind) {
-    case 'category':
-      return `category:${screen.category}`;
-    case 'cleanup':
-      return `cleanup:${String(screen.cleanup)}`;
+    case 'app':
+      return `app:${String(screen.app.state)}:${String(screen.app.index)}`;
+    case 'apps':
     case 'cleanups':
     case 'largest':
     case 'review':
     case 'scan':
     case 'settings':
       return screen.kind;
+    case 'category':
+      return `category:${screen.category}`;
+    case 'cleanup':
+      return `cleanup:${String(screen.cleanup)}`;
     case 'insight':
       return `insight:${screen.module}/${screen.identity}`;
   }

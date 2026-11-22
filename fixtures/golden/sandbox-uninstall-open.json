@@ -1,0 +1,239 @@
+{
+  "apps": [
+    {
+      "allocated": 8192,
+      "bundle": "Applications/Mailbox.app",
+      "logical": 4520,
+      "name": "Mailbox",
+      "offer": "open",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 424
+        },
+        {
+          "allocated": 4096,
+          "kind": "caches",
+          "logical": 4096
+        }
+      ]
+    },
+    {
+      "allocated": 8192,
+      "bundle": "Applications/Sketch.app",
+      "logical": 4518,
+      "name": "Sketch",
+      "offer": "offered",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 422
+        },
+        {
+          "allocated": 4096,
+          "kind": "caches",
+          "logical": 4096
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 8192,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67110047,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738188129,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [],
+    "before": []
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 115,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Mailbox.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Mailbox.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 424,
+        "path": "Applications/Mailbox.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Mailbox.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Sketch.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Sketch.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Sketch.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Sketch.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Mailbox"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Mailbox/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Sketch"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Sketch/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 222,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 9375
+  },
+  "uninstalls": [
+    {
+      "category": "core.uninstall-keep-data",
+      "danger": "medium",
+      "items": 1,
+      "paths": [
+        "Applications/Sketch.app",
+        "home/Library/Caches/com.example.Sketch"
+      ]
+    }
+  ]
+}

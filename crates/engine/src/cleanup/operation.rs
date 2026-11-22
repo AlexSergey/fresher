@@ -13,9 +13,11 @@ use fresher_core::{
     Timestamp, VolumeSpace, Volumes,
 };
 
+use crate::apps::{management, uninstall};
 use crate::batch::Batcher;
 use crate::cleanup::blocked;
 use crate::cleanup::context::Context;
+use crate::cleanup::pending::Purpose;
 use crate::engine::{CleanupPorts, Shared};
 use crate::error::{EngineError, lock, lock_anyway};
 use crate::own::check_picks;
@@ -31,12 +33,14 @@ const SYNC_INTERVAL: Duration = Duration::from_secs(1);
 /// Refused while an operation runs (`Busy`), without a pending plan or for one that expired or that the echo does not
 /// name (`PlanGone`), for an echo that differs from the plan (`PlanMismatch`), for a plan whose every item was left
 /// out (`NothingToClean`), for a plan holding a row the user picked that is no longer offered (`PlanGone`), and when
-/// cleaning is blocked or the journal cannot begin (`CleaningBlocked`): nothing is acted on or journalled then. The
-/// plan is consumed whatever the answer.
+/// cleaning is blocked or the journal cannot begin (`CleaningBlocked`): nothing is acted on or journalled then. An
+/// uninstall's plan is refused permanent (`PlanMismatch`: an uninstall always goes to the Trash), judged again
+/// (`UninstallRefused` when its app is no longer offered, opened since, say) and cleaned with the uninstall's context;
+/// every other plan with the ordinary one, which refuses the apps folders. The plan is consumed whatever the answer.
 pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<CleanupId, CommandError> {
     let mut machine = lock(&shared.machine)?;
     machine.idle()?;
-    let plan = lock(&shared.pending)?.take().ok_or(CommandError::PlanGone)?;
+    let (plan, purpose) = lock(&shared.pending)?.take().ok_or(CommandError::PlanGone)?;
     let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?.clone();
     let now = Timestamp::from_system_time(shared.ports.clock.now());
     let confirmed = plan.confirm(echo, now).map_err(|error| match error {
@@ -46,11 +50,23 @@ pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<Clean
         }
         ConfirmError::WrongPlan | ConfirmError::Expired => CommandError::PlanGone,
     })?;
+    if matches!(purpose, Purpose::Uninstall { .. }) && confirmed.method() == Method::Permanent {
+        tracing::warn!("an uninstall is confirmed to be deleted permanently; it only goes to the Trash");
+        return Err(CommandError::PlanMismatch);
+    }
     if confirmed.items().is_empty() {
         return Err(CommandError::NothingToClean);
     }
     check_picks(shared, confirmed.items())?;
-    let cx = Context::now(shared)?;
+    if let Purpose::Uninstall { id, bundle, .. } = &purpose {
+        uninstall::judge_again(shared, *id, bundle)?;
+    }
+    let cx = Context::now(shared, purpose.scope())?;
+    let paths: Vec<Vec<PathBuf>> = confirmed.items().iter().map(|item| item.action().parts().to_vec()).collect();
+    let uninstalled = match &purpose {
+        Purpose::Uninstall { bundle, .. } => management::guards(shared, bundle).then(Vec::new),
+        Purpose::Selection => None,
+    };
     let before = Space::measure(&*ports.volumes, confirmed.plan().roots());
     let cleanup = ports.journal.begin(&BeginRecord::new(now, &confirmed, before.volumes.clone())).map_err(|error| {
         tracing::warn!(%error, "the cleanup could not be recorded; nothing was acted on");
@@ -66,7 +82,7 @@ pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<Clean
     let spawned = thread::Builder::new().name(format!("fresher-cleanup-{cleanup}")).spawn(move || {
         // Dropped when the thread ends, on a return or a panic: `shutdown` waits for that, not for ever.
         let _done = done;
-        let mut run = Run::new(&shared_by_thread, &ports, cleanup, method, before);
+        let mut run = Run::new(&shared_by_thread, &ports, cleanup, method, before, paths, uninstalled);
         shared_by_thread.bus.publish(&Event::CleanupStarted { cleanup, method, total });
         let ended = ports.cleaner.execute(confirmed, &cx.borrow(), &token, &mut |item| run.item(&item, &token));
         run.end(ended);
@@ -95,6 +111,14 @@ struct Run<'a> {
     removed: Vec<FindingId>,
     /// The removed findings whose whole path went: the findings below them leave the results too.
     cleared: Vec<FindingId>,
+    /// The paths of every item, by its place in the plan, copied before the plan went to the cleaner.
+    paths: Vec<Vec<PathBuf>>,
+    /// The paths that went: every path of an item whose whole path went, and the parts of an item of several paths
+    /// that went before it stopped. What was at or below them leaves the results too, picks or not.
+    went: Vec<PathBuf>,
+    /// How the items of an uninstall ended and how many of their parts went, in order, to teach App Management at the
+    /// end; `None` for any other plan and for an uninstall App Management is not involved in.
+    uninstalled: Option<Vec<(ItemOutcome, Option<u32>)>>,
     unsynced: u32,
     synced_at: SystemTime,
     /// A record could not be written: the cleanup stops after the item in flight.
@@ -104,7 +128,15 @@ struct Run<'a> {
 }
 
 impl<'a> Run<'a> {
-    fn new(shared: &'a Shared, ports: &'a CleanupPorts, cleanup: CleanupId, method: Method, before: Space) -> Self {
+    fn new(
+        shared: &'a Shared,
+        ports: &'a CleanupPorts,
+        cleanup: CleanupId,
+        method: Method,
+        before: Space,
+        paths: Vec<Vec<PathBuf>>,
+        uninstalled: Option<Vec<(ItemOutcome, Option<u32>)>>,
+    ) -> Self {
         Self {
             shared,
             ports,
@@ -114,6 +146,9 @@ impl<'a> Run<'a> {
             done: 0,
             removed: Vec::new(),
             cleared: Vec::new(),
+            paths,
+            went: Vec::new(),
+            uninstalled,
             unsynced: 0,
             synced_at: shared.ports.clock.now(),
             stopped: false,
@@ -147,6 +182,11 @@ impl<'a> Run<'a> {
         if clears(&item.outcome) {
             self.cleared.push(item.finding);
         }
+        let paths = usize::try_from(item.index).ok().and_then(|index| self.paths.get(index));
+        self.went.extend_from_slice(went(&item.outcome, paths.map_or(&[], Vec::as_slice), item.went));
+        if let Some(uninstalled) = &mut self.uninstalled {
+            uninstalled.push((item.outcome.clone(), item.went));
+        }
         self.done = self.done.saturating_add(1);
         if let Some(batch) = self.batcher.push(item.report(), now) {
             self.publish(batch);
@@ -154,8 +194,9 @@ impl<'a> Run<'a> {
     }
 
     /// The cleanup ended: the last outcomes, the space measured again, the journal's end, the removed findings (and
-    /// those below a path that went) out of the results and the last scan marked changed, `FindingsRemoved`,
-    /// `CleanupFinished`, then `Idle` — the last three under the state's lock.
+    /// those at or below a path that went, an uninstalled app's bundle and parts among them) out of the results and
+    /// the last scan marked changed, what an uninstall taught App Management (`AccessChanged` once when it changed
+    /// the state), `FindingsRemoved`, `CleanupFinished`, then `Idle` — the last three under the state's lock.
     fn end(&mut self, ended: Ended) {
         self.ended = true;
         if let Some(batch) = self.batcher.take() {
@@ -170,11 +211,12 @@ impl<'a> Run<'a> {
         }
         self.report.ended = ended;
         self.report.measured = self.before.gained(&after);
+        self.learn();
 
         let mut machine = lock_anyway(&self.shared.machine);
         let (scan, findings) = {
             let mut results = lock_anyway(&self.shared.results);
-            let findings = results.remove(&self.removed, &self.cleared);
+            let findings = results.remove(&self.removed, &self.cleared, &self.went);
             results.mark_changed(self.cleanup);
             (results.last().map(|last| last.scan), findings)
         };
@@ -185,6 +227,18 @@ impl<'a> Run<'a> {
         }
         self.shared.bus.publish(&Event::CleanupFinished { cleanup: self.cleanup, report: self.report });
         machine.finish_cleaning(self.cleanup);
+    }
+
+    /// Teaches App Management how the uninstall's items ended; `AccessChanged` once when its state changed.
+    fn learn(&mut self) {
+        let management = self.shared.access.management();
+        let mut changed = false;
+        for (outcome, went) in self.uninstalled.take().into_iter().flatten() {
+            changed |= management.learn(&outcome, went);
+        }
+        if changed {
+            self.shared.bus.publish(&Event::AccessChanged { status: self.shared.access.status() });
+        }
     }
 
     fn publish(&self, items: Vec<ItemReport>) {
@@ -210,6 +264,16 @@ const fn removes(outcome: &ItemOutcome) -> bool {
 /// left.
 const fn clears(outcome: &ItemOutcome) -> bool {
     matches!(outcome, ItemOutcome::Moved | ItemOutcome::Deleted | ItemOutcome::Emptied { skipped: 0, .. })
+}
+
+/// The paths of an item that went, of its `paths`: every one when it was moved or deleted, the first `went` of an item
+/// of several paths that stopped part way, none otherwise. An emptied folder stays: it did not go.
+fn went<'a>(outcome: &ItemOutcome, paths: &'a [PathBuf], went: Option<u32>) -> &'a [PathBuf] {
+    if matches!(outcome, ItemOutcome::Moved | ItemOutcome::Deleted) {
+        return paths;
+    }
+    let went = went.map_or(0, |went| usize::try_from(went).unwrap_or(usize::MAX));
+    paths.get(..went.min(paths.len())).unwrap_or_default()
 }
 
 /// The available space of each volume a cleanup touches, once per volume; `complete` when every one was read.
@@ -516,6 +580,18 @@ mod tests {
         }
 
         #[test]
+        fn an_emptied_folder_did_not_go() {
+            let paths = [std::path::PathBuf::from("/home/a"), std::path::PathBuf::from("/home/b")];
+            let emptied =
+                [ItemOutcome::Emptied { moved: 2, skipped: 0 }, ItemOutcome::Emptied { moved: 1, skipped: 1 }];
+            for outcome in emptied {
+                assert_eq!(super::super::went(&outcome, &paths[..1], None), [] as [std::path::PathBuf; 0]);
+            }
+            let skipped = ItemOutcome::Skipped { reason: SkipReason::Grown };
+            assert_eq!(super::super::went(&skipped, &paths, None), [] as [std::path::PathBuf; 0]);
+        }
+
+        #[test]
         fn a_skipped_item_stays_in_the_results() {
             let cleaner =
                 FakeCleaner::default().ending(FindingId::new(1), ItemOutcome::Skipped { reason: SkipReason::Grown });
@@ -786,6 +862,17 @@ mod tests {
                 assert_eq!((after.totals[0].count, after.totals[0].sizes), (1, bytes(10)), "{outcome:?}");
                 assert_eq!(after.found, bytes(30), "{outcome:?}");
             }
+        }
+
+        #[test]
+        fn a_moved_or_deleted_item_went_whole_and_a_partly_done_one_its_first_parts() {
+            let paths = [std::path::PathBuf::from("/home/a"), std::path::PathBuf::from("/home/b")];
+            let partly = ItemOutcome::Failed { reason: fresher_core::Failure::TrashRefused.text() };
+
+            assert_eq!(super::super::went(&ItemOutcome::Moved, &paths, None), paths);
+            assert_eq!(super::super::went(&ItemOutcome::Deleted, &paths[..1], None), &paths[..1]);
+            assert_eq!(super::super::went(&partly, &paths, Some(1)), &paths[..1]);
+            assert_eq!(super::super::went(&partly, &paths, Some(9)), paths);
         }
 
         #[test]

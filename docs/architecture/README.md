@@ -50,14 +50,14 @@ app/ui (React)  ──typed IPC (generated types)──▶  app/tauri: commands,
 
 | Crate                 | Folder           | Responsibility                                                                                                                                                                          | May depend on |
 | --------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `fresher-core`        | `crates/core`    | domain types, the module contract, ports (traits), settings schema, events, commands, errors, texts; no IO                                                                              | —             |
+| `fresher-core`        | `crates/core`    | domain types, the module contract, ports (traits), settings schema, events, commands, errors, texts, the apps view's types (`apps/`, plan 036); no IO                                      | —             |
 | `fresher-macos`       | `crates/macos`   | the only crate with `unsafe` (in `mod ffi`): the bulk read, volumes, the change journal, the IO policy, the Trash call, open files, the protection list, the calls beneath held folders | core          |
 | `fresher-scanner`     | `crates/scanner` | the walk, the tree, the matcher, the cache codec, the rescan and the queries behind `DiskWalk`/`DiskState`                                                                              | core, macos   |
 | `fresher-rules`       | `crates/rules`   | the shared matcher for declarative rule data (TOML); holds no rules, each module owns its own                                                                                           | core          |
-| `fresher-system`      | `crates/system`  | the safe adapters of system knowledge (plan 009): `MacKnownFolders`, `MacInstalledApps` with its own `Info.plist` and code-signature readers, `MacRunningApps`, `SystemClock`, `StartedClock`, `ProcessCommandRunner` | core, macos   |
+| `fresher-system`      | `crates/system`  | the safe adapters of system knowledge (plan 009): `MacKnownFolders`, `MacInstalledApps` with its own `Info.plist` and code-signature readers, `MacRunningApps`, `SystemClock`, `StartedClock`, `ProcessCommandRunner`, the bundle reader (`bundle_facts/`: the measure, Spotlight's last-used date, Homebrew's casks; plan 036) | core, macos   |
 | `fresher-store`       | `crates/store`   | the only crate that touches the app's data folder: atomic versioned files, `settings.json`, the scan cache, the cleanup journal                                                         | core          |
 | `fresher-cleaner`     | `crates/cleaner` | the only code that removes: rehearses and executes a confirmed plan through its guard, Trash first, puts back ([`removal.md`](./removal.md))                                            | core, macos   |
-| `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history                                        | core          |
+| `fresher-engine`      | `crates/engine`  | module registry, event bus, one operation at a time, the scan session, settings, the disk queries, the plan builder, the cleanup and its history, the Apps view and the uninstall plan (`apps/`, plan 036)                                        | core          |
 | `fresher-module-<id>` | `modules/<id>`   | one feature: descriptor, rules or code, texts; `jetbrains` (older IDE versions' folders); `temp` (old items of the temporary folders); `logs` (the old log files and crash reports of the user's `~/Library/Logs`, one finding per file, group System); `dev-caches` (the package managers', Go's and Xcode's caches); `app-leftovers` (the data of apps no longer installed, group Apps); `app-caches` (the `Caches/<bundle id>` folders of installed apps, emptied while the app is closed, and the cache folders a table ties to an installed browser or web-engine app, group System); `downloads` (unfinished downloads, installers of installed apps, old macOS installers and big files not opened in `~/Downloads`, group Your files, only once the folder is allowed); `stale-projects` (the artifact folders of projects nothing changed in for a year, and the Rust build caches unused for a week, group Development; decided from the projects in `finish`); `local-ai-models` (the models of Hugging Face, LM Studio and Ollama, group Development; one finding per model, decided in `finish`; an Ollama model is one finding of several paths, its manifests and the layers no other model names); `unused-toolchains` (the rustup toolchains and, behind a switch off by default, the nvm Node versions nothing points at, group Development; decided in `finish` from the pointer and pin files it reads); `xcode` (Xcode's device support, previews, simulator caches and archives, group Development; four categories, decided in `finish` while Xcode and the Simulator are closed); `demo` and `trial` are dev-only (debug builds)                                                | core, rules   |
 | `fresher-testing`     | `crates/testing` | fixture trees, fakes of the ports, the module harness and the category contract (dev only)                                                                                              | core          |
 | `fresher-sandbox`     | `crates/sandbox` | the case files of a feature, their checks, the sandbox layout and its generator (a binary); also the demo worlds and the scenarios of the recordings (plan 038, exported to the UI with `ts-rs`); dev only, a dependency of the app and the tests alone                                                                                     | core, testing, macos, store |
@@ -138,7 +138,7 @@ Rules of the layout:
 | `OpenFiles`      | `fresher-macos`'s `MacOpenFiles` (the user's own processes, `libproc`)                                          | `FakeOpenFiles`                                             |
 | `CommandRunner`  | `fresher-system`'s `ProcessCommandRunner` (`std::process`, no shell; a 60 s timeout; the caller's cancel token kills it) | `FakeCommandRunner`                                         |
 | `KnownFolders`   | `fresher-system`'s `MacKnownFolders` (the macOS layout of a home folder; opens nothing)                         | `FakeKnownFolders` (`home_layout` of a fixture root)        |
-| `InstalledApps`  | `fresher-system`'s `MacInstalledApps` (the apps folders and one below, the older JetBrains Toolbox's folder four below; an app link read where it points; `Info.plist`, code signature; what it cannot read in `unread`; `find` by bundle id through Spotlight, `mdfind`, or a sandbox's declared apps; `search_complete`: Spotlight knows the Finder and every mounted volume is indexed, `mdutil -s` through its own 10 s runner, a network volume never asked) | `FakeInstalledApps` (`partial`, `failing_search`), `installed_app` |
+| `InstalledApps`  | `fresher-system`'s `MacInstalledApps` (the apps folders and one below, the older JetBrains Toolbox's folder four below; an app link read where it points; `Info.plist`, code signature; what it cannot read in `unread`; `find` by bundle id through Spotlight, `mdfind`, or a sandbox's declared apps; `bundle`: one bundle's facts (the measure by `lstat`, the entry's owner and flags, Spotlight's last-used date, the Homebrew cask that links it) through `BundleReader`, `BundleReader::stated` in sandbox mode; `is_as_listed`: the canonical-path check of the uninstall; `search_complete`: Spotlight knows the Finder and every mounted volume is indexed, `mdutil -s` through its own 10 s runner, a network volume never asked) | `FakeInstalledApps` (`partial`, `failing_search`), `installed_app` |
 | `RunningApps`    | `fresher-system`'s `MacRunningApps` (`fresher-macos`'s process table, each executable's bundles)                | `FakeRunningApps` (a script), `running_app`                 |
 | `InstallRecords` | `fresher-system`'s `MacInstallRecords` (the installer receipts in `/var/db/receipts`, read only; the version of macOS from its own version file) | `FakeInstallRecords`, `changed_at`                          |
 | `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
@@ -331,6 +331,54 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
   `get_storage_place` was removed by plan 035, whose `get_largest_place` shows a folder's children). The storage map's sandbox case file (plan 012/05) is not built yet: it
   waits for plan [007](../plans/007-safe-development/readme.md) to be merged into `main`.
 
+## Apps and uninstall
+
+Plan [036](../plans/036-uninstall/readme.md): the user picks an installed app, sees everything tied to it by bundle id
+and uninstalls it as one item. An engine view over the last committed scan, like the storage map; not a module (an app
+is not junk, and a module's findings land on Scan). The core holds the types and the texts (`crates/core/src/apps/`:
+`AppSummary`, `AppDetail`, `FootprintItem`, `PartKind`, `KeptReason`, `NotOffered`, `UninstallChoice`, the two
+categories), the engine builds them (`crates/engine/src/apps/`), the UI renders them.
+
+- **The list** (`list.rs`): the apps of the installed list over the last committed scan, never any of Apple's
+  (`com.apple.`, the system's apps folder), never Fresher's own bundle, and only a bundle directly in `Applications` or
+  `~/Applications` or one folder below that the protection passes. Each row is offered or carries one reason, the first
+  that holds: not measured, installed by a package manager (a Homebrew cask link), needs an administrator, locked or
+  protected (`Removability::of` the bundle's entry), open (the app or a helper is running, asked again at each listing
+  and at prepare). When the installed list could not be read the view says so and lists nothing.
+- **The footprint** (`footprint.rs`, `places.rs`): pure over the committed state and the installed list. A const table
+  of places (caches, logs, saved state, launch agents, web data, settings, support, containers, group containers); a
+  part is a first-level child named by the app's bundle id or a helper's (`BundleId::names`, the longest naming id
+  wins), never by name, a vendor prefix or a look-alike. A part is kept, listed and never in a plan, when another
+  installed bundle names the id, the group container's team is shared, the node is a link, a container needs other
+  apps' data and it is not granted, the node was not read in full or the user ignored it. When the installed list is
+  incomplete every part but the bundle is kept.
+- **The measure** (`cache.rs`): the bundle's size, owner and last-use date are read once per committed state, on
+  demand, on at most four threads, outside every engine lock, and cancelled when a scan starts; a gate keeps two
+  listings from measuring twice. "Last used" is the later of Spotlight's date and the newest change of the app's own
+  caches, saved state, settings and support, never the executable's access time.
+- **The uninstall plan** (`uninstall.rs`): `prepare_uninstall(app, choice)` builds one engine-made finding of the
+  category `core.uninstall-keep-data` (Medium, the default choice) or `core.uninstall-everything` (High): the bundle,
+  then the parts the choice takes, as one item that moves together (`MoveTogether`; a bundle alone is a plain move to
+  the Trash). At most 64 paths, else the uninstall is refused, never truncated. The finding is never in the results, on
+  Scan or in a total; the ordinary prepare, rehearsal, confirmation, journal and put back run unchanged.
+- **The context** (`cleanup/context.rs`): the plan's context holds the apps folder as a root only for an uninstall;
+  every other plan (a cleanup, a Largest pick) refuses both apps folders (`Protection::with_refused`), and put back adds
+  no refusal. The protection itself lets through only a whole `.app` bundle in an apps folder
+  ([`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md)). The plan is made from the listing and
+  refused unless `InstalledApps::is_as_listed` holds: the canonical path equals the listed path byte for byte, and the
+  bundle is a real folder with `Contents/Info.plist`; it is asked at prepare and again at confirm, with the running
+  apps asked anew.
+- **The paths that went**: the paths of an uninstall item that moved (the first parts of a partly done one) leave the
+  results and join the state's gone paths, so the list and Largest hide them until the next scan.
+- **App Management**: a capability that is never probed. `NotAsked` until the first uninstall, then learned for the
+  session from the outcome (`apps/management.rs`; [`permissions.md`](./permissions.md)).
+- **The commands** are `get_apps(query)`, `get_app(app)`, `reveal_app(app)` and `prepare_uninstall(app, choice)`
+  (`app/tauri/src/apps_commands.rs`); the engine reveals only a listed app's own path.
+- **UI**: the screens `apps` (the list, filters, "not used for") and `app` (the footprint item by item, the two choices
+  as radios, the notice, Uninstall...); the sidebar lists Scan, Largest, Apps, Review, Cleanups and Settings. The
+  cleanup state carries an `origin` (`selection` or `uninstall`): a finished uninstall keeps the Scan selection, and a
+  refusal of the confirmation shows on Review for either origin.
+
 ## The largest files
 
 Plan [035](../plans/035-large-files/readme.md): the biggest things the user owns that no module explains, listed so
@@ -356,7 +404,7 @@ the user can choose one. The core judges, the UI renders.
   rescan.
 - **The commands** are `get_largest`, `get_largest_place` and `pick_own_item` (`app/tauri/src/largest_commands.rs`).
 - **UI**: the screen `screens/largest/` (`Screen` `largest`; Files and Folders as tabs, the filters, a selection bar) and
-  the component `product/own-item-row/`; the sidebar lists Scan, Largest, Review, Cleanups and Settings.
+  the component `product/own-item-row/`; the sidebar lists Scan, Largest, Apps (plan 036), Review, Cleanups and Settings.
 
 ## Problems and reasons
 

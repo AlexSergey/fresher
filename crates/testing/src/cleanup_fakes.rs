@@ -202,9 +202,17 @@ pub struct FakeCleaner {
     rehearsed: Mutex<Vec<Vec<FindingId>>>,
     executed: Mutex<Vec<ExecutedPlan>>,
     put_backs_tried: Mutex<Vec<PathBuf>>,
+    protection: fresher_core::Protection,
 }
 
 impl FakeCleaner {
+    /// The cleaner's own protection is `protection` (none by default); it checks nothing against it.
+    #[must_use]
+    pub fn protecting(mut self, protection: fresher_core::Protection) -> Self {
+        self.protection = protection;
+        self
+    }
+
     /// `finding` fails a check, in a rehearsal and in an execution.
     #[must_use]
     pub fn skipping(mut self, finding: FindingId, reason: SkipReason) -> Self {
@@ -404,7 +412,7 @@ impl Cleaner for FakeCleaner {
     }
 
     fn protection(&self) -> fresher_core::Protection {
-        fresher_core::Protection::default()
+        self.protection.clone()
     }
 
     fn locate(&self, items: &[TrashedItem]) -> Vec<TrashState> {

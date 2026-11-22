@@ -6,7 +6,10 @@ here matches a category of a module. A category that is not documented here is n
 `Catalogue::Required`) fails for a category without its file or with another danger level in it. The dev-only `demo`
 and `trial` modules have no files here. One category is the core's, not a module's: `core.own-file`, the items the
 user picks by hand on the Largest screen ([`core-own-file.md`](./core-own-file.md), plan
-[035](../plans/035-large-files/readme.md)). How a module is written:
+[035](../plans/035-large-files/readme.md)); two more are the core's, `core.uninstall-keep-data` and
+`core.uninstall-everything`, the app an uninstall takes with or without its data, offered only from an app's page,
+never on Scan ([`core-uninstall-keep-data.md`](./core-uninstall-keep-data.md),
+[`core-uninstall-everything.md`](./core-uninstall-everything.md), plan [036](../plans/036-uninstall/readme.md)). How a module is written:
 [`../architecture/modules.md`](../architecture/modules.md).
 
 There is no "Other", "Miscellaneous" or "System data" category. Space no rule recognizes is shown as its real folders.
@@ -99,6 +102,8 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 | `xcode.simulator-caches`        | Safe         | none (the module's code, `modules/xcode`)      | [`xcode-simulator-caches.md`](./xcode-simulator-caches.md)               |
 | `xcode.archives`                | High         | none (the module's code, `modules/xcode`)      | [`xcode-archives.md`](./xcode-archives.md)                               |
 | `core.own-file`                 | High         | none (the core's code, `crates/engine/src/own.rs`; made by no module: the user picks each item on the Largest screen) | [`core-own-file.md`](./core-own-file.md) |
+| `core.uninstall-keep-data`      | Medium       | none (the core's code, `crates/engine/src/apps/uninstall.rs`; made by no module: the user chooses it on an app's page) | [`core-uninstall-keep-data.md`](./core-uninstall-keep-data.md) |
+| `core.uninstall-everything`     | High         | none (the core's code, `crates/engine/src/apps/uninstall.rs`; made by no module: the user chooses it on an app's page) | [`core-uninstall-everything.md`](./core-uninstall-everything.md) |
 
 The next one (`node_modules`) comes with the plan that implements its rules.
 

@@ -34,7 +34,7 @@ mod tree_description;
 mod tree_report;
 
 pub use access_time::settle_access_time;
-pub use app_bundle::AppBundle;
+pub use app_bundle::{AppBundle, installed_by_text, parse_installed_by};
 pub use cleanup_fakes::{ExecutedPlan, FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
 pub use contract::{
     Catalogue, ContractProblem, assert_module_contract, assert_texts_used, check_module_contract,
@@ -54,8 +54,8 @@ pub use special_files::make_pipe;
 pub use stated_apps::StatedInstalledApps;
 pub use swapper::Swapper;
 pub use system_fakes::{
-    FakeFinderSettings, FakeInstallRecords, FakeInstalledApps, FakeRunningApps, changed_at, fake_system, installed_app,
-    running_app, signed_by,
+    FakeFinderSettings, FakeInstallRecords, FakeInstalledApps, FakeRunningApps, bundle_facts, changed_at, fake_system,
+    installed_app, running_app, signed_by,
 };
 pub use tree_description::{FIXTURE_NOW, TreeDescription, time_at_age};
 pub use tree_report::{EntryKind, TreeEntry, TreeReport};

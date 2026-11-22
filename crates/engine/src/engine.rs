@@ -7,15 +7,16 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal,
-    CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary,
-    DiskState, DiskWalk, EngineStatus, Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery,
-    KnownFolder, ModuleInfo, Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect,
-    SettingKey, SettingUpdate, SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, TrashView, Volumes,
-    WalkMode,
+    Access, AccessProbe, AccessStatus, AppDetail, AppId, AppsQuery, AppsView, CancelToken, Capability, Cleaner,
+    CleanupDetail, CleanupId, CleanupJournal, CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError,
+    CommandRunner, Confirmation, Dictionary, DiskState, DiskWalk, EngineStatus, Event, FinderSettings, Finding,
+    FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo, Operation, Overview, PlanId, PutBackReport,
+    ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate, SettingsStore, SettingsView, SystemUi,
+    SystemUiError, TextKey, TrashView, UninstallChoice, Volumes, WalkMode,
 };
 
 use crate::access::AccessView;
+use crate::apps::{self, AppsCache};
 use crate::cleanup::{self, Pending};
 use crate::coverage;
 use crate::error::{EngineError, lock, lock_anyway};
@@ -98,6 +99,10 @@ pub(crate) struct Shared {
     pub(crate) pending: Mutex<Pending>,
     /// The Trash folders of the last `trash` answer, by index: what `open_trash` opens.
     pub(crate) trash_folders: Mutex<Vec<PathBuf>>,
+    /// The bundle facts of the last committed state's apps, measured on the first listing after its commit.
+    pub(crate) apps: Mutex<AppsCache>,
+    /// Held by the one listing that measures the bundles; never by a scan.
+    pub(crate) apps_gate: Mutex<()>,
 }
 
 impl Shared {
@@ -151,6 +156,8 @@ impl Engine {
             cleanup,
             pending: Mutex::new(Pending::default()),
             trash_folders: Mutex::new(Vec::new()),
+            apps: Mutex::new(AppsCache::default()),
+            apps_gate: Mutex::new(()),
         };
         Ok(Self { shared: Arc::new(shared) })
     }
@@ -201,6 +208,8 @@ impl Engine {
             })
             .map_err(|error| EngineError::Spawn { kind: error.kind() })?;
         machine.start(scan, Running { cancel, thread: Some(OperationThread { handle, done: ended }) });
+        // The bundles of the state this scan replaces are not measured any further.
+        lock_anyway(&self.shared.apps).cancel_measure();
         Ok(scan)
     }
 
@@ -365,6 +374,36 @@ impl Engine {
             }
         })
     }
+
+    /// The installed apps over the last committed scan, largest first, filtered by `query`; each bundle is measured
+    /// once per committed state, on the first listing; a scan that starts cancels that measure. `NoScan` before any
+    /// commit; `Busy` during a scan when this state's bundles were not measured yet, or when a scan cancelled the
+    /// measure.
+    pub fn apps(&self, query: AppsQuery) -> Result<AppsView, CommandError> {
+        apps::apps(&self.shared, query)
+    }
+
+    /// The page of app `id`: its footprint, its choices and its categories. `UnknownApp` for an id of another state,
+    /// an index past the list or an app the list leaves out.
+    pub fn app(&self, id: AppId) -> Result<AppDetail, CommandError> {
+        apps::app(&self.shared, id)
+    }
+
+    /// Shows app `id`'s bundle in Finder, selected: the path stays in the core. Refused as [`Self::app`] refuses.
+    pub fn reveal_app(&self, id: AppId) -> Result<(), CommandError> {
+        apps::reveal(&self.shared, id)
+    }
+
+    /// Makes the uninstall of app `id` with `choice` the pending plan, in place of any other: one item that moves the
+    /// bundle and the choice's parts to the Trash together, rehearsed with every check of the cleaner and nothing
+    /// done; answers it as the confirmation shows it. It is confirmed with [`Self::confirm_cleanup`], which judges the
+    /// app again. Refused while an operation runs (`Busy`), for an id of another state or an app the list leaves out
+    /// (`UnknownApp`), for an app not offered now (`UninstallRefused` with the reason, the running apps asked
+    /// again), for one of more paths than one item holds (`UninstallRefused`, too many files), and when cleaning is
+    /// blocked.
+    pub fn prepare_uninstall(&self, id: AppId, choice: UninstallChoice) -> Result<CleanupPlanView, CommandError> {
+        apps::uninstall::prepare(&self.shared, id, choice)
+    }
 }
 
 /// Cleanups: the plan, its confirmation and the cleanup it starts. Nothing is removed but from a plan the user
@@ -479,6 +518,7 @@ impl Engine {
 
 impl Drop for Engine {
     fn drop(&mut self) {
+        lock_anyway(&self.shared.apps).cancel_measure();
         self.shutdown();
     }
 }

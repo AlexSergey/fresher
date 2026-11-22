@@ -1,0 +1,639 @@
+{
+  "apps": [
+    {
+      "allocated": 8192,
+      "bundle": "Applications/Brewed.app",
+      "logical": 4518,
+      "name": "Brewed",
+      "offer": "installed-by",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 422
+        },
+        {
+          "allocated": 4096,
+          "kind": "caches",
+          "logical": 4096
+        }
+      ]
+    },
+    {
+      "allocated": 1073152,
+      "bundle": "Applications/Keeper.app",
+      "logical": 1069478,
+      "name": "Keeper",
+      "offer": "offered",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 422
+        },
+        {
+          "allocated": 8192,
+          "kind": "caches",
+          "logical": 8192
+        },
+        {
+          "allocated": 4096,
+          "kind": "logs",
+          "logical": 4096
+        },
+        {
+          "allocated": 4096,
+          "kind": "saved-state",
+          "logical": 4096
+        },
+        {
+          "allocated": 1048576,
+          "kind": "settings",
+          "logical": 1048576
+        },
+        {
+          "allocated": 4096,
+          "kind": "support",
+          "logical": 4096
+        }
+      ]
+    },
+    {
+      "allocated": 2117632,
+      "bundle": "Applications/Purger.app",
+      "logical": 2113958,
+      "name": "Purger",
+      "offer": "offered",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 422
+        },
+        {
+          "allocated": 4096,
+          "kind": "caches",
+          "logical": 4096
+        },
+        {
+          "allocated": 4096,
+          "kind": "logs",
+          "logical": 4096
+        },
+        {
+          "allocated": 4096,
+          "kind": "saved-state",
+          "logical": 4096
+        },
+        {
+          "allocated": 1048576,
+          "kind": "launch-agents",
+          "logical": 1048576
+        },
+        {
+          "allocated": 1048576,
+          "kind": "settings",
+          "logical": 1048576
+        },
+        {
+          "allocated": 4096,
+          "kind": "support",
+          "logical": 4096
+        }
+      ]
+    },
+    {
+      "allocated": 4096,
+      "bundle": "Applications/Rooted.app",
+      "logical": 422,
+      "name": "Rooted",
+      "offer": "needs-administrator",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 422
+        }
+      ]
+    },
+    {
+      "allocated": 8192,
+      "bundle": "Applications/Twin.app",
+      "logical": 4514,
+      "name": "Twin",
+      "offer": "offered",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 418
+        },
+        {
+          "allocated": 4096,
+          "kind": "support",
+          "logical": 4096
+        }
+      ]
+    },
+    {
+      "allocated": 8192,
+      "bundle": "home/Applications/Twin.app",
+      "logical": 4514,
+      "name": "Twin",
+      "offer": "offered",
+      "parts": [
+        {
+          "allocated": 4096,
+          "kind": "bundle",
+          "logical": 418
+        },
+        {
+          "allocated": 4096,
+          "kind": "support",
+          "logical": 4096
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 3198976,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67108695,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 734998697,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [],
+    "before": []
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 110,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Brewed.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Brewed.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Brewed.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Brewed.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Keeper.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Keeper.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Keeper.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Keeper.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Purger.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Purger.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Purger.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Purger.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Rooted.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Rooted.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Applications/Rooted.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Rooted.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Twin.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Twin.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 418,
+        "path": "Applications/Twin.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Twin.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Utilities"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Utilities/Notes.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Utilities/Notes.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 419,
+        "path": "Applications/Utilities/Notes.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications/Utilities/Notes.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications/Chess.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications/Chess.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 419,
+        "path": "System/Applications/Chess.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications/Chess.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/Twin.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/Twin.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 418,
+        "path": "home/Applications/Twin.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Applications/Twin.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/com.example.Keeper"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/com.example.Keeper/library.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/com.example.Purger"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/com.example.Purger/library.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/com.example.Twin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/com.example.Twin/state.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Brewed"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Brewed/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Keeper"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/Library/Caches/com.example.Keeper/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Keeperx"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Keeperx/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches/com.example.Purger"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Caches/com.example.Purger/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/LaunchAgents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/LaunchAgents/com.example.Purger.helper.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/com.example.Keeper"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/com.example.Keeper/keeper.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Logs/com.example.Purger"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Logs/com.example.Purger/purger.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Preferences"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Preferences/com.example.Keeper.plist"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "home/Library/Preferences/com.example.Purger.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Keeper.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Keeper.savedState/data.data"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Purger.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Purger.savedState/data.data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 455,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 3198807
+  },
+  "uninstalls": [
+    {
+      "category": "core.uninstall-keep-data",
+      "danger": "medium",
+      "items": 1,
+      "paths": [
+        "Applications/Keeper.app",
+        "home/Library/Caches/com.example.Keeper",
+        "home/Library/Logs/com.example.Keeper",
+        "home/Library/Saved Application State/com.example.Keeper.savedState"
+      ]
+    },
+    {
+      "category": "core.uninstall-everything",
+      "danger": "high",
+      "items": 1,
+      "paths": [
+        "Applications/Purger.app",
+        "home/Library/Caches/com.example.Purger",
+        "home/Library/Logs/com.example.Purger",
+        "home/Library/Saved Application State/com.example.Purger.savedState",
+        "home/Library/LaunchAgents/com.example.Purger.helper.plist",
+        "home/Library/Preferences/com.example.Purger.plist",
+        "home/Library/Application Support/com.example.Purger"
+      ]
+    },
+    {
+      "category": "core.uninstall-everything",
+      "danger": "high",
+      "items": 1,
+      "paths": [
+        "home/Applications/Twin.app"
+      ]
+    }
+  ]
+}

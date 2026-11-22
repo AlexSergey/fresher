@@ -388,6 +388,16 @@ Quit any development window first (the app is single-instance). Section 2.19 is 
 - [ ] Each run made a new folder `/private/tmp/fresher-demo/<scenario>-<n>`; nothing was removed. They stay until macOS
       clears `/private/tmp`; remove them by hand if you want the space back.
 
+### 1.22 Uninstall an app ([036/05/01](./plans/036-uninstall/05-finish/01-docs-and-conclusions.md))
+
+- [ ] `rm -rf sandbox/uninstall && npm run dev:sandbox -- uninstall`. Walk `EXPECTED.md` line by line, negatives first:
+      Chess and Notes are not listed; Brewed shows Homebrew's sentence and command; Rooted shows "needs an
+      administrator" and Show in Finder; Keeperx's cache is untouched.
+- [ ] Uninstall Keeper with the default choice ("keep its settings and data"), then Purger with "everything it left".
+      Read the confirmation: one item, "and N more files". Confirm: the app leaves the list. Cleanups: put each back,
+      the whole app returns. The Twin case: the user's copy goes with everything, its data stays (shared).
+- [ ] `npm run dev:sandbox -- uninstall-open`: Mailbox shows "open" and is not offered; Sketch goes.
+
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
@@ -782,6 +792,27 @@ needs a permission and a plain desktop.
 - [ ] If the GIF is good, commit it (plan 040 places it in the README); if it is over budget or ugly, write down why.
 - [ ] Optional: `npm run demo:record -- cleanup` and look at the cleanup's result and its freed-space line.
 
+### 2.20 Uninstall an app: the dry run on your Mac ([036/05/01](./plans/036-uninstall/05-finish/01-docs-and-conclusions.md))
+
+Run after 1.22. `npm run dev` is a dry run: an uninstall moves nothing and ends "a dry run". Scan `~`, open Apps and
+check the list against the shell, run by you:
+
+```sh
+ls -l /Applications          # the owners: root-owned apps are App Store apps
+ls /opt/homebrew/Caskroom    # the Homebrew apps
+du -sh /Applications/<app>.app   # three apps, against their sizes in the list
+```
+
+- [ ] No Apple app is listed; an App Store (root-owned) app is shown "needs an administrator" with Show in Finder and
+      is not offered; a Homebrew app shows the manager's sentence and command and is not offered.
+- [ ] The sizes of three apps match `du -sh` (sizes on disk).
+- [ ] Uninstall one app with the default choice: the confirmation shows one item and "and N more files"; confirming
+      ends "a dry run" and nothing moved.
+- [ ] Facts to verify (a release build and one throwaway app you install for it): whether macOS asks for App
+      Management, refuses silently or shows its own notice on the first bundle moved; the pane's address
+      `Privacy_AppBundles`; whether Finder's "Put Back" still works for a moved bundle; how long the first measure takes
+      on a Mac with Xcode. Write each down: the texts and the pane's address are corrected where they differ.
+
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 
 Scan time is compared once per module generation, not per plan; do it with the baseline worktrees of section 4.2, since
@@ -1072,6 +1103,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [031/03/02 runs and conclusions](./plans/031-xcode/03-finish/02-run-and-conclusions.md)                    | pending                        | 1.18, 2.16    |
 | [032/06/01 docs and conclusions](./plans/032-docker/06-finish/01-docs-and-conclusions.md)                  | pending                        | 1.19, 2.17    |
 | [035/05/01 docs and conclusions](./plans/035-large-files/05-finish/01-docs-and-conclusions.md)               | pending                        | 1.20, 2.18    |
+| [036/05/01 docs and conclusions](./plans/036-uninstall/05-finish/01-docs-and-conclusions.md)                 | pending                        | 1.22, 2.20    |
 | Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and

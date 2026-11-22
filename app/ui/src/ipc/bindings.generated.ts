@@ -40,7 +40,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" } | { "code": "unknown-app", id: AppId, } | { "code": "uninstall-refused", reason: NotOffered, };
 
 /**
  * The answer of `get_overview`.
@@ -449,7 +449,7 @@ export type CapabilityState = { capability: Capability, access: Access, note: Te
 /**
  * Something the app may be allowed to do.
  */
-export type Capability = { "kind": "all-files" } | { "kind": "folder", "value": GuardedFolder } | { "kind": "other-apps-data" } | { "kind": "volume", "value": VolumeKind } | { "kind": "tool", "value": ToolId };
+export type Capability = { "kind": "all-files" } | { "kind": "folder", "value": GuardedFolder } | { "kind": "other-apps-data" } | { "kind": "volume", "value": VolumeKind } | { "kind": "app-management" } | { "kind": "tool", "value": ToolId };
 
 /**
  * A folder of the user's that the system guards.
@@ -1027,6 +1027,121 @@ export type PutBackItem = { index: number, outcome: PutBackOutcome, text: Text, 
  * How putting an item back ended. Put back never replaces anything.
  */
 export type PutBackOutcome = { "kind": "put-back" } | { "kind": "not-trashed" } | { "kind": "gone" } | { "kind": "replaced" } | { "kind": "occupied" } | { "kind": "no-parent" } | { "kind": "refused", reason: SkipCode, } | { "kind": "failed" };
+
+/**
+ * What the Apps list holds: every app, or only those not used for a while.
+ */
+export type AppsQuery = { unused: UnusedFor | null, };
+
+/**
+ * How long an app has not been used, for the list's filter.
+ */
+export type UnusedFor = "three-months" | "six-months" | "a-year";
+
+/**
+ * The Apps list, largest first.
+ */
+export type AppsView = { apps: Array<AppSummary>, notice: Text | null, };
+
+/**
+ * One row of the Apps list.
+ */
+export type AppSummary = { app: AppId, name: string, version: string | null, 
+/**
+ * The bundle and every part, kept parts too.
+ */
+sizes: Sizes, 
+/**
+ * The sizes by kind, kept parts too.
+ */
+parts: Array<PartSizes>, lastUsed: Timestamp | null, summary: Text, offer: AppOffer, };
+
+/**
+ * An app of one state's list; another state refuses it, like a `NodeId`.
+ */
+export type AppId = { state: StateId, index: number, };
+
+/**
+ * Whether an app may be uninstalled from its page.
+ */
+export type AppOffer = { "kind": "offered" } | { "kind": "not-offered", reason: NotOffered, text: Text, };
+
+/**
+ * Why an app is listed but not offered for uninstall.
+ */
+export type NotOffered = "unmeasured" | "installed-by" | "needs-administrator" | "locked" | "protected" | "open" | "too-many-files";
+
+/**
+ * What the parts of one kind take.
+ */
+export type PartSizes = { kind: FootprintKind, sizes: Sizes, };
+
+/**
+ * What a part of an app's footprint is.
+ */
+export type FootprintKind = "bundle" | "caches" | "logs" | "saved-state" | "launch-agents" | "web-data" | "settings" | "support" | "container" | "group-container";
+
+/**
+ * An app's page.
+ */
+export type AppDetail = { summary: AppSummary, 
+/**
+ * The bundle first, then its parts.
+ */
+items: Array<FootprintItem>, choices: Array<ChoiceView>, 
+/**
+ * The app's cleanable categories on Scan.
+ */
+categories: Array<CategoryId>, 
+/**
+ * A package manager's uninstall command, for the user to copy; never run.
+ */
+command: string | null, 
+/**
+ * A line about the permission an uninstall may need.
+ */
+notice: Text | null, };
+
+/**
+ * One file or folder of an app's page.
+ */
+export type FootprintItem = { kind: FootprintKind, path: string, sizes: Sizes, danger: DangerLevel, 
+/**
+ * Whether it goes with `KeepData`.
+ */
+keepData: boolean, 
+/**
+ * Whether it goes with `Everything`.
+ */
+everything: boolean, kept: KeptItem | null, };
+
+/**
+ * Why a part stays, with its sentence.
+ */
+export type KeptItem = { reason: KeptReason, text: Text, };
+
+/**
+ * Why a part is listed but never in an uninstall.
+ */
+export type KeptReason = "shared" | "team-shared" | "link" | "needs-permission" | "not-scanned" | "ignored";
+
+/**
+ * One uninstall choice of an app's page: what goes under it.
+ */
+export type ChoiceView = { choice: UninstallChoice, label: Text, description: Text, 
+/**
+ * The bundle and the parts that go.
+ */
+sizes: Sizes, 
+/**
+ * How many paths go, the bundle included.
+ */
+items: number, };
+
+/**
+ * How much of an app an uninstall takes.
+ */
+export type UninstallChoice = "keep-data" | "everything";
 
 /**
  * What the shell answers the UI in demo mode: the scenario, and the texts the picture must never show (the real

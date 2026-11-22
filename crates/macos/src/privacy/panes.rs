@@ -16,16 +16,19 @@ pub enum Pane {
     FilesAndFolders,
     /// Privacy & Security, the top of the section.
     PrivacyAndSecurity,
+    /// Privacy & Security → App Management: moving other developers' apps.
+    AppManagement,
 }
 
 /// The program that opens an address or reveals a path.
 pub const OPEN: &str = "/usr/bin/open";
 
 /// One address per pane, the same for every supported version (macOS 13 on).
-const ADDRESSES: [(Pane, &str); 3] = [
+const ADDRESSES: [(Pane, &str); 4] = [
     (Pane::FullDiskAccess, "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"),
     (Pane::FilesAndFolders, "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders"),
     (Pane::PrivacyAndSecurity, "x-apple.systempreferences:com.apple.preference.security?Privacy"),
+    (Pane::AppManagement, "x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles"),
 ];
 
 /// The address of `pane`.
@@ -108,10 +111,18 @@ mod tests {
 
         #[test]
         fn each_pane_has_an_address() {
-            let panes = [Pane::FullDiskAccess, Pane::FilesAndFolders, Pane::PrivacyAndSecurity];
+            let panes = [Pane::FullDiskAccess, Pane::FilesAndFolders, Pane::PrivacyAndSecurity, Pane::AppManagement];
             let addresses: HashSet<_> = panes.into_iter().map(pane_address).collect();
-            assert_eq!(addresses.len(), 3);
+            assert_eq!(addresses.len(), 4);
             assert!(pane_address(Pane::FullDiskAccess).ends_with("Privacy_AllFiles"));
+        }
+
+        #[test]
+        fn app_management_opens_its_own_pane() {
+            assert_eq!(
+                open_args(Pane::AppManagement),
+                ["x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles"]
+            );
         }
 
         #[test]

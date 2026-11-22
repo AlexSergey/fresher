@@ -12,6 +12,7 @@
 mod access;
 mod apps;
 mod bundle;
+mod bundle_facts;
 mod clock;
 mod finder_settings;
 mod guarded_root;
@@ -27,6 +28,7 @@ mod system_ui;
 
 pub use access::MacAccess;
 pub use apps::{AppSearch, DeclaredSearch, MacInstalledApps};
+pub use bundle_facts::BundleReader;
 pub use clock::{StartedClock, SystemClock};
 pub use finder_settings::{MacFinderSettings, is_trash_setting_read};
 pub use installs::MacInstallRecords;

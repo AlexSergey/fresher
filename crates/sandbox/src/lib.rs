@@ -22,6 +22,7 @@ mod layout;
 mod scenario;
 mod stated_access;
 mod stated_space;
+mod uninstall;
 mod world;
 
 pub use case::{
@@ -39,4 +40,5 @@ pub use scenario::{
 };
 pub use stated_access::StatedAccess;
 pub use stated_space::StatedSpace;
+pub use uninstall::{Uninstall, UninstallExpectation};
 pub use world::{World, WorldCommands};

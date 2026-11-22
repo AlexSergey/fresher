@@ -191,6 +191,11 @@ mod positive {
     }
 
     #[test]
+    fn the_engine_knows_the_app_by_its_identifier() {
+        assert_eq!(config()["identifier"], fresher_engine::OWN_BUNDLE_ID);
+    }
+
+    #[test]
     fn every_command_in_the_handler_is_in_the_app_manifest_and_the_capability() {
         let handler = handler_commands();
         let allowed: Vec<String> =

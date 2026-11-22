@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type {
+  AppId,
   CleanupDetail,
   CleanupPlanView,
   CleanupSelection,
@@ -15,9 +16,11 @@ import type {
   Refusal,
   SkipReason,
   TrashView,
+  UninstallChoice,
 } from '../../src/ipc/bindings.generated';
 
 import { COMMANDS } from '../../src/ipc';
+import { APP_DETAILS, uninstallPlanOf } from '../../src/test/app-detail';
 import { cleanupEventsOf, leftOutOf, PLAN_GONE, PLAN_MISMATCH, planOf, reportOf } from '../../src/test/cleanup-plan';
 
 // The cleanup's part of the mocked core: a plan per selection over the scan's findings, the echo compared with it, a
@@ -49,6 +52,7 @@ export const CLEANUP_HOOKS = {
 } as const;
 
 const PLAN_OF = '__fresherPlanOf';
+const UNINSTALL_PLAN_OF = '__fresherUninstallPlanOf';
 const CLEANUP_OF = '__fresherCleanupOf';
 const RELEASE = '__fresherReleaseCleanup';
 
@@ -70,7 +74,12 @@ type Setup = {
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
   readonly mismatch: Refusal;
-  readonly names: { readonly cleanupOf: string; readonly planOf: string; readonly release: string };
+  readonly names: {
+    readonly cleanupOf: string;
+    readonly planOf: string;
+    readonly release: string;
+    readonly uninstallPlanOf: string;
+  };
   readonly trashAfter: null | TrashView;
 };
 
@@ -140,6 +149,14 @@ export const mockCleanup = async (
   confirmed?: (plan: CleanupPlanView) => void,
 ): Promise<void> => {
   await page.exposeFunction(PLAN_OF, planFor(findings, script));
+  // The plan of the uninstall of an app of the mock's apps (support/apps-mock.ts): never over the scan's findings.
+  await page.exposeFunction(UNINSTALL_PLAN_OF, (app: AppId, choice: UninstallChoice, id: number) => {
+    const detail = APP_DETAILS.find(
+      ({ summary }) => summary.app.state === app.state && summary.app.index === app.index,
+    );
+
+    return detail === undefined ? null : uninstallPlanOf(detail, choice, id);
+  });
   await page.exposeFunction(CLEANUP_OF, (plan: CleanupPlanView, method: Method) => {
     confirmed?.(plan);
 
@@ -271,6 +288,28 @@ export const mockCleanup = async (
             );
 
             return plan;
+          case commands.prepareUninstall: {
+            plans += 1;
+            const made = await (
+              scope[setup.names.uninstallPlanOf] as (
+                app: unknown,
+                choice: unknown,
+                id: number,
+              ) => Promise<CleanupPlanView | null>
+            )(args.app, args.choice, plans);
+
+            if (made === null) {
+              // The core refuses an id it does not list, as `get_app` does.
+              // eslint-disable-next-line @typescript-eslint/only-throw-error -- the core rejects with a plain object
+              throw {
+                error: { code: 'unknown-app', id: args.app },
+                text: { args: {}, key: 'core.error.unknown-app' },
+              };
+            }
+            plan = made;
+
+            return made;
+          }
           case commands.putBack:
             return putBack(args.request as PutBackRequest);
           default:
@@ -285,6 +324,7 @@ export const mockCleanup = async (
         setup.commands.getCleanup,
         setup.commands.getCleanups,
         setup.commands.prepareCleanup,
+        setup.commands.prepareUninstall,
         setup.commands.putBack,
         setup.commands.quitAfterCleanup,
         setup.commands.revealInTrash,
@@ -303,7 +343,7 @@ export const mockCleanup = async (
       hold: script.hold ?? null,
       hooks: CLEANUP_HOOKS,
       mismatch: PLAN_MISMATCH,
-      names: { cleanupOf: CLEANUP_OF, planOf: PLAN_OF, release: RELEASE },
+      names: { cleanupOf: CLEANUP_OF, planOf: PLAN_OF, release: RELEASE, uninstallPlanOf: UNINSTALL_PLAN_OF },
       trashAfter: script.trashAfterCleanup ?? null,
     } satisfies Setup,
   );

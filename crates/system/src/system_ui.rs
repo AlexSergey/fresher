@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use fresher_core::{CancelToken, Capability, CommandRunner, SystemUi, SystemUiError};
-use fresher_macos::{OPEN, open_args, open_folder_args, pane_of, reveal_args};
+use fresher_macos::{OPEN, Pane, open_args, open_folder_args, pane_of, reveal_args};
 
 use crate::access::guard_of;
 
@@ -39,8 +39,11 @@ impl MacSystemUi {
 
 impl SystemUi for MacSystemUi {
     fn open_access_settings(&self, capability: &Capability) -> Result<(), SystemUiError> {
-        let guard = guard_of(*capability).ok_or(SystemUiError::Unsupported)?;
-        self.open(&open_args(pane_of(guard)))
+        let pane = match capability {
+            Capability::AppManagement => Pane::AppManagement,
+            _ => pane_of(guard_of(*capability).ok_or(SystemUiError::Unsupported)?),
+        };
+        self.open(&open_args(pane))
     }
 
     fn reveal(&self, path: &Path) -> Result<(), SystemUiError> {
@@ -172,7 +175,8 @@ mod tests {
                 FakeCommandRunner::default()
                     .answering(&open(Pane::FullDiskAccess), "")
                     .answering(&open(Pane::FilesAndFolders), "")
-                    .answering(&open(Pane::PrivacyAndSecurity), ""),
+                    .answering(&open(Pane::PrivacyAndSecurity), "")
+                    .answering(&open(Pane::AppManagement), ""),
             );
             let ui = ui(&runner);
 
@@ -181,6 +185,7 @@ mod tests {
                 Capability::Folder(GuardedFolder::Documents),
                 Capability::Volume(VolumeKind::Network),
                 Capability::OtherAppsData,
+                Capability::AppManagement,
             ] {
                 assert_eq!(ui.open_access_settings(&capability), Ok(()), "{capability:?}");
             }
@@ -192,6 +197,7 @@ mod tests {
                     "/usr/bin/open x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders",
                     "/usr/bin/open x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders",
                     "/usr/bin/open x-apple.systempreferences:com.apple.preference.security?Privacy",
+                    "/usr/bin/open x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles",
                 ]
             );
         }

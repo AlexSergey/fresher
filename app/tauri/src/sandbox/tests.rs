@@ -759,6 +759,21 @@ mod positive {
     }
 
     #[test]
+    fn the_sandboxs_apps_folder_opens_only_whole_bundles() {
+        let (_folder, sandbox) = super::installs_sandbox();
+        let apps = sandbox.path().join("Applications");
+
+        let protection = crate::sandbox::apps_protection(&sandbox).unwrap();
+
+        assert_eq!(protection.app_folders(), std::slice::from_ref(&apps));
+        assert_eq!(protection.check(&apps.join("Tool.app")), Ok(()));
+        assert_eq!(protection.check(&apps.join("Utilities/Tool.app")), Ok(()));
+        for path in [apps.clone(), apps.join("Tool.app/Contents"), apps.join("Tool.app/Contents/Info.plist")] {
+            assert_eq!(protection.check(&path), Err(fresher_core::Protected::Never), "{}", path.display());
+        }
+    }
+
+    #[test]
     fn sandbox_mode_sees_an_apps_stated_change() {
         let (_folder, sandbox) = super::installs_sandbox();
         let world = fresher_sandbox::World::read(&sandbox).unwrap();

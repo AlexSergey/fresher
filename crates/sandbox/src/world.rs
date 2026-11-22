@@ -9,7 +9,7 @@ use fresher_core::{
 };
 use fresher_testing::{
     FakeAccess, FakeInstallRecords, FakeRunningApps, Stated, StatedFacts, StatedFlag, StatedKind, StatedOwner,
-    time_at_age,
+    installed_by_text, parse_installed_by, time_at_age,
 };
 use serde::{Deserialize, Serialize};
 
@@ -144,6 +144,12 @@ struct RawEntry {
     kind: Option<StatedKind>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     allocated: Option<u64>,
+    /// An app's bundle: when Spotlight last saw the app used.
+    #[serde(default, rename = "last-used", skip_serializing_if = "Option::is_none")]
+    last_used: Option<u64>,
+    /// An app's bundle: the package manager that installed it, `<manager>:<token>`.
+    #[serde(default, rename = "installed-by", skip_serializing_if = "Option::is_none")]
+    installed_by: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -409,6 +415,8 @@ impl World {
                 flags: stated.flags.clone(),
                 kind: stated.kind,
                 allocated: stated.allocated.map(ByteSize::bytes),
+                last_used: stated.last_used.map(Timestamp::secs),
+                installed_by: stated.installed_by.as_ref().map(installed_by_text),
             })
             .collect();
         let elsewhere = self
@@ -529,28 +537,7 @@ impl World {
                 Ok(RunningApp { name: app.name, bundle_ids })
             })
             .collect::<Result<_, String>>()?;
-        let entries = raw
-            .entries
-            .into_iter()
-            .map(|entry| {
-                let at = entry.path.display().to_string();
-                if !is_plain(&entry.path) {
-                    return Err(format!("the entry `{at}` is not a plain path inside the sandbox"));
-                }
-                let stated = Stated {
-                    changed: entry.changed.map(Timestamp::from_secs),
-                    accessed: entry.accessed.map(Timestamp::from_secs),
-                    owner: entry.owner,
-                    flags: entry.flags,
-                    kind: entry.kind,
-                    allocated: entry.allocated.map(ByteSize::new),
-                };
-                if stated.is_empty() {
-                    return Err(format!("the entry `{at}` states nothing"));
-                }
-                Ok((entry.path, stated))
-            })
-            .collect::<Result<_, String>>()?;
+        let entries = raw.entries.into_iter().map(stated_entry).collect::<Result<_, String>>()?;
         let elsewhere = raw
             .elsewhere
             .into_iter()
@@ -612,6 +599,35 @@ impl World {
     }
 }
 
+/// An `[[entry]]` read back: a plain path and at least one fact, an app's manager one the sandbox knows.
+fn stated_entry(entry: RawEntry) -> Result<(PathBuf, Stated), String> {
+    let at = entry.path.display().to_string();
+    if !is_plain(&entry.path) {
+        return Err(format!("the entry `{at}` is not a plain path inside the sandbox"));
+    }
+    let installed_by = entry
+        .installed_by
+        .map(|text| {
+            parse_installed_by(&text)
+                .ok_or_else(|| format!("the entry `{at}` is installed by {text:?}, not `homebrew:<token>`"))
+        })
+        .transpose()?;
+    let stated = Stated {
+        changed: entry.changed.map(Timestamp::from_secs),
+        accessed: entry.accessed.map(Timestamp::from_secs),
+        owner: entry.owner,
+        flags: entry.flags,
+        kind: entry.kind,
+        allocated: entry.allocated.map(ByteSize::new),
+        last_used: entry.last_used.map(Timestamp::from_secs),
+        installed_by,
+    };
+    if stated.is_empty() {
+        return Err(format!("the entry `{at}` states nothing"));
+    }
+    Ok((entry.path, stated))
+}
+
 /// The volume the demo worlds of `files` state: one, however many files state it; two different ones are refused.
 fn one_volume(files: &[CaseFile]) -> Result<Option<DemoVolume>, SandboxError> {
     let mut volumes = files.iter().filter_map(CaseFile::demo).filter_map(|demo| demo.volume());
@@ -669,7 +685,7 @@ const fn places(capability: Capability) -> &'static [&'static str] {
         Capability::Folder(GuardedFolder::Documents) => &["Documents"],
         Capability::Folder(GuardedFolder::Downloads) => &["Downloads"],
         Capability::OtherAppsData => &["Library/Containers", "Library/Group Containers"],
-        Capability::AllFiles | Capability::Volume(_) | Capability::Tool(_) => &[],
+        Capability::AllFiles | Capability::Volume(_) | Capability::AppManagement | Capability::Tool(_) => &[],
     }
 }
 
@@ -1073,6 +1089,9 @@ mod tests {
                 "[[entry]]\npath = \"home/plain.bin\"\nflags = [\"sticky\"]\n",
                 "[[entry]]\npath = \"home/plain.bin\"\nchanged = \"30d\"\n",
                 "[[entry]]\npath = \"home/plain.bin\"\nkind = \"socket\"\ncolour = 1\n",
+                "[[entry]]\npath = \"home/plain.bin\"\ninstalled-by = \"macports:tool\"\n",
+                "[[entry]]\npath = \"home/plain.bin\"\ninstalled-by = \"homebrew:Tool\"\n",
+                "[[entry]]\npath = \"home/plain.bin\"\nlast-used = \"240d\"\n",
             ] {
                 fs::write(sandbox.world(), entry).unwrap();
 
@@ -1469,6 +1488,26 @@ mod tests {
             assert_eq!(sock.accessed, Some(Timestamp::from_secs(FIXTURE_NOW + 3_600)));
             assert_eq!(sock.flags, [StatedFlag::Restricted, StatedFlag::UserLock].into());
             assert!(fs::symlink_metadata(sandbox.path().join("private/tmp/sock")).unwrap().is_file());
+        }
+
+        #[test]
+        fn an_apps_last_use_manager_and_owner_round_trip_through_world_toml() {
+            let app = "[[case.app]]\npath = \"Applications/Brewed.app\"\nbundle-id = \"com.example.Brewed\"\n\
+                       name = \"Brewed\"\nlast-used = \"240d\"\ninstalled-by = \"homebrew:brewed\"\n\
+                       owner = \"system\"\n";
+            let file = case_file("apps", app);
+            let (_folder, sandbox) = generated(std::slice::from_ref(&file));
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world, World::of(&[file], super::now()).unwrap());
+            let text = fs::read_to_string(sandbox.world()).unwrap();
+            assert!(text.contains("installed-by = \"homebrew:brewed\""), "{text}");
+            let stated = world.stated(sandbox.path());
+            let bundle = stated.get(&sandbox.path().join("Applications/Brewed.app")).unwrap();
+            assert_eq!(bundle.last_used, Some(Timestamp::from_secs(FIXTURE_NOW - 240 * 86_400)));
+            assert_eq!(bundle.installed_by.as_ref().map(fresher_core::InstalledBy::token), Some("brewed"));
+            assert_eq!(bundle.owner, Some(StatedOwner::System));
         }
 
         /// The link itself is the entry, so the world holds it; a path through it is still refused.

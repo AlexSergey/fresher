@@ -9,7 +9,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
-use fresher_core::{Access, AutoEmpty, ByteSize, Capability, Module, Protection, SystemPorts, VolumeFacts, VolumeId};
+use fresher_core::{
+    Access, AutoEmpty, ByteSize, Capability, InstalledApps, Module, Protection, RunningApps, SystemPorts, VolumeFacts,
+    VolumeId,
+};
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry};
 use fresher_sandbox::Sandbox;
 use fresher_scanner::{Scanner, ScannerOptions, StdReader, known_folders_anchor};
@@ -57,11 +60,17 @@ pub(crate) struct Extras {
     /// Joined to the sandbox's places protection (as sandbox mode joins a Mac's lists for the sandbox's home, its
     /// standard folders whole); nothing more by default.
     pub(crate) protection: Protection,
+    /// The installed apps in place of the parts' fake: the system's own listing of the sandbox's apps folders.
+    /// `None`: the parts' `installed`.
+    pub(crate) apps: Option<Arc<dyn InstalledApps>>,
+    /// The running apps in place of the parts' fake, for the engine and the cleaner alike, which a flow changes as
+    /// it goes. `None`: the parts' `running`.
+    pub(crate) running: Option<Arc<dyn RunningApps>>,
 }
 
 impl Default for Extras {
     /// A fresh system interface, Finder's setting unknown, the home's Trash only, no command answered, the sandbox's
-    /// places protection alone.
+    /// places protection alone, the parts' installed and running apps.
     fn default() -> Self {
         Self {
             system_ui: Arc::new(FakeSystemUi::default()),
@@ -69,6 +78,8 @@ impl Default for Extras {
             other_trash: None,
             commands: Arc::new(FakeCommandRunner::default()),
             protection: Protection::default(),
+            apps: None,
+            running: None,
         }
     }
 }
@@ -113,10 +124,11 @@ pub(crate) fn engine_with(
         options,
     )
     .with_clock(Arc::clone(&clock) as _);
-    let running = Arc::new(given.running);
+    let running: Arc<dyn RunningApps> = extras.running.unwrap_or_else(|| Arc::new(given.running));
+    let apps: Arc<dyn InstalledApps> = extras.apps.unwrap_or_else(|| Arc::new(given.installed));
     let system = SystemPorts {
         known_folders: Arc::clone(&folders) as _,
-        apps: Arc::new(given.installed),
+        apps,
         running: Arc::clone(&running) as _,
         installs: given.installs,
         files: Arc::new(fresher_testing::DiskFiles),

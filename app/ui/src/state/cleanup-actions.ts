@@ -1,4 +1,4 @@
-import type { Method } from '../ipc/bindings.generated';
+import type { AppId, Method, UninstallChoice } from '../ipc/bindings.generated';
 import type { CoreStore } from './store';
 
 import {
@@ -7,6 +7,7 @@ import {
   discardCleanup,
   failureOf,
   prepareCleanup,
+  prepareUninstall,
   quitAfterCleanup,
   revealInTrash,
 } from '../ipc';
@@ -36,8 +37,17 @@ const failed =
 
 // Asks the core to check what is selected; its plan opens the confirmation. Nothing is removed.
 export const prepare = (store: CoreStore): void => {
-  store.dispatch({ type: 'cleanup-preparing' });
+  store.dispatch({ origin: 'selection', type: 'cleanup-preparing' });
   prepareCleanup(cleanupSelectionOf(store.getState().selection)).then((plan) => {
+    store.dispatch({ plan, type: 'cleanup-prepared' });
+  }, refused(store));
+};
+
+// Asks the core for the plan that uninstalls `app` with `choice`; its plan opens the same confirmation. Nothing is
+// removed, and the selection is not touched.
+export const prepareUninstallPlan = (store: CoreStore, app: AppId, choice: UninstallChoice): void => {
+  store.dispatch({ app, origin: 'uninstall', type: 'cleanup-preparing' });
+  prepareUninstall(app, choice).then((plan) => {
     store.dispatch({ plan, type: 'cleanup-prepared' });
   }, refused(store));
 };

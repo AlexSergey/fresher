@@ -1,12 +1,17 @@
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
-use fresher_core::BundleId;
+use fresher_core::{BundleId, InstalledBy, Manager};
 use serde::Deserialize;
 
+use crate::facts_lens::StatedOwner;
 use crate::fixture_tree::FixtureError;
-use crate::tree_description::resolve;
+use crate::tree_description::{resolve, time_at_age};
+
+/// The managers an `installed-by` names, as `<manager>:<token>`.
+const MANAGERS: [(&str, Manager); 1] = [("homebrew", Manager::Homebrew)];
 
 /// An installed app written as a real bundle: `<path>/Contents/Info.plist`, an XML property list, and an empty
 /// `Contents/MacOS/`. It has no executable, so it is unsigned and its team id reads as none.
@@ -25,6 +30,12 @@ pub struct AppBundle {
     pub build: Option<String>,
     /// When the bundle was last changed, stated as an age (`"10d"`) the way a file's is; the bundle is written now.
     pub changed: Option<String>,
+    /// When the system last saw the app used, stated as an age (`"240d"`): what Spotlight would answer.
+    pub last_used: Option<String>,
+    /// The package manager that installed it, as `<manager>:<token>` (`"homebrew:tool"`).
+    pub installed_by: Option<String>,
+    /// Who the bundle's own folder belongs to, stated as a `[[file]]`'s `owner` is.
+    pub owner: Option<StatedOwner>,
 }
 
 impl AppBundle {
@@ -49,7 +60,21 @@ impl AppBundle {
         if texts.into_iter().flatten().any(|text| text.chars().any(char::is_control)) {
             return Err(FixtureError::AppTextControl { path: self.path.clone() });
         }
+        let far = SystemTime::UNIX_EPOCH + Duration::from_secs(1 << 40);
+        if self.last_used.as_deref().is_some_and(|age| time_at_age(age, far).is_none()) {
+            return Err(FixtureError::AppLastUsed { path: self.path.clone() });
+        }
+        self.manager()?;
         Ok(())
+    }
+
+    /// The stated package manager: `None` when none is stated; refused when it is not `<manager>:<token>` of a known
+    /// manager and a token it accepts.
+    pub fn manager(&self) -> Result<Option<InstalledBy>, FixtureError> {
+        let Some(text) = &self.installed_by else { return Ok(None) };
+        parse_installed_by(text)
+            .map(Some)
+            .ok_or_else(|| FixtureError::AppInstalledBy { path: self.path.clone(), value: text.clone() })
     }
 
     /// Writes the bundle into the existing `folder`, through no link; built again, it rewrites its `Info.plist`.
@@ -84,6 +109,19 @@ impl AppBundle {
              <plist version=\"1.0\">\n<dict>\n{body}</dict>\n</plist>\n"
         )
     }
+}
+
+/// `<manager>:<token>` read as the manager that installed an app; `None` for an unknown manager or a refused token.
+pub fn parse_installed_by(text: &str) -> Option<InstalledBy> {
+    let (name, token) = text.split_once(':')?;
+    let (_, manager) = MANAGERS.iter().find(|(known, _)| *known == name)?;
+    InstalledBy::new(*manager, token).ok()
+}
+
+/// The manager and token as `<manager>:<token>`, the form [`parse_installed_by`] reads.
+pub fn installed_by_text(installed_by: &InstalledBy) -> String {
+    let name = MANAGERS.iter().find(|(_, manager)| *manager == installed_by.manager()).map_or("", |(name, _)| name);
+    format!("{name}:{}", installed_by.token())
 }
 
 /// `true` for a non-empty relative path of plain names only.
@@ -121,6 +159,9 @@ mod tests {
             version: None,
             build: None,
             changed: None,
+            last_used: None,
+            installed_by: None,
+            owner: None,
         }
     }
 
@@ -160,6 +201,31 @@ mod tests {
         }
 
         #[test]
+        fn a_last_use_that_is_not_an_age_is_refused() {
+            for age in ["240", "d", "yesterday", "240 d"] {
+                let bundle = crate::AppBundle {
+                    last_used: Some(age.into()),
+                    ..app("Applications/Tool.app", "com.example.Tool")
+                };
+
+                assert!(matches!(bundle.check(), Err(FixtureError::AppLastUsed { .. })), "{age:?}");
+            }
+        }
+
+        #[test]
+        fn an_installed_by_of_no_known_manager_or_a_refused_token_is_refused() {
+            for value in ["homebrew", "homebrew:", "macports:tool", "Homebrew:tool", "homebrew:Tool", "homebrew:a b"] {
+                let bundle = crate::AppBundle {
+                    installed_by: Some(value.into()),
+                    ..app("Applications/Tool.app", "com.example.Tool")
+                };
+
+                assert!(matches!(bundle.check(), Err(FixtureError::AppInstalledBy { .. })), "{value:?}");
+                assert_eq!(crate::parse_installed_by(value), None, "{value:?}");
+            }
+        }
+
+        #[test]
         fn a_bundle_id_the_app_would_not_read_is_refused() {
             for id in ["not an id", "", ".com.example", "com..example"] {
                 let error = app("Applications/Tool.app", id).check().unwrap_err();
@@ -170,7 +236,24 @@ mod tests {
     }
 
     mod positive {
+        use fresher_core::{InstalledBy, Manager};
+
         use super::app;
+
+        #[test]
+        fn an_installed_by_reads_its_manager_and_token_and_writes_back_the_same() {
+            let bundle = crate::AppBundle {
+                installed_by: Some("homebrew:tool@2".into()),
+                last_used: Some("240d".into()),
+                ..app("Applications/Tool.app", "com.example.Tool")
+            };
+
+            bundle.check().unwrap();
+            let manager = bundle.manager().unwrap().unwrap();
+
+            assert_eq!(manager, InstalledBy::new(Manager::Homebrew, "tool@2").unwrap());
+            assert_eq!(crate::installed_by_text(&manager), "homebrew:tool@2");
+        }
 
         #[test]
         fn the_plist_escapes_its_values_and_omits_a_missing_version() {

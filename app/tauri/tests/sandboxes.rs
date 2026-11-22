@@ -26,6 +26,9 @@ mod map;
 #[cfg(test)]
 #[path = "sandboxes/trash.rs"]
 mod trash;
+#[cfg(test)]
+#[path = "sandboxes/uninstall.rs"]
+mod uninstall;
 
 /// One `#[test]` per case file: `test_name => "file name without .toml"`, sorted by file name.
 macro_rules! case_files {
@@ -311,6 +314,24 @@ mod negative {
         assert!(failure.problem.contains("count"), "{failure}");
     }
 
+    /// keep-data leaves the settings in place: a case that expects them in the Trash fails, naming itself.
+    #[test]
+    fn a_wrong_uninstall_expectation_fails_naming_its_case() {
+        let text = "feature = \"uninstall\"\nmodule = \"trial\"\n[[case]]\nname = \"keep-data\"\nkind = \"positive\"\n\
+                    [[case.app]]\npath = \"Applications/Keeper.app\"\nbundle-id = \"com.example.Keeper\"\n\
+                    name = \"Keeper\"\n[[case.file]]\npath = \"home/Library/Caches/com.example.Keeper/Cache.db\"\n\
+                    size = 4096\n[[case.file]]\npath = \"home/Library/Preferences/com.example.Keeper.plist\"\n\
+                    size = 1048576\nfill = \"data\"\n[case.uninstall]\napp = \"Applications/Keeper.app\"\n\
+                    choice = \"keep-data\"\ntrashed = [\"Applications/Keeper.app\", \
+                    \"home/Library/Caches/com.example.Keeper\", \"home/Library/Preferences/com.example.Keeper.plist\"]\n";
+
+        let failure = run("uninstall", text).unwrap_err();
+
+        assert_eq!(failure.case, "keep-data", "{failure}");
+        assert!(failure.problem.contains("the plan moves"), "{failure}");
+        assert!(failure.problem.contains("com.example.Keeper.plist"), "{failure}");
+    }
+
     #[test]
     fn a_refused_case_file_names_the_file() {
         let failure = run("unreadable", "feature = 1\n").unwrap_err();
@@ -482,6 +503,8 @@ mod positive {
         trash => "trash",
         trash_empty => "trash-empty",
         trial => "trial",
+        uninstall => "uninstall",
+        uninstall_open => "uninstall-open",
         unused_toolchains => "unused-toolchains",
         unused_toolchains_documents_denied => "unused-toolchains-documents-denied",
         unused_toolchains_off => "unused-toolchains-off",

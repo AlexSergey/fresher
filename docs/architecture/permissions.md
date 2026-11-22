@@ -11,7 +11,8 @@ All of it is in `fresher-core` (`access.rs`, `removability.rs`) and knows nothin
 
 - A **`Capability`** is something the app may or may not be able to do: Full Disk Access (`AllFiles`), one of the
   guarded folders (`Folder(Desktop | Documents | Downloads)`), data of other apps (`OtherAppsData`), a removable or
-  network volume (`Volume(..)`), or a program a module runs (`Tool(ToolId)`, named only by modules).
+  network volume (`Volume(..)`), moving other developers' apps (`AppManagement`), or a program a module runs
+  (`Tool(ToolId)`, named only by modules).
 - An **`Access`** is the state of one capability: `Granted`, `Denied`, `NotAsked`, `Unknown` or `NotApplicable` (this
   Mac has nothing that guards it). `Granted` and `NotApplicable` allow; the rest are missing. `AccessStatus` holds one
   `CapabilityState` per capability.
@@ -70,6 +71,13 @@ Only `fresher-macos` and the adapters on top of it know what macOS guards. A mod
   `NotAsked`), and an opted-in place is entered when granted. The Permissions rows still show the system's state.
   Sandbox mode is the exception: it keeps a standing list of the guarded places of both homes
   ([`../hacks/README.md`](../hacks/README.md)).
+- App Management (moving other developers' app bundles, macOS 13 on) has no call that tells it without trying a
+  move, so it is never probed: `MacAccess` answers `NotAsked` and never tries it. The engine learns it for the session
+  from the first uninstall (`apps/management.rs`): the bundle refused by the Trash → `Denied`, moved → `Granted`; any
+  other outcome, and every ordinary cleanup, teaches nothing. `AccessView` puts the learned state in the status
+  (`AccessChanged` once when it changes); nothing is retried. An offered app's page carries a notice while it is
+  `NotAsked` (macOS may ask) or `Denied` (what to do, with "Open System Settings" at `Privacy_AppBundles`, an address
+  still to verify).
 - Focus re-checks only the cheap OS permissions; tools are checked at the start of a scan and by "Check again".
 - A grant of Full Disk Access made while the app runs applies after a relaunch, so the card offers "Reopen Fresher"
   (the user's click; the engine is shut down first). The focus re-check still runs in case it applies at once.

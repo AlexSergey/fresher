@@ -12,18 +12,11 @@ use crate::ffi::volume;
 use crate::volume::c_string;
 
 /// The system's own places: what macOS needs to run. Nothing in them is ever the user's to clean.
-const SYSTEM: [&str; 9] = [
-    "/System",
-    "/usr",
-    "/bin",
-    "/sbin",
-    "/private/var/db",
-    "/private/etc",
-    "/cores",
-    "/Library/Apple",
-    // Apps are removed only by an uninstaller, which is not planned yet.
-    "/Applications",
-];
+const SYSTEM: [&str; 8] =
+    ["/System", "/usr", "/bin", "/sbin", "/private/var/db", "/private/etc", "/cores", "/Library/Apple"];
+/// The apps of every user: a whole app bundle may go, for an uninstall the user confirmed; nothing inside a bundle,
+/// and not the folder.
+const APP_FOLDERS: [&str; 1] = ["/Applications"];
 /// The system's places of temporary and transient data: every user's caches and temporary folders (the user's own
 /// `T` is carved out), the system's temporary folder, its swap and the versions of documents.
 const TRANSIENT: [&str; 4] =
@@ -93,7 +86,7 @@ pub fn protection(
         user_temp.map(canonical).as_deref(),
         &mounted_volumes(),
     );
-    Protection::new(places.never, places.whole, places.except)
+    places.protection()
 }
 
 /// The three lists of the core's `Protection`.
@@ -118,7 +111,7 @@ impl Places {
         let users = Path::new(USERS);
         let user_temp = user_temp.filter(|temp| is_user_temp(temp));
 
-        let mut never: Vec<PathBuf> = SYSTEM.iter().chain(&TRANSIENT).map(PathBuf::from).collect();
+        let mut never: Vec<PathBuf> = SYSTEM.iter().chain(&APP_FOLDERS).chain(&TRANSIENT).map(PathBuf::from).collect();
         never.push(users.to_path_buf());
         never.extend(HOME_NEVER.iter().map(under_home));
         never.push(data_folder.to_path_buf());
@@ -140,6 +133,12 @@ impl Places {
         whole.extend(user_temp.map(Path::to_path_buf));
 
         Self { never, whole, except }
+    }
+
+    /// The core's `Protection` of these places, with the app folders opening their bundles.
+    fn protection(self) -> Result<Protection, ProtectionError> {
+        let app_folders: Vec<PathBuf> = APP_FOLDERS.iter().map(PathBuf::from).collect();
+        Protection::new(self.never, self.whole, self.except)?.with_app_folders(&app_folders)
     }
 }
 
@@ -236,7 +235,7 @@ mod tests {
     mod negative {
         use std::path::Path;
 
-        use fresher_core::Protected;
+        use fresher_core::{Protected, ProtectionError};
 
         use super::{USER_TEMP, home, physical, protect, with_temp};
         use crate::protection;
@@ -303,7 +302,73 @@ mod tests {
 
             assert_eq!(protection.check(&data), Err(Protected::Never));
             assert_eq!(protection.check(&data.join("cleanups.jsonl")), Err(Protected::Never));
+            assert_eq!(protection.check(Path::new("/Applications/Fresher.app")), Err(Protected::Never));
             assert_eq!(protection.check(Path::new("/Applications/Fresher.app/Contents")), Err(Protected::Never));
+        }
+
+        #[test]
+        fn nothing_inside_an_app_bundle_passes() {
+            let folder = tempfile::tempdir().unwrap();
+            let protection = protect(&folder);
+
+            for path in [
+                "/Applications/Notes.app/Contents",
+                "/Applications/Notes.app/Contents/MacOS/Notes",
+                "/Applications/Utilities/Terminal.app/Contents/Info.plist",
+                "/Applications/Notes.app/Contents/Library/LoginItems/Helper.app",
+                "/Applications/Notes.app/Helper.app",
+            ] {
+                assert_eq!(protection.check(Path::new(path)), Err(Protected::Never), "{path}");
+            }
+        }
+
+        #[test]
+        fn the_apps_folder_and_what_is_not_a_bundle_in_it_stay_never() {
+            let folder = tempfile::tempdir().unwrap();
+            let protection = protect(&folder);
+
+            for path in [
+                "/Applications",
+                "/Applications/Utilities",
+                "/Applications/readme.txt",
+                "/Applications/Notes.APP",
+                "/Applications/Notes.app.zip",
+                "/Applications/.app",
+                "/Applications/a/b/C.app",
+                "/Applications/./Notes.app",
+                "/Applications/x/../Notes.app",
+            ] {
+                assert_eq!(protection.check(Path::new(path)), Err(Protected::Never), "{path}");
+            }
+        }
+
+        #[test]
+        fn the_system_apps_folder_stays_never() {
+            let folder = tempfile::tempdir().unwrap();
+            let protection = protect(&folder);
+
+            for path in
+                ["/System/Applications", "/System/Applications/Chess.app", "/System/Applications/Utilities/A.app"]
+            {
+                assert_eq!(protection.check(Path::new(path)), Err(Protected::Never), "{path}");
+            }
+        }
+
+        #[test]
+        fn the_users_own_apps_folder_opens_no_bundle() {
+            let places = Places::of(Path::new("/Users/ann"), Path::new("/Users/ann/data"), None, None, &[]);
+            let closed =
+                fresher_core::Protection::new(places.never.clone(), places.whole.clone(), places.except.clone())
+                    .unwrap();
+            let open = places.protection().unwrap();
+            let user_apps = Path::new("/Users/ann/Applications");
+
+            assert_eq!(open.check(user_apps), Err(Protected::WholeFolder));
+            for path in ["A.app", "A.app/Contents/MacOS/a", "Games/B.app", "a/b/C.app"] {
+                assert_eq!(open.check(&user_apps.join(path)), closed.check(&user_apps.join(path)), "{path}");
+            }
+            let error = open.with_app_folders(&[user_apps.to_path_buf()]);
+            assert_eq!(error, Err(ProtectionError::LooseAppFolder { path: user_apps.to_path_buf() }));
         }
 
         #[test]
@@ -328,7 +393,6 @@ mod tests {
             }
             assert_eq!(protection.check(Path::new("/usr/local")), Err(Protected::WholeFolder));
             assert_eq!(protection.check(Path::new("/private/var/db/receipts")), Err(Protected::Never));
-            assert_eq!(protection.check(Path::new("/Applications/Notes.app")), Err(Protected::Never));
         }
 
         #[test]
@@ -439,11 +503,65 @@ mod tests {
     }
 
     mod positive {
-        use std::path::{Component, Path};
+        use std::path::{Component, Path, PathBuf};
+
+        use fresher_core::Protected;
 
         use super::{USER_TEMP, home, physical, protect, with_temp};
         use crate::protection;
-        use crate::protection::{Places, canonical, is_user_temp, mounted_volumes};
+        use crate::protection::{
+            APP_FOLDERS, HOME_NEVER, HOME_WHOLE, Places, SYSTEM, TRANSIENT, canonical, is_user_temp, mounted_volumes,
+        };
+
+        #[test]
+        fn a_whole_app_bundle_in_the_apps_folder_passes() {
+            let folder = tempfile::tempdir().unwrap();
+            let protection = protect(&folder);
+
+            for path in ["/Applications/Notes.app", "/Applications/Utilities/Terminal.app", "/Applications/My App.app"]
+            {
+                assert_eq!(protection.check(Path::new(path)), Ok(()), "{path}");
+            }
+        }
+
+        #[test]
+        fn every_path_but_a_whole_app_bundle_answers_as_before() {
+            let home = Path::new("/Users/ann");
+            let volume = PathBuf::from("/Volumes/Backup");
+            let places = Places::of(
+                home,
+                Path::new("/Users/ann/Library/Application Support/Fresher"),
+                Some(Path::new("/Applications/Fresher.app")),
+                Some(Path::new("/private/var/folders/xx/abc/T")),
+                std::slice::from_ref(&volume),
+            );
+            // The list as it was: `/Applications` a plain `never` place, opening nothing.
+            let before =
+                fresher_core::Protection::new(places.never.clone(), places.whole.clone(), places.except.clone())
+                    .unwrap();
+            let under_home = |names: &&[&str]| names.iter().fold(home.to_path_buf(), |path, name| path.join(name));
+            let mut places_named: Vec<PathBuf> =
+                SYSTEM.iter().chain(&APP_FOLDERS).chain(&TRANSIENT).map(PathBuf::from).collect();
+            places_named.extend(HOME_NEVER.iter().chain(&HOME_WHOLE).map(under_home));
+            places_named.extend(places.never.iter().chain(&places.whole).chain(&places.except).cloned());
+            places_named.extend(["/", "/Users/bob", "/opt/homebrew", "/System/Applications"].map(PathBuf::from));
+            let tails = ["", "x", "A.app", "A.app/Contents", "Utilities/A.app", "a/b/C.app", "A.APP", ".app"];
+            let opened = ["/Applications/A.app", "/Applications/Utilities/A.app"].map(PathBuf::from);
+
+            let after = places.protection().unwrap();
+
+            for place in &places_named {
+                for tail in tails {
+                    let path = if tail.is_empty() { place.clone() } else { place.join(tail) };
+                    if opened.contains(&path) {
+                        assert_eq!(before.check(&path), Err(Protected::Never), "{}", path.display());
+                        assert_eq!(after.check(&path), Ok(()), "{}", path.display());
+                    } else {
+                        assert_eq!(after.check(&path), before.check(&path), "{}", path.display());
+                    }
+                }
+            }
+        }
 
         #[test]
         fn an_item_inside_the_caches_folder_may_go() {

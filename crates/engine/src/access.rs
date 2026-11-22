@@ -1,6 +1,6 @@
 //! The engine's view of access: the last answer of the access probe, merged with the states of the tools the modules
-//! need. The tools are checked by the engine itself, through the `CommandRunner` port: running a program is not a
-//! permission of the system.
+//! need, and with App Management as the uninstalls taught it. The tools are checked by the engine itself, through the
+//! `CommandRunner` port: running a program is not a permission of the system.
 
 use std::sync::{Arc, Mutex};
 
@@ -8,6 +8,7 @@ use fresher_core::{
     Access, AccessProbe, AccessStatus, Capability, CapabilityState, CommandRunError, CommandRunner, ToolCommand,
 };
 
+use crate::apps::Management;
 use crate::error::lock_anyway;
 
 /// What the app may see and do, as the engine last learnt it.
@@ -15,6 +16,7 @@ pub(crate) struct AccessView {
     probe: Arc<dyn AccessProbe>,
     commands: Arc<dyn CommandRunner>,
     known: Mutex<Known>,
+    management: Management,
 }
 
 /// The probe's last answer, and one state per tool any module needs, in registration order.
@@ -38,14 +40,25 @@ impl AccessView {
             }
         }
         let system = probe.status();
-        Self { probe, commands, known: Mutex::new(Known { system, tools }) }
+        Self { probe, commands, known: Mutex::new(Known { system, tools }), management: Management::default() }
     }
 
-    /// The system's capabilities, then the tools'.
+    /// The system's capabilities, App Management as the uninstalls taught it (in the probe's place, else after the
+    /// system's), then the tools'.
     pub(crate) fn status(&self) -> AccessStatus {
+        let learned = CapabilityState::new(Capability::AppManagement, self.management.access());
         let known = lock_anyway(&self.known);
-        let capabilities = known.system.capabilities.iter().chain(&known.tools).cloned().collect();
+        let system = known.system.capabilities.iter().filter(|state| state.capability != Capability::AppManagement);
+        let at = known.system.capabilities.iter().position(|state| state.capability == Capability::AppManagement);
+        let mut capabilities: Vec<CapabilityState> = system.cloned().collect();
+        capabilities.insert(at.unwrap_or(capabilities.len()), learned);
+        capabilities.extend(known.tools.iter().cloned());
         AccessStatus { capabilities }
+    }
+
+    /// App Management for the session: never probed, learned from the uninstalls.
+    pub(crate) const fn management(&self) -> &Management {
+        &self.management
     }
 
     /// Probes the system again; `true` when anything changed. The tools are not checked again.

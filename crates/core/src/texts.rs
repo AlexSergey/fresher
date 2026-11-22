@@ -13,11 +13,11 @@ mod tests {
     use std::collections::BTreeSet;
 
     use crate::{
-        Access, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText, CategoryText, CommandError,
-        Completeness, DangerLevel, Ended, ItemKind, KnownFolder, MapPart, ModuleGroup, ModuleOutcome, MountKind,
-        NotScanned, PartKind, Place, PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome,
-        SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey, ToolId, TrashState, Unchanged, VolumeMap,
-        Withheld,
+        Access, AppDetail, AppOffer, AppsView, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText,
+        CategoryText, CommandError, Completeness, DangerLevel, Ended, FootprintKind, ItemKind, KeptReason, KnownFolder,
+        LastUse, Manager, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotOffered, NotScanned, PartKind, Place,
+        PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome, SettingsSchema, SkipCode, SkipReason,
+        Text, TextArg, TextKey, ToolId, TrashState, Unchanged, UninstallChoice, VolumeMap, Withheld,
     };
 
     use crate::cleanup::outcome_sample;
@@ -102,6 +102,7 @@ mod tests {
         let start = std::iter::once(key("core.start.failed".into()));
         let trash = [sandbox_trash(), SandboxTrashAt::System.text()].map(|text| text.key().clone());
         let left_out = left_out_summaries().into_iter().map(|text| text.key().clone());
+        let apps = apps_keys();
         let cleanup_states = Ended::ALL
             .map(|ended| ended.text().key().clone())
             .into_iter()
@@ -130,7 +131,48 @@ mod tests {
             .chain(left_out)
             .chain(settings)
             .chain(largest)
+            .chain(apps)
             .collect()
+    }
+
+    /// The Apps screen's and the uninstall's keys: the two categories' texts, the parts, the choices, the kept and
+    /// not-offered reasons, the managers, the list's and the page's notices, and the texts with args (`apps_texts`).
+    fn apps_keys() -> Vec<TextKey> {
+        let categories = crate::uninstall_categories()
+            .into_iter()
+            .flat_map(|category| CategoryText::ALL.map(|text| category.text_key(text)));
+        let parts = FootprintKind::ALL.map(FootprintKind::name_key);
+        let choices =
+            UninstallChoice::ALL.into_iter().flat_map(|choice| [choice.label_key(), choice.description_key()]);
+        let kept = KeptReason::ALL.map(|reason| reason.text().key().clone());
+        let not_offered = NotOffered::ALL.map(NotOffered::text_key);
+        let notices = [AppsView::unlisted(), AppsView::listed(Vec::new())].into_iter().filter_map(|view| view.notice);
+        let management = Access::ALL.into_iter().filter_map(AppDetail::management_notice);
+        categories
+            .chain(parts)
+            .chain(choices)
+            .chain(kept)
+            .chain(not_offered)
+            .chain(notices.map(|text| text.key().clone()))
+            .chain(management.map(|text| text.key().clone()))
+            .chain(apps_texts().iter().map(|text| text.key().clone()))
+            .collect()
+    }
+
+    /// The Apps screen's and the uninstall's texts with args, as the core builds them.
+    fn apps_texts() -> Vec<Text> {
+        let size = ByteSize::new(4096);
+        let since = crate::Timestamp::from_secs(1);
+        let summaries = [LastUse::Unused { since }, LastUse::Used, LastUse::Unknown]
+            .map(|last_use| last_use.summary("Editor", size));
+        let reasons = UninstallChoice::ALL.map(|choice| {
+            Text::new(choice.reason_key()).with("app", TextArg::Text("Editor".into())).with("size", TextArg::Size(size))
+        });
+        let installed_by = match AppOffer::installed_by(Manager::Homebrew) {
+            AppOffer::NotOffered { text, .. } => Some(text),
+            AppOffer::Offered => None,
+        };
+        summaries.into_iter().chain(reasons).chain(installed_by).chain([crate::uninstall_title("Editor")]).collect()
     }
 
     /// The own-file category's five texts, the title of a picked item and the two reasons.
@@ -220,6 +262,7 @@ mod tests {
             .chain(purgeable_note())
             .chain(left_out_summaries())
             .chain([sandbox_trash(), unpacked(), own_title()])
+            .chain(apps_texts())
             .collect()
     }
 

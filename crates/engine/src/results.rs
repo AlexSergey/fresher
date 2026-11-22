@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use fresher_core::{
-    ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness, DiskState, Finding,
-    FindingId, FindingOrder, FindingsPage, HiddenBy, HiddenModule, IgnoredCount, LastScan, ModuleGroup, ModuleId,
-    Place, Sizes, Subject,
+    BundleId, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness,
+    DiskState, Finding, FindingId, FindingOrder, FindingsPage, HiddenBy, HiddenModule, IgnoredCount, LastScan,
+    ModuleGroup, ModuleId, Place, Sizes, Subject,
 };
 
 use crate::claims::Claims;
@@ -28,7 +28,8 @@ pub(crate) struct Results {
     findings: Vec<Finding>,
     /// The rows of the Largest screen the user picked, in id order: never in a total, a page, the claims or the shares.
     own: Vec<Finding>,
-    /// The paths of the picks a cleanup removed since `state` was kept: the Largest screen leaves them out.
+    /// The paths of the picks a cleanup removed since `state` was kept, and the paths of the items that went (an
+    /// uninstall's bundle and parts among them): the Largest screen and the Apps list leave them out.
     gone: Vec<PathBuf>,
     ignored: Ignored,
     roots: Vec<PathBuf>,
@@ -185,6 +186,14 @@ impl Results {
         self.shown().cloned().collect()
     }
 
+    /// The categories of the findings the user sees whose app `owns` names.
+    pub(crate) fn app_categories(&self, owns: impl Fn(&BundleId) -> bool) -> HashSet<CategoryId> {
+        self.shown()
+            .filter(|finding| finding.finding().app().is_some_and(&owns))
+            .map(|f| f.finding().category())
+            .collect()
+    }
+
     /// From now on, `ignored` hides findings from every answer.
     pub(crate) fn set_ignored(&mut self, ignored: Ignored) {
         if self.ignored != ignored {
@@ -232,15 +241,20 @@ impl Results {
 
     /// Drops `removed` from the findings and the picks, and with them every finding or pick at or below the path of
     /// one of `cleared` (those of `removed` whose whole path went: what was inside went too, a finding left out
-    /// `Covered` among it), and their claims: the totals are of what is left. The path of every pick dropped is kept
-    /// as gone. Answers what was dropped: `removed`, then the findings and picks below, in id order. A finding that
-    /// was counted less for one nested in it keeps its counted size, since what was inside it is gone too.
-    pub(crate) fn remove(&mut self, removed: &[FindingId], cleared: &[FindingId]) -> Vec<FindingId> {
+    /// `Covered` among it) or at or below one of `went` (the paths of a cleared item that is no finding of the
+    /// results: an uninstall's bundle and parts), and their claims: the totals are of what is left. The path of every
+    /// pick dropped and every path of `went` is kept as gone. Answers what was dropped: the ones of `removed` that were
+    /// there (an uninstall's finding never is), then the findings and picks below, in id order. A finding that was counted less for one nested in it keeps its counted size,
+    /// since what was inside it is gone too.
+    pub(crate) fn remove(&mut self, removed: &[FindingId], cleared: &[FindingId], went: &[PathBuf]) -> Vec<FindingId> {
+        let present = |id: &FindingId| by_id(&self.findings, *id).or_else(|| by_id(&self.own, *id)).is_some();
+        let removed: Vec<FindingId> = removed.iter().copied().filter(present).collect();
         let mut dropped: HashSet<FindingId> = removed.iter().copied().collect();
         let gone: HashSet<PathBuf> = cleared
             .iter()
             .filter_map(|&id| by_id(&self.findings, id).or_else(|| by_id(&self.own, id)))
             .filter_map(|finding| path(finding).map(Path::to_path_buf))
+            .chain(went.iter().cloned())
             .collect();
         let below = |finding: &Finding| path(finding).is_some_and(|path| path.ancestors().any(|at| gone.contains(at)));
         let inside: Vec<FindingId> = self
@@ -256,10 +270,11 @@ impl Results {
             std::mem::take(&mut self.own).into_iter().partition(|finding| !dropped.contains(&finding.id()));
         self.own = left;
         self.gone.extend(removed_own.iter().filter_map(path).map(Path::to_path_buf));
+        self.gone.extend_from_slice(went);
         if let Some(claims) = &mut self.claims {
             claims.forget(&dropped);
         }
-        removed.iter().copied().chain(inside).collect()
+        removed.into_iter().chain(inside).collect()
     }
 
     /// The disk changed since the last scan: `cleanup` acted on it.
@@ -433,7 +448,7 @@ pub(crate) struct Committed {
     pub(crate) largest: ItemsSlot,
     /// The rows the user picked, in id order.
     pub(crate) own: Arc<[Finding]>,
-    /// The paths of the picks a cleanup removed since the state was kept.
+    /// The paths a cleanup removed since the state was kept: the picks and every path of an item that went.
     pub(crate) gone: Arc<[PathBuf]>,
     shares: Arc<OnceLock<Shares>>,
     ignored: Ignored,
@@ -607,7 +622,7 @@ mod tests {
             let mut results = Results::new();
             keep_state(&mut results, 1);
             let pick = picked(&mut results, "/f/mine.iso");
-            results.remove(&[pick.id()], &[pick.id()]);
+            results.remove(&[pick.id()], &[pick.id()], &[]);
             assert_eq!(gone(&results), [std::path::PathBuf::from("/f/mine.iso")]);
 
             keep_state(&mut results, 2);
@@ -616,10 +631,20 @@ mod tests {
         }
 
         #[test]
+        fn a_removed_id_that_is_not_there_is_not_answered() {
+            let mut results = at(&["/f/a", "/f/b"]);
+
+            let removed = results.remove(&[FindingId::new(9), FindingId::new(2)], &[FindingId::new(9)], &[]);
+
+            assert_eq!(removed, [FindingId::new(2)]);
+            assert_eq!(ids(&results), [1]);
+        }
+
+        #[test]
         fn only_the_findings_below_a_wholly_removed_one_go_with_it() {
             let mut results = at(&["/f/a", "/f/ab", "/f/a2/x", "/f/b", "/f/b/in"]);
 
-            let removed = results.remove(&[FindingId::new(1), FindingId::new(4)], &[FindingId::new(1)]);
+            let removed = results.remove(&[FindingId::new(1), FindingId::new(4)], &[FindingId::new(1)], &[]);
 
             assert_eq!(removed, [1, 4].map(FindingId::new));
             assert_eq!(ids(&results), [2, 3, 5]);
@@ -706,7 +731,7 @@ mod tests {
             let inside = picked(&mut results, "/f/mine/in.iso");
             let other = picked(&mut results, "/f/other.iso");
 
-            let removed = results.remove(&[folder.id()], &[folder.id()]);
+            let removed = results.remove(&[folder.id()], &[folder.id()], &[]);
 
             assert_eq!(removed, [folder.id(), inside.id()]);
             assert_eq!(results.own(), [other]);
@@ -732,11 +757,27 @@ mod tests {
         fn the_findings_at_or_below_a_wholly_removed_one_go_with_it() {
             let mut results = at(&["/f/a", "/f/a/in", "/f/b", "/f/a/in/deep", "/f/a"]);
 
-            let removed = results.remove(&[FindingId::new(1)], &[FindingId::new(1)]);
+            let removed = results.remove(&[FindingId::new(1)], &[FindingId::new(1)], &[]);
 
             assert_eq!(removed, [1, 2, 4, 5].map(FindingId::new));
             assert_eq!(ids(&results), [3]);
             assert_eq!(results.totals([alpha()].iter()).1, sizes(1));
+        }
+
+        #[test]
+        fn a_finding_below_a_path_that_went_is_dropped() {
+            let mut results = at(&["/home/Library/Caches/com.example.Editor", "/home/Library/Caches/com.example.Ed"]);
+            keep_state(&mut results, 1);
+            let went = [
+                std::path::PathBuf::from("/Applications/Editor.app"),
+                std::path::PathBuf::from("/home/Library/Caches/com.example.Editor"),
+            ];
+
+            let removed = results.remove(&[], &[], &went);
+
+            assert_eq!(removed, [FindingId::new(1)]);
+            assert_eq!(ids(&results), [2]);
+            assert_eq!(gone(&results), went);
         }
 
         #[test]

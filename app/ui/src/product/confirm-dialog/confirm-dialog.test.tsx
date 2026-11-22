@@ -212,6 +212,19 @@ describe('ConfirmDialog', () => {
       expect(screen.getByRole('button', { name: 'Remove' })).toHaveAttribute('data-variant', 'danger');
     });
 
+    it('a plan that only goes to the Trash offers no permanent choice', () => {
+      const onConfirm = vi.fn();
+      openDialog({ onConfirm, plan: { ...ONE_ITEM_PLAN, permanentAvailable: false } });
+
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+      expect(screen.getByText('You get the space back when you empty the Trash.')).toBeVisible();
+      const trash = screen.getByRole('button', { name: 'Move to Trash' });
+      expect(trash).not.toHaveAttribute('data-variant', 'danger');
+      fireEvent.click(trash);
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash');
+    });
+
     it('a short list is not virtualised', () => {
       openDialog();
 

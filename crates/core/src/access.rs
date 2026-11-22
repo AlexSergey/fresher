@@ -20,6 +20,8 @@ pub enum Capability {
     OtherAppsData,
     /// A removable or network volume.
     Volume(VolumeKind),
+    /// Moving other developers' apps (on macOS: App Management). Never probed: learned from the first uninstall.
+    AppManagement,
     /// An external program, installed and ready to answer.
     Tool(ToolId),
 }
@@ -50,6 +52,7 @@ enum CapabilityInput {
     Folder(GuardedFolder),
     OtherAppsData,
     Volume(VolumeKind),
+    AppManagement,
     Tool(serde::de::IgnoredAny),
 }
 
@@ -60,6 +63,7 @@ impl<'de> Deserialize<'de> for Capability {
             CapabilityInput::Folder(folder) => Ok(Self::Folder(folder)),
             CapabilityInput::OtherAppsData => Ok(Self::OtherAppsData),
             CapabilityInput::Volume(kind) => Ok(Self::Volume(kind)),
+            CapabilityInput::AppManagement => Ok(Self::AppManagement),
             CapabilityInput::Tool(_) => Err(serde::de::Error::custom("a tool cannot be named from outside the app")),
         }
     }
@@ -97,7 +101,7 @@ impl CapabilityText {
 
 impl Capability {
     /// Every capability the system grants: all but the tools, which the modules name.
-    pub const SYSTEM: [Self; 7] = [
+    pub const SYSTEM: [Self; 8] = [
         Self::AllFiles,
         Self::Folder(GuardedFolder::Desktop),
         Self::Folder(GuardedFolder::Documents),
@@ -105,6 +109,7 @@ impl Capability {
         Self::OtherAppsData,
         Self::Volume(VolumeKind::Removable),
         Self::Volume(VolumeKind::Network),
+        Self::AppManagement,
     ];
 
     /// A kebab-case name: `all-files`, `desktop`, `removable-volume`, or the tool's id.
@@ -117,6 +122,7 @@ impl Capability {
             Self::OtherAppsData => "other-apps-data",
             Self::Volume(VolumeKind::Removable) => "removable-volume",
             Self::Volume(VolumeKind::Network) => "network-volume",
+            Self::AppManagement => "app-management",
             Self::Tool(tool) => tool.as_str(),
         }
     }
@@ -458,7 +464,8 @@ mod tests {
                     "downloads",
                     "other-apps-data",
                     "removable-volume",
-                    "network-volume"
+                    "network-volume",
+                    "app-management"
                 ]
             );
             assert_eq!(DESKTOP.text_key(CapabilityText::Missing).unwrap().as_str(), "core.access.desktop.missing");
@@ -480,6 +487,19 @@ mod tests {
                 json!({ "key": "core.access.tool.not-installed", "args": { "tool": { "kind": "text", "value": "docker" } } })
             );
             assert_eq!(stopped.note.unwrap().key().as_str(), "core.access.tool.not-ready");
+        }
+
+        #[test]
+        fn the_app_management_id_round_trips() {
+            let json = serde_json::to_value(Capability::AppManagement).unwrap();
+
+            assert_eq!(json, json!({ "kind": "app-management" }));
+            assert_eq!(serde_json::from_value::<Capability>(json).unwrap(), Capability::AppManagement);
+            assert_eq!(Capability::AppManagement.id(), "app-management");
+            assert_eq!(
+                Capability::AppManagement.text_key(CapabilityText::Denied).unwrap().as_str(),
+                "core.access.app-management.denied"
+            );
         }
 
         #[test]

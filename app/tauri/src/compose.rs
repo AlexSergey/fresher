@@ -27,9 +27,9 @@ use fresher_scanner::{Scanner, ScannerOptions, known_folders_anchor};
 use fresher_store::{CachePolicy, DataFolder, DataFolderError, FileCleanupJournal, FileScanCache, FileSettingsStore};
 
 use fresher_system::{
-    AppSearch, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacFinderSettings, MacInstallRecords, MacInstalledApps,
-    MacKnownFolders, MacMounts, MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch, SystemClock,
-    macos_version,
+    AppSearch, BundleReader, COMMAND_TIMEOUT, INDEX_CHECK_TIMEOUT, MacAccess, MacFinderSettings, MacInstallRecords,
+    MacInstalledApps, MacKnownFolders, MacMounts, MacRunningApps, MacSystemUi, ProcessCommandRunner, SpotlightSearch,
+    SystemClock, macos_version,
 };
 
 /// Why the app could not start its engine.
@@ -240,14 +240,17 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
         volumes,
         clock,
         running,
-        apps: Arc::new(MacInstalledApps::new(
-            known_folders,
-            AppSearch::Spotlight(SpotlightSearch::new(
-                Arc::clone(&commands),
-                Arc::new(ProcessCommandRunner::new(INDEX_CHECK_TIMEOUT)),
-                Arc::new(MacMounts),
-            )),
-        )),
+        apps: Arc::new(
+            MacInstalledApps::new(
+                known_folders,
+                AppSearch::Spotlight(SpotlightSearch::new(
+                    Arc::clone(&commands),
+                    Arc::new(ProcessCommandRunner::new(INDEX_CHECK_TIMEOUT)),
+                    Arc::new(MacMounts),
+                )),
+            )
+            .with_bundle_reader(BundleReader::mac(Arc::clone(&commands)), current_user()),
+        ),
         installs: Arc::new(MacInstallRecords::new("/")),
         commands,
         access: Arc::new(MacAccess::new(home.to_path_buf(), macos_version(Path::new("/")))),

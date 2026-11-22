@@ -1,0 +1,71 @@
+# The sandbox of the uninstall's core end-to-end flows (crates/e2e/tests/uninstall.rs), laid out as a sandbox lays out
+# its apps folder (`Applications/`) and its home (`home/`); the flows add the rest of the sandbox's layout and its
+# marker, and write into each copy of Editor its executable and its helper (`com.example.Editor.Helper`, in its login
+# items), as a fixture tree writes nothing inside a bundle. `com.example.Editor` has data in every place of its
+# footprint: caches (its own and its helper's), logs, saved windows, a launch agent, settings, support files, web data
+# and a group container of its team (`TEAM123456`, which the flows state, as a fixture bundle is unsigned).
+# `com.example.Viewer` has no data. `com.example.Editorx`, whose id only starts like Editor's, keeps a cache: no
+# uninstall of Editor takes it. The settings plist and the launch agent are 1 MiB: the scan folds a smaller file no
+# module looks at into its folder's total, and the footprint finds only the scan's nodes.
+
+[[app]]
+path = "Applications/Editor.app"
+bundle-id = "com.example.Editor"
+name = "Editor"
+version = "1.0"
+
+[[app]]
+path = "Applications/Viewer.app"
+bundle-id = "com.example.Viewer"
+name = "Viewer"
+version = "2.0"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor/Cache.db"
+size = 8192
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editor.Helper/Cache.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Logs/com.example.Editor/editor.log"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Saved Application State/com.example.Editor.savedState/data.data"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/LaunchAgents/com.example.Editor.plist"
+size = 1048576
+fill = "data"
+
+[[file]]
+path = "home/Library/Preferences/com.example.Editor.plist"
+size = 1048576
+fill = "data"
+
+[[file]]
+path = "home/Library/Application Support/com.example.Editor/library.db"
+size = 12288
+fill = "data"
+
+[[file]]
+path = "home/Library/WebKit/com.example.Editor/WebsiteData/local.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Group Containers/TEAM123456.com.example.shared/shared.db"
+size = 4096
+fill = "data"
+
+[[file]]
+path = "home/Library/Caches/com.example.Editorx/blob.bin"
+size = 4096
+fill = "data"

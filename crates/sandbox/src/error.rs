@@ -20,8 +20,8 @@ pub enum CaseError {
     /// A negative case follows a positive one.
     #[error("case \"{case}\": a negative case comes after a positive one; negatives go first")]
     PositiveBeforeNegative { case: String },
-    /// A positive case has no `[case.expect]`.
-    #[error("case \"{case}\": a positive case needs `[case.expect]`")]
+    /// A positive case has no `[case.expect]` and no `[case.uninstall]` with a `choice`.
+    #[error("case \"{case}\": a positive case needs `[case.expect]` or a `[case.uninstall]` with a `choice`")]
     PositiveWithoutExpect { case: String },
     /// A negative case has a `[case.expect]`.
     #[error("case \"{case}\": a negative case expects nothing; remove its `[case.expect]`")]
@@ -160,6 +160,38 @@ pub enum CaseError {
     /// `[case.largest]`'s `at` is not a plain path among the case's paths or their folders.
     #[error("case \"{case}\": the largest `at` {at} is not one of the case's paths or their folders")]
     LargestAtOutsideTheCase { case: String, at: PathBuf },
+    /// `[case.uninstall]` names an app no `[[case.app]]` of the case declares.
+    #[error("case \"{case}\": `[case.uninstall]` names {app}, which no `[[case.app]]` of the case declares")]
+    UninstallUnknownApp { case: String, app: PathBuf },
+    /// `[case.uninstall]` has more or fewer than one of its forms, or a field of another form.
+    #[error(
+        "case \"{case}\": `[case.uninstall]` has exactly one of `listed = false`, `offered = false` with a `reason`, \
+         or a `choice` with `trashed` and `kept`"
+    )]
+    UninstallForms { case: String },
+    /// `[case.uninstall]`'s `reason` is no reason an app is not offered for.
+    #[error("case \"{case}\": `{reason}` in `[case.uninstall]` is not a reason an app is not offered for")]
+    UninstallReason { case: String, reason: String },
+    /// `[case.uninstall]`'s `choice` is neither `keep-data` nor `everything`.
+    #[error("case \"{case}\": the uninstall's `choice` is `keep-data` or `everything`, not {choice:?}")]
+    UninstallChoice { case: String, choice: String },
+    /// A `choice` without `trashed`, or with a `trashed` whose first path is not the app's bundle.
+    #[error("case \"{case}\": an uninstall's `choice` needs `trashed`, the app's bundle first")]
+    UninstallTrashed { case: String },
+    /// A path of `trashed` or `kept` the case does not write.
+    #[error("case \"{case}\": the uninstall's path {path} is not one of the case's paths or their folders")]
+    UninstallPathNotInCase { case: String, path: PathBuf },
+    /// A path given twice in `trashed` and `kept`.
+    #[error("case \"{case}\": the uninstall's path {path} is given twice; a path is trashed or kept")]
+    UninstallPathTwice { case: String, path: PathBuf },
+    /// Another case writes at or below the bundle a positive case uninstalls: the bundle would not be its own item.
+    #[error("case \"{case}\": the uninstalled bundle is its own item, but case \"{other}\" writes {path} in it")]
+    UninstallBundleShared { case: String, other: String, path: PathBuf },
+    /// A `choice` on a negative case, or `listed = false` / `offered = false` on a positive one.
+    #[error(
+        "case \"{case}\": a negative case's uninstall is `listed = false` or `offered = false`, a positive's a `choice`"
+    )]
+    UninstallOnTheWrongKind { case: String },
     /// A `core.own-file` expectation in a case without `[case.largest]`: nothing would pick the file.
     #[error("case \"{case}\": `core.own-file` is picked on the Largest screen; add a `[case.largest]`")]
     OwnFileWithoutLargest { case: String },
@@ -178,9 +210,12 @@ pub enum CaseError {
     /// A scenery case in a case file without a `[demo]` header.
     #[error("case \"{case}\": a scenery case belongs to a demo world; its case file needs a `[demo]` header")]
     SceneryOutsideDemo { case: String },
-    /// A scenery case with `[case.expect]`, `[case.map]`, `[[case.left-out]]` or `[[case.insight]]`: nothing it shows
-    /// is checked.
-    #[error("case \"{case}\": a scenery case is not checked; remove its `expect`, `map`, `left-out` and `insight`")]
+    /// A scenery case with `[case.expect]`, `[case.map]`, `[case.uninstall]`, `[[case.left-out]]` or
+    /// `[[case.insight]]`: nothing it shows is checked.
+    #[error(
+        "case \"{case}\": a scenery case is not checked; remove its `expect`, `map`, `uninstall`, `left-out` and \
+         `insight`"
+    )]
     SceneryWithExpectation { case: String },
     /// The `[demo]` header breaks a check; the reason names the field.
     #[error("the `[demo]` header of `{feature}` is not valid: {reason}")]

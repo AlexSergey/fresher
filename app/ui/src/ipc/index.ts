@@ -2,7 +2,11 @@ import { Channel, invoke, type InvokeArgs } from '@tauri-apps/api/core';
 
 import type {
   AccessStatus,
+  AppDetail,
+  AppId,
   AppInfo,
+  AppsQuery,
+  AppsView,
   Capability,
   CleanupDetail,
   CleanupId,
@@ -39,6 +43,7 @@ import type {
   SettingUpdate,
   StorageMap,
   TrashView,
+  UninstallChoice,
 } from './bindings.generated';
 
 export { inApp } from './runtime';
@@ -55,6 +60,8 @@ export const COMMANDS = {
   demoPlay: 'demo_play',
   discardCleanup: 'discard_cleanup',
   getAccessStatus: 'get_access_status',
+  getApp: 'get_app',
+  getApps: 'get_apps',
   getCleanup: 'get_cleanup',
   getCleanups: 'get_cleanups',
   getDictionary: 'get_dictionary',
@@ -74,12 +81,14 @@ export const COMMANDS = {
   pickFolder: 'pick_folder',
   pickOwnItem: 'pick_own_item',
   prepareCleanup: 'prepare_cleanup',
+  prepareUninstall: 'prepare_uninstall',
   putBack: 'put_back',
   quitAfterCleanup: 'quit_after_cleanup',
   refreshAccess: 'refresh_access',
   relaunch: 'relaunch',
   resetSettings: 'reset_settings',
   restoreIgnored: 'restore_ignored',
+  revealApp: 'reveal_app',
   revealFinding: 'reveal_finding',
   revealInTrash: 'reveal_in_trash',
   startScan: 'start_scan',
@@ -116,6 +125,9 @@ export class CommandFailed extends Error {
 export const failureOf = (error: unknown): Failure =>
   error instanceof CommandFailed ? error.failure : { kind: 'unreachable' };
 
+// Whether the core refused an app's id as one it does not list (a new scan made it stale).
+export const isUnknownApp = (refusal: Refusal): boolean => refusal.error.code === 'unknown-app';
+
 // A command of the core; a failure rejects with `CommandFailed`.
 const call = async <T>(key: CommandKey, args?: InvokeArgs): Promise<T> => {
   try {
@@ -149,6 +161,19 @@ export const getOverview = (): Promise<Overview> => call('getOverview');
 export const getModules = (): Promise<readonly ModuleInfo[]> => call('getModules');
 
 export const getFindings = (query: FindingsQuery): Promise<FindingsPage> => call('getFindings', { query });
+
+// The installed apps, largest first, under the filter; the core measures them, which may take seconds.
+export const getApps = (query: AppsQuery): Promise<AppsView> => call('getApps', { query });
+
+// One app's page: its files, the uninstall choices and its cleanable categories on Scan.
+export const getApp = (app: AppId): Promise<AppDetail> => call('getApp', { app });
+
+// Shows the app's bundle in Finder, selected.
+export const revealApp = (app: AppId): Promise<void> => call('revealApp', { app });
+
+// The core checks the uninstall of `app` under `choice` and answers the plan the confirmation shows; nothing is removed.
+export const prepareUninstall = (app: AppId, choice: UninstallChoice): Promise<CleanupPlanView> =>
+  call('prepareUninstall', { app, choice });
 
 // One page of the Files list of the last scan: the largest files and folders below the home, largest first.
 export const getLargest = (query: LargestQuery): Promise<LargestPage> => call('getLargest', { query });

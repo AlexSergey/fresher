@@ -32,6 +32,10 @@ mod map;
 #[path = "sandboxes/trash.rs"]
 mod trash;
 #[cfg(test)]
+#[expect(dead_code, reason = "the world scan uses a part of the autotest's helpers")]
+#[path = "sandboxes/uninstall.rs"]
+mod uninstall;
+#[cfg(test)]
 #[path = "demos/worlds.rs"]
 mod worlds;
 

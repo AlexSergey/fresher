@@ -25,6 +25,7 @@ One card per app with its whole footprint:
 
 - Open Chrome and see its whole infrastructure in one place.
 - Extends [plan 036](../plans/036-uninstall/readme.md) (the storage part) with live resource use.
+  The Apps list it would extend exists since plan 036.
 - Architecture: an `App` entity (bundle id, team id, bundle path, owned paths, processes) that every category and
   finding points to — the same model serves the uninstaller, the footprint, attribution and watch mode.
 

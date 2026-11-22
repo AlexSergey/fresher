@@ -98,6 +98,16 @@ pub(crate) fn helpers(path: &Path) -> Vec<BundleId> {
     ids
 }
 
+/// Whether `path` names, byte for byte, the bundle on disk: its canonical path is `path` itself (no link on the way,
+/// no name the file system takes in another case or normal form), it is a real folder (`lstat`, not a link) and its
+/// `Contents/Info.plist` is a regular file.
+pub(crate) fn is_as_listed(path: &Path) -> bool {
+    let canonical = fs::canonicalize(path).is_ok_and(|canonical| canonical.as_os_str() == path.as_os_str());
+    let folder = fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_dir());
+    let plist = path.join("Contents").join("Info.plist");
+    canonical && folder && fs::symlink_metadata(plist).is_ok_and(|metadata| metadata.is_file())
+}
+
 /// The bundles directly in `folder`, by path; nothing when it cannot be read.
 pub(crate) fn bundles_in(folder: &Path) -> Vec<PathBuf> {
     let Ok(entries) = fs::read_dir(folder) else { return Vec::new() };
@@ -148,7 +158,7 @@ mod tests {
         use std::fs;
 
         use crate::bundle::fixture::bundle;
-        use crate::bundle::{bundle_team, helpers, read_bundle};
+        use crate::bundle::{bundle_team, helpers, is_as_listed, read_bundle};
 
         #[test]
         fn a_folder_without_a_valid_id_is_not_a_bundle() {
@@ -165,6 +175,58 @@ mod tests {
             for path in [&missing, &no_id, &bad_id, &broken, &file] {
                 assert_eq!(read_bundle(path), None, "{}", path.display());
             }
+        }
+
+        /// A canonical temporary folder: `/var` is a link to `/private/var`.
+        fn canonical_root() -> (tempfile::TempDir, std::path::PathBuf) {
+            let root = tempfile::tempdir().unwrap();
+            let path = fs::canonicalize(root.path()).unwrap();
+            (root, path)
+        }
+
+        #[test]
+        fn a_link_named_like_a_bundle_is_not_as_listed() {
+            let (_root, root) = canonical_root();
+            let real = bundle(&root.join("Real.app"), &[("CFBundleIdentifier", "com.example.Real")]);
+            let link = root.join("X.app");
+            std::os::unix::fs::symlink(&real, &link).unwrap();
+            let folder = root.join("Folder");
+            fs::create_dir(&folder).unwrap();
+            let linked_folder = root.join("Linked");
+            std::os::unix::fs::symlink(&folder, &linked_folder).unwrap();
+            bundle(&folder.join("Inner.app"), &[("CFBundleIdentifier", "com.example.Inner")]);
+
+            assert!(!is_as_listed(&link));
+            assert!(!is_as_listed(&linked_folder.join("Inner.app")));
+        }
+
+        #[test]
+        fn a_name_in_another_case_or_form_is_not_as_listed() {
+            let (_root, root) = canonical_root();
+            bundle(&root.join("Fresher.app"), &[("CFBundleIdentifier", "com.example.Fresher")]);
+            bundle(&root.join("Café.app"), &[("CFBundleIdentifier", "com.example.Cafe")]);
+
+            // A long s (U+017F) the volume may fold to `s`, another case, the decomposed form of `é`.
+            let decomposed = ["Cafe", "\u{301}", ".app"].concat();
+            for name in ["Freſher.app", "fresher.app", decomposed.as_str()] {
+                assert!(!is_as_listed(&root.join(name)), "{name}");
+            }
+        }
+
+        #[test]
+        fn a_folder_without_its_info_plist_or_a_missing_one_is_not_as_listed() {
+            let (_root, root) = canonical_root();
+            fs::create_dir_all(root.join("Empty.app/Contents")).unwrap();
+            let linked = bundle(&root.join("Real.app"), &[("CFBundleIdentifier", "com.example.Real")]);
+            fs::create_dir_all(root.join("Linked.app/Contents")).unwrap();
+            std::os::unix::fs::symlink(linked.join("Contents/Info.plist"), root.join("Linked.app/Contents/Info.plist"))
+                .unwrap();
+            fs::write(root.join("File.app"), "").unwrap();
+
+            for name in ["Empty.app", "Linked.app", "File.app", "Missing.app"] {
+                assert!(!is_as_listed(&root.join(name)), "{name}");
+            }
+            assert!(!is_as_listed(std::path::Path::new("relative/Real.app")));
         }
 
         #[test]
@@ -214,7 +276,19 @@ mod tests {
         use fresher_core::BundleId;
 
         use crate::bundle::fixture::bundle;
-        use crate::bundle::{helpers, is_bundle, read_bundle};
+        use crate::bundle::{helpers, is_as_listed, is_bundle, read_bundle};
+
+        #[test]
+        fn a_real_bundle_named_as_on_disk_is_as_listed() {
+            let root = tempfile::tempdir().unwrap();
+            let root = std::fs::canonicalize(root.path()).unwrap();
+            let app = bundle(&root.join("Café.app"), &[("CFBundleIdentifier", "com.example.Cafe")]);
+            let nested =
+                bundle(&root.join("Utilities").join("Tool.app"), &[("CFBundleIdentifier", "com.example.Tool")]);
+
+            assert!(is_as_listed(&app));
+            assert!(is_as_listed(&nested));
+        }
 
         #[test]
         fn a_bundle_gives_its_id_name_version_and_executable() {

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CleanupPlanView, Confirmation, Event, Finding } from '../ipc/bindings.generated';
 
 import { mockCore, refuse } from '../ipc/mock';
+import { uninstallPlanOf, VIDEO_STUDIO_DETAIL } from '../test/app-detail';
 import {
   cleanupEventsOf,
   DEMO_PLAN,
@@ -20,7 +21,7 @@ import {
 } from '../test/cleanup-plan';
 import { DEMO_FINDINGS } from '../test/demo-scan';
 import { confirmationOf } from './cleanup';
-import { confirm, discard, prepare, quitAfter, showInTrash, stop } from './cleanup-actions';
+import { confirm, discard, prepare, prepareUninstallPlan, quitAfter, showInTrash, stop } from './cleanup-actions';
 import { type CoreAction, type CoreState, INITIAL_STATE, reduce } from './reduce';
 import { createCoreStore } from './store';
 
@@ -33,7 +34,17 @@ const EVENTS = cleanupEventsOf(DEMO_PLAN, MOVED_REPORT);
 
 // The demo plan confirmed for the Trash and named cleanup 1 by the core.
 const RUNNING: readonly CoreAction[] = [
-  { type: 'cleanup-preparing' },
+  { origin: 'selection', type: 'cleanup-preparing' },
+  { plan: DEMO_PLAN, type: 'cleanup-prepared' },
+  { method: 'trash', type: 'cleanup-confirming' },
+  { cleanup: 1, type: 'cleanup-confirmed' },
+];
+
+const APP = VIDEO_STUDIO_DETAIL.summary.app;
+
+// The uninstall of the demo plan's cleanup, confirmed for the Trash and named cleanup 1 by the core.
+const UNINSTALLING: readonly CoreAction[] = [
+  { origin: 'uninstall', type: 'cleanup-preparing' },
   { plan: DEMO_PLAN, type: 'cleanup-prepared' },
   { method: 'trash', type: 'cleanup-confirming' },
   { cleanup: 1, type: 'cleanup-confirmed' },
@@ -52,14 +63,23 @@ describe('the cleanup state', () => {
       store.dispatch({ category: 'demo.caches', type: 'toggle-category' });
 
       prepare(store);
-      expect(store.getState().cleanup).toStrictEqual({ kind: 'preparing' });
+      expect(store.getState().cleanup).toStrictEqual({ app: null, kind: 'preparing', origin: 'selection' });
       await settle();
 
-      expect(store.getState().cleanup).toStrictEqual({ kind: 'refused', refusal: TOO_MANY_ITEMS });
+      expect(store.getState().cleanup).toStrictEqual({
+        app: null,
+        kind: 'refused',
+        origin: 'selection',
+        refusal: TOO_MANY_ITEMS,
+      });
       expect(store.getState().failure).toBeNull();
       // Nothing was removed: the selection is kept, and a new prepare may start.
       expect(store.getState().selection.categories.has('demo.caches')).toBe(true);
-      expect(reduce(store.getState(), { type: 'cleanup-preparing' }).cleanup).toStrictEqual({ kind: 'preparing' });
+      expect(reduce(store.getState(), { origin: 'selection', type: 'cleanup-preparing' }).cleanup).toStrictEqual({
+        app: null,
+        kind: 'preparing',
+        origin: 'selection',
+      });
     });
 
     it('an unreachable core on prepare is the frame’s failure and shows nothing of the cleanup', async () => {
@@ -115,7 +135,12 @@ describe('the cleanup state', () => {
       confirm(store, 'trash');
       await settle();
 
-      expect(store.getState().cleanup).toStrictEqual({ kind: 'refused', refusal: PLAN_GONE });
+      expect(store.getState().cleanup).toStrictEqual({
+        app: null,
+        kind: 'refused',
+        origin: 'selection',
+        refusal: PLAN_GONE,
+      });
     });
 
     it('confirm, stop and a second stop do nothing out of their state', async () => {
@@ -162,14 +187,60 @@ describe('the cleanup state', () => {
       expect(store.getState().failure).toBeNull();
     });
 
+    it('a finished uninstall does not empty the selection', () => {
+      const selected = run([{ category: 'demo.caches', type: 'toggle-category' }, ...UNINSTALLING, EVENTS.started]);
+
+      const state = run([EVENTS.finished], selected);
+
+      expect(state.cleanup).toMatchObject({ kind: 'finished', origin: 'uninstall' });
+      expect(state.selection.categories.size).toBe(1);
+    });
+
     it('dismissing does not hide a running cleanup', () => {
       const running = run([...RUNNING, EVENTS.started]);
 
-      expect(run([{ type: 'cleanup-dismissed' }, { type: 'cleanup-preparing' }], running)).toBe(running);
+      expect(run([{ type: 'cleanup-dismissed' }, { origin: 'selection', type: 'cleanup-preparing' }], running)).toBe(
+        running,
+      );
     });
   });
 
   describe('positive cases', () => {
+    it('an uninstall asks for its own plan and keeps its origin through the confirmation', async () => {
+      const prepareUninstall = vi.fn(() => uninstallPlanOf(VIDEO_STUDIO_DETAIL, 'keep-data'));
+      mockCore({ prepareUninstall });
+      const store = createCoreStore();
+
+      prepareUninstallPlan(store, APP, 'keep-data');
+      expect(store.getState().cleanup).toStrictEqual({ app: APP, kind: 'preparing', origin: 'uninstall' });
+      await settle();
+
+      expect(prepareUninstall).toHaveBeenCalledWith({ app: APP, choice: 'keep-data' });
+      expect(store.getState().cleanup).toMatchObject({ kind: 'confirming', origin: 'uninstall' });
+    });
+
+    it('a refused uninstall plan keeps its origin and its text', async () => {
+      mockCore({ prepareUninstall: refuse(TOO_MANY_ITEMS) });
+      const store = createCoreStore();
+
+      prepareUninstallPlan(store, APP, 'everything');
+      await settle();
+
+      expect(store.getState().cleanup).toStrictEqual({
+        app: APP,
+        kind: 'refused',
+        origin: 'uninstall',
+        refusal: TOO_MANY_ITEMS,
+      });
+    });
+
+    it('the origin runs through running and finished', () => {
+      const running = run([...UNINSTALLING, EVENTS.started]);
+
+      expect(running.cleanup).toMatchObject({ kind: 'running', origin: 'uninstall' });
+      expect(run([EVENTS.finished], running).cleanup).toMatchObject({ kind: 'finished', origin: 'uninstall' });
+    });
+
     it('prepare then confirm runs then finishes', async () => {
       const seen: unknown[] = [];
       mockCore({
@@ -191,7 +262,12 @@ describe('the cleanup state', () => {
 
       prepare(store);
       await settle();
-      expect(store.getState().cleanup).toStrictEqual({ kind: 'confirming', plan: DEMO_PLAN });
+      expect(store.getState().cleanup).toStrictEqual({
+        app: null,
+        kind: 'confirming',
+        origin: 'selection',
+        plan: DEMO_PLAN,
+      });
 
       confirm(store, 'permanent');
       expect(store.getState().cleanup).toMatchObject({ cleanup: null, done: 0, kind: 'running', total: 3 });
@@ -210,6 +286,7 @@ describe('the cleanup state', () => {
         cleanup: 1,
         firstMoved: 0,
         kind: 'finished',
+        origin: 'selection',
         problems: [],
         report: MOVED_REPORT,
       });

@@ -9,7 +9,7 @@ use fresher_core::{
     RecordedCleanup, RecordedOutcome, Sizes, SkipCode, Timestamp, TrashState, TrashedItem,
 };
 
-use crate::cleanup::context::Context;
+use crate::cleanup::context::{Context, Scope};
 use crate::engine::{CleanupPorts, Shared};
 use crate::error::{EngineError, lock};
 
@@ -102,7 +102,7 @@ pub(crate) fn put_back(shared: &Shared, id: CleanupId, items: Option<&[u32]>) ->
         }
         None => located.still_in_trash().collect(),
     };
-    let cx = Context::now(shared)?;
+    let cx = Context::now(shared, Scope::PutBack)?;
     let mut report = PutBackReport { items: Vec::with_capacity(indexes.len()) };
     for index in indexes {
         if located.returned.contains(&index) {

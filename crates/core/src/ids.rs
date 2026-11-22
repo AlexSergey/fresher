@@ -91,10 +91,20 @@ impl CategoryId {
         Ok(())
     }
 
-    /// The core's own category for the items the user picks by hand (`core.own-file`): the only category in the
-    /// core's namespace, so it has its own constructor and no module can take the namespace.
+    /// The core's own category for the items the user picks by hand (`core.own-file`). The core's namespace holds
+    /// only its own categories, each with its own constructor, so no module can take the namespace.
     pub(crate) const fn own_file() -> Self {
         Self("core.own-file")
+    }
+
+    /// The core's category of an uninstall that keeps the app's data (`core.uninstall-keep-data`).
+    pub(crate) const fn uninstall_keep_data() -> Self {
+        Self("core.uninstall-keep-data")
+    }
+
+    /// The core's category of an uninstall that takes everything (`core.uninstall-everything`).
+    pub(crate) const fn uninstall_everything() -> Self {
+        Self("core.uninstall-everything")
     }
 
     pub const fn as_str(self) -> &'static str {

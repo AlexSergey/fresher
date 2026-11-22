@@ -3,7 +3,9 @@
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{BlockedReason, Capability, CleanupId, FindingId, Operation, SettingKey, Text, TextArg, TextKey};
+use crate::{
+    AppId, BlockedReason, Capability, CleanupId, FindingId, NotOffered, Operation, SettingKey, Text, TextArg, TextKey,
+};
 
 /// Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
 /// for logs.
@@ -91,11 +93,17 @@ pub enum CommandError {
     /// A pick of an item the Largest screen does not offer, or one that is not there.
     #[error("the item cannot be chosen")]
     NotOwnItem,
+    /// An app of another state, or no app of this one.
+    #[error("app {}/{} is not in this scan", .id.state().get(), .id.index())]
+    UnknownApp { id: AppId },
+    /// An uninstall of an app that is not offered now; nothing was prepared. The app's page says why.
+    #[error("the app is not offered for uninstall: {}", .reason.code())]
+    UninstallRefused { reason: NotOffered },
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 29] = [
+    pub const CODES: [&str; 31] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -125,6 +133,8 @@ impl CommandError {
         "nothing-to-reveal",
         "unknown-trash",
         "not-own-item",
+        "unknown-app",
+        "uninstall-refused",
     ];
 
     /// The `code` the error is serialized with.
@@ -159,6 +169,8 @@ impl CommandError {
             Self::NothingToReveal => "nothing-to-reveal",
             Self::UnknownTrash { .. } => "unknown-trash",
             Self::NotOwnItem => "not-own-item",
+            Self::UnknownApp { .. } => "unknown-app",
+            Self::UninstallRefused { .. } => "uninstall-refused",
         }
     }
 
@@ -194,7 +206,9 @@ impl CommandError {
             | Self::UnknownVolume
             | Self::NothingToReveal
             | Self::UnknownTrash { .. }
-            | Self::NotOwnItem => text,
+            | Self::NotOwnItem
+            | Self::UnknownApp { .. }
+            | Self::UninstallRefused { .. } => text,
         }
     }
 }
@@ -216,7 +230,10 @@ impl From<CommandError> for Refusal {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::{BlockedReason, Capability, CleanupId, CommandError, FindingId, Operation, SettingKey};
+    use crate::{
+        AppId, BlockedReason, Capability, CleanupId, CommandError, FindingId, NotOffered, Operation, SettingKey,
+        StateId,
+    };
 
     /// One error of every variant. The `match` has no wildcard: a new variant fails to compile until it is added here,
     /// and then the tests below check its code.
@@ -250,7 +267,9 @@ pub(crate) mod tests {
             | CommandError::UnknownGroup { .. }
             | CommandError::NothingToReveal
             | CommandError::UnknownTrash { .. }
-            | CommandError::NotOwnItem => error,
+            | CommandError::NotOwnItem
+            | CommandError::UnknownApp { .. }
+            | CommandError::UninstallRefused { .. } => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -282,6 +301,8 @@ pub(crate) mod tests {
             sample(CommandError::NothingToReveal),
             sample(CommandError::UnknownTrash { index: 3 }),
             sample(CommandError::NotOwnItem),
+            sample(CommandError::UnknownApp { id: AppId::new(StateId::new(2), 5) }),
+            sample(CommandError::UninstallRefused { reason: NotOffered::Open }),
         ]
     }
 
@@ -350,6 +371,22 @@ pub(crate) mod tests {
         }
 
         #[test]
+        fn an_uninstall_refusal_carries_its_reason_and_an_unknown_app_its_id() {
+            let refused = CommandError::UninstallRefused { reason: crate::NotOffered::TooManyFiles };
+            let unknown = CommandError::UnknownApp { id: crate::AppId::new(crate::StateId::new(2), 5) };
+
+            assert_eq!(
+                serde_json::to_value(refused).unwrap(),
+                json!({ "code": "uninstall-refused", "reason": "too-many-files" })
+            );
+            assert_eq!(
+                serde_json::to_value(&unknown).unwrap(),
+                json!({ "code": "unknown-app", "id": { "state": 2, "index": 5 } })
+            );
+            assert_eq!(unknown.to_string(), "app 2/5 is not in this scan");
+        }
+
+        #[test]
         fn busy_names_the_running_operation_in_its_text_args() {
             let text = CommandError::Busy { running: Operation::Clean }.text();
 
@@ -393,6 +430,8 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
+                    vec![],
                     vec![],
                     vec![],
                     vec![],

@@ -27,6 +27,10 @@ mod support {
         ToolId, TrashLine, TrashState, TrashView, Unit, Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
     };
     use fresher_core::{
+        AppDetail, AppId, AppOffer, AppSummary, AppsQuery, AppsView, ChoiceView, FootprintItem, FootprintKind,
+        KeptItem, KeptReason, NotOffered, PartSizes, UninstallChoice, UnusedFor,
+    };
+    use fresher_core::{
         AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, MountKind, PartKind, PlaceName,
         PlaceRow, PlaceShare, PlaceView, RemainderReason, StorageMap, VolumeMap,
     };
@@ -146,6 +150,7 @@ mod support {
         declarations.extend(storage_declarations(&config));
         declarations.extend(largest_declarations(&config));
         declarations.extend(cleanup_declarations(&config));
+        declarations.extend(apps_declarations(&config));
         declarations.extend(demo_declarations(&config));
         declarations
     }
@@ -226,6 +231,27 @@ mod support {
             declaration::<PutBackReport>(config),
             declaration::<PutBackItem>(config),
             declaration::<PutBackOutcome>(config),
+        ]
+    }
+
+    /// The types of the Apps screen's commands and an app's page.
+    fn apps_declarations(config: &Config) -> Vec<Declaration> {
+        vec![
+            declaration::<AppsQuery>(config),
+            declaration::<UnusedFor>(config),
+            declaration::<AppsView>(config),
+            declaration::<AppSummary>(config),
+            declaration::<AppId>(config),
+            declaration::<AppOffer>(config),
+            declaration::<NotOffered>(config),
+            declaration::<PartSizes>(config),
+            declaration::<FootprintKind>(config),
+            declaration::<AppDetail>(config),
+            declaration::<FootprintItem>(config),
+            declaration::<KeptItem>(config),
+            declaration::<KeptReason>(config),
+            declaration::<ChoiceView>(config),
+            declaration::<UninstallChoice>(config),
         ]
     }
 

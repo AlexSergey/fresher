@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::demo::RawDemo;
 use crate::largest::{LargestExpectation, RawLargest};
+use crate::uninstall::{RawUninstall, UninstallExpectation};
 use crate::world::{StatedTool, ToolProblem};
 use crate::{CaseError, Demo};
 
@@ -59,6 +60,7 @@ pub struct Case {
     expect: Option<Expectation>,
     map: Option<MapExpectation>,
     largest: Option<LargestExpectation>,
+    uninstall: Option<UninstallExpectation>,
     left_out: Vec<LeftOutExpectation>,
     insights: Vec<InsightExpectation>,
 }
@@ -139,10 +141,10 @@ struct RawCaseFile {
     cases: Vec<RawCase>,
 }
 
-// Its files are every key but `name`, `kind`, `spotlight`, `access`, `macos`, `expect`, `map`, `largest`, `left-out`,
-// `running`, `elsewhere`, `receipt`, `tool` and `insight` (`[[case.running]]`, `[[case.elsewhere]]`, `[[case.receipt]]`,
-// `[[case.tool]]` and `[[case.insight]]`, taken out first), read as a `TreeDescription`, which refuses an unknown one;
-// each `[[case.app]]` loses its `running` first.
+// Its files are every key but `name`, `kind`, `spotlight`, `access`, `macos`, `expect`, `map`, `largest`, `uninstall`,
+// `left-out`, `running`, `elsewhere`, `receipt`, `tool` and `insight` (`[[case.running]]`, `[[case.elsewhere]]`,
+// `[[case.receipt]]`, `[[case.tool]]` and `[[case.insight]]`, taken out first), read as a `TreeDescription`, which
+// refuses an unknown one; each `[[case.app]]` loses its `running` first.
 #[derive(Deserialize)]
 struct RawCase {
     name: String,
@@ -153,6 +155,7 @@ struct RawCase {
     expect: Option<RawExpectation>,
     map: Option<RawMap>,
     largest: Option<RawLargest>,
+    uninstall: Option<RawUninstall>,
     #[serde(default, rename = "left-out")]
     left_out: Vec<RawLeftOut>,
     #[serde(flatten)]
@@ -338,6 +341,8 @@ impl CaseFile {
             }
             cases.push((case, pending));
         }
+        let checked: Vec<&Case> = cases.iter().map(|(case, _)| case).collect();
+        check_uninstalled_bundles(&checked)?;
         merge_trees(cases.iter().map(|(case, _)| case))?;
         // Every check passed: only now are the ids kept, so a refused file keeps nothing.
         let module = raw
@@ -494,12 +499,21 @@ impl Case {
         let running = tree.apps().iter().zip(running).filter(|(_, running)| *running).map(|(app, _)| app.path.clone());
         let running = running.collect();
         if raw.kind == CaseKind::Scenery
-            && (raw.expect.is_some() || raw.map.is_some() || !raw.left_out.is_empty() || !insights.is_empty())
+            && (raw.expect.is_some()
+                || raw.map.is_some()
+                || raw.uninstall.is_some()
+                || !raw.left_out.is_empty()
+                || !insights.is_empty())
         {
             return Err(CaseError::SceneryWithExpectation { case: name });
         }
+        let uninstall =
+            raw.uninstall.map(|raw_uninstall| UninstallExpectation::from_raw(&name, raw.kind, &tree, raw_uninstall));
+        let uninstall = uninstall.transpose()?;
         let expect = match (raw.kind, raw.expect) {
             (CaseKind::Negative, Some(_)) => return Err(CaseError::NegativeWithExpect { case: name }),
+            // A positive uninstall is checked on the Apps screen: its own expectation.
+            (CaseKind::Positive, None) if uninstall.is_some() => None,
             (CaseKind::Positive, None) => return Err(CaseError::PositiveWithoutExpect { case: name }),
             (CaseKind::Negative | CaseKind::Scenery, _) => None,
             (CaseKind::Positive, Some(raw)) => Some(PendingExpectation::from_raw(&name, &tree, raw)?),
@@ -540,6 +554,7 @@ impl Case {
             expect: None,
             map,
             largest,
+            uninstall,
             left_out: vec![],
             insights,
         };
@@ -620,6 +635,11 @@ impl Case {
     /// What the Largest screen must show of the case's files, when the case says.
     pub const fn largest(&self) -> Option<&LargestExpectation> {
         self.largest.as_ref()
+    }
+
+    /// What the Apps screen must show of one of the case's apps, and what its uninstall does, when the case says.
+    pub const fn uninstall(&self) -> Option<&UninstallExpectation> {
+        self.uninstall.as_ref()
     }
 
     /// The insights the case expects its file's module to describe.
@@ -976,6 +996,21 @@ pub(crate) fn category_id(id: &'static str) -> Result<CategoryId, IdError> {
         return Ok(own_file().id());
     }
     CategoryId::new(ModuleId::new(module_of(id))?, id)
+}
+
+/// The bundle a positive case uninstalls is its own item: no other case writes at or below it.
+fn check_uninstalled_bundles(cases: &[&Case]) -> Result<(), CaseError> {
+    for case in cases {
+        let Some(uninstall) = case.uninstall.as_ref().filter(|uninstall| uninstall.is_chosen()) else { continue };
+        let bundle = uninstall.app();
+        for other in cases.iter().filter(|other| other.name != case.name) {
+            if let Some(path) = other.tree.paths().chain(other.tree.markers()).find(|path| path.starts_with(bundle)) {
+                let (case, other, path) = (case.name.clone(), other.name.clone(), path.to_path_buf());
+                return Err(CaseError::UninstallBundleShared { case, other, path });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The cases' files as one tree.
@@ -1353,6 +1388,25 @@ after-cleanup = "in-trash"
                     "{error}"
                 );
             }
+        }
+
+        #[test]
+        fn an_apps_last_use_manager_or_owner_off_the_shape_is_refused() {
+            use fresher_testing::FixtureError;
+
+            let last_used = refused(&file(&[&with_app("Applications/Tool.app", "last-used = \"long ago\"\n")]));
+            let manager = refused(&file(&[&with_app("Applications/Tool.app", "installed-by = \"macports:tool\"\n")]));
+            let owner = refused(&file(&[&with_app("Applications/Tool.app", "owner = \"root\"\n")]));
+
+            assert!(
+                matches!(last_used, CaseError::Tree { source: FixtureError::AppLastUsed { .. }, .. }),
+                "{last_used}"
+            );
+            assert!(
+                matches!(manager, CaseError::Tree { source: FixtureError::AppInstalledBy { .. }, .. }),
+                "{manager}"
+            );
+            assert!(matches!(owner, CaseError::Files { .. }), "{owner}");
         }
 
         #[test]

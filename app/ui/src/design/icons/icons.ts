@@ -2,6 +2,7 @@
 // an unused one fails knip. A later component adds the names it needs, one line each.
 export type { LucideIcon as IconShape } from 'lucide-react';
 export {
+  AppWindow,
   ArrowDownWideNarrow,
   Check,
   ChevronDown,

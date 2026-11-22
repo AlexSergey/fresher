@@ -1,0 +1,187 @@
+# Uninstall an app, on the trial module: the Apps screen lists only the user's own apps, offers none it cannot move
+# alone (a package manager's, the system's, an open one), and an uninstall moves the bundle and the files named by its
+# exact bundle id to the sandbox's Trash, never a look-alike's; Cleanups puts all of it back. Every bundle and file is
+# inside the sandbox: its apps folders and its Trash, never the Mac's. The names are apart from every other case file.
+feature = "uninstall"
+module = "trial"
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "an app of the system is not listed"
+kind = "negative"
+[[case.app]]
+path = "System/Applications/Chess.app"
+bundle-id = "com.apple.Chess"
+name = "Chess"
+version = "3.18"
+[case.uninstall]
+app = "System/Applications/Chess.app"
+listed = false
+
+# One folder below Applications, as Utilities is: `Applications/Notes.app` is another case file's app.
+[[case]]
+name = "an app with Apple's id is not listed"
+kind = "negative"
+[[case.app]]
+path = "Applications/Utilities/Notes.app"
+bundle-id = "com.apple.Notes"
+name = "Notes"
+version = "4.11"
+[case.uninstall]
+app = "Applications/Utilities/Notes.app"
+listed = false
+
+[[case]]
+name = "an app Homebrew installed is not offered"
+kind = "negative"
+[[case.app]]
+path = "Applications/Brewed.app"
+bundle-id = "com.example.Brewed"
+name = "Brewed"
+version = "1.2"
+installed-by = "homebrew:brewed"
+[[case.file]]
+path = "home/Library/Caches/com.example.Brewed/Cache.db"
+size = 4096
+fill = "data"
+[case.uninstall]
+app = "Applications/Brewed.app"
+offered = false
+reason = "installed-by"
+
+[[case]]
+name = "an app owned by the system is not offered"
+kind = "negative"
+[[case.app]]
+path = "Applications/Rooted.app"
+bundle-id = "com.example.Rooted"
+name = "Rooted"
+version = "2.0"
+owner = "system"
+[case.uninstall]
+app = "Applications/Rooted.app"
+offered = false
+reason = "needs-administrator"
+
+# Keeper's id is a prefix of this one's: an uninstall of Keeper takes nothing of it.
+[[case]]
+name = "a look-alike id's files stay"
+kind = "negative"
+[[case.file]]
+path = "home/Library/Caches/com.example.Keeperx/blob.bin"
+size = 4096
+fill = "data"
+
+# Then the positive cases.
+
+# The scan folds a file under 1 MiB that no registered module looks at into its folder's total, and the trial module
+# looks at none: a plist here is 1 MiB, so the scan keeps it and the footprint finds it (keep-data leaves it in place).
+[[case]]
+name = "keep-data moves the app, its caches, logs and saved windows; settings and files stay"
+kind = "positive"
+[[case.app]]
+path = "Applications/Keeper.app"
+bundle-id = "com.example.Keeper"
+name = "Keeper"
+version = "5.0"
+last-used = "240d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Keeper/Cache.db"
+size = 8192
+fill = "data"
+[[case.file]]
+path = "home/Library/Logs/com.example.Keeper/keeper.log"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Keeper.savedState/data.data"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Preferences/com.example.Keeper.plist"
+size = 1048576
+fill = "data"
+[[case.file]]
+path = "home/Library/Application Support/com.example.Keeper/library.db"
+size = 4096
+fill = "data"
+[case.uninstall]
+app = "Applications/Keeper.app"
+choice = "keep-data"
+trashed = [
+  "Applications/Keeper.app",
+  "home/Library/Caches/com.example.Keeper",
+  "home/Library/Logs/com.example.Keeper",
+  "home/Library/Saved Application State/com.example.Keeper.savedState",
+]
+kept = ["home/Library/Preferences/com.example.Keeper.plist", "home/Library/Application Support/com.example.Keeper"]
+
+# Its two plists are 1 MiB, as Keeper's is.
+[[case]]
+name = "everything moves every file Fresher found"
+kind = "positive"
+[[case.app]]
+path = "Applications/Purger.app"
+bundle-id = "com.example.Purger"
+name = "Purger"
+version = "1.0"
+[[case.file]]
+path = "home/Library/Caches/com.example.Purger/Cache.db"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Logs/com.example.Purger/purger.log"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Purger.savedState/data.data"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/Preferences/com.example.Purger.plist"
+size = 1048576
+fill = "data"
+[[case.file]]
+path = "home/Library/Application Support/com.example.Purger/library.db"
+size = 4096
+fill = "data"
+[[case.file]]
+path = "home/Library/LaunchAgents/com.example.Purger.helper.plist"
+size = 1048576
+fill = "data"
+[case.uninstall]
+app = "Applications/Purger.app"
+choice = "everything"
+trashed = [
+  "Applications/Purger.app",
+  "home/Library/Caches/com.example.Purger",
+  "home/Library/Logs/com.example.Purger",
+  "home/Library/Saved Application State/com.example.Purger.savedState",
+  "home/Library/LaunchAgents/com.example.Purger.helper.plist",
+  "home/Library/Preferences/com.example.Purger.plist",
+  "home/Library/Application Support/com.example.Purger",
+]
+
+# Two copies of one id: the other copy still names the support folder, so it stays (shared).
+[[case]]
+name = "the user's copy of a twin goes alone"
+kind = "positive"
+[[case.app]]
+path = "Applications/Twin.app"
+bundle-id = "com.example.Twin"
+name = "Twin"
+version = "1.0"
+[[case.app]]
+path = "home/Applications/Twin.app"
+bundle-id = "com.example.Twin"
+name = "Twin"
+version = "1.1"
+[[case.file]]
+path = "home/Library/Application Support/com.example.Twin/state.db"
+size = 4096
+fill = "data"
+[case.uninstall]
+app = "home/Applications/Twin.app"
+choice = "everything"
+trashed = ["home/Applications/Twin.app"]
+kept = ["Applications/Twin.app", "home/Library/Application Support/com.example.Twin"]

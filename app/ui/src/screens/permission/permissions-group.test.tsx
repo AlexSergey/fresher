@@ -24,6 +24,10 @@ const REMOVABLE: Capability = { kind: 'volume', value: 'removable' };
 const DICTIONARY = {
   ...DEMO_DICTIONARY,
   ...ACCESS_DICTIONARY,
+  'core.access.app-management.how': '1. Open System Settings.',
+  'core.access.app-management.missing': 'Fresher may not move apps yet.',
+  'core.access.app-management.name': 'App Management',
+  'core.access.app-management.unlocks': 'Lets Fresher move apps to the Trash.',
   'core.access.desktop.label': 'Let Fresher look in Desktop',
   'core.access.state.denied': 'Not allowed',
   'core.access.state.granted': 'Allowed',
@@ -140,6 +144,14 @@ describe('PermissionsGroup', () => {
       const permissions = await group();
 
       expect(within(permissions).getByRole('switch', { name: 'Let Fresher look in Desktop' })).toBeDisabled();
+    });
+
+    it('a_not_asked_row_with_no_button_shows_no_numbered_steps', async () => {
+      await show(status([{ access: 'not-asked', capability: { kind: 'app-management' }, note: null }]));
+      const permissions = await group();
+
+      expect(within(permissions).queryByText('1. Open System Settings.')).toBeNull();
+      expect(within(permissions).getByText('Fresher may not move apps yet.')).toBeInTheDocument();
     });
 
     it('a_tool_nobody_needs_is_not_listed', async () => {

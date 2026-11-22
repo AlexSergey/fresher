@@ -1,0 +1,79 @@
+/* An app's page: a column of the content's width under its header; the lists are the product components' own. */
+@layer components {
+  .content {
+    display: grid;
+    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-10);
+    gap: var(--space-6);
+    justify-items: start;
+  }
+
+  .state {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .size {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
+  .version {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+  }
+
+  .part {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-3);
+    justify-self: stretch;
+  }
+
+  .heading {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-title-3-size);
+    font-weight: var(--type-title-3-weight);
+    letter-spacing: var(--type-title-3-tracking);
+    line-height: var(--type-title-3-line);
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .reason {
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  .command {
+    display: grid;
+    gap: var(--space-2);
+    justify-self: stretch;
+  }
+
+  .command p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .code {
+    padding: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    user-select: text;
+    word-break: break-all;
+  }
+}

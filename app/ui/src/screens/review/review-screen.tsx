@@ -81,6 +81,25 @@ export const ReviewScreen = (): JSX.Element => {
     store.dispatch({ finding, type: 'toggle-finding' });
   };
 
+  // A refusal of any cleanup (an uninstall confirmed from an app's page too) shows here with the core's text.
+  const refusedNotice =
+    cleanup.kind === 'refused' ? (
+      <Notice
+        action={{
+          label: t('ui.screen.review.review-again'),
+          onClick: () => {
+            store.dispatch({ type: 'cleanup-dismissed' });
+            removeRef.current?.focus();
+          },
+        }}
+        live
+        title={t('ui.screen.review.refused')}
+        tone="warning"
+      >
+        {tText(cleanup.refusal.text)}
+      </Notice>
+    ) : null;
+
   if (cleanup.kind === 'running' || cleanup.kind === 'finished') {
     return <CleanupPanel cleanup={cleanup} />;
   }
@@ -90,6 +109,7 @@ export const ReviewScreen = (): JSX.Element => {
       <>
         <Toolbar />
         <PageHeader title={t('ui.screen.frame.nav.review')} />
+        {refusedNotice === null ? null : <div className={styles.content}>{refusedNotice}</div>}
         <div className={styles.empty}>
           <EmptyState
             action={{
@@ -123,24 +143,9 @@ export const ReviewScreen = (): JSX.Element => {
       />
       <PageHeader subtitle={t('ui.screen.review.subtitle')} title={t('ui.screen.frame.nav.review')} />
       <div className={styles.content}>
-        {cleanup.kind === 'refused' ? (
-          <Notice
-            action={{
-              label: t('ui.screen.review.review-again'),
-              onClick: () => {
-                store.dispatch({ type: 'cleanup-dismissed' });
-                removeRef.current?.focus();
-              },
-            }}
-            live
-            title={t('ui.screen.review.refused')}
-            tone="warning"
-          >
-            {tText(cleanup.refusal.text)}
-          </Notice>
-        ) : null}
+        {refusedNotice}
         <Summary
-          checking={cleanup.kind === 'preparing'}
+          checking={cleanup.kind === 'preparing' && cleanup.origin === 'selection'}
           count={summary.count}
           highest={highest}
           onRemove={() => {
@@ -160,7 +165,7 @@ export const ReviewScreen = (): JSX.Element => {
           </DangerZone>
         ))}
       </div>
-      {cleanup.kind === 'confirming' ? (
+      {cleanup.kind === 'confirming' && cleanup.origin === 'selection' ? (
         <ConfirmDialog
           onCancel={() => {
             discard(store);

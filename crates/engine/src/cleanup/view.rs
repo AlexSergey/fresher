@@ -2,11 +2,13 @@
 
 use fresher_core::{ActionKind, CleanupPlan, CleanupPlanView, PlanError, PlanGroup, PlanItemView, PlanSummary};
 
+use crate::cleanup::pending::Purpose;
 use crate::error::EngineError;
 
-/// The view of `plan`: its items in groups of one category that go the same way, in plan order, each group with its
-/// summary; the left-out list; the plan's own summary. The permanent choice applies when an item is not a tool's.
-pub(crate) fn of(plan: &CleanupPlan) -> Result<CleanupPlanView, EngineError> {
+/// The view of `plan`, made for `purpose`: its items in groups of one category that go the same way, in plan order,
+/// each group with its summary; the left-out list; the plan's own summary. The permanent choice applies when an item
+/// is not a tool's and the plan is no uninstall: an uninstall always goes to the Trash.
+pub(crate) fn of(plan: &CleanupPlan, purpose: &Purpose) -> Result<CleanupPlanView, EngineError> {
     let same_group = |a: &fresher_core::PlanItem, b: &fresher_core::PlanItem| {
         a.category() == b.category() && a.action().kind() == b.action().kind()
     };
@@ -28,6 +30,7 @@ pub(crate) fn of(plan: &CleanupPlan) -> Result<CleanupPlanView, EngineError> {
         summary: plan.summary(),
         groups,
         left_out: plan.left_out().to_vec(),
-        permanent_available: plan.items().iter().any(|item| item.action().kind() != ActionKind::Tool),
+        permanent_available: !matches!(purpose, Purpose::Uninstall { .. })
+            && plan.items().iter().any(|item| item.action().kind() != ActionKind::Tool),
     })
 }

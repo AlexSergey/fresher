@@ -7,8 +7,8 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    ByteSize, EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError, Sizes,
-    Timestamp,
+    ByteSize, EntryAccess, EntryKind, FolderIdentity, FolderListing, FolderReader, InstalledBy, RawEntry, ReadError,
+    Sizes, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -69,6 +69,10 @@ pub struct Stated {
     pub kind: Option<StatedKind>,
     /// The space it takes on disk, stated: a sparse file of a demo world takes its declared size.
     pub allocated: Option<ByteSize>,
+    /// For an app's bundle: when Spotlight last saw the app used.
+    pub last_used: Option<Timestamp>,
+    /// For an app's bundle: the package manager that installed it.
+    pub installed_by: Option<InstalledBy>,
 }
 
 impl Stated {

@@ -48,6 +48,10 @@ pub enum FixtureError {
     InvalidBundleId { path: PathBuf, id: String },
     #[error("the app {path} has a control character in its name, version or build")]
     AppTextControl { path: PathBuf },
+    #[error("the app {path} has a `last-used` that is not \"<n>d\", \"<n>h\" or \"<n>s\"")]
+    AppLastUsed { path: PathBuf },
+    #[error("the app {path} has `installed-by = {value:?}`; it is \"homebrew:<token>\", the token of [a-z0-9@._+-]")]
+    AppInstalledBy { path: PathBuf, value: String },
     #[error("the fixture path {path} is inside the app {app}, which writes its own bundle")]
     InsideApp { path: PathBuf, app: PathBuf },
     #[error("the file {path} states a `kind` and has a `fill`: a socket or a pipe holds no data")]

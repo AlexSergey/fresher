@@ -3,7 +3,7 @@
 use std::io;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use fresher_core::{CommandError, JournalError, PlanError, StorageMapError, SystemUiError};
+use fresher_core::{CommandError, JournalError, PlanError, RemovalError, StorageMapError, SystemUiError};
 
 /// A failure inside the engine. It is a bug or a broken host, never the user's input: the UI sees `Internal`.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -28,6 +28,8 @@ pub(crate) enum EngineError {
     SystemUi(SystemUiError),
     #[error("the storage map could not be drawn: {0}")]
     StorageMap(StorageMapError),
+    #[error("an uninstall's paths could not be made one item: {0}")]
+    Parts(RemovalError),
 }
 
 impl From<EngineError> for CommandError {
@@ -69,6 +71,7 @@ mod tests {
                 EngineError::Journal(fresher_core::JournalError::ReadOnly),
                 EngineError::SystemUi(fresher_core::SystemUiError::Unsupported),
                 EngineError::StorageMap(fresher_core::StorageMapError::Overflow),
+                EngineError::Parts(fresher_core::RemovalError::TooFewParts),
             ];
 
             for error in errors {

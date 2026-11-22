@@ -432,6 +432,38 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the apps and an app’s page', async ({ page }) => {
+      await open(page, SCRIPTS.apps);
+      await scan(page, '1.1 GB');
+      await go(page, 'Apps', 'Apps');
+      await expect(page.getByRole('list', { name: 'Apps, largest first' })).toContainText('Disk Tool');
+
+      expect(await violations(page)).toStrictEqual([]);
+
+      await page.getByRole('listitem').filter({ hasText: 'Video Studio' }).first().click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Video Studio' })).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('an app that is not offered and the confirmation of an uninstall', async ({ page }) => {
+      await open(page, SCRIPTS.appsDenied);
+      await scan(page, '1.1 GB');
+      await go(page, 'Apps', 'Apps');
+      await page.getByRole('listitem').filter({ hasText: 'Terminal Pro' }).first().click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Terminal Pro' })).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+
+      await page.getByRole('button', { name: 'All apps' }).click();
+      await page.getByRole('listitem').filter({ hasText: 'Video Studio' }).first().click();
+      await expect(page.getByRole('button', { name: 'Open System Settings' })).toBeVisible();
+      await page.getByRole('button', { name: 'Uninstall…' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the cleanups and one cleanup', async ({ page }) => {
       await open(page, SCRIPTS.cleaning);
       await go(page, 'Cleanups', 'Cleanups');

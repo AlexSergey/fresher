@@ -290,6 +290,19 @@ describe('ReviewScreen', () => {
   });
 
   describe('positive cases', () => {
+    it('a confirm refused after an uninstall was confirmed shows the core’s text', async () => {
+      await renderReview((store) => {
+        store.dispatch({ app: { index: 0, state: 1 }, origin: 'uninstall', type: 'cleanup-preparing' });
+        store.dispatch({ plan: DEMO_PLAN, type: 'cleanup-prepared' });
+        store.dispatch({ method: 'trash', type: 'cleanup-confirming' });
+        store.dispatch({ refusal: PLAN_GONE, type: 'cleanup-refused' });
+      });
+
+      expect(screen.getByText(CLEANUP_DICTIONARY['core.error.plan-gone'] as string)).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: 'Review it again' }));
+      expect(screen.queryByText(CLEANUP_DICTIONARY['core.error.plan-gone'] as string)).not.toBeInTheDocument();
+    });
+
     it('a selection across Safe and High shows two zones, High with its warning and meaning', async () => {
       await renderReview((store) => {
         pickCategory('demo.caches')(store);

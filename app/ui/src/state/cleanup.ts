@@ -1,4 +1,5 @@
 import type {
+  AppId,
   CleanupId,
   CleanupPlanView,
   CleanupReport,
@@ -14,23 +15,32 @@ import type {
 // What the UI did about the cleanup, and the core's answers.
 export type CleanupAction =
   // The confirmation was sent; the progress shows until the core names the cleanup.
+  | { readonly app?: AppId; readonly origin: CleanupOrigin; readonly type: 'cleanup-preparing' }
   | { readonly cleanup: CleanupId; readonly type: 'cleanup-confirmed' }
   | { readonly method: Method; readonly type: 'cleanup-confirming' }
   | { readonly plan: CleanupPlanView; readonly type: 'cleanup-prepared' }
-  | { readonly refusal: Refusal; readonly type: 'cleanup-refused' }
   // Cancel, Done, Review it again: nothing is shown any more.
+  | { readonly refusal: Refusal; readonly type: 'cleanup-refused' }
   | { readonly type: 'cleanup-dismissed' }
-  | { readonly type: 'cleanup-preparing' }
   | { readonly type: 'cleanup-stopping' };
 
 // Where the cleanup is, from the review screen's button to its result. `running.cleanup` is `null` from the confirm
 // until the core names the cleanup; `plan` is the one the user confirmed (`null` for a cleanup this UI did not start).
 export type CleanupState =
   | {
+      readonly app: AppId | null;
+      readonly kind: 'confirming';
+      readonly origin: CleanupOrigin;
+      readonly plan: CleanupPlanView;
+    }
+  | { readonly app: AppId | null; readonly kind: 'preparing'; readonly origin: CleanupOrigin }
+  | { readonly app: AppId | null; readonly kind: 'refused'; readonly origin: CleanupOrigin; readonly refusal: Refusal }
+  | {
       readonly cleanup: CleanupId;
       // The index of the first item moved to the Trash, which "Show in the Trash" reveals.
       readonly firstMoved: null | number;
       readonly kind: 'finished';
+      readonly origin: CleanupOrigin;
       readonly problems: readonly ItemProblem[];
       readonly report: CleanupReport;
     }
@@ -42,18 +52,20 @@ export type CleanupState =
       readonly firstMoved: null | number;
       readonly kind: 'running';
       readonly method: Method;
+      readonly origin: CleanupOrigin;
       readonly plan: CleanupPlanView | null;
       readonly problems: readonly ItemProblem[];
       // Stop was asked for: the cleanup ends after the item in hand.
       readonly stopping: boolean;
       readonly total: number;
     }
-  | { readonly kind: 'confirming'; readonly plan: CleanupPlanView }
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'preparing' }
-  | { readonly kind: 'refused'; readonly refusal: Refusal };
+  | { readonly kind: 'idle' };
 
 type CleanupEvent = Extract<Event, { readonly type: 'cleanup-finished' | 'cleanup-items' | 'cleanup-started' }>;
+
+// What started the cleanup: the selection on Review, or the uninstall of one app from its page. Only a selection's
+// cleanup empties the selection when it ends.
+type CleanupOrigin = 'selection' | 'uninstall';
 
 // An item of a cleanup that was not removed, with the title the plan showed it under (`null` for a cleanup this UI
 // did not start) and why: what the result lists.
@@ -101,6 +113,7 @@ const reduceEvent = (state: CleanupState, event: CleanupEvent): CleanupState => 
             cleanup: event.cleanup,
             firstMoved: running.firstMoved,
             kind: 'finished',
+            origin: running.origin,
             problems: running.problems,
             report: event.report,
           }
@@ -128,6 +141,7 @@ const reduceEvent = (state: CleanupState, event: CleanupEvent): CleanupState => 
         firstMoved: null,
         kind: 'running',
         method: event.method,
+        origin: 'selection',
         plan: null,
         problems: [],
         stopping: false,
@@ -150,6 +164,7 @@ export const reduceCleanup = (state: CleanupState, action: CleanupAction | Clean
             firstMoved: null,
             kind: 'running',
             method: action.method,
+            origin: state.origin,
             plan: state.plan,
             problems: [],
             stopping: false,
@@ -163,11 +178,18 @@ export const reduceCleanup = (state: CleanupState, action: CleanupAction | Clean
     case 'cleanup-started':
       return reduceEvent(state, action);
     case 'cleanup-prepared':
-      return state.kind === 'preparing' ? { kind: 'confirming', plan: action.plan } : state;
+      return state.kind === 'preparing'
+        ? { app: state.app, kind: 'confirming', origin: state.origin, plan: action.plan }
+        : state;
     case 'cleanup-preparing':
-      return state.kind === 'running' ? state : { kind: 'preparing' };
+      return state.kind === 'running' ? state : { app: action.app ?? null, kind: 'preparing', origin: action.origin };
     case 'cleanup-refused':
-      return { kind: 'refused', refusal: action.refusal };
+      return {
+        app: state.kind === 'preparing' || state.kind === 'confirming' ? state.app : null,
+        kind: 'refused',
+        origin: state.kind === 'idle' ? 'selection' : state.origin,
+        refusal: action.refusal,
+      };
     case 'cleanup-stopping':
       return state.kind === 'running' && !state.stopping ? { ...state, stopping: true } : state;
   }

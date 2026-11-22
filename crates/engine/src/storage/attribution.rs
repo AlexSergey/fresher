@@ -23,6 +23,10 @@ const APP_DATA: [KnownFolder; 7] = [
 pub(crate) struct AppPlaces {
     /// The installed apps; `None` when they could not be listed: the map then names no app.
     apps: Option<Vec<AppRef>>,
+    /// The installed apps `apps` was made from, as listed; `None` when they could not be listed.
+    installed: Option<Vec<InstalledApp>>,
+    /// Whether the listing read every apps folder and bundle: no installed app is missing from `installed`.
+    complete: bool,
     /// Each installed app's id and its helpers', in lower case: the app's position in `apps`.
     ids: HashMap<String, usize>,
     /// The data folders and bundles found, each with its app's position in `apps`.
@@ -42,6 +46,7 @@ impl AppPlaces {
                 return Self { trash, ..Self::default() };
             }
         };
+        let complete = system.installed_apps_complete().is_ok();
         let ids = ids(installed);
         let mut places = Vec::new();
         for folder in APP_DATA {
@@ -62,7 +67,7 @@ impl AppPlaces {
             .iter()
             .map(|app| AppRef { id: app.bundle_id.clone(), name: app.name.clone(), installed: true })
             .collect();
-        Self { apps: Some(apps), ids, places, trash }
+        Self { apps: Some(apps), installed: Some(installed.to_vec()), complete, ids, places, trash }
     }
 }
 
@@ -89,11 +94,21 @@ impl AppPlaces {
     pub(crate) fn trash(&self) -> Option<NodeId> {
         self.trash
     }
+
+    /// The installed apps of the state, as listed; `None` when they could not be listed.
+    pub(crate) fn installed(&self) -> Option<&[InstalledApp]> {
+        self.installed.as_deref()
+    }
+
+    /// Whether the installed apps were listed in full: every apps folder and bundle read.
+    pub(crate) const fn installed_complete(&self) -> bool {
+        self.complete
+    }
 }
 
 /// Every id of `installed`, the app's own and its helpers', in lower case, with the app's position; an id two apps
 /// share stays with the first.
-fn ids(installed: &[InstalledApp]) -> HashMap<String, usize> {
+pub(crate) fn ids(installed: &[InstalledApp]) -> HashMap<String, usize> {
     let mut ids = HashMap::new();
     for (position, app) in installed.iter().enumerate() {
         for id in iter::once(&app.bundle_id).chain(&app.helpers) {
@@ -105,7 +120,7 @@ fn ids(installed: &[InstalledApp]) -> HashMap<String, usize> {
 
 /// The installed app `name` is named after (`BundleId::names`): the longest of the ids that name it, so a helper's
 /// own folder goes to the helper's app.
-fn named_after(installed: &[InstalledApp], ids: &HashMap<String, usize>, name: &str) -> Option<usize> {
+pub(crate) fn named_after(installed: &[InstalledApp], ids: &HashMap<String, usize>, name: &str) -> Option<usize> {
     let lower = name.to_ascii_lowercase();
     let ends = lower.match_indices('.').map(|(at, _)| at).chain(iter::once(lower.len()));
     let mut ends: Vec<usize> = ends.collect();

@@ -198,8 +198,8 @@ impl TreeDescription {
     }
 
     /// The facts the tree states instead of making them (docs/testing.md, "Fixture homes"), its folders', its files',
-    /// its links' then its app bundles' (`changed` only), relative to its root as written; times counted back from
-    /// `now`. An entry that states nothing is left out.
+    /// its links' then its app bundles' (`changed`, `owner`, `last-used` and `installed-by`), relative to its root as
+    /// written; times counted back from `now`. An entry that states nothing is left out.
     pub fn stated(&self, now: SystemTime) -> Result<Vec<(PathBuf, Stated)>, FixtureError> {
         let dirs = self
             .dirs
@@ -210,9 +210,8 @@ impl TreeDescription {
         });
         let no_flags = BTreeSet::new();
         let links = self.symlinks.iter().map(|link| (&link.path, link.changed.as_deref(), None, None, &no_flags, None));
-        let apps = self.apps.iter().map(|app| (&app.path, app.changed.as_deref(), None, None, &no_flags, None));
         let mut stated = Vec::new();
-        for (path, changed, accessed, owner, flags, kind) in dirs.chain(files).chain(links).chain(apps) {
+        for (path, changed, accessed, owner, flags, kind) in dirs.chain(files).chain(links) {
             let stamp = |offset: Option<&str>| -> Result<Option<Timestamp>, FixtureError> {
                 Ok(time_of(path, offset, None, now)?.map(Timestamp::from_system_time))
             };
@@ -223,9 +222,26 @@ impl TreeDescription {
                 flags: flags.clone(),
                 kind,
                 allocated: None,
+                last_used: None,
+                installed_by: None,
             };
             if !facts.is_empty() {
                 stated.push((path.clone(), facts));
+            }
+        }
+        for app in &self.apps {
+            let stamp = |offset: Option<&str>| -> Result<Option<Timestamp>, FixtureError> {
+                Ok(time_of(&app.path, offset, None, now)?.map(Timestamp::from_system_time))
+            };
+            let facts = Stated {
+                changed: stamp(app.changed.as_deref())?,
+                owner: app.owner,
+                last_used: stamp(app.last_used.as_deref())?,
+                installed_by: app.manager()?,
+                ..Stated::default()
+            };
+            if !facts.is_empty() {
+                stated.push((app.path.clone(), facts));
             }
         }
         Ok(stated)
@@ -997,6 +1013,21 @@ mod tests {
                 tree.stated(now()).unwrap(),
                 [(PathBuf::from("Applications/Tool.app"), Stated { changed, ..Stated::default() })]
             );
+        }
+
+        #[test]
+        fn an_apps_owner_last_use_and_manager_are_stated_for_its_bundle() {
+            let text = "[[app]]\npath = \"Applications/Tool.app\"\nbundle-id = \"com.example.Tool\"\nname = \"Tool\"\n\
+                        owner = \"system\"\nlast-used = \"240d\"\ninstalled-by = \"homebrew:tool\"\n";
+            let tree = TreeDescription::from_toml_str(text).unwrap();
+
+            let stated = Stated {
+                owner: Some(StatedOwner::System),
+                last_used: Some(Timestamp::from_system_time(now() - Duration::from_hours(240 * 24))),
+                installed_by: Some(fresher_core::InstalledBy::new(fresher_core::Manager::Homebrew, "tool").unwrap()),
+                ..Stated::default()
+            };
+            assert_eq!(tree.stated(now()).unwrap(), [(PathBuf::from("Applications/Tool.app"), stated)]);
         }
 
         #[test]

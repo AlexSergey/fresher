@@ -51,6 +51,8 @@ impl MacAccess {
     fn state(&self, capability: Capability, all_files: Access) -> Access {
         match capability {
             Capability::AllFiles => all_files,
+            // No call tells it without trying a move: the engine learns it from the first uninstall.
+            Capability::AppManagement => Access::NotAsked,
             Capability::OtherAppsData if !self.guards_other_apps_data() => Access::NotApplicable,
             Capability::Folder(_) | Capability::OtherAppsData if all_files == Access::Granted => Access::Granted,
             _ => self.last_try(capability).unwrap_or(Access::NotAsked),
@@ -97,8 +99,10 @@ impl AccessProbe for MacAccess {
         places
     }
 
+    /// Never tries App Management: it is no place, and only a move tells it.
     fn try_place(&self, place: &GuardedPlace) -> Access {
         let probe = match place.capability {
+            Capability::AppManagement => return Access::NotAsked,
             Capability::OtherAppsData => try_inside(&place.path),
             _ => try_place(&place.path),
         };
@@ -151,7 +155,7 @@ const fn capability_of(guard: Guard) -> Capability {
     }
 }
 
-/// The guard behind a capability the system grants; a tool has none.
+/// The guard behind a capability the system grants; a tool and App Management (no place guards it) have none.
 pub(crate) const fn guard_of(capability: Capability) -> Option<Guard> {
     match capability {
         Capability::AllFiles => Some(Guard::FullDiskAccess),
@@ -161,7 +165,7 @@ pub(crate) const fn guard_of(capability: Capability) -> Option<Guard> {
         Capability::Folder(GuardedFolder::Downloads) => Some(Guard::Downloads),
         Capability::Volume(VolumeKind::Removable) => Some(Guard::RemovableVolume),
         Capability::Volume(VolumeKind::Network) => Some(Guard::NetworkVolume),
-        Capability::Tool(_) => None,
+        Capability::AppManagement | Capability::Tool(_) => None,
     }
 }
 
@@ -213,7 +217,7 @@ mod tests {
 
         use fresher_core::{Access, AccessProbe, Capability, GuardedPlace};
 
-        use super::{DESKTOP, DOCUMENTS, Locked, access};
+        use super::{DESKTOP, DOCUMENTS, Locked, access, readable_candidate};
         use crate::{MacAccess, MacosVersion, macos_version};
 
         #[test]
@@ -279,6 +283,27 @@ mod tests {
             let unknown = MacAccess::new(home.path().to_path_buf(), macos_version(system.path()));
 
             assert_eq!(unknown.status().access(&Capability::OtherAppsData), Access::NotAsked);
+        }
+
+        #[test]
+        fn app_management_is_never_tried() {
+            let home = tempfile::tempdir().unwrap();
+            readable_candidate(home.path());
+            let apps = home.path().join("Applications");
+            fs::create_dir(&apps).unwrap();
+            let probe = access(home.path());
+
+            let answer = probe.try_place(&GuardedPlace { path: apps.clone(), capability: Capability::AppManagement });
+
+            assert_eq!(answer, Access::NotAsked);
+            assert_eq!(probe.status().access(&Capability::AllFiles), Access::Granted);
+            assert_eq!(probe.status().access(&Capability::AppManagement), Access::NotAsked);
+            assert!(
+                probe
+                    .guarded_places(&[apps, PathBuf::from("~")])
+                    .iter()
+                    .all(|place| { place.capability != Capability::AppManagement })
+            );
         }
 
         #[test]

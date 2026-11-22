@@ -1,8 +1,8 @@
 //! The apps installed on the system.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::{BundleId, CancelToken, SystemError, TeamId, Timestamp};
+use crate::{BundleFacts, BundleId, CancelToken, SystemError, TeamId, Timestamp};
 
 /// An installed app, as its own bundle says.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,6 +68,23 @@ pub trait InstalledApps: Send + Sync {
     /// Whether `find` can see every app on the Mac: Spotlight's index is on and every mounted volume is indexed. An
     /// error names what it cannot see.
     fn search_complete(&self, cancel: &CancelToken) -> Result<(), SystemError>;
+
+    /// The facts of `app`'s bundle: what it takes, whether the user may move it, when it was last used and who
+    /// installed it. Reads metadata only. The default answers an error: a port that does not know bundles lists the
+    /// app without a size, never offers it.
+    fn bundle(&self, app: &InstalledApp, cancel: &CancelToken) -> Result<BundleFacts, SystemError> {
+        let _ = (app, cancel);
+        Err(SystemError { reason: "this system does not read bundles".into() })
+    }
+
+    /// Whether the bundle at `path`, as a listing named it, is that bundle on disk now: its canonical path is `path`
+    /// byte for byte (no link on the way, no name in another case or normal form) and it is a real folder, not a
+    /// link, holding `Contents/Info.plist`. Reads metadata only. The default answers `false`: a port that does not
+    /// read bundles names none an uninstall may move.
+    fn is_as_listed(&self, path: &Path) -> bool {
+        let _ = path;
+        false
+    }
 }
 
 #[cfg(test)]

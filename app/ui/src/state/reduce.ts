@@ -140,6 +140,16 @@ const startScan = (state: CoreState, event: Extract<Event, { readonly type: 'sca
   };
 };
 
+// The cleanup is over: what was picked for it is no longer picked; an uninstall picked nothing.
+const cleanupEnded = (state: CoreState, cleanup: CleanupState): CoreState => {
+  if (cleanup === state.cleanup) {
+    return state;
+  }
+  const uninstall = cleanup.kind === 'finished' && cleanup.origin === 'uninstall';
+
+  return { ...state, cleanup, quitAsked: false, selection: uninstall ? state.selection : NOTHING_SELECTED };
+};
+
 const reduceEvent = (state: CoreState, event: Event): CoreState => {
   // Every event of a scan belongs to one scan: one the UI does not follow is ignored.
   const follows = (scan: ScanId): boolean => scan === state.scan;
@@ -147,12 +157,8 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
   switch (event.type) {
     case 'access-changed':
       return { ...state, access: event.status };
-    case 'cleanup-finished': {
-      const cleanup = reduceCleanup(state.cleanup, event);
-
-      // The cleanup is over: what was picked for it is no longer picked.
-      return cleanup === state.cleanup ? state : { ...state, cleanup, quitAsked: false, selection: NOTHING_SELECTED };
-    }
+    case 'cleanup-finished':
+      return cleanupEnded(state, reduceCleanup(state.cleanup, event));
     case 'cleanup-items':
     case 'cleanup-started':
       return withCleanup(state, reduceCleanup(state.cleanup, event));

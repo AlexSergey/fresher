@@ -1,6 +1,7 @@
 //! What the cleaner never removes, decided by path components alone: no IO, no OS. Which places are protected on
 //! one system is its adapter's to say; this only says what "protected" means for a path.
 
+use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 
 /// The places a removal must keep away from.
@@ -9,24 +10,56 @@ use std::path::{Component, Path, PathBuf};
 /// - `except`: a place carved out of a `never` (`/usr/local` out of `/usr`): what is inside it may go, the place
 ///   itself never (as a whole folder);
 /// - `whole`: the place and every ancestor of it are refused; what is inside may go one by one;
-/// - the ignored paths ([`Protection::with_ignored`]): refused like `never`, with their own answer.
+/// - the ignored paths ([`Protection::with_ignored`]): refused like `never`, with their own answer;
+/// - the app folders ([`Protection::with_app_folders`]): `never` places that let through exactly a whole app bundle
+///   at their top or one folder below, and nothing else;
+/// - the refused places ([`Protection::with_refused`]): `never` places with no carve-out and no bundle opening.
 ///
 /// Paths are compared by components, never by string prefix: `/Users/anna` is not inside `/Users/ann`. The caller
-/// gives canonical paths, so a volume that ignores case is handled before this check.
+/// gives canonical paths, so a volume that ignores case is handled before this check. One exception: below an app
+/// folder only the root of a plan item is made canonical, so a bundle is also refused when its names match, ignoring
+/// case, a `never`, `whole` or ignored place inside that folder (`/Applications/fresher.app` against
+/// `/Applications/Fresher.app`). Names are only lowered with `to_lowercase`: no Unicode case folding and no
+/// normalisation is done, so a name the file system takes for the same but that differs by folding (`ſ` for `s`, a
+/// ligature such as `ﬃ`) or by normal form (decomposed against composed) is not matched. The check stays lexical:
+/// it never asks the disk what a name is (a link named `X.app` passes it). The walls are elsewhere: the uninstall
+/// names bundles only from the system's listing of installed apps (canonical names, a real folder read with
+/// `lstat`), never from what the interface sends, and checks each bundle's canonical path before it plans it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Protection {
     never: Vec<Never>,
     whole: Vec<PathBuf>,
     except: Vec<PathBuf>,
     ignored: Vec<PathBuf>,
+    made: Made,
 }
 
-/// A `never` place with the carve-outs of its own list: joined lists never let one list's carve-out open another
-/// list's `never` place.
+/// How a list was made: app folders open only the places of a list made alone, never of a joined one.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Made {
+    #[default]
+    Alone,
+    Joined,
+}
+
+/// A `never` place with the carve-outs of its own list and its kind: joined lists never let one list's carve-out or
+/// bundle opening open another list's `never` place.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Never {
     place: PathBuf,
     except: Vec<PathBuf>,
+    kind: NeverKind,
+}
+
+/// What a `never` place lets through besides its carve-outs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum NeverKind {
+    /// Nothing: a place of [`Protection::new`].
+    Closed,
+    /// Exactly a whole app bundle at its top or one folder below: an app folder.
+    OpensBundles,
+    /// Nothing, ever: a place of [`Protection::with_refused`], which no app folder opens.
+    Refused,
 }
 
 /// Why a path is refused.
@@ -49,6 +82,10 @@ pub enum ProtectionError {
     NotPlain { path: PathBuf },
     #[error("{path} is carved out of no protected place")]
     LooseExcept { path: PathBuf },
+    #[error("{path} is an app folder but none of the list's own protected places")]
+    LooseAppFolder { path: PathBuf },
+    #[error("app folders are given to a list before it is joined with another")]
+    AppFoldersOfAJoinedList,
 }
 
 impl Protection {
@@ -62,10 +99,10 @@ impl Protection {
             .into_iter()
             .map(|place| {
                 let carved = except.iter().filter(|cut| cut.starts_with(&place)).cloned().collect();
-                Never { place, except: carved }
+                Never { place, except: carved, kind: NeverKind::Closed }
             })
             .collect();
-        Ok(Self { never, whole, except, ignored: Vec::new() })
+        Ok(Self { never, whole, except, ignored: Vec::new(), made: Made::Alone })
     }
 
     /// Both lists in one: every place either refuses stays refused, with the same answer as the graver of the two.
@@ -86,6 +123,7 @@ impl Protection {
             whole: joined(&self.whole, &other.whole),
             except,
             ignored: joined(&self.ignored, &other.ignored),
+            made: Made::Joined,
         })
     }
 
@@ -97,14 +135,61 @@ impl Protection {
         Ok(protection)
     }
 
-    /// `Ok` when `path` may be removed as far as protection goes. The order: a `never` place, an ancestor of one, a
-    /// `whole` or carved-out place, an ignored path.
+    /// The same protection, where each of `folders` (each one of this list's own `never` places, given as plain)
+    /// lets through exactly a whole app bundle at its top or one folder below: `<folder>/<name>.app` or
+    /// `<folder>/<sub>/<name>.app`. The folder itself, any other folder in it and anything inside a bundle stay
+    /// `never`; every other place keeps its answer. Given to a list made alone, before any
+    /// [`Protection::joined`]: a joined list refuses it (`AppFoldersOfAJoinedList`), so one list never opens
+    /// another's place.
+    pub fn with_app_folders(&self, folders: &[PathBuf]) -> Result<Self, ProtectionError> {
+        if self.made == Made::Joined {
+            return Err(ProtectionError::AppFoldersOfAJoinedList);
+        }
+        check_plain(folders)?;
+        let openable = |never: &Never, folder: &PathBuf| never.kind != NeverKind::Refused && &never.place == folder;
+        if let Some(loose) = folders.iter().find(|folder| !self.never.iter().any(|never| openable(never, folder))) {
+            return Err(ProtectionError::LooseAppFolder { path: loose.clone() });
+        }
+        let mut protection = self.clone();
+        for never in &mut protection.never {
+            if folders.iter().any(|folder| openable(never, folder)) {
+                never.kind = NeverKind::OpensBundles;
+            }
+        }
+        Ok(protection)
+    }
+
+    /// The places that open their app bundles ([`Protection::with_app_folders`]), in the list's order: an ordinary
+    /// cleanup refuses them whole.
+    pub fn app_folders(&self) -> Vec<PathBuf> {
+        let opens = |never: &&Never| never.kind == NeverKind::OpensBundles;
+        self.never.iter().filter(opens).map(|never| never.place.clone()).collect()
+    }
+
+    /// The same protection, refusing also each of `refused` (given as plain) as a `never` place with no carve-out and
+    /// no bundle opening, now or after a later [`Protection::with_app_folders`]: the place and what is inside it are
+    /// `never`, what holds it is an ancestor.
+    pub fn with_refused(&self, refused: &[PathBuf]) -> Result<Self, ProtectionError> {
+        check_plain(refused)?;
+        let mut protection = self.clone();
+        protection.never.extend(refused.iter().map(|place| Never {
+            place: place.clone(),
+            except: Vec::new(),
+            kind: NeverKind::Refused,
+        }));
+        Ok(protection)
+    }
+
+    /// `Ok` when `path` may be removed as far as protection goes. The order: a `never` place (but a whole app bundle
+    /// of a place that opens its bundles), an ancestor of one, a `whole` or carved-out place, an ignored path, and an
+    /// opened bundle that matches a place inside its app folder only when case is ignored (`Never`).
     pub fn check(&self, path: &Path) -> Result<(), Protected> {
         if !is_plain(path) {
             return Err(Protected::Never);
         }
         let carved = |never: &Never| never.except.iter().any(|place| path.starts_with(place));
-        if self.never.iter().any(|never| path.starts_with(&never.place) && !carved(never)) {
+        let opened = |never: &Never| never.kind == NeverKind::OpensBundles && is_app_bundle_in(path, &never.place);
+        if self.never.iter().any(|never| path.starts_with(&never.place) && !carved(never) && !opened(never)) {
             return Err(Protected::Never);
         }
         if self.never.iter().any(|never| strictly_inside(&never.place, path)) {
@@ -116,7 +201,54 @@ impl Protection {
         if self.ignored.iter().any(|ignored| path.starts_with(ignored) || ignored.starts_with(path)) {
             return Err(Protected::Ignored);
         }
+        // Last, so that a place named in the same case keeps its own answer.
+        let mut opened_folders = self.never.iter().filter(|never| opened(never));
+        if opened_folders.any(|never| self.matches_a_place_inside_ignoring_case(path, &never.place)) {
+            return Err(Protected::Never);
+        }
         Ok(())
+    }
+
+    /// `true` when `path`, ignoring case, is, holds or lies inside a `never`, `whole` or ignored place strictly
+    /// inside `folder` (ignoring case too).
+    fn matches_a_place_inside_ignoring_case(&self, path: &Path, folder: &Path) -> bool {
+        let (path, folder) = (folded(path), folded(folder));
+        let places = self.never.iter().map(|never| &never.place).chain(&self.whole).chain(&self.ignored);
+        places.map(|place| folded(place)).any(|place| {
+            place.len() > folder.len()
+                && place.starts_with(&folder)
+                && (path.starts_with(&place) || place.starts_with(&path))
+        })
+    }
+}
+
+/// The names of `path` in lower case, for comparing names that differ only by case.
+fn folded(path: &Path) -> Vec<String> {
+    path.components().map(|component| component.as_os_str().to_string_lossy().to_lowercase()).collect()
+}
+
+/// The extension of an app bundle, as macOS names its bundles.
+const BUNDLE_EXTENSION: &str = "app";
+
+/// `true` when the names after `folder` in `path` are exactly `[<name>.app]` or `[<sub>, <name>.app]`, every one
+/// UTF-8: the last one's extension is `app` as written (an `.APP` is refused; a name that is only `.app` has no
+/// extension), and `<sub>` does not end in `.app` in any case (a folder that may be a bundle, `.app` alone too,
+/// opens nothing).
+fn is_app_bundle_in(path: &Path, folder: &Path) -> bool {
+    let Ok(below) = path.strip_prefix(folder) else { return false };
+    let names: Option<Vec<&str>> = below
+        .components()
+        .map(|component| match component {
+            Component::Normal(name) => name.to_str(),
+            _ => None,
+        })
+        .collect();
+    let is_bundle = |name: &str| Path::new(name).extension() == Some(OsStr::new(BUNDLE_EXTENSION));
+    let may_be_bundle = |name: &str| name.to_lowercase().ends_with(&format!(".{BUNDLE_EXTENSION}"));
+    match names.as_deref() {
+        Some([bundle]) => is_bundle(bundle),
+        Some([sub, bundle]) => !may_be_bundle(sub) && is_bundle(bundle),
+        _ => false,
     }
 }
 
@@ -145,314 +277,5 @@ pub(crate) fn is_plain(path: &Path) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use crate::cleanup::Protection;
-
-    fn paths(list: &[&str]) -> Vec<PathBuf> {
-        list.iter().map(PathBuf::from).collect()
-    }
-
-    /// A small version of the macOS list: system places, the synced folders, the home and its own folders.
-    fn mac_like() -> Protection {
-        Protection::new(
-            paths(&["/System", "/usr", "/Users/ann/Library/Mobile Documents", "/Users/bob"]),
-            paths(&["/Users", "/Users/ann", "/Users/ann/Library", "/Users/ann/Library/Caches"]),
-            paths(&["/usr/local"]),
-        )
-        .unwrap()
-    }
-
-    mod negative {
-        use std::path::Path;
-
-        use super::{mac_like, paths};
-        use crate::cleanup::{Protected, Protection, ProtectionError};
-
-        #[test]
-        fn a_protected_path_is_refused() {
-            assert_eq!(mac_like().check(Path::new("/System")), Err(Protected::Never));
-            assert_eq!(mac_like().check(Path::new("/Users/bob")), Err(Protected::Never));
-        }
-
-        #[test]
-        fn a_path_inside_a_protected_one_is_refused() {
-            assert_eq!(mac_like().check(Path::new("/usr/bin/ls")), Err(Protected::Never));
-            assert_eq!(
-                mac_like().check(Path::new("/Users/ann/Library/Mobile Documents/com~apple~Notes")),
-                Err(Protected::Never)
-            );
-        }
-
-        #[test]
-        fn an_ancestor_of_a_protected_path_is_refused() {
-            for path in ["/", "/Users/ann/Library"] {
-                assert!(mac_like().check(Path::new(path)).is_err(), "{path}");
-            }
-            let only_never = Protection::new(paths(&["/Users/ann/Library/Mobile Documents"]), vec![], vec![]).unwrap();
-            for path in ["/", "/Users", "/Users/ann", "/Users/ann/Library"] {
-                assert_eq!(only_never.check(Path::new(path)), Err(Protected::Ancestor), "{path}");
-            }
-        }
-
-        #[test]
-        fn a_whole_folder_is_refused_as_a_whole() {
-            assert_eq!(mac_like().check(Path::new("/Users/ann/Library/Caches")), Err(Protected::WholeFolder));
-            // The home is also an ancestor of a `never` place, which is checked first.
-            assert_eq!(mac_like().check(Path::new("/Users/ann")), Err(Protected::Ancestor));
-        }
-
-        #[test]
-        fn an_ancestor_of_a_whole_folder_is_refused() {
-            let whole = Protection::new(vec![], paths(&["/Users/ann/Downloads"]), vec![]).unwrap();
-
-            for path in ["/", "/Users", "/Users/ann"] {
-                assert_eq!(whole.check(Path::new(path)), Err(Protected::WholeFolder), "{path}");
-            }
-        }
-
-        #[test]
-        fn a_carved_out_place_itself_is_refused() {
-            assert_eq!(mac_like().check(Path::new("/usr/local")), Err(Protected::WholeFolder));
-        }
-
-        #[test]
-        fn a_relative_or_dotted_path_is_not_accepted() {
-            for path in ["usr", "/usr/./local", "/usr/local/..", "/a/../b", "./a"] {
-                let error = Protection::new(paths(&[path]), vec![], vec![]);
-                assert_eq!(error, Err(ProtectionError::NotPlain { path: path.into() }), "{path}");
-                assert_eq!(Protection::default().check(Path::new(path)), Err(Protected::Never), "{path}");
-                assert!(Protection::default().with_ignored(&paths(&[path])).is_err(), "{path}");
-            }
-        }
-
-        #[test]
-        fn an_except_outside_every_protected_place_is_refused() {
-            let error = Protection::new(paths(&["/usr"]), vec![], paths(&["/opt/local"]));
-            let itself = Protection::new(paths(&["/usr"]), vec![], paths(&["/usr"]));
-
-            assert_eq!(error, Err(ProtectionError::LooseExcept { path: "/opt/local".into() }));
-            assert_eq!(itself, Err(ProtectionError::LooseExcept { path: "/usr".into() }));
-        }
-
-        #[test]
-        fn a_shared_prefix_is_not_inside() {
-            let ann = Protection::new(paths(&["/Users/ann"]), vec![], vec![]).unwrap();
-
-            assert_eq!(ann.check(Path::new("/Users/anna")), Ok(()));
-            assert_eq!(ann.check(Path::new("/Users/anna/x")), Ok(()));
-            assert_eq!(ann.check(Path::new("/Users/ann/x")), Err(Protected::Never));
-        }
-
-        #[test]
-        fn an_ignored_path_and_its_ancestors_are_refused() {
-            let ignoring = mac_like().with_ignored(&paths(&["/Users/ann/Library/Caches/keep"])).unwrap();
-
-            assert_eq!(ignoring.check(Path::new("/Users/ann/Library/Caches/keep")), Err(Protected::Ignored));
-            assert_eq!(ignoring.check(Path::new("/Users/ann/Library/Caches/keep/a")), Err(Protected::Ignored));
-            assert_eq!(ignoring.check(Path::new("/Users/ann/Library/Caches/kept")), Ok(()));
-            assert_eq!(mac_like().check(Path::new("/Users/ann/Library/Caches/keep")), Ok(()));
-        }
-
-        #[test]
-        fn a_never_place_inside_a_carve_out_is_still_refused() {
-            let nested = Protection::new(paths(&["/usr", "/usr/local/keep"]), vec![], paths(&["/usr/local"])).unwrap();
-
-            assert_eq!(nested.check(Path::new("/usr/local/keep/x")), Err(Protected::Never));
-            assert_eq!(nested.check(Path::new("/usr/local/other")), Ok(()));
-        }
-
-        #[test]
-        fn a_carve_out_of_one_list_does_not_open_the_other() {
-            let strict = Protection::new(paths(&["/usr"]), vec![], vec![]).unwrap();
-
-            let joined = mac_like().joined(&strict).unwrap();
-
-            assert_eq!(joined.check(Path::new("/usr/local/x")), Err(Protected::Never));
-            assert_eq!(strict.joined(&mac_like()).unwrap().check(Path::new("/usr/local/x")), Err(Protected::Never));
-            assert_eq!(joined.check(Path::new("/usr/local")), Err(Protected::Never));
-        }
-    }
-
-    mod positive {
-        use std::path::Path;
-
-        use super::mac_like;
-
-        #[test]
-        fn an_item_inside_a_whole_folder_may_go() {
-            assert_eq!(mac_like().check(Path::new("/Users/ann/Library/Caches/x")), Ok(()));
-            assert_eq!(mac_like().check(Path::new("/Users/ann/Downloads")), Ok(()));
-        }
-
-        #[test]
-        fn an_item_inside_a_carve_out_may_go() {
-            assert_eq!(mac_like().check(Path::new("/usr/local/x")), Ok(()));
-            assert_eq!(mac_like().check(Path::new("/usr/local/x/y")), Ok(()));
-        }
-
-        #[test]
-        fn an_unrelated_path_passes() {
-            assert_eq!(mac_like().check(Path::new("/opt/homebrew/cache")), Ok(()));
-        }
-    }
-
-    mod property {
-        use std::path::{Path, PathBuf};
-
-        use proptest::prelude::*;
-
-        use crate::cleanup::{Protected, Protection};
-
-        /// A path of up to four names out of a few like names, so that equal, nested and shared-prefix paths come up.
-        fn names() -> impl Strategy<Value = Vec<&'static str>> {
-            prop::collection::vec(prop_oneof![Just("a"), Just("ab"), Just("b"), Just("a b")], 0..4)
-        }
-
-        fn path_of(names: &[&str]) -> PathBuf {
-            std::iter::once("/").chain(names.iter().copied()).collect()
-        }
-
-        /// `inner` is `outer` or below it: the plain loop the model is written with.
-        fn below(inner: &[&str], outer: &[&str]) -> bool {
-            if inner.len() < outer.len() {
-                return false;
-            }
-            for index in 0..outer.len() {
-                if inner[index] != outer[index] {
-                    return false;
-                }
-            }
-            true
-        }
-
-        /// The rules of `Protection::check`, written over lists of names.
-        fn model(
-            path: &[&str],
-            never: &[Vec<&str>],
-            whole: &[Vec<&str>],
-            except: &[Vec<&str>],
-            ignored: &[Vec<&str>],
-        ) -> Result<(), Protected> {
-            for place in never {
-                let mut carved = false;
-                for cut in except {
-                    if below(cut, place) && below(path, cut) {
-                        carved = true;
-                    }
-                }
-                if below(path, place) && !carved {
-                    return Err(Protected::Never);
-                }
-            }
-            for place in never {
-                if below(place, path) && place.len() > path.len() {
-                    return Err(Protected::Ancestor);
-                }
-            }
-            for place in whole.iter().chain(except) {
-                if below(place, path) {
-                    return Err(Protected::WholeFolder);
-                }
-            }
-            for place in ignored {
-                if below(path, place) || below(place, path) {
-                    return Err(Protected::Ignored);
-                }
-            }
-            Ok(())
-        }
-
-        fn lists() -> impl Strategy<Value = Vec<Vec<&'static str>>> {
-            prop::collection::vec(names(), 0..3)
-        }
-
-        /// A random list: `never`, `whole`, carve-outs strictly inside the first `never` place, and ignored paths.
-        fn protection() -> impl Strategy<Value = Protection> {
-            (lists(), lists(), lists(), lists()).prop_map(|(never, whole, cuts, ignored)| {
-                let to_paths = |list: &[Vec<&str>]| list.iter().map(|names| path_of(names)).collect::<Vec<_>>();
-                let never: Vec<Vec<&str>> = never.into_iter().filter(|place| !place.is_empty()).collect();
-                let except: Vec<PathBuf> = match never.first() {
-                    Some(place) => {
-                        cuts.iter().filter_map(|cut| cut.first().map(|name| path_of(place).join(name))).collect()
-                    }
-                    None => Vec::new(),
-                };
-                Protection::new(to_paths(&never), to_paths(&whole), except)
-                    .unwrap()
-                    .with_ignored(&to_paths(&ignored))
-                    .unwrap()
-            })
-        }
-
-        /// The order `check` answers in: the first answer is the gravest.
-        fn gravity(answer: Result<(), Protected>) -> u8 {
-            match answer {
-                Err(Protected::Never) => 4,
-                Err(Protected::Ancestor) => 3,
-                Err(Protected::WholeFolder) => 2,
-                Err(Protected::Ignored) => 1,
-                Ok(()) => 0,
-            }
-        }
-
-        proptest! {
-            #[test]
-            fn check_agrees_with_a_naive_component_model(
-                path in names(), never in lists(), whole in lists(), cuts in lists(), ignored in lists(),
-            ) {
-                let never: Vec<Vec<&str>> = never.into_iter().filter(|place| !place.is_empty()).collect();
-                // Only carve-outs strictly inside a `never` are accepted: each is the first one plus a name.
-                let except: Vec<Vec<&str>> = match never.first() {
-                    Some(place) => cuts
-                        .into_iter()
-                        .filter_map(|cut| cut.first().map(|name| place.iter().copied().chain([*name]).collect()))
-                        .collect(),
-                    None => Vec::new(),
-                };
-                let to_paths = |list: &[Vec<&str>]| list.iter().map(|names| path_of(names)).collect::<Vec<_>>();
-                let protection = Protection::new(to_paths(&never), to_paths(&whole), to_paths(&except))
-                    .unwrap()
-                    .with_ignored(&to_paths(&ignored))
-                    .unwrap();
-
-                let answer = protection.check(&path_of(&path));
-
-                prop_assert_eq!(answer, model(&path, &never, &whole, &except, &ignored));
-            }
-
-            #[test]
-            fn a_joined_list_refuses_what_either_refuses(
-                path in names(), first in protection(), second in protection(),
-            ) {
-                let path = path_of(&path);
-
-                let answer = first.joined(&second).unwrap().check(&path);
-
-                let graver = [first.check(&path), second.check(&path)].into_iter().max_by_key(|answer| gravity(*answer));
-                prop_assert_eq!(answer, graver.unwrap());
-                if first.check(&path).is_err() || second.check(&path).is_err() {
-                    prop_assert!(answer.is_err());
-                }
-            }
-
-            #[test]
-            fn an_ancestor_of_anything_never_passes(never in lists(), whole in lists(), ignored in lists()) {
-                let to_paths = |list: &[Vec<&str>]| list.iter().map(|names| path_of(names)).collect::<Vec<_>>();
-                let protection = Protection::new(to_paths(&never), to_paths(&whole), vec![])
-                    .unwrap()
-                    .with_ignored(&to_paths(&ignored))
-                    .unwrap();
-
-                for place in never.iter().chain(&whole).chain(&ignored) {
-                    for depth in 0..=place.len() {
-                        let ancestor = path_of(&place[..depth]);
-                        prop_assert!(protection.check(&ancestor).is_err(), "{}", ancestor.display());
-                    }
-                }
-                prop_assert!(protection.check(Path::new("relative")).is_err());
-            }
-        }
-    }
-}
+#[path = "protection_tests.rs"]
+mod tests;

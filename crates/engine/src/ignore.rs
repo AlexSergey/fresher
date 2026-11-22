@@ -153,7 +153,7 @@ mod tests {
         fn the_cleaner_is_kept_from_an_ignored_path_and_what_holds_it() {
             let (engine, _) = scanned(MemorySettings::with(&[("core.ignore.paths", json!(["/home/b/Caches/x"]))]));
 
-            let cx = Context::now(&engine.shared).unwrap();
+            let cx = Context::now(&engine.shared, crate::cleanup::Scope::Cleanup).unwrap();
 
             let protection = cx.borrow().protection;
             assert_eq!(protection.check("/home/b/Caches/x/Caches".as_ref()), Err(Protected::Ignored));

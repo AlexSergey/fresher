@@ -1,0 +1,417 @@
+{
+  "appsAfter": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Viewer.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Viewer.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": "Viewer.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Viewer.app/Contents/MacOS"
+      }
+    ],
+    "total_logical_size": 422
+  },
+  "homeAfter": {
+    "entries": [
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 422,
+        "path": ".Trash/Editor.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents/Library/LoginItems"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents/Library/LoginItems/Editor Helper.app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents/Library/LoginItems/Editor Helper.app/Contents"
+      },
+      {
+        "kind": "file",
+        "logical_size": 375,
+        "path": ".Trash/Editor.app/Contents/Library/LoginItems/Editor Helper.app/Contents/Info.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents/Library/LoginItems/Editor Helper.app/Contents/MacOS"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/Editor.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "logical_size": 24,
+        "path": ".Trash/Editor.app/Contents/MacOS/Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/com.example.Editor.Helper"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/com.example.Editor.Helper/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": ".Trash/com.example.Editor.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": ".Trash/com.example.Editor.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/com.example.Editor.savedState/data.data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": ".Trash/com.example.Editor/Cache.db"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": ".Trash/com.example.Editor/editor.log"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Application Support/com.example.Editor"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12288,
+        "path": "Library/Application Support/com.example.Editor/library.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Caches/com.example.Editorx"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Caches/com.example.Editorx/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Group Containers"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Group Containers/TEAM123456.com.example.shared"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/Group Containers/TEAM123456.com.example.shared/shared.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/LaunchAgents"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Logs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Preferences"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1048576,
+        "path": "Library/Preferences/com.example.Editor.plist"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/WebKit"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/WebKit/com.example.Editor"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Library/WebKit/com.example.Editor/WebsiteData"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "Library/WebKit/com.example.Editor/WebsiteData/local.db"
+      }
+    ],
+    "total_logical_size": 2143029
+  },
+  "journal": [
+    {
+      "format": "cleanup-journal",
+      "version": 2
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "items": [
+        {
+          "action": "remove",
+          "category": "core.uninstall-keep-data",
+          "danger": "medium",
+          "key": "uninstall/com.example.Editor",
+          "more": [
+            {
+              "path": "~/home/Library/Caches/com.example.Editor"
+            },
+            {
+              "path": "~/home/Library/Caches/com.example.Editor.Helper"
+            },
+            {
+              "path": "~/home/Library/LaunchAgents/com.example.Editor.plist"
+            },
+            {
+              "path": "~/home/Library/Logs/com.example.Editor"
+            },
+            {
+              "path": "~/home/Library/Saved Application State/com.example.Editor.savedState"
+            }
+          ],
+          "path": "~/Applications/Editor.app",
+          "reason": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Editor"
+              },
+              "size": {
+                "kind": "size",
+                "value": 1069877
+              }
+            },
+            "key": "core.uninstall.reason.keep-data"
+          },
+          "sizes": {
+            "allocated": 1081344,
+            "completeness": "complete",
+            "logical": 1069877,
+            "reclaimable": 1081344
+          }
+        }
+      ],
+      "method": "trash",
+      "roots": [
+        "~",
+        "~/Applications"
+      ],
+      "space": [],
+      "type": "begin"
+    },
+    {
+      "cleanup": 1,
+      "outcome": {
+        "kind": "moved"
+      },
+      "trashed": [
+        {
+          "landed": "~/home/.Trash/Editor.app",
+          "original": "~/Applications/Editor.app"
+        },
+        {
+          "landed": "~/home/.Trash/com.example.Editor",
+          "original": "~/home/Library/Caches/com.example.Editor"
+        },
+        {
+          "landed": "~/home/.Trash/com.example.Editor.Helper",
+          "original": "~/home/Library/Caches/com.example.Editor.Helper"
+        },
+        {
+          "landed": "~/home/.Trash/com.example.Editor.plist",
+          "original": "~/home/Library/LaunchAgents/com.example.Editor.plist"
+        },
+        {
+          "landed": "~/home/.Trash/com.example.Editor",
+          "original": "~/home/Library/Logs/com.example.Editor"
+        },
+        {
+          "landed": "~/home/.Trash/com.example.Editor.savedState",
+          "original": "~/home/Library/Saved Application State/com.example.Editor.savedState"
+        }
+      ],
+      "type": "item",
+      "went": 6
+    },
+    {
+      "at": 1767225600,
+      "cleanup": 1,
+      "ended": "completed",
+      "space": [],
+      "type": "end"
+    }
+  ],
+  "outcomes": [
+    [
+      "Applications/Editor.app",
+      {
+        "kind": "moved"
+      }
+    ]
+  ],
+  "plan": {
+    "groups": [
+      {
+        "action": "remove",
+        "category": "core.uninstall-keep-data",
+        "items": [
+          {
+            "danger": "medium",
+            "more": [
+              "~/home/Library/Caches/com.example.Editor",
+              "~/home/Library/Caches/com.example.Editor.Helper",
+              "~/home/Library/Logs/com.example.Editor",
+              "~/home/Library/Saved Application State/com.example.Editor.savedState",
+              "~/home/Library/LaunchAgents/com.example.Editor.plist"
+            ],
+            "path": "~/Applications/Editor.app",
+            "reason": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                },
+                "size": {
+                  "kind": "size",
+                  "value": 1069877
+                }
+              },
+              "key": "core.uninstall.reason.keep-data"
+            },
+            "sizes": {
+              "allocated": 1081344,
+              "completeness": "complete",
+              "logical": 1069877,
+              "reclaimable": 1081344
+            },
+            "title": {
+              "args": {
+                "app": {
+                  "kind": "text",
+                  "value": "Editor"
+                }
+              },
+              "key": "core.uninstall.title"
+            }
+          }
+        ],
+        "summary": {
+          "count": 1,
+          "highest": "medium",
+          "irreversible": 0,
+          "sizes": {
+            "allocated": 1081344,
+            "completeness": "complete",
+            "logical": 1069877,
+            "reclaimable": 1081344
+          }
+        }
+      }
+    ],
+    "leftOut": [],
+    "permanentAvailable": false,
+    "plan": 1,
+    "summary": {
+      "count": 1,
+      "highest": "medium",
+      "irreversible": 0,
+      "sizes": {
+        "allocated": 1081344,
+        "completeness": "complete",
+        "logical": 1069877,
+        "reclaimable": 1081344
+      }
+    }
+  }
+}

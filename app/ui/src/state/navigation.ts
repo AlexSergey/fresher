@@ -1,6 +1,6 @@
 import { createContext, use, useSyncExternalStore } from 'react';
 
-import type { CategoryId, CleanupId, ModuleId } from '../ipc/bindings.generated';
+import type { AppId, CategoryId, CleanupId, ModuleId } from '../ipc/bindings.generated';
 
 // The tabs of Settings' Ignored section.
 export type IgnoredTab = 'groups' | 'items' | 'modules';
@@ -14,13 +14,15 @@ export type Navigation = {
 // The screen the app shows; no router: the app frame renders the one that is current. `category` is a category's
 // details, opened from its card on Scan; Scan's `from` is the category whose details the user comes back from, so the
 // focus returns to that card (`fromInsight`: the same for an insight, `module/identity`). `cleanups` is the history of cleanups, `cleanup` one of them, `largest`
-// the largest files and folders.
+// the largest files and folders, `apps` the installed apps and `app` one of them.
 // Settings may be opened on a tab of its Ignored section.
 export type Screen =
+  | { readonly app: AppId; readonly kind: 'app' }
   | { readonly category: CategoryId; readonly kind: 'category' }
   | { readonly cleanup: CleanupId; readonly kind: 'cleanup' }
   | { readonly from?: CategoryId; readonly fromInsight?: string; readonly kind: 'scan' }
   | { readonly identity: string; readonly kind: 'insight'; readonly module: ModuleId }
+  | { readonly kind: 'apps' }
   | { readonly kind: 'cleanups' }
   | { readonly kind: 'largest' }
   | { readonly kind: 'review' }

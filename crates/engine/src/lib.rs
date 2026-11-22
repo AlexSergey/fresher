@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod access;
+mod apps;
 mod batch;
 #[doc(hidden)]
 pub mod bench;
@@ -42,6 +43,7 @@ mod storage;
 mod testing;
 mod throttle;
 
+pub use apps::OWN_BUNDLE_ID;
 pub use bus::EventBus;
 pub use engine::{CleanupPorts, Engine, Ports, ScanMode};
 pub use registry::{Registry, RegistryError};

@@ -1,0 +1,42 @@
+# Uninstall an app while another is open, on the trial module: the open app is shown and not offered (Fresher never
+# quits an app), a closed one is uninstalled beside it. A file of its own, since the open app is shared by every case of
+# a file; the names are apart from every other case file.
+feature = "uninstall-open"
+module = "trial"
+
+[[case]]
+name = "an open app is not offered"
+kind = "negative"
+[[case.app]]
+path = "Applications/Mailbox.app"
+bundle-id = "com.example.Mailbox"
+name = "Mailbox"
+version = "3.0"
+running = true
+[[case.file]]
+path = "home/Library/Caches/com.example.Mailbox/Cache.db"
+size = 4096
+fill = "data"
+[case.uninstall]
+app = "Applications/Mailbox.app"
+offered = false
+reason = "open"
+
+# Then the positive case.
+
+[[case]]
+name = "a closed app goes while another is open"
+kind = "positive"
+[[case.app]]
+path = "Applications/Sketch.app"
+bundle-id = "com.example.Sketch"
+name = "Sketch"
+version = "2.4"
+[[case.file]]
+path = "home/Library/Caches/com.example.Sketch/Cache.db"
+size = 4096
+fill = "data"
+[case.uninstall]
+app = "Applications/Sketch.app"
+choice = "keep-data"
+trashed = ["Applications/Sketch.app", "home/Library/Caches/com.example.Sketch"]

@@ -9,6 +9,7 @@
 
 mod access;
 mod app_info;
+mod apps;
 mod cachedir;
 mod cancel;
 mod category;
@@ -53,6 +54,11 @@ pub use access::{
     NeedKind, VolumeKind,
 };
 pub use app_info::{AppInfo, Build, SandboxTrashAt, Simulated};
+pub use apps::{
+    AppDetail, AppId, AppOffer, AppSummary, AppsError, AppsQuery, AppsView, BundleFacts, ChoiceView, FootprintItem,
+    FootprintKind, InstalledBy, KeptItem, KeptReason, LastUse, Manager, NotOffered, PartSizes, UninstallChoice,
+    UnusedFor, uninstall_categories, uninstall_category, uninstall_title,
+};
 pub use cachedir::{CACHEDIR_SIGNATURE, CACHEDIR_TAG, is_valid_cachedir_tag};
 pub use cancel::CancelToken;
 pub use category::{CategoryDescriptor, CategoryText};

@@ -131,7 +131,7 @@ describe('AppFrame', () => {
 
       await renderFrame();
 
-      expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Review', 'Cleanups', 'Settings']);
+      expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Apps', 'Review', 'Cleanups', 'Settings']);
       expect(screen.queryByRole('button', { name: /^Demo module/u })).toBeNull();
     });
 
@@ -203,12 +203,12 @@ describe('AppFrame', () => {
       expect(within(card as HTMLElement).getByRole('button', { name: /Details/ })).toHaveFocus();
     });
 
-    it('the sidebar lists Scan, Largest, Review, Cleanups and Settings, with Scan current on the scan screen', async () => {
+    it('the sidebar lists Scan, Largest, Apps, Review, Cleanups and Settings, with Scan current on the scan screen', async () => {
       core({ getOverview: () => DEMO_OVERVIEW });
 
       await renderFrame();
 
-      expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Review', 'Cleanups', 'Settings']);
+      expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Apps', 'Review', 'Cleanups', 'Settings']);
       expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toBeInTheDocument();
     });
 
@@ -281,6 +281,25 @@ describe('AppFrame', () => {
         within(screen.getByRole('navigation', { name: 'Screens' })).getByRole('button', { name: 'Scan' }),
       ).not.toHaveAttribute('aria-current');
       expect(navigation.getScreen()).toStrictEqual({ kind: 'largest' });
+    });
+
+    it('marks Apps active on the apps and app screens', async () => {
+      core();
+      const { navigation } = await renderFrame();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Apps' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Apps' })).toHaveAttribute('aria-current', 'page');
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'apps' });
+
+      act(() => {
+        navigation.navigate({ app: { index: 0, state: 1 }, kind: 'app' });
+      });
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Apps' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Apps' })).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByRole('button', { name: 'Scan' })).not.toHaveAttribute('aria-current');
     });
 
     it("a category's details render with its name, the focus on its heading and Scan current", async () => {

@@ -11,6 +11,8 @@ import { BuildBanner } from '../product/build-banner/build-banner';
 import { type Screen, useNavigation, useScreen } from '../state/navigation';
 import { useCore } from '../state/store';
 import styles from './app-frame.module.css';
+import { AppScreen } from './apps/app-screen';
+import { AppsScreen } from './apps/apps-screen';
 import { CategoryScreen } from './category/category-screen';
 import { CleanupScreen } from './cleanups/cleanup-screen';
 import { CleanupsScreen } from './cleanups/cleanups-screen';
@@ -33,6 +35,10 @@ const contentOf = (
   insightOf: (screen: Extract<Screen, { kind: 'insight' }>) => Insight | undefined,
 ): null | { readonly content: ReactNode; readonly label: string } => {
   switch (screen.kind) {
+    case 'app':
+      return { content: <AppScreen app={screen.app} />, label: t('ui.screen.frame.nav.apps') };
+    case 'apps':
+      return { content: <AppsScreen />, label: t('ui.screen.frame.nav.apps') };
     case 'category': {
       const module = moduleOfCategory(modules, screen.category);
 

@@ -1,0 +1,30 @@
+/* The Apps screen: a column of the content's width under its header; the rows are AppRow's own. */
+@layer components {
+  .content {
+    display: grid;
+    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-10);
+    gap: var(--space-5);
+    justify-items: start;
+  }
+
+  .state {
+    display: grid;
+    justify-items: center;
+    padding: var(--space-10) 0;
+    margin: 0;
+    color: var(--text-secondary);
+    gap: var(--space-4);
+    justify-self: stretch;
+    text-align: center;
+  }
+
+  .note {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .list {
+    display: grid;
+    padding: var(--space-1);
+  }
+}

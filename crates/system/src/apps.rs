@@ -8,11 +8,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fresher_core::{
-    BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders, SystemError,
-    Timestamp,
+    BundleFacts, BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
+    SystemError, Timestamp,
 };
 
-use crate::bundle::{bundle_team, helpers, is_bundle, read_bundle};
+use crate::BundleReader;
+use crate::bundle::{bundle_team, helpers, is_as_listed, is_bundle, read_bundle};
 use crate::spotlight::SpotlightSearch;
 
 /// The known folders apps are installed in.
@@ -38,6 +39,8 @@ const TOOLBOX_DEPTH: usize = 4;
 pub struct MacInstalledApps {
     folders: Arc<dyn KnownFolders>,
     search: AppSearch,
+    /// What reads a bundle's facts, and the user they are read for; without one a bundle is not known.
+    bundles: Option<(BundleReader, u32)>,
 }
 
 /// Where `find` looks for an app beyond the apps folders.
@@ -75,7 +78,13 @@ impl DeclaredSearch {
 
 impl MacInstalledApps {
     pub fn new(folders: Arc<dyn KnownFolders>, search: AppSearch) -> Self {
-        Self { folders, search }
+        Self { folders, search, bundles: None }
+    }
+
+    /// The same apps, whose bundles `reader` reads for `user` (the user the app runs as).
+    #[must_use]
+    pub fn with_bundle_reader(self, reader: BundleReader, user: u32) -> Self {
+        Self { bundles: Some((reader, user)), ..self }
     }
 }
 
@@ -86,7 +95,11 @@ impl fmt::Debug for MacInstalledApps {
 }
 
 impl InstalledApps for MacInstalledApps {
+    /// Each listing starts a new run of the bundle reader: what it read of the Caskrooms is read again.
     fn list(&self) -> Result<InstalledList, SystemError> {
+        if let Some((reader, _)) = &self.bundles {
+            reader.start_run();
+        }
         let mut found = Found::default();
         let mut failed = 0_usize;
         let mut readable = 0_usize;
@@ -154,6 +167,18 @@ impl InstalledApps for MacInstalledApps {
                 Err(SystemError { reason: "the sandbox's Spotlight is off".into() })
             }
         }
+    }
+
+    /// The bundle reader's answer; without one, the port's default error.
+    fn bundle(&self, app: &InstalledApp, cancel: &CancelToken) -> Result<BundleFacts, SystemError> {
+        match &self.bundles {
+            Some((reader, user)) => reader.read(app, *user, cancel),
+            None => Err(SystemError { reason: "this system does not read bundles".into() }),
+        }
+    }
+
+    fn is_as_listed(&self, path: &Path) -> bool {
+        is_as_listed(path)
     }
 }
 
@@ -420,6 +445,18 @@ mod tests {
         }
 
         #[test]
+        fn without_a_reader_the_bundle_is_unknown() {
+            let root = tempfile::tempdir().unwrap();
+            app(root.path(), "Tool", "com.example.Tool");
+            let folders = FakeKnownFolders::new().with(KnownFolder::Applications, root.path());
+            let apps =
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()));
+            let listed = apps.list().unwrap().apps;
+
+            assert!(apps.bundle(&listed[0], &CancelToken::new()).is_err());
+        }
+
+        #[test]
         fn an_apps_folder_that_cannot_be_read_is_an_error_when_it_is_the_only_one() {
             let root = tempfile::tempdir().unwrap();
             let closed_folder = root.path().join("closed");
@@ -582,6 +619,48 @@ mod tests {
         use super::{ids, list_of_home, listed, toolbox};
         use crate::bundle::fixture::{app, bundle};
         use crate::{MacInstalledApps, MacKnownFolders};
+
+        #[test]
+        fn each_listing_reads_the_casks_again() {
+            let root = tempfile::tempdir().unwrap();
+            let apps_folder = root.path().join("Applications");
+            let tool = app(&apps_folder, "Tool", "com.example.Tool");
+            let casks = root.path().join("Caskroom");
+            let version = casks.join("tool/1.0");
+            std::fs::create_dir_all(&version).unwrap();
+            let folders = FakeKnownFolders::new().with(KnownFolder::Applications, &apps_folder);
+            let reader = crate::BundleReader::with(None, vec![casks]);
+            let apps =
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .with_bundle_reader(reader, fresher_macos::current_user());
+            let cancel = fresher_core::CancelToken::new();
+
+            let listed = apps.list().unwrap().apps;
+            assert_eq!(apps.bundle(&listed[0], &cancel).unwrap().installed_by, None);
+            std::os::unix::fs::symlink(&tool, version.join("Tool.app")).unwrap();
+            assert_eq!(apps.bundle(&listed[0], &cancel).unwrap().installed_by, None);
+
+            let listed = apps.list().unwrap().apps;
+
+            let found = apps.bundle(&listed[0], &cancel).unwrap().installed_by;
+            assert_eq!(found.map(|by| by.token().to_owned()), Some("tool".into()));
+        }
+
+        #[test]
+        fn with_a_reader_a_listed_bundle_is_measured() {
+            let root = tempfile::tempdir().unwrap();
+            app(root.path(), "Tool", "com.example.Tool");
+            let folders = FakeKnownFolders::new().with(KnownFolder::Applications, root.path());
+            let apps =
+                MacInstalledApps::new(Arc::new(folders), crate::AppSearch::Declared(crate::DeclaredSearch::listed()))
+                    .with_bundle_reader(crate::BundleReader::stated(), fresher_macos::current_user());
+            let listed = apps.list().unwrap().apps;
+
+            let facts = apps.bundle(&listed[0], &fresher_core::CancelToken::new()).unwrap();
+
+            assert!(facts.sizes.logical.bytes() > 0);
+            assert!(facts.entry.owned_by_user);
+        }
 
         #[test]
         fn an_installed_app_carries_its_bundles_status_change() {

@@ -102,6 +102,25 @@ The app deletes files from a real person's disk. These rules hold in every versi
   rehearse is what runs inside the act: an emptied folder's checks of its place and of each entry, and the Trash's own
   answers such as `NoTrash`. Tests: `crates/cleaner/src/pipeline.rs`, `crates/cleaner/tests/never.rs`,
   `app/tauri/src/compose.rs`.
+  `/Applications` is a protected place that opens its whole app bundles, for an uninstall the user confirmed and
+  nothing else (plan [036](../plans/036-uninstall/readme.md)): `Protection::with_app_folders` lets through exactly
+  `/Applications/<name>.app` and `/Applications/<sub>/<name>.app` (the last name's extension exactly `app`, `<sub>`
+  not an app), never anything inside a bundle, the folder itself, `<folder>/<sub>`, Fresher's own bundle or a bundle
+  that matches a protected or ignored place in another case; `/System/Applications` stays protected. That is the first
+  wall (`crates/core/src/cleanup/protection.rs`, `crates/macos/src/protection.rs`). The second wall is in the engine:
+  the context of every plan but an uninstall refuses both apps folders, located or not, and every app folder of the
+  cleaner's own protection (`Protection::with_refused`, `Protection::app_folders`), so a scan root set there, a
+  module's claim or a Largest pick can never move a bundle or anything inside one, and put back adds no refusal
+  (`crates/engine/src/cleanup/context.rs`). The uninstall plan is made only from the system's listing and is refused
+  unless the bundle's canonical path equals the listed one byte for byte and is a real folder with
+  `Contents/Info.plist`, at prepare and again at confirm (`InstalledApps::is_as_listed`); a link is never listed. An
+  uninstall always goes to the Trash: its plan offers no permanent delete and a confirmation that asks for one is
+  refused (`PlanMismatch`), nothing acted on (`crates/engine/src/cleanup/view.rs`, `operation.rs`). Sandbox mode opens
+  the sandbox's `Applications` the same way (`app/tauri/src/sandbox.rs`).
+  Tests: `crates/core/src/cleanup/protection_tests.rs`, `crates/macos/src/protection.rs`,
+  `crates/engine/src/cleanup/context.rs`, `crates/engine/src/apps/uninstall_tests.rs`, `crates/system/src/bundle.rs`,
+  `crates/e2e/tests/uninstall.rs`. Limits: [`../known-issues/core-protection-passes-a-bundle-shaped-link.md`](../known-issues/core-protection-passes-a-bundle-shaped-link.md),
+  [`../known-issues/cleaner-protection-compares-names-as-written.md`](../known-issues/cleaner-protection-compares-names-as-written.md).
 
 ## The user's own folders are hard-blocked
 
@@ -203,7 +222,8 @@ The app deletes files from a real person's disk. These rules hold in every versi
 - **Rule:** the app never elevates: no privileged helper, no launch daemon, no password prompt, no `sudo`. An item the
   app may not remove (owned by another user or the system, in a folder it cannot write to, locked, or protected by the
   system) is shown with its size and why, is never selected, and is left out of every plan; the user removes it by
-  hand, in Finder.
+  hand, in Finder. An app that needs an administrator (an App Store app is owned by root) is listed on the Apps
+  screen with its reason and Show in Finder, and never offered an uninstall.
 - **Why:** rule 1 of [`../rules.md`](../rules.md): a deleter with administrator rights is the largest risk the product
   could carry, and a copied privileged command with a wrong path the worst outcome it could cause.
 - **Enforced by:** `Removability`, worked out by the core from the walk's entry facts and never set by a module
