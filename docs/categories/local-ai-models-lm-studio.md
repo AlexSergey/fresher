@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/local-ai-models`) · **Since:** 0.1.0
 
+**Example:** `~/.lmstudio/models/<publisher>/<model>`
+
 ## What it is
 
 The models LM Studio keeps to run them on this Mac, one folder per model. Made by LM Studio, an app that runs language models locally.

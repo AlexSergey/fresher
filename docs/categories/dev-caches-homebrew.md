@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/Homebrew/downloads`
+
 ## What it is
 
 The packages and apps Homebrew downloaded to install or upgrade them. Once installed, they are not needed. Made by

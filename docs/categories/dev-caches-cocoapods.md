@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/CocoaPods`
+
 ## What it is
 
 Copies of the libraries CocoaPods downloaded for iOS and macOS projects. Made by CocoaPods, a dependency manager for

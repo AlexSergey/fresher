@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/stale-projects`) · **Since:** 0.1.0
 
+**Example:** `target/debug/incremental` of a Rust project
+
 ## What it is
 
 Files Cargo keeps only to build a Rust project faster: the incremental compilation folders and the separate build made to measure test coverage. They often take gigabytes, even in a project you work on every day. Made by Cargo and the Rust compiler on every build, and by cargo llvm-cov.

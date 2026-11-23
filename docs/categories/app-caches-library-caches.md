@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/app-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/com.example.Editor` of an app you still use
+
 ## What it is
 
 Files your installed apps keep in your Library's Caches folder to open and work faster, one folder per app. Made by the

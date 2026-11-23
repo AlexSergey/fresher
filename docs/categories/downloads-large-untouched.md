@@ -2,6 +2,8 @@
 
 **Danger level:** High · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
+**Example:** a file of 1 GB or more in `~/Downloads` untouched for 30 days
+
 ## What it is
 
 Files of 1 GB or more in Downloads that you have not opened or changed for a long time. Only you know whether you

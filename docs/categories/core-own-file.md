@@ -2,6 +2,8 @@
 
 **Danger level:** High · **Rule:** none (the core's code, `crates/engine/src/own.rs`) · **Since:** 0.1.0
 
+**Example:** a large file or folder in your home that you pick on the Largest screen
+
 ## What it is
 
 Files and folders you picked yourself on the Largest screen. Made by you, or the apps you use; made by no module: the

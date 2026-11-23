@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Logs/JetBrains/<IDE><older version>`
+
 ## What it is
 
 Records of what an older version of a JetBrains IDE (IntelliJ IDEA, WebStorm, PyCharm and the others) did,

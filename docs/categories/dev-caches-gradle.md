@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/.gradle/caches`
+
 ## What it is
 
 Libraries Gradle downloaded and files it prepared for builds of Java, Kotlin and Android projects. Made by Gradle, the

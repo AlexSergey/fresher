@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/Yarn`
+
 ## What it is
 
 Copies of the packages Yarn has downloaded, kept so that the next install needs no download. Made by Yarn, a package

@@ -1,0 +1,31 @@
+name: Something else went wrong
+description: A problem that is not a wrong finding
+title: 'Bug: '
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: The steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: The macOS version
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: The app's version or commit

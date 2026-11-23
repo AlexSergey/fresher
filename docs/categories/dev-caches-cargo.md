@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/.cargo/registry/cache`
+
 ## What it is
 
 The crates (Rust libraries) Cargo downloaded from its registry, packed and unpacked, kept so that the next build needs

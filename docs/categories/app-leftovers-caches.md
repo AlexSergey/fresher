@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/app-leftovers`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/com.example.App` of an app you removed
+
 ## What it is
 
 Caches, logs and saved window positions of apps that are no longer on this Mac. Made by the apps themselves, while

@@ -3,6 +3,8 @@
 **Danger level:** High · **Rule:** none (the core's code, `crates/engine/src/apps/uninstall.rs`; made by no module: the
 user chooses it on an app's page) · **Since:** 0.1.0
 
+**Example:** `<name>.app` with its `~/Library/Application Support/<id>`
+
 ## What it is
 
 One installed app, chosen on its page with "Remove the app and everything it left": everything the keep-data choice

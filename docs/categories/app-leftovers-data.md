@@ -2,6 +2,8 @@
 
 **Danger level:** High · **Rule:** none (the module's code, `modules/app-leftovers`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Application Support/<id>` of an app you removed
+
 ## What it is
 
 The support folders of apps that are no longer on this Mac. An app may have kept documents, databases or downloads

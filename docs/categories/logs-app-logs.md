@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/logs`) · **Since:** 0.1.0
 
+**Example:** logs in `~/Library/Logs` untouched for a week
+
 ## What it is
 
 Records apps write about what they did, kept for finding problems. Nothing has written to these files for at least a

@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/app-caches`, table `apps.toml`) · **Since:** 0.1.0
 
+**Example:** `Cache` and `Code Cache` of Redis Insight in `Application Support`
+
 ## What it is
 
 Files that apps built with web technology, such as chat apps and code editors, keep in their own support folder to draw

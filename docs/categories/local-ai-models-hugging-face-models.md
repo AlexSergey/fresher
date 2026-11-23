@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/local-ai-models`) · **Since:** 0.1.0
 
+**Example:** `~/.cache/huggingface/hub/models--<owner>--<name>`
+
 ## What it is
 
 Language, image and speech models that programs downloaded from Hugging Face, one folder per model. Made by programs that use Hugging Face's libraries (Python scripts, notebooks, local AI apps).

@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/stale-projects`) · **Since:** 0.1.0
 
+**Example:** `node_modules` of a project you have not changed in a year
+
 ## What it is
 
 The packages a Node.js project installed into its `node_modules` folder, in projects you have not changed for a long time. Made by your package manager (npm, Yarn and others).

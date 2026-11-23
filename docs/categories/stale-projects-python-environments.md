@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/stale-projects`) · **Since:** 0.1.0
 
+**Example:** `.venv` of a Python project you have not changed in a year
+
 ## What it is
 
 A Python project's virtual environment (`.venv` or `venv`): its own Python and the packages installed into it, in projects you have not changed for a long time. Made by you or your Python tools, when you set the project up.

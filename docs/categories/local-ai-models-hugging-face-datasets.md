@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/local-ai-models`) · **Since:** 0.1.0
 
+**Example:** `~/.cache/huggingface/hub/datasets--<owner>--<name>`
+
 ## What it is
 
 Datasets that programs downloaded from Hugging Face to train or test models, one folder per dataset. Made by programs that use Hugging Face's libraries (Python scripts, notebooks, training tools).

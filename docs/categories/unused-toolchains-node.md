@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/unused-toolchains`) · **Since:** 0.1.0
 
+**Example:** a Node version in `~/.nvm/versions/node` no project uses
+
 ## What it is
 
 Versions of Node.js that nvm installed and that nothing on this Mac points at: not nvm's default or another alias, not a project's `.nvmrc`, `.node-version` or `.tool-versions`. Made by nvm, the Node version manager. One finding per version, titled "Node" and the folder's name (for example `v18.17.0`). **Off by default:** the setting "Node versions (nvm)" turns it on.

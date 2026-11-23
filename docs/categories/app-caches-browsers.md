@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/app-caches`, table `apps.toml`) · **Since:** 0.1.0
 
+**Example:** Chrome's and Firefox's caches in `~/Library/Caches`
+
 ## What it is
 
 Copies of web pages, scripts and pictures your browsers keep so sites open faster, kept for each browser profile. Made

@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
+**Example:** a paused Safari download, `<name>.download`, in `~/Downloads`
+
 ## What it is
 
 Downloads Safari paused or could not finish. Double-clicking one in Finder resumes it. Made by Safari, while it

@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Application Support/JetBrains/<IDE><older version>`
+
 ## What it is
 
 The settings (`options/`, keymaps, code styles, live templates) and the `plugins/` an older version of a JetBrains

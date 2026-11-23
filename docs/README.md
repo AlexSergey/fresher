@@ -22,3 +22,14 @@ All documentation of the repository lives here.
 | [`ideas/`](./ideas/README.md)               | the user's ideas, not planned yet                                    |
 | [`hacks/`](./hacks/README.md)               | non-obvious decisions and shortcuts in the code, and why             |
 | [`postmortem/`](./postmortem/README.md)     | attempts that did not work, and why                                  |
+
+## The stack
+
+| Part      | Stack                                                                    |
+| --------- | ------------------------------------------------------------------------ |
+| Core      | Rust: engine, modules, scanner, rules, plain versioned files, cleaner    |
+| Shell     | Tauri 2                                                                  |
+| Interface | React + TypeScript                                                       |
+| Quality   | Clippy pedantic, cargo-deny, ESLint strict, 90 % coverage, git hooks, CI |
+
+Build commands: [`quality.md`](./quality.md) and [`testing.md`](./testing.md).

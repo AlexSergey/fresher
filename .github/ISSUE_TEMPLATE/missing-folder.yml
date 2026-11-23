@@ -1,0 +1,29 @@
+name: A folder Fresher should know
+description: A folder that is safe to clean and that Fresher does not offer
+title: 'New folder: '
+labels: [new-folder]
+body:
+  - type: input
+    id: path
+    attributes:
+      label: The path or pattern
+      description: Write your home folder as `~`.
+      placeholder: ~/.cache/example-tool
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: The tool that makes it
+    validations:
+      required: true
+  - type: textarea
+    id: regenerates
+    attributes:
+      label: Does it come back by itself, and how?
+    validations:
+      required: true
+  - type: input
+    id: size
+    attributes:
+      label: A typical size

@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/app-leftovers`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Preferences/com.example.App.plist` of a removed app
+
 ## What it is
 
 The settings, cookies and website data of apps that are no longer on this Mac. Made by the apps themselves, while they

@@ -16,6 +16,16 @@
 - **Why:** the user's decision (2026-11-15): the project stands on its own ideas; several of those projects are GPL.
 - **Enforced by:** review.
 
+## Documentation lives in `docs/`
+
+- **Rule:** every document lives under `docs/`. The exceptions are the files GitHub looks for: `README.md` at the
+  root, and `.github/CONTRIBUTING.md`, `.github/SECURITY.md` and the issue templates in `.github/ISSUE_TEMPLATE/`.
+  They stay short and point into `docs/`.
+- **Why:** one place for documentation (CLAUDE.md, "Documentation"); GitHub shows those files only where it looks
+  for them.
+- **Enforced by:** review; `npm run check:readme` checks the README's and `.github/*.md`'s links and the README's
+  generated table.
+
 ## Licence
 
 - **Rule:** the project is free and open source under MIT OR Apache-2.0, at the user's option (`LICENSE-MIT`,

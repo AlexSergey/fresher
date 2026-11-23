@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/xcode`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Developer/Xcode/UserData/Previews`
+
 ## What it is
 
 What Xcode builds to show your SwiftUI previews. Made by Xcode.

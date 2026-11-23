@@ -3,6 +3,8 @@
 **Danger level:** Medium · **Rule:** none (the core's code, `crates/engine/src/apps/uninstall.rs`; made by no module: the
 user chooses it on an app's page) · **Since:** 0.1.0
 
+**Example:** `<name>.app` in `/Applications` and its `~/Library/Caches/<id>`
+
 ## What it is
 
 One installed app, chosen on its page with "Remove the app, keep its settings and data" (the default choice): the

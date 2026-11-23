@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/xcode`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Developer/Xcode/iOS DeviceSupport/17.2 (21C62)`
+
 ## What it is
 
 Debug information Xcode copies from an iPhone, iPad, Apple Watch, Apple TV or Vision Pro the first time you connect it, one folder per system version. Made by Xcode.

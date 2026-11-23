@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
+**Example:** a `.crdownload` or `.part` file in `~/Downloads`
+
 ## What it is
 
 Downloads that stopped before they finished: the part a browser fetched before it was closed or the download failed.

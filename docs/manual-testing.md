@@ -1070,6 +1070,19 @@ file's order; the real Trash, the real process table, an image and the real wind
       issue. Also wanted when at hand: a run with Full Disk Access, the sound of the Trash call, a network share, a macOS
       before 27.
 
+## The README on GitHub (plan 040)
+
+After the branch is pushed, open the repository page on GitHub.
+
+- [ ] **The README**: read it in the light and the dark theme and at a phone's width (the browser's responsive mode,
+      390 px). The logo, the badges, the table and every link work; the long table is readable on the phone.
+- [ ] **New issue**: the page lists the three templates (wrong finding, missing folder, something else) and each form
+      opens and shows its fields. There is no blank issue.
+- [ ] **Social preview**: after uploading `assets/social-preview.png`, paste the repository's link into a chat; the image
+      shows.
+
+Results go in [`plans/040-readme/readme.md`](./plans/040-readme/readme.md), "Conclusions".
+
 ## 6. If something looks wrong
 
 First check [`known-issues/`](./known-issues/README.md): these look like bugs and are known. The ones you may meet

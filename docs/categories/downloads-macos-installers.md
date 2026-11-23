@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
+**Example:** `Install macOS Sonoma.app` in `~/Downloads`
+
 ## What it is
 
 Installers of a macOS version this Mac already runs or has passed. Each takes 12 to 15 GB. Made by you or the App

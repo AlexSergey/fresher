@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/JetBrains/<IDE><older version>`
+
 ## What it is
 
 Indexes, the compile cache, local history and downloaded sources that an older version of a JetBrains IDE

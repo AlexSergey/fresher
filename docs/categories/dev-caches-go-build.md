@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/go-build`
+
 ## What it is
 
 Compiled pieces of Go programs, kept so that the next build only compiles what changed. Made by The Go tools, on every

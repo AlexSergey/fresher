@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Developer/Xcode/DerivedData/<project>-…`
+
 ## What it is
 
 What Xcode makes while it builds and indexes a project: compiled files, the code index and build logs, one folder per

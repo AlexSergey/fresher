@@ -366,3 +366,32 @@ Plan [039](../plans/039-agreement-and-wording/readme.md), awaiting the user's wa
 - **Known gaps**: "a changed text asks again" has no browser-level test until a second version exists; a sandbox case
   file's `[settings]` can pre-accept the agreement ([deferred](./sandbox-case-settings-agreement.md)); the licence
   notices of dependencies are still [deferred](./licence-notices.md).
+
+## 040 — The README
+
+- **Walks by hand**: the README on GitHub after the push (light, dark, phone width, every link, the table); the "New
+  issue" page and the three forms; the social preview in a pasted link
+  ([`manual-testing.md`](../manual-testing.md), "The README on GitHub").
+- **For the user to apply on GitHub** (nothing was changed there): the description and topics with
+  `gh repo edit AlexSergey/fresher --description "A free, open-source macOS disk cleaner that explains every gigabyte
+  and deletes nothing you have not confirmed." --add-topic macos --add-topic disk-cleaner --add-topic disk-space
+  --add-topic rust --add-topic tauri --add-topic privacy --add-topic developer-tools --add-topic open-source`
+  (one line; the text is in 03/02's conclusions); upload `assets/social-preview.png` (Settings, General, Social
+  preview); enable private vulnerability reporting (Settings, Security); create the issue labels the forms use:
+  `wrong finding`, `new-folder`, `bug`.
+- **Facts not verified**: the bundle's output folder named in Install (`target/release/bundle/macos/Fresher.app`, no
+  build was run); how GitHub renders the long table on a phone; the issue forms' validation by GitHub; GitHub's exact
+  anchor rule (the check matches anchors case-insensitively).
+- **Agent's calls worth a second look**: the head's wording ("Your Mac is full. See why." and the line under it); the
+  explicit `**Example:**` line in every category file and its 80-character limit; the table all visible, sorted by
+  danger (fold it into `<details>`?); the stars badge removed and one ask at the end; the "No warranty" words (the
+  agreement's five lines); the "watch mode" ban list in the check; images only from `assets/` and shields.io; the
+  community files in `.github/` as an exception to "docs only".
+- **Decided at the catch-up, to confirm**: `config.yml` keeps `blank_issues_enabled: false` with the security link (plan
+  039 had `true`); the wrong-finding form is plan 039's, since the app links to it. The three `core-*` categories (the
+  user's own files, uninstall keeping data, uninstall everything) are rows of the table and counted in "44 kinds",
+  though the user picks them and a scan does not find them: keep them or filter them out in the generator. The
+  sentence after the table repeats the uninstall rows.
+- **Known gaps**: no picture, since no `assets/demo/*.gif` exists (made by hand with plan 038's recorder); the Install
+  block waits for plan 013 ([deferred](./readme-at-release.md)); absolute links are not checked (no network in a
+  check).

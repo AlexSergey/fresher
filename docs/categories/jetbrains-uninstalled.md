@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Application Support/JetBrains/<IDE you removed>`
+
 ## What it is
 
 The settings with their plugins, the caches and the logs of a JetBrains IDE (IntelliJ IDEA, WebStorm, DataGrip and

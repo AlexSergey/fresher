@@ -5,120 +5,159 @@
 <h1 align="center">Fresher</h1>
 
 <p align="center">
-  <b>Every byte explained. Nothing deleted without you.</b><br>
-  A fast, private, open-source disk cleaner for macOS — built in Rust.
+  <b>Your Mac is full. See why.</b><br>
+  A free, open-source disk cleaner for macOS that explains every gigabyte in plain English, shows the risk of removing
+  it, and removes nothing you have not confirmed. Made with developers' Macs in mind.
 </p>
 
 <p align="center">
-  <a href="https://github.com/AlexSergey/fresher/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/AlexSergey/fresher?style=flat-square&logo=github&color=7fe0c2"></a>
-  <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-1c1d21?style=flat-square&logo=apple">
-  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-b7410e?style=flat-square&logo=rust">
-  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24c8db?style=flat-square&logo=tauri&logoColor=white">
-  <img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-3a3a3a?style=flat-square">
-  <img alt="Status: early development" src="https://img.shields.io/badge/status-early%20development-d69e2e?style=flat-square">
-  <img alt="No telemetry" src="https://img.shields.io/badge/telemetry-none-2ea44f?style=flat-square">
+  <img alt="Licence: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-3a3a3a?style=flat-square">
+  <img alt="macOS 13 or later" src="https://img.shields.io/badge/macOS-13%2B-1c1d21?style=flat-square&logo=apple">
+  <img alt="No network access" src="https://img.shields.io/badge/network-none-2ea44f?style=flat-square">
+  <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-d69e2e?style=flat-square">
 </p>
 
 <p align="center">
-  <a href="#why">Why</a> ·
-  <a href="#what-it-does">What it does</a> ·
-  <a href="#safety-first">Safety</a> ·
-  <a href="#privacy">Privacy</a> ·
-  <a href="#build-from-source">Build</a> ·
-  <a href="#contributing">Contributing</a>
+  <a href="#install">Install</a> ·
+  <a href="#what-it-finds">What it finds</a> ·
+  <a href="#why-you-can-trust-it">Why you can trust it</a> ·
+  <a href="#build-and-contribute">Build and contribute</a>
 </p>
 
----
+## Install
 
-## Why
-
-Your Mac is full, and "System Data" or "Other" tells you nothing. An IDE updated itself and quietly kept gigabytes of
-settings from every old version. Docker grew into a black hole. A dozen forgotten `node_modules` sit in projects you
-have not opened in a year.
-
-**Fresher shows where your space really went — in plain English — and lets you clean it safely.**
-
-## What it does
-
-- 🔍 **No "Other". Ever.** Every byte belongs to a named category that says what it is, which app made it, and what
-  happens if you remove it.
-- 🚦 **A danger level on everything** — know the risk before you click.
-
-  | Level      | Meaning                                                    |
-  | ---------- | ---------------------------------------------------------- |
-  | **Safe**   | Rebuilt automatically. Costs nothing but a little time.    |
-  | **Low**    | Rebuilt on demand, at the cost of a download or a rebuild. |
-  | **Medium** | Can be restored, but you may need to set things up again.  |
-  | **High**   | May hold the only copy of your data.                       |
-
-- 🧠 **Finds what others miss** — stale data of old app versions (JetBrains IDEs and more), developer caches, forgotten
-  `node_modules` and `target/` folders, leftovers of apps you already uninstalled, Docker images and volumes.
-- 📈 **Watch mode** — every scan is remembered locally, so the next one tells you _which app keeps eating your disk_,
-  by how much, and since when.
-- ⚡ **Fast** — a parallel Rust scanner that streams results while it works.
-- 🖤 **Calm, premium interface** — a graphite, low-noise design that answers one question per screen.
-
-> [!NOTE]
-> Fresher is in early development: the repository, quality gates and architecture are in place, and the scanner is
-> next. ⭐ **Star the repo** to follow along — it really helps.
-
-## Safety first
-
-The app deletes files from your disk, so safety is designed in, not bolted on:
-
-- **Nothing is deleted without your explicit confirmation** of the exact items, their size and their danger level.
-- **Trash first.** Permanent deletion is a separate, deliberate choice.
-- **Scanning is read-only** — enforced by the linter: only one module of the codebase is allowed to delete anything.
-- **Unknown is not junk.** If Fresher cannot tell what something is, it shows it — it never offers it for removal.
-- System folders and other users' files are never touched; Docker data is removed only through Docker itself.
-
-## Privacy
-
-**Nothing leaves your Mac.** No telemetry, no analytics, no crash reports, no update pings — no network requests at all.
-This is enforced in the build: no HTTP client is allowed in the dependency tree, the app has no network permission, and
-the UI cannot load anything from the internet. It is open source, so you can verify every word of this.
-
-**Nothing happens behind your back.** No background checks, no menu-bar helper, no login item, no reminders. Mac
-Fresher runs only while you have it open, scans only when you ask, and removes only what you confirm.
-
-## Build from source
-
-Requirements: macOS 13+, [Rust](https://rustup.rs) (the pinned toolchain installs itself), Node.js 24.
+There is no release yet. Until there is, you can build Fresher yourself on macOS 13 or later, with
+[Rust](https://rustup.rs) and Node.js 24:
 
 ```bash
 git clone https://github.com/AlexSergey/fresher.git
 cd fresher
-npm install        # also installs the git hooks
-npm run dev        # run the app
-npm run build      # build the .app bundle
+npm install
+npm run build
 ```
 
-More commands — tests, coverage, linting — are in [`docs/quality.md`](docs/quality.md) and
-[`docs/testing.md`](docs/testing.md).
+The app is written to `target/release/bundle/macos/Fresher.app`. A build you make yourself is not signed: the first
+time, open it with right-click → Open.
 
-## How it is built
+## What it finds
 
-| Part      | Stack                                                                    |
-| --------- | ------------------------------------------------------------------------ |
-| Core      | Rust: engine, modules, scanner, rules, plain versioned files, cleaner    |
-| Shell     | Tauri 2                                                                  |
-| Interface | React + TypeScript                                                       |
-| Quality   | Clippy pedantic, cargo-deny, ESLint strict, 90 % coverage, git hooks, CI |
+Each kind of file Fresher can offer has a page saying what it is, what happens if you remove it, and how the app
+decides.
 
-The goals and rules behind every decision: [`docs/goal.md`](docs/goal.md) · [`docs/rules.md`](docs/rules.md) ·
-[`docs/architecture/`](docs/architecture/README.md).
+<!-- what-it-finds:start — generated by `npm run readme:generate` from docs/categories; do not edit by hand -->
 
-## Contributing
+Fresher knows **44 kinds** of files, each with a danger level:
 
-Ideas, bug reports and pull requests are welcome. Start with [`docs/goal.md`](docs/goal.md) and
-[`docs/rules.md`](docs/rules.md); commits follow [Conventional Commits](https://www.conventionalcommits.org/), and the
-git hooks check everything before it lands.
+- **Safe** — Rebuilt automatically when needed; removing it costs nothing but a little time.
+- **Low** — Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).
+- **Medium** — Can be restored, but not automatically; you may lose settings or need to set something up again.
+- **High** — May hold the only copy of your data; removing it can lose work.
 
-Have an idea for a category Fresher should recognize? Open an issue — the more real-world cases, the better.
+| What                                                                                         | Where, for example                                                      | Danger |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------ |
+| [Go's build cache](docs/categories/dev-caches-go-build.md)                                   | `~/Library/Caches/go-build`                                             | Safe   |
+| [Xcode build data](docs/categories/dev-caches-xcode-derived-data.md)                         | `~/Library/Developer/Xcode/DerivedData/<project>-…`                     | Safe   |
+| [Caches of older JetBrains IDEs](docs/categories/jetbrains-caches.md)                        | `~/Library/Caches/JetBrains/<IDE><older version>`                       | Safe   |
+| [Logs of older JetBrains IDEs](docs/categories/jetbrains-logs.md)                            | `~/Library/Logs/JetBrains/<IDE><older version>`                         | Safe   |
+| [Caches of removed apps](docs/categories/app-leftovers-caches.md)                            | `~/Library/Caches/com.example.App` of an app you removed                | Safe   |
+| [Old temporary files](docs/categories/temp-old-files.md)                                     | items in your temporary folder untouched for a week                     | Safe   |
+| [Old logs of your apps](docs/categories/logs-app-logs.md)                                    | logs in `~/Library/Logs` untouched for a week                           | Safe   |
+| [Old crash reports](docs/categories/logs-crash-reports.md)                                   | `~/Library/Logs/DiagnosticReports` older than a week                    | Safe   |
+| [Xcode previews](docs/categories/xcode-previews.md)                                          | `~/Library/Developer/Xcode/UserData/Previews`                           | Safe   |
+| [Simulator caches](docs/categories/xcode-simulator-caches.md)                                | `~/Library/Developer/CoreSimulator/Caches`                              | Safe   |
+| [npm's download cache](docs/categories/dev-caches-npm.md)                                    | `~/.npm/_cacache`                                                       | Low    |
+| [Yarn's download cache](docs/categories/dev-caches-yarn.md)                                  | `~/Library/Caches/Yarn`                                                 | Low    |
+| [Homebrew's downloads](docs/categories/dev-caches-homebrew.md)                               | `~/Library/Caches/Homebrew/downloads`                                   | Low    |
+| [Cargo's downloaded crates](docs/categories/dev-caches-cargo.md)                             | `~/.cargo/registry/cache`                                               | Low    |
+| [CocoaPods' download cache](docs/categories/dev-caches-cocoapods.md)                         | `~/Library/Caches/CocoaPods`                                            | Low    |
+| [Gradle's caches](docs/categories/dev-caches-gradle.md)                                      | `~/.gradle/caches`                                                      | Low    |
+| [pip's download cache](docs/categories/dev-caches-pip.md)                                    | `~/Library/Caches/pip`                                                  | Low    |
+| [Caches of your apps](docs/categories/app-caches-library-caches.md)                          | `~/Library/Caches/com.example.Editor` of an app you still use           | Low    |
+| [Browser caches](docs/categories/app-caches-browsers.md)                                     | Chrome's and Firefox's caches in `~/Library/Caches`                     | Low    |
+| [Caches of web-based apps](docs/categories/app-caches-web-engine.md)                         | `Cache` and `Code Cache` of Redis Insight in `Application Support`      | Low    |
+| [Unfinished downloads](docs/categories/downloads-unfinished.md)                              | a `.crdownload` or `.part` file in `~/Downloads`                        | Low    |
+| [Installers of installed apps](docs/categories/downloads-installers.md)                      | a `.dmg` or `.pkg` in `~/Downloads` of an app already installed         | Low    |
+| [Old macOS installers](docs/categories/downloads-macos-installers.md)                        | `Install macOS Sonoma.app` in `~/Downloads`                             | Low    |
+| [Packages of old projects](docs/categories/stale-projects-dependencies.md)                   | `node_modules` of a project you have not changed in a year              | Low    |
+| [Build output of old projects](docs/categories/stale-projects-build-output.md)               | `target` or `build` of a project you have not changed in a year         | Low    |
+| [Rust build cache](docs/categories/stale-projects-rust-build-cache.md)                       | `target/debug/incremental` of a Rust project                            | Low    |
+| [Hugging Face models](docs/categories/local-ai-models-hugging-face-models.md)                | `~/.cache/huggingface/hub/models--<owner>--<name>`                      | Low    |
+| [Hugging Face datasets](docs/categories/local-ai-models-hugging-face-datasets.md)            | `~/.cache/huggingface/hub/datasets--<owner>--<name>`                    | Low    |
+| [Unused Rust toolchains](docs/categories/unused-toolchains-rust.md)                          | a toolchain in `~/.rustup/toolchains` no project uses                   | Low    |
+| [Xcode device support files](docs/categories/xcode-device-support.md)                        | `~/Library/Developer/Xcode/iOS DeviceSupport/17.2 (21C62)`              | Low    |
+| [Settings and plugins of older JetBrains IDEs](docs/categories/jetbrains-settings.md)        | `~/Library/Application Support/JetBrains/<IDE><older version>`          | Medium |
+| [Data of JetBrains IDEs no longer installed](docs/categories/jetbrains-uninstalled.md)       | `~/Library/Application Support/JetBrains/<IDE you removed>`             | Medium |
+| [Settings of removed apps](docs/categories/app-leftovers-settings.md)                        | `~/Library/Preferences/com.example.App.plist` of a removed app          | Medium |
+| [Safari downloads you can resume](docs/categories/downloads-safari-resumable.md)             | a paused Safari download, `<name>.download`, in `~/Downloads`           | Medium |
+| [Python environments of old projects](docs/categories/stale-projects-python-environments.md) | `.venv` of a Python project you have not changed in a year              | Medium |
+| [LM Studio models](docs/categories/local-ai-models-lm-studio.md)                             | `~/.lmstudio/models/<publisher>/<model>`                                | Medium |
+| [Ollama models](docs/categories/local-ai-models-ollama.md)                                   | a model in `~/.ollama/models`                                           | Medium |
+| [Unused Node versions (nvm)](docs/categories/unused-toolchains-node.md)                      | a Node version in `~/.nvm/versions/node` no project uses                | Medium |
+| [Apps you uninstall, keeping their data](docs/categories/core-uninstall-keep-data.md)        | `<name>.app` in `/Applications` and its `~/Library/Caches/<id>`         | Medium |
+| [Data of removed apps](docs/categories/app-leftovers-data.md)                                | `~/Library/Application Support/<id>` of an app you removed              | High   |
+| [Big downloads you have not opened](docs/categories/downloads-large-untouched.md)            | a file of 1 GB or more in `~/Downloads` untouched for 30 days           | High   |
+| [Xcode archives](docs/categories/xcode-archives.md)                                          | `~/Library/Developer/Xcode/Archives/<date>/<name>.xcarchive`            | High   |
+| [Your own files](docs/categories/core-own-file.md)                                           | a large file or folder in your home that you pick on the Largest screen | High   |
+| [Apps you uninstall with everything they left](docs/categories/core-uninstall-everything.md) | `<name>.app` with its `~/Library/Application Support/<id>`              | High   |
 
-## License
+<!-- what-it-finds:end -->
 
-Fresher is free and open source, dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your
-option. Notices: [NOTICE](NOTICE).
+It can also remove an app you choose, together with what it left, after showing you everything first.
 
-Created by [Serhii Aleksandrov](https://github.com/AlexSergey) and the Fresher contributors.
+## Why you can trust it
+
+- **It asks first.** Nothing is removed until you confirm the exact items, with their size and danger level
+  ([how](docs/restrictions/deletion-safety.md#explicit-confirmation-only)).
+- **Trash first, and you can put it back.** Items go to the Trash, and the Cleanups screen puts them back; deleting permanently is
+  a separate choice you tick each time ([how](docs/restrictions/deletion-safety.md#trash-first)).
+- **Nothing leaves your Mac.** No network requests at all: no telemetry, no crash reports, no update checks
+  ([how](docs/restrictions/privacy.md#no-network)).
+- **Nothing in the background.** No helper, no login item, no scheduled scans: it works only while it is open
+  ([why](docs/goal.md#8-transparent-it-does-only-what-the-user-asks)).
+
+## What it does not do
+
+Fresher is not an antivirus and does not "speed up" your Mac or clean its memory. It has no background helper. It never
+removes what it cannot name: space it does not recognize is shown as its real folders. It shows what Docker takes and
+the command that frees each part, and never runs it. And it never empties the Trash for you: you get the space back
+when you empty it yourself.
+
+## No warranty
+
+Fresher is free and open source, and it comes with no warranty. Before your first cleanup it asks you to accept five
+lines: the sentence above and these four:
+
+- It removes only what you confirm, so each removal is your decision.
+- A danger level is Fresher's best judgement, not a guarantee.
+- Keep a backup of anything you cannot afford to lose.
+- Items go to the Trash, where you can put them back until the Trash is emptied. A permanent delete, and what an app's
+  own tool removes, cannot be undone.
+
+The full terms are in the licences below.
+
+## Help it get better
+
+The most useful report is a wrong finding: something the app offered that it should not have.
+[Report a wrong finding](https://github.com/AlexSergey/fresher/issues/new?template=wrong-finding.yml) with what the app
+showed (write your user name in any path as `~`) and why it should have left it alone. A folder Fresher should know
+about is welcome too: [Suggest a folder](https://github.com/AlexSergey/fresher/issues/new?template=missing-folder.yml).
+
+If Fresher helped you, a star helps others find it.
+
+## Build and contribute
+
+```bash
+npm install
+npm run dev
+npm test
+```
+
+The goal, the rules and the architecture are in [`docs/`](docs/README.md); the checks every change passes are in
+[`docs/quality.md`](docs/quality.md). Fresher is a Rust core with a Tauri 2 shell and a React and TypeScript interface.
+
+How to contribute: [`CONTRIBUTING.md`](.github/CONTRIBUTING.md). A security problem: [`SECURITY.md`](.github/SECURITY.md).
+
+## Licence
+
+Free and open source, under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option. Notices:
+[NOTICE](NOTICE). Created by [Serhii Aleksandrov](https://github.com/AlexSergey) and the Fresher contributors.

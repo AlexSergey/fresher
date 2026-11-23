@@ -2,6 +2,8 @@
 
 **Danger level:** High · **Rule:** none (the module's code, `modules/xcode`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Developer/Xcode/Archives/<date>/<name>.xcarchive`
+
 ## What it is
 
 The builds you archived in Xcode to publish an app, each with the debug symbols of that version. Made by Xcode, when you choose Product, then Archive.

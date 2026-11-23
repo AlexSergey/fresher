@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/xcode`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Developer/CoreSimulator/Caches`
+
 ## What it is
 
 Files the iOS simulators keep to start faster, one set for each version of macOS you ran them on. Made by the Simulator, part of Xcode.

@@ -83,8 +83,8 @@ an automated release are decided before the first release ([`../deferred/release
 | 034 | [Browser and web-engine caches](./034-browser-caches/readme.md)    | 🔨 in progress | 0.1.0   | modules, testing, sandbox, e2e, app, app/ui, docs |
 | 035 | [The largest files](./035-large-files/readme.md)                   | 🔨 in progress | 0.1.0   | core, scanner, engine, testing, sandbox, e2e, app, app/ui, docs |
 | 036 | [Uninstall an app](./036-uninstall/readme.md)                      | 🔨 in progress (awaiting the user's walk) | 0.1.0   | core, macos, system, engine, testing, sandbox, e2e, app, app/ui, docs |
-| 037 | [The Trash holds the freed space](./037-trash/readme.md)           | 🔨 in progress | 0.1.0   | core, macos, system, engine, testing, sandbox, e2e, app, app/tauri, app/ui, docs |
-| 038 | [Demo recordings](./038-demo-recordings/readme.md)                 | 🔨 in progress | 0.1.0   | sandbox, testing, app, app/tauri, app/ui, scripts, fixtures, docs |
+| 037 | [The Trash holds the freed space](./037-trash/readme.md)           | 🔨 in progress (awaiting the user's walk) | 0.1.0   | core, macos, system, engine, testing, sandbox, e2e, app, app/tauri, app/ui, docs |
+| 038 | [Demo recordings](./038-demo-recordings/readme.md)                 | 🔨 in progress (awaiting the user's walk) | 0.1.0   | sandbox, testing, app, app/tauri, app/ui, scripts, fixtures, docs |
 | 039 | [The agreement, the danger zone and the wording](./039-agreement-and-wording/readme.md) | 🔨 in progress (awaiting the user's walk) | 0.1.0 | core, engine, testing, sandbox, e2e, app, app/tauri, app/ui, scripts, repo, docs |
-| 040 | [The README](./040-readme/readme.md) | 📝 draft | 0.1.0 | repo, scripts, docs |
+| 040 | [The README](./040-readme/readme.md) | 🔨 in progress (awaiting the user's walk) | 0.1.0 | repo, scripts, ci, docs |
 | 041 | [The security audit](./041-security-audit/readme.md) | 📝 draft | 0.1.0 | every crate and module, app, scripts, repo, docs |

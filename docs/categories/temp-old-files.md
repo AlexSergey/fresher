@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/temp`) · **Since:** 0.1.0
 
+**Example:** items in your temporary folder untouched for a week
+
 ## What it is
 
 Working files that apps and command-line tools put in your Mac's temporary folders and did not clean up. Nothing has

@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Caches/pip`
+
 ## What it is
 
 Copies of the Python packages pip downloaded or built, kept so that the next install is faster. Made by pip, the package

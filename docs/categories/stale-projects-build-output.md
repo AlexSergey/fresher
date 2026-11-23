@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/stale-projects`) · **Since:** 0.1.0
 
+**Example:** `target` or `build` of a project you have not changed in a year
+
 ## What it is
 
 What a project's build tool made and can make again, in projects you have not changed for a long time. Made by the project's build tool, when you built it.

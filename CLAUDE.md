@@ -230,7 +230,9 @@ Never edit generated code manually.
 
 ## Documentation
 
-- Every document lives under `docs/`; nothing outside it except code, its configs and this file
+- Every document lives under `docs/`; nothing outside it except code, its configs and this file; the community files
+  in `.github/` (CONTRIBUTING, SECURITY, the issue forms) are allowed, see
+  [`docs/restrictions/repository.md`](./docs/restrictions/repository.md)
 - When a change affects the goal, architecture, categories, restrictions or developer workflow, update the relevant doc
   in the same change; do not defer doc updates to a follow-up
 - Do not update docs for internal refactors with no observable effect

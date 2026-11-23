@@ -2,6 +2,8 @@
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/local-ai-models`) · **Since:** 0.1.0
 
+**Example:** a model in `~/.ollama/models`
+
 ## What it is
 
 The language models Ollama keeps to run them on this Mac: for each model a small list of its files and the layer files

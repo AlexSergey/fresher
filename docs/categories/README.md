@@ -39,6 +39,8 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 
 **Danger level:** <Safe | Low | Medium | High> · **Rule:** `<rule id>` · **Since:** <version>
 
+**Example:** <one line, at most 80 characters, no `|`: what a user recognizes, shown in the README's table>
+
 ## What it is
 
 <One or two plain-English sentences: what these files are and which app makes them.>
@@ -55,6 +57,9 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 
 <What the rule checks so that it never claims something else; the cases it refuses.>
 ```
+
+The `**Example:**` line is shown in the README's "What it finds" table (`npm run readme:generate`);
+`npm run check:readme` refuses a file without it.
 
 ## Catalogue
 

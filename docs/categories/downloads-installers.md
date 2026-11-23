@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
+**Example:** a `.dmg` or `.pkg` in `~/Downloads` of an app already installed
+
 ## What it is
 
 Disk images (`.dmg`) and packages (`.pkg`) you used to install apps that are on this Mac now, at this version or

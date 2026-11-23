@@ -159,6 +159,7 @@ Installed once per machine ([`quality.md`](./quality.md), "Setting up a machine"
 | `taplo`          | 0.10.0   | MIT               | TOML formatting                                       |
 | `actionlint`     | 1.7.12   | MIT               | GitHub Actions workflows                              |
 | `ffmpeg`         | 7.1.1    | GPL-2.0-or-later  | `npm run demo:record` only; never shipped             |
+| `rsvg-convert` (librsvg) | 2.62.2 | LGPL-2.1-or-later | renders `assets/social-preview.svg` to its PNG, by hand; not needed to build or test |
 
 `ffmpeg` is installed by the developer (`brew install ffmpeg`), not by the repository. 7.1.1 is the Homebrew build
 checked on 2026-11-22; its licence is GPL-2.0-or-later as Homebrew builds it (LGPL-2.1-or-later without

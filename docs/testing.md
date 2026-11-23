@@ -974,6 +974,16 @@ running: that window keeps its own mode (its banner, or the lack of one, shows w
 Before a plan that adds or changes a module or a category is done, its finish runs `npm run dev:sandbox -- <feature>`
 and walks `EXPECTED.md` by hand.
 
+### The README check
+
+`scripts/readme.ts` (`npm run check:readme`, in pre-push and CI's `lint` job; `npm run readme:generate` rewrites the
+table) builds the README's "What it finds" table from `docs/categories/` and checks it, the links, the anchors, the
+images and the claims not yet true. Its logic is split: `scripts/readme-catalogue.ts` (the table and the catalogue's
+problems) and `scripts/readme-links.ts` (links, anchors, images, claims), both pure; `scripts/readme.ts` reads the
+files and runs Prettier. Three test files: `readme-catalogue.test.ts`, `readme-links.test.ts` and `readme.test.ts`;
+negative cases first (one per problem kind), then positive ones (a stable table, a clean README). No test reads the
+real `docs/` or `README.md`: they use strings or folders made in the system's temporary directory.
+
 ### The text check
 
 `scripts/check-texts.ts` (`npm run check:texts`, in pre-push; [`writing.md`](./writing.md)) reads the core's, the
@@ -1071,6 +1081,7 @@ record against the disk, read-only, and writes `<record>.check.md` beside it (ne
 | `npm run test:rust`            | `cargo nextest run --workspace --locked`                                              |
 | `npm run test:ui`              | `vitest run` in `app/ui`                                                              |
 | `npm run test:scripts`         | `node --test scripts/*.test.ts`                                                       |
+| `npm run check:readme`         | the README's generated table, links, images and claims (`scripts/readme.ts`)          |
 | `npm run test:cov`             | Rust and UI tests with coverage and the 90 % floors (reports in `coverage/`)          |
 | `npm run test:e2e`             | `crates/e2e` and the Playwright suite                                                 |
 | `npm run test:e2e:core`        | `cargo nextest run -p fresher-e2e --locked`                                           |

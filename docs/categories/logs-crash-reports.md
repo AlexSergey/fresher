@@ -2,6 +2,8 @@
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/logs`) · **Since:** 0.1.0
 
+**Example:** `~/Library/Logs/DiagnosticReports` older than a week
+
 ## What it is
 
 Reports macOS writes when an app crashes, stops responding or uses too much of your Mac, to help its developer find

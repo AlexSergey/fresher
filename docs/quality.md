@@ -125,7 +125,9 @@ Conventional Commits: `type(scope): subject`.
 
 `.husky/pre-push` runs `npm run pre-push`:
 
-1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint; then `npm run check:crate-deps` and `npm run check:texts`
+1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint; then `npm run check:readme` (the README's generated
+   table, links, images and claims; `npm run readme:generate` rewrites the table), `npm run check:crate-deps` and
+   `npm run check:texts`
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
 4. `npm run test:scripts` — the repository scripts' tests
@@ -147,7 +149,7 @@ comment.
 
 | Workflow     | Job     | Runs                                                                                           |
 | ------------ | ------- | ---------------------------------------------------------------------------------------------- |
-| `ci.yml`     | `lint`  | actionlint, `npm run lint`, the crate dependency guard, knip, cargo-machete, cargo-deny, typos, `npm audit`                |
+| `ci.yml`     | `lint`  | actionlint, `npm run lint`, `npm run check:readme`, the crate dependency guard, knip, cargo-machete, cargo-deny, typos, `npm audit` |
 |              | `test`  | `npm run test:scripts`, `npm run test:cov`; the coverage and JUnit reports kept as an artifact |
 |              | `e2e`   | `npm run test:e2e` with the Playwright browsers; the report kept on failure                    |
 |              | `build` | `npm run build`: the unsigned app bundle                                                       |

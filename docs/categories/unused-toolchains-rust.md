@@ -2,6 +2,8 @@
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/unused-toolchains`) · **Since:** 0.1.0
 
+**Example:** a toolchain in `~/.rustup/toolchains` no project uses
+
 ## What it is
 
 Versions of the Rust compiler that rustup installed and that nothing on this Mac points at: not rustup's default, not an override, not a project's toolchain file. Made by rustup, the installer of Rust. One finding per toolchain, titled "Rust" and the folder's name (for example `1.75.0-aarch64-apple-darwin`).
