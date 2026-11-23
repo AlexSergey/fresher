@@ -16,6 +16,7 @@ import type {
 
 import coreTexts from '../../../crates/core/locales/en.json' with { type: 'json' };
 import { type CommandKey, COMMANDS } from '../src/ipc';
+import { AGREEMENT_DICTIONARY } from '../src/test/agreement';
 import {
   APP_CACHES_BROWSERS_DICTIONARY,
   APP_CACHES_BROWSERS_FINDINGS,
@@ -212,6 +213,7 @@ import {
   XCODE_SETTINGS,
   XCODE_TOTALS,
 } from '../src/test/xcode-scan';
+import { AGREEMENT_HOOK, type AgreementScript, mockAgreement } from './support/agreement-mock';
 import { APPS_HOOK, mockApps } from './support/apps-mock';
 import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanup-mock';
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
@@ -220,6 +222,9 @@ import { LARGEST_HOOK, mockLargest, ownIdOf } from './support/largest-mock';
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
 export type CoreScript = {
+  // The agreement's commands (support/agreement-mock.ts): accepted by default; `not-accepted` is the world before the
+  // first cleanup.
+  readonly agreement?: AgreementScript;
   readonly answers?: Partial<Readonly<Record<CommandKey, unknown>>>;
   // The Apps screen's commands: the list, an app's page and Show in Finder (support/apps-mock.ts); `denied` is the world
   // after macOS refused to let Fresher move an app.
@@ -272,6 +277,7 @@ const storageOfScan = (
 });
 
 type ByCommand = {
+  readonly agreementHook: string;
   readonly answers: Readonly<Record<string, unknown>>;
   readonly appsHook: string;
   readonly busy: Refusal;
@@ -336,6 +342,19 @@ const withRefreshAccess = <T>(
     ? answers
     : { ...answers, refreshAccess: answers.getAccessStatus };
 
+// The names and meanings of Review's two parts, as the core's dictionary has them.
+const PART_TEXTS: Dictionary = Object.fromEntries(
+  Object.entries(coreTexts as Dictionary).filter(([key]) => key.startsWith('core.danger.part.')),
+);
+
+// The core's dictionary also holds the agreement's texts and Review's parts, whatever the script's own dictionary is.
+const withCoreTexts = <T>(
+  answers: Partial<Readonly<Record<CommandKey, T>>> = {},
+): Partial<Readonly<Record<CommandKey, T>>> =>
+  typeof answers.getDictionary === 'object' && answers.getDictionary !== null
+    ? { ...answers, getDictionary: { ...AGREEMENT_DICTIONARY, ...PART_TEXTS, ...answers.getDictionary } }
+    : answers;
+
 const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Readonly<Record<string, T>> =>
   Object.fromEntries((Object.entries(table) as [CommandKey, T][]).map(([key, value]) => [COMMANDS[key], value]));
 
@@ -354,7 +373,8 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     event.type === 'findings-added' ? event.findings : [],
   );
   const setup: ByCommand = {
-    answers: byCommand(withRefreshAccess(script.answers)),
+    agreementHook: AGREEMENT_HOOK,
+    answers: byCommand(withCoreTexts(withRefreshAccess(script.answers))),
     appsHook: APPS_HOOK,
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
@@ -546,10 +566,17 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
           ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
         >
       )[core.appsHook];
+      const agreement = (
+        globalThis as unknown as Record<
+          string,
+          ((command: string, args: unknown) => Promise<unknown> | undefined) | undefined
+        >
+      )[core.agreementHook];
       const answered =
         command in core.refusals
           ? undefined
-          : (cleanup?.(command, args) ??
+          : (agreement?.(command, args) ??
+            cleanup?.(command, args) ??
             ignoring?.(command, args, answers) ??
             largest?.(command, args) ??
             apps?.(command, args) ??
@@ -632,6 +659,8 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     await mockIgnore(page, findings);
   }
   const moved = script.largest === true ? await mockLargest(page, findings) : undefined;
+
+  await mockAgreement(page, script.agreement);
 
   if (script.apps !== undefined) {
     await mockApps(page, script.apps);

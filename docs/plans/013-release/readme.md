@@ -70,7 +70,8 @@ release. Depends on plan 001/05 (CI).
 ## Ideas this touches
 
 "One official download location; signed and notarized builds" from [best practices](../../ideas/best-practices.md); the
-deferred [licence notices](../../deferred/licence-notices.md).
+deferred [licence notices](../../deferred/licence-notices.md). The release page carries the agreement's words from
+`core.agreement.*` (plan [039](../039-agreement-and-wording/readme.md)).
 
 ## Decisions
 

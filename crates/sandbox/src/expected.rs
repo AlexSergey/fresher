@@ -12,6 +12,10 @@ use crate::{
     MapExpectation, MapPartName, Shown, Uninstall, UninstallExpectation,
 };
 
+/// The header's sentence on the agreement every fresh sandbox asks for before its first cleanup.
+const AGREEMENT: &str = "\nBefore the first cleanup, a fresh sandbox asks you to accept the short agreement: Not now starts \
+                         nothing; I understand goes on to the confirmation.\n";
+
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
 /// it allows, refuses or has not been asked for, the facts its files state (which Finder never shows; times counted
@@ -24,6 +28,7 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
     let mut text = String::from(
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
     );
+    text.push_str(AGREEMENT);
     for file in files {
         if file.demo().is_some() {
             let _ = write!(text, "\n## {}\n\nA demo world: what it shows is not checked.\n\n", file.feature());
@@ -767,6 +772,20 @@ reason = "in-use"
         }
 
         #[test]
+        fn the_header_says_the_first_cleanup_asks_for_the_agreement() {
+            let text =
+                checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/tmp/sandbox/trial"), super::now());
+
+            let paragraphs: Vec<&str> = text.split("\n\n").take(3).collect();
+            assert_eq!(
+                paragraphs[2],
+                "Before the first cleanup, a fresh sandbox asks you to accept the short agreement: Not now starts \
+                 nothing; I understand goes on to the confirmation."
+            );
+            assert!(!paragraphs[2].starts_with("- [ ]"));
+        }
+
+        #[test]
         fn a_demo_world_lists_its_scenery_cases_and_checks_nothing() {
             let world = "feature = \"developer-mac\"\n[demo]\nnow = 1795000000\nshows = [\"trial.caches\"]\n\
                          [[case]]\nname = \"Xcode's build products\"\nkind = \"scenery\"\n\
@@ -784,7 +803,8 @@ reason = "in-use"
             assert_eq!(
                 text,
                 "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and \
-                 tick each case.\n\n## developer-mac\n\nA demo world: what it shows is not checked.\n\n\
+                 tick each case.\n\nBefore the first cleanup, a fresh sandbox asks you to accept the short \
+                 agreement: Not now starts nothing; I understand goes on to the confirmation.\n\n## developer-mac\n\nA demo world: what it shows is not checked.\n\n\
                  - Xcode's build products\n- a browser's cache\n\n## Open the app on it\n\n```sh\n\
                  npm run dev:sandbox -- /private/tmp/fresher-demo/overview\n```\n"
             );

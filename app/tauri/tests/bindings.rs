@@ -10,6 +10,7 @@
 mod support {
     use std::path::PathBuf;
 
+    use fresher_core::{Acceptance, AgreementView};
     use fresher_core::{
         Access, AccessStatus, ActionKind, AppInfo, Availability, BlockedReason, Build, ByteSize, Capability,
         CapabilityState, CategoryDescriptor, CategoryId, CategoryInfo, CategoryPick, CategoryTotal, ChildOrder,
@@ -124,6 +125,8 @@ mod support {
             declaration::<SettingValue>(&config),
             declaration::<SettingProblem>(&config),
             declaration::<SettingUpdate>(&config),
+            declaration::<AgreementView>(&config),
+            declaration::<Acceptance>(&config),
             declaration::<Locale>(&config),
             declaration::<Dictionary>(&config),
             declaration::<Text>(&config),

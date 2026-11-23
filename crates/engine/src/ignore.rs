@@ -305,7 +305,10 @@ mod tests {
             engine.reset_settings().unwrap();
 
             assert_eq!(settings.saves(), 1);
-            assert_eq!(settings.stored().values.keys().collect::<Vec<_>>(), ["core.ignore.paths"]);
+            assert_eq!(
+                settings.stored().values.keys().collect::<Vec<_>>(),
+                ["core.agreement.accepted-at", "core.agreement.version", "core.ignore.paths"]
+            );
             let changed: Vec<String> = events
                 .try_iter()
                 .filter_map(|event| match event {

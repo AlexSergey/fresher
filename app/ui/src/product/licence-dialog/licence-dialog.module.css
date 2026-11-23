@@ -1,0 +1,28 @@
+/* The two licence files, as written: selectable text; the dialog's body scrolls. */
+@layer components {
+  .content {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .heading {
+    margin: 0 0 var(--space-2);
+    color: var(--text-primary);
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-line);
+  }
+
+  .text {
+    padding: var(--space-3);
+    margin: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    user-select: text;
+    white-space: pre-wrap;
+  }
+}

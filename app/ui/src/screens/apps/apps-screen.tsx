@@ -47,6 +47,7 @@ export const AppsScreen = (): JSX.Element => {
         ) : (
           <>
             <SegmentedControl<Filter>
+              description={t('ui.screen.apps.filter.hint')}
               label={t('ui.screen.apps.filter.label')}
               onChange={setFilter}
               options={[

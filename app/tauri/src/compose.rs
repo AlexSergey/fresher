@@ -620,6 +620,7 @@ mod tests {
 
             let (folder, tree) = (tempfile::tempdir().unwrap(), trial_home(true));
             let engine = engine(folder.path(), tree.root()).unwrap();
+            engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
             let roots = SettingValue::Folders(vec![tree.root().to_path_buf()]);
             engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
             let events = engine.subscribe();

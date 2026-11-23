@@ -288,6 +288,16 @@ mod positive {
     }
 
     #[test]
+    fn picking_a_largest_row_needs_no_acceptance() {
+        let engine = scanned_fixture(fixture(vec![Arc::new(home(1))]).unaccepted());
+
+        let movie = pick(&engine, "/home/Downloads/movie.mov");
+
+        assert_eq!(movie.finding().danger(), DangerLevel::High);
+        assert!(!engine.agreement().unwrap().is_accepted());
+    }
+
+    #[test]
     fn the_finding_is_built_from_plain_values() {
         let node = NodeInfo {
             id: NodeId::new(StateId::new(1), 4),

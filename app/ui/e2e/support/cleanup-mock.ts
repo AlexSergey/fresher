@@ -21,7 +21,15 @@ import type {
 
 import { COMMANDS } from '../../src/ipc';
 import { APP_DETAILS, uninstallPlanOf } from '../../src/test/app-detail';
-import { cleanupEventsOf, leftOutOf, PLAN_GONE, PLAN_MISMATCH, planOf, reportOf } from '../../src/test/cleanup-plan';
+import {
+  cleanupEventsOf,
+  HIGH_RISK_NOT_UNDERSTOOD,
+  leftOutOf,
+  PLAN_GONE,
+  PLAN_MISMATCH,
+  planOf,
+  reportOf,
+} from '../../src/test/cleanup-plan';
 
 // The cleanup's part of the mocked core: a plan per selection over the scan's findings, the echo compared with it, a
 // cleanup streamed item by item (held after `hold` items until `releaseCleanup` or Stop), a history and put back.
@@ -51,6 +59,9 @@ export const CLEANUP_HOOKS = {
   send: '__fresherSend',
 } as const;
 
+// The names of the commands that asked for a plan, in the page, in order.
+const PREPARED = '__fresherPrepared';
+
 const PLAN_OF = '__fresherPlanOf';
 const UNINSTALL_PLAN_OF = '__fresherUninstallPlanOf';
 const CLEANUP_OF = '__fresherCleanupOf';
@@ -70,6 +81,8 @@ type Setup = {
   readonly commands: typeof COMMANDS;
   readonly details: readonly CleanupDetail[];
   readonly gone: Refusal;
+  // A plan whose highest level is High confirmed without the user's tick, as the core refuses it.
+  readonly highRisk: Refusal;
   readonly history: CleanupsPage;
   readonly hold: null | number;
   readonly hooks: typeof CLEANUP_HOOKS;
@@ -77,6 +90,7 @@ type Setup = {
   readonly names: {
     readonly cleanupOf: string;
     readonly planOf: string;
+    readonly prepared: string;
     readonly release: string;
     readonly uninstallPlanOf: string;
   };
@@ -169,6 +183,7 @@ export const mockCleanup = async (
         (scope[setup.hooks.send] as (events: readonly Event[]) => void)(events);
       };
       const details = new Map(setup.details.map((detail) => [detail.summary.cleanup, detail]));
+      const prepared: string[] = [];
       let plans = 0;
       let plan: CleanupPlanView | null = null;
       let held: Cleanup | null = null;
@@ -190,6 +205,7 @@ export const mockCleanup = async (
         send(events);
       };
 
+      scope[setup.names.prepared] = prepared;
       scope[setup.names.release] = (): void => {
         if (held !== null) {
           end(held.end);
@@ -212,6 +228,10 @@ export const mockCleanup = async (
         ) {
           // eslint-disable-next-line @typescript-eslint/only-throw-error -- the core rejects with a plain object
           throw setup.mismatch;
+        }
+        if (summary.highest === 'high' && !echo.highRiskUnderstood) {
+          // eslint-disable-next-line @typescript-eslint/only-throw-error -- the core rejects with a plain object
+          throw setup.highRisk;
         }
         const json = await (scope[setup.names.cleanupOf] as (plan: unknown, method: Method) => Promise<string>)(
           shown,
@@ -281,6 +301,7 @@ export const mockCleanup = async (
               cleanups: setup.history.cleanups.map((one) => details.get(one.cleanup)?.summary ?? one),
             };
           case commands.prepareCleanup:
+            prepared.push(command);
             plans += 1;
             plan = await (scope[setup.names.planOf] as (selection: unknown, id: number) => Promise<CleanupPlanView>)(
               args.selection,
@@ -289,6 +310,7 @@ export const mockCleanup = async (
 
             return plan;
           case commands.prepareUninstall: {
+            prepared.push(command);
             plans += 1;
             const made = await (
               scope[setup.names.uninstallPlanOf] as (
@@ -339,11 +361,18 @@ export const mockCleanup = async (
       commands: COMMANDS,
       details: script.details ?? [],
       gone: PLAN_GONE,
+      highRisk: HIGH_RISK_NOT_UNDERSTOOD,
       history: script.history ?? NO_HISTORY,
       hold: script.hold ?? null,
       hooks: CLEANUP_HOOKS,
       mismatch: PLAN_MISMATCH,
-      names: { cleanupOf: CLEANUP_OF, planOf: PLAN_OF, release: RELEASE, uninstallPlanOf: UNINSTALL_PLAN_OF },
+      names: {
+        cleanupOf: CLEANUP_OF,
+        planOf: PLAN_OF,
+        prepared: PREPARED,
+        release: RELEASE,
+        uninstallPlanOf: UNINSTALL_PLAN_OF,
+      },
       trashAfter: script.trashAfterCleanup ?? null,
     } satisfies Setup,
   );
@@ -364,3 +393,7 @@ export const requestQuit = async (page: Page): Promise<void> => {
     ]);
   }, CLEANUP_HOOKS.send);
 };
+
+// The commands that asked the core for a plan so far (`prepare_cleanup`, `prepare_uninstall`), in order.
+export const preparedCommands = (page: Page): Promise<readonly string[]> =>
+  page.evaluate((name) => (globalThis as unknown as Record<string, string[]>)[name] ?? [], PREPARED);

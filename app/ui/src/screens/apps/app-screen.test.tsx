@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 import type { AppDetail, CleanupPlanView, Confirmation, Refusal, UninstallChoice } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -57,6 +57,7 @@ const show = async (
   overview = DEMO_OVERVIEW,
 ): Promise<Rendered> => {
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => accessStatus([[{ kind: 'app-management' }, 'not-asked']]),
     getApp: () => detail,
     getDictionary: () => DICTIONARY,
@@ -295,6 +296,30 @@ describe('AppScreen', () => {
         expect(discardCleanup).toHaveBeenCalledWith({ plan: 1 });
       });
       expect(store.getState().cleanup).toStrictEqual({ kind: 'idle' });
+    });
+
+    it('an uninstall of everything is confirmed with the risk understood', async () => {
+      const confirmCleanup = vi.fn<(args: unknown) => number>(() => 1);
+      await show(VIDEO_STUDIO_DETAIL, { ...preparing(), confirmCleanup });
+      fireEvent.click(await screen.findByRole('radio', { name: /everything it left/u }));
+      uninstall();
+      const dialog = await screen.findByRole('dialog');
+      const confirm = within(dialog).getByRole('button', { name: 'Move to Trash' });
+
+      expect(confirm).toBeDisabled();
+      fireEvent.click(
+        within(dialog).getByRole('checkbox', { name: 'I understand these may be the only copy of my data' }),
+      );
+      fireEvent.click(confirm);
+
+      expect(
+        confirmCleanup.mock.calls.map(([args]) => {
+          const { highest, highRiskUnderstood, method } = (args as { readonly confirmation: Confirmation })
+            .confirmation;
+
+          return { highest, highRiskUnderstood, method };
+        }),
+      ).toStrictEqual([{ highest: 'high', highRiskUnderstood: true, method: 'trash' }]);
     });
 
     it('goes to Review once confirmed', async () => {

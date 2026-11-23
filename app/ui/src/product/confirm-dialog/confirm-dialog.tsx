@@ -29,7 +29,8 @@ import styles from './confirm-dialog.module.css';
 export type ConfirmDialogProps = {
   // Escape, the close button and Cancel: the owner closes it.
   readonly onCancel: () => void;
-  readonly onConfirm: (method: Method) => void;
+  // The method chosen, and whether the High tick was ticked (always false for a plan below High).
+  readonly onConfirm: (method: Method, highRiskUnderstood: boolean) => void;
   readonly open: boolean;
   // The core's plan, shown exactly: every figure is the plan's own.
   readonly plan: CleanupPlanView;
@@ -287,21 +288,25 @@ const titleOf = (plan: CleanupPlanView, way: Way, permanent: boolean): string =>
   return permanent ? t('ui.confirm.title-permanent', count) : t('ui.confirm.title-trash', count);
 };
 
-// The confirmation of a removal: the action and the count, the highest danger level with its sentence, the total
-// size, the exact items grouped by category and by how they go, with what each group loses, what will not be removed
-// and why, and the permanent choice, off. Every figure is the core's plan: nothing is summed here. A plan whose items
-// were all left out has no confirm button. Cancel has the first focus; no key confirms. Static by the safety rule: only the dialog's own entrance moves.
+// The confirmation of a removal: the action and the count, the highest danger level with its sentence, the total size,
+// the exact items grouped by category and by how they go, with what each group loses, what will not be removed and why,
+// the High tick of a High plan, off, and the permanent choice, off. Every figure is the core's plan: nothing is summed
+// here. A plan whose items were all left out has no confirm button. Cancel has the first focus; no key confirms; a High
+// plan cannot be confirmed until its tick is ticked. Static by the safety rule: only the dialog's own entrance moves.
 export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialogProps): JSX.Element | null => {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const highId = useId();
   const [permanent, setPermanent] = useState(false);
+  const [understood, setUnderstood] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
 
-  // Every opening starts from the Trash.
+  // Every opening starts from the Trash, with the High tick off.
   if (open !== wasOpen) {
     setWasOpen(open);
 
     if (open) {
       setPermanent(false);
+      setUnderstood(false);
     }
   }
 
@@ -312,6 +317,9 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
   const size = honestSize(summary.sizes);
   // A plan of tool items only goes by their tools: it cannot be put back, whatever the method.
   const irreversible = method === 'permanent' || way === 'tools';
+  // A High plan asks for its own tick, whatever its way; the core refuses it without.
+  const high = summary.highest === 'high';
+  const blocked = high && !understood;
 
   // Every item was left out: there is nothing to confirm, only the reasons to read.
   if (summary.count === 0) {
@@ -351,9 +359,11 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
             {t('ui.confirm.cancel')}
           </Button>
           <Button
+            aria-describedby={blocked ? highId : undefined}
+            disabled={blocked}
             icon={Trash2}
             onClick={() => {
-              onConfirm(method);
+              onConfirm(method, high && understood);
             }}
             variant={irreversible ? 'danger' : 'primary'}
           >
@@ -381,6 +391,16 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
           <Group group={group} key={`${group.category} ${group.action}`} method={method} />
         ))}
         {plan.leftOut.length === 0 ? null : <LeftOutList items={plan.leftOut} />}
+        {high ? (
+          <div className={styles.high} id={highId}>
+            <Checkbox
+              checked={understood}
+              description={t('ui.confirm.high-description')}
+              label={t('ui.confirm.high')}
+              onChange={setUnderstood}
+            />
+          </div>
+        ) : null}
         {way === 'tools' ? null : (
           <div className={styles.choice}>
             {method === 'trash' ? <p className={styles.space}>{t('ui.confirm.space-later')}</p> : null}

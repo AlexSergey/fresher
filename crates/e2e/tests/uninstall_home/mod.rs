@@ -36,11 +36,12 @@ use fresher_core::{
     Access, AppId, AppsQuery, BundleFacts, BundleId, CancelToken, Capability, CategoryDescriptor, CategoryId, Claim,
     CleanupPlanView, CommandError, DangerLevel, FindingSink, InstalledApp, InstalledApps, InstalledList, Interest,
     KnownFolder, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern,
-    Protection, Removal, RunningApp, RunningApps, SettingUpdate, SettingValue, Subject, SystemError, Text, TextKey,
-    UninstallChoice,
+    Protection, Removal, RunningApp, RunningApps, SettingUpdate, SettingValue, SettingsStore as _, StoredSettings,
+    Subject, SystemError, Text, TextKey, UninstallChoice,
 };
 use fresher_module_app_caches::AppCachesModule;
 use fresher_sandbox::Sandbox;
+use fresher_store::{DataFolder, FileSettingsStore};
 use fresher_system::{AppSearch, BundleReader, DeclaredSearch, MacInstalledApps};
 use fresher_testing::{
     FIXTURE_NOW, FakeAccess, FakeClock, FakeInstalledApps, FakeRunningApps, FixtureTree, StatedFacts,
@@ -83,12 +84,19 @@ pub(crate) struct Setup {
     pub(crate) extra: &'static str,
     /// The modules registered, in order.
     pub(crate) modules: Vec<Box<dyn Module>>,
+    /// Whether the user accepts the agreement as the engine starts.
+    pub(crate) accept: bool,
+    /// The text of the settings file as the engine starts, written over what the default engine saved; `None` keeps
+    /// that.
+    pub(crate) settings_file: Option<&'static str>,
 }
 
 impl Default for Setup {
-    /// Other apps' data granted, the fixture as it is, `app-caches` registered.
+    /// Other apps' data granted, the fixture as it is, `app-caches` registered, the agreement accepted, the settings
+    /// file as saved.
     fn default() -> Self {
-        Self { other_apps_data: Access::Granted, extra: "", modules: vec![Box::new(AppCachesModule::new().unwrap())] }
+        let modules: Vec<Box<dyn Module>> = vec![Box::new(AppCachesModule::new().unwrap())];
+        Self { other_apps_data: Access::Granted, extra: "", modules, accept: true, settings_file: None }
     }
 }
 
@@ -126,8 +134,18 @@ impl Home {
             protection: protection(&flow.sandbox),
             apps: Some(installed_apps(&flow.sandbox, &flow.stated)),
             running: Some(Arc::clone(&running) as _),
+            accept: setup.accept,
             ..Extras::default()
         };
+        if !setup.accept {
+            // The default engine accepted the agreement, its settings file's only value: a user who has not yet
+            // starts with a settings file that holds nothing.
+            let store = FileSettingsStore::new(DataFolder::open(flow.sandbox.data_folder()).unwrap());
+            store.save(&StoredSettings::default()).unwrap();
+        }
+        if let Some(text) = setup.settings_file {
+            fs::write(flow.sandbox.data_folder().join("settings.json"), text).unwrap();
+        }
         let parts = parts(&flow.sandbox, setup.modules, setup.other_apps_data);
         flow.engine = engine_with(&flow.sandbox, &flow.stated, &flow.open_files, parts, extras);
         Self { flow, running }

@@ -27,8 +27,8 @@ mod flows {
     use std::path::PathBuf;
 
     use fresher_core::{
-        Access, CleanupPlanView, CommandError, Confirmation, ItemOutcome, LeftOut, NotOffered, PutBackOutcome,
-        SkipReason, UninstallChoice,
+        Access, CleanupPlanView, CommandError, Confirmation, DangerLevel, ItemOutcome, LeftOut, NotOffered,
+        PutBackOutcome, SkipReason, UninstallChoice,
     };
     use fresher_testing::TreeReport;
     use serde_json::{Value, json};
@@ -96,7 +96,8 @@ mod flows {
     fn confirmation_by(view: &CleanupPlanView, method: &str) -> Confirmation {
         let summary = view.summary;
         let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                           "highest": summary.highest, "method": method });
+                           "highest": summary.highest, "method": method,
+                           "highRiskUnderstood": summary.highest == DangerLevel::High });
         serde_json::from_value(echo).unwrap()
     }
 

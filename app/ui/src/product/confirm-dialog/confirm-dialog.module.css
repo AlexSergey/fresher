@@ -1,7 +1,7 @@
 /*
  * The confirmation's body. Static by the safety rule: nothing here moves; the dialog's own fade and scale is the one
- * motion. A long group's virtual list is set still (its rows do not enter), and the permanent choice's mark appears at
- * once instead of drawing itself.
+ * motion. A long group's virtual list is set still (its rows do not enter), and the High tick's and the permanent
+ * choice's marks appear at once instead of drawing themselves.
  */
 @layer components {
   .content {
@@ -151,12 +151,14 @@
     animation: none;
   }
 
-  .choice {
+  .choice,
+  .high {
     padding-top: var(--space-4);
     border-top: 1px solid var(--border-subtle);
   }
 
-  .choice path {
+  .choice path,
+  .high path {
     transition: none;
   }
 }

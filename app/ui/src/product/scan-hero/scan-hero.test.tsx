@@ -160,6 +160,20 @@ describe('ScanHero', () => {
   });
 
   describe('positive cases', () => {
+    it('the found size has a description when it has the focus', () => {
+      mountHero({ overview: running(4_200_000_000), phase: 'finished' });
+
+      // eslint-disable-next-line testing-library/no-node-access -- the hinted element has no role to query by
+      const number = screen.getByText('Found').nextElementSibling?.firstElementChild as HTMLElement;
+      act(() => {
+        number.focus();
+      });
+
+      expect(number).toHaveAccessibleDescription(
+        'The space the scan found in all categories. Nothing is removed until you confirm it.',
+      );
+    });
+
     it('Scan calls onScan', () => {
       const onScan = vi.fn();
       mountHero({ onScan });

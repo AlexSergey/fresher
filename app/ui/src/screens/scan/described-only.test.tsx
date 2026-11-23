@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Insight, Overview } from '../../ipc/bindings.generated';
 
-import { mockCore, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { DEMO_INSIGHT, DEMO_INSIGHT_DICTIONARY, DEMO_INSIGHT_STOPPED } from '../../test/demo-insight';
@@ -33,6 +33,7 @@ const renderSection = async (
   const store = createCoreStore();
 
   mockCore({
+    ...sampleAgreementAnswers,
     getDictionary: () => ({ ...DEMO_DICTIONARY, ...DEMO_INSIGHT_DICTIONARY }),
     getModules: () => DEMO_MODULES,
     getOverview: () => overview,
@@ -65,7 +66,12 @@ const section = (): HTMLElement | null => screen.queryByRole('region', { name: '
 describe('DescribedOnly', () => {
   describe('negative cases', () => {
     it('renders nothing before a scan', () => {
-      mockCore({ getDictionary: () => DEMO_DICTIONARY, getModules: () => DEMO_MODULES, ...sampleStorageAnswers });
+      mockCore({
+        ...sampleAgreementAnswers,
+        getDictionary: () => DEMO_DICTIONARY,
+        getModules: () => DEMO_MODULES,
+        ...sampleStorageAnswers,
+      });
 
       render(
         <AppProviders store={createCoreStore()}>

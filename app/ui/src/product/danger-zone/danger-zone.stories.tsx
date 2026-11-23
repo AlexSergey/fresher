@@ -46,6 +46,8 @@ const zone = (level: DangerLevel, props: Partial<DangerZoneProps> = {}): (() => 
 export const stories = storiesOf('DangerZone', {
   // One per level, safest first.
   ...Object.fromEntries(ZONE_ORDER.map((level) => [level, { render: zone(level), width: WIDTH }])),
+  // Inside a part of Review: named by its level, without Select all.
+  nested: { render: zone('high', { nested: true, selectAll: undefined }), width: WIDTH },
   'select-all-mixed': { render: zone('safe', { selectAll: { checked: 'mixed', onChange: noop } }), width: WIDTH },
   'without-select-all': { render: zone('medium', { selectAll: undefined }), width: WIDTH },
 });

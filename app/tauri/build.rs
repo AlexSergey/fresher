@@ -14,6 +14,8 @@ const COMMANDS: &[&str] = &[
     "get_settings",
     "update_setting",
     "reset_settings",
+    "get_agreement",
+    "accept_agreement",
     "ignore",
     "restore_ignored",
     "pick_folder",

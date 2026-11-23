@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Availability, ModuleInfo } from '../ipc/bindings.generated';
 
-import { mockCore, pushEvents, sampleStorageAnswers } from '../ipc/mock';
+import { mockCore, pushEvents, sampleAgreementAnswers, sampleStorageAnswers } from '../ipc/mock';
 import { createCoreStore } from '../state/store';
 import { allFiles, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../test/demo-scan';
 import { AppProviders } from './app-providers';
@@ -28,6 +28,7 @@ describe('AppProviders', () => {
     it('keeps the last list when a refresh fails', async () => {
       let calls = 0;
       mockCore({
+        ...sampleAgreementAnswers,
         getDictionary: () => DEMO_DICTIONARY,
         getModules: () => {
           calls += 1;
@@ -71,6 +72,7 @@ describe('AppProviders', () => {
       let granted = false;
       let calls = 0;
       mockCore({
+        ...sampleAgreementAnswers,
         getDictionary: () => DEMO_DICTIONARY,
         getModules: () => {
           calls += 1;

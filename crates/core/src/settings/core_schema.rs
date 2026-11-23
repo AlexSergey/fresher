@@ -50,6 +50,12 @@ pub const IGNORE_CATEGORIES: &str = "core.ignore.categories";
 /// The paths the user ignores: a finding at or below one is left out, and nothing that holds one is removed.
 pub const IGNORE_PATHS: &str = "core.ignore.paths";
 
+/// The version of the agreement the user accepted; 0 when none was. Written only by `Engine::accept_agreement`.
+pub const AGREEMENT_VERSION_KEY: &str = "core.agreement.version";
+
+/// When the agreement was accepted, in seconds since the epoch; 0 when it never was.
+pub const AGREEMENT_ACCEPTED_AT: &str = "core.agreement.accepted-at";
+
 /// The settings of the core, before every module's, in the order the screen shows them. None of them can switch off
 /// the confirmation before a removal, lower a danger level or choose how items are removed: such settings do not
 /// exist.
@@ -99,7 +105,23 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
     );
     let ignored =
         [ids(IGNORE_MODULES, IdOf::Module), ids(IGNORE_GROUPS, IdOf::Group), ids(IGNORE_CATEGORIES, IdOf::Category)];
-    [motion, roots, min_size].into_iter().chain(ACCESS_OPT_INS.map(opt_in)).chain(ignored).chain([paths]).collect()
+    let number = |key: &str, max| {
+        setting(
+            key,
+            SettingKind::Number { min: 0, max, unit: None },
+            SettingValue::Number(0),
+            SettingGroup::Agreement,
+            SettingEffect::Now,
+        )
+    };
+    let agreement = [number(AGREEMENT_VERSION_KEY, 1000), number(AGREEMENT_ACCEPTED_AT, i64::MAX)];
+    [motion, roots, min_size]
+        .into_iter()
+        .chain(ACCESS_OPT_INS.map(opt_in))
+        .chain(ignored)
+        .chain([paths])
+        .chain(agreement)
+        .collect()
 }
 
 #[cfg(test)]
@@ -136,6 +158,24 @@ mod tests {
             for setting in core_settings() {
                 assert_ne!(setting.group(), crate::SettingGroup::Module, "{}", setting.key());
             }
+        }
+
+        #[test]
+        fn the_agreement_keys_are_in_the_agreement_group() {
+            let agreement: Vec<_> = core_settings()
+                .into_iter()
+                .filter(|setting| setting.key().as_str().starts_with("core.agreement."))
+                .map(|setting| (setting.key().as_str().to_owned(), setting.group(), setting.default().clone()))
+                .collect();
+            let zero = crate::SettingValue::Number(0);
+
+            assert_eq!(
+                agreement,
+                [
+                    ("core.agreement.version".to_owned(), crate::SettingGroup::Agreement, zero.clone()),
+                    ("core.agreement.accepted-at".to_owned(), crate::SettingGroup::Agreement, zero),
+                ]
+            );
         }
 
         #[test]
@@ -195,6 +235,8 @@ mod tests {
                     at("core.ignore.groups", SettingGroup::Ignored, SettingEffect::Now),
                     at("core.ignore.categories", SettingGroup::Ignored, SettingEffect::Now),
                     at("core.ignore.paths", SettingGroup::Ignored, SettingEffect::Now),
+                    at("core.agreement.version", SettingGroup::Agreement, SettingEffect::Now),
+                    at("core.agreement.accepted-at", SettingGroup::Agreement, SettingEffect::Now),
                 ]
             );
         }

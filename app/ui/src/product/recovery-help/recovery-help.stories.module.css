@@ -1,0 +1,6 @@
+/* The help dialog's story: a page as tall as the window behind it. */
+@layer components {
+  .stage {
+    height: 646px;
+  }
+}

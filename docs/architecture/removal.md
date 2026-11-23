@@ -174,6 +174,18 @@ reachable from outside the crate (`remove/`).
 
 ## Fail closed
 
+- Before the cleaner is reached, the engine checks the preconditions of a cleanup when a plan is prepared (a cleanup's
+  and an uninstall's alike) and again when it is confirmed, in this order, and refuses with `CleaningBlocked` and the
+  first that fails (`crates/engine/src/cleanup/blocked.rs`): the settings file is loaded, so the ignore list is known
+  (`Settings`); the current version of the agreement is accepted (`Agreement`,
+  [`deletion-safety.md`](../restrictions/deletion-safety.md), "The agreement"); the cleanup journal can be written
+  (`Journal`). Put back checks none of them but the journal's. The agreement is accepted by `accept_agreement`, which
+  never replaces a settings file that was not read.
+- A confirmation carries two consents beside the echo, both checked by the core and neither remembered: the permanent
+  choice (`PermanentConsent`) and, for a plan whose highest level is High, `highRiskUnderstood`
+  (`ConfirmError::HighRiskNotUnderstood`, the plan consumed;
+  [`deletion-safety.md`](../restrictions/deletion-safety.md), "A High plan needs its own tick"). The UI gates both in
+  its action layer (`state/cleanup-actions.ts`); the sheet and the dialog are not the guard.
 - No snapshot of open files (at the start or at a refresh): every item from then on is skipped (`CheckFailed`); a
   rehearsal without one skips every item. The engine has no other line for this.
 - A root that is not absolute and plain after `~` is read, or cannot be made canonical: nothing under it is acted on.

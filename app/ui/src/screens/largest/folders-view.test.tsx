@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NodeId, NodeInfo, OwnPlace, OwnRow, Refusal } from '../../ipc/bindings.generated';
 
-import { mockCore, refuse } from '../../ipc/mock';
+import { mockCore, refuse, sampleAgreementAnswers } from '../../ipc/mock';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import { DEMO_OVERVIEW } from '../../test/demo-scan';
@@ -68,6 +68,7 @@ const Host = (): JSX.Element => {
 
 const show = async (reply: (args: unknown) => unknown = answer): Promise<CoreStore> => {
   mockCore({
+    ...sampleAgreementAnswers,
     getDictionary: () => LARGEST_DICTIONARY,
     getLargestPlace: reply,
     getOverview: () => DEMO_OVERVIEW,

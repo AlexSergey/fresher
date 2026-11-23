@@ -76,4 +76,17 @@
     align-items: center;
     gap: var(--space-3);
   }
+
+  /* The agreement in About: its title, its five lines and when it was accepted. */
+  .agreement {
+    display: grid;
+    padding: var(--space-3) 0;
+    color: var(--text-primary);
+    gap: var(--space-3);
+  }
+
+  .agreementTitle {
+    margin: 0;
+    font-weight: var(--type-body-strong-weight);
+  }
 }

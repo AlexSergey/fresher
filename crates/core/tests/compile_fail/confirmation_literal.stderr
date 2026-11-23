@@ -1,4 +1,4 @@
-error[E0451]: fields `plan`, `count`, `allocated`, `highest` and `method` of struct `Confirmation` are private
+error[E0451]: fields `plan`, `count`, `allocated`, `highest`, `method` and `high_risk_understood` of struct `Confirmation` are private
   --> tests/compile_fail/confirmation_literal.rs:7:9
    |
  6 |     let _ = Confirmation {
@@ -13,3 +13,5 @@ error[E0451]: fields `plan`, `count`, `allocated`, `highest` and `method` of str
    |         ^^^^^^^ private field
 11 |         method: Method::Permanent,
    |         ^^^^^^ private field
+12 |         high_risk_understood: false,
+   |         ^^^^^^^^^^^^^^^^^^^^ private field

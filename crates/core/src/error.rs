@@ -99,11 +99,18 @@ pub enum CommandError {
     /// An uninstall of an app that is not offered now; nothing was prepared. The app's page says why.
     #[error("the app is not offered for uninstall: {}", .reason.code())]
     UninstallRefused { reason: NotOffered },
+    /// An acceptance of an agreement that is not the current one: the text changed while it was open.
+    #[error("the agreement is not of the current version")]
+    AgreementChanged,
+    /// A confirmation of a plan that holds a High item, without the user's tick that its risk is understood. The plan
+    /// is gone; nothing was removed.
+    #[error("the risk of a High item was not confirmed")]
+    HighRiskNotUnderstood,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 31] = [
+    pub const CODES: [&str; 33] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -135,6 +142,8 @@ impl CommandError {
         "not-own-item",
         "unknown-app",
         "uninstall-refused",
+        "agreement-changed",
+        "high-risk-not-understood",
     ];
 
     /// The `code` the error is serialized with.
@@ -171,6 +180,8 @@ impl CommandError {
             Self::NotOwnItem => "not-own-item",
             Self::UnknownApp { .. } => "unknown-app",
             Self::UninstallRefused { .. } => "uninstall-refused",
+            Self::AgreementChanged => "agreement-changed",
+            Self::HighRiskNotUnderstood => "high-risk-not-understood",
         }
     }
 
@@ -208,7 +219,9 @@ impl CommandError {
             | Self::UnknownTrash { .. }
             | Self::NotOwnItem
             | Self::UnknownApp { .. }
-            | Self::UninstallRefused { .. } => text,
+            | Self::UninstallRefused { .. }
+            | Self::AgreementChanged
+            | Self::HighRiskNotUnderstood => text,
         }
     }
 }
@@ -269,7 +282,9 @@ pub(crate) mod tests {
             | CommandError::UnknownTrash { .. }
             | CommandError::NotOwnItem
             | CommandError::UnknownApp { .. }
-            | CommandError::UninstallRefused { .. } => error,
+            | CommandError::UninstallRefused { .. }
+            | CommandError::AgreementChanged
+            | CommandError::HighRiskNotUnderstood => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -303,6 +318,8 @@ pub(crate) mod tests {
             sample(CommandError::NotOwnItem),
             sample(CommandError::UnknownApp { id: AppId::new(StateId::new(2), 5) }),
             sample(CommandError::UninstallRefused { reason: NotOffered::Open }),
+            sample(CommandError::AgreementChanged),
+            sample(CommandError::HighRiskNotUnderstood),
         ]
     }
 
@@ -430,6 +447,8 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
+                    vec![],
                     vec![],
                     vec![],
                     vec![],

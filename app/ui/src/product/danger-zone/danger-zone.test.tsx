@@ -44,6 +44,19 @@ describe('DangerZone', () => {
       expect(screen.getByText('content')).toBeInTheDocument();
     });
 
+    it('a nested zone is a third-level heading named by its level', () => {
+      setCoreDictionary({ ...STORY_DICTIONARY, 'core.danger.medium.name': 'Medium' });
+      render(
+        <DangerZone level="medium" nested>
+          content
+        </DangerZone>,
+      );
+
+      expect(screen.getByRole('region', { name: 'Medium' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'Medium' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+    });
+
     it('shows the warning icon for Medium and High', () => {
       const { rerender } = render(<DangerZone level="medium">content</DangerZone>);
 

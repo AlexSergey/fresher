@@ -328,6 +328,7 @@ mod model {
             let echo: Confirmation = serde_json::from_value(serde_json::json!({
                 "plan": 1, "count": summary.count, "allocated": summary.sizes.allocated,
                 "highest": summary.highest, "method": method,
+                "highRiskUnderstood": summary.highest == DangerLevel::High,
             }))
             .unwrap();
             plan.confirm(&echo, Timestamp::from_secs(1)).unwrap()

@@ -13,9 +13,9 @@ use std::time::{Duration, SystemTime};
 
 use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, access_of, sandbox_engine};
 use fresher_core::{
-    Access, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, Confirmation, Event, Finding,
-    FindingOrder, FindingsQuery, LeftOutCount, RecordedOutcome, SANDBOX_MARKER, Subject, TrashState, VolumeFacts,
-    VolumeId, Volumes,
+    Access, BlockedReason, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, CommandError,
+    Confirmation, DangerLevel, Event, Finding, FindingOrder, FindingsQuery, LeftOutCount, RecordedOutcome,
+    SANDBOX_MARKER, Subject, TrashState, VolumeFacts, VolumeId, Volumes,
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_macos::{current_user, protection, user_temp_dir};
@@ -163,6 +163,9 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
     let map = check_map(name, &file, &engine, &sandbox, &findings)?;
     let trash_before = engine.trash();
     crate::trash::check_before(name, &trash_before)?;
+    if let Some(selection) = selection_of(name, &positives)? {
+        check_agreement_guard(name, &engine, || engine.prepare_cleanup(&selection))?;
+    }
     let (view, detail) = clean(name, &engine, &positives)?;
     check_no_unstated_calls(name, &commands)?;
     let (view, detail) = (view.as_ref(), detail.as_ref());
@@ -462,6 +465,51 @@ fn check_offered<'a>(
     Ok(found)
 }
 
+/// The first prepare of a case file's run, before the agreement: the sandbox starts with no acceptance, `attempt` is
+/// refused for the agreement and leaves no plan pending; then the user accepts it, as the app asks. A file with no
+/// positive prepares nothing and never meets it.
+pub(crate) fn check_agreement_guard<T>(
+    name: &str,
+    engine: &Engine,
+    attempt: impl FnOnce() -> Result<T, CommandError>,
+) -> Result<(), Failure> {
+    let agreement = engine.agreement().map_err(|error| failure(name, format!("{error:?}")))?;
+    if agreement.is_accepted() {
+        return Err(failure(name, "the sandbox starts with the agreement accepted"));
+    }
+    match attempt() {
+        Err(CommandError::CleaningBlocked { reason: BlockedReason::Agreement }) => {}
+        Err(error) => {
+            return Err(failure(name, format!("the cleanup was not refused before the agreement: {error:?}")));
+        }
+        Ok(_) => return Err(failure(name, "the cleanup was not refused before the agreement")),
+    }
+    let echo: Confirmation =
+        serde_json::from_value(json!({ "plan": 0, "count": 1, "allocated": 0, "highest": "safe", "method": "trash",
+            "highRiskUnderstood": false }))
+        .map_err(|error| failure(name, error))?;
+    // `confirm` takes the pending plan before `blocked::check`: with no plan it answers `PlanGone`, while a pending one,
+    // whatever its id, would be taken and answered `CleaningBlocked` (`Agreement`). So this confirm of plan 0 catches a
+    // plan the refusal left pending.
+    match engine.confirm_cleanup(&echo) {
+        Err(CommandError::PlanGone) => {}
+        other => return Err(failure(name, format!("a plan is pending after the refusal: {other:?}"))),
+    }
+    engine
+        .accept_agreement(fresher_core::AGREEMENT_VERSION)
+        .map_err(|error| failure(name, format!("the agreement cannot be accepted: {error:?}")))?;
+    Ok(())
+}
+
+/// The selection of `positives`' findings; `None` when there is none.
+fn selection_of(name: &str, positives: &[&Finding]) -> Result<Option<CleanupSelection>, Failure> {
+    if positives.is_empty() {
+        return Ok(None);
+    }
+    let ids: Vec<_> = positives.iter().map(|finding| finding.id()).collect();
+    serde_json::from_value(json!({ "findings": ids, "categories": [] })).map(Some).map_err(|error| failure(name, error))
+}
+
 /// Prepares the cleanup of `positives`, confirms it to the Trash with the summary it got and waits for its end; no
 /// cleanup runs when the plan holds no item (everything left out).
 fn clean(
@@ -469,12 +517,7 @@ fn clean(
     engine: &Engine,
     positives: &[&Finding],
 ) -> Result<(Option<CleanupPlanView>, Option<CleanupDetail>), Failure> {
-    if positives.is_empty() {
-        return Ok((None, None));
-    }
-    let ids: Vec<_> = positives.iter().map(|finding| finding.id()).collect();
-    let selection: CleanupSelection =
-        serde_json::from_value(json!({ "findings": ids, "categories": [] })).map_err(|error| failure(name, error))?;
+    let Some(selection) = selection_of(name, positives)? else { return Ok((None, None)) };
     let view = engine
         .prepare_cleanup(&selection)
         .map_err(|error| failure(name, format!("the cleanup cannot be prepared: {error:?}")))?;
@@ -483,7 +526,8 @@ fn clean(
     }
     let summary = view.summary;
     let echo: Confirmation = serde_json::from_value(json!({ "plan": view.plan, "count": summary.count,
-        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash" }))
+        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash",
+        "highRiskUnderstood": summary.highest == DangerLevel::High }))
     .map_err(|error| failure(name, error))?;
     let events = engine.subscribe();
     let id = engine

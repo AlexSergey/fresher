@@ -276,6 +276,27 @@ mod negative {
     }
 
     #[test]
+    fn an_uninstall_without_the_agreement_is_blocked_and_holds_no_plan() {
+        let engine = scanned(World::new().fixture().unaccepted());
+
+        let refused = engine.prepare_uninstall(EDITOR, UninstallChoice::KeepData);
+        let unknown = AppId::new(StateId::new(9), 0);
+
+        assert_eq!(refused, Err(CommandError::CleaningBlocked { reason: fresher_core::BlockedReason::Agreement }));
+        assert!(!has_pending(&engine));
+        assert_eq!(
+            engine.prepare_uninstall(unknown, UninstallChoice::KeepData),
+            Err(CommandError::UnknownApp { id: unknown })
+        );
+        let unmeasured =
+            scanned(World { apps: FakeInstalledApps::new(vec![editor()]), ..World::new() }.fixture().unaccepted());
+        assert_eq!(
+            unmeasured.prepare_uninstall(EDITOR, UninstallChoice::KeepData),
+            Err(CommandError::UninstallRefused { reason: NotOffered::Unmeasured })
+        );
+    }
+
+    #[test]
     fn an_app_opened_since_the_list_is_refused_open() {
         let running = FakeRunningApps::default().then(opened(&["com.example.Editor"]));
         let engine = World { running: Arc::new(running), ..World::new() }.scanned();

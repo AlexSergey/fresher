@@ -1,4 +1,4 @@
-# Logs of older JetBrains IDE versions
+# Logs of older JetBrains IDEs
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 

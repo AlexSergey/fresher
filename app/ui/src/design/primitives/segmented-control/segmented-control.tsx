@@ -1,10 +1,13 @@
-import { type CSSProperties, type JSX, type KeyboardEvent, useRef } from 'react';
+import { type CSSProperties, type JSX, type KeyboardEvent, useId, useRef } from 'react';
 
 import type { Forced } from '../forced';
 
+import { Tooltip } from '../tooltip/tooltip';
 import styles from './segmented-control.module.css';
 
 export type SegmentedControlProps<T extends string> = Forced & {
+  // One sentence on what the choice does: the group's description, and a tooltip on hover and focus.
+  readonly description?: string;
   readonly disabled?: boolean;
   // The group's accessible name.
   readonly label: string;
@@ -41,6 +44,7 @@ const targetOf = (key: string, index: number, last: number): null | number => {
 // One choice of a few, as a radio group: the arrows, Home and End move the choice, as native radios do. The segments
 // are equal, as macOS draws them, so one indicator under the chosen one slides by `transform` from its index alone.
 export const SegmentedControl = <T extends string>({
+  description,
   disabled = false,
   label,
   onChange,
@@ -48,6 +52,7 @@ export const SegmentedControl = <T extends string>({
   value,
   ...forced
 }: SegmentedControlProps<T>): JSX.Element => {
+  const descriptionId = useId();
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const selected = Math.max(
     options.findIndex((option) => option.value === value),
@@ -70,8 +75,9 @@ export const SegmentedControl = <T extends string>({
     }
   };
 
-  return (
+  const group = (
     <div
+      aria-describedby={description === undefined ? undefined : descriptionId}
       aria-disabled={disabled || undefined}
       aria-label={label}
       className={styles.control}
@@ -103,5 +109,20 @@ export const SegmentedControl = <T extends string>({
         </button>
       ))}
     </div>
+  );
+
+  if (description === undefined) {
+    return group;
+  }
+
+  return (
+    <>
+      <Tooltip content={description} repeatsName>
+        {() => group}
+      </Tooltip>
+      <span className="u-visually-hidden" id={descriptionId}>
+        {description}
+      </span>
+    </>
   );
 };

@@ -183,7 +183,12 @@ No database: the app keeps its own state in small plain files, with nothing to i
   (`Overview.hiddenModules`, each `{ module, by }`, `by` the module's own entry or its group), so the UI never
   works it out. `ModuleInfo.group` carries each module's group and `ModuleInfo.choices` its choices (`ChoiceInfo`: a name and the categories it selects, with its two texts); the engine's `hidden_modules` resolves the lists. `ignore` and `restore_ignored` change the lists through the same check and
   save as `update_setting`. The app's own commands beside the engine: `pick_folder` (the system's folder picker,
-  `tauri-plugin-dialog`, called from Rust only) and `get_own_data` (the footprint below).
+  `tauri-plugin-dialog`, called from Rust only) and `get_own_data` (the footprint below). Since plan 039 two more: `get_agreement` (the text, its version and whether
+  the current one was accepted; a read) and `accept_agreement(version)` (an action; `AgreementChanged` for another
+  version). The acceptance is two settings of a group the screen never shows (`core.agreement.version` and
+  `core.agreement.accepted-at`), written only by `Engine::accept_agreement`; every prepare and every confirm checks it
+  (`BlockedReason::Agreement`, after the settings file and before the journal; [`removal.md`](./removal.md), "Fail
+  closed").
 - **Atomic writes**: a temporary file in the same folder, `fsync`, then a rename.
 - **The version policy**: every file the app writes carries `format` and `version`. What holds the user's decisions or
   history (settings, the cleanup journal, history points) is migrated forward one version at a time; what can be
@@ -550,9 +555,13 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   the core's rule; the confirmation shows only the core's cleanup plan (plan 008).
 - **Cleanup** (`state/cleanup.ts`): `idle`, `preparing`, `confirming { plan }`, `running`, `finished { report }`,
   `refused { refusal }`, from the review screen's button to the result; the commands are sent from
-  `state/cleanup-actions.ts`. The confirmation sends back exactly the plan's own summary (`confirmationOf`); a
-  finished cleanup empties the selection, and `findings-removed` drops the finding pages and marks the overview stale.
+  `state/cleanup-actions.ts`, which is also where the agreement is met: before a prepare it asks the core
+  (`get_agreement`) and opens the agreement sheet (`product/agreement-sheet/`) when the current version is not
+  accepted; one acceptance per click, then the prepare goes on. The sheet is not the guard, the engine is. The
+  confirmation sends back exactly the plan's own summary (`confirmationOf`) and, for a High plan, the tick
+  `highRiskUnderstood` of the dialog (cleared at every opening); a finished cleanup empties the selection, and `findings-removed` drops the finding pages and marks the overview stale.
 - **The cleanup's screens** (plan [008/07](../plans/008-safe-removal/07-interface/readme.md)): the review screen's
+  safe part and danger zone (Medium and High, apart by a border; nothing in it pre-selected), and its
   panel (`screens/review/cleanup-panel.tsx`) asks the core for a plan and shows it in the confirmation
   (`product/confirm-dialog/`: Cancel first, the permanent choice off and red when ticked, what will not be removed and
   why); then the progress with Stop (`product/cleanup-progress/`) and the result (`product/result-summary/`, the

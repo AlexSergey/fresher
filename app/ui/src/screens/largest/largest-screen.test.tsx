@@ -12,7 +12,7 @@ import type {
 } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import {
@@ -46,6 +46,7 @@ const overviewOf = (coverage: Coverage = FULL_COVERAGE, changedSince?: number, s
 // The screen over the mocked core; resolves when the core's first answers are in.
 const show = async (answers: Partial<CoreAnswers> = {}, overview: Overview = overviewOf()): Promise<CoreStore> => {
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => accessStatus([[{ kind: 'all-files' }, 'granted']]),
     getDictionary: () => DICTIONARY,
     getLargest: (args) => largestPageOf(queryOf(args)),

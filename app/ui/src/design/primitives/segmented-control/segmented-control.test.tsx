@@ -70,6 +70,20 @@ describe('SegmentedControl', () => {
   });
 
   describe('positive cases', () => {
+    it('the group has a description when one is given', () => {
+      render(
+        <SegmentedControl
+          description="Orders the list."
+          label="Sort by"
+          onChange={vi.fn()}
+          options={OPTIONS}
+          value="name"
+        />,
+      );
+
+      expect(screen.getByRole('radiogroup', { name: 'Sort by' })).toHaveAccessibleDescription('Orders the list.');
+    });
+
     it('is a named radio group with its choice checked', () => {
       showSort('name');
 

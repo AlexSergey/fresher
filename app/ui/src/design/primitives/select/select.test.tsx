@@ -40,6 +40,22 @@ describe('Select', () => {
   });
 
   describe('positive cases', () => {
+    it('the select has a description when one is given', () => {
+      render(
+        <Select
+          description="Lists only older items."
+          label="Older than"
+          onChange={vi.fn()}
+          options={OPTIONS}
+          value="week"
+        />,
+      );
+
+      expect(screen.getByRole('combobox', { name: 'Older than' })).toHaveAccessibleDescription(
+        'Lists only older items.',
+      );
+    });
+
     it('the label names the select and shows the value', () => {
       const select = showSelect(vi.fn());
 

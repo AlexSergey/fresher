@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use fresher_core::{Build, CleanupSelection, Confirmation};
+use fresher_core::{Build, CleanupSelection, Confirmation, DangerLevel};
 use fresher_testing::FakeClock;
 use serde_json::{Value, json};
 
@@ -62,7 +62,8 @@ fn record_cleanup(shell: &Shell, runs: &DevRuns, selection: &Value, method: &str
     let view = shell.engine().prepare_cleanup(&selection).unwrap();
     let summary = view.summary;
     let confirmation = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                               "highest": summary.highest, "method": method });
+                               "highest": summary.highest, "method": method,
+                               "highRiskUnderstood": summary.highest == DangerLevel::High });
     let confirmation: Confirmation = serde_json::from_value(confirmation).unwrap();
     shell.engine().confirm_cleanup(&confirmation).unwrap();
     for event in until_finished(&events, is_cleanup_finished) {

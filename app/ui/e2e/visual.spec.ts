@@ -36,6 +36,16 @@ const reviewAll = async (page: Page, script: CoreScript): Promise<void> => {
   await go(page, /^Review/, 'Review');
 };
 
+// The first cleanup of a world where the agreement was never accepted: the sheet is open.
+const agreementSheet = async (page: Page): Promise<Locator> => {
+  await reviewAll(page, { ...SCRIPTS.cleaning, agreement: 'not-accepted' });
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Before your first cleanup' });
+  await expect(sheet.getByRole('button', { name: 'Not now' })).toBeFocused();
+
+  return sheet;
+};
+
 const confirmation = async (page: Page, script: CoreScript): Promise<Locator> => {
   await reviewAll(page, script);
   await page.getByRole('button', { name: 'Move to Trash…' }).click();
@@ -51,6 +61,32 @@ const ollamaConfirmation = async (page: Page): Promise<Locator> => {
   await scan(page, '10.9 GB');
   await page.getByRole('checkbox', { name: 'Select Ollama models' }).check();
   await go(page, /^Review/, 'Review');
+  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  return dialog;
+};
+
+// The downloads scanned on Scan: the Low, Medium and High zones.
+const downloadsScanned = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.downloads);
+  await page.goto('/');
+  await scanButton(page).click();
+  await scanFinished(page);
+};
+
+// The installers (Low) and the big untouched file (High) ticked, and the review open: both parts.
+const reviewDownloads = async (page: Page): Promise<void> => {
+  await downloadsScanned(page);
+  await page.getByRole('checkbox', { name: 'Select Installers of installed apps' }).check();
+  await page.getByRole('checkbox', { name: 'Select Big downloads you have not opened' }).check();
+  await go(page, /^Review/, 'Review');
+};
+
+// The confirmation of the downloads' High plan, its High tick off.
+const highConfirmation = async (page: Page): Promise<Locator> => {
+  await reviewDownloads(page);
   await page.getByRole('button', { name: 'Move to Trash…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
@@ -194,6 +230,18 @@ test.describe('positive cases', () => {
       await looksTheSame(page, 'banner-development.png');
     });
 
+    test('the question before Select all of the High zone', async ({ page }) => {
+      await downloadsScanned(page);
+      await page
+        .getByRole('region', { exact: true, name: 'High risk' })
+        .getByRole('checkbox', { name: 'Select all' })
+        .click();
+      const question = page.getByRole('dialog', { name: 'Select everything at High?' });
+      await expect(question.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+      await looksTheSame(page, 'scan-select-all-question.png');
+    });
+
     test('Full Disk Access denied', async ({ page }) => {
       await open(page, SCRIPTS.denied);
       await scan(page, '2.6 GB');
@@ -219,7 +267,7 @@ test.describe('positive cases', () => {
     for (const [script, category, line, file] of [
       [
         'jetbrains',
-        'Settings and plugins of older JetBrains IDE versions',
+        'Settings and plugins of older JetBrains IDEs',
         '2 items left out (600 MB)',
         'category-details-jetbrains.png',
       ],
@@ -357,6 +405,14 @@ test.describe('positive cases', () => {
       await looksTheSame(page, 'review-selection.png');
     });
 
+    test('with the safe part and the danger zone', async ({ page }) => {
+      await reviewDownloads(page);
+      await expect(page.getByRole('region', { name: 'Danger zone' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'review-parts.png');
+    });
+
     test('with nothing selected', async ({ page }) => {
       await open(page, SCRIPTS.demo);
       await scan(page, '2.6 GB');
@@ -373,6 +429,21 @@ test.describe('positive cases', () => {
       await expect(dialog).toHaveAccessibleName('Move 3 items to the Trash?');
 
       await looksTheSame(page, 'cleanup-confirm.png');
+    });
+
+    test('the agreement before the first cleanup', async ({ page }) => {
+      const sheet = await agreementSheet(page);
+      await expect(sheet.getByRole('button', { name: 'I understand' })).toBeVisible();
+
+      await looksTheSame(page, 'agreement-sheet.png');
+    });
+
+    test('the full licence', async ({ page }) => {
+      const sheet = await agreementSheet(page);
+      await sheet.getByRole('button', { name: 'Read the full licence' }).click();
+      await expect(page.getByRole('dialog', { name: 'Licence' })).toBeVisible();
+
+      await looksTheSame(page, 'licence.png');
     });
 
     test('the confirmation, permanent', async ({ page }) => {
@@ -400,6 +471,22 @@ test.describe('positive cases', () => {
       await expect(leftOut).toContainText('Quit Safari and try again.');
 
       await looksTheSame(page, 'cleanup-confirm-left-out.png');
+    });
+
+    test('the confirmation of a High plan, its tick off', async ({ page }) => {
+      const dialog = await highConfirmation(page);
+      await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeDisabled();
+
+      await looksTheSame(page, 'cleanup-confirm-high.png');
+    });
+
+    test('the confirmation of a High plan, ticked', async ({ page }) => {
+      const dialog = await highConfirmation(page);
+      await dialog.getByRole('checkbox', { name: 'I understand these may be the only copy of my data' }).check();
+      await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'cleanup-confirm-high-ticked.png');
     });
 
     test('the confirmation that names Medium', async ({ page }) => {
@@ -463,6 +550,15 @@ test.describe('positive cases', () => {
       await page.mouse.move(0, 0);
 
       await looksTheSame(page, 'scan-trash-two.png');
+    });
+
+    test('the help when something was removed that is needed', async ({ page }) => {
+      const dialog = await confirmation(page, SCRIPTS.cleaning);
+      await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('button', { name: 'Removed something you need?' }).click();
+      await expect(page.getByRole('dialog', { name: 'Removed something you need?' })).toBeVisible();
+
+      await looksTheSame(page, 'recovery-help.png');
     });
 
     test('the result of a stopped cleanup', async ({ page }) => {
@@ -618,6 +714,22 @@ test.describe('positive cases', () => {
 
       await looksTheSame(page, 'settings.png');
     });
+
+    for (const [agreement, file] of [
+      ['accepted', 'settings-about.png'],
+      ['not-accepted', 'settings-about-not-accepted.png'],
+    ] as const) {
+      test(`the About group, agreement ${agreement}`, async ({ page }) => {
+        await open(page, { ...SCRIPTS.settings, agreement });
+        await go(page, 'Settings', 'Settings');
+        const about = page.getByRole('region', { name: 'About' });
+        await expect(about.getByRole('listitem')).toHaveCount(5);
+        await about.scrollIntoViewIfNeeded();
+
+        await expectNoCspViolation(page);
+        await expect(about).toHaveScreenshot(file);
+      });
+    }
 
     test('the days field of Logs and crash reports', async ({ page }) => {
       await logsSettings(page);

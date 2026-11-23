@@ -24,6 +24,33 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `a_together_item_shows_its_subject_and_the_parts_after_it` (`crates/core/src/cleanup/view.rs`),
   `a_together_item_with_a_covered_part_is_left_out_whole` (`crates/engine/src/cleanup/plan.rs`).
 
+## The agreement
+
+- **Rule:** nothing is cleaned until the user has accepted the current version of a short agreement, once, before the
+  first cleanup. Its five lines (`core.agreement.line.*` in `crates/core/locales/en.json`):
+  1. "Fresher is free and open source, and it comes with no warranty."
+  2. "It removes only what you confirm, so each removal is your decision."
+  3. "A danger level is Fresher's best judgement, not a guarantee."
+  4. "Keep a backup of anything you cannot afford to lose."
+  5. "Items go to the Trash, where you can put them back until the Trash is emptied. A permanent delete, and what an
+     app's own tool removes, cannot be undone."
+
+  The engine refuses every prepare (a cleanup's and an uninstall's) and every confirm without the acceptance of the
+  current version (`CleaningBlocked` with `BlockedReason::Agreement`), after the settings-file check and before the
+  journal's. Put back, picking a row of the Largest screen, the Trash view, scans and settings never need it. Changing
+  a line raises `AGREEMENT_VERSION` (`crates/core/src/agreement.rs`) and writes `core.agreement.changes.v<n>`, what
+  changed in version `n`, in the same change: a user who accepted an older version is asked again and told what
+  changed. The acceptance (its version and time) is two values of the local settings file, written only by
+  `accept_agreement`, kept by a reset, and never sent anywhere. `accept_agreement` is refused (`CleaningBlocked` with
+  `BlockedReason::Settings`) unless the settings file was read (`Loaded`): it never replaces a broken file, and cleaning
+  stays blocked by that file anyway.
+- **Why:** the user should know, before anything is removed, that the app comes with no warranty, that a danger level
+  is a judgement and that a backup is theirs to keep.
+- **Enforced by:** `blocked::check` (`crates/engine/src/cleanup/blocked.rs`), reached by `rehearse_and_keep` (the tail
+  of every prepare) and `confirm`; the generic `update_setting` refuses the two keys (`UnknownSetting`). Tests:
+  `crates/core/src/agreement.rs`, `crates/engine/src/settings.rs`, the agreement tests of
+  `crates/engine/src/cleanup/pending.rs`, `cleanup/operation.rs`, `apps/uninstall_tests.rs` and `own_tests.rs`.
+
 ## Scanning is read-only
 
 - **Rule:** the scanner and the rules never write to, move or delete anything in a scanned root.
@@ -49,6 +76,22 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `every_part_goes_to_the_trash_the_subject_first` and `the_permanent_way_deletes_each_part_through_the_deletion_point`
   (`remove/together.rs`), `a_together_item_comes_back_parts_first_and_the_subject_last` and
   `a_together_item_whose_layer_cannot_come_back_keeps_its_subject_in_the_trash` (`history.rs`).
+
+## A High plan needs its own tick
+
+- **Rule:** next to the permanent consent, a plan whose highest level is High is confirmed only with the user's tick
+  "I understand these may be the only copy", sent with the echo (`highRiskUnderstood`) and checked by the core. It
+  belongs to one confirmation: never remembered, never a setting. A plan below High needs no tick.
+- **Why:** a High item may hold work or data that does not come back by itself; the user says so in so many words,
+  every time, and the core does not take the UI's word that they did.
+- **Enforced by:** `CleanupPlan::confirm` (`crates/core/src/cleanup/confirm.rs`) refuses with
+  `ConfirmError::HighRiskNotUnderstood` after the echo's fields are checked; the plan is consumed. The engine answers
+  `CommandError::HighRiskNotUnderstood` before anything an uninstall adds (`crates/engine/src/cleanup/operation.rs`).
+  Tests: the High tests of `confirm.rs`, `confirm_of_a_high_plan_without_the_risk_is_refused_and_acts_on_nothing`
+  (`operation.rs`), `crates/e2e/tests/high_risk.rs` on files (a High cleanup and an uninstall of everything), and the
+  UI's e2e mock, which refuses a High echo without the tick as the core does. The confirmation
+  (`app/ui/src/product/confirm-dialog/confirm-dialog.tsx`) shows the tick above the permanent choice and apart from it,
+  cleared at every opening, and keeps its confirm button inactive until it is ticked, in Review and on an app's page.
 
 ## Re-check before delete
 

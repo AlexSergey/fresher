@@ -10,7 +10,8 @@ use fresher_core::{
 use serde_json::json;
 
 use crate::Engine;
-use crate::testing::{Fixture, ScriptedWalk, TestModule, bytes, scan};
+use crate::settings::Settings;
+use crate::testing::{Fixture, MemorySettings, ScriptedWalk, TestModule, bytes, scan};
 
 /// Modules `alpha` (`alpha.caches`, safe, every `Caches` folder) and `beta` (`beta.logs`, low, every `Logs` folder),
 /// over a walk that finds, as findings 1 to 4: `/home/a/Caches` (10 bytes), `/home/Logs` (20), `/home/b/Caches` (30),
@@ -33,6 +34,12 @@ pub(crate) fn scanned(fixture: Fixture) -> Engine {
     engine
 }
 
+/// Takes the acceptance of the agreement away from `engine`, as if the settings file had been edited and read again.
+pub(crate) fn withdraw_agreement(engine: &Engine) {
+    let schema = engine.shared.registry.schema().unwrap();
+    *engine.shared.settings.lock().unwrap() = Settings::load(schema, &MemorySettings::default());
+}
+
 /// Findings `findings` picked one by one, and each `(category, except)` picked whole.
 pub(crate) fn select(findings: &[u32], categories: &[(&str, &[u32])]) -> CleanupSelection {
     let categories: Vec<_> =
@@ -40,7 +47,9 @@ pub(crate) fn select(findings: &[u32], categories: &[(&str, &[u32])]) -> Cleanup
     serde_json::from_value(json!({ "findings": findings, "categories": categories })).unwrap()
 }
 
-/// The confirmation the UI sends for `view` by `method`, with `change` applied to its JSON.
+/// The confirmation the UI sends for `view` by `method`, with `change` applied to its JSON. The risk is understood when
+/// the plan's highest level is High, as a user who ticked it; a test sets `highRiskUnderstood` in `change` to ask
+/// otherwise.
 pub(crate) fn echo_with(
     view: &CleanupPlanView,
     method: &str,
@@ -53,6 +62,7 @@ pub(crate) fn echo_with(
         "allocated": summary.sizes.allocated,
         "highest": summary.highest,
         "method": method,
+        "highRiskUnderstood": summary.highest == DangerLevel::High,
     });
     change(&mut json);
     serde_json::from_value(json).unwrap()

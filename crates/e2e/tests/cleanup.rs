@@ -12,6 +12,7 @@ mod support;
 
 #[cfg(test)]
 #[path = "cleaning/mod.rs"]
+#[expect(dead_code, reason = "the cleanup home is shared; only the agreement flows restart it")]
 mod cleaning;
 
 #[cfg(test)]
@@ -52,7 +53,7 @@ mod negative {
     use std::os::unix::fs::PermissionsExt as _;
     use std::time::Duration;
 
-    use fresher_core::{BlockedReason, CommandError, LeftOut, PLAN_LIFETIME, SkipReason};
+    use fresher_core::{BlockedReason, CommandError, DangerLevel, LeftOut, PLAN_LIFETIME, SkipReason};
     use serde_json::json;
 
     use crate::checks::assert_nothing_done;
@@ -66,7 +67,7 @@ mod negative {
         let view = home.prepare();
         let wrong = json!({ "plan": view.plan, "count": view.summary.count + 1,
                             "allocated": view.summary.sizes.allocated, "highest": view.summary.highest,
-                            "method": "trash" });
+                            "method": "trash", "highRiskUnderstood": view.summary.highest == DangerLevel::High });
 
         let error = home.engine.confirm_cleanup(&serde_json::from_value(wrong).unwrap());
 

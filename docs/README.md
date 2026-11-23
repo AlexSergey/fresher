@@ -8,6 +8,7 @@ All documentation of the repository lives here.
 | [`workflow.md`](./workflow.md)              | how work is done: branches, merges, subagents, cleanup               |
 | [`rules.md`](./rules.md)                    | the rules every plan and change is checked against                   |
 | [`quality.md`](./quality.md)                | code quality tooling: git hooks, linters, formatters, checks         |
+| [`writing.md`](./writing.md)                | the voice and the shapes of every text the app shows                 |
 | [`dependencies.md`](./dependencies.md)      | every dependency and tool, with its version and licence              |
 | [`testing.md`](./testing.md)                | test bars and kinds of tests                                         |
 | [`manual-testing.md`](./manual-testing.md)  | one checklist of every run by hand, in order, with commands          |

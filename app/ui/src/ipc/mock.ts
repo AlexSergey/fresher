@@ -5,6 +5,7 @@ import { mockIPC } from '@tauri-apps/api/mocks';
 import type { Event, Refusal } from './bindings.generated';
 
 import { type CommandKey, COMMANDS } from '.';
+import { AGREEMENT_ACCEPTED } from '../test/agreement';
 import { SAMPLE_MEANING, SAMPLE_STORAGE_MAP } from '../test/storage-map';
 
 // What the Rust core answers in a test, by the command keys of src/ipc/index.ts; an answer gets the command's args.
@@ -14,6 +15,11 @@ export type CoreAnswers = Readonly<Record<CommandKey, (args: unknown) => unknown
 export const sampleStorageAnswers: Pick<CoreAnswers, 'getStorageMap' | 'getStorageMeaning'> = {
   getStorageMap: () => SAMPLE_STORAGE_MAP,
   getStorageMeaning: () => SAMPLE_MEANING,
+};
+
+// `getAgreement` answering an accepted agreement, as the core builds it; spread into `mockCore`.
+export const sampleAgreementAnswers: Pick<CoreAnswers, 'getAgreement'> = {
+  getAgreement: () => AGREEMENT_ACCEPTED,
 };
 
 const keyOf = (command: string): CommandKey | undefined =>

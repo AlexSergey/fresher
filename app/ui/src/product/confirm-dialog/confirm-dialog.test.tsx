@@ -54,8 +54,8 @@ const Screen = ({ onCancel = vi.fn(), onConfirm = vi.fn(), plan = DEMO_PLAN }: O
           onCancel();
           setOpen(false);
         }}
-        onConfirm={(method) => {
-          onConfirm(method);
+        onConfirm={(method, highRiskUnderstood) => {
+          onConfirm(method, highRiskUnderstood);
           setOpen(false);
         }}
         open={open}
@@ -76,6 +76,12 @@ const openDialog = (owner: Owner = {}): HTMLElement => {
 
   return screen.getByRole('dialog');
 };
+
+const highTick = (): HTMLElement =>
+  screen.getByRole('checkbox', { name: 'I understand these may be the only copy of my data' });
+
+const queryHighTick = (): HTMLElement | null =>
+  screen.queryByRole('checkbox', { name: 'I understand these may be the only copy of my data' });
 
 const permanentChoice = (): HTMLElement =>
   screen.getByRole('checkbox', { name: 'Delete permanently instead — this cannot be undone' });
@@ -123,6 +129,54 @@ describe('ConfirmDialog', () => {
 
       expect(onConfirm).not.toHaveBeenCalled();
       expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('a plan below High shows no High tick', () => {
+      openDialog({ plan: DEMO_PLAN });
+
+      expect(queryHighTick()).toBeNull();
+      expect(screen.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
+    });
+
+    it('a High plan cannot be confirmed without the tick', () => {
+      const onConfirm = vi.fn();
+      openDialog({ onConfirm, plan: HIGH_PLAN });
+      const confirm = screen.getByRole('button', { name: 'Move to Trash' });
+
+      expect(highTick()).not.toBeChecked();
+      expect(confirm).toBeDisabled();
+      expect(confirm).toHaveAccessibleDescription(/Fresher cannot tell whether you keep a copy elsewhere/u);
+
+      fireEvent.click(confirm);
+
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it('the High tick is cleared on reopening', () => {
+      openDialog({ plan: HIGH_PLAN });
+      fireEvent.click(highTick());
+      expect(highTick()).toBeChecked();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      fireEvent.click(opener());
+
+      expect(highTick()).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Move to Trash' })).toBeDisabled();
+    });
+
+    it('the High tick and the permanent tick are separate', () => {
+      openDialog({ plan: HIGH_PLAN });
+
+      fireEvent.click(permanentChoice());
+
+      expect(highTick()).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Delete permanently' })).toBeDisabled();
+
+      fireEvent.click(permanentChoice());
+      fireEvent.click(highTick());
+
+      expect(permanentChoice()).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
     });
 
     it('the confirming button is not the danger variant until the permanent choice is ticked', () => {
@@ -222,7 +276,7 @@ describe('ConfirmDialog', () => {
       const trash = screen.getByRole('button', { name: 'Move to Trash' });
       expect(trash).not.toHaveAttribute('data-variant', 'danger');
       fireEvent.click(trash);
-      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash');
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash', false);
     });
 
     it('a short list is not virtualised', () => {
@@ -300,13 +354,36 @@ describe('ConfirmDialog', () => {
       expect(screen.getByRole('list', { name: 'The items of Example caches' })).not.toContainElement(list);
     });
 
+    it('a ticked High plan confirms with the risk understood', () => {
+      const onConfirm = vi.fn();
+      openDialog({ onConfirm, plan: HIGH_PLAN });
+
+      fireEvent.click(highTick());
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash', true);
+    });
+
+    it('a High plan without the permanent choice still shows the tick', () => {
+      const onConfirm = vi.fn();
+      openDialog({ onConfirm, plan: { ...HIGH_PLAN, permanentAvailable: false } });
+
+      expect(screen.queryByRole('checkbox', { name: /^Delete permanently instead/u })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Move to Trash' })).toBeDisabled();
+
+      fireEvent.click(highTick());
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash', true);
+    });
+
     it('confirm calls onConfirm with trash', () => {
       const onConfirm = vi.fn();
       openDialog({ onConfirm });
 
       fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
 
-      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash');
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('trash', false);
     });
 
     it('with the permanent choice it calls onConfirm with permanent', () => {
@@ -324,7 +401,7 @@ describe('ConfirmDialog', () => {
 
       fireEvent.click(confirm);
 
-      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('permanent');
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith('permanent', false);
     });
 
     it('a tool group says it cannot be put back', () => {

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Access, Overview, StorageMap, TrashView } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -77,6 +77,7 @@ const SCANNING: Overview = {
 
 const core = (answers: Partial<CoreAnswers> = {}, access: Access = 'granted'): void => {
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => allFiles(access),
     getDictionary: () => DICTIONARY,
     getModules: () => DEMO_MODULES,
@@ -88,6 +89,52 @@ const core = (answers: Partial<CoreAnswers> = {}, access: Access = 'granted'): v
 };
 
 const GB = 1_000_000_000;
+
+// The demo overview with a High category beside the Safe and Low ones.
+const WITH_HIGH: Overview = {
+  ...DEMO_OVERVIEW,
+  totals: [
+    ...DEMO_OVERVIEW.totals,
+    {
+      category: 'demo.projects',
+      count: 1,
+      highestDanger: 'high',
+      sizes: { allocated: 2 * GB, completeness: 'complete', logical: 2 * GB, reclaimable: 2 * GB },
+    },
+  ],
+};
+
+// The demo overview with the High categories `categories`, one finding of 2 GB each.
+const withHighCategories = (categories: readonly string[]): Overview => ({
+  ...DEMO_OVERVIEW,
+  totals: [
+    ...DEMO_OVERVIEW.totals,
+    ...categories.map((category) => ({
+      category,
+      count: 1,
+      highestDanger: 'high' as const,
+      sizes: { allocated: 2 * GB, completeness: 'complete' as const, logical: 2 * GB, reclaimable: 2 * GB },
+    })),
+  ],
+});
+
+const HIGH_DICTIONARY = {
+  ...DICTIONARY,
+  'core.danger.high.meaning': 'May hold the only copy of your data. Removing it can lose work.',
+  'core.danger.high.name': 'High',
+  'core.danger.high.zone': 'High risk',
+  'demo.projects.name': 'Example projects',
+};
+
+// The overview with a High zone, and that zone.
+const renderWithHigh = async (): Promise<{ readonly high: HTMLElement; readonly store: CoreStore }> => {
+  core({ getDictionary: () => HIGH_DICTIONARY, getOverview: () => WITH_HIGH });
+  const { store } = await renderOverview();
+
+  return { high: await screen.findByRole('region', { name: 'High risk' }), store };
+};
+
+const selectedCategories = (store: CoreStore): readonly string[] => [...store.getState().selection.categories.keys()];
 
 const TRASH: TrashView = {
   trashes: [
@@ -270,6 +317,56 @@ describe('ScanScreen', () => {
       expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
     });
 
+    it('Select all of a Safe zone does not ask', async () => {
+      const { store } = await renderWithHigh();
+
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Safe to remove' })).getByRole('checkbox', { name: 'Select all' }),
+      );
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(selectedCategories(store)).toStrictEqual(['demo.caches']);
+    });
+
+    it('unticking a High zone does not ask', async () => {
+      const { high, store } = await renderWithHigh();
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull();
+      });
+
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(selectedCategories(store)).toStrictEqual([]);
+    });
+
+    it('a category gone from a High zone while its question is open is not selected', async () => {
+      const { high, store } = await renderWithHigh();
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
+
+      act(() => {
+        store.dispatch({ overview: withHighCategories(['demo.archives']), type: 'overview-loaded' });
+      });
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Select all' }));
+
+      expect(selectedCategories(store)).toStrictEqual(['demo.archives']);
+    });
+
+    it('Cancel on the question of a High zone selects nothing', async () => {
+      const { high, store } = await renderWithHigh();
+
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull();
+      });
+      expect(selectedCategories(store)).toStrictEqual([]);
+      expect(within(high).getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
+    });
+
     it("a Select all of the Safe zone leaves the other zones' cards unticked", async () => {
       core({ getOverview: () => DEMO_OVERVIEW });
       const { store } = await renderOverview();
@@ -373,6 +470,35 @@ describe('ScanScreen', () => {
       ]);
       expect(cardNames('Safe to remove')).toStrictEqual(['Example caches']);
       expect(cardNames('Low risk')).toStrictEqual(['Example downloads']);
+    });
+
+    it('Select all of a High zone asks, then selects', async () => {
+      const { high, store } = await renderWithHigh();
+
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Select everything at High?' });
+      expect(selectedCategories(store)).toStrictEqual([]);
+      expect(within(dialog).getByText(HIGH_DICTIONARY['core.danger.high.meaning'])).toBeInTheDocument();
+      expect(within(dialog).getByText('Nothing is removed until you confirm it in Review.')).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Select all' }));
+
+      expect(selectedCategories(store)).toStrictEqual(['demo.projects']);
+      expect(within(high).getByRole('checkbox', { name: 'Select all' })).toBeChecked();
+    });
+
+    it('Select all of a High zone selects the categories the zone holds when it is answered', async () => {
+      const { high, store } = await renderWithHigh();
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
+
+      act(() => {
+        store.dispatch({ overview: withHighCategories(['demo.projects', 'demo.archives']), type: 'overview-loaded' });
+      });
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Select all' }));
+
+      expect(selectedCategories(store)).toStrictEqual(['demo.projects', 'demo.archives']);
     });
 
     it("a zone's Select all selects every category of that zone and nothing else", async () => {

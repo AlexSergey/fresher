@@ -13,11 +13,12 @@ mod tests {
     use std::collections::BTreeSet;
 
     use crate::{
-        Access, AppDetail, AppOffer, AppsView, BlockedReason, ByteSize, Capability, CapabilityState, CapabilityText,
-        CategoryText, CommandError, Completeness, DangerLevel, Ended, FootprintKind, ItemKind, KeptReason, KnownFolder,
-        LastUse, Manager, MapPart, ModuleGroup, ModuleOutcome, MountKind, NotOffered, NotScanned, PartKind, Place,
-        PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome, SettingsSchema, SkipCode, SkipReason,
-        Text, TextArg, TextKey, ToolId, TrashState, Unchanged, UninstallChoice, VolumeMap, Withheld,
+        AGREEMENT_LINES, AGREEMENT_VERSION, Access, AppDetail, AppOffer, AppsView, BlockedReason, ByteSize, Capability,
+        CapabilityState, CapabilityText, CategoryText, CommandError, Completeness, DangerLevel, Ended, FootprintKind,
+        ItemKind, KeptReason, KnownFolder, LastUse, Manager, MapPart, ModuleGroup, ModuleOutcome, MountKind,
+        NotOffered, NotScanned, PartKind, Place, PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome,
+        SettingGroup, SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey, ToolId, TrashState, Unchanged,
+        UninstallChoice, VolumeMap, Withheld,
     };
 
     use crate::cleanup::outcome_sample;
@@ -43,17 +44,24 @@ mod tests {
         serde_json::to_value(value).unwrap().as_str().unwrap().to_owned()
     }
 
+    /// The danger levels' names, meanings and zones, and the names and meanings of Review's two parts.
+    fn danger_keys() -> Vec<TextKey> {
+        let key = |key: String| TextKey::new(key).unwrap();
+        let levels = DangerLevel::ALL.into_iter().flat_map(|level| {
+            let level = kebab_name(level);
+            ["name", "meaning", "zone"].map(|text| key(format!("core.danger.{level}.{text}")))
+        });
+        let parts = ["safe", "danger"]
+            .into_iter()
+            .flat_map(|part| ["name", "meaning"].map(|text| key(format!("core.danger.part.{part}.{text}"))));
+
+        levels.chain(parts).collect()
+    }
+
     /// Every key the core can emit, built from the enums, the error codes and the core's settings.
     fn core_keys() -> BTreeSet<TextKey> {
         let key = |key: String| TextKey::new(key).unwrap();
-        let danger = DangerLevel::ALL.into_iter().flat_map(|level| {
-            let level = kebab_name(level);
-            [
-                key(format!("core.danger.{level}.name")),
-                key(format!("core.danger.{level}.meaning")),
-                key(format!("core.danger.{level}.zone")),
-            ]
-        });
+        let danger = danger_keys().into_iter();
         let groups = ModuleGroup::ALL.into_iter().flat_map(|group| [group.name_key(), group.description_key()]);
         let completeness = [Completeness::Complete, Completeness::Partial, Completeness::Unknown]
             .map(|completeness| key(format!("core.completeness.{}", completeness_segment(completeness))));
@@ -75,8 +83,11 @@ mod tests {
         let removability =
             Removability::ALL.into_iter().flat_map(|state| std::iter::once(state.name_key()).chain(state.how_key()));
         let schema = SettingsSchema::new([]).unwrap();
-        let settings =
-            schema.descriptors().iter().filter(|setting| setting.key().namespace() == "core").flat_map(|setting| {
+        let settings = schema
+            .descriptors()
+            .iter()
+            .filter(|setting| setting.key().namespace() == "core" && setting.group() != SettingGroup::Agreement)
+            .flat_map(|setting| {
                 let options = match setting.kind() {
                     crate::SettingKind::Choice { options } => options.clone(),
                     _ => Vec::new(),
@@ -103,6 +114,16 @@ mod tests {
         let trash = [sandbox_trash(), SandboxTrashAt::System.text()].map(|text| text.key().clone());
         let left_out = left_out_summaries().into_iter().map(|text| text.key().clone());
         let apps = apps_keys();
+        let agreement = ["title", "intro"]
+            .map(|name| key(format!("core.agreement.{name}")))
+            .into_iter()
+            .chain(AGREEMENT_LINES.map(|id| key(format!("core.agreement.line.{id}"))))
+            // What changed in each version after the first: `v2` up to the current one, none while it is 1.
+            .chain(
+                (2..)
+                    .take_while(|version| *version <= AGREEMENT_VERSION)
+                    .map(|version| key(format!("core.agreement.changes.v{version}"))),
+            );
         let cleanup_states = Ended::ALL
             .map(|ended| ended.text().key().clone())
             .into_iter()
@@ -132,6 +153,7 @@ mod tests {
             .chain(settings)
             .chain(largest)
             .chain(apps)
+            .chain(agreement)
             .collect()
     }
 
@@ -486,6 +508,16 @@ mod tests {
                 .collect();
 
             assert_eq!(zones, [Some("Safe to remove"), Some("Low risk"), Some("Medium risk"), Some("High risk")]);
+        }
+
+        #[test]
+        fn names_both_parts_of_review() {
+            let texts = core_dictionary().unwrap();
+
+            let names: Vec<_> =
+                ["safe", "danger"].map(|part| texts.get(&format!("core.danger.part.{part}.name"))).into();
+
+            assert_eq!(names, [Some("Safe to remove"), Some("Danger zone")]);
         }
     }
 }

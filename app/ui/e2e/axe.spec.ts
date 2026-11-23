@@ -119,6 +119,17 @@ const logsSettings = async (page: Page): Promise<void> => {
 };
 
 // Ollama's models ticked, the review open and the confirmation asked for, the first model's other files listed.
+// The installers (Low) and the big untouched file (High) of the downloads ticked, and the review open: both parts.
+const reviewDownloads = async (page: Page): Promise<void> => {
+  await mockCore(page, SCRIPTS.downloads);
+  await page.goto('/');
+  await scanButton(page).click();
+  await scanFinished(page);
+  await page.getByRole('checkbox', { name: 'Select Installers of installed apps' }).check();
+  await page.getByRole('checkbox', { name: 'Select Big downloads you have not opened' }).check();
+  await go(page, /^Review/, 'Review');
+};
+
 const ollamaConfirmation = async (page: Page): Promise<Locator> => {
   await mockCore(page, SCRIPTS.localAiModelsOllama);
   await page.goto('/');
@@ -244,7 +255,7 @@ test.describe('positive cases', () => {
     });
 
     for (const [script, category, line] of [
-      ['jetbrains', 'Settings and plugins of older JetBrains IDE versions', '2 items left out (600 MB)'],
+      ['jetbrains', 'Settings and plugins of older JetBrains IDEs', '2 items left out (600 MB)'],
       ['temp', 'Old temporary files', '4,712 items left out (790 MB)'],
       ['logs', 'Old logs of your apps', '1 item left out (3 MB)'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)'],
@@ -374,6 +385,43 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
+    test('the review with the safe part and the danger zone', async ({ page }) => {
+      await reviewDownloads(page);
+      await expect(page.getByRole('region', { name: 'Danger zone' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the confirmation of a High plan, its tick off and on', async ({ page }) => {
+      await reviewDownloads(page);
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+      await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+
+      await dialog.getByRole('checkbox', { name: 'I understand these may be the only copy of my data' }).check();
+      await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the question before Select all of the High zone', async ({ page }) => {
+      await mockCore(page, SCRIPTS.downloads);
+      await page.goto('/');
+      await scanButton(page).click();
+      await scanFinished(page);
+      await page
+        .getByRole('region', { exact: true, name: 'High risk' })
+        .getByRole('checkbox', { name: 'Select all' })
+        .click();
+      await expect(
+        page.getByRole('dialog', { name: 'Select everything at High?' }).getByRole('button', { name: 'Cancel' }),
+      ).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
     test('the review with nothing selected', async ({ page }) => {
       await open(page, SCRIPTS.demo);
       await go(page, /^Review/, 'Review');
@@ -385,6 +433,23 @@ test.describe('positive cases', () => {
       await reviewAll(page, SCRIPTS.cleaningLeftOut);
       await page.getByRole('button', { name: 'Move to Trash…' }).click();
       await expect(page.getByRole('dialog').getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the agreement before the first cleanup', async ({ page }) => {
+      await reviewAll(page, { ...SCRIPTS.cleaning, agreement: 'not-accepted' });
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await expect(page.getByRole('dialog', { name: 'Before your first cleanup' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the full licence', async ({ page }) => {
+      await reviewAll(page, { ...SCRIPTS.cleaning, agreement: 'not-accepted' });
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('button', { name: 'Read the full licence' }).click();
+      await expect(page.getByRole('dialog', { name: 'Licence' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -408,6 +473,16 @@ test.describe('positive cases', () => {
       await page.getByRole('button', { name: 'Move to Trash…' }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
       await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the help when something was removed that is needed', async ({ page }) => {
+      await reviewAll(page, SCRIPTS.cleaning);
+      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('button', { name: 'Removed something you need?' }).click();
+      await expect(page.getByRole('dialog', { name: 'Removed something you need?' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -481,6 +556,14 @@ test.describe('positive cases', () => {
       await open(page, SCRIPTS.settings);
       await go(page, 'Settings', 'Settings');
       await expect(page.getByText('Version 0.0.1')).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the About group, with the agreement not accepted', async ({ page }) => {
+      await open(page, { ...SCRIPTS.settings, agreement: 'not-accepted' });
+      await go(page, 'Settings', 'Settings');
+      await expect(page.getByText('Not accepted yet. Fresher asks before your first cleanup.')).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });

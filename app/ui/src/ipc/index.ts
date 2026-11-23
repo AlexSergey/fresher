@@ -2,6 +2,7 @@ import { Channel, invoke, type InvokeArgs } from '@tauri-apps/api/core';
 
 import type {
   AccessStatus,
+  AgreementView,
   AppDetail,
   AppId,
   AppInfo,
@@ -52,6 +53,7 @@ export { inApp } from './runtime';
 
 // The Rust names of the commands (`#[tauri::command]` in app/tauri), the only place they are spelled.
 export const COMMANDS = {
+  acceptAgreement: 'accept_agreement',
   appInfo: 'app_info',
   cancelCleanup: 'cancel_cleanup',
   cancelScan: 'cancel_scan',
@@ -60,6 +62,7 @@ export const COMMANDS = {
   demoPlay: 'demo_play',
   discardCleanup: 'discard_cleanup',
   getAccessStatus: 'get_access_status',
+  getAgreement: 'get_agreement',
   getApp: 'get_app',
   getApps: 'get_apps',
   getCleanup: 'get_cleanup',
@@ -161,6 +164,15 @@ export const getOverview = (): Promise<Overview> => call('getOverview');
 export const getModules = (): Promise<readonly ModuleInfo[]> => call('getModules');
 
 export const getFindings = (query: FindingsQuery): Promise<FindingsPage> => call('getFindings', { query });
+
+// The agreement the first cleanup asks for, and when it was accepted.
+export const getAgreement = (): Promise<AgreementView> => call('getAgreement');
+
+// Accepts the agreement of `version`; the core refuses with `agreement-changed` when the text is another one now.
+export const acceptAgreement = (version: number): Promise<AgreementView> => call('acceptAgreement', { version });
+
+// Whether the core refused an acceptance of a version that is no longer the current one.
+export const isAgreementChanged = (refusal: Refusal): boolean => refusal.error.code === 'agreement-changed';
 
 // The installed apps, largest first, under the filter; the core measures them, which may take seconds.
 export const getApps = (query: AppsQuery): Promise<AppsView> => call('getApps', { query });

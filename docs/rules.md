@@ -45,6 +45,7 @@ default. The visual direction is Graphite and Iris ([`goal.md`](./goal.md), sect
 Every choice offered to the user (a cleanup option, a button, a setting) carries a very clear, short, plain-English
 description of what it does and what the user keeps or loses — one or two sentences, no jargon (the user, 2026-11-15).
 Example: "Deletes only caches and logs. Your settings stay, in case you install the app again."
+The voice and the shapes of these texts are in [`writing.md`](./writing.md).
 
 ## 8. Tested to the bar
 

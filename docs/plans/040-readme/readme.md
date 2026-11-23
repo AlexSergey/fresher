@@ -40,7 +40,7 @@ and spends its length on how the app is built rather than on what it does for th
 | What it finds     | a table: what, example, danger level — generated from [`categories/`](../../categories/README.md) |
 | Why you can trust it | four lines, each linking to the code or the doc that enforces it: confirms first, Trash first and put back, nothing leaves the Mac, nothing in the background |
 | What it does not do | one honest paragraph: no antivirus, no speed-up, no background helper, Docker is described but not cleaned, the Trash is never emptied for you |
-| No warranty       | the agreement's words (plan [039](../039-agreement-and-wording/readme.md))                        |
+| No warranty       | the agreement's words from `core.agreement.*` (plan [039](../039-agreement-and-wording/readme.md)) |
 | Help it get better | "the app offered something it should not have", "a folder it should know" — the issue templates; a one-line ask for a star |
 | Build and contribute | three commands and a link to the docs                                                          |
 | Licence           | one line                                                                                          |

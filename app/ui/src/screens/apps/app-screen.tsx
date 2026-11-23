@@ -191,8 +191,8 @@ export const AppScreen = ({ app }: AppScreenProps): JSX.Element => {
           onCancel={() => {
             discard(store);
           }}
-          onConfirm={(method) => {
-            confirm(store, method);
+          onConfirm={(method, highRiskUnderstood) => {
+            confirm(store, method, highRiskUnderstood);
             navigate({ kind: 'review' });
           }}
           open

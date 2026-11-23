@@ -1,6 +1,6 @@
-import { type JSX, useCallback } from 'react';
+import { type JSX, useCallback, useState } from 'react';
 
-import type { CategoryId, CategoryTotal, Sizes } from '../../ipc/bindings.generated';
+import type { CategoryId, CategoryTotal, DangerLevel, Sizes } from '../../ipc/bindings.generated';
 import type { CardAccess } from '../../product/category-card/category-card';
 
 import { tText } from '../../i18n';
@@ -11,6 +11,7 @@ import { checkedOf } from '../../state/selection';
 import { useCore, useCoreStore } from '../../state/store';
 import { useIgnoreCommands } from '../settings/use-ignore-commands';
 import { moduleOfCategory, useModules } from '../use-modules';
+import { SelectAllQuestion } from './select-all-question';
 import { zoneSelectAll, zonesOf } from './zones';
 
 export type ScanZonesProps = {
@@ -24,7 +25,15 @@ export type ScanZonesProps = {
   readonly unavailable: readonly CategoryTotal[];
 };
 
-// The category cards in their danger zones, the safest first, each zone with its "Select all".
+// A "Select all" that would select asks first in these zones; unticking never asks.
+const ASKING: ReadonlySet<DangerLevel> = new Set(['high', 'medium']);
+
+// The zone asked about (kept while the question fades out), and whether the question is open. Its categories are
+// read again on Select: a scan may have changed them while the question was open.
+type Asked = { readonly level: DangerLevel; readonly open: boolean };
+
+// The category cards in their danger zones, the safest first, each zone with its "Select all". Nothing is selected
+// until the user ticks it.
 export const ScanZones = ({ access, found, scanning, totals, unavailable }: ScanZonesProps): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
@@ -32,6 +41,11 @@ export const ScanZones = ({ access, found, scanning, totals, unavailable }: Scan
   const selection = useCore((state) => state.selection);
   const dictionary = useCore((state) => state.dictionary);
   const { ignore } = useIgnoreCommands();
+  const [asked, setAsked] = useState<Asked | null>(null);
+
+  const choose = (categories: readonly CategoryId[], within: readonly CategoryId[]): void => {
+    store.dispatch({ categories, type: 'choose', within });
+  };
   const moduleOf = useCallback(
     (category: CategoryId): null | { readonly id: string; readonly name: string } => {
       const module = moduleOfCategory(modules, category);
@@ -49,11 +63,13 @@ export const ScanZones = ({ access, found, scanning, totals, unavailable }: Scan
     ...totals,
     ...unavailable.filter(({ category }) => !totals.some((total) => total.category === category)),
   ];
+  const zones = zonesOf(cards);
+  const selectable = (category: CategoryId): boolean => access.get(category)?.kind !== 'unavailable';
 
   return (
     <>
-      {zonesOf(cards).map((zone) => {
-        const all = zoneSelectAll(selection, zone, (category) => access.get(category)?.kind !== 'unavailable');
+      {zones.map((zone) => {
+        const all = zoneSelectAll(selection, zone, selectable);
         const name = tText({ args: {}, key: `core.danger.${zone.level}.zone` });
 
         return (
@@ -66,11 +82,13 @@ export const ScanZones = ({ access, found, scanning, totals, unavailable }: Scan
                 : {
                     checked: all.checked,
                     onChange: (): void => {
-                      store.dispatch({
-                        categories: all.checked === true ? [] : all.categories,
-                        type: 'choose',
-                        within: all.categories,
-                      });
+                      if (all.checked === true) {
+                        choose([], all.categories);
+                      } else if (ASKING.has(zone.level)) {
+                        setAsked({ level: zone.level, open: true });
+                      } else {
+                        choose(all.categories, all.categories);
+                      }
                     },
                   }
             }
@@ -94,6 +112,24 @@ export const ScanZones = ({ access, found, scanning, totals, unavailable }: Scan
           </DangerZone>
         );
       })}
+      {asked === null ? null : (
+        <SelectAllQuestion
+          level={asked.level}
+          onCancel={() => {
+            setAsked({ ...asked, open: false });
+          }}
+          onSelect={() => {
+            const zone = zones.find(({ level }) => level === asked.level);
+            const all = zone === undefined ? null : zoneSelectAll(selection, zone, selectable);
+
+            if (all !== null) {
+              choose(all.categories, all.categories);
+            }
+            setAsked({ ...asked, open: false });
+          }}
+          open={asked.open}
+        />
+      )}
     </>
   );
 };

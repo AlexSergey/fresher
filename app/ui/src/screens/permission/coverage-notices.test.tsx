@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AccessStatus, Capability, Coverage, Overview, SettingsView } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents } from '../../ipc/mock';
+import { mockCore, pushEvents, sampleAgreementAnswers } from '../../ipc/mock';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import {
   ACCESS_DICTIONARY,
@@ -82,6 +82,7 @@ const show = async ({
   const store = createCoreStore();
 
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => status,
     getDictionary: () => ({ ...DEMO_DICTIONARY, ...ACCESS_DICTIONARY }),
     getModules: () => DEMO_MODULES,

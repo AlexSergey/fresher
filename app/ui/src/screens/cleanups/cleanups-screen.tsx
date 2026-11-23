@@ -9,6 +9,7 @@ import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { CleanupRow } from '../../product/cleanup-row/cleanup-row';
+import { RecoveryHelp } from '../../product/recovery-help/recovery-help';
 import { useNavigation } from '../../state/navigation';
 import styles from './cleanups-screen.module.css';
 import { useCleanups } from './use-cleanups';
@@ -20,7 +21,7 @@ export const CleanupsScreen = (): JSX.Element => {
 
   return (
     <>
-      <Toolbar />
+      <Toolbar actions={<RecoveryHelp />} />
       <PageHeader subtitle={t('ui.screen.cleanups.subtitle')} title={t('ui.screen.frame.nav.cleanups')} />
       <div className={styles.content}>
         {page?.blocked == null ? null : (

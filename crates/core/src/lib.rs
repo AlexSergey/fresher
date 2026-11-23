@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod access;
+mod agreement;
 mod app_info;
 mod apps;
 mod cachedir;
@@ -53,6 +54,7 @@ pub use access::{
     Access, AccessStatus, Availability, Capability, CapabilityState, CapabilityText, GuardedFolder, GuardedPlace, Need,
     NeedKind, VolumeKind,
 };
+pub use agreement::{AGREEMENT_LINES, AGREEMENT_VERSION, Acceptance, AgreementView};
 pub use app_info::{AppInfo, Build, SandboxTrashAt, Simulated};
 pub use apps::{
     AppDetail, AppId, AppOffer, AppSummary, AppsError, AppsQuery, AppsView, BundleFacts, ChoiceView, FootprintItem,
@@ -116,9 +118,10 @@ pub use removability::{EntryFacts, Removability};
 pub use removal::{MAX_PARTS, Parts, Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
-    DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IdOf, LARGEST_MIN_SIZE, ModuleSettings,
-    ResolvedSettings, SCAN_ROOTS, SchemaError, SettingDescriptor, SettingEffect, SettingError, SettingGroup,
-    SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema, Unit, min_size_of,
+    AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION_KEY, DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES,
+    IGNORE_PATHS, IdOf, LARGEST_MIN_SIZE, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SchemaError, SettingDescriptor,
+    SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema,
+    Unit, min_size_of,
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{

@@ -477,6 +477,21 @@ pub(crate) mod sample {
         )
         .unwrap()
     }
+
+    /// A plan of two items: 4 KiB at `Low` and 16 KiB at `High`.
+    pub(crate) fn high_plan() -> CleanupPlan {
+        let findings = [trash(1, DangerLevel::Low, 4096), trash(2, DangerLevel::High, 16_384)];
+        let items = findings.iter().map(PlanItem::new).collect();
+        CleanupPlan::new(
+            PlanId::new(7),
+            Timestamp::from_secs(MADE),
+            ScanId::new(1),
+            vec!["/home".into()],
+            items,
+            vec![],
+        )
+        .unwrap()
+    }
 }
 
 #[cfg(test)]

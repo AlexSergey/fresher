@@ -259,6 +259,47 @@ test.describe('positive cases', () => {
     await expect(remove).toBeFocused();
   });
 
+  test('a hint shows on keyboard focus: an icon button, a level badge and a number', async ({ page }) => {
+    await mockCore(page, SCRIPTS.cleaning);
+    await page.goto('/');
+    await scanButton(page).click();
+    await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
+
+    await page.getByRole('button', { name: 'Options for Example caches' }).first().focus();
+    await expect(page.getByRole('tooltip')).toHaveText('Options for Example caches');
+
+    await page.getByText('Safe', { exact: true }).first().locator('xpath=ancestor::*[@tabindex="0"][1]').focus();
+    await expect(page.getByRole('tooltip')).toContainText('Comes back by itself');
+
+    await page.getByRole('region', { name: 'Selection' }).locator('[data-numeric]').focus();
+    await expect(page.getByRole('tooltip')).toHaveText('The space on the disk that everything you selected takes.');
+
+    await page
+      .getByText('Found', { exact: true })
+      .locator('xpath=following-sibling::*[1]//*[@tabindex="0"]|following-sibling::*[@tabindex="0"]')
+      .first()
+      .focus();
+    await expect(page.getByRole('tooltip')).toContainText('The space the scan found in all categories.');
+  });
+
+  test('a hint shows on keyboard focus: a filter of Largest', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+    await scanButton(page).click();
+    await page.getByRole('navigation').getByRole('button', { name: 'Largest' }).click();
+    await page.getByRole('combobox', { name: 'Kind' }).focus();
+    await expect(page.getByRole('tooltip')).toHaveText('Lists only items of one kind, such as videos or archives.');
+  });
+
+  test('a hint shows on keyboard focus: the filter of Apps', async ({ page }) => {
+    await mockCore(page, SCRIPTS.apps);
+    await page.goto('/');
+    await scanButton(page).click();
+    await page.getByRole('navigation').getByRole('button', { name: 'Apps' }).click();
+    await page.getByRole('radio', { checked: true }).focus();
+    await expect(page.getByRole('tooltip')).toHaveText('Lists only apps you have not opened for at least this long.');
+  });
+
   test('the Ignored tabs are one tab stop, the arrow keys move between them and Space turns a switch', async ({
     page,
   }) => {

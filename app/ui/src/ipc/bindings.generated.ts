@@ -40,7 +40,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" } | { "code": "unknown-app", id: AppId, } | { "code": "uninstall-refused", reason: NotOffered, };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" } | { "code": "unknown-app", id: AppId, } | { "code": "uninstall-refused", reason: NotOffered, } | { "code": "agreement-changed" } | { "code": "high-risk-not-understood" };
 
 /**
  * The answer of `get_overview`.
@@ -381,7 +381,7 @@ export type IdOf = "category" | "module" | "group";
  * Where the settings screen shows a setting. Only the core's settings are in the core's groups; a module's are in
  * `Module`, under the module's name.
  */
-export type SettingGroup = "general" | "scan" | "ignored" | "permissions" | "module";
+export type SettingGroup = "general" | "scan" | "ignored" | "permissions" | "module" | "agreement";
 
 /**
  * When a change of a setting shows in the results.
@@ -407,6 +407,28 @@ export type SettingProblem = { "kind": "unknown-key", key: string, } | { "kind":
  * The input of `update_setting`.
  */
 export type SettingUpdate = { key: string, value: SettingValue, };
+
+/**
+ * The answer of `get_agreement`: the current agreement's texts and what the user accepted.
+ */
+export type AgreementView = { 
+/**
+ * The current version.
+ */
+version: number, title: Text, intro: Text, lines: Array<Text>, 
+/**
+ * The last acceptance, of whatever version; `None` when the agreement was never accepted.
+ */
+accepted: Acceptance | null, 
+/**
+ * What changed since the accepted version, when an older one was accepted.
+ */
+changes: Text | null, };
+
+/**
+ * An acceptance of the agreement: which version, and when.
+ */
+export type Acceptance = { version: number, at: Timestamp, };
 
 /**
  * A language the app ships texts for.
@@ -847,9 +869,11 @@ export type SkipReason = { "kind": "not-in-sandbox" } | { "kind": "outside-roots
 
 /**
  * What the confirmation showed the user, sent back by the UI with the plan's id: the count, the allocated bytes of
- * the total, the highest danger level, and the method the user chose. Only deserialized, never built in code.
+ * the total, the highest danger level, the method the user chose, and `highRiskUnderstood`, the user's tick that a
+ * High item may be the only copy (required; it matters only for a plan whose highest level is High). Only
+ * deserialized, never built in code.
  */
-export type Confirmation = { plan: PlanId, count: number, allocated: ByteSize, highest: DangerLevel, method: Method, };
+export type Confirmation = { plan: PlanId, count: number, allocated: ByteSize, highest: DangerLevel, method: Method, highRiskUnderstood: boolean, };
 
 /**
  * How the items of a plan leave their place, chosen once for the whole plan in the confirmation.
@@ -894,7 +918,7 @@ unknown: number, };
 /**
  * Why no cleanup can start: the whole command is refused before any item (fail closed).
  */
-export type BlockedReason = "settings" | "journal" | "disk-full" | "open-files";
+export type BlockedReason = "settings" | "agreement" | "journal" | "disk-full" | "open-files";
 
 /**
  * The input of `get_cleanups`: a page of the history, newest first.

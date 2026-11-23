@@ -89,6 +89,11 @@
     white-space: nowrap;
   }
 
+  .number:focus-visible {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--focus-ring);
+  }
+
   .count {
     color: var(--text-primary);
     font-size: var(--type-hero-size);

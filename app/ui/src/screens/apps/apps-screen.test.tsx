@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppsQuery, AppsView, Refusal } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers } from '../../ipc/mock';
 import { createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import { APPS, APPS_DICTIONARY, APPS_VIEW, MANAGED } from '../../test/apps-list';
@@ -27,6 +27,7 @@ const queryOf = (args: unknown): AppsQuery => (args as { readonly query: AppsQue
 
 const show = async (answers: Partial<CoreAnswers> = {}, overview = DEMO_OVERVIEW): Promise<void> => {
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => accessStatus([[{ kind: 'all-files' }, 'granted']]),
     getApps: () => APPS_VIEW,
     getDictionary: () => DICTIONARY,

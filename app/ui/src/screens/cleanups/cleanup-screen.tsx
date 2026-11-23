@@ -11,6 +11,7 @@ import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { CleanupItemRow } from '../../product/cleanup-row/cleanup-row';
+import { RecoveryHelp } from '../../product/recovery-help/recovery-help';
 import { useNavigation } from '../../state/navigation';
 import styles from './cleanups-screen.module.css';
 import { type OneCleanup, useCleanup } from './use-cleanup';
@@ -79,14 +80,17 @@ export const CleanupScreen = ({ cleanup: id }: { readonly cleanup: CleanupId }):
     <>
       <Toolbar
         actions={
-          <Button
-            onClick={() => {
-              navigate({ kind: 'cleanups' });
-            }}
-            variant="ghost"
-          >
-            {t('ui.screen.cleanups.all')}
-          </Button>
+          <>
+            <RecoveryHelp />
+            <Button
+              onClick={() => {
+                navigate({ kind: 'cleanups' });
+              }}
+              variant="ghost"
+            >
+              {t('ui.screen.cleanups.all')}
+            </Button>
+          </>
         }
       />
       <PageHeader

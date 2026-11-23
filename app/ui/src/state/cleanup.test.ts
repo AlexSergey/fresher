@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CleanupPlanView, Confirmation, Event, Finding } from '../ipc/bindings.generated';
 
-import { mockCore, refuse } from '../ipc/mock';
+import { mockCore, refuse, sampleAgreementAnswers } from '../ipc/mock';
+import { AGREEMENT_ACCEPTED } from '../test/agreement';
 import { uninstallPlanOf, VIDEO_STUDIO_DETAIL } from '../test/app-detail';
 import {
   cleanupEventsOf,
@@ -58,8 +59,9 @@ const settle = (): Promise<void> =>
 describe('the cleanup state', () => {
   describe('negative cases', () => {
     it('a refused prepare shows its text and returns to idle', async () => {
-      mockCore({ prepareCleanup: refuse(TOO_MANY_ITEMS) });
+      mockCore({ ...sampleAgreementAnswers, prepareCleanup: refuse(TOO_MANY_ITEMS) });
       const store = createCoreStore();
+      store.dispatch({ type: 'agreement-loaded', view: AGREEMENT_ACCEPTED });
       store.dispatch({ category: 'demo.caches', type: 'toggle-category' });
 
       prepare(store);
@@ -83,7 +85,7 @@ describe('the cleanup state', () => {
     });
 
     it('an unreachable core on prepare is the frame’s failure and shows nothing of the cleanup', async () => {
-      mockCore({});
+      mockCore({ ...sampleAgreementAnswers });
       const store = createCoreStore();
 
       prepare(store);
@@ -115,10 +117,11 @@ describe('the cleanup state', () => {
 
       for (const plan of [DEMO_PLAN, ONE_ITEM_PLAN, HIGH_PLAN, LEFT_OUT_PLAN, LONG_PLAN, TOOL_PLAN, uneven]) {
         for (const method of ['trash', 'permanent'] as const) {
-          expect(confirmationOf(plan, method)).toStrictEqual({
+          expect(confirmationOf(plan, method, false)).toStrictEqual({
             allocated: plan.summary.sizes.allocated,
             count: plan.summary.count,
             highest: plan.summary.highest,
+            highRiskUnderstood: false,
             method,
             plan: plan.plan,
           } satisfies Confirmation);
@@ -127,12 +130,12 @@ describe('the cleanup state', () => {
     });
 
     it('a refused confirm shows the core’s text', async () => {
-      mockCore({ confirmCleanup: refuse(PLAN_GONE), prepareCleanup: () => TOOL_ONLY_PLAN });
+      mockCore({ ...sampleAgreementAnswers, confirmCleanup: refuse(PLAN_GONE), prepareCleanup: () => TOOL_ONLY_PLAN });
       const store = createCoreStore();
       prepare(store);
       await settle();
 
-      confirm(store, 'trash');
+      confirm(store, 'trash', false);
       await settle();
 
       expect(store.getState().cleanup).toStrictEqual({
@@ -146,10 +149,10 @@ describe('the cleanup state', () => {
     it('confirm, stop and a second stop do nothing out of their state', async () => {
       const cancelCleanup = vi.fn();
       const confirmCleanup = vi.fn();
-      mockCore({ cancelCleanup, confirmCleanup });
+      mockCore({ ...sampleAgreementAnswers, cancelCleanup, confirmCleanup });
       const store = createCoreStore();
 
-      confirm(store, 'trash');
+      confirm(store, 'trash', false);
       stop(store);
       await settle();
 
@@ -160,7 +163,7 @@ describe('the cleanup state', () => {
 
     it('stop is sent once', async () => {
       const cancelCleanup = vi.fn(() => null);
-      mockCore({ cancelCleanup });
+      mockCore({ ...sampleAgreementAnswers, cancelCleanup });
       const store = createCoreStore();
       for (const action of [...RUNNING, EVENTS.started]) {
         store.dispatch(action);
@@ -175,7 +178,7 @@ describe('the cleanup state', () => {
     });
 
     it('a discarded plan already gone shows nothing', async () => {
-      mockCore({ discardCleanup: refuse(PLAN_GONE), prepareCleanup: () => DEMO_PLAN });
+      mockCore({ ...sampleAgreementAnswers, discardCleanup: refuse(PLAN_GONE), prepareCleanup: () => DEMO_PLAN });
       const store = createCoreStore();
       prepare(store);
       await settle();
@@ -206,10 +209,21 @@ describe('the cleanup state', () => {
   });
 
   describe('positive cases', () => {
+    it('the confirmation sends the risk as given', () => {
+      for (const highRiskUnderstood of [true, false]) {
+        expect(confirmationOf(HIGH_PLAN, 'trash', highRiskUnderstood)).toMatchObject({
+          highest: 'high',
+          highRiskUnderstood,
+        } satisfies Partial<Confirmation>);
+        expect(confirmationOf(DEMO_PLAN, 'trash', highRiskUnderstood).highRiskUnderstood).toBe(highRiskUnderstood);
+      }
+    });
+
     it('an uninstall asks for its own plan and keeps its origin through the confirmation', async () => {
       const prepareUninstall = vi.fn(() => uninstallPlanOf(VIDEO_STUDIO_DETAIL, 'keep-data'));
-      mockCore({ prepareUninstall });
+      mockCore({ ...sampleAgreementAnswers, prepareUninstall });
       const store = createCoreStore();
+      store.dispatch({ type: 'agreement-loaded', view: AGREEMENT_ACCEPTED });
 
       prepareUninstallPlan(store, APP, 'keep-data');
       expect(store.getState().cleanup).toStrictEqual({ app: APP, kind: 'preparing', origin: 'uninstall' });
@@ -220,7 +234,7 @@ describe('the cleanup state', () => {
     });
 
     it('a refused uninstall plan keeps its origin and its text', async () => {
-      mockCore({ prepareUninstall: refuse(TOO_MANY_ITEMS) });
+      mockCore({ ...sampleAgreementAnswers, prepareUninstall: refuse(TOO_MANY_ITEMS) });
       const store = createCoreStore();
 
       prepareUninstallPlan(store, APP, 'everything');
@@ -244,6 +258,7 @@ describe('the cleanup state', () => {
     it('prepare then confirm runs then finishes', async () => {
       const seen: unknown[] = [];
       mockCore({
+        ...sampleAgreementAnswers,
         confirmCleanup: (args) => {
           seen.push(args);
 
@@ -269,7 +284,7 @@ describe('the cleanup state', () => {
         plan: DEMO_PLAN,
       });
 
-      confirm(store, 'permanent');
+      confirm(store, 'permanent', false);
       expect(store.getState().cleanup).toMatchObject({ cleanup: null, done: 0, kind: 'running', total: 3 });
       await settle();
       for (const event of [EVENTS.started, ...EVENTS.items, EVENTS.finished]) {
@@ -280,7 +295,7 @@ describe('the cleanup state', () => {
         {
           selection: { categories: [{ category: 'demo.caches', except: [EDITOR_CACHE.id] }], findings: [INSTALLER.id] },
         },
-        { confirmation: confirmationOf(DEMO_PLAN, 'permanent') },
+        { confirmation: confirmationOf(DEMO_PLAN, 'permanent', false) },
       ]);
       expect(store.getState().cleanup).toStrictEqual({
         cleanup: 1,
@@ -349,7 +364,7 @@ describe('the cleanup state', () => {
 
     it('quit requested opens the question', async () => {
       const quitAfterCleanup = vi.fn(() => null);
-      mockCore({ quitAfterCleanup });
+      mockCore({ ...sampleAgreementAnswers, quitAfterCleanup });
       const store = createCoreStore();
 
       store.dispatch({ type: 'quit-requested' });
@@ -367,7 +382,7 @@ describe('the cleanup state', () => {
 
     it('show in the trash asks the core for the first moved item', async () => {
       const revealInTrash = vi.fn(() => null);
-      mockCore({ revealInTrash });
+      mockCore({ ...sampleAgreementAnswers, revealInTrash });
       const store = createCoreStore();
       showInTrash(store);
       const events = cleanupEventsOf(DEMO_PLAN, SKIPPED_REPORT, { outcomes: SKIPPED_OUTCOMES });
@@ -383,7 +398,7 @@ describe('the cleanup state', () => {
 
     it('cancel discards the plan', async () => {
       const discardCleanup = vi.fn(() => null);
-      mockCore({ discardCleanup, prepareCleanup: () => DEMO_PLAN });
+      mockCore({ ...sampleAgreementAnswers, discardCleanup, prepareCleanup: () => DEMO_PLAN });
       const store = createCoreStore();
       prepare(store);
       await settle();

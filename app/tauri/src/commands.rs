@@ -4,7 +4,7 @@
 #![expect(clippy::needless_pass_by_value, reason = "Tauri hands a command its state and inputs by value")]
 
 use fresher_core::{
-    AccessStatus, AppInfo, Build, Capability, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView,
+    AccessStatus, AgreementView, AppInfo, Build, Capability, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView,
     CleanupSelection, CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingId, FindingsPage,
     FindingsQuery, IgnoreTarget, IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest,
     Refusal, ScanId, SettingUpdate, SettingsView, TrashView,
@@ -70,6 +70,18 @@ pub(crate) fn update_setting(engine: State<'_, Engine>, update: SettingUpdate) -
 #[tauri::command(async)]
 pub(crate) fn reset_settings(engine: State<'_, Engine>) -> Result<(), Refusal> {
     engine.reset_settings().map_err(Refusal::from)
+}
+
+/// The agreement the user accepts before the first cleanup, and the last acceptance of it.
+#[tauri::command(async)]
+pub(crate) fn get_agreement(engine: State<'_, Engine>) -> Result<AgreementView, Refusal> {
+    engine.agreement().map_err(Refusal::from)
+}
+
+/// The user accepted version `version` of the agreement; refused when the text changed while they read it.
+#[tauri::command(async)]
+pub(crate) fn accept_agreement(engine: State<'_, Engine>, version: u32) -> Result<AgreementView, Refusal> {
+    engine.accept_agreement(version).map_err(Refusal::from)
 }
 
 #[tauri::command(async)]
@@ -207,8 +219,8 @@ mod tests {
         use std::sync::Arc;
 
         use fresher_core::{
-            Access, Capability, CommandError, FindingOrder, FindingsQuery, GuardedFolder, Operation, Refusal,
-            SettingKey, SettingUpdate, SettingValue,
+            Access, Capability, CommandError, DangerLevel, FindingOrder, FindingsQuery, GuardedFolder, Operation,
+            Refusal, SettingKey, SettingUpdate, SettingValue,
         };
         use fresher_testing::FakeAccess;
 
@@ -219,9 +231,9 @@ mod tests {
 
         use super::first_page;
         use crate::commands::{
-            cancel_cleanup, cancel_scan, confirm_cleanup, discard_cleanup, get_cleanup, get_cleanups, get_dictionary,
-            get_findings, open_access_settings, open_trash, prepare_cleanup, put_back, reveal_finding, reveal_in_trash,
-            start_scan, subscribe, update_setting,
+            accept_agreement, cancel_cleanup, cancel_scan, confirm_cleanup, discard_cleanup, get_agreement,
+            get_cleanup, get_cleanups, get_dictionary, get_findings, open_access_settings, open_trash, prepare_cleanup,
+            put_back, reveal_finding, reveal_in_trash, start_scan, subscribe, update_setting,
         };
         use crate::testing::{
             Shell, caches, echo, is_scan_finished, recording_channel, scan, trial_home, until_finished,
@@ -304,7 +316,8 @@ mod tests {
             let view = prepare_cleanup(shell.engine(), caches()).unwrap();
             let count = view.summary.count + 1;
             let echo = json!({ "plan": view.plan, "count": count, "allocated": view.summary.sizes.allocated,
-                               "highest": view.summary.highest, "method": "trash" });
+                               "highest": view.summary.highest, "method": "trash",
+                               "highRiskUnderstood": view.summary.highest == DangerLevel::High });
 
             let error = confirm_cleanup(shell.engine(), serde_json::from_value(echo).unwrap());
 
@@ -430,6 +443,34 @@ mod tests {
         }
 
         #[test]
+        fn accept_agreement_of_another_version_is_refused() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning_unaccepted(tree.root());
+
+            let error = accept_agreement(shell.engine(), fresher_core::AGREEMENT_VERSION + 1).unwrap_err();
+
+            assert_eq!(error, Refusal::from(CommandError::AgreementChanged));
+            assert_eq!(error.text.key().as_str(), "core.error.agreement-changed");
+            assert_eq!(get_agreement(shell.engine()).unwrap().accepted, None);
+        }
+
+        #[test]
+        fn prepare_cleanup_before_the_agreement_is_refused_with_the_blocked_text() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning_unaccepted(tree.root());
+            scan(&shell);
+
+            let error = prepare_cleanup(shell.engine(), caches()).unwrap_err();
+
+            let reason = fresher_core::BlockedReason::Agreement;
+            assert_eq!(error, Refusal::from(CommandError::CleaningBlocked { reason }));
+            assert_eq!(reason.text().key().as_str(), "core.cleanup.blocked.agreement");
+            assert!(get_dictionary(shell.engine(), "en").unwrap().get("core.cleanup.blocked.agreement").is_some());
+            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(!shell.trash().exists());
+        }
+
+        #[test]
         fn the_cleanup_commands_refuse_what_is_not_there() {
             let shell = Shell::new();
             let id: CleanupId = serde_json::from_value(json!(7)).unwrap();
@@ -506,11 +547,50 @@ mod tests {
 
         use super::first_page;
         use crate::commands::{
-            app_info, confirm_cleanup, get_access_status, get_cleanup, get_cleanups, get_dictionary, get_findings,
-            get_modules, get_overview, get_settings, get_trash, open_access_settings, prepare_cleanup, put_back,
-            refresh_access, start_scan, subscribe, update_setting,
+            accept_agreement, app_info, confirm_cleanup, get_access_status, get_agreement, get_cleanup, get_cleanups,
+            get_dictionary, get_findings, get_modules, get_overview, get_settings, get_trash, open_access_settings,
+            prepare_cleanup, put_back, refresh_access, start_scan, subscribe, update_setting,
         };
         use crate::testing::{Shell, caches, echo, recording_channel, scan, trial_home, until_finished};
+
+        #[test]
+        fn get_agreement_answers_the_five_lines_and_no_acceptance() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning_unaccepted(tree.root());
+
+            let view = get_agreement(shell.engine()).unwrap();
+
+            let dictionary = get_dictionary(shell.engine(), "en").unwrap();
+            assert_eq!(view.version, fresher_core::AGREEMENT_VERSION);
+            assert_eq!(view.lines.len(), 5);
+            assert!(
+                view.lines
+                    .iter()
+                    .chain([&view.title, &view.intro])
+                    .all(|text| dictionary.get(text.key().as_str()).is_some())
+            );
+            assert!(!view.is_accepted());
+            assert_eq!((view.accepted, view.changes), (None, None));
+        }
+
+        #[test]
+        fn accept_agreement_then_prepare_and_confirm_cleans_a_sandbox_through_the_commands() {
+            let tree = trial_home(true);
+            let shell = Shell::cleaning_unaccepted(tree.root());
+            scan(&shell);
+
+            let accepted = accept_agreement(shell.engine(), fresher_core::AGREEMENT_VERSION).unwrap();
+            let view = prepare_cleanup(shell.engine(), caches()).unwrap();
+            let events = shell.engine().subscribe();
+            let cleanup = confirm_cleanup(shell.engine(), echo(&view)).unwrap();
+
+            until_finished(&events, crate::testing::is_cleanup_finished);
+            assert!(accepted.is_accepted());
+            assert_eq!(get_agreement(shell.engine()), Ok(accepted));
+            assert!(!tree.root().join("sandbox/fresher-trial-cache").exists());
+            assert_eq!(std::fs::read_dir(shell.trash()).unwrap().count(), 1);
+            assert_eq!(get_cleanups(shell.engine(), first_page()).cleanups[0].cleanup, cleanup);
+        }
 
         #[test]
         fn get_trash_on_a_fresh_engine_answers_no_line() {

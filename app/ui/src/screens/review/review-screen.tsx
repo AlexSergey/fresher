@@ -15,6 +15,7 @@ import { VisuallyHidden } from '../../design/primitives/visually-hidden/visually
 import { t, tText } from '../../i18n';
 import { ConfirmDialog } from '../../product/confirm-dialog/confirm-dialog';
 import { DangerZone } from '../../product/danger-zone/danger-zone';
+import { PART_OF } from '../../product/danger-zone/zones';
 import { levelMeaning, levelName } from '../../product/finding-row/texts';
 import { honestSize } from '../../product/sizes';
 import { confirm, discard, prepare } from '../../state/cleanup-actions';
@@ -23,7 +24,8 @@ import { summarize } from '../../state/selection-summary';
 import { useCore, useCoreStore } from '../../state/store';
 import { CleanupPanel } from './cleanup-panel';
 import { ReviewGroupSection } from './review-group';
-import { reviewGroups, reviewZones } from './review-groups';
+import { reviewGroups, reviewParts, reviewZones } from './review-groups';
+import { ReviewPartSection } from './review-part';
 import styles from './review-screen.module.css';
 
 type SummaryProps = {
@@ -38,7 +40,8 @@ type SummaryProps = {
 const NO_TOTALS: readonly CategoryTotal[] = [];
 
 // What the selection adds up to (the selection bar's preview), and the removal: the core checks each item first, and
-// the confirmation shows only the core's plan, never these sums.
+// the confirmation shows only the core's plan, never these sums. A selection that reaches the danger zone says so, with
+// what its highest level means.
 const Summary = ({ checking, count, highest, onRemove, removeRef, sizes }: SummaryProps): JSX.Element => (
   <section aria-label={t('ui.screen.review.summary')}>
     <Surface className={styles.summary ?? ''} elevation={1} padding="large" radius="lg">
@@ -49,6 +52,11 @@ const Summary = ({ checking, count, highest, onRemove, removeRef, sizes }: Summa
       <div className={styles.level}>
         <VisuallyHidden>{t('ui.screen.review.highest')}</VisuallyHidden>
         <DangerBadge description={levelMeaning(highest)} label={levelName(highest)} level={highest} size="large" />
+        {PART_OF[highest] === 'danger' ? (
+          <p className={styles.reaches}>
+            {t('ui.screen.review.reaches', { meaning: { kind: 'text', value: levelMeaning(highest) } })}
+          </p>
+        ) : null}
       </div>
       <div className={styles.remove}>
         <Button busy={checking} icon={Trash2} onClick={onRemove} ref={removeRef} size="large" variant="primary">
@@ -62,16 +70,16 @@ const Summary = ({ checking, count, highest, onRemove, removeRef, sizes }: Summa
   </section>
 );
 
-// "What exactly am I about to remove?": the selection's summary, then the selection in danger zones (the safest
-// first), each grouped by category, largest first, each with what it costs; every row can be unticked here. With
-// nothing selected, the way back to Scan.
+// "What exactly am I about to remove?": the selection's summary, then the selection in two parts, safe to remove and
+// the danger zone, each in danger zones (the safest first), each grouped by category, largest first, each with what it
+// costs; every row can be unticked here. With nothing selected, the way back to Scan.
 export const ReviewScreen = (): JSX.Element => {
   const store = useCoreStore();
   const { navigate } = useNavigation();
   const selection = useCore((state) => state.selection);
   const totals = useCore((state) => state.overview?.totals ?? NO_TOTALS);
   const summary = useMemo(() => summarize(selection, totals), [selection, totals]);
-  const zones = useMemo(() => reviewZones(reviewGroups(selection, totals)), [selection, totals]);
+  const parts = useMemo(() => reviewParts(reviewZones(reviewGroups(selection, totals))), [selection, totals]);
   // The confirmation and a refusal give the focus back here: a click does not focus a button in WebKit.
   const removeRef = useRef<HTMLButtonElement>(null);
   const cleanup = useCore((state) => state.cleanup);
@@ -155,14 +163,18 @@ export const ReviewScreen = (): JSX.Element => {
           removeRef={removeRef}
           sizes={summary.sizes}
         />
-        {zones.map((zone) => (
-          <DangerZone key={zone.level} level={zone.level}>
-            <div className={styles.zoneGroups}>
-              {zone.groups.map((group) => (
-                <ReviewGroupSection group={group} key={`${group.rows.kind}:${group.category}`} onToggle={toggle} />
-              ))}
-            </div>
-          </DangerZone>
+        {parts.map((part) => (
+          <ReviewPartSection key={part.part} part={part}>
+            {part.zones.map((zone) => (
+              <DangerZone key={zone.level} level={zone.level} nested>
+                <div className={styles.zoneGroups}>
+                  {zone.groups.map((group) => (
+                    <ReviewGroupSection group={group} key={`${group.rows.kind}:${group.category}`} onToggle={toggle} />
+                  ))}
+                </div>
+              </DangerZone>
+            ))}
+          </ReviewPartSection>
         ))}
       </div>
       {cleanup.kind === 'confirming' && cleanup.origin === 'selection' ? (
@@ -170,8 +182,8 @@ export const ReviewScreen = (): JSX.Element => {
           onCancel={() => {
             discard(store);
           }}
-          onConfirm={(method) => {
-            confirm(store, method);
+          onConfirm={(method, highRiskUnderstood) => {
+            confirm(store, method, highRiskUnderstood);
           }}
           open
           plan={cleanup.plan}

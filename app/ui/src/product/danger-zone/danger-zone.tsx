@@ -11,6 +11,8 @@ import styles from './danger-zone.module.css';
 export type DangerZoneProps = {
   readonly children: ReactNode;
   readonly level: DangerLevel;
+  // Inside one of Review's parts: the heading is a third-level one named by the level, under the part's.
+  readonly nested?: boolean;
   // Scan's "Select all" for the zone; absent on Review, where everything listed is already selected.
   readonly selectAll?: undefined | { readonly checked: 'mixed' | boolean; readonly onChange: () => void };
 };
@@ -19,10 +21,11 @@ export type DangerZoneProps = {
 const WARNINGS = { high: OctagonAlert, medium: TriangleAlert } as const;
 
 // The categories of one danger level: the zone's name and what the level means, the level's colour in a rule above it,
-// and, on Scan, a "Select all" for the whole zone.
-export const DangerZone = ({ children, level, selectAll }: DangerZoneProps): JSX.Element => {
+// and, on Scan, a "Select all" for the whole zone. Nested in a part of Review, it is named by its level.
+export const DangerZone = ({ children, level, nested = false, selectAll }: DangerZoneProps): JSX.Element => {
   const headingId = useId();
   const warning = level === 'medium' || level === 'high' ? WARNINGS[level] : null;
+  const Heading = nested ? 'h3' : 'h2';
 
   return (
     <section aria-labelledby={headingId} className={styles.zone} data-level={level}>
@@ -33,9 +36,9 @@ export const DangerZone = ({ children, level, selectAll }: DangerZoneProps): JSX
               <Icon icon={warning} size={20} />
             </span>
           )}
-          <h2 className={styles.name} id={headingId}>
-            {tText({ args: {}, key: `core.danger.${level}.zone` })}
-          </h2>
+          <Heading className={styles.name} id={headingId}>
+            {tText({ args: {}, key: `core.danger.${level}.${nested ? 'name' : 'zone'}` })}
+          </Heading>
         </div>
         <p className={styles.meaning}>{tText({ args: {}, key: `core.danger.${level}.meaning` })}</p>
         {selectAll === undefined ? null : (

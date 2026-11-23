@@ -27,7 +27,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use fresher_core::{
-    CleanupId, CleanupPlanView, Confirmation, Event, FindingOrder, FindingsQuery, Sizes, Subject, TrashState,
+    CleanupId, CleanupPlanView, Confirmation, DangerLevel, Event, FindingOrder, FindingsQuery, Sizes, Subject,
+    TrashState,
 };
 use fresher_module_trial::TrialModule;
 use fresher_testing::{
@@ -111,7 +112,8 @@ impl Home {
         let events = self.flow.engine.subscribe();
         let summary = view.summary;
         let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                           "highest": summary.highest, "method": "permanent" });
+                           "highest": summary.highest, "method": "permanent",
+                           "highRiskUnderstood": summary.highest == DangerLevel::High });
         let confirmation: Confirmation = serde_json::from_value(echo).unwrap();
         let cleanup = self.flow.engine.confirm_cleanup(&confirmation).unwrap();
         until(&events, |event| matches!(event, Event::CleanupFinished { .. }));

@@ -11,9 +11,9 @@ use std::time::{Duration, Instant};
 use fresher_cleaner::{CleanerPorts, Reach};
 use fresher_core::{
     AccessProbe, ByteSize, CancelToken, ClaimedPath, Cleaner, CleanupContext, CleanupPlanView, CleanupSelection, Clock,
-    CommandRunner, Confirmation, ConfirmedPlan, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match, PlanItem,
-    PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Subtree, SubtreeQuery, Timestamp,
-    Trash, TrashState, TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
+    CommandRunner, Confirmation, ConfirmedPlan, DangerLevel, Depth, DiskState, DiskWalk, Ended, Event, ItemDone, Match,
+    PlanItem, PutBackOutcome, Rehearsal, SANDBOX_MARKER, SettingUpdate, SettingValue, StateId, Subtree, SubtreeQuery,
+    Timestamp, Trash, TrashState, TrashedItem, WalkError, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports};
 use fresher_store::{DataFolder, FileSettingsStore};
@@ -141,37 +141,43 @@ impl Shell {
 
     /// As `new`, with `access` as the system's permissions in place of `UnknownAccess`.
     pub(crate) fn with_access(access: Arc<dyn AccessProbe>) -> Self {
-        Self::with_walk(Arc::new(NoWalk), None, false, access, Reach::Sandbox, ShellTrash::Fake)
+        Self::with_walk(Arc::new(NoWalk), None, false, access, Reach::Sandbox, ShellTrash::Fake).accepted()
     }
 
     /// The app's modules with a scan that runs until it is cancelled.
     pub(crate) fn held() -> Self {
         Self::with_walk(Arc::new(HeldWalk), None, false, Arc::new(UnknownAccess), Reach::Sandbox, ShellTrash::Fake)
+            .accepted()
     }
 
     /// The app's modules scanning `home` (a fixture tree, the only scan root) with the reference walk; a cleanup goes
     /// through the composition's cleaner reaching only below a sandbox folder, and the journal, with a Trash in the
     /// shell's own folder.
     pub(crate) fn cleaning(home: &Path) -> Self {
+        Self::cleaning_unaccepted(home).accepted()
+    }
+
+    /// As `cleaning`, before the user accepted the agreement.
+    pub(crate) fn cleaning_unaccepted(home: &Path) -> Self {
         Self::scanning(home, false, Reach::Sandbox, ShellTrash::Fake)
     }
 
     /// As `cleaning`, with each cleanup held until it is cancelled.
     pub(crate) fn cleaning_held(home: &Path) -> Self {
-        Self::scanning(home, true, Reach::Sandbox, ShellTrash::Fake)
+        Self::scanning(home, true, Reach::Sandbox, ShellTrash::Fake).accepted()
     }
 
     /// As `cleaning`, with the reach of a development build (the dry run) and the fake Trash, so a test can see it
     /// stays empty.
     #[cfg(debug_assertions)]
     pub(crate) fn dry_run(home: &Path) -> Self {
-        Self::scanning(home, false, crate::compose::reach(), ShellTrash::Fake)
+        Self::scanning(home, false, crate::compose::reach(), ShellTrash::Fake).accepted()
     }
 
     /// As `cleaning`, with the development build's Trash, which refuses: the second wall alone.
     #[cfg(debug_assertions)]
     pub(crate) fn refusing_trash(home: &Path) -> Self {
-        Self::scanning(home, false, Reach::Sandbox, ShellTrash::Refusing)
+        Self::scanning(home, false, Reach::Sandbox, ShellTrash::Refusing).accepted()
     }
 
     fn scanning(home: &Path, held: bool, reach: Reach, trash: ShellTrash) -> Self {
@@ -232,6 +238,12 @@ impl Shell {
         app.manage(EventForwarder::default());
         app.manage(data);
         Self { app, folder }
+    }
+
+    /// The shell after the user accepted the agreement, as before their first cleanup.
+    fn accepted(self) -> Self {
+        self.engine().accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+        self
     }
 
     pub(crate) fn engine(&self) -> tauri::State<'_, Engine> {
@@ -319,7 +331,8 @@ pub(crate) fn caches() -> CleanupSelection {
 pub(crate) fn echo(view: &CleanupPlanView) -> Confirmation {
     let summary = view.summary;
     let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                       "highest": summary.highest, "method": "trash" });
+                       "highest": summary.highest, "method": "trash",
+                       "highRiskUnderstood": summary.highest == DangerLevel::High });
     serde_json::from_value(echo).unwrap()
 }
 

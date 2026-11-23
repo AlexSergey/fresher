@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ModuleInfo, Refusal, SettingsFile, SettingsView, SettingUpdate } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
+import { AGREEMENT_ACCEPTED, AGREEMENT_DICTIONARY, AGREEMENT_NOT_ACCEPTED } from '../../test/agreement';
 import { DEMO_DICTIONARY, DEMO_MODULES, DEMO_OVERVIEW, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
 import { SettingsScreen } from './settings-screen';
@@ -51,6 +52,7 @@ const SETTINGS: SettingsView = {
 
 const DICTIONARY = {
   ...DEMO_DICTIONARY,
+  ...AGREEMENT_DICTIONARY,
   'core.error.settings-read-only': 'Your settings cannot be changed now. Restart or update the app, then try again.',
   'core.error.storage': 'Your settings could not be saved. Check that the disk has free space, then try again.',
   'core.scan.roots.description': 'The scan looks only inside these folders.',
@@ -64,6 +66,7 @@ const STORAGE: Refusal = { error: { code: 'storage' }, text: { args: {}, key: 'c
 
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
+    ...sampleAgreementAnswers,
     appInfo: () => ({ build: { kind: 'release' }, version: '1.2.3' }),
     getDictionary: () => DICTIONARY,
     getModules: () => MODULES,
@@ -113,6 +116,16 @@ const withValues = (values: SettingsView['values']): Partial<CoreAnswers> => ({
 
 describe('SettingsScreen', () => {
   describe('negative cases', () => {
+    it('About says the agreement is not accepted yet', async () => {
+      core({ getAgreement: () => AGREEMENT_NOT_ACCEPTED });
+      await renderScreen();
+
+      const about = await screen.findByRole('region', { name: 'About' });
+
+      expect(await within(about).findByText(/Not accepted yet/u)).toBeInTheDocument();
+      expect(within(about).queryByText(/You accepted it on/u)).toBeNull();
+    });
+
     it('a cancelled folder pick or a folder already listed sends nothing', async () => {
       const updates = sentUpdates();
       let picked: null | string = null;
@@ -364,6 +377,25 @@ describe('SettingsScreen', () => {
       const about = await screen.findByRole('region', { name: 'About' });
       expect(await within(about).findByText('Version 1.2.3')).toBeInTheDocument();
       expect(within(about).getByText(/MIT or Apache 2.0/u)).toBeInTheDocument();
+    });
+
+    it('About shows the five lines and the acceptance date', async () => {
+      core({ getAgreement: () => AGREEMENT_ACCEPTED });
+      await renderScreen();
+
+      const about = await screen.findByRole('region', { name: 'About' });
+
+      expect(await within(about).findByText('You accepted it on Jan 1, 2025.')).toBeInTheDocument();
+      expect(within(about).getAllByRole('listitem')).toHaveLength(5);
+    });
+
+    it('About opens the full licence', async () => {
+      core();
+      await renderScreen();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Read the full licence' }));
+
+      expect(screen.getByRole('dialog', { name: 'Licence' })).toBeInTheDocument();
     });
   });
 });

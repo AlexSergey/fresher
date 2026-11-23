@@ -178,6 +178,11 @@ export const PLAN_GONE: Refusal = refusal({ code: 'plan-gone' }, 'core.error.pla
 
 export const PLAN_MISMATCH: Refusal = refusal({ code: 'plan-mismatch' }, 'core.error.plan-mismatch');
 
+export const HIGH_RISK_NOT_UNDERSTOOD: Refusal = refusal(
+  { code: 'high-risk-not-understood' },
+  'core.error.high-risk-not-understood',
+);
+
 export const CLEANING_BLOCKED: Refusal = refusal(
   { code: 'cleaning-blocked', reason: 'journal' },
   'core.error.cleaning-blocked',
@@ -433,6 +438,11 @@ export const CLEANUP_DICTIONARY: Dictionary = {
   'core.cleanup.trash.replaced': 'Something else is in its place in the Trash.',
   'core.danger.high.name': 'High',
   'core.danger.medium.name': 'Medium',
+  'core.danger.part.danger.meaning':
+    'Each of these may hold settings or work that do not come back by themselves. Check them one by one.',
+  'core.danger.part.danger.name': 'Danger zone',
+  'core.danger.part.safe.meaning': 'Each of these comes back by itself or with a download.',
+  'core.danger.part.safe.name': 'Safe to remove',
   'core.error.cleaning-blocked': 'Fresher cannot remove anything right now, so nothing was removed.',
   'core.error.not-in-trash': 'This item is no longer in the Trash.',
   'core.error.plan-gone':

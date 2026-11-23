@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CategoryId, LeftOutCount, Overview } from '../../ipc/bindings.generated';
 
-import { mockCore, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { DEMO_DICTIONARY, DEMO_LEFT_OUT, DEMO_MODULES, DEMO_OVERVIEW, SCAN_STARTED } from '../../test/demo-scan';
@@ -32,6 +32,7 @@ const renderSection = async (
   );
 
   mockCore({
+    ...sampleAgreementAnswers,
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => overview,
@@ -64,7 +65,12 @@ const section = (): HTMLElement | null => screen.queryByRole('region', { name: '
 describe('LeftOutOnly', () => {
   describe('negative cases', () => {
     it('shows nothing before a scan', () => {
-      mockCore({ getDictionary: () => DEMO_DICTIONARY, getModules: () => DEMO_MODULES, ...sampleStorageAnswers });
+      mockCore({
+        ...sampleAgreementAnswers,
+        getDictionary: () => DEMO_DICTIONARY,
+        getModules: () => DEMO_MODULES,
+        ...sampleStorageAnswers,
+      });
 
       render(
         <AppProviders store={createCoreStore()}>

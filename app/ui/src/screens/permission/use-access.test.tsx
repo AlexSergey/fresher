@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Access } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { PermissionCard } from '../../product/permission-card/permission-card';
 import { accessOf } from '../../state/access';
 import { type CoreStore, createCoreStore } from '../../state/store';
@@ -16,6 +16,7 @@ import { useAccessStatus, useCoverage } from './use-access';
 
 const core = (answers: Partial<CoreAnswers>): void => {
   mockCore({
+    ...sampleAgreementAnswers,
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,

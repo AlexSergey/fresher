@@ -16,6 +16,7 @@ import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
 import { XCODE_DICTIONARY } from '../src/test/xcode-scan';
 import { mockCore, releaseScan, SCRIPTS } from './core-mock';
+import { acceptedVersions } from './support/agreement-mock';
 import {
   cardNames,
   details,
@@ -26,7 +27,8 @@ import {
   scanButton,
   scanFinished,
 } from './support/cards';
-import { releaseCleanup, requestQuit } from './support/cleanup-mock';
+import { preparedCommands, releaseCleanup, requestQuit } from './support/cleanup-mock';
+import { highTick, tickHigh } from './support/confirm';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
 // The user's paths through the screens on the mocked core, by pointer and by keyboard alone.
@@ -48,7 +50,20 @@ const heading = (page: Page, name: string): Locator => page.getByRole('heading',
 
 const cards = (page: Page): Locator => page.locator('[data-card]');
 
-const zone = (page: Page, name: string): Locator => page.getByRole('region', { name });
+const zone = (page: Page, name: string): Locator => page.getByRole('region', { exact: true, name });
+
+// Ticks a Scan zone's Select all; a Medium or High zone asks first, and the user answers Select all.
+const selectZone = async (page: Page, name: string): Promise<void> => {
+  await zone(page, name).getByRole('checkbox', { name: 'Select all' }).click();
+  const level = { 'High risk': 'High', 'Medium risk': 'Medium' }[name];
+  if (level !== undefined) {
+    await page
+      .getByRole('dialog', { name: `Select everything at ${level}?` })
+      .getByRole('button', { name: 'Select all' })
+      .click();
+  }
+  await expect(zone(page, name).getByRole('checkbox', { name: 'Select all' })).toBeChecked();
+};
 
 const selectionBar = (page: Page): Locator => page.getByRole('region', { name: 'Selection' });
 
@@ -68,6 +83,14 @@ const reviewAll = async (page: Page): Promise<void> => {
   await expect(heading(page, 'Review')).toBeFocused();
 };
 
+// The review of the demo plan's findings in a world where the agreement was never accepted.
+const reviewUnaccepted = async (page: Page): Promise<void> => {
+  await mockCore(page, { ...SCRIPTS.cleaning, agreement: 'not-accepted' });
+  await reviewAll(page);
+};
+
+const agreementSheet = (page: Page): Locator => page.getByRole('dialog', { name: 'Before your first cleanup' });
+
 // Scans the demo, then opens Settings (the Ignored tabs).
 const openIgnoring = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.ignoring);
@@ -79,10 +102,10 @@ const openIgnoring = async (page: Page): Promise<void> => {
 const openSettings = (page: Page): Promise<void> => page.getByRole('button', { exact: true, name: 'Settings' }).click();
 
 const JB = {
-  caches: 'Caches of older JetBrains IDE versions',
-  logs: 'Logs of older JetBrains IDE versions',
-  settings: 'Settings and plugins of older JetBrains IDE versions',
-  uninstalled: 'Data of JetBrains IDEs that are no longer installed',
+  caches: 'Caches of older JetBrains IDEs',
+  logs: 'Logs of older JetBrains IDEs',
+  settings: 'Settings and plugins of older JetBrains IDEs',
+  uninstalled: 'Data of JetBrains IDEs no longer installed',
 } as const;
 
 // The module's own texts, as its locale file has them.
@@ -366,6 +389,17 @@ const reviewDisk = async (page: Page): Promise<void> => {
   await selectionBar(page).getByRole('button', { name: 'Review' }).click();
   await expect(heading(page, 'Review')).toBeFocused();
 };
+
+// Scans the downloads, ticks the installers (Low) and the big untouched file (High), and opens the review.
+const reviewDownloads = async (page: Page): Promise<void> => {
+  await openDownloads(page);
+  await page.getByRole('checkbox', { name: `Select ${DL_INSTALLERS}` }).check();
+  await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+  await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+  await expect(heading(page, 'Review')).toBeFocused();
+};
+
+const HIGH_MEANING = 'May hold the only copy of your data. Removing it can lose work.';
 
 test.describe('negative cases', () => {
   test('an empty Trash shows no Trash line', async ({ page }) => {
@@ -813,7 +847,7 @@ test.describe('negative cases', () => {
 
     await expect(described(page).getByRole('checkbox')).toHaveCount(0);
     for (const name of ['Safe to remove', 'Low risk', 'High risk']) {
-      await zone(page, name).getByRole('checkbox', { name: 'Select all' }).check();
+      await selectZone(page, name);
     }
 
     // Xcode's five findings are the whole selection; the section adds none.
@@ -823,7 +857,7 @@ test.describe('negative cases', () => {
   test('the insight screen has no selection bar and Review never lists Docker', async ({ page }) => {
     await openDocker(page);
     for (const name of ['Safe to remove', 'Low risk', 'High risk']) {
-      await zone(page, name).getByRole('checkbox', { name: 'Select all' }).check();
+      await selectZone(page, name);
     }
     await openInsight(page, 'OrbStack');
 
@@ -908,6 +942,91 @@ test.describe('negative cases', () => {
     const [noticeBox, listBox] = await Promise.all([notice.boundingBox(), largestFiles(page).boundingBox()]);
     expect((noticeBox?.y ?? 0) < (listBox?.y ?? 0)).toBe(true);
   });
+
+  test('Not now starts no cleanup', async ({ page }) => {
+    await reviewUnaccepted(page);
+    await removeButton(page).click();
+
+    await agreementSheet(page).getByRole('button', { name: 'Not now' }).click();
+
+    await expect(agreementSheet(page)).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await preparedCommands(page)).toStrictEqual([]);
+    expect(await acceptedVersions(page)).toStrictEqual([]);
+    await expect(heading(page, 'Review')).toBeVisible();
+  });
+
+  test('Escape on the agreement starts no cleanup', async ({ page }) => {
+    await reviewUnaccepted(page);
+    await removeButton(page).click();
+    await expect(agreementSheet(page)).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(agreementSheet(page)).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await preparedCommands(page)).toStrictEqual([]);
+    expect(await acceptedVersions(page)).toStrictEqual([]);
+  });
+
+  test('a High plan cannot be confirmed without its tick', async ({ page }) => {
+    await reviewDownloads(page);
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    const confirm = dialog.getByRole('button', { name: 'Move to Trash' });
+
+    await expect(highTick(dialog)).not.toBeChecked();
+    await expect(confirm).toBeDisabled();
+
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('the High tick is cleared when the confirmation opens again', async ({ page }) => {
+    await reviewDownloads(page);
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await tickHigh(dialog);
+    await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await removeButton(page).click();
+
+    await expect(highTick(dialog)).not.toBeChecked();
+    await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeDisabled();
+  });
+
+  test('Select all in the danger zone asks first and Cancel selects nothing', async ({ page }) => {
+    await openDownloads(page);
+    const high = zone(page, 'High risk');
+
+    await high.getByRole('checkbox', { name: 'Select all' }).click();
+    const question = page.getByRole('dialog', { name: 'Select everything at High?' });
+    await expect(question).toContainText(HIGH_MEANING);
+    await expect(question).toContainText('Nothing is removed until you confirm it in Review.');
+    await expect(question.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await question.getByRole('button', { name: 'Cancel' }).click();
+
+    await expect(question).toHaveCount(0);
+    await expect(high.getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${DL_LARGE}` })).not.toBeChecked();
+    await expect(selectionBar(page)).toHaveCount(0);
+  });
+
+  test('nothing in the danger zone is selected before you pick it', async ({ page }) => {
+    await openDownloads(page);
+
+    for (const name of ['Medium risk', 'High risk']) {
+      const checkboxes = zone(page, name).getByRole('checkbox');
+      await expect(checkboxes.first()).toBeVisible();
+      for (const checkbox of await checkboxes.all()) {
+        await expect(checkbox).not.toBeChecked();
+      }
+    }
+    await expect(selectionBar(page)).toHaveCount(0);
+  });
 });
 
 test.describe('positive cases', () => {
@@ -949,6 +1068,33 @@ test.describe('positive cases', () => {
     await expect(result.getByRole('button', { name: 'Show in the Trash' })).toHaveAccessibleDescription(
       'Look at what is there and empty it yourself if you no longer need it.',
     );
+  });
+
+  test('the result offers help to get an item back', async ({ page }) => {
+    await mockCore(page, SCRIPTS.trashCleaning);
+    await reviewAll(page);
+    await removeButton(page).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    const button = page.getByRole('region', { name: 'Moved to the Trash' }).getByRole('button', {
+      name: 'Removed something you need?',
+    });
+
+    // WebKit does not focus a clicked button: open it from the keyboard, as the focus's return is the point.
+    await button.focus();
+    await page.keyboard.press('Enter');
+
+    const help = page.getByRole('dialog', { name: 'Removed something you need?' });
+    await expect(help.getByRole('heading', { level: 3 })).toHaveText([
+      'Put it back',
+      'Find it in the Trash',
+      'If you deleted it permanently',
+      'Tell us what went wrong',
+    ]);
+    await expect(help.getByRole('link')).toHaveCount(0);
+    await expect(help).toContainText('template=wrong-finding.yml');
+    await help.getByRole('button', { name: 'Close' }).click();
+    await expect(help).toHaveCount(0);
+    await expect(button).toBeFocused();
   });
 
   test('two Trashes show a line each with their volume’s name', async ({ page }) => {
@@ -1126,21 +1272,25 @@ test.describe('positive cases', () => {
     await mockCore(page, SCRIPTS.demo);
     await reviewAll(page);
 
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove', 'Low risk']);
-    await expect(zone(page, 'Safe to remove').getByRole('heading', { level: 3 })).toHaveText('Example caches');
-    await expect(zone(page, 'Low risk').getByRole('heading', { level: 3 })).toHaveText('Example downloads');
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove']);
+    await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Safe', 'Low']);
+    await expect(zone(page, 'Safe').getByRole('heading', { level: 4 })).toHaveText('Example caches');
+    await expect(zone(page, 'Low').getByRole('heading', { level: 4 })).toHaveText('Example downloads');
     await expect(page.getByRole('checkbox', { name: 'Select all' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'What you are about to remove' })).not.toContainText(
+      'Your selection reaches the danger zone',
+    );
   });
 
   test('unticking the last row of a zone removes the zone', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await reviewAll(page);
-    await expect(zone(page, 'Low risk')).toBeVisible();
+    await expect(zone(page, 'Low')).toBeVisible();
 
     await page.getByRole('checkbox', { name: 'Select Example: installer.dmg' }).click();
 
-    await expect(zone(page, 'Low risk')).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove']);
+    await expect(zone(page, 'Low')).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Safe']);
   });
 
   test("the selection bar's Clear empties the selection on the overview", async ({ page }) => {
@@ -1960,6 +2110,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await tickHigh(dialog);
     await dialog.getByRole('button', { name: 'Move to Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
@@ -2491,6 +2642,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    await tickHigh(dialog);
     await dialog.getByRole('button', { name: 'Move to Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
@@ -2758,13 +2910,16 @@ test.describe('positive cases', () => {
     const own = page.getByRole('region', { name: 'Your own files' });
     await expect(own).toContainText(LARGEST.disk);
     await expect(own).toContainText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '');
-    await expect(page.getByRole('region', { name: 'High risk' })).toContainText('Your own files');
+    await expect(zone(page, 'Danger zone').getByRole('region', { exact: true, name: 'High' })).toContainText(
+      'Your own files',
+    );
 
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
     await expect(dialog).toContainText('High');
     await expect(dialog).toContainText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '');
-    await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+    await expect(highTick(dialog)).not.toBeChecked();
+    await expect(dialog.getByRole('checkbox', { name: /^Delete permanently instead/u })).not.toBeChecked();
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   });
 
@@ -2773,6 +2928,7 @@ test.describe('positive cases', () => {
 
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await tickHigh(dialog);
     await dialog.getByRole('button', { name: 'Move to Trash' }).click();
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 1 item to the Trash');
 
@@ -2789,6 +2945,7 @@ test.describe('positive cases', () => {
     await reviewDisk(page);
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await tickHigh(dialog);
     await dialog.getByRole('button', { name: 'Move to Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
@@ -2798,5 +2955,144 @@ test.describe('positive cases', () => {
     await expect(item).toContainText('In the Trash.');
     await item.getByRole('button', { name: 'Put back' }).click();
     await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('the agreement is not asked again once accepted', async ({ page }) => {
+    await reviewUnaccepted(page);
+    await removeButton(page).click();
+    await agreementSheet(page).getByRole('button', { name: 'I understand' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+
+    await removeButton(page).click();
+
+    await expect(agreementSheet(page)).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: /^Move 3 items to the Trash/ })).toBeVisible();
+    expect(await acceptedVersions(page)).toStrictEqual([1]);
+  });
+
+  test('the first cleanup asks for the agreement and goes on after I understand', async ({ page }) => {
+    await reviewUnaccepted(page);
+
+    await removeButton(page).click();
+
+    const sheet = agreementSheet(page);
+    await expect(sheet.getByRole('button', { name: 'Not now' })).toBeFocused();
+    await expect(sheet.getByRole('listitem')).toHaveCount(5);
+    expect(await preparedCommands(page)).toStrictEqual([]);
+    await sheet.getByRole('button', { name: 'I understand' }).click();
+
+    await expect(page.getByRole('dialog', { name: /^Move 3 items to the Trash/ })).toBeVisible();
+    expect(await preparedCommands(page)).toStrictEqual(['prepare_cleanup']);
+    expect(await acceptedVersions(page)).toStrictEqual([1]);
+  });
+
+  test('Settings shows the agreement and when it was accepted', async ({ page }) => {
+    await scanned(page, SCRIPTS.demo);
+    await openSettings(page);
+
+    const about = page.getByRole('region', { name: 'About' });
+
+    await expect(about.getByRole('listitem')).toHaveCount(5);
+    await expect(about).toContainText('You accepted it on Jan 1, 2025.');
+  });
+
+  test('Settings says the agreement is not accepted yet', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.demo, agreement: 'not-accepted' });
+    await page.goto('/');
+    await openSettings(page);
+
+    await expect(page.getByRole('region', { name: 'About' })).toContainText(
+      'Not accepted yet. Fresher asks before your first cleanup.',
+    );
+  });
+
+  test('the full licence opens from the agreement and from About', async ({ page }) => {
+    await reviewUnaccepted(page);
+    await removeButton(page).click();
+
+    await agreementSheet(page).getByRole('button', { name: 'Read the full licence' }).click();
+
+    const licence = page.getByRole('dialog', { name: 'Licence' });
+    await expect(licence).toContainText('MIT licence');
+    await expect(licence).toContainText('Apache License');
+    await page.keyboard.press('Escape');
+    await expect(licence).toHaveCount(0);
+    await agreementSheet(page).getByRole('button', { name: 'Not now' }).click();
+
+    await openSettings(page);
+    await page.getByRole('region', { name: 'About' }).getByRole('button', { name: 'Read the full licence' }).click();
+
+    await expect(licence).toContainText('Permission is hereby granted');
+  });
+
+  test('Review shows the safe part and the danger zone apart', async ({ page }) => {
+    await reviewDownloads(page);
+
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove', 'Danger zone']);
+    const safe = zone(page, 'Safe to remove');
+    const danger = zone(page, 'Danger zone');
+    await expect(safe).toHaveAttribute('data-part', 'safe');
+    await expect(safe).toContainText('Each of these comes back by itself or with a download.');
+    await expect(safe.getByRole('heading', { level: 3 })).toHaveText(['Low']);
+    await expect(safe).toContainText(DL_INSTALLERS);
+    await expect(danger).toHaveAttribute('data-part', 'danger');
+    await expect(danger).toHaveAttribute('data-level', 'high');
+    await expect(danger).toContainText(
+      'Each of these may hold settings or work that do not come back by themselves. Check them one by one.',
+    );
+    await expect(danger.getByRole('heading', { level: 3 })).toHaveText(['High']);
+    await expect(danger).toContainText(DL_LARGE);
+  });
+
+  test('Review names how far the selection reaches', async ({ page }) => {
+    await reviewDownloads(page);
+    const summary = page.getByRole('region', { name: 'What you are about to remove' });
+
+    await expect(summary).toContainText(`Your selection reaches the danger zone: ${HIGH_MEANING}`);
+  });
+
+  test('the High tick lets the cleanup go on and is sent with it', async ({ page }) => {
+    await reviewDownloads(page);
+    await removeButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
+    const confirm = dialog.getByRole('button', { name: 'Move to Trash' });
+    await expect(confirm).toBeDisabled();
+
+    await tickHigh(dialog);
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+
+    // The core mock refuses a High echo without the tick: the cleanup runs only because it was sent.
+    await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 3 items to the Trash');
+  });
+
+  test('Select all in the danger zone selects after the question', async ({ page }) => {
+    await openDownloads(page);
+    const high = zone(page, 'High risk');
+
+    await high.getByRole('checkbox', { name: 'Select all' }).click();
+    const question = page.getByRole('dialog', { name: 'Select everything at High?' });
+    await question.getByRole('button', { name: 'Select all' }).click();
+
+    await expect(question).toHaveCount(0);
+    await expect(high.getByRole('checkbox', { name: 'Select all' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${DL_LARGE}` })).toBeChecked();
+    await expect(selectionBar(page)).toContainText('1 item selected');
+
+    await high.getByRole('checkbox', { name: 'Select all' }).click();
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(selectionBar(page)).toHaveCount(0);
+  });
+
+  test('a picked file is reviewed in the danger zone', async ({ page }) => {
+    await reviewDisk(page);
+
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Danger zone']);
+    const high = zone(page, 'Danger zone').getByRole('region', { exact: true, name: 'High' });
+    await expect(high.getByRole('region', { name: 'Your own files' })).toContainText(LARGEST.disk);
+    await expect(page.getByRole('region', { name: 'What you are about to remove' })).toContainText(
+      `Your selection reaches the danger zone: ${HIGH_MEANING}`,
+    );
   });
 });

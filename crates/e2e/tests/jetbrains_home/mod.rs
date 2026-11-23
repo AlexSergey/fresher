@@ -15,9 +15,9 @@ use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    Access, ByteSize, Capability, CleanupId, CleanupPlanView, CleanupSelection, Confirmation, Event, FindingOrder,
-    FindingsQuery, InstalledApp, LeftOutCount, ModuleId, Protection, RunningApp, Subject, SystemPorts, VolumeFacts,
-    VolumeId,
+    Access, ByteSize, Capability, CleanupId, CleanupPlanView, CleanupSelection, Confirmation, DangerLevel, Event,
+    FindingOrder, FindingsQuery, InstalledApp, LeftOutCount, ModuleId, Protection, RunningApp, Subject, SystemPorts,
+    VolumeFacts, VolumeId,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, ScanMode};
 use fresher_module_jetbrains::JetBrainsModule;
@@ -133,7 +133,8 @@ impl Flow {
         let events = self.engine.subscribe();
         let summary = view.summary;
         let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                           "highest": summary.highest, "method": "trash" });
+                           "highest": summary.highest, "method": "trash",
+                           "highRiskUnderstood": summary.highest == DangerLevel::High });
         let confirmation: Confirmation = serde_json::from_value(echo).unwrap();
         let cleanup = self.engine.confirm_cleanup(&confirmation).unwrap();
         (cleanup, until(&events, |event| matches!(event, Event::CleanupFinished { .. })))
@@ -264,5 +265,7 @@ fn engine(fixture: &Path, data: &Path, apps: Apps) -> Engine {
     };
     let mut registry = Registry::new().unwrap();
     registry.register(Box::new(JetBrainsModule::new().unwrap())).unwrap();
-    Engine::with_cleanup(registry, ports, cleanup).unwrap()
+    let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+    engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+    engine
 }

@@ -117,7 +117,7 @@ The same problem on other operating systems gives ideas that carry over to macOS
 21. **Dev artifacts by age and by installed toolchains** — [`stale-project-cleanup.md`](./stale-project-cleanup.md).
 22. **Warn on `node_modules` that installed apps need.**
 23. ~~**Watch the Trash for apps**~~ — rejected: it needs a background service ([`../goal.md`](../goal.md), section 8).
-24. **No fake urgency**, written into the principles.
+24. **No fake urgency**, written into the principles. Built by plan [039](../plans/039-agreement-and-wording/readme.md): a short agreement before the first cleanup, a calm danger zone in Review, a tick of its own for High items, help for "removed something you need", a writing guide and a check over every text.
 25. **Empty a cache folder, keep the folder.**
 26. **Hard-blocked user folders** — the home folder and its standard folders can never be removed as a whole, a guard
     below every rule.

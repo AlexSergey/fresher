@@ -9,5 +9,6 @@ fn main() {
         allocated: ByteSize::new(4096),
         highest: DangerLevel::Safe,
         method: Method::Permanent,
+        high_risk_understood: false,
     };
 }

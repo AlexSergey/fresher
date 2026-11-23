@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Finding, FindingsQuery, Overview } from '../../ipc/bindings.generated';
 import type { CommandKey } from '../../ipc/index';
 
-import { type CoreAnswers, mockCore, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { type CoreAnswers, mockCore, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { summarize } from '../../state/selection-summary';
@@ -19,7 +19,7 @@ import {
   PLAN_MISMATCH,
 } from '../../test/cleanup-plan';
 import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW } from '../../test/demo-scan';
-import { FINDING_DICTIONARY, HIGH_FINDING } from '../../test/finding-fixtures';
+import { FINDING_DICTIONARY, HIGH_FINDING, MEDIUM_FINDING } from '../../test/finding-fixtures';
 import { LARGEST_DICTIONARY, LARGEST_ROWS, ownFindingOf } from '../../test/largest-scan';
 import { pageOf } from '../../test/page-of';
 import { BUILD_DICTIONARY, sandboxBuild } from '../../test/sandbox-build';
@@ -31,6 +31,9 @@ import { ReviewScreen } from './review-screen';
 const [EDITOR_CACHE, INSTALLER, BROWSER_CACHE] = DEMO_FINDINGS as readonly [Finding, Finding, Finding];
 
 const FINDINGS: readonly Finding[] = [...DEMO_FINDINGS, HIGH_FINDING];
+
+// A Medium finding of a category of its own, picked by itself.
+const IMAGE: Finding = { ...MEDIUM_FINDING, category: 'demo.images' };
 
 const OVERVIEW: Overview = {
   ...DEMO_OVERVIEW,
@@ -78,6 +81,7 @@ const renderReview = async (
       return answer(args);
     };
   mockCore({
+    ...sampleAgreementAnswers,
     ...sampleStorageAnswers,
     ...Object.fromEntries(Object.entries(cleanup).map(([key, answer]) => [key, recorded(key as CommandKey, answer)])),
     getDictionary: recorded('getDictionary', () => ({
@@ -145,7 +149,7 @@ const pickCategory =
   };
 
 const groupNames = (): readonly string[] =>
-  screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
+  screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent);
 
 const summaryRegion = (): HTMLElement => screen.getByRole('region', { name: 'What you are about to remove' });
 
@@ -174,7 +178,7 @@ describe('ReviewScreen', () => {
     it('shows no warning icon on a Safe zone', async () => {
       await renderReview(pickCategory('demo.caches'));
 
-      const title = screen.getByRole('heading', { level: 2, name: 'Safe to remove' });
+      const title = screen.getByRole('heading', { level: 3, name: 'Safe' });
 
       // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
       expect(title.parentElement?.querySelector('svg')).toBeNull();
@@ -273,8 +277,33 @@ describe('ReviewScreen', () => {
 
       await untick('installer.dmg');
 
-      expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
+      expect(screen.queryAllByRole('heading', { level: 4 })).toHaveLength(0);
       expect(screen.getByText('Nothing is selected')).toBeInTheDocument();
+    });
+
+    it('a selection without Medium or High has no danger part', async () => {
+      await renderReview(pickCategory('demo.caches', 'demo.downloads'));
+
+      expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toStrictEqual([
+        'Safe to remove',
+      ]);
+      expect(screen.queryByRole('region', { name: 'Danger zone' })).toBeNull();
+    });
+
+    it('the reach line shows only from Medium', async () => {
+      const { store } = await renderReview(pickCategory('demo.caches', 'demo.downloads'));
+
+      expect(within(summaryRegion()).queryByText(/^Your selection reaches the danger zone/u)).toBeNull();
+
+      act(() => {
+        pickFinding(IMAGE)(store);
+      });
+
+      expect(
+        within(summaryRegion()).getByText(
+          `Your selection reaches the danger zone: ${FINDING_DICTIONARY['core.danger.medium.meaning'] ?? ''}`,
+        ),
+      ).toBeInTheDocument();
     });
 
     it('the highest level never shows by colour alone', async () => {
@@ -303,18 +332,31 @@ describe('ReviewScreen', () => {
       expect(screen.queryByText(CLEANUP_DICTIONARY['core.error.plan-gone'] as string)).not.toBeInTheDocument();
     });
 
-    it('a selection across Safe and High shows two zones, High with its warning and meaning', async () => {
+    it('a selection across Safe and High shows the safe part and the danger zone apart', async () => {
       await renderReview((store) => {
         pickCategory('demo.caches')(store);
-        pickFinding(HIGH_FINDING)(store);
+        pickFinding(HIGH_FINDING, IMAGE)(store);
       });
 
-      const zones = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
-      const high = screen.getByRole('region', { name: 'High risk' });
+      const parts = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+      const safe = screen.getByRole('region', { name: 'Safe to remove' });
+      const danger = screen.getByRole('region', { name: 'Danger zone' });
 
-      expect(zones).toStrictEqual(['Safe to remove', 'High risk']);
+      expect(parts).toStrictEqual(['Safe to remove', 'Danger zone']);
+      expect(safe).toHaveAttribute('data-part', 'safe');
+      expect(danger).toHaveAttribute('data-part', 'danger');
+      expect(danger).toHaveAttribute('data-level', 'high');
+      expect(within(safe).getByText(CLEANUP_DICTIONARY['core.danger.part.safe.meaning'] ?? '')).toBeInTheDocument();
+      expect(within(danger).getByText(CLEANUP_DICTIONARY['core.danger.part.danger.meaning'] ?? '')).toBeInTheDocument();
+      expect(within(safe).getByRole('region', { name: 'Safe' })).toBeInTheDocument();
+      expect(
+        within(danger)
+          .getAllByRole('heading', { level: 3 })
+          .map((heading) => heading.textContent),
+      ).toStrictEqual(['Medium', 'High']);
+      const high = within(danger).getByRole('region', { name: 'High' });
       expect(within(high).getByText(FINDING_DICTIONARY['core.danger.high.meaning'] ?? '')).toBeInTheDocument();
-      const title = screen.getByRole('heading', { level: 2, name: 'High risk' });
+      const title = within(danger).getByRole('heading', { level: 3, name: 'High' });
 
       // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
       expect(title.parentElement?.querySelector('svg')).not.toBeNull();
@@ -324,7 +366,7 @@ describe('ReviewScreen', () => {
     it('a picked own file is listed under Your own files in the High zone', async () => {
       await renderReview(pickFinding(ownFindingOf(LARGEST_ROWS[0] as (typeof LARGEST_ROWS)[number], 101)));
 
-      const high = screen.getByRole('region', { name: 'High risk' });
+      const high = within(screen.getByRole('region', { name: 'Danger zone' })).getByRole('region', { name: 'High' });
 
       expect(within(high).getByRole('region', { name: 'Your own files' })).toBeInTheDocument();
       expect(within(high).getByText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '')).toBeInTheDocument();
@@ -409,7 +451,16 @@ describe('ReviewScreen', () => {
 
       expect(changes[1]).toStrictEqual([
         'confirmCleanup',
-        { confirmation: { allocated: 2_570_000_000, count: 3, highest: 'low', method: 'trash', plan: 1 } },
+        {
+          confirmation: {
+            allocated: 2_570_000_000,
+            count: 3,
+            highest: 'low',
+            highRiskUnderstood: false,
+            method: 'trash',
+            plan: 1,
+          },
+        },
       ]);
     });
 

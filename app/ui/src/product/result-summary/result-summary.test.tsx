@@ -192,6 +192,12 @@ describe('ResultSummary', () => {
   });
 
   describe('positive cases', () => {
+    it('shows the help button', () => {
+      renderSummary();
+
+      expect(screen.getByRole('button', { name: 'Removed something you need?' })).toBeInTheDocument();
+    });
+
     it('invites to look in the Trash after a move, tied to Show in the Trash', () => {
       renderSummary();
 

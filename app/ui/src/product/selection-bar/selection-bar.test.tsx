@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -95,6 +95,30 @@ describe('SelectionBar', () => {
   });
 
   describe('positive cases', () => {
+    it('the total has a description when it has the focus', () => {
+      render(bar());
+
+      // eslint-disable-next-line testing-library/no-node-access -- the hinted element has no role to query by
+      const total = screen.getByText('4.2 GB', { selector: '.u-visually-hidden' }).parentElement as HTMLElement;
+      act(() => {
+        total.focus();
+      });
+
+      expect(total).toHaveAccessibleDescription('The space on the disk that everything you selected takes.');
+    });
+
+    it('the highest level has its meaning as a description when it has the focus', () => {
+      render(bar());
+
+      // eslint-disable-next-line testing-library/no-node-access -- the hinted element has no role to query by
+      const level = screen.getByText('High').closest('[tabindex]') as HTMLElement;
+      act(() => {
+        level.focus();
+      });
+
+      expect(level).toHaveAccessibleDescription('May hold the only copy of your data. Removing it can lose work.');
+    });
+
     it('the selection bar shows count, size and highest level', () => {
       render(bar());
 

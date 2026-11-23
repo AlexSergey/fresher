@@ -31,7 +31,9 @@ const SYNC_INTERVAL: Duration = Duration::from_secs(1);
 /// Confirms the pending plan with `echo` and starts its cleanup; answers the cleanup's id from the journal.
 ///
 /// Refused while an operation runs (`Busy`), without a pending plan or for one that expired or that the echo does not
-/// name (`PlanGone`), for an echo that differs from the plan (`PlanMismatch`), for a plan whose every item was left
+/// name (`PlanGone`), for an echo that differs from the plan (`PlanMismatch`), for a plan whose highest level is High
+/// confirmed without the user's tick that its risk is understood (`HighRiskNotUnderstood`, checked before anything
+/// an uninstall adds, so an uninstall of everything is refused for it first), for a plan whose every item was left
 /// out (`NothingToClean`), for a plan holding a row the user picked that is no longer offered (`PlanGone`), and when
 /// cleaning is blocked or the journal cannot begin (`CleaningBlocked`): nothing is acted on or journalled then. An
 /// uninstall's plan is refused permanent (`PlanMismatch`: an uninstall always goes to the Trash), judged again
@@ -41,7 +43,7 @@ pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<Clean
     let mut machine = lock(&shared.machine)?;
     machine.idle()?;
     let (plan, purpose) = lock(&shared.pending)?.take().ok_or(CommandError::PlanGone)?;
-    let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?.clone();
+    let ports = blocked::check(&*lock(&shared.settings)?, shared.cleanup.as_ref())?.clone();
     let now = Timestamp::from_system_time(shared.ports.clock.now());
     let confirmed = plan.confirm(echo, now).map_err(|error| match error {
         ConfirmError::Mismatch { field } => {
@@ -49,6 +51,10 @@ pub(crate) fn confirm(shared: &Arc<Shared>, echo: &Confirmation) -> Result<Clean
             CommandError::PlanMismatch
         }
         ConfirmError::WrongPlan | ConfirmError::Expired => CommandError::PlanGone,
+        ConfirmError::HighRiskNotUnderstood => {
+            tracing::warn!("a plan holding a High item is confirmed without its risk understood");
+            CommandError::HighRiskNotUnderstood
+        }
     })?;
     if matches!(purpose, Purpose::Uninstall { .. }) && confirmed.method() == Method::Permanent {
         tracing::warn!("an uninstall is confirmed to be deleted permanently; it only goes to the Trash");
@@ -367,15 +373,17 @@ mod tests {
         use std::time::Duration;
 
         use fresher_core::{
-            BlockedReason, CleanupId, CommandError, Ended, EngineStatus, Event, FindingId, ItemOutcome, Operation,
-            PLAN_LIFETIME, RecordedOutcome, SkipReason, VolumeFacts, VolumeId,
+            BlockedReason, CleanupId, CommandError, DangerLevel, Ended, EngineStatus, Event, FindingId, ItemOutcome,
+            Operation, PLAN_LIFETIME, RecordedOutcome, SkipReason, VolumeFacts, VolumeId,
         };
         use fresher_testing::{FakeCleaner, FakeVolumes, MemoryCleanupJournal};
         use serde_json::json;
 
         use super::{held, prepared};
-        use crate::cleanup::testing::{echo, echo_with, fixture, report, scanned, select, wait_for_cleanup};
-        use crate::testing::{panic_now, wait_until_idle};
+        use crate::cleanup::testing::{
+            echo, echo_with, fixture, report, scanned, select, wait_for_cleanup, withdraw_agreement,
+        };
+        use crate::testing::{Fixture, ScriptedWalk, TestModule, bytes, panic_now, wait_until_idle};
 
         #[test]
         fn confirm_without_a_pending_plan_is_gone() {
@@ -437,6 +445,45 @@ mod tests {
 
             assert_eq!(engine.confirm_cleanup(&echo), Err(CommandError::PlanGone));
             assert_eq!(cleaner.executed().len(), 1);
+        }
+
+        #[test]
+        fn confirm_without_the_agreement_is_blocked_and_acts_on_nothing() {
+            let cleaner = Arc::new(FakeCleaner::default());
+            let fixture = fixture().cleaner(Arc::clone(&cleaner));
+            let journal = Arc::clone(&fixture.journal);
+            let engine = scanned(fixture);
+            let (_, echo) = prepared(&engine, "trash");
+            withdraw_agreement(&engine);
+
+            let error = engine.confirm_cleanup(&echo);
+
+            assert_eq!(error, Err(CommandError::CleaningBlocked { reason: BlockedReason::Agreement }));
+            assert_eq!(cleaner.executed(), []);
+            assert_eq!(journal.recorded().len(), 0);
+            assert_eq!(engine.status(), Ok(EngineStatus::Idle));
+            assert_eq!(engine.confirm_cleanup(&echo), Err(CommandError::PlanGone));
+        }
+
+        #[test]
+        fn confirm_of_a_high_plan_without_the_risk_is_refused_and_acts_on_nothing() {
+            let cleaner = Arc::new(FakeCleaner::default());
+            let walk = ScriptedWalk::new().folder("Data", "/home/Data", bytes(10));
+            let gamma = TestModule::builder("gamma").category("gamma.data", DangerLevel::High).folder("Data");
+            let fixture = Fixture::new(walk).module(gamma).cleaner(Arc::clone(&cleaner));
+            let journal = Arc::clone(&fixture.journal);
+            let engine = scanned(fixture);
+            let view = engine.prepare_cleanup(&select(&[1], &[])).unwrap();
+            let unticked = echo_with(&view, "trash", |json| json["highRiskUnderstood"] = json!(false));
+
+            let error = engine.confirm_cleanup(&unticked);
+
+            assert_eq!(view.summary.highest, DangerLevel::High);
+            assert_eq!(error, Err(CommandError::HighRiskNotUnderstood));
+            assert_eq!(cleaner.executed(), []);
+            assert_eq!(journal.recorded().len(), 0);
+            assert_eq!(engine.status(), Ok(EngineStatus::Idle));
+            assert_eq!(engine.confirm_cleanup(&echo(&view, "trash")), Err(CommandError::PlanGone));
         }
 
         #[test]
@@ -680,8 +727,26 @@ mod tests {
         use fresher_testing::{FakeCleaner, FakeVolumes};
 
         use super::{held, prepared};
-        use crate::cleanup::testing::{echo, fixture, report, scanned, select, wait_for_cleanup};
+        use crate::cleanup::testing::{echo, fixture, report, scanned, select, wait_for_cleanup, withdraw_agreement};
         use crate::testing::{Fixture, ScriptedWalk, TestModule, bytes};
+
+        #[test]
+        fn put_back_needs_no_acceptance() {
+            let cleaner = Arc::new(FakeCleaner::default());
+            let engine = scanned(fixture().cleaner(Arc::clone(&cleaner)));
+            let events = engine.subscribe();
+            let (_, echo) = prepared(&engine, "trash");
+            let cleanup = engine.confirm_cleanup(&echo).unwrap();
+            wait_for_cleanup(&events);
+            withdraw_agreement(&engine);
+            assert!(!engine.agreement().unwrap().is_accepted());
+
+            let report = engine.put_back(cleanup, None).unwrap();
+
+            assert_eq!(report.items.len(), 3);
+            assert!(report.items.iter().all(|item| item.outcome == fresher_core::PutBackOutcome::PutBack));
+            assert_eq!(cleaner.put_backs_tried().len(), 3);
+        }
 
         #[test]
         fn the_begin_record_is_written_before_the_first_item() {

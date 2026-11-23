@@ -398,6 +398,34 @@ Quit any development window first (the app is single-instance). Section 2.19 is 
       the whole app returns. The Twin case: the user's copy goes with everything, its data stays (shared).
 - [ ] `npm run dev:sandbox -- uninstall-open`: Mailbox shows "open" and is not offered; Sketch goes.
 
+### 1.23 The agreement, the danger zone and the wording ([039/05/01](./plans/039-agreement-and-wording/05-finish/01-docs-and-conclusions.md))
+
+Each sandbox from a fresh folder, so each meets the agreement anew: `rm -rf sandbox/downloads && npm run dev:sandbox --
+downloads` (Low, Medium and High) and `rm -rf sandbox/app-leftovers && npm run dev:sandbox -- app-leftovers` (Safe,
+Medium and High); then `uninstall` and `large-files`. The `docker` file offers nothing to remove, so it is not part of
+this walk.
+
+- [ ] Scan: nothing is selected. "Select all" of the Safe zone selects at once; of the Medium and High zones it asks
+      first, and Cancel selects nothing.
+- [ ] Select one item of each level the sandbox offers. Review shows "Safe to remove" with Safe and Low, then "Danger
+      zone" with Medium and High, set apart by a border; the summary says the selection reaches the danger zone.
+- [ ] Move to Trash…: the agreement sheet opens. "Not now" starts nothing. Again: "Read the full licence" shows both
+      licences; "I understand" goes on to the confirmation.
+- [ ] The confirmation: the High tick is off and the button inactive; tick it and confirm to the Trash. The result
+      offers "Removed something you need?" and its four parts read well.
+- [ ] Cleanups, put back: every item returns. A second cleanup does not ask for the agreement again.
+- [ ] `uninstall`: Apps, an app, Uninstall asks for the agreement first (fresh folder). "Remove the app and everything
+      it left" shows the High tick and the button stays inactive until it is ticked; keeping the data shows no High
+      tick; there is never a permanent choice.
+- [ ] `large-files`: Largest, tick a file. Review shows it under "Your own files" in the danger zone; the confirmation
+      asks for the High tick.
+- [ ] Settings, About: the five lines, "You accepted it on <today>", the licence button. Reset settings: the
+      acceptance is still there.
+- [ ] Read every screen once for the voice of [`writing.md`](./writing.md). Hover and Tab over icons and numbers: each
+      has a hint.
+- [ ] VoiceOver (Cmd-F5) on the agreement sheet and the confirmation: every line, tick and button is read with its
+      description.
+
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
@@ -812,6 +840,16 @@ du -sh /Applications/<app>.app   # three apps, against their sizes in the list
       Management, refuses silently or shows its own notice on the first bundle moved; the pane's address
       `Privacy_AppBundles`; whether Finder's "Put Back" still works for a moved bundle; how long the first measure takes
       on a Mac with Xcode. Write each down: the texts and the pane's address are corrected where they differ.
+
+### 2.21 The agreement and a High plan on your Mac ([039/05/01](./plans/039-agreement-and-wording/05-finish/01-docs-and-conclusions.md))
+
+Run after 1.23. `npm run dev` is a dry run: nothing moves.
+
+- [ ] A fresh data folder (or Settings, About shows "Not accepted yet"): the first Move to Trash… opens the agreement
+      sheet once; "I understand" goes on; the next cleanup does not ask.
+- [ ] Settings, About: the five lines and the date; the licence button opens both licences.
+- [ ] Select a High item (a large file from Largest, or an app's data): the confirmation's button stays inactive until
+      its tick is set, and the tick is off again at the next opening.
 
 ### 2.9 Scan time on the real home (rule 4: within 5 %)
 

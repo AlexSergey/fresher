@@ -77,12 +77,14 @@ type ItemProblem = {
 
 export const NO_CLEANUP: CleanupState = { kind: 'idle' };
 
-// What the dialog showed, sent back as it is: the plan's own count, allocated bytes and highest level, and the method
-// the user chose. Nothing is summed here.
-export const confirmationOf = (plan: CleanupPlanView, method: Method): Confirmation => ({
+// What the dialog showed, sent back as it is: the plan's own count, allocated bytes and highest level, the method
+// the user chose and whether they ticked that a High item may be the only copy. Nothing is summed or judged here: the
+// core checks the tick.
+export const confirmationOf = (plan: CleanupPlanView, method: Method, highRiskUnderstood: boolean): Confirmation => ({
   allocated: plan.summary.sizes.allocated,
   count: plan.summary.count,
   highest: plan.summary.highest,
+  highRiskUnderstood,
   method,
   plan: plan.plan,
 });

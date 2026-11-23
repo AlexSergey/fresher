@@ -9,13 +9,13 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    AutoEmpty, ByteSize, CancelToken, CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext,
-    ConfirmedPlan, DangerLevel, Depth, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink,
-    Interest, ItemDone, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
-    ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal,
-    ScanKind, SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
-    Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress,
-    WalkRequest, WalkSummary,
+    AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION, AGREEMENT_VERSION_KEY, AutoEmpty, ByteSize, CancelToken,
+    CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan, DangerLevel, Depth,
+    DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest, ItemDone, LeftOutItem,
+    Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need, NewFinding,
+    Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore,
+    Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand,
+    ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeFinderSettings, FakeSystemUi, FakeVolumes,
@@ -625,6 +625,14 @@ impl MemorySettings {
     pub(crate) fn saves(&self) -> usize {
         *self.saves.lock().unwrap()
     }
+
+    /// Puts the acceptance of the current agreement, made at `at`, into the stored values, as if an earlier run had
+    /// saved it; counts no save.
+    pub(crate) fn seed_acceptance(&self, at: u64) {
+        let mut stored = self.stored.lock().unwrap();
+        stored.values.insert(AGREEMENT_VERSION_KEY.into(), AGREEMENT_VERSION.into());
+        stored.values.insert(AGREEMENT_ACCEPTED_AT.into(), at.into());
+    }
 }
 
 impl SettingsStore for MemorySettings {
@@ -663,6 +671,8 @@ pub(crate) struct Fixture {
     pub(crate) journal: Arc<MemoryCleanupJournal>,
     pub(crate) volumes: Arc<FakeVolumes>,
     pub(crate) finder: Arc<FakeFinderSettings>,
+    /// Whether the settings hold the acceptance of the current agreement when the engine is built.
+    agreement: bool,
 }
 
 impl Fixture {
@@ -680,7 +690,14 @@ impl Fixture {
             journal: Arc::default(),
             volumes: Arc::default(),
             finder: Arc::new(FakeFinderSettings::new(AutoEmpty::Unknown)),
+            agreement: true,
         }
+    }
+
+    /// The engine's settings do not hold the acceptance of the agreement: a fresh install.
+    pub(crate) fn unaccepted(mut self) -> Self {
+        self.agreement = false;
+        self
     }
 
     /// The cleaner the engine cleans through; the test keeps its own `Arc` to look at it.
@@ -734,7 +751,11 @@ impl Fixture {
         self
     }
 
+    /// The engine over the fixture; its settings hold the acceptance of the current agreement unless `unaccepted`.
     pub(crate) fn engine(self) -> Engine {
+        if self.agreement {
+            self.settings.seed_acceptance(START);
+        }
         let mut registry = Registry::new().unwrap();
         for module in self.modules {
             registry.register(module).unwrap();

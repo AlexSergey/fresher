@@ -1,0 +1,12 @@
+/* The agreement sheet's stories: a page as tall as the window behind the open sheet. */
+@layer components {
+  .stage {
+    height: 646px;
+  }
+
+  .behind {
+    font-size: var(--type-title-1-size);
+    font-weight: var(--type-title-1-weight);
+    line-height: var(--type-title-1-line);
+  }
+}

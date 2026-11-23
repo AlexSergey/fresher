@@ -14,7 +14,7 @@ import type {
 } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -110,6 +110,7 @@ const withAdminItem: CoreAnswers['getFindings'] = (args) =>
 
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
+    ...sampleAgreementAnswers,
     getDictionary: () => DICTIONARY,
     getFindings: (args) =>
       pageOf([...DEMO_FINDINGS, ...APP_LEFTOVERS_FINDINGS], (args as { query: FindingsQuery }).query),

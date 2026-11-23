@@ -97,6 +97,15 @@
     white-space: nowrap;
   }
 
+  .level {
+    display: inline-flex;
+  }
+
+  .level:focus-visible {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--focus-ring);
+  }
+
   .meta {
     display: flex;
     align-items: center;

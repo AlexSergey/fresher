@@ -75,6 +75,8 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         commands::get_settings,
         commands::update_setting,
         commands::reset_settings,
+        commands::get_agreement,
+        commands::accept_agreement,
         commands::ignore,
         commands::restore_ignored,
         settings_commands::pick_folder,

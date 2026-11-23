@@ -136,7 +136,7 @@ pub(crate) fn rehearse_and_keep(
     selected: &[&Finding],
 ) -> Result<CleanupPlanView, CommandError> {
     let Planned { deaths, scan, roots, purpose } = planned;
-    let ports = blocked::check(lock(&shared.settings)?.file(), shared.cleanup.as_ref())?;
+    let ports = blocked::check(&*lock(&shared.settings)?, shared.cleanup.as_ref())?;
     let sorted = plan::sort_out(selected, &[]);
     let cx = Context::now(shared, purpose.scope())?;
     let answers = ports.cleaner.rehearse(&roots, &plan::to_rehearse(&sorted), &cx.borrow(), Depth::Quick);
@@ -172,8 +172,8 @@ mod tests {
         use std::time::Duration;
 
         use fresher_core::{
-            BlockedReason, CleanupPlan, CommandError, ConfirmError, FindingId, Operation, PLAN_LIFETIME, SettingUpdate,
-            SettingValue, SkipReason, StoreError, Timestamp,
+            AGREEMENT_VERSION, BlockedReason, CleanupPlan, CommandError, ConfirmError, FindingId, Operation,
+            PLAN_LIFETIME, SettingUpdate, SettingValue, SkipReason, StoreError, Timestamp,
         };
         use fresher_testing::{FakeCleaner, MemoryCleanupJournal};
 
@@ -226,6 +226,58 @@ mod tests {
         }
 
         #[test]
+        fn prepare_without_the_agreement_is_blocked_and_holds_no_plan() {
+            let engine = scanned(fixture().unaccepted());
+
+            let error = engine.prepare_cleanup(&select(&[1], &[]));
+
+            assert_eq!(error, Err(CommandError::CleaningBlocked { reason: BlockedReason::Agreement }));
+            assert_eq!(pending(&engine), None);
+        }
+
+        #[test]
+        fn a_broken_settings_file_is_reported_before_the_agreement() {
+            let engine = scanned(fixture().unaccepted().settings(MemorySettings::unloadable(StoreError::Broken)));
+
+            let error = engine.prepare_cleanup(&select(&[1], &[]));
+
+            assert_eq!(error, Err(CommandError::CleaningBlocked { reason: BlockedReason::Settings }));
+        }
+
+        #[test]
+        fn accepting_on_a_broken_settings_file_saves_nothing_and_cleaning_stays_blocked() {
+            let fixture = fixture().unaccepted().settings(MemorySettings::unloadable(StoreError::Broken));
+            let settings = Arc::clone(&fixture.settings);
+            let engine = scanned(fixture);
+
+            let accepted = engine.accept_agreement(AGREEMENT_VERSION);
+            let error = engine.prepare_cleanup(&select(&[1], &[]));
+
+            let blocked = CommandError::CleaningBlocked { reason: BlockedReason::Settings };
+            assert_eq!(accepted, Err(blocked.clone()));
+            assert_eq!(settings.saves(), 0);
+            assert_eq!(error, Err(blocked));
+            assert_eq!(pending(&engine), None);
+        }
+
+        #[test]
+        fn an_acceptance_of_another_version_is_blocked() {
+            let at = serde_json::json!(START);
+            for version in [0, AGREEMENT_VERSION + 1] {
+                let stored = [
+                    ("core.agreement.version", serde_json::json!(version)),
+                    ("core.agreement.accepted-at", at.clone()),
+                ];
+                let engine = scanned(fixture().unaccepted().settings(MemorySettings::with(&stored)));
+
+                let error = engine.prepare_cleanup(&select(&[1], &[]));
+
+                assert_eq!(error, Err(CommandError::CleaningBlocked { reason: BlockedReason::Agreement }), "{version}");
+                assert_eq!(pending(&engine), None);
+            }
+        }
+
+        #[test]
         fn a_read_only_journal_blocks_cleaning() {
             let engine = scanned(fixture().journal(MemoryCleanupJournal::read_only()));
 
@@ -238,6 +290,7 @@ mod tests {
         #[test]
         fn an_engine_without_cleanup_ports_blocks_cleaning() {
             let fixture = fixture();
+            fixture.settings.seed_acceptance(START);
             let ports = Ports {
                 walk: Arc::new(ScriptedWalk::new().folder("Caches", "/home/a/Caches", crate::testing::bytes(1))),
                 settings: fixture.settings,
@@ -344,7 +397,24 @@ mod tests {
         use fresher_testing::FakeCleaner;
 
         use super::pending;
-        use crate::cleanup::testing::{fixture, items, left_out, scanned, select};
+        use crate::cleanup::testing::{echo, fixture, items, left_out, scanned, select, wait_for_cleanup};
+
+        #[test]
+        fn after_acceptance_the_cleanup_runs() {
+            let engine = scanned(fixture().unaccepted());
+            let events = engine.subscribe();
+            assert!(engine.prepare_cleanup(&select(&[1], &[])).is_err());
+
+            engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+            let view = engine.prepare_cleanup(&select(&[1], &[])).unwrap();
+            let id = engine.confirm_cleanup(&echo(&view, "trash")).unwrap();
+
+            let seen = wait_for_cleanup(&events);
+            assert!(
+                matches!(seen.last(), Some(fresher_core::Event::CleanupFinished { cleanup, .. }) if *cleanup == id)
+            );
+            assert_eq!(pending(&engine), None);
+        }
 
         #[test]
         fn the_view_groups_by_category_in_the_overviews_order() {

@@ -1,13 +1,16 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-import { mockCore, SCRIPTS } from './core-mock';
+import { type CoreScript, mockCore, SCRIPTS } from './core-mock';
+import { acceptedVersions } from './support/agreement-mock';
 import { REVEALED } from './support/apps-mock';
 import { scanButton, scanFinished } from './support/cards';
+import { preparedCommands } from './support/cleanup-mock';
+import { highTick, tickHigh } from './support/confirm';
 
 // The Apps screen and an app's page on the mocked core: the list and its filter, the uninstall with each choice through
 // the confirmation, the reason an app is not offered, and put back of an uninstall from Cleanups.
 
-type Script = (typeof SCRIPTS)[keyof typeof SCRIPTS];
+type Script = CoreScript;
 
 const heading = (page: Page, name: string): Locator => page.getByRole('heading', { level: 1, name });
 
@@ -33,6 +36,9 @@ const openApp = async (page: Page, name: string, script: Script = SCRIPTS.apps):
   await appRow(page, name).click();
   await expect(heading(page, name)).toBeFocused();
 };
+
+// The apps world before the agreement was accepted.
+const UNACCEPTED: Script = { ...SCRIPTS.apps, agreement: 'not-accepted' };
 
 const uninstallButton = (page: Page): Locator => page.getByRole('button', { name: 'Uninstall…' });
 
@@ -72,11 +78,50 @@ test.describe('negative cases', () => {
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toHaveCount(0);
   });
 
+  test('Not now on an uninstall starts nothing', async ({ page }) => {
+    await openApp(page, 'Video Studio', UNACCEPTED);
+    await uninstallButton(page).click();
+    const sheet = page.getByRole('dialog', { name: 'Before your first cleanup' });
+
+    await sheet.getByRole('button', { name: 'Not now' }).click();
+
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(heading(page, 'Video Studio')).toBeVisible();
+    expect(await preparedCommands(page)).toStrictEqual([]);
+    expect(await acceptedVersions(page)).toStrictEqual([]);
+  });
+
   test('nothing is chosen for removal before the user asks', async ({ page }) => {
     await openApp(page, 'Video Studio');
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Review/ })).not.toContainText('selected');
+  });
+
+  test('an uninstall of everything cannot be confirmed without its tick', async ({ page }) => {
+    await openApp(page, 'Video Studio');
+    await page.getByRole('radio', { name: EVERYTHING }).check();
+    await uninstallButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    const confirm = dialog.getByRole('button', { name: 'Move to Trash' });
+
+    await expect(highTick(dialog)).not.toBeChecked();
+    await expect(confirm).toBeDisabled();
+
+    await expect(dialog).toBeVisible();
+    await expect(heading(page, 'Video Studio')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toHaveCount(0);
+  });
+
+  test('an uninstall that keeps the data shows no High tick', async ({ page }) => {
+    await openApp(page, 'Video Studio');
+    await uninstallButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+
+    await expect(dialog).toContainText('Medium');
+    await expect(highTick(dialog)).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
   });
 });
 
@@ -107,6 +152,19 @@ test.describe('positive cases', () => {
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 1 item to the Trash');
+  });
+
+  test('an uninstall asks for the agreement first and goes on after I understand', async ({ page }) => {
+    await openApp(page, 'Video Studio', UNACCEPTED);
+    await uninstallButton(page).click();
+    const sheet = page.getByRole('dialog', { name: 'Before your first cleanup' });
+    expect(await preparedCommands(page)).toStrictEqual([]);
+
+    await sheet.getByRole('button', { name: 'I understand' }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Move 1 item to the Trash?' })).toBeVisible();
+    expect(await preparedCommands(page)).toStrictEqual(['prepare_uninstall']);
+    expect(await acceptedVersions(page)).toStrictEqual([1]);
   });
 
   test('uninstall everything lists the files in the confirmation', async ({ page }) => {
@@ -178,5 +236,18 @@ test.describe('positive cases', () => {
     await item.getByRole('button', { name: 'Put back' }).click();
 
     await expect(item).toContainText('Put back where it was.');
+  });
+
+  test('an uninstall of everything goes on after the tick', async ({ page }) => {
+    await openApp(page, 'Video Studio');
+    await page.getByRole('radio', { name: EVERYTHING }).check();
+    await uninstallButton(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+
+    await tickHigh(dialog);
+    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+
+    // The core mock refuses a High echo without the tick: the uninstall runs only because it was sent.
+    await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 1 item to the Trash');
   });
 });

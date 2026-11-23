@@ -28,4 +28,10 @@
     color: var(--text-secondary);
     text-align: center;
   }
+
+  .askText {
+    display: grid;
+    color: var(--text-secondary);
+    gap: var(--space-3);
+  }
 }

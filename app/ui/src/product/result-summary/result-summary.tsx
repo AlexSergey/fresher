@@ -12,6 +12,7 @@ import { t, tText } from '../../i18n';
 import { formatSize } from '../../i18n/format-size';
 import { skipReasonText } from '../cleanup-texts';
 import { ProblemText } from '../problem-text/problem-text';
+import { RecoveryHelp } from '../recovery-help/recovery-help';
 import styles from './result-summary.module.css';
 
 export type ResultSummaryProps = {
@@ -169,6 +170,7 @@ export const ResultSummary = ({
           </Button>
         ) : null}
         {onSeeCleanup === undefined ? null : <Button onClick={onSeeCleanup}>{t('ui.result.see-cleanup')}</Button>}
+        <RecoveryHelp />
         <Button onClick={onDone} variant="primary">
           {t('ui.result.done')}
         </Button>

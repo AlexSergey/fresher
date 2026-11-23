@@ -3,7 +3,9 @@
 //! A [`Confirmation`] has no constructor: it exists only as the JSON the UI sends. [`CleanupPlan::confirm`] is the
 //! only constructor of a [`ConfirmedPlan`], which is not `Clone` and is executed by value, once. Every removal
 //! function of the cleaner takes an [`Act`], which only a confirmed plan lends, and a permanent delete also takes the
-//! [`PermanentConsent`] only a permanent confirmation carries. `tests/compile_fail/` holds all of this.
+//! [`PermanentConsent`] only a permanent confirmation carries. A plan whose highest level is High is confirmed only
+//! with the user's tick that its risk is understood, sent with the echo and never remembered. `tests/compile_fail/`
+//! holds all of this.
 
 use std::fmt;
 
@@ -14,7 +16,9 @@ use crate::cleanup::{CleanupPlan, Method, PLAN_LIFETIME, PlanId, PlanItem};
 use crate::{ByteSize, DangerLevel, Timestamp};
 
 /// What the confirmation showed the user, sent back by the UI with the plan's id: the count, the allocated bytes of
-/// the total, the highest danger level, and the method the user chose. Only deserialized, never built in code.
+/// the total, the highest danger level, the method the user chose, and `highRiskUnderstood`, the user's tick that a
+/// High item may be the only copy (required; it matters only for a plan whose highest level is High). Only
+/// deserialized, never built in code.
 #[derive(Debug, PartialEq, Eq, Deserialize, TS)]
 #[serde(deny_unknown_fields)]
 pub struct Confirmation {
@@ -23,6 +27,8 @@ pub struct Confirmation {
     allocated: ByteSize,
     highest: DangerLevel,
     method: Method,
+    #[serde(rename = "highRiskUnderstood")]
+    high_risk_understood: bool,
 }
 
 impl Confirmation {
@@ -66,6 +72,9 @@ pub enum ConfirmError {
     /// The UI showed something other than the plan.
     #[error("the confirmed {field} differs from the plan's")]
     Mismatch { field: EchoField },
+    /// The plan holds a High item and the user did not tick that its risk is understood.
+    #[error("the plan holds a High item and its risk was not confirmed")]
+    HighRiskNotUnderstood,
 }
 
 /// A plan the user confirmed: the only input of the cleaner's removing entry point. Not `Clone`, never
@@ -98,7 +107,8 @@ pub struct Act<'a> {
 impl CleanupPlan {
     /// The only way to a [`ConfirmedPlan`]: the confirmation must name this plan, the plan must be at most
     /// [`PLAN_LIFETIME`] old at `now`, and the count, the allocated bytes and the highest danger level the user saw
-    /// must equal the plan's. The plan is consumed whatever the answer.
+    /// must equal the plan's; a plan whose highest level is High also needs the user's tick that its risk is
+    /// understood. The plan is consumed whatever the answer.
     pub fn confirm(self, echo: &Confirmation, now: Timestamp) -> Result<ConfirmedPlan, ConfirmError> {
         if echo.plan != self.id() {
             return Err(ConfirmError::WrongPlan);
@@ -117,6 +127,9 @@ impl CleanupPlan {
         }
         if echo.highest != summary.highest {
             return mismatch(EchoField::Highest);
+        }
+        if summary.highest == DangerLevel::High && !echo.high_risk_understood {
+            return Err(ConfirmError::HighRiskNotUnderstood);
         }
         let method = match echo.method {
             Method::Trash => ConfirmedMethod::Trash,
@@ -174,10 +187,23 @@ mod tests {
 
     /// The confirmation of the sample plan as the UI would send it, with `change` applied to its JSON.
     fn echo(change: impl FnOnce(&mut serde_json::Value)) -> Confirmation {
-        let mut json =
-            json!({ "plan": 7, "count": 3, "allocated": 4096 + 8192 + 100, "highest": "medium", "method": "trash" });
+        let mut json = json!({
+            "plan": 7, "count": 3, "allocated": 4096 + 8192 + 100, "highest": "medium", "method": "trash",
+            "highRiskUnderstood": false,
+        });
         change(&mut json);
         serde_json::from_value(json).unwrap()
+    }
+
+    /// The confirmation of the sample High plan, the risk understood as given.
+    fn high_echo(understood: bool, change: impl FnOnce(&mut serde_json::Value)) -> Confirmation {
+        echo(|json| {
+            json["count"] = 2.into();
+            json["allocated"] = (4096 + 16_384).into();
+            json["highest"] = "high".into();
+            json["highRiskUnderstood"] = understood.into();
+            change(json);
+        })
     }
 
     /// One second past the sample plan's lifetime.
@@ -186,7 +212,7 @@ mod tests {
     }
 
     mod negative {
-        use super::{echo, too_late};
+        use super::{echo, high_echo, too_late};
         use crate::Timestamp;
         use crate::cleanup::plan::sample;
         use crate::cleanup::{ConfirmError, Confirmation, EchoField};
@@ -244,9 +270,42 @@ mod tests {
 
         #[test]
         fn a_confirmation_with_an_unknown_field_is_refused() {
-            let mut json =
-                serde_json::json!({ "plan": 7, "count": 3, "allocated": 1, "highest": "low", "method": "trash" });
+            let mut json = serde_json::json!({
+                "plan": 7, "count": 3, "allocated": 1, "highest": "low", "method": "trash", "highRiskUnderstood": false,
+            });
             json["items"] = serde_json::json!([1, 2, 3]);
+
+            assert!(serde_json::from_value::<Confirmation>(json).is_err());
+        }
+
+        #[test]
+        fn a_high_plan_without_the_risk_understood_is_refused() {
+            let error = sample::high_plan().confirm(&high_echo(false, |_| ()), now());
+
+            assert_eq!(error.unwrap_err(), ConfirmError::HighRiskNotUnderstood);
+        }
+
+        #[test]
+        fn a_high_plan_with_a_wrong_count_is_refused_for_the_count_not_the_risk() {
+            let error = sample::high_plan().confirm(&high_echo(false, |json| json["count"] = 5.into()), now());
+
+            assert_eq!(error.unwrap_err(), ConfirmError::Mismatch { field: EchoField::Count });
+        }
+
+        #[test]
+        fn the_refusal_consumes_the_plan() {
+            let plan = sample::high_plan();
+
+            let refused = plan.confirm(&high_echo(false, |_| ()), now());
+
+            // `plan` was moved into `confirm`: a second confirmation of it does not compile, so the user prepares again.
+            assert!(refused.is_err());
+        }
+
+        #[test]
+        fn a_confirmation_without_the_field_is_not_read() {
+            let json =
+                serde_json::json!({ "plan": 7, "count": 3, "allocated": 1, "highest": "low", "method": "trash" });
 
             assert!(serde_json::from_value::<Confirmation>(json).is_err());
         }
@@ -260,11 +319,15 @@ mod tests {
             assert_eq!(EchoField::Count.to_string(), "count");
             assert_eq!(EchoField::Highest.to_string(), "highest danger level");
             assert_ne!(ConfirmError::WrongPlan.to_string(), ConfirmError::Expired.to_string());
+            assert_eq!(
+                ConfirmError::HighRiskNotUnderstood.to_string(),
+                "the plan holds a High item and its risk was not confirmed"
+            );
         }
     }
 
     mod positive {
-        use super::echo;
+        use super::{echo, high_echo};
         use crate::Timestamp;
         use crate::cleanup::plan::sample;
         use crate::cleanup::{Method, PLAN_LIFETIME, PlanId};
@@ -296,6 +359,31 @@ mod tests {
         }
 
         #[test]
+        fn a_high_plan_with_the_risk_understood_is_confirmed() {
+            let confirmed = sample::high_plan().confirm(&high_echo(true, |_| ()), Timestamp::from_secs(sample::MADE));
+
+            assert_eq!(confirmed.unwrap().items().len(), 2);
+        }
+
+        #[test]
+        fn a_plan_below_high_is_confirmed_with_the_field_false() {
+            let confirmed = sample::plan().confirm(&echo(|_| ()), Timestamp::from_secs(sample::MADE));
+
+            assert_eq!(confirmed.unwrap().method(), Method::Trash);
+        }
+
+        #[test]
+        fn the_field_true_on_a_low_plan_changes_nothing() {
+            let understood = echo(|json| json["highRiskUnderstood"] = true.into());
+
+            let confirmed = sample::plan().confirm(&understood, Timestamp::from_secs(sample::MADE)).unwrap();
+
+            assert_eq!(confirmed.method(), Method::Trash);
+            assert!(confirmed.permanent().is_none());
+            assert_eq!(confirmed.items().len(), 3);
+        }
+
+        #[test]
         fn the_lifetime_is_ten_minutes() {
             assert_eq!(PLAN_LIFETIME.as_secs(), 600);
         }
@@ -323,10 +411,12 @@ mod tests {
                 allocated in prop_oneof![Just(12_388_u64), 0..=u64::MAX >> 11],
                 highest in prop_oneof![Just("medium"), level()],
                 permanent: bool,
+                understood: bool,
             ) {
                 let method = if permanent { "permanent" } else { "trash" };
                 let json = json!({
                     "plan": plan, "count": count, "allocated": allocated, "highest": highest, "method": method,
+                    "highRiskUnderstood": understood,
                 });
                 let echo: Confirmation = serde_json::from_value(json).unwrap();
                 let same = plan == 7 && count == 3 && allocated == 12_388 && highest == "medium";

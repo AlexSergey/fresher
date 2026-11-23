@@ -4,10 +4,11 @@
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    ByteSize, CategoryId, CommandError, Event, Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS,
-    IgnoredEntry, LARGEST_MIN_SIZE, ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS,
-    SettingDescriptor, SettingEffect, SettingKey, SettingUpdate, SettingValue, SettingsFile, SettingsSchema,
-    SettingsStore, SettingsView, StoreError, StoredSettings, Subject, min_size_of,
+    AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION_KEY, Acceptance, BlockedReason, ByteSize, CategoryId, CommandError, Event,
+    Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IgnoredEntry, LARGEST_MIN_SIZE,
+    ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SettingDescriptor, SettingEffect, SettingKey,
+    SettingUpdate, SettingValue, SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings,
+    Subject, Timestamp, min_size_of,
 };
 
 use crate::Registry;
@@ -17,6 +18,12 @@ const ENABLED: &str = "enabled";
 
 /// The ignore lists: a reset keeps them, and a change of one kills the pending cleanup plan.
 const IGNORE_LISTS: [&str; 4] = [IGNORE_MODULES, IGNORE_GROUPS, IGNORE_CATEGORIES, IGNORE_PATHS];
+
+/// The acceptance of the agreement: written only by `accept_agreement`, never by `update`.
+const AGREEMENT: [&str; 2] = [AGREEMENT_VERSION_KEY, AGREEMENT_ACCEPTED_AT];
+
+/// What a reset keeps: the ignore lists and the acceptance of the agreement.
+const KEPT_BY_RESET: [&[&str]; 2] = [&IGNORE_LISTS, &AGREEMENT];
 
 /// The schema, the stored values as read, and the values in use.
 #[derive(Debug)]
@@ -56,8 +63,12 @@ impl Settings {
     }
 
     /// Checks `update`, saves it through `store`, then takes it; the event announces it. Nothing changes on a refusal.
+    /// The acceptance of the agreement is not a setting to change: its keys are refused as unknown.
     pub(crate) fn update(&mut self, update: SettingUpdate, store: &dyn SettingsStore) -> Result<Event, CommandError> {
         let SettingUpdate { key, value } = update;
+        if AGREEMENT.contains(&key.as_str()) {
+            return Err(CommandError::UnknownSetting { key });
+        }
         let descriptor = self.schema.get(&key).ok_or(CommandError::UnknownSetting { key })?;
         let key = descriptor.key().clone();
         descriptor.check(&value).map_err(|_| CommandError::InvalidSettingValue { key: key.clone() })?;
@@ -68,14 +79,15 @@ impl Settings {
         Ok(Event::SettingChanged { key, value })
     }
 
-    /// Puts every setting but the ignore lists back to its default and drops every other stored key, saved once;
-    /// answers one `SettingChanged` per value that changed. Nothing is saved when nothing would change; refused on a
-    /// read-only file even then, so the screen never says the settings were reset when they could not be.
+    /// Puts every setting but the ignore lists and the acceptance of the agreement back to its default and drops every
+    /// other stored key, saved once (`KEPT_BY_RESET`); answers one `SettingChanged` per value that changed. Nothing is
+    /// saved when nothing would change; refused on a read-only file even then, so the screen never says the settings
+    /// were reset when they could not be.
     pub(crate) fn reset(&mut self, store: &dyn SettingsStore) -> Result<Vec<Event>, CommandError> {
         if self.file.is_read_only() {
             return Err(CommandError::SettingsReadOnly);
         }
-        let kept = |key: &str| IGNORE_LISTS.contains(&key);
+        let kept = |key: &str| KEPT_BY_RESET.iter().any(|keys| keys.contains(&key));
         let changed: Vec<(SettingKey, SettingValue)> = self
             .schema
             .descriptors()
@@ -98,6 +110,46 @@ impl Settings {
                 Event::SettingChanged { key, value }
             })
             .collect())
+    }
+
+    /// The last acceptance of the agreement, of whatever version; `None` when it was never accepted.
+    pub(crate) fn agreement(&self) -> Option<Acceptance> {
+        let number = |key: &str| match self.resolved.get(key) {
+            Some(SettingValue::Number(number)) => *number,
+            _ => 0,
+        };
+        let version = u32::try_from(number(AGREEMENT_VERSION_KEY)).ok().filter(|version| *version > 0)?;
+        let at = Timestamp::from_secs(u64::try_from(number(AGREEMENT_ACCEPTED_AT)).unwrap_or_default());
+        Some(Acceptance { version, at })
+    }
+
+    /// Records the acceptance of `version` at `at`: both values in one save, then takes them. Refused with
+    /// `CleaningBlocked` (`Settings`) unless the file is `Loaded`: a save would replace a broken file the user may
+    /// still want, and cleaning stays blocked by that file whatever is accepted.
+    pub(crate) fn accept_agreement(
+        &mut self,
+        version: u32,
+        at: Timestamp,
+        store: &dyn SettingsStore,
+    ) -> Result<(), CommandError> {
+        if self.file != SettingsFile::Loaded {
+            return Err(CommandError::CleaningBlocked { reason: BlockedReason::Settings });
+        }
+        let at = i64::try_from(at.secs()).map_err(|_| CommandError::Internal)?;
+        let mut values = Vec::new();
+        for (key, number) in [(AGREEMENT_VERSION_KEY, i64::from(version)), (AGREEMENT_ACCEPTED_AT, at)] {
+            let descriptor = self.schema.get(key).ok_or(CommandError::Internal)?;
+            values.push((descriptor.key().clone(), SettingValue::Number(number)));
+        }
+        let mut stored = self.stored.clone();
+        for (key, value) in &values {
+            stored.values.insert(key.as_str().into(), value.to_json());
+        }
+        self.save(stored, store)?;
+        for (key, value) in &values {
+            self.take(key, value);
+        }
+        Ok(())
     }
 
     /// The ignore lists in use; the modules they hide are resolved through `registry`: the ignored modules it has,
@@ -317,11 +369,11 @@ mod tests {
     mod negative {
         use std::io;
 
-        use fresher_core::{CommandError, FormatVersion, SettingProblem, SettingValue, StoreError};
+        use fresher_core::{BlockedReason, CommandError, FormatVersion, SettingProblem, SettingValue, StoreError};
         use serde_json::json;
 
         use super::{engine, home, key, roots, update};
-        use crate::testing::{MemorySettings, poison};
+        use crate::testing::{Fixture, MemorySettings, ScriptedWalk, poison};
         use fresher_core::SettingsFile;
 
         #[test]
@@ -332,6 +384,38 @@ mod tests {
 
             assert_eq!(error, Err(CommandError::UnknownSetting { key: "alpha.missing".into() }));
             assert_eq!(settings.saves(), 0);
+        }
+
+        #[test]
+        fn update_refuses_the_agreement_keys_and_saves_nothing() {
+            let (engine, settings) = engine(MemorySettings::default());
+
+            for name in ["core.agreement.version", "core.agreement.accepted-at"] {
+                let error = engine.update_setting(update(name, SettingValue::Number(0)));
+                assert_eq!(error, Err(CommandError::UnknownSetting { key: name.into() }), "{name}");
+            }
+            assert_eq!(settings.saves(), 0);
+            assert!(engine.agreement().unwrap().is_accepted());
+        }
+
+        #[test]
+        fn accepting_on_a_file_that_is_not_loaded_is_refused_and_saves_nothing() {
+            let newer = StoreError::NewerVersion { found: FormatVersion::new(2), supported: FormatVersion::new(1) };
+            let unreadable = StoreError::Io { kind: io::ErrorKind::PermissionDenied };
+            for error in [StoreError::Broken, newer, unreadable] {
+                let fixture =
+                    Fixture::new(ScriptedWalk::new()).unaccepted().settings(MemorySettings::unloadable(error.clone()));
+                let settings = std::sync::Arc::clone(&fixture.settings);
+                let engine = fixture.engine();
+
+                let refused = engine.accept_agreement(fresher_core::AGREEMENT_VERSION);
+
+                let blocked = CommandError::CleaningBlocked { reason: BlockedReason::Settings };
+                assert_eq!(refused, Err(blocked), "{error}");
+                assert_eq!(settings.saves(), 0, "{error}");
+                assert_eq!(engine.agreement().map(|view| view.accepted), Ok(None), "{error}");
+                assert_ne!(engine.settings().map(|view| view.file), Ok(SettingsFile::Loaded), "{error}");
+            }
         }
 
         #[test]
@@ -465,8 +549,38 @@ mod tests {
         use serde_json::json;
 
         use super::{engine, key, update};
-        use crate::testing::{MemorySettings, scan};
+        use crate::testing::{Fixture, MemorySettings, START, ScriptedWalk, scan};
         use fresher_core::SettingsFile;
+
+        #[test]
+        fn reset_keeps_the_acceptance() {
+            let (engine, settings) = engine(MemorySettings::with(&[("core.motion", json!("reduced"))]));
+            let before = engine.agreement().unwrap();
+
+            engine.reset_settings().unwrap();
+
+            assert_eq!(settings.saves(), 1);
+            assert!(before.is_accepted());
+            assert_eq!(engine.agreement(), Ok(before));
+            let stored = settings.stored();
+            assert_eq!(stored.values.get("core.agreement.version"), Some(&json!(fresher_core::AGREEMENT_VERSION)));
+            assert_eq!(stored.values.get("core.agreement.accepted-at"), Some(&json!(START)));
+        }
+
+        #[test]
+        fn acceptance_saves_both_values_once() {
+            let fixture = Fixture::new(ScriptedWalk::new()).unaccepted();
+            let settings = std::sync::Arc::clone(&fixture.settings);
+            let engine = fixture.engine();
+
+            engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+
+            assert_eq!(settings.saves(), 1);
+            let stored = settings.stored();
+            assert_eq!(stored.values.len(), 2);
+            assert_eq!(stored.values.get("core.agreement.version"), Some(&json!(fresher_core::AGREEMENT_VERSION)));
+            assert_eq!(stored.values.get("core.agreement.accepted-at"), Some(&json!(START)));
+        }
 
         #[test]
         fn persists_and_announces_a_change() {

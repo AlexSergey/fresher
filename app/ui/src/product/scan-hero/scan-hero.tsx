@@ -9,6 +9,7 @@ import { ErrorState } from '../../design/feedback/error-state/error-state';
 import { Surface } from '../../design/layout/surface/surface';
 import { useAnimatedNumber, usePresence } from '../../design/motion';
 import { Button } from '../../design/primitives/button/button';
+import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { VisuallyHidden } from '../../design/primitives/visually-hidden/visually-hidden';
 import { DURATION } from '../../design/tokens/motion';
 import { t, tText } from '../../i18n';
@@ -103,19 +104,27 @@ const Found = ({ categories, found, items }: FoundProps): JSX.Element => {
   return (
     <div className={styles.found}>
       <span className={styles.caption}>{t('ui.scan-hero.found')}</span>
-      {found.completeness === 'unknown' ? (
-        <SizeText {...honest} size="hero" />
-      ) : (
-        <span className={styles.number}>
-          <HeroCount duration={duration} key={run.generation} value={value} />
-          {found.completeness === 'partial' ? (
-            <span aria-hidden="true" className={styles.plus}>
-              +
+      <Tooltip content={t('ui.scan-hero.found.hint')} placement="bottom">
+        {(describedBy) =>
+          found.completeness === 'unknown' ? (
+            // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip needs a focusable anchor
+            <span aria-describedby={describedBy} className={styles.number} tabIndex={0}>
+              <SizeText {...honest} size="hero" />
             </span>
-          ) : null}
-          <VisuallyHidden>{honest.accessibleText}</VisuallyHidden>
-        </span>
-      )}
+          ) : (
+            // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip needs a focusable anchor
+            <span aria-describedby={describedBy} className={styles.number} tabIndex={0}>
+              <HeroCount duration={duration} key={run.generation} value={value} />
+              {found.completeness === 'partial' ? (
+                <span aria-hidden="true" className={styles.plus}>
+                  +
+                </span>
+              ) : null}
+              <VisuallyHidden>{honest.accessibleText}</VisuallyHidden>
+            </span>
+          )
+        }
+      </Tooltip>
       <span className={styles.summary}>
         {t('ui.scan-hero.summary', {
           categories: {

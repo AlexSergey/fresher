@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -140,6 +140,20 @@ describe('CategoryCard', () => {
   });
 
   describe('positive cases', () => {
+    it('the level has its meaning as a description when it has the focus', () => {
+      render(<CategoryCard {...card()} />);
+
+      // eslint-disable-next-line testing-library/no-node-access -- the hinted element has no role to query by
+      const level = screen.getByText('Safe').closest('[tabindex]') as HTMLElement;
+      act(() => {
+        level.focus();
+      });
+
+      expect(level).toHaveAccessibleDescription(
+        'Comes back by itself when needed. Removing it costs only a little time.',
+      );
+    });
+
     it('Details calls onDetails, described by the name', () => {
       const props = card();
       render(<CategoryCard {...props} />);

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CategoryId, ModuleInfo } from '../../ipc/bindings.generated';
 
-import { mockCore, sampleStorageAnswers } from '../../ipc/mock';
+import { mockCore, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { APP_LEFTOVERS_DICTIONARY, APP_LEFTOVERS_MODULES, APP_LEFTOVERS_TOTALS } from '../../test/app-leftovers-scan';
@@ -32,7 +32,12 @@ const showChoices = async (
     </AppProviders>
   );
 
-  mockCore({ getDictionary: () => APP_LEFTOVERS_DICTIONARY, getModules: () => [module], ...sampleStorageAnswers });
+  mockCore({
+    ...sampleAgreementAnswers,
+    getDictionary: () => APP_LEFTOVERS_DICTIONARY,
+    getModules: () => [module],
+    ...sampleStorageAnswers,
+  });
   const { rerender } = render(choices());
   // The screens render once the core's dictionary is read, as the app's frame does.
   await vi.waitFor(() => {

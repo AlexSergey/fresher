@@ -7,12 +7,12 @@ use std::thread;
 use std::time::Duration;
 
 use fresher_core::{
-    Access, AccessProbe, AccessStatus, AppDetail, AppId, AppsQuery, AppsView, CancelToken, Capability, Cleaner,
-    CleanupDetail, CleanupId, CleanupJournal, CleanupPlanView, CleanupSelection, CleanupsPage, Clock, CommandError,
-    CommandRunner, Confirmation, Dictionary, DiskState, DiskWalk, EngineStatus, Event, FinderSettings, Finding,
-    FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo, Operation, Overview, PlanId, PutBackReport,
-    ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate, SettingsStore, SettingsView, SystemUi,
-    SystemUiError, TextKey, TrashView, UninstallChoice, Volumes, WalkMode,
+    AGREEMENT_VERSION, Access, AccessProbe, AccessStatus, AgreementView, AppDetail, AppId, AppsQuery, AppsView,
+    CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal, CleanupPlanView, CleanupSelection,
+    CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary, DiskState, DiskWalk, EngineStatus,
+    Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo, Operation,
+    Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate, SettingsStore,
+    SettingsView, SystemUi, SystemUiError, TextKey, Timestamp, TrashView, UninstallChoice, Volumes, WalkMode,
 };
 
 use crate::access::AccessView;
@@ -289,6 +289,26 @@ impl Engine {
         let mut settings = lock(&self.shared.settings)?;
         let changed = settings.update(update, &*self.shared.ports.settings)?;
         self.take_changes(&settings, &[changed])
+    }
+
+    /// The agreement the user accepts before the first cleanup, and the last acceptance of it.
+    pub fn agreement(&self) -> Result<AgreementView, CommandError> {
+        Ok(AgreementView::new(lock(&self.shared.settings)?.agreement()))
+    }
+
+    /// Records that the user accepted version `version` of the agreement, at the time of the engine's clock, in one
+    /// save of the settings; answers the agreement as it now stands. Refused with `AgreementChanged` when `version` is
+    /// not the current one (the text changed while it was open), with `CleaningBlocked` (`Settings`) when the
+    /// settings file is not `Loaded` (a broken file is never replaced by it), and as any save (`Storage`). Allowed
+    /// while a scan or a cleanup runs: it changes nothing on disk but the settings file.
+    pub fn accept_agreement(&self, version: u32) -> Result<AgreementView, CommandError> {
+        if version != AGREEMENT_VERSION {
+            return Err(CommandError::AgreementChanged);
+        }
+        let at = Timestamp::from_system_time(self.shared.ports.clock.now());
+        let mut settings = lock(&self.shared.settings)?;
+        settings.accept_agreement(version, at, &*self.shared.ports.settings)?;
+        Ok(AgreementView::new(settings.agreement()))
     }
 
     /// Takes in saved changes of `settings` (held locked, so the events go out in the order of the saves), then
@@ -656,6 +676,19 @@ mod tests {
         }
 
         #[test]
+        fn accept_agreement_of_another_version_is_refused_and_saves_nothing() {
+            let fixture = Fixture::new(ScriptedWalk::new()).unaccepted();
+            let settings = std::sync::Arc::clone(&fixture.settings);
+            let engine = fixture.engine();
+
+            for version in [0, fresher_core::AGREEMENT_VERSION + 1] {
+                assert_eq!(engine.accept_agreement(version), Err(CommandError::AgreementChanged), "{version}");
+            }
+            assert_eq!(settings.saves(), 0);
+            assert_eq!(engine.agreement().map(|view| view.accepted), Ok(None));
+        }
+
+        #[test]
         fn a_poisoned_state_is_an_internal_error() {
             let engine = engine(ScriptedWalk::new());
             poison(&engine.shared.machine);
@@ -668,10 +701,31 @@ mod tests {
 
     mod positive {
         use fresher_core::{Access, Capability, EngineStatus, Event, ScanId, ScanKind, ScanOutcome};
-
         use fresher_testing::FakeAccess;
 
-        use crate::testing::{Fixture, ScriptedWalk, engine, wait_for_finish};
+        use crate::testing::{Fixture, START, ScriptedWalk, engine, wait_for_finish};
+
+        #[test]
+        fn accept_agreement_records_the_clocks_time_and_answers_the_view() {
+            let fixture = Fixture::new(ScriptedWalk::new()).unaccepted();
+            let settings = std::sync::Arc::clone(&fixture.settings);
+            fixture.clock.advance(std::time::Duration::from_secs(60));
+            let engine = fixture.engine();
+            assert!(!engine.agreement().unwrap().is_accepted());
+
+            let view = engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+
+            let at = fresher_core::Timestamp::from_secs(START + 60);
+            let accepted = fresher_core::Acceptance { version: fresher_core::AGREEMENT_VERSION, at };
+            assert_eq!(view, fresher_core::AgreementView::new(Some(accepted)));
+            assert!(view.is_accepted());
+            assert_eq!(engine.agreement(), Ok(view));
+            assert_eq!(settings.saves(), 1);
+            assert_eq!(
+                settings.stored().values.get("core.agreement.accepted-at"),
+                Some(&serde_json::json!(START + 60))
+            );
+        }
 
         #[test]
         fn a_scan_goes_idle_scanning_idle() {

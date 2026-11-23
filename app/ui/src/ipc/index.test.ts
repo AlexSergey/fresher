@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DemoOutcome, DemoPlay, Event, FindingsQuery, Refusal, Sizes, TrashView } from './bindings.generated';
 
 import {
+  acceptAgreement,
   cancelCleanup,
   cancelScan,
   CommandFailed,
@@ -13,6 +14,7 @@ import {
   discardCleanup,
   failureOf,
   getAccessStatus,
+  getAgreement,
   getApp,
   getApps,
   getCleanup,
@@ -270,6 +272,17 @@ describe('the IPC module', () => {
       expect([COMMANDS.getApps, COMMANDS.getApp, COMMANDS.revealApp]).toEqual(['get_apps', 'get_app', 'reveal_app']);
     });
 
+    it('passes the agreement commands their arguments by name', async () => {
+      const { answer, seen } = recorder();
+      mockCore({ acceptAgreement: answer(null), getAgreement: answer(null) });
+
+      await getAgreement();
+      await acceptAgreement(1);
+
+      expect(seen).toStrictEqual([{}, { version: 1 }]);
+      expect([COMMANDS.getAgreement, COMMANDS.acceptAgreement]).toEqual(['get_agreement', 'accept_agreement']);
+    });
+
     it('passes the Largest commands their arguments by name', async () => {
       const { answer, seen } = recorder();
       const node = { index: 3, state: 1 };
@@ -292,7 +305,14 @@ describe('the IPC module', () => {
     it('passes every cleanup command its arguments by name', async () => {
       const { answer, seen } = recorder();
       const selection = { categories: [{ category: 'demo.caches', except: [3] }], findings: [2] };
-      const confirmation = { allocated: 1, count: 3, highest: 'low', method: 'trash', plan: 1 } as const;
+      const confirmation = {
+        allocated: 1,
+        count: 3,
+        highest: 'low',
+        highRiskUnderstood: false,
+        method: 'trash',
+        plan: 1,
+      } as const;
       mockCore({
         cancelCleanup: answer(null),
         confirmCleanup: answer(4),

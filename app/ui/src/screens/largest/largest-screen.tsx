@@ -69,6 +69,7 @@ const Filters = ({
   return (
     <div className={styles.filters}>
       <Select<'any' | ItemKind>
+        description={t('ui.screen.largest.filter.kind.hint')}
         label={t('ui.screen.largest.filter.kind')}
         onChange={(value) => {
           onFilter({ ...filter, kind: value === 'any' ? null : value });
@@ -77,6 +78,7 @@ const Filters = ({
         value={filter.kind ?? 'any'}
       />
       <Select<string>
+        description={t('ui.screen.largest.filter.place.hint')}
         label={t('ui.screen.largest.filter.place')}
         onChange={(value) => {
           onFilter({
@@ -88,6 +90,7 @@ const Filters = ({
         value={filter.place === null ? 'any' : keyOf(filter.place)}
       />
       <Select<Unchanged>
+        description={t('ui.screen.largest.filter.unchanged.hint')}
         label={t('ui.screen.largest.filter.unchanged')}
         onChange={(value) => {
           onFilter({ ...filter, unchanged: value });

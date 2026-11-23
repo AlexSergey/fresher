@@ -180,6 +180,7 @@ pub(crate) fn confirmed_over(
         "allocated": summary.sizes.allocated,
         "highest": summary.highest,
         "method": method,
+        "highRiskUnderstood": summary.highest == DangerLevel::High,
     }))
     .unwrap();
     plan.confirm(&echo, Timestamp::from_secs(1_000)).unwrap()

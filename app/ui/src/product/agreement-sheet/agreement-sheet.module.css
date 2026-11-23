@@ -1,0 +1,20 @@
+/* The agreement's text: the sheet's body and the list Settings shows too. Static by the safety rule. */
+@layer components {
+  .content {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .intro {
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  .lines {
+    display: grid;
+    padding: 0 0 0 var(--space-5);
+    margin: 0;
+    color: var(--text-primary);
+    gap: var(--space-3);
+  }
+}

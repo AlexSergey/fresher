@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import type {
+  AgreementView,
   CleanupPlanView,
   CleanupsPage,
   Event,
@@ -18,6 +19,7 @@ import { largeScan } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
 import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
 import { mockCore, SCRIPTS } from './core-mock';
+import { acceptedVersions } from './support/agreement-mock';
 import { scanButton } from './support/cards';
 import { largestAnswerOf, pickAnswerOf, placeAnswerOf } from './support/largest-mock';
 
@@ -61,6 +63,21 @@ const call = <T>(page: Page, command: string, args: Record<string, unknown>): Pr
     { asked: args, name: command },
   );
 
+// A command called as the app calls it; its refusal as the core sends it, or null when it is answered.
+const refusalOf = (page: Page, command: string, args: Record<string, unknown>): Promise<unknown> =>
+  page.evaluate(
+    async ({ asked, name }) => {
+      const internals = (globalThis as unknown as Record<string, { invoke: (...args: unknown[]) => Promise<unknown> }>)
+        .__TAURI_INTERNALS__;
+
+      return internals?.invoke(name, asked).then(
+        () => null,
+        (error: unknown) => error,
+      );
+    },
+    { asked: args, name: command },
+  );
+
 // `get_overview` called as the app calls it.
 const getOverview = (page: Page): Promise<Overview> =>
   page.evaluate(async (command) => {
@@ -87,6 +104,63 @@ const NESTED_SCAN: readonly Event[] = [
 ];
 
 test.describe('negative cases', () => {
+  test('a not-accepted agreement stays not accepted until it is accepted, and refuses another version', async ({
+    page,
+  }) => {
+    await mockCore(page, { ...SCRIPTS.demo, agreement: 'not-accepted' });
+    await page.goto('/');
+
+    const before = await call<AgreementView>(page, COMMANDS.getAgreement, {});
+    const refused = await page.evaluate(async (command) => {
+      const internals = (globalThis as unknown as Record<string, { invoke: (...args: unknown[]) => Promise<unknown> }>)
+        .__TAURI_INTERNALS__;
+
+      try {
+        await internals?.invoke(command, { version: 2 });
+
+        return null;
+      } catch (error) {
+        return (error as { readonly error: { readonly code: string } }).error.code;
+      }
+    }, COMMANDS.acceptAgreement);
+    const after = await call<AgreementView>(page, COMMANDS.getAgreement, {});
+
+    expect(before.accepted).toBeNull();
+    expect(before.changes).toBeNull();
+    expect(refused).toBe('agreement-changed');
+    expect(after.accepted).toBeNull();
+    expect(await acceptedVersions(page)).toStrictEqual([2]);
+  });
+
+  test('a not-accepted agreement refuses every prepare for the agreement', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.demo, agreement: 'not-accepted' });
+    await page.goto('/');
+
+    const refusedWith = (command: string, args: Record<string, unknown>): Promise<unknown> =>
+      page.evaluate(
+        async ([name, sent]) => {
+          const internals = (
+            globalThis as unknown as Record<string, { invoke: (...args: unknown[]) => Promise<unknown> }>
+          ).__TAURI_INTERNALS__;
+
+          try {
+            await internals?.invoke(name, sent);
+
+            return null;
+          } catch (error) {
+            return (error as { readonly error: unknown }).error;
+          }
+        },
+        [command, args] as const,
+      );
+    const blocked = { code: 'cleaning-blocked', reason: 'agreement' };
+
+    expect(await refusedWith(COMMANDS.prepareCleanup, { selection: { categories: [], findings: [1] } })).toStrictEqual(
+      blocked,
+    );
+    expect(await refusedWith(COMMANDS.prepareUninstall, { app: 1, choice: 'keep-data' })).toStrictEqual(blocked);
+  });
+
   test('a finding outside the ignored paths stays', async ({ page }) => {
     await mockCore(page, SCRIPTS.ignoring);
     await page.goto('/');
@@ -97,6 +171,35 @@ test.describe('negative cases', () => {
 
     expect(idsOf(answered)).toStrictEqual([3]);
     expect(answered.total).toBe(1);
+  });
+
+  test('the mock refuses a High echo without the risk understood', async ({ page }) => {
+    await mockCore(page, SCRIPTS.appLeftovers);
+    await page.goto('/');
+    await scanButton(page).click();
+    await expect(page.getByRole('button', { name: 'Details' }).first()).toBeVisible();
+    const selection = { categories: [{ category: 'app-leftovers.data', except: [] }], findings: [] };
+    const plan = await call<CleanupPlanView>(page, COMMANDS.prepareCleanup, { selection });
+    const echo = {
+      allocated: plan.summary.sizes.allocated,
+      count: plan.summary.count,
+      highest: plan.summary.highest,
+      highRiskUnderstood: false,
+      method: 'trash',
+      plan: plan.plan,
+    };
+
+    const refusal = await refusalOf(page, COMMANDS.confirmCleanup, { confirmation: echo });
+    const again = await refusalOf(page, COMMANDS.confirmCleanup, {
+      confirmation: { ...echo, highRiskUnderstood: true },
+    });
+
+    expect(plan.summary.highest).toBe('high');
+    expect(refusal).toMatchObject({
+      error: { code: 'high-risk-not-understood' },
+      text: { key: 'core.error.high-risk-not-understood' },
+    });
+    expect(again).toMatchObject({ error: { code: 'plan-gone' } });
   });
 
   test('open_trash refuses an index the last get_trash answer did not have', async ({ page }) => {
@@ -184,6 +287,30 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('the agreement is accepted by default, with the five lines and no changes text', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+
+    const view = await call<AgreementView>(page, COMMANDS.getAgreement, {});
+
+    expect(view.accepted?.version).toBe(view.version);
+    expect(view.lines).toHaveLength(5);
+    expect(view.changes).toBeNull();
+    expect(await acceptedVersions(page)).toStrictEqual([]);
+  });
+
+  test('accepting records the version and answers the accepted view', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.demo, agreement: 'not-accepted' });
+    await page.goto('/');
+
+    const accepted = await call<AgreementView>(page, COMMANDS.acceptAgreement, { version: 1 });
+    const again = await call<AgreementView>(page, COMMANDS.getAgreement, {});
+
+    expect(accepted.accepted?.version).toBe(1);
+    expect(again).toStrictEqual(accepted);
+    expect(await acceptedVersions(page)).toStrictEqual([1]);
+  });
+
   test('an ignored path takes a finding inside it, not a sibling that shares its start', async ({ page }) => {
     await mockCore(page, { ...SCRIPTS.ignoring, scan: NESTED_SCAN });
     await page.goto('/');

@@ -7,11 +7,12 @@ import { useAnnounce } from '../../design/feedback/announcer/announcer';
 import { Surface } from '../../design/layout/surface/surface';
 import { useAnimatedNumber, usePresence } from '../../design/motion';
 import { Button } from '../../design/primitives/button/button';
+import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { VisuallyHidden } from '../../design/primitives/visually-hidden/visually-hidden';
 import { DURATION } from '../../design/tokens/motion';
 import { t } from '../../i18n';
 import { formatSize } from '../../i18n/format-size';
-import { levelName } from '../finding-row/texts';
+import { levelMeaning, levelName } from '../finding-row/texts';
 import { honestSize } from '../sizes';
 import styles from './selection-bar.module.css';
 
@@ -48,10 +49,15 @@ const Total = ({ sizes }: { readonly sizes: Sizes }): JSX.Element => {
   const bytes = useAnimatedNumber(sizes.allocated, { duration: DURATION.base });
 
   return (
-    <span className={styles.total} data-numeric>
-      <span aria-hidden="true">{formatSize(bytes, sizes.completeness)}</span>
-      <VisuallyHidden>{honestSize(sizes).accessibleText}</VisuallyHidden>
-    </span>
+    <Tooltip content={t('ui.selection-bar.total.hint')}>
+      {(describedBy) => (
+        // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip needs a focusable anchor
+        <span aria-describedby={describedBy} className={styles.total} data-numeric tabIndex={0}>
+          <span aria-hidden="true">{formatSize(bytes, sizes.completeness)}</span>
+          <VisuallyHidden>{honestSize(sizes).accessibleText}</VisuallyHidden>
+        </span>
+      )}
+    </Tooltip>
   );
 };
 
@@ -97,10 +103,15 @@ export const SelectionBar = ({ onClear, onReview, summary }: SelectionBarProps):
           {t('ui.selection-bar.count', { count: { kind: 'count', value: kept.count } })}
         </span>
         <Total sizes={kept.sizes} />
-        <span className={styles.level}>
-          <VisuallyHidden>{t('ui.selection-bar.highest')}</VisuallyHidden>
-          <DangerBadge label={levelName(kept.highest)} level={kept.highest} />
-        </span>
+        <Tooltip content={levelMeaning(kept.highest)}>
+          {(describedBy) => (
+            // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip needs a focusable anchor
+            <span aria-describedby={describedBy} className={styles.level} tabIndex={0}>
+              <VisuallyHidden>{t('ui.selection-bar.highest')}</VisuallyHidden>
+              <DangerBadge label={levelName(kept.highest)} level={kept.highest} />
+            </span>
+          )}
+        </Tooltip>
         <span className={styles.actions}>
           <Button onClick={onClear} variant="ghost">
             {t('ui.selection-bar.clear')}

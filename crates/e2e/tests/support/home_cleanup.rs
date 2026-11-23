@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 
-use fresher_core::{CleanupId, CleanupPlanView, Confirmation, Event, ItemOutcome};
+use fresher_core::{CleanupId, CleanupPlanView, Confirmation, DangerLevel, Event, ItemOutcome};
 use serde_json::{Value, json};
 
 use super::events::until;
@@ -18,7 +18,8 @@ impl Flow {
         let events = self.engine.subscribe();
         let summary = view.summary;
         let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                           "highest": summary.highest, "method": "trash" });
+                           "highest": summary.highest, "method": "trash",
+                           "highRiskUnderstood": summary.highest == DangerLevel::High });
         let confirmation: Confirmation = serde_json::from_value(echo).unwrap();
         let cleanup = self.engine.confirm_cleanup(&confirmation).unwrap();
         (cleanup, until(&events, |event| matches!(event, Event::CleanupFinished { .. })))

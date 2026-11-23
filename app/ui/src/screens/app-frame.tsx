@@ -10,6 +10,7 @@ import { t, tText } from '../i18n';
 import { BuildBanner } from '../product/build-banner/build-banner';
 import { type Screen, useNavigation, useScreen } from '../state/navigation';
 import { useCore } from '../state/store';
+import { AgreementGate } from './agreement-gate';
 import styles from './app-frame.module.css';
 import { AppScreen } from './apps/app-screen';
 import { AppsScreen } from './apps/apps-screen';
@@ -140,6 +141,7 @@ export const AppFrame = (): JSX.Element => {
             <ScreenStack render={renderScreen} screen={screen} />
           ) : null}
           {loaded ? <QuitQuestion /> : null}
+          {loaded ? <AgreementGate /> : null}
         </AppShell>
       </div>
     </div>

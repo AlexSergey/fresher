@@ -47,7 +47,11 @@ rescan that reads only the changed folders and the check's sample, a restore in 
 `fixtures/golden/rescan.json`), `footprint.rs` (below), and since plan 008 select → plan → confirm → clean:
 `cleanup.rs` (the engine with the reference walk, the `trial` module and the real `DiskCleaner` in the sandbox on
 `fixtures/homes/cleanup.toml`, the real journal; the whole path with history and put back, a cancel, an item replaced,
-a permanent cleanup, and the refusals; `fixtures/golden/cleanup-*.json`). `footprint.rs` also writes a hundred
+a permanent cleanup, and the refusals; `fixtures/golden/cleanup-*.json`), and since plan 039 `agreement.rs` (on the
+same home and on the uninstall sandbox, with the real settings file: a cleanup and an uninstall before the agreement
+are refused and move nothing, an acceptance of another version is refused and not saved, the acceptance survives a
+restart and a reset of the settings, and put back works without it) and `high_risk.rs` (a High cleanup and an uninstall of everything are refused
+without the tick and consume the plan; a plan below High needs none). `footprint.rs` also writes a hundred
 cleanups of a hundred items through the real journal.
 
 ## Where things live
@@ -578,7 +582,8 @@ The case files:
 - `cleanup-guards.toml`: the cleaner's guards, on the `trial` module. Links out of the sandbox are never followed; a
   file hard-linked into a trial cache keeps its content under its own name; the scan keeps out of `Documents` (a place
   that may prompt); an item inside the hard-blocked `Library/Caches` goes on its own; a trial cache inside the Trash is
-  offered but left out as protected.
+  offered but left out as protected. The agreement before the first cleanup has no case here: the autotest asserts its
+  guard for every case file.
 - `trash.toml`: the Trash line, on the `trial` module. What the user put in the Trash is never offered and counts in
   the first number only (what waits there); a trial cache's cleanup adds to both numbers.
 - `trash-empty.toml`: the Trash line with an empty Trash, on the `trial` module. Nothing is said before the cleanup;
@@ -729,12 +734,16 @@ stated facts (as sandbox mode takes
 them), and only the case file's `module` registered. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
-`after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. After the scan and before
-the cleanup, the storage map is read: the sandbox sits on a fake volume of 1 GiB with the tree's size plus 64 MiB used
-and 256 MiB free, so every part is the same on every Mac; the parts add up to the capacity, the by-meaning groups and
-the by-place roots (with the parts that are no file of the scan) to the same total, and every `[case.map]` holds. The
-report (findings with their app, the map, cleanup, the tree after, without the empty folders of the temporary places,
-which every sandbox has) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
+`after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. The agreement's guard is
+asserted for every case file before the harness accepts it, as a user would: a fresh sandbox's data folder holds no
+acceptance, and the file's first prepare (the cleanup of its positives, or, for a file whose only positives are
+uninstalls, its first uninstall) must be refused for the agreement with no plan left pending; a file with no positive
+prepares nothing and never meets it. A case file whose `[settings]` already accept the agreement fails. After the scan
+and before the cleanup, the storage map is read: the sandbox sits on a fake volume of 1 GiB with the tree's size plus
+64 MiB used and 256 MiB free, so every part is the same on every Mac; the parts add up to the capacity, the by-meaning
+groups and the by-place roots (with the parts that are no file of the scan) to the same total, and every `[case.map]`
+holds. The report (findings with their app, the map, cleanup, the tree after, without the empty folders of the temporary
+places, which every sandbox has) equals `fixtures/golden/sandbox-<name>.json` (`UPDATE_GOLDEN=1`
 rewrites it); its lists are sorted by path, then category, and the Trash's entries lose the `<n>-` of the order they
 were moved in, so the findings' ids, which differ from run to run, never show in it. The map's sizes are the space taken on disk, so the goldens assume the temporary folder is on an APFS
 volume with 4 KiB blocks, as on every Mac and in CI (macOS): a byte of data takes one block and a sparse file none. A
@@ -965,6 +974,26 @@ running: that window keeps its own mode (its banner, or the lack of one, shows w
 Before a plan that adds or changes a module or a category is done, its finish runs `npm run dev:sandbox -- <feature>`
 and walks `EXPECTED.md` by hand.
 
+### The text check
+
+`scripts/check-texts.ts` (`npm run check:texts`, in pre-push; [`writing.md`](./writing.md)) reads the core's, the
+interface's and every module's English dictionary. Its test, `scripts/check-texts.test.ts`, runs each rule on a small dictionary: negative cases first (an exclamation
+mark, a name over its length, a plural counted by its own segment, a banned word as a whole word only, "delete" outside
+a permanent delete, a lower-case "trash", a label without a description, a category missing a part, a double space, an
+unfinished sentence, a dictionary that cannot be read thrown, not skipped), then positive ones (a `{placeholder}` that
+is not read as "trash", `ui.` labels without a description or parts, a clean dictionary, an exempt key, a module
+without a dictionary skipped). Every `EXEMPT` entry carries its reason.
+
+### The agreement and the danger zone in the interface
+
+Unit tests: the gate in `state/cleanup-actions.ts` and `state/agreement.ts` (the sheet before a prepare, one acceptance
+per click, a refusal of the acceptance shown as a toast), the sheet, the licence dialog and About, Review's two parts,
+the High tick of the confirmation and Scan's question before a Select all of Medium or High. The e2e specs run against
+the mocked IPC: the agreement is accepted by default and a script says `agreement: 'not-accepted'`
+(`e2e/support/agreement-mock.ts`); the cleanup mock refuses a High echo without the tick as the core does. "A changed
+text asks again" is proven by the core's and the UI's unit tests; it has no browser-level scenario until a second
+version of the text exists.
+
 ### Demo recordings
 
 Plan [038](./plans/038-demo-recordings/readme.md): a command plays a scenario in the real app on a demo world and
@@ -994,6 +1023,10 @@ element within 5 s, a named state within 60 s. After each step it checks the pag
 home's path and the sandbox's, `/tmp` alias included) and fails on a hit. It refuses at run time any control named like
 the permanent delete, `Delete` or `Remove` (a prefix match, so it over-refuses). The build banner is hidden while a demo
 plays.
+
+**The agreement** is accepted by a scenario step, as a user would: the `cleanup` scenario clicks "I understand" on the
+sheet; a demo world never states an acceptance, and no production hook accepts for it. A recording of it shows the sheet
+for a moment.
 
 **Commands** (`scripts/demo-record.ts`; both need `cargo`, `node` and **no other development window running**:
 single-instance hands the launch to it):

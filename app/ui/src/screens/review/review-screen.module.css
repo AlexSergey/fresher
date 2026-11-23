@@ -1,6 +1,7 @@
 /*
- * The review screen: the summary panel, then one danger zone per level of the selection, each holding a section per
- * category, each over a finding list as tall as its rows (`--review-rows`, at most six) that scrolls past them.
+ * The review screen: the summary panel, then the selection's parts (safe, then danger, the danger part framed in its
+ * highest level's colour), each holding one danger zone per level, each holding a section per category, each over a
+ * finding list as tall as its rows (`--review-rows`, at most six) that scrolls past them.
  */
 @layer components {
   .content {
@@ -41,11 +42,54 @@
     justify-items: end;
   }
 
+  .reaches {
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
   .checking {
     color: var(--text-secondary);
     font-size: var(--type-footnote-size);
     line-height: var(--type-footnote-line);
     text-align: right;
+  }
+
+  .part {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .part[data-part='danger'] {
+    --part-fg: var(--level-medium-fg);
+
+    padding: var(--space-6);
+    border: 1px solid var(--part-fg);
+    border-radius: var(--radius-lg);
+  }
+
+  .part[data-part='danger'][data-level='high'] {
+    --part-fg: var(--level-high-fg);
+  }
+
+  .partHead {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .partName {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-title-2-size);
+    font-weight: var(--type-title-2-weight);
+    letter-spacing: var(--type-title-2-tracking);
+    line-height: var(--type-title-2-line);
+  }
+
+  .partMeaning {
+    margin: 0;
+    color: var(--text-secondary);
   }
 
   .zoneGroups {

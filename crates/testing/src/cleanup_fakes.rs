@@ -480,6 +480,7 @@ mod tests {
             CleanupPlan::new(PlanId::new(1), Timestamp::from_secs(0), ScanId::new(1), vec![], items(), vec![]).unwrap();
         let echo: Confirmation = serde_json::from_value(serde_json::json!({
             "plan": 1, "count": 3, "allocated": 3 * 4096, "highest": "low", "method": method,
+            "highRiskUnderstood": false,
         }))
         .unwrap();
         plan.confirm(&echo, Timestamp::from_secs(1)).unwrap()
@@ -591,6 +592,7 @@ mod tests {
             .unwrap();
             let echo: fresher_core::Confirmation = serde_json::from_value(serde_json::json!({
                 "plan": 1, "count": 1, "allocated": 4096, "highest": "low", "method": "trash",
+                "highRiskUnderstood": false,
             }))
             .unwrap();
             let mut done = Vec::new();
@@ -671,6 +673,7 @@ mod tests {
                 .unwrap();
                 let echo: fresher_core::Confirmation = serde_json::from_value(serde_json::json!({
                     "plan": 1, "count": 1, "allocated": 4096, "highest": "low", "method": "trash",
+                    "highRiskUnderstood": false,
                 }))
                 .unwrap();
                 let mut done = Vec::new();

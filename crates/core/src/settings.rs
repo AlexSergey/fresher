@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub use core_schema::{
-    IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, LARGEST_MIN_SIZE, SCAN_ROOTS, min_size_of,
+    AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION_KEY, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS,
+    LARGEST_MIN_SIZE, SCAN_ROOTS, min_size_of,
 };
 pub use days::DaySetting;
 pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
@@ -158,6 +159,8 @@ pub enum SettingGroup {
     Ignored,
     Permissions,
     Module,
+    /// The acceptance of the agreement: never shown as rows, written only by `Engine::accept_agreement`.
+    Agreement,
 }
 
 /// When a change of a setting shows in the results.

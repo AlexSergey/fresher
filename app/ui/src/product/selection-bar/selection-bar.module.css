@@ -40,6 +40,12 @@
     display: inline-flex;
   }
 
+  .total:focus-visible,
+  .level:focus-visible {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--focus-ring);
+  }
+
   .actions {
     display: inline-flex;
     padding-left: var(--space-2);

@@ -313,3 +313,56 @@ Plan [036](../plans/036-uninstall/readme.md), awaiting the user's walk.
   ([`../deferred/uninstall-small-library-parts.md`](../deferred/uninstall-small-library-parts.md)); an app opened
   between the confirmation and the move is not asked again
   ([`../known-issues/cleaner-app-opened-after-the-confirmation.md`](../known-issues/cleaner-app-opened-after-the-confirmation.md)).
+
+## 039 — The agreement, the danger zone and the wording
+
+Plan [039](../plans/039-agreement-and-wording/readme.md), awaiting the user's walk.
+
+- **Walks by hand**: the sandbox walk (item 1.23 of [`../manual-testing.md`](../manual-testing.md): `downloads`,
+  `app-leftovers`, `uninstall`, `large-files`, each from a fresh folder); the dry run on the real Mac (item 2.21: the
+  sheet once, About, a High plan's tick).
+- **The lawyer's question**: whether to have a lawyer look at the agreement and the licences before the first public
+  release, and which country's law applies. The text is the agent's best effort and costs nothing to keep; a lawyer's
+  look costs money.
+- **The agreement's five lines**, for the user to read and approve or change:
+  1. "Fresher is free and open source, and it comes with no warranty."
+  2. "It removes only what you confirm, so each removal is your decision."
+  3. "A danger level is Fresher's best judgement, not a guarantee."
+  4. "Keep a backup of anything you cannot afford to lose."
+  5. "Items go to the Trash, where you can put them back until the Trash is emptied. A permanent delete, and what an
+     app's own tool removes, cannot be undone."
+
+  A change raises `AGREEMENT_VERSION` only if a build with version 1 was given to anyone; otherwise version 1 may be
+  edited in place (the user's call). The Trash line was reworded on 2026-11-23: Finder may empty the Trash by itself,
+  and Fresher never removes anything of Docker's. The "what changed" key has the form `core.agreement.changes.v<n>`.
+- **The issue form** (`.github/ISSUE_TEMPLATE/wrong-finding.yml`) can be seen only on GitHub after a push; the report
+  address is shown in the help dialog.
+- **A refused acceptance**: `accept_agreement` on a settings file that was not read is refused with `CleaningBlocked`
+  (`Settings`). The toast then says only "Fresher cannot remove anything right now…" with no next step, and
+  `core.cleanup.blocked.settings` says "Restart the app", which does not help a Broken file. The wording needs a look.
+- **Rulings worth a second look** ([`00-design.md`](../plans/039-agreement-and-wording/00-design.md)): 3 (the engine
+  enforces the agreement, not only the sheet), 4 (Medium and High form the danger zone; only High needs the tick),
+  7 (the acceptance is two hidden settings, kept by a reset), 8 (the licence texts are bundled into the UI), 9 (the
+  sandbox autotest asserts the guard for every case file), 10 (no browser-level scenario for a changed text), 12 (the
+  danger part's table lives in the UI), 13 (the mocks accept by default); and the refresh's 15 (`crates/cleaner`'s two
+  test echoes changed), 16 (the demo shows the sheet), 17 (Docker's part labels need no description) and 19 (the Trash
+  line's two words). The banned words and the length limits of [`../writing.md`](../writing.md).
+- **The demo**: `npm run demo:check -- cleanup` was not run (it needs the development app on screen). A GIF recorded
+  later shows the agreement sheet for a moment.
+- **Texts whose meaning looked wrong**, listed, not rewritten: `jetbrains.caches.comes-back` (starts "No." yet says
+  the IDE rebuilds them), `temp.old-files.comes-back` (states what macOS removes each day), `docker.part.volumes.effect`
+  (says which volumes the printed command removes), `ui.confirm.how.tool` (names Docker as a tool that removes),
+  `ui.screen.cleanups.failed-action` ("That did not work", vaguer than a refusal should be). The "Deletes ..." quotes
+  in `docs/rules.md` and `docs/ideas`. Numbers typed into sentences (10 minutes, 12 to 15 GB, 1 GB, "at least 7" and
+  "at least 30" days, "a few hundred megabytes").
+- **Names**: the JetBrains categories now read "... of older JetBrains IDEs" (was "IDE versions"), and
+  `jetbrains.left-out.used-recently` dropped "from the last scan". A text edit if the user prefers the old names.
+- **The text check**: `ui.*` keys skip the category-parts rule; nine `ui` keys are exempt, each with its reason in
+  `scripts/check-texts.ts`.
+- **Hints**: on the Largest and Apps filters, the found size, the level badge (one more tab stop per category card) and
+  the selection bar. None on the sidebar's Review count or the ring and storage-map figures.
+- **Other**: Settings, About shows "Not accepted yet" also when only an older version was accepted; the licence `<pre>`
+  blocks scroll with the dialog; `crates/cleaner` changed in two test files only (the echo field).
+- **Known gaps**: "a changed text asks again" has no browser-level test until a second version exists; a sandbox case
+  file's `[settings]` can pre-accept the agreement ([deferred](./sandbox-case-settings-agreement.md)); the licence
+  notices of dependencies are still [deferred](./licence-notices.md).

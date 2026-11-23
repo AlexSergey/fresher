@@ -19,11 +19,13 @@ import type {
   StorageMap,
 } from '../ipc/bindings.generated';
 
+import { type AgreementAction, type AgreementState, NO_AGREEMENT, reduceAgreement } from './agreement';
 import { type CleanupAction, type CleanupState, NO_CLEANUP, reduceCleanup } from './cleanup';
 import { NOTHING_SELECTED, reduceSelection, type Selection, type SelectionAction } from './selection';
 
 // What happened to the UI itself: answers of commands and what the user picked, next to the core's events.
 export type CoreAction =
+  | AgreementAction
   | CleanupAction
   | Event
   | SelectionAction
@@ -42,6 +44,8 @@ export type CoreAction =
 export type CoreState = {
   // The permissions the app has, as `get_access_status` answered and `access-changed` events keep them.
   readonly access: AccessStatus | null;
+  // The agreement the first cleanup asks for, and the cleanup step waiting for it (state/agreement.ts).
+  readonly agreement: AgreementState;
   // The cleanup from the review screen's button to its result (state/cleanup.ts).
   readonly cleanup: CleanupState;
   // What the result on screen did not see (guarded places, unreadable folders): the followed scan's `scan-coverage`,
@@ -91,6 +95,7 @@ type SeenScan = { readonly finished: boolean; readonly scan: ScanId };
 
 export const INITIAL_STATE: CoreState = {
   access: null,
+  agreement: NO_AGREEMENT,
   cleanup: NO_CLEANUP,
   coverage: null,
   dictionary: null,
@@ -256,6 +261,13 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     case 'access-loaded':
       // An event told of the access before the answer came: the event is newer.
       return state.access === null ? { ...state, access: action.status } : state;
+    case 'agreement-asked':
+    case 'agreement-dismissed':
+    case 'agreement-loaded': {
+      const agreement = reduceAgreement(state.agreement, action);
+
+      return agreement === state.agreement ? state : { ...state, agreement };
+    }
     case 'choose':
     case 'clear':
     case 'toggle-category':

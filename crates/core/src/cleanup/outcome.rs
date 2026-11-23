@@ -540,6 +540,8 @@ impl PutBackOutcome {
 pub enum BlockedReason {
     /// The settings file is not loaded, so the ignore list cannot be known.
     Settings,
+    /// The current agreement is not accepted.
+    Agreement,
     /// The cleanup journal cannot be written.
     Journal,
     /// The disk is too full to write even the journal's first record.
@@ -549,12 +551,13 @@ pub enum BlockedReason {
 }
 
 impl BlockedReason {
-    pub const ALL: [Self; 4] = [Self::Settings, Self::Journal, Self::DiskFull, Self::OpenFiles];
+    pub const ALL: [Self; 5] = [Self::Settings, Self::Agreement, Self::Journal, Self::DiskFull, Self::OpenFiles];
 
     /// `core.cleanup.blocked.<reason>`: what is wrong and what to do.
     pub fn text(self) -> Text {
         let id = match self {
             Self::Settings => "settings",
+            Self::Agreement => "agreement",
             Self::Journal => "journal",
             Self::DiskFull => "disk-full",
             Self::OpenFiles => "open-files",

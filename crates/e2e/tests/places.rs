@@ -232,7 +232,9 @@ mod home {
         };
         let mut registry = Registry::new().unwrap();
         registry.register(Box::new(TempModule::new(folder))).unwrap();
-        (Engine::with_cleanup(registry, ports, cleanup).unwrap(), cleaner)
+        let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+        engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+        (engine, cleaner)
     }
 }
 
@@ -308,7 +310,9 @@ mod negative {
 
 #[cfg(test)]
 mod positive {
-    use fresher_core::{CleanupSelection, Confirmation, Event, KnownFolder, PartKind, ScanKind, Text, TextKey};
+    use fresher_core::{
+        CleanupSelection, Confirmation, DangerLevel, Event, KnownFolder, PartKind, ScanKind, Text, TextKey,
+    };
     use fresher_engine::ScanMode;
     use serde_json::json;
 
@@ -340,7 +344,8 @@ mod positive {
         let view = places.engine.prepare_cleanup(&selection).unwrap();
         assert_eq!(view.summary.count, 2);
         let echo = json!({ "plan": view.plan, "count": view.summary.count, "allocated": view.summary.sizes.allocated,
-                           "highest": view.summary.highest, "method": "trash" });
+                           "highest": view.summary.highest, "method": "trash",
+                           "highRiskUnderstood": view.summary.highest == DangerLevel::High });
         let confirmation: Confirmation = serde_json::from_value(echo).unwrap();
         let events = places.engine.subscribe();
         places.engine.confirm_cleanup(&confirmation).unwrap();

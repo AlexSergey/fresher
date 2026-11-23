@@ -5,7 +5,7 @@ import type { IgnoredEntry, IgnoreTarget, ModuleInfo, SettingsView } from '../..
 import type { CoreAnswers } from '../../ipc/mock';
 import type { IgnoredTab } from '../../state/navigation';
 
-import { mockCore } from '../../ipc/mock';
+import { mockCore, sampleAgreementAnswers } from '../../ipc/mock';
 import { createCoreStore } from '../../state/store';
 import { DEMO_DICTIONARY, DEMO_MODULES } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
@@ -41,6 +41,7 @@ const show = async (
 ): Promise<Sent> => {
   const sent: Sent = { ignored: [], restored: [] };
   const answers: Partial<CoreAnswers> = {
+    ...sampleAgreementAnswers,
     getDictionary: () => DICTIONARY,
     ignore: (args) => {
       sent.ignored.push((args as { readonly target: IgnoreTarget }).target);

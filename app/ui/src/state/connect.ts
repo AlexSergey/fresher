@@ -4,6 +4,7 @@ import { setCoreDictionary } from '../i18n';
 import {
   failureOf,
   getAccessStatus,
+  getAgreement,
   getDictionary,
   getOverview,
   getSettings,
@@ -41,6 +42,12 @@ export const connectCore = (store: CoreStore): void => {
       store.dispatch({ dictionary, type: 'dictionary-loaded' });
     })
     .catch(failed(store));
+  // A failed load is not the frame's error: the gate asks again when a cleanup needs the agreement.
+  getAgreement()
+    .then((view) => {
+      store.dispatch({ type: 'agreement-loaded', view });
+    })
+    .catch(() => undefined);
   createOverviewRefresher(store, { clock: systemClock, interval: OVERVIEW_INTERVAL_MS });
   // The overview and the storage map are asked for once the events flow, so no change of the engine falls between.
   const events = subscribe(

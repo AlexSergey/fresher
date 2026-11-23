@@ -87,7 +87,14 @@ export const CategoryCard = ({
               {() => <span className={styles.what}>{what}</span>}
             </Tooltip>
             <span className={styles.meta}>
-              <DangerBadge label={textOf(`core.danger.${level}.name`)} level={level} size="small" />
+              <Tooltip content={textOf(`core.danger.${level}.meaning`)}>
+                {(describedBy) => (
+                  // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip needs a focusable anchor
+                  <span aria-describedby={describedBy} className={styles.level} tabIndex={0}>
+                    <DangerBadge label={textOf(`core.danger.${level}.name`)} level={level} size="small" />
+                  </span>
+                )}
+              </Tooltip>
               <span className={styles.figures}>
                 <SizeText {...honestSize(sizes)} size="title-3" />
                 <span className={styles.count}>

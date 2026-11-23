@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CleanupDetail, CleanupId, CleanupsPage, CleanupsQuery } from '../../ipc/bindings.generated';
 
-import { type CoreAnswers, mockCore, refuse, sampleStorageAnswers } from '../../ipc/mock';
+import { type CoreAnswers, mockCore, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
@@ -43,6 +43,7 @@ const renderScreen = (content: React.JSX.Element, answers: Partial<CoreAnswers>)
     ]),
   );
   mockCore({
+    ...sampleAgreementAnswers,
     getDictionary: () => DICTIONARY,
     getModules: () => DEMO_MODULES,
     getOverview: () => IDLE,
@@ -111,6 +112,12 @@ describe('CleanupsScreen', () => {
   });
 
   describe('positive cases', () => {
+    it('shows the help button', async () => {
+      renderScreen(<CleanupsScreen />, { getCleanups: () => HISTORY });
+
+      expect(await screen.findByRole('button', { name: 'Removed something you need?' })).toBeInTheDocument();
+    });
+
     it('the list pages newest first', async () => {
       const { seen } = renderScreen(<CleanupsScreen />, { getCleanups: pagesOf(120) });
       const list = await screen.findByRole('list', { name: 'Cleanups, newest first' });

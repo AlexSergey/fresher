@@ -1,0 +1,52 @@
+name: Fresher offered something it should not have
+description: >-
+  A finding that was wrong: something the app offered to remove that it should have left alone.
+labels: [wrong finding]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace your user name in any path with `~`. Do not attach files with private data.
+  - type: input
+    id: offered
+    attributes:
+      label: What was offered
+      description: The category's name and the item's title, as the app showed them.
+    validations:
+      required: true
+  - type: dropdown
+    id: danger
+    attributes:
+      label: Its danger level
+      options:
+        - Safe
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it should not have been offered
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: What happened
+      options:
+        - I noticed before removing it
+        - I put it back
+        - It was lost
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+  - type: input
+    id: fresher
+    attributes:
+      label: Fresher version
+      description: Settings → About.

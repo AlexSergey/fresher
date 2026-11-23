@@ -18,7 +18,7 @@ the idea is how the screen and the flow look:
 
 - A preview of the selection: items grouped by category, total size, the highest danger level in large type, and what
   the user will lose in one sentence per category.
-- Items can be unticked one by one; nothing is pre-selected above **Safe**.
+- Items can be unticked one by one; nothing is pre-selected above **Safe**. *Built later by plan [039](../plans/039-agreement-and-wording/readme.md): Review sets Medium and High apart as a danger zone, and a High plan is confirmed only with its own tick, checked by the core.*
 - **Re-check before delete**: each item is verified right before removal (still there, same kind, not replaced by a
   symlink); a changed item is skipped and reported.
 - Trash first; a separate, explicit "delete permanently" choice; protected system paths cannot be selected at all.

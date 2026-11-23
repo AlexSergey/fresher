@@ -241,8 +241,10 @@ mod tests {
     use crate::{EntryKind, ScanId, Timestamp};
 
     fn cleanup(items: Vec<ItemRecord>, end: Option<Ended>, put_backs: Vec<PutBackRecord>) -> RecordedCleanup {
-        let echo =
-            serde_json::json!({ "plan": 7, "count": 3, "allocated": 12_388, "highest": "medium", "method": "trash" });
+        let echo = serde_json::json!({
+            "plan": 7, "count": 3, "allocated": 12_388, "highest": "medium", "method": "trash",
+            "highRiskUnderstood": false,
+        });
         let confirmed =
             sample::plan().confirm(&serde_json::from_value(echo).unwrap(), Timestamp::from_secs(sample::MADE)).unwrap();
         let id = CleanupId::new(2);
@@ -266,8 +268,10 @@ mod tests {
             vec![],
         )
         .unwrap();
-        let echo =
-            serde_json::json!({ "plan": 7, "count": 1, "allocated": 4096, "highest": "medium", "method": "trash" });
+        let echo = serde_json::json!({
+            "plan": 7, "count": 1, "allocated": 4096, "highest": "medium", "method": "trash",
+            "highRiskUnderstood": false,
+        });
         plan.confirm(&serde_json::from_value(echo).unwrap(), Timestamp::from_secs(sample::MADE)).unwrap()
     }
 

@@ -10,7 +10,7 @@ import type {
 } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
-import { mockCore, refuse } from '../../ipc/mock';
+import { mockCore, refuse, sampleAgreementAnswers } from '../../ipc/mock';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { ACCESS_DICTIONARY, BUSY, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
@@ -91,6 +91,7 @@ const show = async (
   const store = createCoreStore();
 
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => access ?? new Promise<never>(() => undefined),
     getDictionary: () => DICTIONARY,
     getModules: () => MODULES,

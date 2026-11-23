@@ -284,6 +284,8 @@ mod tests {
                     "core.ignore.groups",
                     "core.ignore.categories",
                     "core.ignore.paths",
+                    "core.agreement.version",
+                    "core.agreement.accepted-at",
                     "demo.enabled",
                     "demo.min-age",
                     "demo.mode"

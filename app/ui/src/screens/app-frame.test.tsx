@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CoreAnswers } from '../ipc/mock';
 
-import { mockCore, pushEvents, refuse, sampleStorageAnswers } from '../ipc/mock';
+import { mockCore, pushEvents, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../ipc/mock';
 import { requestScan } from '../state/connect';
 import { createNavigation, type Navigation } from '../state/navigation';
 import { type CoreStore, createCoreStore } from '../state/store';
@@ -15,6 +15,7 @@ import { AppProviders } from './app-providers';
 
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
+    ...sampleAgreementAnswers,
     getAccessStatus: () => GRANTED,
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
@@ -144,7 +145,7 @@ describe('AppFrame', () => {
     });
 
     it('an unreachable core shows the error state, not a blank window', async () => {
-      mockCore({});
+      mockCore({ ...sampleAgreementAnswers });
 
       render(
         <AppProviders store={createCoreStore()}>

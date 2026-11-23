@@ -1,7 +1,7 @@
 import type { CategoryId, CategoryTotal, DangerLevel, Finding, FindingId, Sizes } from '../../ipc/bindings.generated';
 import type { Picked, Selection } from '../../state/selection';
 
-import { ZONE_ORDER } from '../../product/danger-zone/zones';
+import { type DangerPart, PART_OF, PART_ORDER, ZONE_ORDER } from '../../product/danger-zone/zones';
 import { NOTHING_SELECTED } from '../../state/selection';
 import { summarize } from '../../state/selection-summary';
 
@@ -68,3 +68,21 @@ export const reviewZones = (groups: readonly ReviewGroup[]): readonly ReviewZone
   ZONE_ORDER.map((level) => ({ groups: groups.filter((group) => group.highest === level), level })).filter(
     (zone) => zone.groups.length > 0,
   );
+
+export type ReviewPart = {
+  readonly highest: DangerLevel;
+  readonly part: DangerPart;
+  readonly zones: readonly ReviewZone[];
+};
+
+// The zones in Review's two parts, the safe part first, each part's zones in the zones' order; an empty part is left
+// out. A part's highest level is its riskiest zone's.
+export const reviewParts = (zones: readonly ReviewZone[]): readonly ReviewPart[] =>
+  PART_ORDER.flatMap((part) => {
+    const inPart = ZONE_ORDER.flatMap((level) =>
+      PART_OF[level] === part ? zones.filter((zone) => zone.level === level) : [],
+    );
+    const riskiest = inPart.at(-1);
+
+    return riskiest === undefined ? [] : [{ highest: riskiest.level, part, zones: inPart }];
+  });

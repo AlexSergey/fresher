@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CoreAction } from './reduce';
 
-import { mockCore, pushEvents, sampleStorageAnswers } from '../ipc/mock';
+import { mockCore, pushEvents, sampleAgreementAnswers, sampleStorageAnswers } from '../ipc/mock';
 import { DEMO_DICTIONARY, IDLE, SCAN_STARTED } from '../test/demo-scan';
 import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { connectCore } from './connect';
@@ -31,7 +31,7 @@ describe('the core store', () => {
 
     it('connects a store to the core only once', async () => {
       let subscriptions = 0;
-      mockCore({ getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE });
+      mockCore({ ...sampleAgreementAnswers, getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE });
       const store = createCoreStore();
       const counting = store.subscribe(() => {
         subscriptions += 1;
@@ -53,6 +53,7 @@ describe('the core store', () => {
       const subscribedAtOverview: boolean[] = [];
       let subscribed = false;
       mockCore({
+        ...sampleAgreementAnswers,
         getDictionary: () => DEMO_DICTIONARY,
         getOverview: () => {
           subscribedAtOverview.push(subscribed);
@@ -76,6 +77,7 @@ describe('the core store', () => {
 
     it('keeps a scan that starts while the overview is on its way', async () => {
       mockCore({
+        ...sampleAgreementAnswers,
         getDictionary: () => DEMO_DICTIONARY,
         getOverview: () => {
           pushEvents(SCAN_STARTED);
@@ -98,17 +100,23 @@ describe('the core store', () => {
         expect(actions).toContain('overview-loaded');
       });
 
-      expect(actions.filter((type) => type !== 'dictionary-loaded' && type !== 'storage-map-loaded')).toEqual([
-        'scan-started',
-        'overview-loaded',
-      ]);
+      expect(
+        actions.filter(
+          (type) => type !== 'agreement-loaded' && type !== 'dictionary-loaded' && type !== 'storage-map-loaded',
+        ),
+      ).toEqual(['scan-started', 'overview-loaded']);
       expect(store.getState().status).toEqual({ scan: 1, state: 'scanning' });
     });
   });
 
   describe('positive cases', () => {
     it('asks the storage map with the first overview, before anything is stale', async () => {
-      mockCore({ getDictionary: () => DEMO_DICTIONARY, getOverview: () => IDLE, ...sampleStorageAnswers });
+      mockCore({
+        ...sampleAgreementAnswers,
+        getDictionary: () => DEMO_DICTIONARY,
+        getOverview: () => IDLE,
+        ...sampleStorageAnswers,
+      });
       const store = createCoreStore();
 
       connectCore(store);

@@ -69,6 +69,19 @@ mod negative {
         assert!(failure.problem.contains("trial.caches"), "{failure}");
     }
 
+    /// The case file's `[settings]` write the acceptance into the sandbox's data folder before the app starts.
+    #[test]
+    fn a_sandbox_that_starts_accepted_fails_the_agreement_check() {
+        let settings = format!("[settings]\n\"core.agreement.version\" = {}\n", fresher_core::AGREEMENT_VERSION);
+        let text =
+            format!("feature = \"trial\"\nmodule = \"trial\"\n{settings}{}", trial_positive("a cache", CACHE_IN_TRASH));
+
+        let failure = run("accepted", &text).unwrap_err();
+
+        assert_eq!(failure.case, "accepted", "{failure}");
+        assert!(failure.problem.contains("the agreement accepted"), "{failure}");
+    }
+
     #[test]
     fn a_danger_other_than_the_findings_fails() {
         let expect = CACHE_IN_TRASH.replace("\"safe\"", "\"low\"");

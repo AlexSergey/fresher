@@ -9,8 +9,8 @@ use std::sync::mpsc::Receiver;
 use std::time::{Duration, SystemTime};
 
 use fresher_core::{
-    Access, ByteSize, Capability, CleanupPlanView, CleanupSelection, Confirmation, Event, FindingOrder, FindingsQuery,
-    Protection, SANDBOX_MARKER, SettingUpdate, SettingValue, Subject, VolumeFacts, VolumeId,
+    Access, ByteSize, Capability, CleanupPlanView, CleanupSelection, Confirmation, DangerLevel, Event, FindingOrder,
+    FindingsQuery, Protection, SANDBOX_MARKER, SettingUpdate, SettingValue, Subject, VolumeFacts, VolumeId,
 };
 use fresher_engine::{Engine, ScanMode};
 use fresher_sandbox::{CaseFile, Sandbox, generate};
@@ -92,8 +92,11 @@ impl World {
         compose(&mode, real_home, &self.real_data(), |_| Ok(fakes())).map(|(engine, _)| engine)
     }
 
+    /// Sandbox mode on the world's sandbox, the agreement accepted as before the first cleanup.
     fn start(&self) -> Engine {
-        self.start_at(self.folder.path()).unwrap()
+        let engine = self.start_at(self.folder.path()).unwrap();
+        engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+        engine
     }
 }
 
@@ -254,7 +257,8 @@ fn prepare(engine: &Engine) -> CleanupPlanView {
 fn clean(engine: &Engine, view: &CleanupPlanView) {
     let summary = view.summary;
     let echo: Confirmation = serde_json::from_value(json!({ "plan": view.plan, "count": summary.count,
-        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash" }))
+        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash",
+        "highRiskUnderstood": summary.highest == DangerLevel::High }))
     .unwrap();
     let events = engine.subscribe();
     engine.confirm_cleanup(&echo).unwrap();

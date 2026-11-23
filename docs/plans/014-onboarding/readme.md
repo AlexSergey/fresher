@@ -91,6 +91,9 @@ None yet.
 4. **Hints appear once, in place**; no blocking tour.
 5. **No "what's new" pop-ups.**
 6. **Target version 0.5.0.**
+7. **The agreement is the last of the first-run screens.** It exists since plan
+   [039](../039-agreement-and-wording/readme.md) (a sheet before the first cleanup, once per version of its text); when
+   this plan is built it moves to the end of the first run, and the engine's guard stays.
 
 ## Conclusions
 

@@ -66,11 +66,14 @@ pub(crate) struct Extras {
     /// The running apps in place of the parts' fake, for the engine and the cleaner alike, which a flow changes as
     /// it goes. `None`: the parts' `running`.
     pub(crate) running: Option<Arc<dyn RunningApps>>,
+    /// Whether the user accepts the agreement as the engine starts, as before their first cleanup; otherwise the
+    /// settings file holds what it holds.
+    pub(crate) accept: bool,
 }
 
 impl Default for Extras {
     /// A fresh system interface, Finder's setting unknown, the home's Trash only, no command answered, the sandbox's
-    /// places protection alone, the parts' installed and running apps.
+    /// places protection alone, the parts' installed and running apps, the agreement accepted.
     fn default() -> Self {
         Self {
             system_ui: Arc::new(FakeSystemUi::default()),
@@ -80,6 +83,7 @@ impl Default for Extras {
             protection: Protection::default(),
             apps: None,
             running: None,
+            accept: true,
         }
     }
 }
@@ -165,5 +169,9 @@ pub(crate) fn engine_with(
     for module in given.modules {
         registry.register(module).unwrap();
     }
-    Engine::with_cleanup(registry, ports, cleanup).unwrap()
+    let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+    if extras.accept {
+        engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+    }
+    engine
 }

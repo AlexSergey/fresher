@@ -1,4 +1,4 @@
-# Settings and plugins of older JetBrains IDE versions
+# Settings and plugins of older JetBrains IDEs
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 

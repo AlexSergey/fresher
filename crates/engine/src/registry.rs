@@ -317,7 +317,7 @@ mod tests {
             let schema = registry.schema().unwrap();
 
             assert!(schema.descriptors().iter().all(|setting| setting.key().namespace() == "core"));
-            assert_eq!(schema.descriptors().len(), 11);
+            assert_eq!(schema.descriptors().len(), 13);
             assert_eq!(registry.dictionary().len(), core_dictionary().unwrap().len());
             assert_eq!(format!("{registry:?}"), "Registry { modules: [], .. }");
         }

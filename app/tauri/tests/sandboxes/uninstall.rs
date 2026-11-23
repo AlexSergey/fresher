@@ -9,14 +9,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    AppDetail, AppOffer, AppSummary, AppsQuery, CleanupPlanView, Confirmation, Event, FootprintKind, NotOffered,
-    PutBackOutcome, UninstallChoice,
+    AppDetail, AppOffer, AppSummary, AppsQuery, CleanupPlanView, Confirmation, DangerLevel, Event, FootprintKind,
+    NotOffered, PutBackOutcome, UninstallChoice,
 };
 use fresher_engine::Engine;
 use fresher_sandbox::{Case, CaseFile, Uninstall, UninstallExpectation};
 use serde_json::{Value, json};
 
-use crate::harness::{Failure, failure, relative, until};
+use crate::harness::{Failure, check_agreement_guard, failure, relative, until};
 
 /// One app of the list, with the bundle its page names.
 struct Listed {
@@ -58,9 +58,17 @@ pub(crate) fn check_uninstalls(
             Uninstall::Chosen { .. } => {}
         }
     }
+    // A file whose only positives are uninstalls meets the agreement at its first uninstall's prepare.
+    let mut guarded = file.cases().iter().any(|case| case.expect().is_some());
     let mut uninstalls = Vec::new();
     for &(case, uninstall) in &expected {
-        if matches!(uninstall.expected(), Uninstall::Chosen { .. }) {
+        if let Uninstall::Chosen { choice, .. } = uninstall.expected() {
+            if !guarded {
+                let app = listed.iter().find(|app| app.bundle == sandbox.join(uninstall.app()));
+                let app = app.ok_or_else(|| failure(case.name(), "not listed"))?.summary.app;
+                check_agreement_guard(name, engine, || engine.prepare_uninstall(app, *choice))?;
+                guarded = true;
+            }
             uninstalls.push(uninstall_and_put_back(case, file, engine, sandbox, uninstall)?);
         }
     }
@@ -181,7 +189,8 @@ fn sorted(mut paths: Vec<PathBuf>) -> Vec<PathBuf> {
 fn confirm(name: &str, engine: &Engine, view: &CleanupPlanView) -> Result<fresher_core::CleanupId, Failure> {
     let summary = view.summary;
     let echo: Confirmation = serde_json::from_value(json!({ "plan": view.plan, "count": summary.count,
-        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash" }))
+        "allocated": summary.sizes.allocated, "highest": summary.highest, "method": "trash",
+        "highRiskUnderstood": summary.highest == DangerLevel::High }))
     .map_err(|error| failure(name, error))?;
     let events = engine.subscribe();
     let id = engine

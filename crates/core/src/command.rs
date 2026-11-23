@@ -10,7 +10,8 @@ use crate::settings::schema::ENABLED;
 use crate::{
     AccessStatus, Availability, ByteSize, CategoryDescriptor, CategoryId, CleanupId, CommandError, Coverage,
     DangerLevel, Finding, FindingId, ModuleDescriptor, ModuleGroup, ModuleId, ResolvedSettings, ScanId, ScanKind,
-    ScanOutcome, SettingDescriptor, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes, Timestamp,
+    ScanOutcome, SettingDescriptor, SettingGroup, SettingKey, SettingProblem, SettingValue, SettingsSchema, Sizes,
+    Timestamp,
 };
 
 /// A long operation of the engine; only one runs at a time.
@@ -261,13 +262,24 @@ pub struct SettingsView {
 }
 
 impl SettingsView {
+    /// Every setting the screen shows: the settings of `SettingGroup::Agreement` are left out, descriptors, values and
+    /// problems (the screen never shows them; the interface reads `get_agreement`).
     pub fn new(schema: &SettingsSchema, resolved: &ResolvedSettings, file: SettingsFile) -> Self {
-        Self {
-            settings: schema.descriptors().to_vec(),
-            values: resolved.values.clone(),
-            problems: resolved.problems.clone(),
-            file,
-        }
+        let (hidden, shown): (Vec<SettingDescriptor>, Vec<SettingDescriptor>) =
+            schema.descriptors().iter().cloned().partition(|setting| setting.group() == SettingGroup::Agreement);
+        let values = resolved
+            .values
+            .iter()
+            .filter(|(key, _)| shown.iter().any(|setting| setting.key() == *key))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect();
+        let problems = resolved
+            .problems
+            .iter()
+            .filter(|problem| hidden.iter().all(|setting| setting.key().as_str() != problem.key()))
+            .cloned()
+            .collect();
+        Self { settings: shown, values, problems, file }
     }
 }
 
@@ -342,6 +354,34 @@ mod tests {
         fn a_file_that_is_newer_or_unreadable_is_read_only() {
             assert!(SettingsFile::NewerVersion.is_read_only());
             assert!(SettingsFile::Unreadable.is_read_only());
+        }
+
+        #[test]
+        fn the_settings_view_leaves_the_agreement_group_out() {
+            let schema = crate::SettingsSchema::new([]).unwrap();
+            let resolved = schema.resolve(&crate::StoredSettings::default());
+
+            let view = crate::SettingsView::new(&schema, &resolved, SettingsFile::Loaded);
+
+            assert!(resolved.values.keys().any(|key| key.as_str() == "core.agreement.version"));
+            assert!(view.settings.iter().all(|setting| setting.group() != crate::SettingGroup::Agreement));
+            assert!(view.values.keys().all(|key| !key.as_str().starts_with("core.agreement.")));
+            assert_eq!(view.settings.len(), view.values.len());
+        }
+
+        #[test]
+        fn the_settings_view_leaves_the_problems_of_the_agreement_out() {
+            let schema = crate::SettingsSchema::new([]).unwrap();
+            let stored = [("core.agreement.version", serde_json::json!("one")), ("gone.key", serde_json::json!(1))];
+            let stored = crate::StoredSettings {
+                values: stored.into_iter().map(|(key, value)| (key.to_owned(), value)).collect(),
+            };
+            let resolved = schema.resolve(&stored);
+
+            let view = crate::SettingsView::new(&schema, &resolved, SettingsFile::Loaded);
+
+            assert!(resolved.problems.iter().any(|problem| problem.key() == "core.agreement.version"));
+            assert_eq!(view.problems, [crate::SettingProblem::UnknownKey { key: "gone.key".into() }]);
         }
 
         #[test]

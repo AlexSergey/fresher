@@ -8,8 +8,8 @@ export type SettingsGroup =
   | { readonly descriptors: readonly SettingDescriptor[]; readonly group: CoreRowsGroup; readonly kind: 'core' }
   | { readonly descriptors: readonly SettingDescriptor[]; readonly kind: 'module'; readonly module: ModuleId };
 
-// The core's groups shown as rows; the ignored lists have a screen part of their own.
-type CoreRowsGroup = Exclude<SettingGroup, 'ignored' | 'module' | 'permissions'>;
+// The core's groups shown as rows; the ignored lists have a screen part of their own, and the agreement is never a row.
+type CoreRowsGroup = Exclude<SettingGroup, 'agreement' | 'ignored' | 'module' | 'permissions'>;
 
 // The groups of rows in the screen's order: General and Scan, then each module group's modules. A group or module with
 // no setting is left out. Ignored and Permissions have parts of their own (the permission switches are shown there).

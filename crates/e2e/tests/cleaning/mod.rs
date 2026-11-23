@@ -125,10 +125,12 @@ pub(crate) struct Setup {
     pub(crate) journal: JournalKind,
     /// Whether the cleaner waits after its first item until the cleanup is cancelled.
     pub(crate) pause: bool,
+    /// Whether the user accepts the agreement as the engine starts; otherwise the data folder holds what it holds.
+    pub(crate) accept: bool,
 }
 
 impl Setup {
-    pub(crate) const DEFAULT: Self = Self { marked: true, journal: JournalKind::File, pause: false };
+    pub(crate) const DEFAULT: Self = Self { marked: true, journal: JournalKind::File, pause: false, accept: true };
 }
 
 /// The fixture home with its engine. `fixture` is the canonical root of the fixture tree: the scan root is
@@ -158,6 +160,11 @@ pub(crate) fn home_sharing(setup: Setup, data: Arc<tempfile::TempDir>) -> Home {
             fs::write(tree.root().join(folder).join(SANDBOX_MARKER), "not a sandbox\n").unwrap();
         }
     }
+    started(tree, setup, data)
+}
+
+/// The engine on `tree`, with its settings and journal in `data`.
+fn started(tree: FixtureTree, setup: Setup, data: Arc<tempfile::TempDir>) -> Home {
     let fixture = fs::canonicalize(tree.root()).unwrap();
     let root = fixture.join("home");
     let folder = DataFolder::open(data.path()).unwrap();
@@ -210,6 +217,9 @@ pub(crate) fn home_sharing(setup: Setup, data: Arc<tempfile::TempDir>) -> Home {
         system: fresher_testing::fake_system(&root),
     };
     let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+    if setup.accept {
+        engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
+    }
     // The reference walk reads its roots as they are written: the default `~` is given as the home itself.
     let roots = SettingValue::Folders(vec![root]);
     engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
@@ -217,6 +227,13 @@ pub(crate) fn home_sharing(setup: Setup, data: Arc<tempfile::TempDir>) -> Home {
 }
 
 impl Home {
+    /// The app quits and starts again: this engine is dropped and a new one opens on the same files and data folder.
+    pub(crate) fn restarted(self, setup: Setup) -> Self {
+        let Self { _tree: tree, data, engine, .. } = self;
+        drop(engine);
+        started(tree, setup, data)
+    }
+
     /// Scans the home in full and waits for the end.
     pub(crate) fn scan(&self) {
         let events = self.engine.subscribe();
@@ -298,7 +315,8 @@ impl Home {
 pub(crate) fn echo(view: &CleanupPlanView, method: &str) -> Confirmation {
     let summary = view.summary;
     let echo = json!({ "plan": view.plan, "count": summary.count, "allocated": summary.sizes.allocated,
-                       "highest": summary.highest, "method": method });
+                       "highest": summary.highest, "method": method,
+                       "highRiskUnderstood": summary.highest == DangerLevel::High });
     serde_json::from_value(echo).unwrap()
 }
 
