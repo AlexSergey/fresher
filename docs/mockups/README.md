@@ -16,8 +16,10 @@ shaped it: [`manual-testing/2026-11-24-feedback.md`](../manual-testing/2026-11-2
 | File                                                               | Screen                                                                 |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
 | [`scan.dc.html`](./0.1.0/scan.dc.html)                             | Scan: the disk card with its ring, the separator, the tiles by group   |
+| [`scanning.dc.html`](./0.1.0/scanning.dc.html)                     | Scan while scanning: the progress fills the logo's swoosh              |
 | [`review.dc.html`](./0.1.0/review.dc.html)                         | Review: the summary card, one tile per category with its items         |
 | [`category-details.dc.html`](./0.1.0/category-details.dc.html)     | A category's details: three answers, the left-out line, the items      |
 | [`settings.dc.html`](./0.1.0/settings.dc.html)                     | Settings: its own sidebar and tree, a module's page, the slider        |
 | [`settings-search.dc.html`](./0.1.0/settings-search.dc.html)       | Settings: the search's results                                         |
 | [`row-menu.dc.html`](./0.1.0/row-menu.dc.html)                     | A row's menu: the pointed item filled with the accent colour           |
+| [`logo.dc.html`](./0.1.0/logo.dc.html)                             | The logo's three colour variants; A (graphite and iris) was chosen     |

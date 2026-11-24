@@ -26,7 +26,19 @@ input[type=checkbox]{accent-color:#5465eb;width:16px;height:16px;margin:0}
 <div style="width: 1100px; height: 780px; display: flex; background: #0e0f12; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden">
 
   <nav aria-label="Main" style="width: 200px; flex: none; background: linear-gradient(180deg, #08090b, #0e0f12); border-right: 1px solid #1f232a; padding: 44px 12px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
-    <div style="font-size: 16px; font-weight: 600; padding: 0 10px 18px">Fresher</div>
+    <div style="display: flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 600; padding: 0 10px 18px">
+      <svg width="22" height="22" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="s-body" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#2a2f38"></stop><stop offset="1" stop-color="#0e0f12"></stop></linearGradient>
+          <linearGradient id="s-band" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4553dc"></stop><stop offset="1" stop-color="#9aa6ff"></stop></linearGradient>
+          <clipPath id="s-clip"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z"></path></clipPath>
+        </defs>
+        <path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#s-body)" stroke="#3a414d" stroke-width="3"></path>
+        <g clip-path="url(#s-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 48 C64 56 40 70 20 96 Z" fill="url(#s-band)"></path></g>
+        <path d="M34 17 C35 28 37 30 48 31 C37 32 35 34 34 45 C33 34 31 32 20 31 C31 30 33 28 34 17 Z" fill="#eceef2"></path>
+      </svg>
+      Fresher
+    </div>
     <a class="nav" href="#" style="background: #1f232a; color: #eceef2">Scan</a>
     <a class="nav" href="#">Apps</a>
     <div style="height: 14px"></div>
@@ -173,7 +185,7 @@ input[type=checkbox]{accent-color:#5465eb;width:16px;height:16px;margin:0}
       <span style="color: #a3a9b4">2 selected</span>
       <span style="font-weight: 600; font-size: 15px">1.9 GB</span>
       <button style="font: inherit; color: #a3a9b4; background: none; border: none; padding: 6px 10px">Clear</button>
-      <a href="Review.dc.html" style="color: #fff; background: linear-gradient(180deg, #5465eb, #4553dc); border-radius: 8px; padding: 7px 16px; font-weight: 500">Review</a>
+      <a href="Review.dc.html" style="color: #fff; background: linear-gradient(115deg, rgba(154,166,255,0) 45%, rgba(154,166,255,0.45) 100%), linear-gradient(180deg, #5465eb, #4553dc); border-radius: 8px; padding: 7px 16px; font-weight: 500; box-shadow: 0 0 0 1px rgba(154,166,255,0.25) inset, 0 4px 14px rgba(84,101,235,0.35)">Review</a>
     </div>
   </main>
 </div>

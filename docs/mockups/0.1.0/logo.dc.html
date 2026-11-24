@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Logo variants</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1400px; height: 640px; box-sizing: border-box; padding: 40px; background: #0b0c0f; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px">
+
+  <section aria-labelledby="va" style="display: flex; flex-direction: column; gap: 16px">
+    <h2 id="va" style="margin: 0; font-size: 16px; font-weight: 600">A · Graphite and Iris</h2>
+    <p style="margin: 0; font-size: 12px; color: #8a919c">The current shape in graphite; the swoosh in the iris accent.</p>
+    <div style="display: flex; align-items: center; justify-content: center; height: 300px; border-radius: 18px; background: radial-gradient(120% 120% at 30% 0%, #1d2140, #0e0f12 60%); border: 1px solid #262b33">
+      <svg width="240" height="240" viewBox="0 0 100 100" role="img" aria-label="Variant A">
+        <defs>
+          <linearGradient id="a-body" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#2a2f38"></stop><stop offset="1" stop-color="#0e0f12"></stop></linearGradient>
+          <linearGradient id="a-band" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4553dc"></stop><stop offset="1" stop-color="#9aa6ff"></stop></linearGradient>
+          <linearGradient id="a-low" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a1d24"></stop><stop offset="1" stop-color="#0b0c0f"></stop></linearGradient>
+          <clipPath id="a-clip"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z"></path></clipPath>
+        </defs>
+        <path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#a-body)"></path>
+        <g clip-path="url(#a-clip)">
+          <path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#a-band)"></path>
+          <path d="M18 96 C40 68 64 54 96 46 L96 100 L18 100 Z" fill="url(#a-low)"></path>
+        </g>
+        <path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="none" stroke="#3a414d" stroke-width="1.2"></path>
+        <path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#eceef2"></path>
+      </svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px">
+      <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#a-body)"></path><g clip-path="url(#a-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#a-band)"></path><path d="M18 96 C40 68 64 54 96 46 L96 100 L18 100 Z" fill="url(#a-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#eceef2"></path></svg>
+      <svg width="32" height="32" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#a-body)"></path><g clip-path="url(#a-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#a-band)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#eceef2"></path></svg>
+      <div style="display: flex; align-items: center; justify-content: center; width: 88px; height: 88px; border-radius: 14px; background: #f3f4f6">
+        <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#a-body)"></path><g clip-path="url(#a-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#a-band)"></path><path d="M18 96 C40 68 64 54 96 46 L96 100 L18 100 Z" fill="url(#a-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#eceef2"></path></svg>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="vb" style="display: flex; flex-direction: column; gap: 16px">
+    <h2 id="vb" style="margin: 0; font-size: 16px; font-weight: 600">B · Iris leaf</h2>
+    <p style="margin: 0; font-size: 12px; color: #8a919c">The whole leaf in the iris gradient; a light swoosh and a white star.</p>
+    <div style="display: flex; align-items: center; justify-content: center; height: 300px; border-radius: 18px; background: radial-gradient(120% 120% at 30% 0%, #1d2140, #0e0f12 60%); border: 1px solid #262b33">
+      <svg width="240" height="240" viewBox="0 0 100 100" role="img" aria-label="Variant B">
+        <defs>
+          <linearGradient id="b-body" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="#8b98ff"></stop><stop offset="1" stop-color="#4553dc"></stop></linearGradient>
+          <linearGradient id="b-band" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="0.55"></stop><stop offset="1" stop-color="#ffffff" stop-opacity="0.95"></stop></linearGradient>
+          <linearGradient id="b-low" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a46c9"></stop><stop offset="1" stop-color="#2a3299"></stop></linearGradient>
+          <clipPath id="b-clip"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z"></path></clipPath>
+        </defs>
+        <path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#b-body)"></path>
+        <g clip-path="url(#b-clip)">
+          <path d="M6 96 C28 60 56 44 96 34 L96 42 C64 51 40 66 14 96 Z" fill="url(#b-band)"></path>
+          <path d="M14 96 C40 66 64 51 96 42 L96 100 L14 100 Z" fill="url(#b-low)"></path>
+        </g>
+        <path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path>
+      </svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px">
+      <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#b-body)"></path><g clip-path="url(#b-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 42 C64 51 40 66 14 96 Z" fill="url(#b-band)"></path><path d="M14 96 C40 66 64 51 96 42 L96 100 L14 100 Z" fill="url(#b-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path></svg>
+      <svg width="32" height="32" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#b-body)"></path><g clip-path="url(#b-clip)"><path d="M14 96 C40 66 64 51 96 42 L96 100 L14 100 Z" fill="url(#b-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path></svg>
+      <div style="display: flex; align-items: center; justify-content: center; width: 88px; height: 88px; border-radius: 14px; background: #f3f4f6">
+        <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#b-body)"></path><g clip-path="url(#b-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 42 C64 51 40 66 14 96 Z" fill="url(#b-band)"></path><path d="M14 96 C40 66 64 51 96 42 L96 100 L14 100 Z" fill="url(#b-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path></svg>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="vc" style="display: flex; flex-direction: column; gap: 16px">
+    <h2 id="vc" style="margin: 0; font-size: 16px; font-weight: 600">C · Graphite, fresh swoosh</h2>
+    <p style="margin: 0; font-size: 12px; color: #8a919c">Graphite leaf; the swoosh runs from the "can be freed" green into iris.</p>
+    <div style="display: flex; align-items: center; justify-content: center; height: 300px; border-radius: 18px; background: radial-gradient(120% 120% at 30% 0%, #1d2140, #0e0f12 60%); border: 1px solid #262b33">
+      <svg width="240" height="240" viewBox="0 0 100 100" role="img" aria-label="Variant C">
+        <defs>
+          <linearGradient id="c-body" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#2a2f38"></stop><stop offset="1" stop-color="#0e0f12"></stop></linearGradient>
+          <linearGradient id="c-band" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3dd68c"></stop><stop offset="1" stop-color="#7c8cff"></stop></linearGradient>
+          <linearGradient id="c-low" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a1d24"></stop><stop offset="1" stop-color="#0b0c0f"></stop></linearGradient>
+          <radialGradient id="c-star"><stop offset="0" stop-color="#ffffff"></stop><stop offset="1" stop-color="#c9d0ff"></stop></radialGradient>
+          <clipPath id="c-clip"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z"></path></clipPath>
+        </defs>
+        <path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#c-body)"></path>
+        <g clip-path="url(#c-clip)">
+          <path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#c-band)"></path>
+          <path d="M18 96 C40 68 64 54 96 46 L96 100 L18 100 Z" fill="url(#c-low)"></path>
+        </g>
+        <path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="none" stroke="#3a414d" stroke-width="1.2"></path>
+        <path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="url(#c-star)"></path>
+      </svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px">
+      <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#c-body)"></path><g clip-path="url(#c-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#c-band)"></path><path d="M18 96 C40 68 64 54 96 46 L96 100 L18 100 Z" fill="url(#c-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path></svg>
+      <svg width="32" height="32" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#c-body)"></path><g clip-path="url(#c-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#c-band)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path></svg>
+      <div style="display: flex; align-items: center; justify-content: center; width: 88px; height: 88px; border-radius: 14px; background: #f3f4f6">
+        <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><path d="M8 92 C8 46 32 10 72 8 L88 8 Q92 8 92 12 L92 54 C92 80 70 92 44 92 Z" fill="url(#c-body)"></path><g clip-path="url(#c-clip)"><path d="M6 96 C28 60 56 44 96 34 L96 46 C64 54 40 68 18 96 Z" fill="url(#c-band)"></path><path d="M18 96 C40 68 64 54 96 46 L96 100 L18 100 Z" fill="url(#c-low)"></path></g><path d="M34 19 C35 28 37 30 46 31 C37 32 35 34 34 43 C33 34 31 32 22 31 C31 30 33 28 34 19 Z" fill="#ffffff"></path></svg>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1400,"height":640}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
