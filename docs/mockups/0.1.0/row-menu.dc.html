@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Row menu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.mi{display:block;width:100%;text-align:left;font:inherit;font-size:13px;color:#eceef2;background:none;border:none;border-radius:6px;padding:7px 10px}
+.mi:hover{background:#4553dc;color:#fff}
+</style>
+</helmet>
+<div style="width: 560px; height: 380px; box-sizing: border-box; padding: 32px; background: #0e0f12; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; position: relative">
+  <div style="border-radius: 10px; background: #15171b; border: 1px solid #1f232a">
+    <div style="display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: #1c1f25; border-radius: 10px">
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 14px; font-weight: 500">Chat app</span>
+        <span style="font-size: 12px; color: #8a919c; font-family: ui-monospace, 'SF Mono', Menlo, monospace">~/Library/Caches/com.example.chat</span>
+      </span>
+      <span style="font-size: 14px">612 MB</span>
+      <button aria-label="More for Chat app" style="font: inherit; color: #eceef2; background: #262b33; border: none; border-radius: 6px; width: 28px; height: 28px">⋯</button>
+    </div>
+  </div>
+
+  <div role="menu" style="position: absolute; right: 32px; top: 92px; width: 250px; background: #1c1f25; border: 1px solid #313741; border-radius: 10px; padding: 5px; box-shadow: 0 12px 32px rgba(0,0,0,0.55)">
+    <button class="mi" role="menuitem">Show in Finder</button>
+    <div style="height: 1px; background: #313741; margin: 4px 6px"></div>
+    <button class="mi" role="menuitem" style="background: #4553dc; color: #fff">Ignore this item</button>
+    <button class="mi" role="menuitem">Ignore all App caches</button>
+    <div style="height: 1px; background: #313741; margin: 4px 6px"></div>
+    <button class="mi" role="menuitem" style="color: #a3a9b4">Stop looking for app caches…</button>
+  </div>
+
+  <p style="position: absolute; left: 32px; bottom: 24px; margin: 0; width: 240px; font-size: 12px; color: #8a919c; line-height: 1.5">The pointed item fills with the accent colour, as in a macOS menu. The same menu sits on every row and card.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":380}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

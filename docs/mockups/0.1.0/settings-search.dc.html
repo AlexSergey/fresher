@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings search</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#8b98ff}a:hover{color:#b4bdff}
+.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;color:#a3a9b4;font-size:13px;text-decoration:none}
+.nav:hover{background:#1f232a;color:#eceef2}
+.hit{display:flex;flex-direction:column;gap:3px;padding:12px 14px;text-decoration:none;color:#eceef2}
+.hit:hover{background:#1f232a}
+mark{background:#4553dc;color:#fff;border-radius:3px;padding:0 2px}
+</style>
+</helmet>
+<div style="width: 1100px; height: 780px; display: flex; background: #0e0f12; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden">
+
+  <nav aria-label="Main" style="width: 200px; flex: none; background: #0b0c0f; border-right: 1px solid #1f232a; padding: 44px 12px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+    <div style="font-size: 16px; font-weight: 600; padding: 0 10px 18px">Fresher</div>
+    <a class="nav" href="Main.dc.html">Scan</a>
+    <a class="nav" href="#">Apps</a>
+    <div style="height: 14px"></div>
+    <a class="nav" href="Review.dc.html">Review</a>
+    <a class="nav" href="#">Cleanups</a>
+    <div style="flex-grow: 1"></div>
+    <a class="nav" href="#" style="background: #1f232a; color: #eceef2">Settings</a>
+  </nav>
+
+  <nav aria-label="Settings sections" style="width: 220px; flex: none; border-right: 1px solid #1f232a; padding: 24px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; font-size: 13px">
+    <label style="display: flex; align-items: center; gap: 8px; background: #15171b; border: 1px solid #5465eb; border-radius: 8px; padding: 7px 10px; margin-bottom: 14px">
+      <span aria-hidden="true" style="color: #8a919c">⌕</span>
+      <input type="search" value="days" aria-label="Search settings" style="font: inherit; color: #eceef2; background: none; border: none; outline: none; width: 100%">
+    </label>
+    <span style="padding: 5px 10px; color: #5a616d">General</span>
+    <span style="padding: 5px 10px; color: #5a616d">Scan</span>
+    <span style="padding: 5px 10px; color: #5a616d">Ignored</span>
+    <span style="padding: 5px 10px; color: #5a616d">Permissions</span>
+    <span style="padding: 5px 10px; color: #5a616d">About</span>
+    <div style="font-size: 11px; color: #5a616d; padding: 16px 10px 6px; text-transform: uppercase; letter-spacing: 0.6px">What it looks for</div>
+    <span style="padding: 5px 10px; color: #eceef2">▾ Development</span>
+    <span style="padding: 5px 10px 5px 26px; color: #eceef2">Old projects <span style="color: #8b98ff">1</span></span>
+    <span style="padding: 5px 10px; color: #eceef2">▾ System</span>
+    <span style="padding: 5px 10px 5px 26px; color: #eceef2">Temporary files <span style="color: #8b98ff">1</span></span>
+    <span style="padding: 5px 10px 5px 26px; color: #eceef2">Logs and crash reports <span style="color: #8b98ff">1</span></span>
+    <span style="padding: 5px 10px; color: #5a616d">▸ Your files</span>
+  </nav>
+
+  <main style="flex: 1; min-width: 0; padding: 28px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+    <header style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 600">3 settings match “days”</h1>
+      <p style="margin: 0; font-size: 13px; color: #a3a9b4">Pick one to go to it. Esc clears the search.</p>
+    </header>
+
+    <div style="background: #15171b; border: 1px solid #1f232a; border-radius: 10px; overflow: hidden">
+      <a class="hit" href="Settings.dc.html">
+        <span style="font-size: 12px; color: #8a919c">Development › Old projects</span>
+        <span style="font-size: 14px; font-weight: 500">Old after</span>
+        <span style="font-size: 12px; color: #a3a9b4">90 <mark>days</mark>. A project untouched this long counts as old.</span>
+      </a>
+      <div style="height: 1px; background: #1f232a"></div>
+      <a class="hit" href="#">
+        <span style="font-size: 12px; color: #8a919c">System › Temporary files</span>
+        <span style="font-size: 14px; font-weight: 500">Older than</span>
+        <span style="font-size: 12px; color: #a3a9b4">7 <mark>days</mark>. Newer temporary files are left alone.</span>
+      </a>
+      <div style="height: 1px; background: #1f232a"></div>
+      <a class="hit" href="#">
+        <span style="font-size: 12px; color: #8a919c">System › Logs and crash reports</span>
+        <span style="font-size: 14px; font-weight: 500">Older than</span>
+        <span style="font-size: 12px; color: #a3a9b4">7 <mark>days</mark>. Newer logs are kept for troubleshooting.</span>
+      </a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

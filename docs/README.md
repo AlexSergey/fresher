@@ -22,6 +22,7 @@ All documentation of the repository lives here.
 | [`ideas/`](./ideas/README.md)               | the user's ideas, not planned yet                                    |
 | [`hacks/`](./hacks/README.md)               | non-obvious decisions and shortcuts in the code, and why             |
 | [`postmortem/`](./postmortem/README.md)     | attempts that did not work, and why                                  |
+| [`mockups/`](./mockups/README.md)           | the approved mockups of the screens, by release                      |
 
 ## The stack
 

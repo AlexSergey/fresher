@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#8b98ff;text-decoration:none}a:hover{color:#b4bdff}
+.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;color:#a3a9b4;font-size:13px;text-decoration:none}
+.nav:hover{background:#1f232a;color:#eceef2}
+.tile{position:relative;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:14px;background:linear-gradient(180deg,#1a1d23,#15171b);border:1px solid #262b33;box-shadow:0 1px 0 rgba(255,255,255,0.04) inset}
+.tile:hover{border-color:#3a414d}
+.ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.lg{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;font-size:13px;color:#c9ced6}
+.lg:hover{background:#1f232a}
+.gear{font:inherit;color:#8a919c;background:none;border:none;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.gear:hover{background:#262b33;color:#eceef2}
+input[type=checkbox]{accent-color:#5465eb;width:16px;height:16px;margin:0}
+</style>
+</helmet>
+<div style="width: 1100px; height: 780px; display: flex; background: #0e0f12; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden">
+
+  <nav aria-label="Main" style="width: 200px; flex: none; background: linear-gradient(180deg, #08090b, #0e0f12); border-right: 1px solid #1f232a; padding: 44px 12px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+    <div style="font-size: 16px; font-weight: 600; padding: 0 10px 18px">Fresher</div>
+    <a class="nav" href="#" style="background: #1f232a; color: #eceef2">Scan</a>
+    <a class="nav" href="#">Apps</a>
+    <div style="height: 14px"></div>
+    <a class="nav" href="Review.dc.html" style="justify-content: space-between"><span>Review</span><span style="font-size: 11px; background: #4553dc; color: #fff; border-radius: 9px; padding: 1px 7px">2</span></a>
+    <a class="nav" href="#">Cleanups</a>
+    <div style="flex-grow: 1"></div>
+    <a class="nav" href="Settings.dc.html">Settings</a>
+  </nav>
+
+  <main style="flex: 1; min-width: 0; padding: 20px 36px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px; position: relative; overflow: hidden">
+
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 13px; font-weight: 600">Scan</span>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="font-size: 12px; color: #8a919c">2 minutes ago</span>
+        <button style="font: inherit; font-size: 13px; color: #eceef2; background: #1f232a; border: 1px solid #313741; border-radius: 7px; padding: 5px 12px">Scan again</button>
+      </div>
+    </div>
+
+    <section aria-label="Your disk" style="display: flex; align-items: center; gap: 40px; padding: 22px 28px; border-radius: 18px; border: 1px solid #262b33; background: radial-gradient(120% 140% at 20% 0%, #1d2140 0%, #15171b 55%)">
+      <div style="position: relative; width: 180px; height: 180px; flex: none">
+        <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Macintosh HD: 3.8 GB can be freed, 331 GB apps and files, 23 GB macOS, 5 GB system files, 109 GB free">
+          <circle cx="90" cy="90" r="74" fill="none" stroke="#262b33" stroke-width="16"></circle>
+          <circle cx="90" cy="90" r="74" fill="none" stroke="#5b7cfa" stroke-width="16" stroke-dasharray="313 465" stroke-dashoffset="0" transform="rotate(-90 90 90)"></circle>
+          <circle cx="90" cy="90" r="74" fill="none" stroke="#b18cf5" stroke-width="16" stroke-dasharray="20 465" stroke-dashoffset="-316" transform="rotate(-90 90 90)"></circle>
+          <circle cx="90" cy="90" r="74" fill="none" stroke="#f07ab0" stroke-width="16" stroke-dasharray="6 465" stroke-dashoffset="-339" transform="rotate(-90 90 90)"></circle>
+          <circle cx="90" cy="90" r="74" fill="none" stroke="#3dd68c" stroke-width="16" stroke-dasharray="14 465" stroke-dashoffset="-348" transform="rotate(-90 90 90)"></circle>
+        </svg>
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+          <span style="font-size: 30px; font-weight: 700; letter-spacing: -0.5px">3.8 GB</span>
+          <span style="font-size: 12px; color: #3dd68c">can be freed</span>
+        </div>
+      </div>
+
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <span style="font-size: 15px; font-weight: 600">Macintosh HD</span>
+          <span style="font-size: 13px; color: #a3a9b4"><b style="color: #eceef2">109 GB</b> free of 494 GB</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 18px">
+          <div class="lg" style="background: rgba(61,214,140,0.08)"><span style="width: 10px; height: 10px; border-radius: 3px; background: #3dd68c"></span><span style="flex: 1; color: #eceef2">Can be freed</span><b style="color: #3dd68c">3.8 GB</b></div>
+          <div class="lg"><span style="width: 10px; height: 10px; border-radius: 3px; background: #5b7cfa"></span><span style="flex: 1">Your files and apps</span><b>331 GB</b></div>
+          <div class="lg"><span style="width: 10px; height: 10px; border-radius: 3px; background: #b18cf5"></span><span style="flex: 1">macOS</span><b>23 GB</b></div>
+          <div class="lg" title="Memory macOS keeps on disk, and space the disk keeps for itself"><span style="width: 10px; height: 10px; border-radius: 3px; background: #f07ab0"></span><span style="flex: 1">System space</span><b>5.2 GB</b></div>
+          <div class="lg"><span style="width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid #5a616d; box-sizing: border-box"></span><span style="flex: 1">Free</span><b>109 GB</b></div>
+        </div>
+      </div>
+    </section>
+
+    <div role="separator" style="display: flex; align-items: center; gap: 14px; padding-top: 4px">
+      <span style="font-size: 12px; font-weight: 600; color: #a3a9b4; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap">What you can remove</span>
+      <span style="flex: 1; height: 1px; background: linear-gradient(90deg, #313741, rgba(49,55,65,0))"></span>
+    </div>
+
+    <section aria-labelledby="g-safe" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg>
+        <h2 id="g-safe" style="margin: 0; font-size: 14px; font-weight: 600">Safe to remove</h2>
+        <span style="font-size: 12px; color: #8a919c">· Apps make these again on their own</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <div class="tile" style="border-color: #2b4a3b">
+          <div style="display: flex; gap: 12px; align-items: flex-start">
+            <div class="ico" style="background: rgba(61,214,140,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg></div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0">
+              <span style="font-size: 15px; font-weight: 600">App caches</span>
+              <span style="font-size: 12px; color: #8a919c">Copies apps keep to open things faster</span>
+            </div>
+            <input type="checkbox" checked="" aria-label="Select App caches">
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 24px; font-weight: 700">1.4 GB</span>
+            <span style="font-size: 12px; color: #8a919c">14 items</span>
+            <span style="flex: 1"></span>
+            <a href="Category.dc.html" style="font-size: 13px">Details</a>
+            <button class="gear" aria-label="App caches options">⋯</button>
+          </div>
+        </div>
+        <div class="tile" style="border-color: #2b4a3b">
+          <div style="display: flex; gap: 12px; align-items: flex-start">
+            <div class="ico" style="background: rgba(61,214,140,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4l6 6-3 3-6-6z"></path><path d="M11 7L4 14l3 3 7-7"></path><path d="M4 20h7"></path></svg></div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0">
+              <span style="font-size: 15px; font-weight: 600">Xcode build data</span>
+              <span style="font-size: 12px; color: #8a919c">Leftovers of past app builds</span>
+            </div>
+            <input type="checkbox" checked="" aria-label="Select Xcode build data">
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 24px; font-weight: 700">480 MB</span>
+            <span style="font-size: 12px; color: #8a919c">3 items</span>
+            <span style="flex: 1"></span>
+            <a href="#" style="font-size: 13px">Details</a>
+            <button class="gear" aria-label="Xcode build data options">⋯</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="g-usually" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4cc3e6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"></path></svg>
+        <h2 id="g-usually" style="margin: 0; font-size: 14px; font-weight: 600">Usually safe</h2>
+        <span style="font-size: 12px; color: #8a919c">· You may need to download them again</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <div class="tile" style="border-color: #26404a">
+          <div style="display: flex; gap: 12px; align-items: flex-start">
+            <div class="ico" style="background: rgba(76,195,230,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4cc3e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M5 20h14"></path></svg></div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0">
+              <span style="font-size: 15px; font-weight: 600">Old installers</span>
+              <span style="font-size: 12px; color: #8a919c">Installers of apps you already have</span>
+            </div>
+            <input type="checkbox" aria-label="Select Old installers">
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 24px; font-weight: 700">620 MB</span>
+            <span style="font-size: 12px; color: #8a919c">2 items</span>
+            <span style="flex: 1"></span>
+            <a href="#" style="font-size: 13px">Details</a>
+            <button class="gear" aria-label="Old installers options">⋯</button>
+          </div>
+        </div>
+        <div class="tile" style="border-color: #26404a">
+          <div style="display: flex; gap: 12px; align-items: flex-start">
+            <div class="ico" style="background: rgba(76,195,230,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4cc3e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6l-5 6 5 6"></path><path d="M16 6l5 6-5 6"></path></svg></div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0">
+              <span style="font-size: 15px; font-weight: 600">Unused Node versions</span>
+              <span style="font-size: 12px; color: #8a919c">No project of yours asks for them</span>
+            </div>
+            <input type="checkbox" aria-label="Select Unused Node versions">
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 24px; font-weight: 700">130 MB</span>
+            <span style="font-size: 12px; color: #8a919c">2 items</span>
+            <span style="flex: 1"></span>
+            <a href="#" style="font-size: 13px">Details</a>
+            <button class="gear" aria-label="Unused Node versions options">⋯</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div style="position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: rgba(28,31,37,0.92); border: 1px solid #313741; border-radius: 12px; padding: 8px 8px 8px 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); font-size: 13px; white-space: nowrap">
+      <span style="color: #a3a9b4">2 selected</span>
+      <span style="font-weight: 600; font-size: 15px">1.9 GB</span>
+      <button style="font: inherit; color: #a3a9b4; background: none; border: none; padding: 6px 10px">Clear</button>
+      <a href="Review.dc.html" style="color: #fff; background: linear-gradient(180deg, #5465eb, #4553dc); border-radius: 8px; padding: 7px 16px; font-weight: 500">Review</a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

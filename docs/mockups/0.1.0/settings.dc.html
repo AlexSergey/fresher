@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#8b98ff}a:hover{color:#b4bdff}
+.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;color:#a3a9b4;font-size:13px;text-decoration:none}
+.nav:hover{background:#1f232a;color:#eceef2}
+.tree{display:block;padding:5px 10px;border-radius:6px;color:#a3a9b4;font-size:13px;text-decoration:none}
+.tree:hover{background:#1f232a;color:#eceef2}
+input[type=range]{accent-color:#5465eb;flex:1}
+.x{font:inherit;color:#8a919c;background:none;border:none;border-radius:6px;width:26px;height:26px}
+.x:hover{background:#262b33;color:#eceef2}
+</style>
+</helmet>
+<div style="width: 1100px; height: 780px; display: flex; background: #0e0f12; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden">
+
+  <nav aria-label="Main" style="width: 200px; flex: none; background: #0b0c0f; border-right: 1px solid #1f232a; padding: 44px 12px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+    <div style="font-size: 16px; font-weight: 600; padding: 0 10px 18px">Fresher</div>
+    <a class="nav" href="Main.dc.html">Scan</a>
+    <a class="nav" href="#">Apps</a>
+    <div style="height: 14px"></div>
+    <a class="nav" href="Review.dc.html">Review</a>
+    <a class="nav" href="#">Cleanups</a>
+    <div style="flex-grow: 1"></div>
+    <a class="nav" href="#" style="background: #1f232a; color: #eceef2">Settings</a>
+  </nav>
+
+  <nav aria-label="Settings sections" style="width: 220px; flex: none; border-right: 1px solid #1f232a; padding: 24px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+    <label style="display: flex; align-items: center; gap: 8px; background: #15171b; border: 1px solid #262b33; border-radius: 8px; padding: 7px 10px; margin-bottom: 14px">
+      <span aria-hidden="true" style="color: #8a919c; font-size: 13px">⌕</span>
+      <input type="search" placeholder="Search settings" aria-label="Search settings" style="font: inherit; font-size: 13px; color: #eceef2; background: none; border: none; outline: none; width: 100%">
+    </label>
+    <a class="tree" href="#">General</a>
+    <a class="tree" href="#">Scan</a>
+    <a class="tree" href="#">Ignored</a>
+    <a class="tree" href="#">Permissions</a>
+    <a class="tree" href="#">About</a>
+    <div style="font-size: 11px; color: #8a919c; padding: 16px 10px 6px; text-transform: uppercase; letter-spacing: 0.6px">What it looks for</div>
+    <span class="tree" style="color: #eceef2">▾ Development</span>
+    <a class="tree" href="#" style="padding-left: 26px; background: #1f232a; color: #eceef2">Old projects</a>
+    <a class="tree" href="#" style="padding-left: 26px">JetBrains IDEs</a>
+    <a class="tree" href="#" style="padding-left: 26px">Tool versions</a>
+    <a class="tree" href="#" style="padding-left: 26px">Xcode</a>
+    <a class="tree" href="#">▸ System</a>
+    <a class="tree" href="#">▸ Your files</a>
+  </nav>
+
+  <main style="flex: 1; min-width: 0; padding: 28px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 12px; color: #8a919c">Development</span>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 600">Old projects</h1>
+      <p style="margin: 0; font-size: 13px; color: #a3a9b4">Build folders of projects you haven't touched for a while.</p>
+    </header>
+
+    <div style="background: #15171b; border: 1px solid #1f232a; border-radius: 10px">
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 14px; font-weight: 500">Old after</span>
+          <span style="font-size: 12px; color: #8a919c">A project untouched this long counts as old.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px">
+          <span style="font-size: 12px; color: #8a919c">1</span>
+          <input type="range" min="1" max="365" value="90" aria-label="Old after, days">
+          <span style="font-size: 12px; color: #8a919c">365</span>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #a3a9b4">
+            <input type="number" min="1" max="365" value="90" aria-label="Days" style="font: inherit; font-size: 13px; width: 52px; color: #eceef2; background: #0e0f12; border: 1px solid #313741; border-radius: 6px; padding: 5px 7px; text-align: right">
+            days
+          </label>
+        </div>
+      </div>
+      <div style="height: 1px; background: #1f232a; margin: 0 16px"></div>
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 14px; font-weight: 500">Folders to look in</span>
+          <span style="font-size: 12px; color: #8a919c">Only projects inside these folders are checked.</span>
+        </div>
+        <div style="border: 1px solid #262b33; border-radius: 8px">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 6px 12px; font-size: 13px; font-family: ui-monospace, 'SF Mono', Menlo, monospace">~/Projects<button class="x" aria-label="Remove ~/Projects">✕</button></div>
+          <div style="height: 1px; background: #262b33"></div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 6px 12px; font-size: 13px; font-family: ui-monospace, 'SF Mono', Menlo, monospace">~/Work<button class="x" aria-label="Remove ~/Work">✕</button></div>
+        </div>
+        <div><button style="font: inherit; font-size: 13px; color: #eceef2; background: #1f232a; border: 1px solid #313741; border-radius: 7px; padding: 6px 12px">Add folder…</button></div>
+      </div>
+      <div style="height: 1px; background: #1f232a; margin: 0 16px"></div>
+      <div style="padding: 16px; display: flex; align-items: center; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 14px; font-weight: 500">Look for old projects</span>
+          <span style="font-size: 12px; color: #8a919c">Off: the scan skips them and nothing of them is offered.</span>
+        </div>
+        <input type="checkbox" role="switch" checked="" aria-label="Look for old projects" style="accent-color: #5465eb; width: 18px; height: 18px">
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>App caches</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#8b98ff}a:hover{color:#b4bdff}
+.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;color:#a3a9b4;font-size:13px;text-decoration:none}
+.nav:hover{background:#1f232a;color:#eceef2}
+.item:hover{background:#1c1f25}
+.more{font:inherit;color:#8a919c;background:none;border:none;border-radius:6px;width:28px;height:28px}
+.more:hover{background:#262b33;color:#eceef2}
+input[type=checkbox]{accent-color:#5465eb;width:15px;height:15px;margin:0}
+</style>
+</helmet>
+<div style="width: 1100px; height: 780px; display: flex; background: #0e0f12; color: #eceef2; font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden">
+
+  <nav aria-label="Main" style="width: 200px; flex: none; background: #0b0c0f; border-right: 1px solid #1f232a; padding: 44px 12px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+    <div style="font-size: 16px; font-weight: 600; padding: 0 10px 18px">Fresher</div>
+    <a class="nav" href="Main.dc.html" style="background: #1f232a; color: #eceef2">Scan</a>
+    <a class="nav" href="#">Apps</a>
+    <div style="height: 14px"></div>
+    <a class="nav" href="Review.dc.html" style="justify-content: space-between"><span>Review</span><span style="font-size: 11px; background: #4553dc; color: #fff; border-radius: 9px; padding: 1px 7px">2</span></a>
+    <a class="nav" href="#">Cleanups</a>
+    <div style="flex-grow: 1"></div>
+    <a class="nav" href="Settings.dc.html">Settings</a>
+  </nav>
+
+  <main style="flex: 1; min-width: 0; padding: 24px 44px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <a href="Main.dc.html" style="font-size: 13px; color: #a3a9b4; text-decoration: none">‹ Scan</a>
+
+    <header style="display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">App caches</h1>
+        <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a3a9b4"><span style="width: 8px; height: 8px; border-radius: 4px; background: #3dd68c"></span>Safe to remove</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <span style="font-size: 28px; font-weight: 700">1.4 GB</span>
+        <span style="font-size: 13px; color: #8a919c">14 items</span>
+      </div>
+    </header>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <div style="background: #15171b; border: 1px solid #1f232a; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; color: #8a919c">What it is</span>
+        <span style="font-size: 13px; line-height: 1.45">Files apps save so they don't fetch or build them twice.</span>
+      </div>
+      <div style="background: #15171b; border: 1px solid #1f232a; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; color: #8a919c">If you remove it</span>
+        <span style="font-size: 13px; line-height: 1.45">Nothing is lost. Some apps open a little slower once.</span>
+      </div>
+      <div style="background: #15171b; border: 1px solid #1f232a; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; color: #8a919c">Comes back?</span>
+        <span style="font-size: 13px; line-height: 1.45">Yes, by itself, the next time the app needs it.</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #a3a9b4; background: #15171b; border: 1px solid #1f232a; border-radius: 10px; padding: 10px 14px">
+      <span aria-hidden="true" style="color: #8a919c">i</span>
+      Left out: Safari's cache, 157 MB. Safari is open. Quit it, then scan again.
+    </div>
+
+    <section aria-label="Items" style="display: flex; flex-direction: column; gap: 8px; min-height: 0">
+      <label style="display: flex; align-items: center; gap: 12px; padding: 0 14px; font-size: 13px; color: #a3a9b4">
+        <input type="checkbox" checked="">
+        Select all 14
+      </label>
+      <div style="border-radius: 10px; background: #15171b; border: 1px solid #1f232a; overflow: hidden">
+        <div class="item" style="display: flex; align-items: center; gap: 14px; padding: 10px 14px">
+          <input type="checkbox" checked="" aria-label="Chat app">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+            <span style="font-size: 14px; font-weight: 500">Chat app</span>
+            <span style="font-size: 12px; color: #8a919c; font-family: ui-monospace, 'SF Mono', Menlo, monospace">~/Library/Caches/com.example.chat</span>
+          </span>
+          <span style="font-size: 14px">612 MB</span>
+          <button class="more" aria-label="More for Chat app">⋯</button>
+        </div>
+        <div style="height: 1px; background: #1f232a"></div>
+        <div class="item" style="display: flex; align-items: center; gap: 14px; padding: 10px 14px">
+          <input type="checkbox" checked="" aria-label="Music app">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+            <span style="font-size: 14px; font-weight: 500">Music app</span>
+            <span style="font-size: 12px; color: #8a919c; font-family: ui-monospace, 'SF Mono', Menlo, monospace">~/Library/Caches/com.example.music</span>
+          </span>
+          <span style="font-size: 14px">418 MB</span>
+          <button class="more" aria-label="More for Music app">⋯</button>
+        </div>
+        <div style="height: 1px; background: #1f232a"></div>
+        <div class="item" style="display: flex; align-items: center; gap: 14px; padding: 10px 14px">
+          <input type="checkbox" checked="" aria-label="Design app">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+            <span style="font-size: 14px; font-weight: 500">Design app</span>
+            <span style="font-size: 12px; color: #8a919c; font-family: ui-monospace, 'SF Mono', Menlo, monospace">~/Library/Caches/com.example.design</span>
+          </span>
+          <span style="font-size: 14px">204 MB</span>
+          <button class="more" aria-label="More for Design app">⋯</button>
+        </div>
+        <div style="height: 1px; background: #1f232a"></div>
+        <div style="padding: 10px 14px; font-size: 13px; color: #8a919c">11 more, 166 MB</div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
