@@ -103,7 +103,8 @@ The design was found on mockups (three rounds; the user approved the third):
 ### 7. The logo and its swoosh
 
 - The logo is redrawn as a vector in the app's colours (variant A of 2026-11-24): the leaf in graphite, the swoosh in
-  the iris gradient (`#4553dc` to `#9aa6ff`), the star in near-white. It replaces `assets/logo.png`, the app icons in
+  the iris gradient (`#4553dc` to `#9aa6ff`), the star in near-white, and a 1 px rim of the swoosh's gradient at 50 % opacity
+  so the leaf does not melt into a dark background. It replaces `assets/logo.png`, the app icons in
   `app/tauri/icons/` (`.icns` included) and the social preview.
 - The swoosh becomes the app's motif: a sheen on the primary buttons (text contrast kept) and the scan's progress, which fills a swoosh-shaped line in the disk card while the scan runs.
 - The logo sits small beside "Fresher" at the top of the sidebar.
@@ -117,7 +118,8 @@ The design was found on mockups (three rounds; the user approved the third):
 5. Category details.
 6. Settings: sidebar, tree, search.
 7. Wording pass (core, modules, UI) and `writing.md`.
-8. The logo: the vector source, the icons, the social preview.
+8. The logo: the icons and the social preview (the vector source `docs/mockups/0.1.0/logo.svg` and the README's
+   `assets/logo.png` were done on 2026-11-24).
 9. Docs, Playwright baselines, demo recordings if a GIF changes, sandboxes, the walk.
 
 ## Open questions

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="160" height="160" alt="Fresher logo: a dark leaf with a white spark">
+  <img src="assets/logo.png" width="160" height="160" alt="Fresher logo: a graphite leaf with an iris swoosh and a white spark">
 </p>
 
 <h1 align="center">Fresher</h1>
