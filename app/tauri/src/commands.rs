@@ -776,13 +776,13 @@ mod tests {
             assert_eq!(
                 modules,
                 [
-                    "jetbrains",
+                    "app-caches",
                     "temp",
+                    "logs",
                     "dev-caches",
                     "app-leftovers",
-                    "app-caches",
-                    "logs",
                     "downloads",
+                    "jetbrains",
                     "stale-projects",
                     "local-ai-models",
                     "unused-toolchains",

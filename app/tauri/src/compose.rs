@@ -460,16 +460,17 @@ fn registry_of(only: Option<ModuleId>) -> Result<Registry, ComposeError> {
     Ok(registry)
 }
 
-/// Every module of the app, in a fixed order: the feature modules of every build, then the dev-only ones.
+/// Every module of the app, in a fixed order: the feature modules of every build, then the dev-only ones. The scan
+/// screen's "Looking at" line names them in this order, so the general ones (caches, temporary files, logs) come first.
 fn modules() -> Result<Vec<Box<dyn Module>>, ComposeError> {
     let modules: Vec<Box<dyn Module>> = vec![
-        Box::new(fresher_module_jetbrains::JetBrainsModule::new()?),
+        Box::new(fresher_module_app_caches::AppCachesModule::new()?),
         Box::new(fresher_module_temp::TempModule::new()?),
+        Box::new(fresher_module_logs::LogsModule::new()?),
         Box::new(fresher_module_dev_caches::DevCachesModule::new()?),
         Box::new(fresher_module_app_leftovers::AppLeftoversModule::new()?),
-        Box::new(fresher_module_app_caches::AppCachesModule::new()?),
-        Box::new(fresher_module_logs::LogsModule::new()?),
         Box::new(fresher_module_downloads::DownloadsModule::new()?),
+        Box::new(fresher_module_jetbrains::JetBrainsModule::new()?),
         Box::new(fresher_module_stale_projects::StaleProjectsModule::new()?),
         Box::new(fresher_module_local_ai_models::LocalAiModelsModule::new()?),
         Box::new(fresher_module_unused_toolchains::UnusedToolchainsModule::new()?),
@@ -829,13 +830,13 @@ mod tests {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             let expected: &[&str] = if cfg!(debug_assertions) {
                 &[
-                    "jetbrains",
+                    "app-caches",
                     "temp",
+                    "logs",
                     "dev-caches",
                     "app-leftovers",
-                    "app-caches",
-                    "logs",
                     "downloads",
+                    "jetbrains",
                     "stale-projects",
                     "local-ai-models",
                     "unused-toolchains",
@@ -846,13 +847,13 @@ mod tests {
                 ]
             } else {
                 &[
-                    "jetbrains",
+                    "app-caches",
                     "temp",
+                    "logs",
                     "dev-caches",
                     "app-leftovers",
-                    "app-caches",
-                    "logs",
                     "downloads",
+                    "jetbrains",
                     "stale-projects",
                     "local-ai-models",
                     "unused-toolchains",
