@@ -241,7 +241,8 @@ impl Scanner {
     }
 
     /// The cached state of the request's scope, its matches emitted, read from the cache alone: no folder is read,
-    /// the journal is not asked. Any reason the cache cannot be used is `NothingToRestore` (logged).
+    /// the journal is not asked. The request's avoid list is not compared: the cached scan is shown with the places it
+    /// avoided. Any reason the cache cannot be used is `NothingToRestore` (logged).
     fn restore(&self, request: &WalkRequest<'_>, on_match: &mut dyn FnMut(Match)) -> Result<WalkSummary, WalkError> {
         let asked: Vec<PathBuf> = request.roots.iter().map(|root| self.expand_home(root)).collect();
         let places: Vec<PathBuf> = request.places.iter().map(|place| place.path.clone()).collect();
@@ -258,10 +259,12 @@ impl Scanner {
             tracing::info!(?reason, "the cache cannot be restored");
             WalkError::NothingToRestore
         })?;
+        let scope = Scope { avoid: header.avoid.clone(), ..scope };
         // A place's cached times may be older than the disk's: a restore offers nothing inside one.
         emit(&tree, &matcher, request.interests, &scope.places, on_match);
         let mut summary = summarize(&tree, ScanKind::Restored { taken: header.taken });
         summary.places = places_seen(&tree, matcher.anchors());
+        summary.avoided.clone_from(&scope.avoid);
         let positions = header.roots.iter().map(|root| root.journal).collect();
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
             Some(Walked { tree, scope, positions, save: false, taken: Some(header.taken) });
@@ -396,6 +399,7 @@ impl DiskWalk for Scanner {
                 Ok((tree, mut summary)) => {
                     settle_places(&roots, &tree, &mut summary);
                     summary.places = places_seen(&tree, matcher.anchors());
+                    summary.avoided.clone_from(&scope.avoid);
                     *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
                         Some(Walked { tree, scope, positions, save: true, taken: None });
                     return Ok(summary);
@@ -411,6 +415,7 @@ impl DiskWalk for Scanner {
         summary.fallback = fallback;
         settle_places(&roots, &tree, &mut summary);
         summary.places = places_seen(&tree, matcher.anchors());
+        summary.avoided.clone_from(&scope.avoid);
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
             Some(Walked { tree, scope, positions, save: true, taken: None });
         Ok(summary)

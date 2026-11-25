@@ -240,7 +240,10 @@ No database: the app keeps its own state in small plain files, with nothing to i
   then reads a sample of the copied folders: one difference, a gap in the journal, a position older than two weeks or
   too many changes, and the scan is full (`WalkSummary::fallback` says why). At launch the engine restores the last
   state (`WalkMode::Restore`): the cache only, no folder read, the modules with interests run over its matches; with
-  nothing to restore the engine goes idle and sends only `NothingRestored`, so a UI that saw it running knows. The
+  nothing to restore the engine goes idle and sends only `NothingRestored`, so a UI that saw it running knows. A
+  restore shows the cached scan as it was: it takes the cache's own avoid list (`WalkSummary::avoided`), and its
+  coverage names the guarded places that scan did not enter, whatever today's access says; only a rescan refuses a
+  cache of another avoid list (`OtherAvoidList`), since reading only the changes would then be wrong. The
   places walked outside the roots are never served from the cache: a rescan walks each again in full, whatever the
   journal says (it reports no read, and a status change through a hard link elsewhere moves no event in the folder),
   and a restore emits nothing inside one.

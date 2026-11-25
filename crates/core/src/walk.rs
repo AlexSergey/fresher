@@ -57,7 +57,8 @@ pub struct Subtree {
 pub struct WalkRequest<'a> {
     pub roots: &'a [PathBuf],
     pub interests: &'a InterestSet,
-    /// Places the walk must not open (they would raise a system prompt); each is reported as not scanned.
+    /// Places the walk must not open (they would raise a system prompt); each is reported as not scanned. A restore
+    /// ignores it: it shows the cached scan as it was, with the places that scan avoided.
     pub avoid: &'a [PathBuf],
     /// Known folders outside the scan roots that a module's interest names: each is walked as a root of its own, for
     /// the interests anchored in it only, never entering a folder of another user. Always read from the disk: a rescan
@@ -139,6 +140,9 @@ pub struct WalkSummary {
     /// What the walk saw of each anchored interest's place (index in the interest set; only interests with one
     /// place): not the walked places of the request.
     pub places: BTreeMap<usize, PlaceSeen>,
+    /// Every place the walk did not open, sorted: the request's, the standing ones and the system's own items. A
+    /// restore gives the cached scan's own list.
+    pub avoided: Vec<PathBuf>,
 }
 
 impl WalkSummary {

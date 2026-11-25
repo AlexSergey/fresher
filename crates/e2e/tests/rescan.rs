@@ -237,12 +237,19 @@ mod positive {
     use std::sync::Arc;
     use std::sync::atomic::Ordering;
 
-    use fresher_core::{Event, ScanKind};
+    use fresher_core::{
+        Access, Capability, Coverage, Event, GuardedFolder, NotEntered, ScanKind, SettingUpdate, SettingValue,
+    };
+    use fresher_scanner::StdReader;
+    use fresher_testing::FakeAccess;
     use serde_json::{Value, json};
 
-    use crate::app::{Home, engine_on, home, probe_findings, report, scan};
+    use crate::app::{Home, engine_on, engine_with_access, home, probe_findings, report, scan};
     use crate::scripted::{Journal, Refusing, finished, grow, restore};
     use crate::support::check_golden;
+
+    const DESKTOP: Capability = Capability::Folder(GuardedFolder::Desktop);
+    const DOWNLOADS: Capability = Capability::Folder(GuardedFolder::Downloads);
 
     /// The report without its progress events, whose count depends on the threads.
     fn steady(report: Value) -> Value {
@@ -281,6 +288,65 @@ mod positive {
         assert_eq!(reader.calls.load(Ordering::Relaxed), 0);
         assert_eq!(probe_findings(&home), findings);
         check_golden("rescan", &json!({ "rescan": rescanned, "restore": steady(report(&home, &events)) }));
+    }
+
+    /// Every file denied; `Projects` is the Desktop, opted in and answering `desktop`; `Downloads` is not opted in.
+    fn guarded(root: &std::path::Path, desktop: Access) -> FakeAccess {
+        FakeAccess::with(&[(Capability::AllFiles, Access::Denied), (DESKTOP, desktop), (DOWNLOADS, Access::NotAsked)])
+            .home(root)
+            .guard("Projects", DESKTOP)
+            .guard("Downloads", DOWNLOADS)
+    }
+
+    fn coverage(events: &[Event]) -> Option<&Coverage> {
+        events.iter().find_map(|event| match event {
+            Event::ScanCoverage { coverage, .. } => Some(coverage),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn a_restart_restores_a_scan_that_avoided_places_with_its_coverage() {
+        let home = home("scan-basic.toml", Arc::new(Journal::default()));
+        let access = guarded(&home.root, Access::Granted);
+        let engine = engine_with_access(
+            &home.root,
+            home.data.path(),
+            Arc::new(Journal::default()),
+            Arc::new(StdReader::new()),
+            access,
+        );
+        // The guarded places are found under absolute roots.
+        let roots =
+            SettingUpdate { key: "core.scan.roots".into(), value: SettingValue::Folders(vec![home.root.clone()]) };
+        engine.update_setting(roots).unwrap();
+        let switch = SettingUpdate { key: "core.access.desktop".into(), value: SettingValue::Switch(true) };
+        engine.update_setting(switch).unwrap();
+        let home = Home { engine, ..home };
+        let scanned = scan(&home.engine);
+        let findings = probe_findings(&home);
+        let reader = Arc::new(Refusing::default());
+        let access = guarded(&home.root, Access::NotAsked);
+        let restarted = engine_with_access(
+            &home.root,
+            home.data.path(),
+            Arc::new(Journal::default()),
+            Arc::clone(&reader) as _,
+            access,
+        );
+        drop(home.engine);
+        let home = Home { engine: restarted, ..home };
+
+        let events = restore(&home.engine);
+
+        assert_eq!(reader.calls.load(Ordering::Relaxed), 0);
+        assert!(matches!(finished(&events), Some(Event::ScanFinished { kind: ScanKind::Restored { .. }, .. })));
+        let not_entered = vec![NotEntered { capability: DOWNLOADS, access: Access::NotAsked }];
+        assert_eq!(coverage(&scanned).map(|coverage| &coverage.not_entered), Some(&not_entered));
+        assert_eq!(coverage(&events), coverage(&scanned));
+        assert_eq!(probe_findings(&home), findings);
+        assert!(findings.iter().any(|(path, _)| path.starts_with("Projects/")), "{findings:?}");
+        assert!(!findings.iter().any(|(path, _)| path.starts_with("Downloads/")), "{findings:?}");
     }
 
     #[test]

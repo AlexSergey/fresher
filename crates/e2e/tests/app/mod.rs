@@ -117,6 +117,17 @@ pub(crate) fn engine_on(
     journal: Arc<dyn ChangeJournal>,
     reader: Arc<dyn FolderReader>,
 ) -> Engine {
+    engine_with_access(root, data, journal, reader, FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)]))
+}
+
+/// [`engine_on`], its access answered by `access`.
+pub(crate) fn engine_with_access(
+    root: &Path,
+    data: &Path,
+    journal: Arc<dyn ChangeJournal>,
+    reader: Arc<dyn FolderReader>,
+    access: FakeAccess,
+) -> Engine {
     let volumes = FakeVolumes::default()
         .with("/", VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) });
     let options = ScannerOptions {
@@ -136,7 +147,7 @@ pub(crate) fn engine_on(
         settings: Arc::new(FileSettingsStore::new(DataFolder::open(data).unwrap())),
         clock,
         commands: Arc::new(FakeCommandRunner::default()),
-        access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
+        access: Arc::new(access),
         system_ui: Arc::new(FakeSystemUi::default()),
         system: fresher_testing::fake_system(root),
     };

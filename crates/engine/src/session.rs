@@ -90,7 +90,8 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let mut outcomes: Vec<Option<ModuleOutcome>> = vec![None; plan.modules.len()];
     let mut output = Output::new(shared, scan, first_id, plan);
 
-    let (entry, unavailable) = decide_access(shared, plan, cancel);
+    let cached_avoid = restored.as_ref().map(|(_, summary)| summary.avoided.as_slice());
+    let (entry, unavailable) = decide_access(shared, plan, cached_avoid, cancel);
     for (index, missing) in unavailable.into_iter().enumerate() {
         if let Some(missing) = missing {
             outcomes[index] = Some(output.module_finished(index, ids[index], ModuleOutcome::Unavailable { missing }));
@@ -238,14 +239,16 @@ fn finish_modules(
 
 /// The tool checks, the guarded places (the engine learns what their tries answered), then what each module lacks:
 /// the places to avoid and the modules not run. An `AccessChanged` for the tools, then one for the places, each only
-/// when a state changed.
+/// when a state changed. `cached_avoid` is the restored scan's avoid list; `None` for a walk.
 fn decide_access(
     shared: &Shared,
     plan: &ScanPlan,
+    cached_avoid: Option<&[PathBuf]>,
     cancel: &CancelToken,
 ) -> (coverage::Entry, Vec<Option<Vec<Capability>>>) {
     check_tools(shared, plan, cancel);
-    let entry = decide_places(shared, plan, &coverage::as_opted(&shared.access.status(), &plan.opt_ins));
+    let access = coverage::as_opted(&shared.access.status(), &plan.opt_ins);
+    let entry = decide_places(shared, plan, &access, cached_avoid);
     if shared.access.learn(&entry.tried) {
         shared.bus.publish(&Event::AccessChanged { status: shared.access.status() });
     }
@@ -268,13 +271,18 @@ fn decide_modules(shared: &Shared, plan: &ScanPlan) -> Vec<Option<Vec<Capability
     plan.modules.iter().map(|planned| unavailable(&*planned.module, &access)).collect()
 }
 
-/// The guarded places decided before the walk; a restore reads no disk, so it tries none.
-fn decide_places(shared: &Shared, plan: &ScanPlan, access: &AccessStatus) -> coverage::Entry {
+/// The guarded places decided before the walk; a restore reads no disk, so it tries none and keeps those its cached
+/// scan avoided.
+fn decide_places(
+    shared: &Shared,
+    plan: &ScanPlan,
+    access: &AccessStatus,
+    cached_avoid: Option<&[PathBuf]>,
+) -> coverage::Entry {
     let probe = &*shared.ports.access;
-    if plan.mode == WalkMode::Restore {
-        coverage::before_restore(probe, access, &plan.roots)
-    } else {
-        coverage::before_walk(probe, access, &plan.roots, &plan.opt_ins)
+    match cached_avoid {
+        Some(avoided) => coverage::before_restore(probe, access, &plan.roots, avoided),
+        None => coverage::before_walk(probe, access, &plan.roots, &plan.opt_ins),
     }
 }
 

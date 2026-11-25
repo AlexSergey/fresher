@@ -105,6 +105,21 @@ mod negative {
     }
 
     #[test]
+    fn a_rescan_with_another_avoid_list_than_the_cache_reads_every_folder() {
+        let mut rig = Rig::new(&twenty_folders(), set_of(&[]));
+        rig.avoid = vec![rig.path("d")];
+        rig.scan();
+        rig.avoid = Vec::new();
+
+        let rescanned = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        let summary = rescanned.summary.unwrap();
+        assert_eq!(summary.fallback, Some(FullScanReason::OtherAvoidList));
+        assert_eq!(summary.kind, fresher_core::ScanKind::Full);
+        assert!(!summary.avoided.contains(&rig.path("d")));
+    }
+
+    #[test]
     fn another_volume_means_a_full_scan() {
         let rig = rig();
         let mut scope = rig.scope();
@@ -211,7 +226,8 @@ mod negative {
 mod positive {
     use std::sync::Arc;
 
-    use fresher_core::WalkMode;
+    use fresher_core::{NotScanned, WalkMode};
+    use fresher_testing::FakeChangeJournal;
 
     use super::{gather, node, rig, twenty_folders};
     use crate::codec::decode::decode;
@@ -221,6 +237,8 @@ mod positive {
     use crate::rescan::testing::{CallLog, LoggingJournal, LoggingReader, Refusing, Rig, journal_of};
     use crate::tree::node::Flag;
     use crate::tree::testing::canonical;
+    use crate::walk::counting::CountingReader;
+    use crate::walk::std_reader::StdReader;
     use crate::walk::tests::scan;
 
     #[test]
@@ -317,9 +335,32 @@ mod positive {
     }
 
     #[test]
+    fn a_restore_with_another_avoid_list_shows_the_cached_scan_as_it_was() {
+        let mut rig = Rig::new(&twenty_folders(), set_of(&[]));
+        rig.avoid = vec![rig.path("d")];
+        let full = rig.scan();
+        rig.avoid = Vec::new();
+        let reader = Arc::new(CountingReader::new(StdReader::new()));
+        let scanner = rig.scanner(Arc::clone(&reader) as _, Arc::new(FakeChangeJournal::default()));
+
+        let restored = rig.walk(&scanner, WalkMode::Restore);
+
+        let (restored_summary, scanned_summary) = (restored.summary.unwrap(), full.summary.unwrap());
+        assert!(reader.reads().is_empty());
+        assert!(restored_summary.avoided.contains(&rig.path("d")));
+        assert_eq!(restored_summary.avoided, scanned_summary.avoided);
+        assert_eq!(restored_summary.not_scanned.get(&NotScanned::Avoided), Some(&1));
+        assert_eq!(
+            (&restored_summary.unreadable, &restored_summary.not_scanned),
+            (&scanned_summary.unreadable, &scanned_summary.not_scanned)
+        );
+        assert_eq!(restored.matches, full.matches);
+    }
+
+    #[test]
     fn a_committed_scan_is_saved_and_loads_back() {
         let rig = rig();
-        let fresh = scan(Arc::new(crate::walk::std_reader::StdReader::new()), &rig.root, &set_of(&[]), 1);
+        let fresh = scan(Arc::new(StdReader::new()), &rig.root, &set_of(&[]), 1);
 
         let cached = rig.cached();
 

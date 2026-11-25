@@ -71,10 +71,24 @@ pub(crate) fn before_walk(
     decide(probe, status, roots, |capability| may_try(capability, opted_in))
 }
 
-/// Decides every guarded place under `roots` for a restore, which reads no disk: nothing is tried, so a place stands
-/// as the last probe left it.
-pub(crate) fn before_restore(probe: &dyn AccessProbe, status: &AccessStatus, roots: &[PathBuf]) -> Entry {
-    decide(probe, status, roots, |_| false)
+/// The guarded places under `roots` that the restored scan did not enter: those of its own avoid list, `avoided`,
+/// each named with its capability's state in `status`. A restore reads no disk and shows that scan as it was, so
+/// nothing is tried and today's access does not change what it covered.
+pub(crate) fn before_restore(
+    probe: &dyn AccessProbe,
+    status: &AccessStatus,
+    roots: &[PathBuf],
+    avoided: &[PathBuf],
+) -> Entry {
+    let mut entry = Entry::default();
+    for place in probe.guarded_places(roots).into_iter().filter(|place| avoided.contains(&place.path)) {
+        let capability = place.capability;
+        entry.avoid.push(place.path);
+        if !entry.not_entered.iter().any(|not_entered| not_entered.capability == capability) {
+            entry.not_entered.push(NotEntered { capability, access: status.access(&capability) });
+        }
+    }
+    entry
 }
 
 fn decide(
@@ -293,7 +307,8 @@ mod tests {
                 .home("/home")
                 .guard("Desktop", DESKTOP)
                 .answering("Desktop", Access::Granted);
-            let fixture = Fixture::new(walk()).access(access).settings(opted_into(&["core.access.desktop"]));
+            let walk = walk().cached_avoid(&["/home/Desktop"]);
+            let fixture = Fixture::new(walk).access(access).settings(opted_into(&["core.access.desktop"]));
             let probe = std::sync::Arc::clone(&fixture.access);
             let engine = fixture.engine();
             let events = engine.subscribe();
@@ -304,6 +319,21 @@ mod tests {
             assert_eq!(probe.tried(), []);
             let not_entered = vec![NotEntered { capability: DESKTOP, access: Access::NotAsked }];
             assert_eq!(coverage_event(&events).map(|coverage| &coverage.not_entered), Some(&not_entered));
+        }
+
+        #[test]
+        fn a_restore_does_not_name_a_place_its_scan_entered_whatever_access_says_now() {
+            let access = FakeAccess::with(&[(Capability::AllFiles, Access::Denied), (DESKTOP, Access::NotAsked)])
+                .home("/home")
+                .guard("Desktop", DESKTOP);
+            let fixture = Fixture::new(walk()).access(access).settings(opted_into(&["core.access.desktop"]));
+            let engine = fixture.engine();
+            let events = engine.subscribe();
+
+            engine.restore().unwrap();
+
+            let events = wait_for_finish(&events);
+            assert_eq!(coverage_event(&events).map(|coverage| coverage.not_entered.clone()), Some(vec![]));
         }
 
         #[test]
@@ -453,7 +483,7 @@ mod tests {
             DESKTOP, DOCUMENTS, DOWNLOADS, DOWNLOADS_SWITCH, access_changes, coverage_event, downloads_access,
             downloads_module, downloads_outcome, downloads_walk, opted_into, walk,
         };
-        use crate::testing::{Fixture, scan};
+        use crate::testing::{Fixture, scan, wait_for_finish};
 
         #[test]
         fn with_all_files_granted_no_place_is_tried_and_all_are_walked() {
@@ -579,6 +609,45 @@ mod tests {
             assert_eq!(downloads_outcome(&events), Some(ModuleOutcome::Completed));
             assert_eq!(seen.lock().unwrap().len(), 2);
             assert_eq!(coverage_event(&events), Some(&Coverage::default()));
+        }
+
+        #[test]
+        fn a_restore_after_a_scan_that_avoided_places_has_that_scans_coverage() {
+            let access = FakeAccess::with(&[
+                (Capability::AllFiles, Access::Denied),
+                (DESKTOP, Access::NotAsked),
+                (DOCUMENTS, Access::NotAsked),
+                (DOWNLOADS, Access::NotAsked),
+            ])
+            .home("/home")
+            .guard("Desktop", DESKTOP)
+            .guard("Documents", DOCUMENTS)
+            .guard("Downloads", DOWNLOADS)
+            .answering("Desktop", Access::Granted);
+            let walk = walk().unreadable_by(Unreadable::Guarded, 41).cached_avoid(&[
+                "/home/Documents",
+                "/home/Downloads",
+                "/home/Library/Caches/TemporaryItems",
+            ]);
+            let avoided = walk.avoided();
+            let fixture = Fixture::new(walk).access(access).settings(opted_into(&["core.access.desktop"]));
+            let engine = fixture.engine();
+            let scanned = scan(&engine);
+            let events = engine.subscribe();
+
+            engine.restore().unwrap();
+
+            let restored = wait_for_finish(&events);
+
+            let avoided = avoided.lock().unwrap().clone();
+            assert_eq!(avoided[0], [PathBuf::from("/home/Documents"), PathBuf::from("/home/Downloads")]);
+            assert!(coverage_event(&scanned).is_some());
+            assert_eq!(coverage_event(&restored), coverage_event(&scanned));
+            assert!(restored.iter().any(|event| matches!(event, Event::ScanStarted { .. })), "{restored:?}");
+            assert!(
+                restored.iter().any(|event| matches!(event, Event::ScanFinished { outcome: ScanOutcome::Partial, .. })),
+                "{restored:?}"
+            );
         }
 
         #[test]

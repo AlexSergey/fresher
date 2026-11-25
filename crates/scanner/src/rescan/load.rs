@@ -16,10 +16,13 @@ pub(crate) struct Cached {
     pub(crate) header: Header,
 }
 
-/// Whether the journal positions are asked of the cache: a rescan needs them, a restore does not.
+/// What the cache is loaded for, which decides how much of it must match the scan asked for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Use {
+    /// Read again only what changed since: the cache must be of the same walk, avoid list and journal positions
+    /// included.
     Rescan,
+    /// Shown as it was, reading no folder: the cache keeps the places it avoided, and the journal is not asked.
     Restore,
 }
 
@@ -45,7 +48,8 @@ impl Cached {
 }
 
 /// Whether the cache is of `scope`. A restore compares the scan roots only: it emits nothing inside a place, so a
-/// place gone missing since does not refuse it.
+/// place gone missing since does not refuse it. A restore takes the cache's avoid list too: it shows that scan as it
+/// was, while a rescan of another avoid list would read the changes of another walk.
 fn check(tree: &Tree, header: &Header, scope: &Scope, purpose: Use) -> Result<(), FullScanReason> {
     let compared = |path: &PathBuf| purpose == Use::Rescan || !scope.places.contains(path);
     let cached: Vec<_> = header.roots.iter().filter(|root| compared(&root.path)).collect();
@@ -57,7 +61,7 @@ fn check(tree: &Tree, header: &Header, scope: &Scope, purpose: Use) -> Result<()
     if cached.iter().zip(&asked).any(|(cached, asked)| cached.volume != asked.volume) {
         return Err(FullScanReason::OtherVolume);
     }
-    if header.avoid != scope.avoid {
+    if purpose == Use::Rescan && header.avoid != scope.avoid {
         return Err(FullScanReason::OtherAvoidList);
     }
     if header.fingerprint != scope.fingerprint {

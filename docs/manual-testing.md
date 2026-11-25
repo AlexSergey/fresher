@@ -486,9 +486,12 @@ run.
 5. [ ] Cleanups: the dry runs are listed; Put back answers that nothing went to the Trash.
 6. [ ] JetBrains (2.2), if an IDE is installed: open it, scan again, quit it, scan again (the record keeps all the
        scans).
-7. [ ] Quit. Hand the agent the record: `ls -t NO_COMMIT/dev-runs/*_mac*.json | head -1`. The agent reads both the
+7. [ ] Quit and `npm run dev` again: the last scan shows at once, with or without Full Disk Access, and with the same
+       "Some folders were not scanned" notices it had (a place it entered is not named, whatever the permission says
+       now).
+8. [ ] Quit. Hand the agent the record: `ls -t NO_COMMIT/dev-runs/*_mac*.json | head -1`. The agent reads both the
        `.json` and its `.events.jsonl`: actions after the last cleanup are only in the events.
-8. [ ] The agent runs `npm run dev-runs:check -- <that file>` and goes through `<file>.check.md` with you; each
+9. [ ] The agent runs `npm run dev-runs:check -- <that file>` and goes through `<file>.check.md` with you; each
        difference is written in the conclusions of the step it belongs to (a module's 04/02 or 05/02, or 026/03/03).
 
 **What the record and the checker answer**, so you do not do it by hand: every offered path exists, is no link, is a
