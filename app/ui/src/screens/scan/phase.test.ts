@@ -28,6 +28,7 @@ describe('phaseOf', () => {
 
     it("the events' outcome wins over an overview that has not caught up", () => {
       expect(phaseOf({ state: 'idle' }, last({ kind: 'completed' }), { kind: 'partial' })).toBe('partial');
+      expect(phaseOf({ state: 'idle' }, last({ kind: 'partial' }), { kind: 'stopped' })).toBe('stopped');
     });
   });
 
@@ -35,6 +36,7 @@ describe('phaseOf', () => {
     it("follows the last scan's outcome", () => {
       expect(phaseOf({ state: 'idle' }, last({ kind: 'completed' }), null)).toBe('finished');
       expect(phaseOf({ state: 'idle' }, last({ kind: 'partial' }), null)).toBe('partial');
+      expect(phaseOf({ state: 'idle' }, last({ kind: 'stopped' }), null)).toBe('stopped');
       expect(phaseOf({ state: 'idle' }, last({ kind: 'failed', reason: REASON }), null)).toBe('failed');
     });
 

@@ -1,4 +1,5 @@
-/* The coverage notices, one under another; the live region takes no room while it is empty. */
+/* "Some folders were not scanned", then the coverage notices one under another and the line for the folders no
+   permission opens; the live region takes no room while it is empty. */
 @layer components {
   .notices {
     display: flex;
@@ -8,5 +9,20 @@
 
   .notices:empty {
     display: none;
+  }
+
+  .title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: calc(14rem / 13);
+    font-weight: 600;
+    line-height: var(--type-body-line);
+  }
+
+  .line {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
   }
 }

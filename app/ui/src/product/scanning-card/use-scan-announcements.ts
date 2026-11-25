@@ -7,7 +7,7 @@ import { t, tText } from '../../i18n';
 import { honestSize } from '../sizes';
 
 // Where the scan is, as the Scan screen derives it (`ScanPhase`).
-type Phase = 'failed' | 'finished' | 'idle' | 'partial' | 'scanning';
+type Phase = 'failed' | 'finished' | 'idle' | 'partial' | 'scanning' | 'stopped';
 
 // The announcements of one scan share a key, so the announcer speaks its progress at most every 5 seconds.
 const KEY = 'scan';
@@ -20,6 +20,8 @@ const outcomeKey = (phase: Exclude<Phase, 'idle' | 'scanning'>): string => {
       return 'core.scan.outcome.completed';
     case 'partial':
       return 'core.scan.outcome.partial';
+    case 'stopped':
+      return 'core.scan.outcome.stopped';
   }
 };
 

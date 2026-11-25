@@ -74,14 +74,17 @@ const OTHER_VOLUME: Readonly<Record<ScanPhase, Exclude<ScanPhase, 'failed' | 'sc
   idle: 'idle',
   partial: 'partial',
   scanning: 'partial',
+  stopped: 'partial',
 };
 
 // "Where did my space go?": the toolbar with when the last scan finished and Scan again, the disk card of the first
-// volume (the scan's progress while it runs), a notice when the scan is incomplete, what a missing permission kept the
-// scan from seeing, what waits in the Trash, a compact card for each other volume, then "What you can remove": the
-// category tiles in their groups, what was left out or only described, and the floating selection bar.
-// One control per action: the toolbar's Scan again only after a finished or partial scan; before the first scan the
-// disk card holds Scan, during a scan the progress holds Stop, and after a failed scan the card's error holds Try again.
+// volume (the scan's progress while it runs), a notice when the scan was stopped, what a missing permission or an
+// unreadable folder kept the scan from seeing (under its own heading), what waits in the Trash, a compact card for each
+// other volume, then "What you can remove": the category tiles in their groups, what was left out or only described,
+// and the floating selection bar.
+// One control per action: the toolbar's Scan again only after a scan that finished, ended partial or was stopped;
+// before the first scan the disk card holds Scan, during a scan the progress holds Stop, and after a failed scan the
+// card's error holds Try again.
 export const ScanScreen = (): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
@@ -102,7 +105,7 @@ export const ScanScreen = (): JSX.Element => {
   const lastScan = overview?.lastScan ?? null;
   const phase = phaseOf(status, lastScan, outcome);
   const scanning = phase === 'scanning';
-  const scanned = phase === 'finished' || phase === 'partial';
+  const scanned = phase === 'finished' || phase === 'partial' || phase === 'stopped';
   const ago = useScannedAgo(scanned ? (lastScan?.finished ?? null) : null);
   const totals = overview?.totals ?? [];
   const unavailable = unavailableTotals(modules, totals, categoryAccess);
@@ -159,9 +162,9 @@ export const ScanScreen = (): JSX.Element => {
           <Disk failure={failure} onScan={scan} phase={phase} volume={volumes[0]} />
         )}
         {phase === 'idle' ? <p className={styles.intro}>{t('ui.screen.scan.intro')}</p> : null}
-        {phase === 'partial' ? (
-          <Notice title={t('ui.screen.scan.partial.title')} tone="warning">
-            {t('ui.screen.scan.partial.text')}
+        {phase === 'stopped' ? (
+          <Notice title={t('ui.screen.scan.stopped.title')} tone="warning">
+            {t('ui.screen.scan.stopped.text')}
           </Notice>
         ) : null}
         <RescanNotice />

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Capability, Coverage } from '../ipc/bindings.generated';
 
 import { accessStatus, FULL_COVERAGE } from '../test/demo-scan';
-import { accessOf, notSeen } from './access';
+import { accessOf, notSeen, unexplainedFolders } from './access';
 
 const ALL_FILES: Capability = { kind: 'all-files' };
 const DOCUMENTS: Capability = { kind: 'folder', value: 'documents' };
@@ -33,6 +33,12 @@ describe('access', () => {
       expect(notSeen(coverage)).toEqual([]);
     });
 
+    it('no folder is unexplained when every unreadable one has a capability', () => {
+      expect(unexplainedFolders(null)).toBe(0);
+      expect(unexplainedFolders(FULL_COVERAGE)).toBe(0);
+      expect(unexplainedFolders({ ...LIMITED, unreadable: LIMITED.unreadable.slice(0, 2) })).toBe(0);
+    });
+
     it('a capability the core does not list has no access', () => {
       expect(accessOf(accessStatus([]), ALL_FILES)).toBeNull();
       expect(accessOf(null, ALL_FILES)).toBeNull();
@@ -47,6 +53,15 @@ describe('access', () => {
       ]);
 
       expect(accessOf(status, DOCUMENTS)).toBe('granted');
+    });
+
+    it('counts the folders no capability opens', () => {
+      const coverage: Coverage = {
+        notEntered: [],
+        unreadable: [...LIMITED.unreadable, { folders: 1, reason: 'no-permission', unlockedBy: null }],
+      };
+
+      expect(unexplainedFolders(coverage)).toBe(6);
     });
 
     it('not seen groups by capability', () => {

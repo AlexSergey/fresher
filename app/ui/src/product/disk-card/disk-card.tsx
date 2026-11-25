@@ -26,13 +26,14 @@ export type DiskCardProps = {
 };
 
 // The screen's `ScanPhase` without `scanning`, which is the scan card's.
-type DiskCardPhase = 'failed' | 'finished' | 'idle' | 'partial';
+type DiskCardPhase = 'failed' | 'finished' | 'idle' | 'partial' | 'stopped';
 
 const RING_STATES: Readonly<Record<DiskCardPhase, StorageRingProps['state']>> = {
   failed: 'empty',
   finished: 'done',
   idle: 'empty',
   partial: 'partial',
+  stopped: 'partial',
 };
 
 // The ring of the design: a gap of 3 and a least arc of 6 units of its 465-unit circle, square ends, no glow.
@@ -89,7 +90,7 @@ export const DiskCard = ({ compact = false, failure, onScan, phase, preview, vol
   const { diameter, thickness } = compact ? SIZES.compact : SIZES.card;
   const freed = parts.find(({ kind }) => kind === 'can-be-freed');
   const free = parts.find(({ kind }) => kind === 'free');
-  const scanned = phase === 'finished' || phase === 'partial';
+  const scanned = phase === 'finished' || phase === 'partial' || phase === 'stopped';
   const name = { kind: 'text', value: volume.name } as const;
 
   return (

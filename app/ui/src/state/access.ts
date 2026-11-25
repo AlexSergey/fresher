@@ -40,3 +40,7 @@ export const notSeen = (coverage: Coverage | null): readonly NotSeen[] => {
 
   return found;
 };
+
+// How many folders could not be read for a reason no capability fixes (another user's, or changed during the scan).
+export const unexplainedFolders = (coverage: Coverage | null): number =>
+  (coverage?.unreadable ?? []).reduce((sum, { folders, unlockedBy }) => (unlockedBy === null ? sum + folders : sum), 0);

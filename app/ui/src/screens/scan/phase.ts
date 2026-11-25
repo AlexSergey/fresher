@@ -1,7 +1,8 @@
 import type { EngineStatus, LastScan, ScanOutcome, Text } from '../../ipc/bindings.generated';
 
 // Where the scan is, as the screen derives it from the core's status and the last scan's outcome.
-export type ScanPhase = 'failed' | 'finished' | 'idle' | 'partial' | 'scanning';
+// `partial`: the scan got through but did not see every folder; `stopped`: it ended before its end.
+export type ScanPhase = 'failed' | 'finished' | 'idle' | 'partial' | 'scanning' | 'stopped';
 
 // How the last scan ended: as the events told it (`outcome`, the store's), which can be newer than the overview's
 // last scan until the overview is asked for again; `null` before any scan.
@@ -24,6 +25,8 @@ export const phaseOf = (status: EngineStatus, lastScan: LastScan | null, outcome
       return 'failed';
     case 'partial':
       return 'partial';
+    case 'stopped':
+      return 'stopped';
     case undefined:
       return 'idle';
   }

@@ -1397,7 +1397,7 @@ export const SCRIPTS = {
     scan: LARGEST_SCAN,
     scanned: LARGEST_OVERVIEW,
   },
-  // The demo scan held after its first batch and progress, until `releaseScan` or Stop (partial, the first batch).
+  // The demo scan held after its first batch and progress, until `releaseScan` or Stop (stopped, the first batch).
   live: {
     answers: ANSWERS,
     hold: LIVE_HOLD,

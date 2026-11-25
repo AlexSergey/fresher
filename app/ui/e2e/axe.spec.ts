@@ -217,7 +217,7 @@ test.describe('positive cases', () => {
     test('the Scan screen after a partial scan', async ({ page }) => {
       await open(page, SCRIPTS.partial);
       await scan(page, '2.6 GB');
-      await expect(page.getByText('This scan is not complete')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Some folders were not scanned' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });

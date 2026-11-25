@@ -1503,7 +1503,7 @@ test.describe('positive cases', () => {
     await expect(zone(page, 'Safe to remove').getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
   });
 
-  test('Stop ends the scan as partial, with what it found so far', async ({ page }) => {
+  test('Stop ends the scan as stopped, with what it found so far', async ({ page }) => {
     await mockCore(page, SCRIPTS.live);
     await page.goto('/');
 
@@ -1512,7 +1512,8 @@ test.describe('positive cases', () => {
 
     await page.getByRole('button', { name: 'Stop' }).click();
 
-    await expect(page.getByText('This scan is not complete')).toBeVisible();
+    await expect(page.getByText('The scan was stopped', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Some folders were not scanned' })).toHaveCount(0);
     await expect(cards(page)).toHaveText([/1 item/, /1 item/]);
     await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
   });

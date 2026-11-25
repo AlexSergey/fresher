@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Access, Overview, TrashView } from '../../ipc/bindings.generated';
+import type { Access, Coverage, Overview, TrashView } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse, sampleAgreementAnswers } from '../../ipc/mock';
@@ -23,6 +23,7 @@ import {
   IDLE,
   LIMITED_COVERAGE,
   SCAN_STARTED,
+  UNEXPLAINED_COVERAGE,
 } from '../../test/demo-scan';
 import { createFakeClock } from '../../test/fake-clock';
 import {
@@ -43,17 +44,17 @@ const DICTIONARY = {
   'demo.error.failed': 'The demo folder vanished.',
 };
 
-const PARTIAL: Overview = {
+const ended = (outcome: 'partial' | 'stopped', coverage: Coverage): Overview => ({
   ...DEMO_OVERVIEW,
   lastScan: {
-    coverage: FULL_COVERAGE,
+    coverage,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
-    outcome: { kind: 'partial' },
+    outcome: { kind: outcome },
     scan: 1,
     settingsChanged: false,
   },
-};
+});
 
 const FAILED: Overview = {
   ...IDLE,
@@ -247,13 +248,13 @@ describe('ScanScreen', () => {
       expect(screen.queryByRole('region', { name: 'Your disk' })).toBeNull();
     });
 
-    it('a partial scan shows the notice', async () => {
-      core({ getOverview: () => PARTIAL });
+    it('a partial scan that was not stopped never says it was stopped', async () => {
+      core({ getOverview: () => ended('partial', UNEXPLAINED_COVERAGE) });
 
       await renderOverview();
 
-      expect(await screen.findByText('This scan is not complete')).toBeInTheDocument();
-      expect(screen.getByText(/the real sizes may be larger/)).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Some folders were not scanned' })).toBeInTheDocument();
+      expect(screen.queryByText('The scan was stopped')).toBeNull();
     });
 
     it('a finished scan shows no notice', async () => {
@@ -262,7 +263,17 @@ describe('ScanScreen', () => {
       await renderOverview();
 
       expect(await screen.findByRole('list', { name: 'Safe to remove' })).toBeInTheDocument();
-      expect(screen.queryByText('This scan is not complete')).toBeNull();
+      expect(screen.queryByText('The scan was stopped')).toBeNull();
+      expect(screen.queryByText('Some folders were not scanned')).toBeNull();
+    });
+
+    it('a stopped scan that saw every folder shows no coverage heading', async () => {
+      core({ getOverview: () => ended('stopped', FULL_COVERAGE) });
+
+      await renderOverview();
+
+      expect(await screen.findByText('The scan was stopped')).toBeInTheDocument();
+      expect(screen.queryByText('Some folders were not scanned')).toBeNull();
     });
 
     it.each<Access>(['granted', 'unknown'])('a %s access shows no permission card', async (access) => {
@@ -620,6 +631,36 @@ describe('ScanScreen', () => {
 
       expect(await screen.findByText('Fresher cannot see every folder')).toBeInTheDocument();
       expect(screen.getByText('312 folders could not be read.')).toBeInTheDocument();
+    });
+
+    it('a stopped scan tells the user to scan again', async () => {
+      core({ getOverview: () => ended('stopped', FULL_COVERAGE) });
+
+      await renderOverview();
+
+      expect(await screen.findByText('The scan was stopped')).toBeInTheDocument();
+      expect(screen.getByText(/Scan again to see everything\.$/u)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Scan again' })).toBeInTheDocument();
+    });
+
+    it('a stopped scan that also missed folders shows the notice and what was not scanned', async () => {
+      core({ getOverview: () => ended('stopped', LIMITED_COVERAGE) }, 'denied');
+
+      await renderOverview();
+
+      expect(await screen.findByText('The scan was stopped')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Some folders were not scanned' })).toBeInTheDocument();
+      expect(screen.getByText('312 folders could not be read.')).toBeInTheDocument();
+    });
+
+    it('a partial scan names the folders no permission opens', async () => {
+      core({ getOverview: () => ended('partial', UNEXPLAINED_COVERAGE) });
+
+      await renderOverview();
+
+      expect(
+        await screen.findByText(/^3 folders could not be read, and no permission opens them\./u),
+      ).toBeInTheDocument();
     });
 
     it('Scan again starts a new scan after a scan', async () => {

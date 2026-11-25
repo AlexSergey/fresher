@@ -28,6 +28,12 @@ export const LIMITED_COVERAGE: Coverage = {
   unreadable: [{ folders: 312, reason: 'no-permission', unlockedBy: { kind: 'all-files' } }],
 };
 
+// A scan that could not read 3 folders for a reason no permission fixes (another user's).
+export const UNEXPLAINED_COVERAGE: Coverage = {
+  notEntered: [],
+  unreadable: [{ folders: 3, reason: 'no-permission', unlockedBy: null }],
+};
+
 // The core's texts of the capabilities the limited coverage names.
 export const ACCESS_DICTIONARY: Dictionary = {
   'core.access.all-files.how': '1. Click Open System Settings. 2. Turn on Fresher in the list. 3. Scan again.',
@@ -198,7 +204,8 @@ export const DEMO_DICTIONARY: Dictionary = {
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'core.scan.outcome.completed': 'The scan is complete.',
   'core.scan.outcome.failed': 'The scan could not finish.',
-  'core.scan.outcome.partial': 'The scan stopped early or could not read some folders. What it found so far is shown.',
+  'core.scan.outcome.partial': 'The scan is done, but some folders were not scanned. What it found is shown.',
+  'core.scan.outcome.stopped': 'The scan was stopped. What it found so far is shown.',
   'demo.caches.line': 'Made-up caches to try Fresher',
   'demo.caches.name': 'Example caches',
   'demo.caches.what': 'Made-up cache folders of made-up apps.',
@@ -247,7 +254,7 @@ export const DEMO_SCANNING: Overview = {
 // What the core streams when the live scan is stopped after its first batch, and the overview it answers then.
 export const DEMO_STOP: readonly Event[] = [
   { insights: [], leftOut: [], module: 'demo', outcome: { kind: 'cancelled' }, scan: 1, type: 'module-finished' },
-  { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
+  { kind: { kind: 'full' }, outcome: { kind: 'stopped' }, scan: 1, type: 'scan-finished' },
 ];
 
 export const DEMO_STOPPED: Overview = {
@@ -258,7 +265,7 @@ export const DEMO_STOPPED: Overview = {
     coverage: FULL_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
-    outcome: { kind: 'partial' },
+    outcome: { kind: 'stopped' },
     scan: 1,
     settingsChanged: false,
   },
@@ -266,9 +273,11 @@ export const DEMO_STOPPED: Overview = {
   totals: FIRST_TOTALS,
 };
 
-// A scan that could not read some folders: every finding, the caches' size only a lower bound.
+// A scan that got through but could not read some folders no permission opens: every finding, the caches' size only
+// a lower bound.
 export const DEMO_PARTIAL_SCAN: readonly Event[] = [
-  ...DEMO_SCAN.slice(0, -1),
+  ...DEMO_SCAN.slice(0, -2),
+  { coverage: UNEXPLAINED_COVERAGE, scan: 1, type: 'scan-coverage' },
   { kind: { kind: 'full' }, outcome: { kind: 'partial' }, scan: 1, type: 'scan-finished' },
 ];
 
@@ -277,7 +286,7 @@ export const DEMO_PARTIAL: Overview = {
   hiddenModules: [],
   ignored: { categories: 0, groups: 0, modules: 0, paths: 0 },
   lastScan: {
-    coverage: FULL_COVERAGE,
+    coverage: UNEXPLAINED_COVERAGE,
     finished: 1_735_689_600,
     kind: { kind: 'full' },
     outcome: { kind: 'partial' },

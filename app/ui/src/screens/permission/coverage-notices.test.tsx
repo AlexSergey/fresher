@@ -16,6 +16,7 @@ import {
   FULL_COVERAGE,
   IDLE,
   LIMITED_COVERAGE,
+  UNEXPLAINED_COVERAGE,
 } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
 import { CoverageNotices } from './coverage-notices';
@@ -113,6 +114,14 @@ describe('CoverageNotices', () => {
 
       expect(noticeRegions()).toHaveLength(0);
       expect(screen.queryByText('Full Disk Access')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Some folders were not scanned' })).toBeNull();
+    });
+
+    it('no_line_for_folders_a_permission_opens', async () => {
+      await show({ coverage: FULL_DISK });
+      await screen.findByRole('button', { name: 'Open System Settings' });
+
+      expect(screen.queryByText(/no permission opens/u)).toBeNull();
     });
 
     it('no_notice_for_a_capability_that_is_not_applicable', async () => {
@@ -190,6 +199,34 @@ describe('CoverageNotices', () => {
   });
 
   describe('positive cases', () => {
+    it('the_heading_stands_above_the_notices', async () => {
+      await show({ coverage: LIMITED_COVERAGE });
+
+      const heading = await screen.findByRole('heading', { level: 2, name: 'Some folders were not scanned' });
+      const first = noticeRegions()[0];
+
+      expect(first).toBeDefined();
+      expect(heading.compareDocumentPosition(first as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('folders_no_permission_opens_get_their_own_line_under_the_heading', async () => {
+      await show({ coverage: UNEXPLAINED_COVERAGE });
+
+      expect(await screen.findByRole('heading', { name: 'Some folders were not scanned' })).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          '3 folders could not be read, and no permission opens them. They may belong to another user, or they changed during the scan.',
+        ),
+      ).toBeInTheDocument();
+      expect(noticeRegions()).toHaveLength(0);
+    });
+
+    it('says one folder no permission opens in the singular', async () => {
+      await show({ coverage: { notEntered: [], unreadable: [{ folders: 1, reason: 'failed', unlockedBy: null }] } });
+
+      expect(await screen.findByText(/^1 folder could not be read, and no permission opens it\./u)).toBeInTheDocument();
+    });
+
     it('unreadable_folders_offer_full_disk_access_with_how', async () => {
       const openAccessSettings = vi.fn(() => null);
       await show({ answers: { openAccessSettings }, coverage: FULL_DISK });

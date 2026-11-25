@@ -217,7 +217,7 @@ test.describe('negative cases', () => {
     await stop.focus();
     await page.keyboard.press('Enter');
 
-    await expect(page.getByText('This scan is not complete')).toBeVisible();
+    await expect(page.getByText('The scan was stopped', { exact: true })).toBeVisible();
     expect(await focusKept(page)).toBe(true);
   });
 });
