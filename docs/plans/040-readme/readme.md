@@ -170,3 +170,7 @@ links for contributors), licence. The generator writes the block as a `<details>
 6. **The release items of the deferred file** done but the package line and `SECURITY.md` (the release's); the social
    image's head did not change, so it was not rendered again.
 
+The user, later on 2026-11-25: "Why Fresher" goes above Install, as the most important part; it opens with the
+author's short story (a developer on a 500 GB Mac, made shorter from the user's words); the star line becomes a quoted
+⭐ line under the links.
+

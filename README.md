@@ -18,8 +18,8 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> ·
   <a href="#why-fresher">Why Fresher</a> ·
+  <a href="#install">Install</a> ·
   <a href="#what-it-finds">What it finds</a> ·
   <a href="#help-it-get-better">Help it get better</a>
 </p>
@@ -27,10 +27,33 @@
 <!--video: assets/demo/overview.gif, width 800, alt "Fresher scans a Mac and sorts the space it can free by danger
 level, with Xcode build data as the largest safe category"-->
 
-<p align="center">
-  If Fresher gives you back some space, a <a href="https://github.com/AlexSergey/fresher/stargazers">star on GitHub</a>
-  helps other people find it.
-</p>
+> ⭐ **If Fresher gave you back some space, a [star](https://github.com/AlexSergey/fresher/stargazers) helps other
+> people find it.** It takes one click.
+
+## Why Fresher
+
+I'm a developer on a Mac with 500 GB, and the disk kept filling up by itself: gigabytes vanished, removed apps left
+their caches and settings behind, and tools I no longer used piled up. I made Fresher to see where the space goes and
+take it back, safely.
+
+- **Developer-first.** It knows where a developer's Mac fills up: Xcode's build data, previews and device files, old
+  JetBrains IDE versions, the caches of npm, Yarn, Homebrew, Cargo, Gradle, CocoaPods, pip and Go, the packages and
+  builds of projects untouched for a year, Rust and Node versions no project uses, and local AI models. For Docker it
+  shows what each part takes and the command that frees it.
+- **Private.** No network requests at all: no telemetry, no analytics, no crash reports, no update checks. What it
+  scans and what it finds stay on your Mac ([how](docs/restrictions/privacy.md#no-network)).
+- **Safe.** Nothing happens without you: opening the app starts no scan, and a scan only reads. Nothing is removed
+  until you confirm the exact items, with their size and danger level, and each one is checked again right before it
+  goes: anything that changed is skipped. System folders, other users' files and your home's own folders are never
+  removed ([how](docs/restrictions/deletion-safety.md)).
+- **Undoable.** Items go to the Trash, and the Cleanups screen puts them back. Deleting permanently is a separate choice
+  you tick each time, and Fresher never empties the Trash for you
+  ([how](docs/restrictions/deletion-safety.md#trash-first)).
+- **Plain English.** Every kind of file has a name, a page saying what it is and what happens if it goes, and a danger
+  level from "Safe to remove" to "Only if you are sure". There is no "Other": space it does not recognize is shown as
+  its real folders.
+- **Nothing in the background.** No helper, no login item, no scheduled scans: it works only while it is open
+  ([why](docs/goal.md#8-transparent-it-does-only-what-the-user-asks)).
 
 ## Install
 
@@ -61,27 +84,6 @@ npm run build
 The app is written to `target/release/bundle/macos/Fresher.app`.
 
 </details>
-
-## Why Fresher
-
-- **Developer-first.** It knows where a developer's Mac fills up: Xcode's build data, previews and device files, old
-  JetBrains IDE versions, the caches of npm, Yarn, Homebrew, Cargo, Gradle, CocoaPods, pip and Go, the packages and
-  builds of projects untouched for a year, Rust and Node versions no project uses, and local AI models. For Docker it
-  shows what each part takes and the command that frees it.
-- **Private.** No network requests at all: no telemetry, no analytics, no crash reports, no update checks. What it
-  scans and what it finds stay on your Mac ([how](docs/restrictions/privacy.md#no-network)).
-- **Safe.** Nothing happens without you: opening the app starts no scan, and a scan only reads. Nothing is removed
-  until you confirm the exact items, with their size and danger level, and each one is checked again right before it
-  goes: anything that changed is skipped. System folders, other users' files and your home's own folders are never
-  removed ([how](docs/restrictions/deletion-safety.md)).
-- **Undoable.** Items go to the Trash, and the Cleanups screen puts them back. Deleting permanently is a separate choice
-  you tick each time, and Fresher never empties the Trash for you
-  ([how](docs/restrictions/deletion-safety.md#trash-first)).
-- **Plain English.** Every kind of file has a name, a page saying what it is and what happens if it goes, and a danger
-  level from "Safe to remove" to "Only if you are sure". There is no "Other": space it does not recognize is shown as
-  its real folders.
-- **Nothing in the background.** No helper, no login item, no scheduled scans: it works only while it is open
-  ([why](docs/goal.md#8-transparent-it-does-only-what-the-user-asks)).
 
 ## What it finds
 
