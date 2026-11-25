@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lookingAt, scanPercent } from './progress';
+import { lookingAt, scanPercent, stillRunning } from './progress';
 
 const NO_MODULES = { finished: 0, started: 0 };
 
@@ -37,20 +37,45 @@ describe('scanPercent', () => {
   });
 });
 
-describe('lookingAt', () => {
+describe('stillRunning', () => {
   describe('negative cases', () => {
-    it('is null when no module started', () => {
-      expect(lookingAt([], [])).toBeNull();
-    });
-
-    it('is null when every started module finished', () => {
-      expect(lookingAt(['demo', 'logs'], ['logs', 'demo'])).toBeNull();
+    it('is empty when no module started or every one finished', () => {
+      expect(stillRunning([], [])).toStrictEqual([]);
+      expect(stillRunning(['demo', 'logs'], ['logs', 'demo'])).toStrictEqual([]);
     });
   });
 
   describe('positive cases', () => {
-    it('is the first started module that has not finished', () => {
-      expect(lookingAt(['demo', 'logs', 'temp'], ['demo'])).toBe('logs');
+    it('keeps the started modules that have not finished, in the core order', () => {
+      expect(stillRunning(['demo', 'logs', 'temp'], ['logs'])).toStrictEqual(['demo', 'temp']);
+    });
+  });
+});
+
+describe('lookingAt', () => {
+  describe('negative cases', () => {
+    it('is null when no module runs', () => {
+      expect(lookingAt([], 0)).toBeNull();
+      expect(lookingAt([], 3)).toBeNull();
+    });
+
+    it('one module left stays on every turn', () => {
+      expect(lookingAt(['logs'], 0)).toBe('logs');
+      expect(lookingAt(['logs'], 7)).toBe('logs');
+    });
+  });
+
+  describe('positive cases', () => {
+    it('the modules take turns in the core order and wrap around', () => {
+      const running = ['demo', 'logs', 'temp'];
+
+      expect([0, 1, 2, 3, 4].map((turn) => lookingAt(running, turn))).toStrictEqual([
+        'demo',
+        'logs',
+        'temp',
+        'demo',
+        'logs',
+      ]);
     });
   });
 });

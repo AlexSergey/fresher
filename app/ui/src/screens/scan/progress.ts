@@ -13,6 +13,11 @@ export const scanPercent = (bytes: ByteSize, expected: ByteSize | null, modules:
   return modules.started > 0 ? Math.floor((99 * modules.finished) / modules.started) : 0;
 };
 
-// The module the scan looks at: the first started one that has not finished, `null` when there is none.
-export const lookingAt = (started: readonly ModuleId[], finished: readonly ModuleId[]): ModuleId | null =>
-  started.find((module) => !finished.includes(module)) ?? null;
+// The modules the scan still runs: those started that have not finished, in the core's order.
+export const stillRunning = (started: readonly ModuleId[], finished: readonly ModuleId[]): readonly ModuleId[] =>
+  started.filter((module) => !finished.includes(module));
+
+// The module the scan looks at on its `turn`: the modules still running take turns in the core's order, from the
+// first again after the last; `null` when none runs.
+export const lookingAt = (running: readonly ModuleId[], turn: number): ModuleId | null =>
+  running.length === 0 ? null : (running[turn % running.length] ?? null);

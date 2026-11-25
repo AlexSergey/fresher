@@ -26,9 +26,10 @@ import { useScanActions } from '../use-scan-actions';
 import { DescribedOnly } from './described-only';
 import { LeftOutOnly } from './left-out-only';
 import { phaseOf, scanFailure, type ScanPhase } from './phase';
-import { lookingAt, scanPercent } from './progress';
+import { scanPercent } from './progress';
 import { ScanGroups } from './scan-groups';
 import styles from './scan-screen.module.css';
+import { useLookingAt } from './use-looking-at';
 import { useScannedAgo } from './use-scanned-ago';
 import { openTrashLine, useTrash } from './use-trash';
 
@@ -114,11 +115,11 @@ export const ScanScreen = (): JSX.Element => {
     ignored === undefined ? 0 : ignored.groups + ignored.modules + ignored.categories + ignored.paths;
   const volumes = storageMap?.volumes ?? [];
   const failure = scanFailure(lastScan, outcome);
-  // The modules the scan runs (a scan learned of from an overview only runs every module the core lists), and which of
-  // them have finished.
+  // The modules the scan runs (a scan learned of from an overview only runs every module the core lists), which of
+  // them have finished, and the one the "Looking at" line names: those still running take turns while it runs.
   const running = started ?? modules?.map(({ id }) => id) ?? [];
   const done = finished.map(({ module }) => module);
-  const module = lookingAt(running, done);
+  const module = useLookingAt(scanning, running, done);
   const found = overview?.found ?? NOTHING;
 
   useScanAnnouncements(phase, found, failure);

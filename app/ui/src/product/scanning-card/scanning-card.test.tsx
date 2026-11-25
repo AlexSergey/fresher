@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Sizes } from '../../ipc/bindings.generated';
 
+import { setMotion } from '../../test/animation';
 import { ScanningCard, type ScanningCardProps } from './scanning-card';
 
 const found = (allocated: number, completeness: Sizes['completeness'] = 'complete'): Sizes => ({
@@ -25,7 +26,18 @@ const mount = (overrides: Partial<ScanningCardProps> = {}): void => {
 };
 
 describe('ScanningCard', () => {
+  afterEach(async () => {
+    await setMotion(null);
+  });
+
   describe('negative cases', () => {
+    it.each(['reduced', 'off'])('with %s motion a new module shows without a fade', async (mode) => {
+      await setMotion(mode);
+      mount();
+
+      expect(screen.getByText('Looking at Developer caches')).not.toHaveAttribute('data-fade');
+    });
+
     it('no module known shows no Looking at line', () => {
       mount({ module: null });
 
@@ -50,6 +62,13 @@ describe('ScanningCard', () => {
       expect(screen.getByText('Looking at Developer caches')).toBeInTheDocument();
       expect(screen.getAllByText('1.9 GB')).toHaveLength(2);
       expect(screen.getByText('found so far')).toBeInTheDocument();
+    });
+
+    it('with full motion a new module fades in', async () => {
+      await setMotion('full');
+      mount();
+
+      expect(screen.getByText('Looking at Developer caches')).toHaveAttribute('data-fade');
     });
 
     it('a partial found size is a lower bound', () => {

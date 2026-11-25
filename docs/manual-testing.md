@@ -435,8 +435,8 @@ Each sandbox from a fresh folder: `rm -rf sandbox/<name> && npm run dev:sandbox 
 every build: nothing at High shows anywhere.
 
 - [ ] `trial`: Scan before a scan: the disk card holds Scan in its ring. Scan: the scanning card's swoosh fills, the
-      percent climbs (never past 99 % before the end), "Looking at …" and the size found so far
-      change; no tile and no "What you can remove" while it runs. After: the disk card's five
+      percent climbs (never past 99 % before the end), "Looking at …" (a new module every 6 s while several run) and
+      the size found so far change; no tile and no "What you can remove" while it runs. After: the disk card's five
       parts with their sizes; each "i" opens its sentence; hovering a legend row lights its arc and the reverse.
       "2 minutes ago" beside Scan again. The separator "What you can remove", the groups with their lines, the tiles
       with icon, name, line, size, count, Details and `⋯`; readable trial names.

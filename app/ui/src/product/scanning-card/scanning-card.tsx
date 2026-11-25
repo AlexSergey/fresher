@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 import type { Sizes } from '../../ipc/bindings.generated';
 
 import { SwooshProgress } from '../../design/data/swoosh-progress/swoosh-progress';
+import { useMotion } from '../../design/motion';
 import { VisuallyHidden } from '../../design/primitives/visually-hidden/visually-hidden';
 import { t } from '../../i18n';
 import { honestSize } from '../sizes';
@@ -11,7 +12,7 @@ import styles from './scanning-card.module.css';
 export type ScanningCardProps = {
   // What the scan found so far.
   readonly found: Sizes;
-  // The name of the part the scan looks at; `null` when none is known.
+  // The name of the part the scan looks at; `null` when none is known. A new name fades in, without motion at once.
   readonly module: null | string;
   // 0 to 100.
   readonly percent: number;
@@ -21,6 +22,7 @@ export type ScanningCardProps = {
 // The scan in place of the disk card: the swoosh fills with the progress, the percent, what the scan looks at and
 // what it found so far.
 export const ScanningCard = ({ found, module, percent, volumeName }: ScanningCardProps): JSX.Element => {
+  const motion = useMotion();
   const { accessibleText, completeness, text } = honestSize(found);
   const said = { kind: 'text', value: String(percent) } as const;
 
@@ -35,7 +37,7 @@ export const ScanningCard = ({ found, module, percent, volumeName }: ScanningCar
           {t('ui.scanning.percent', { percent: said })}
         </span>
         {module === null ? null : (
-          <span className={styles.looking}>
+          <span className={styles.looking} data-fade={motion === 'full' ? '' : undefined} key={module}>
             {t('ui.scanning.looking-at', { module: { kind: 'text', value: module } })}
           </span>
         )}

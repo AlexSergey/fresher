@@ -1,6 +1,6 @@
 /*
  * The scanning card: the swoosh fills the card, the volume's name, the percent and what the scan looks at stand
- * top-left, what it found so far bottom-right.
+ * top-left, what it found so far bottom-right. A new "Looking at" line fades in, only with full motion.
  */
 @layer components {
   .card {
@@ -62,9 +62,23 @@
     font-size: 1rem;
   }
 
+  .looking[data-fade] {
+    animation: looking-in var(--duration-slow) var(--ease-enter);
+  }
+
   .found {
     color: var(--part-can-be-freed);
     font-size: calc(22rem / 13);
     font-weight: 700;
+  }
+
+  @keyframes looking-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 }
