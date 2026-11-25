@@ -1,6 +1,6 @@
 # 041 — The security audit
 
-**Status:** 🔨 in progress (built; awaiting the user's look) · **Version:** 0.1.0 · **Date:** 2026-11-25 ·
+**Status:** ✔️ done · **Version:** 0.1.0 · **Date:** 2026-11-25 ·
 **Modules:** every crate and module, app/tauri, app/ui, scripts, repo, docs
 
 Written as a one-file draft and built from it at the user's request (2026-11-25, "run the audit"), without separate
@@ -153,3 +153,5 @@ before the release) — it costs nothing but time, and names the project in publ
   report.
 - **Agent's calls 1, 2, 4 held; 3** (critical and high block the release) held with the SCAN-1 residual accepted as
   a known issue; **5** (the last pass on the release build) is the user's hand check.
+- **The user's look (2026-11-25):** the user ran the release build on their Mac after the fixes and reported that
+  everything works; the plan is done.
