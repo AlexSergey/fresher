@@ -60,13 +60,14 @@ jobs:
       - run: npm run test:scripts
       # The universal app and its disk image, then the bundle check on both (scripts/check-bundle.ts --release).
       - run: npm run build:release
+      # The release's body: docs/releases/<v>.md, then the version's section of docs/changelog.md.
       - name: Gather the release files and their checksums
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           mkdir release
           cp "target/universal-apple-darwin/release/bundle/dmg/Fresher_${VERSION}_universal.dmg" release/
-          cp "docs/releases/${VERSION}.md" release/notes.md
+          node scripts/release-version.ts notes "$VERSION" > release/notes.md
           cd release
           shasum -a 256 "Fresher_${VERSION}_universal.dmg" > SHA256SUMS
           cat SHA256SUMS

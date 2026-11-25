@@ -7,10 +7,12 @@ import { after, describe, it } from 'node:test';
 import {
   cargoLockPlaces,
   cargoWorkspaceVersion,
+  changelogSection,
   checkVersion,
   isVersion,
   jsonVersion,
   npmLockPlaces,
+  releaseBody,
   releaseProblems,
   type Run,
   setCargoWorkspaceVersion,
@@ -160,6 +162,11 @@ describe('release-version', () => {
       assert.equal(releaseProblems('0.1.0', '## [0x1x0] - 2026-11-25\n', true).length, 1);
     });
 
+    it('a_changelog_without_the_versions_section_gives_no_section', () => {
+      assert.equal(changelogSection('## [Unreleased]\n\n## [0.1.0] - 2026-11-25\n\n- one\n', '0.2.0'), undefined);
+      assert.equal(changelogSection('## [0.1.0]\n\n- one\n', '0.1.0'), undefined);
+    });
+
     it('a_cargo_toml_without_a_workspace_version_has_none', () => {
       assert.equal(cargoWorkspaceVersion('[package]\nversion = "0.1.0"\n'), undefined);
       assert.deepEqual(versionProblems([]), ['Cargo.toml: no version in [workspace.package]']);
@@ -187,6 +194,20 @@ describe('release-version', () => {
   });
 
   describe('positive cases', () => {
+    it('the_versions_changelog_section_ends_at_the_next_version', () => {
+      const changelog =
+        '# Changelog\n\n## [Unreleased]\n\n## [0.2.0] - 2026-12-01\n\n### Fixed\n\n- two\n\n## [0.1.0] - 2026-11-25\n\n- one\n';
+      assert.equal(changelogSection(changelog, '0.2.0'), '### Fixed\n\n- two');
+      assert.equal(changelogSection(changelog, '0.1.0'), '- one');
+    });
+
+    it('the_release_body_is_the_notes_then_whats_new', () => {
+      assert.equal(
+        releaseBody('# Fresher 0.2.0\n\nNotes.\n\n', '### Fixed\n\n- two', '0.2.0'),
+        "# Fresher 0.2.0\n\nNotes.\n\n## What's new in 0.2.0\n\n### Fixed\n\n- two\n",
+      );
+    });
+
     it('the_same_version_everywhere_passes', () => {
       assert.deepEqual(checkVersion(repository('0.1.0')), []);
     });

@@ -18,7 +18,9 @@ Written and approved in chat on 2026-11-25 ("the release CI — go", "the releas
   - **`release`** (Linux, tag pushes only; `contents: write`, `id-token: write`, `attestations: write`): the files
     checked against `SHA256SUMS`, the image's build provenance attested (`actions/attest-build-provenance`), and a
     **draft** release made with `gh release create --draft --verify-tag`, the image and `SHA256SUMS` attached and
-    `docs/releases/<version>.md` as its text. A person publishes it (agent's call 4).
+    `docs/releases/<version>.md` as its text, followed by the version's changelog section under "What's new in
+    <version>" (the user, 2026-11-25: "in most repositories the version's changelog goes into the release; let's do
+    the same"). A person publishes it (agent's call 4).
 - **The release checklist**, [`docs/workflow.md`](../../../workflow.md), "Releases": version, changelog, notes, check,
   dry run, push, tag, check the draft (checksums, attestation, the oldest and newest macOS, Intel), publish; a broken
   draft is deleted with its tag; from the second release on, the new version opens the previous one's data folder

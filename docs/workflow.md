@@ -49,6 +49,8 @@ versioning; 1.0.0 comes only after real testing (the user's decision of 2026-11-
    with the day of the tag, written for the people who use the app; the links at the bottom get the new version.
 3. **Release notes.** `docs/releases/X.Y.Z.md`, the text of the GitHub release: what it is, the supported Macs,
    install, first launch, Full Disk Access, how to check the download, no warranty, where to report, the changelog.
+   The workflow appends the version's changelog section to them under "What's new in X.Y.Z"
+   (`node scripts/release-version.ts notes X.Y.Z` prints the whole text).
    `.github/SECURITY.md` names the supported versions.
 4. **Check and commit.** `npm run check:version -- X.Y.Z` passes; the change is one commit on `main`
    (`chore(repo): release X.Y.Z`) through the hooks.

@@ -161,7 +161,7 @@ checksum (nothing is downloaded and run unverified).
 | `codeql.yml` | analyze | CodeQL (`security-extended`) for the workflows, TypeScript and Rust; on pull requests, on `main` and weekly |
 | `advisories.yml` | advisories | `cargo deny check advisories` and `npm audit --omit=dev`, weekly: an advisory published after the last push |
 | `release.yml` | `build` | on a pushed tag `v*.*.*`, or by hand as a dry run: the tag is on `main`, the version check with the tag's version, `npm run test:scripts`, `npm run build:release` (the universal app and its disk image, and their check), `SHA256SUMS`; the files kept as an artifact. No caches |
-|              | `release` | on a tag only: the files checked against `SHA256SUMS`, the build provenance attested, a draft release made with the image, `SHA256SUMS` and the release notes as its text; a person publishes it ([`workflow.md`](./workflow.md), "Releases") |
+|              | `release` | on a tag only: the files checked against `SHA256SUMS`, the build provenance attested, a draft release made with the image, `SHA256SUMS` and the release notes with the version's changelog section as its text; a person publishes it ([`workflow.md`](./workflow.md), "Releases") |
 
 The `ci.yml` jobs run one after another on `macos-latest`. Each starts with `.github/actions/setup`: Node from `.nvmrc`,
 the Rust toolchain from `rust-toolchain.toml`, the npm and cargo caches, `npm ci`. The cargo tools are installed at the

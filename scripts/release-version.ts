@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 // `package.json`, `app/tauri/tauri.conf.json`, and the workspace's own entries of `package-lock.json` and
 // `Cargo.lock`. `npm run check:version` fails when they differ; `npm run check:version -- 0.2.0` also wants that
 // version, its changelog section and its release notes (the release workflow runs it with the tag's version);
-// `npm run release:version -- 0.2.0` writes a new version everywhere and refreshes the lock files.
+// `npm run release:version -- 0.2.0` writes a new version everywhere and refreshes the lock files;
+// `node scripts/release-version.ts notes 0.2.0` prints the release's body: its notes, then its changelog section.
 
 export type Place = { readonly name: string; readonly version: string | undefined };
 
@@ -23,7 +24,8 @@ export const CHANGELOG = 'docs/changelog.md';
 
 export const releaseNotesOf = (version: string): string => `docs/releases/${version}.md`;
 
-const USAGE = 'usage: npm run check:version [-- <version>] | npm run release:version -- <version>';
+const USAGE =
+  'usage: npm run check:version [-- <version>] | npm run release:version -- <version> | release-version.ts notes <version>';
 
 // Plain `MAJOR.MINOR.PATCH`: the tags are `v*.*.*`.
 const SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
@@ -118,6 +120,24 @@ export const releaseProblems = (version: string, changelog: string, hasNotes: bo
   return problems;
 };
 
+// The version's changelog section without its heading: from the line after `## [x.y.z] - …` to the next `## `
+// heading or the end; `undefined` when the changelog has no such section.
+export const changelogSection = (changelog: string, version: string): string | undefined => {
+  const lines = changelog.split('\n');
+  const start = lines.findIndex((line) => line.startsWith(`## [${version}] - `));
+  if (start === -1) {
+    return undefined;
+  }
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.startsWith('## '));
+
+  return (end === -1 ? rest : rest.slice(0, end)).join('\n').trim();
+};
+
+// The GitHub release's body: the release notes, then "What's new" with the version's changelog section.
+export const releaseBody = (notes: string, section: string, version: string): string =>
+  `${notes.trimEnd()}\n\n## What's new in ${version}\n\n${section}\n`;
+
 export const checkVersion = (root: string, expected?: string): readonly string[] => {
   if (expected !== undefined && !isVersion(expected)) {
     return [`${expected} is not a version of the form MAJOR.MINOR.PATCH`];
@@ -158,6 +178,13 @@ if (import.meta.main) {
   let problems: readonly string[] | undefined;
   if (mode === 'check' && rest.length === 0) {
     problems = checkVersion(root, version);
+  } else if (mode === 'notes' && version !== undefined && rest.length === 0) {
+    const read = (file: string): string => readFileSync(join(root, file), 'utf8');
+    problems = checkVersion(root, version);
+    const section = changelogSection(read(CHANGELOG), version);
+    if (problems.length === 0 && section !== undefined) {
+      process.stdout.write(releaseBody(read(releaseNotesOf(version)), section, version));
+    }
   } else if (mode === 'set' && version !== undefined && rest.length === 0) {
     problems = setVersion(root, version, (program, args) => {
       execFileSync(program, [...args], { cwd: root, stdio: 'inherit' });
