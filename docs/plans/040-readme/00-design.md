@@ -133,7 +133,9 @@ Between two markers in `README.md`:
 
 Content, built only from `docs/categories/`:
 
-1. A sentence with the count: "Fresher knows **N kinds** of files, each with a danger level:".
+1. A sentence with the count: "Fresher knows **N kinds** of files, each with a danger level:". Since the follow-up
+   of 2026-11-25 ([`readme.md`](./readme.md), "Follow-up"): a `<details>` whose summary carries the count instead,
+   items 2 and 3 folded inside it.
 2. The four levels, one line each: `**Safe** — <Meaning>` from the "Meaning" column of the "Danger levels" table in
    `docs/categories/README.md`, in the order Safe, Low, Medium, High.
 3. A table `| What | Where, for example | Danger |`: one row per category of the catalogue table; "What" is the

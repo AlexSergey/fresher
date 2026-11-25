@@ -212,7 +212,7 @@ describe('parseCatalogue', () => {
 
 describe('buildBlock', () => {
   describe('positive cases', () => {
-    it('lists the levels and the rows, Safe before Low', () => {
+    it('folds the levels and the rows, Safe before Low, under a summary with the count', () => {
       const categories: readonly Category[] = [
         {
           category: 'dev-caches.npm',
@@ -233,7 +233,8 @@ describe('buildBlock', () => {
       assert.equal(
         buildBlock(categories, LEVELS),
         [
-          'Fresher knows **2 kinds** of files, each with a danger level:',
+          '<details>',
+          '<summary><b>All 2 kinds of files, with their danger level</b></summary>',
           '',
           '- **Safe** — Rebuilt automatically.',
           '- **Low** — Rebuilt on demand.',
@@ -244,6 +245,8 @@ describe('buildBlock', () => {
           '| --- | --- | --- |',
           '| [Logs](docs/categories/logs-app-logs.md) | `~/Library/Logs` | Safe |',
           '| [npm](docs/categories/dev-caches-npm.md) | `~/.npm/_cacache` | Low |',
+          '',
+          '</details>',
         ].join('\n'),
       );
     });

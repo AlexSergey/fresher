@@ -5,15 +5,14 @@
 
 ## What is postponed
 
-The README and its neighbours say "pre-release", because there is no release to point at. At the first release:
+The README's download link, its release badge and the first-launch note were written on 2026-11-25 (plan 040,
+"Follow-up"); the social image's head did not change, so it was not rendered again. Left for the release:
 
-- **The Install block** becomes the download link to the latest release, the package manager's one line, the lowest
-  macOS version and the first-launch note.
-- **The `status: pre-release` badge** becomes the release badge (`https://img.shields.io/github/v/release/AlexSergey/fresher`).
-- **The social image** (`assets/social-preview.svg`, rendered to the PNG) is rendered again if the head changed.
+- **The package manager's one line** in the Install block, once a package for it exists.
 - **"Supported versions" of `.github/SECURITY.md`** names the release.
 
 ## Why
 
-Until a release exists a download link or a version badge would be false, and the README states only what is true
-([`../plans/040-readme/00-design.md`](../plans/040-readme/00-design.md)).
+The README states only what is true ([`../plans/040-readme/00-design.md`](../plans/040-readme/00-design.md)): its
+download link and release badge go public with the first release, and a package line or a supported version needs
+that release to exist.

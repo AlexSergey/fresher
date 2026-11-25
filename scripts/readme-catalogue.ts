@@ -208,8 +208,10 @@ export const readCategories = (
 export const buildBlock = (categories: readonly Category[], levels: Levels): string => {
   const sorted = categories.toSorted((a, b) => DANGERS.indexOf(a.danger) - DANGERS.indexOf(b.danger));
 
+  // Folded: GitHub opens a `<details>` on a click; the blank lines let the Markdown inside it render.
   return [
-    `Fresher knows **${String(categories.length)} kinds** of files, each with a danger level:`,
+    '<details>',
+    `<summary><b>All ${String(categories.length)} kinds of files, with their danger level</b></summary>`,
     '',
     ...DANGERS.map((danger) => `- **${danger}** — ${levels.get(danger) ?? ''}`),
     '',
@@ -219,6 +221,8 @@ export const buildBlock = (categories: readonly Category[], levels: Levels): str
       (category) =>
         `| [${category.title}](${CATEGORIES_FOLDER}/${category.file}) | ${category.example} | ${category.danger} |`,
     ),
+    '',
+    '</details>',
   ].join('\n');
 };
 

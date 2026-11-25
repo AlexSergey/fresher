@@ -1,42 +1,41 @@
 <p align="center">
-  <img src="assets/logo.png" width="160" height="160" alt="Fresher logo: a graphite leaf with an iris swoosh and a white spark">
+  <img src="assets/logo.png" width="128" height="128" alt="Fresher logo: a graphite leaf with an iris swoosh and a white spark">
 </p>
 
 <h1 align="center">Fresher</h1>
 
 <p align="center">
   <b>Your Mac is full. See why.</b><br>
-  A free, open-source disk cleaner for macOS that explains every gigabyte in plain English, shows the risk of removing
-  it, and removes nothing you have not confirmed. Made with developers' Macs in mind.
+  A free, open-source disk cleaner for macOS, made with developers' Macs in mind. It explains every gigabyte in plain
+  English, shows the risk of removing it, and removes nothing you have not confirmed.
 </p>
 
 <p align="center">
-  <img alt="Licence: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-3a3a3a?style=flat-square">
+  <a href="https://github.com/AlexSergey/fresher/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/AlexSergey/fresher?style=flat-square"></a>
   <img alt="macOS 13 or later" src="https://img.shields.io/badge/macOS-13%2B-1c1d21?style=flat-square&logo=apple">
   <img alt="No network access" src="https://img.shields.io/badge/network-none-2ea44f?style=flat-square">
-  <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-d69e2e?style=flat-square">
+  <img alt="Licence: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-3a3a3a?style=flat-square">
 </p>
 
 <p align="center">
   <a href="#install">Install</a> ·
+  <a href="#why-fresher">Why Fresher</a> ·
   <a href="#what-it-finds">What it finds</a> ·
-  <a href="#why-you-can-trust-it">Why you can trust it</a> ·
-  <a href="#build-and-contribute">Build and contribute</a>
+  <a href="#help-it-get-better">Help it get better</a>
+</p>
+
+<!--video: assets/demo/overview.gif, width 800, alt "Fresher scans a Mac and sorts the space it can free by danger
+level, with Xcode build data as the largest safe category"-->
+
+<p align="center">
+  If Fresher gives you back some space, a <a href="https://github.com/AlexSergey/fresher/stargazers">star on GitHub</a>
+  helps other people find it.
 </p>
 
 ## Install
 
-There is no release yet. Until there is, you can build Fresher yourself on macOS 13 or later, with
-[Rust](https://rustup.rs) and Node.js 24:
-
-```bash
-git clone https://github.com/AlexSergey/fresher.git
-cd fresher
-npm install
-npm run build
-```
-
-The app is written to `target/release/bundle/macos/Fresher.app`.
+**[Download the latest `.dmg`](https://github.com/AlexSergey/fresher/releases/latest)**, open it and drag Fresher to
+Applications. It runs on macOS 13 or later, on Apple silicon and Intel.
 
 ### First launch on macOS
 
@@ -47,14 +46,53 @@ downloaded copy.
 2. Open System Settings → Privacy & Security, scroll down, and click "Open Anyway" next to the line about Fresher.
 3. Confirm with your password. After that Fresher opens normally.
 
+<details>
+<summary><b>Build it from source</b></summary>
+
+With [Rust](https://rustup.rs) and Node.js 24, on macOS 13 or later:
+
+```bash
+git clone https://github.com/AlexSergey/fresher.git
+cd fresher
+npm install
+npm run build
+```
+
+The app is written to `target/release/bundle/macos/Fresher.app`.
+
+</details>
+
+## Why Fresher
+
+- **Developer-first.** It knows where a developer's Mac fills up: Xcode's build data, previews and device files, old
+  JetBrains IDE versions, the caches of npm, Yarn, Homebrew, Cargo, Gradle, CocoaPods, pip and Go, the packages and
+  builds of projects untouched for a year, Rust and Node versions no project uses, and local AI models. For Docker it
+  shows what each part takes and the command that frees it.
+- **Private.** No network requests at all: no telemetry, no analytics, no crash reports, no update checks. What it
+  scans and what it finds stay on your Mac ([how](docs/restrictions/privacy.md#no-network)).
+- **Safe.** Nothing happens without you: opening the app starts no scan, and a scan only reads. Nothing is removed
+  until you confirm the exact items, with their size and danger level, and each one is checked again right before it
+  goes: anything that changed is skipped. System folders, other users' files and your home's own folders are never
+  removed ([how](docs/restrictions/deletion-safety.md)).
+- **Undoable.** Items go to the Trash, and the Cleanups screen puts them back. Deleting permanently is a separate choice
+  you tick each time, and Fresher never empties the Trash for you
+  ([how](docs/restrictions/deletion-safety.md#trash-first)).
+- **Plain English.** Every kind of file has a name, a page saying what it is and what happens if it goes, and a danger
+  level from "Safe to remove" to "Only if you are sure". There is no "Other": space it does not recognize is shown as
+  its real folders.
+- **Nothing in the background.** No helper, no login item, no scheduled scans: it works only while it is open
+  ([why](docs/goal.md#8-transparent-it-does-only-what-the-user-asks)).
+
 ## What it finds
 
-Each kind of file Fresher can offer has a page saying what it is, what happens if you remove it, and how the app
-decides.
+Developer caches and builds, old IDE versions, local AI models and unused toolchains; the caches, logs and leftovers of
+apps you use or removed; old temporary files and crash reports; unfinished downloads and installers you no longer
+need. It can also remove an app you choose, after showing you what goes with it.
 
 <!-- what-it-finds:start — generated by `npm run readme:generate` from docs/categories; do not edit by hand -->
 
-Fresher knows **44 kinds** of files, each with a danger level:
+<details>
+<summary><b>All 44 kinds of files, with their danger level</b></summary>
 
 - **Safe** — Safe to remove
 - **Low** — Usually safe
@@ -108,27 +146,20 @@ Fresher knows **44 kinds** of files, each with a danger level:
 | [Your own files](docs/categories/core-own-file.md)                                | a large file or folder in your home that you pick on the Largest screen | High   |
 | [Apps and their data](docs/categories/core-uninstall-everything.md)               | `<name>.app` with its `~/Library/Application Support/<id>`              | High   |
 
+</details>
+
 <!-- what-it-finds:end -->
 
-It can also remove an app you choose, together with what it left, after showing you everything first.
+The first release does not offer the kinds marked High: only what comes back, or what you can check by eye.
 
-## Why you can trust it
-
-- **It asks first.** Nothing is removed until you confirm the exact items, with their size and danger level
-  ([how](docs/restrictions/deletion-safety.md#explicit-confirmation-only)).
-- **Trash first, and you can put it back.** Items go to the Trash, and the Cleanups screen puts them back; deleting permanently is
-  a separate choice you tick each time ([how](docs/restrictions/deletion-safety.md#trash-first)).
-- **Nothing leaves your Mac.** No network requests at all: no telemetry, no crash reports, no update checks
-  ([how](docs/restrictions/privacy.md#no-network)).
-- **Nothing in the background.** No helper, no login item, no scheduled scans: it works only while it is open
-  ([why](docs/goal.md#8-transparent-it-does-only-what-the-user-asks)).
+<!--video: assets/demo/cleanup.gif, folded under "See a cleanup, from the scan to putting it back", width 800, alt
+"Fresher moves Xcode build data to the Trash after a confirmation, then puts it back from the Cleanups screen"-->
 
 ## What it does not do
 
-Fresher is not an antivirus and does not "speed up" your Mac or clean its memory. It has no background helper. It never
-removes what it cannot name: space it does not recognize is shown as its real folders. It shows what Docker takes and
-the command that frees each part, and never runs it. And it never empties the Trash for you: you get the space back
-when you empty it yourself.
+Fresher is not an antivirus and does not "speed up" your Mac or clean its memory. It never asks for administrator
+rights and never removes what it cannot name. It shows what Docker takes and the commands that free it, and never runs
+them.
 
 ## No warranty
 
@@ -141,8 +172,6 @@ lines: the sentence above and these four:
 - Items go to the Trash, where you can put them back until the Trash is emptied. A permanent delete, and what an app's
   own tool removes, cannot be undone.
 
-The full terms are in the licences below.
-
 ## Help it get better
 
 The most useful report is a wrong finding: something the app offered that it should not have.
@@ -150,20 +179,9 @@ The most useful report is a wrong finding: something the app offered that it sho
 showed (write your user name in any path as `~`) and why it should have left it alone. A folder Fresher should know
 about is welcome too: [Suggest a folder](https://github.com/AlexSergey/fresher/issues/new?template=missing-folder.yml).
 
-If Fresher helped you, a star helps others find it.
-
-## Build and contribute
-
-```bash
-npm install
-npm run dev
-npm test
-```
-
-The goal, the rules and the architecture are in [`docs/`](docs/README.md); the checks every change passes are in
-[`docs/quality.md`](docs/quality.md). Fresher is a Rust core with a Tauri 2 shell and a React and TypeScript interface.
-
-How to contribute: [`CONTRIBUTING.md`](.github/CONTRIBUTING.md). A security problem: [`SECURITY.md`](.github/SECURITY.md).
+Fresher is a Rust core with a Tauri 2 shell and a React and TypeScript interface. The goal, the rules and the
+architecture are in [`docs/`](docs/README.md); how to contribute is in [`CONTRIBUTING.md`](.github/CONTRIBUTING.md); a
+security problem goes to [`SECURITY.md`](.github/SECURITY.md).
 
 ## Licence
 

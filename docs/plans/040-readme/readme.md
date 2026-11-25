@@ -132,3 +132,41 @@ right line.
 **Plans of 031 to 039 and 04/01.** `main` b9cafed1 was merged in: 031 was the base; 037, 032, 038, 035, 036 and 039 came
 in with the security fixes for `url` and `cookie`. The README's Docker sentence is plan 032's ("shows what Docker takes
 and the command; never runs it"), "Trash first" and "No warranty" follow plan 039's agreement lines and glossary.
+
+## Follow-up of 2026-11-25
+
+The user's task (translated): "Polish the current README thoroughly; look at our competitors' READMEs and make ours
+neater. Add a GIF that we can record now with our tool; put it in the repo's assets folder. The table of what we cover
+looks excessive — maybe move it to a separate page with a link, or hide it in an accordion. I'd put the main features
+like this: that it is developer-first; that we respect privacy — we send no data anywhere and collect nothing; that we
+work safely — we do nothing without the user knowing, never remove anything on our own, everything goes through
+validation; and so on in that spirit. The block about the star can be moved up."
+
+Branch `docs/readme-polish`, from `main` (9aefa750). The GIFs are recorded apart (`npm run demo:record`, the
+`overview` and `cleanup` scenarios) and reach `main` before this branch.
+
+**What changed.** The order is now: head (logo, name, pitch, four badges: the release, macOS 13+, no network, the
+licence), the links, the `overview` GIF, one line asking for a star, Install (the download of the latest release, the
+first-launch note, building from source folded), "Why Fresher" (developer-first, private, safe, undoable, plain
+English, nothing in the background), "What it finds" (a short summary, the generated table folded, the note that High
+is withheld, the `cleanup` GIF folded), what it does not do, no warranty, help it get better (with the stack and the
+links for contributors), licence. The generator writes the block as a `<details>` whose summary carries the count;
+`scripts/readme-catalogue.test.ts` follows.
+
+**Agent's calls.**
+
+1. **Fold the table in an accordion, not a separate page.** `docs/categories/README.md` is a contributor's catalogue
+   (rules, contract tests, left-out reasons), not a reader's list; the folded table stays generated and checked, one
+   click away, and costs no new page to keep. Replaces the design's call 11 (all rows visible).
+2. **The star line under the hero GIF**, once, as the user asked. Replaces call 5 (at the end).
+3. **The two GIFs**: `overview` in the hero, `cleanup` folded under "What it finds". Until the user records them
+   (`npm run demo:record -- all` needs the terminal's screen recording permission), the README holds a `<!--video: …-->`
+   comment at each place, with the GIF's path and alt text; the user asked for it (2026-11-25).
+4. **"Why Fresher" before "What it finds"**: the reader's reasons first, the list on demand; "Why you can trust it"
+   became its Private, Safe, Undoable and background bullets, each linking to its restriction.
+5. **The High note by hand**: the first release withholds High ([`../../restrictions/deletion-safety.md`](../../restrictions/deletion-safety.md),
+   "High is withheld in the first release"), so the README says the High rows are not offered; it is removed when High
+   is offered again.
+6. **The release items of the deferred file** done but the package line and `SECURITY.md` (the release's); the social
+   image's head did not change, so it was not rendered again.
+
