@@ -175,3 +175,6 @@ The user, later on 2026-11-25: "Why Fresher" goes above Install, as the most imp
 author's short story (a developer on a 500 GB Mac, made shorter from the user's words); the star line becomes a quoted
 ⭐ line under the links.
 
+
+The user, on 2026-11-25, on calls 1 and 5: the category table stays folded in the README, and the line saying the
+High rows are not offered stays.
