@@ -101,6 +101,27 @@ describe('AppFrame', () => {
       expect(screen.queryByRole('note')).toBeNull();
     });
 
+    it('a sandbox build puts no banner on the page while a demo plays', async () => {
+      core({
+        appInfo: () => ({
+          build: sandboxBuild(['running']),
+          high: 'offered',
+          home: SANDBOX_HOME,
+          version: '0.1.0',
+        }),
+        getDictionary: () => ({ ...DEMO_DICTIONARY, ...BUILD_DICTIONARY }),
+      });
+      const { store } = await renderFrame();
+      await screen.findByRole('note');
+
+      act(() => {
+        store.dispatch({ type: 'demo-started' });
+      });
+
+      expect(screen.queryByRole('note')).toBeNull();
+      expect(document.body.textContent).not.toContain('/Users/dev/sandboxes/trial');
+    });
+
     it('the sidebar has no Largest while High is withheld', async () => {
       core({
         appInfo: () => ({ build: { kind: 'release' }, high: 'withheld', home: '/Users/someone', version: '0.1.0' }),

@@ -13,6 +13,7 @@ import { createNavigation, type Navigation, NavigationContext } from '../state/n
 import { CoreContext, type CoreStore } from '../state/store';
 import { FindingsContext } from '../state/use-findings';
 import { systemWallClock, type WallClock, WallClockContext } from '../state/wall-clock';
+import { DemoPathForm } from './demo-path-form';
 import { ModulesContext } from './use-modules';
 
 export type AppProvidersProps = {
@@ -112,7 +113,9 @@ export const AppProviders = ({
           <ModulesContext value={modules}>
             <WallClockContext value={wallClock}>
               <Toaster closeLabel={t('ui.screen.frame.close')} label={t('ui.screen.frame.toasts')}>
-                <Announcer>{children}</Announcer>
+                <Announcer>
+                  <DemoPathForm>{children}</DemoPathForm>
+                </Announcer>
               </Toaster>
             </WallClockContext>
           </ModulesContext>

@@ -58,8 +58,9 @@ Targets, `role "name" <- key`:
 - region "Safe to remove" <- `core.danger.safe.zone` (scrolled by 400 and back)
 - checkbox "Select Xcode build data" <- `ui.category-card.select`
 - button "Review" <- `ui.selection-bar.review` (the sidebar's Review reads "Review" and the count, so it differs)
-- button "Move to Trash…" <- `ui.screen.review.remove` (the Review screen's button: the brief had left it out)
-- button "Move to Trash" <- `ui.confirm.trash` (the confirm dialog)
+- button "Move to the Trash" <- `ui.screen.review.remove` (the Review screen's button: the brief had left it out)
+- button "Yes, move to the Trash" <- `ui.confirm.trash` (the confirm dialog; "Move to Trash" until plan 039 renamed it,
+  changed on 2026-11-25)
 - button "Cleanups" <- `ui.screen.frame.nav.cleanups`
 - button, name starts "Cleanup of" <- `ui.cleanup-row.title`
 - button "Put back all still in the Trash" <- `ui.screen.cleanups.put-back-all`

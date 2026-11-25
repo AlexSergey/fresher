@@ -40,8 +40,10 @@ describe('startDemo', () => {
     it('does nothing without a scenario', async () => {
       ipc.demoPlay.mockResolvedValue(null);
       const { startDemo } = await import('./start');
-      await startDemo(createCoreStore());
+      const store = createCoreStore();
+      await startDemo(store);
 
+      expect(store.getState().demo).toBe(false);
       expect(pointer()).toBeNull();
       expect(document.documentElement.dataset.demo).toBeUndefined();
       expect(ipc.demoFinished).not.toHaveBeenCalled();
@@ -83,10 +85,12 @@ describe('startDemo', () => {
     it('plays while data-demo is set, then reports the outcome and removes the pointer', async () => {
       ipc.demoPlay.mockResolvedValue(SCENARIO);
       const { startDemo } = await import('./start');
-      const running = startDemo(createCoreStore());
+      const store = createCoreStore();
+      const running = startDemo(store);
       await vi.advanceTimersByTimeAsync(1);
 
       expect(document.documentElement.dataset.demo).toBe('playing');
+      expect(store.getState().demo).toBe(true);
       expect(pointer()).not.toBeNull();
 
       await vi.advanceTimersByTimeAsync(2000);

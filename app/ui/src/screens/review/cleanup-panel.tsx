@@ -10,7 +10,7 @@ import { CleanupProgress } from '../../product/cleanup-progress/cleanup-progress
 import { ResultSummary } from '../../product/result-summary/result-summary';
 import { showInTrash, stop } from '../../state/cleanup-actions';
 import { useNavigation } from '../../state/navigation';
-import { useCoreStore } from '../../state/store';
+import { useCore, useCoreStore } from '../../state/store';
 import { useAppInfo } from '../use-app-info';
 import styles from './review-screen.module.css';
 
@@ -23,8 +23,10 @@ export const CleanupPanel = ({ cleanup }: CleanupPanelProps): JSX.Element => {
   const store = useCoreStore();
   const { navigate } = useNavigation();
   const build = useAppInfo()?.build;
+  const demo = useCore((state) => state.demo);
   // A sandbox's cleanups do not go to the Trash the user knows: the result says where they went, in the core's words.
-  const trashNote = build?.kind === 'sandbox' ? { trashNote: tText(build.trash) } : {};
+  // A demo does not say it: the sentence names the sandbox's folder.
+  const trashNote = build?.kind === 'sandbox' && !demo ? { trashNote: tText(build.trash) } : {};
 
   return (
     <>

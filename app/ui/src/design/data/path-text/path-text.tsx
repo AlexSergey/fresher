@@ -1,7 +1,8 @@
-import { type JSX, useLayoutEffect, useRef, useState } from 'react';
+import { type JSX, use, useLayoutEffect, useRef, useState } from 'react';
 
 import { Tooltip } from '../../primitives/tooltip/tooltip';
 import { VisuallyHidden } from '../../primitives/visually-hidden/visually-hidden';
+import { PathFormContext } from './path-form';
 import styles from './path-text.module.css';
 import { truncateMiddle } from './truncate';
 
@@ -15,9 +16,12 @@ export type PathTextProps = {
 const PROBE = '0000000000';
 
 // A path in mono, cut in the middle to fit its width, so its start and its file name stay; the full path is in its
-// tooltip and in its accessible text. Measured again whenever its width changes.
+// tooltip and in its accessible text, each written in the path form around it. Measured again whenever its width
+// changes.
 export const PathText = ({ display, path }: PathTextProps): JSX.Element => {
-  const shown = display ?? path;
+  const form = use(PathFormContext);
+  const full = form(path);
+  const shown = form(display ?? path);
   const frameRef = useRef<HTMLSpanElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
   // How many characters fit; `null` until measured, when the whole path shows.
@@ -52,10 +56,10 @@ export const PathText = ({ display, path }: PathTextProps): JSX.Element => {
       <span aria-hidden="true" className={styles.probe} ref={probeRef}>
         {PROBE}
       </span>
-      <Tooltip content={path} repeatsName>
+      <Tooltip content={full} repeatsName>
         {() => <span aria-hidden="true">{fit === null ? shown : truncateMiddle(shown, fit)}</span>}
       </Tooltip>
-      <VisuallyHidden>{path}</VisuallyHidden>
+      <VisuallyHidden>{full}</VisuallyHidden>
     </span>
   );
 };

@@ -304,6 +304,17 @@ describe('reduce', () => {
       expect(state.access).toEqual(allFiles('granted'));
     });
 
+    it('no demo plays until the player says it started', () => {
+      expect(INITIAL_STATE.demo).toBe(false);
+      expect(run([started, moduleDone]).demo).toBe(false);
+    });
+
+    it('a demo started again changes nothing', () => {
+      const playing = run([{ type: 'demo-started' }]);
+
+      expect(run([{ type: 'demo-started' }], playing)).toBe(playing);
+    });
+
     it('a settings view answered again does not undo the changes since the first', () => {
       const first = run([
         { settings: SETTINGS, type: 'settings-loaded' },
@@ -315,6 +326,10 @@ describe('reduce', () => {
   });
 
   describe('positive cases', () => {
+    it('keeps that a demo plays once the player started it', () => {
+      expect(run([{ type: 'demo-started' }]).demo).toBe(true);
+    });
+
     it('keeps how far the measure of the apps got, the last told', () => {
       const state = run([
         { done: 0, total: 12, type: 'apps-measuring' },

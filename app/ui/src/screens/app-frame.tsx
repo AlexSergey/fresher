@@ -106,6 +106,7 @@ export const AppFrame = (): JSX.Element => {
   );
   const loaded = useCore((state) => state.dictionary !== null);
   const unreachable = useCore((state) => state.failure?.kind === 'unreachable');
+  const demo = useCore((state) => state.demo);
 
   useRefusalToasts();
 
@@ -121,8 +122,8 @@ export const AppFrame = (): JSX.Element => {
 
   return (
     <div className={styles.window}>
-      {/* The banner waits for the core's dictionary too: a sandbox's line holds the core's sentence. */}
-      {info === null || !loaded ? null : <BuildBanner build={info.build} />}
+      {/* The banner waits for the core's dictionary too: a sandbox's line holds the core's sentence. A demo has none. */}
+      {info === null || !loaded || demo ? null : <BuildBanner build={info.build} />}
       <div className={styles.body}>
         <AppShell sidebar={<FrameSidebar onNavigate={navigation.navigate} screen={screen} />}>
           {unreachable ? (

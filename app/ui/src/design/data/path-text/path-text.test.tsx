@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HOVER_DELAY } from '../../primitives/tooltip/tooltip';
+import { PathFormContext } from './path-form';
 import { PathText } from './path-text';
 
 const LONG = '~/Library/Developer/Xcode/DerivedData/Fresher-abcdefghijklmnop/Build/Intermediates.noindex/Index.db';
@@ -72,6 +73,27 @@ describe('PathText', () => {
 
       expect(shownElement()).toHaveAttribute('aria-hidden', 'true');
       expect(screen.getByText(LONG)).toHaveClass('u-visually-hidden');
+    });
+
+    it('a path form leaves no trace of the path it rewrites, shown, accessible or in the tooltip', () => {
+      vi.useFakeTimers();
+      frameWidth = 80 * CELL;
+      const form = (path: string): string => path.replace('/private/tmp/world/home', '~');
+      render(
+        <PathFormContext value={form}>
+          <PathText path="/private/tmp/world/home/Library/Caches" />
+        </PathFormContext>,
+      );
+
+      // eslint-disable-next-line testing-library/no-node-access -- the pointer enters the tooltip's anchor
+      fireEvent.pointerEnter(shownElement().parentElement as HTMLElement);
+      act(() => {
+        vi.advanceTimersByTime(HOVER_DELAY);
+      });
+
+      expect(document.body.textContent).not.toContain('/private/tmp/world');
+      expect(shown()).toBe('~/Library/Caches');
+      expect(screen.getByRole('tooltip')).toHaveTextContent('~/Library/Caches');
     });
   });
 

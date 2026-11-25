@@ -1,6 +1,6 @@
 # A cleanup, start to finish: scan, tick the largest Safe category, review it (its tile, ticked whole), press Review's
-# "Move to the Trash", accept the agreement (as a user would, the first time), confirm the confirmation's "Move to
-# Trash" (never the permanent choice), read the result, open Cleanups and its cleanup, put everything back. Screens:
+# "Move to the Trash", accept the agreement (as a user would, the first time), confirm the confirmation's "Yes, move to
+# the Trash" (never the permanent choice), read the result, open Cleanups and its cleanup, put everything back. Screens:
 # Scan, Review, the agreement sheet, the confirm dialog, the cleanup's result, Cleanups, one cleanup. About 10 s of
 # pauses.
 # The scenario's wait ends at the result; putting back has no state a target can name, so a pause covers it.
@@ -32,7 +32,7 @@ click = { role = "button", name = "I understand" }
 [[step]]
 pause = 800
 [[step]]
-click = { role = "button", name = "Move to Trash" }
+click = { role = "button", name = "Yes, move to the Trash" }
 [[step]]
 wait = "cleanup-finished"
 [[step]]

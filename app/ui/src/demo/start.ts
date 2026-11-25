@@ -17,6 +17,7 @@ export const startDemo = async (store: CoreStore): Promise<void> => {
   if (scenario === null) {
     return;
   }
+  store.dispatch({ type: 'demo-started' });
   document.documentElement.dataset.demo = 'playing';
   const pointer = createPointer(document);
   let outcome: DemoOutcome;

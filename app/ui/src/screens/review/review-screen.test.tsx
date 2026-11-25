@@ -320,6 +320,42 @@ describe('ReviewScreen', () => {
 
       expect(within(summaryRegion()).queryByText(/not checked/u)).toBeNull();
     });
+
+    it("a demo writes every path of the review and its confirmation from the home's ~", async () => {
+      const { store } = await renderReview(pickCategory('demo.caches'), false, {
+        ...CLEANUP,
+        appInfo: () => ({ build: sandboxBuild(), high: 'offered', home: '/demo', version: '0.1.0' }),
+      });
+      act(() => {
+        store.dispatch({ type: 'demo-started' });
+      });
+      await openConfirmation();
+
+      expect(document.body.textContent).not.toMatch(/\/demo\//u);
+      expect(document.body.textContent).toContain('~/');
+    });
+
+    it("a demo's finished Trash cleanup in a sandbox build does not say where the sandbox's Trash is", async () => {
+      const { store } = await renderReview(pickCategory('demo.caches'), false, {
+        ...CLEANUP,
+        appInfo: () => ({ build: sandboxBuild(), high: 'offered', home: SANDBOX_HOME, version: '0.1.0' }),
+      });
+      act(() => {
+        store.dispatch({ type: 'demo-started' });
+      });
+      await openConfirmation();
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, move to the Trash' }));
+      await screen.findByText('Moving 1 of 3 to the Trash…');
+      const events = cleanupEventsOf(DEMO_PLAN, MOVED_REPORT);
+      act(() => {
+        store.dispatch(events.started);
+        store.dispatch(events.finished);
+      });
+
+      const result = await screen.findByRole('region', { name: 'Moved to the Trash' });
+      expect(within(result).queryByText(/sandbox's Trash/u)).toBeNull();
+      expect(document.body.textContent).not.toContain('/Users/dev/sandboxes/trial');
+    });
   });
 
   describe('positive cases', () => {

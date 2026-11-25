@@ -98,3 +98,17 @@ the banner rule in `build-banner.module.css`. `main.tsx` imports `./demo/start` 
   browser does. An empty private text is ignored (it would match every page). `POLL_MS` is not exported (nothing
   else uses it).
 - The perf specs of the full Playwright run are timing-bound and failed under load; they were not part of this step.
+
+2026-11-25, the first `npm run demo:check -- all`: both scenarios failed at step 1, "the page shows a private path".
+The check reads `textContent`, which holds hidden text, and the banner rule only hid the banner (`display: none`): its
+line, with the sandbox's folder and its Trash, stayed in the page. Then the review rows failed: a path shown from `~`
+keeps its full path as its accessible text and tooltip. Fixed in the UI, the check kept as strict:
+
+- `CoreState.demo`, set by the action `demo-started` that `startDemo` dispatches before it plays. While it is set, the
+  frame renders no banner and a cleanup's result says nothing of where the sandbox's Trash is. The CSS rule is gone.
+- `PathFormContext` (`design/data/path-text/path-form.ts`): how `PathText` writes a path, shown, in its tooltip and as
+  its accessible text; as it is by default. `DemoPathForm` (`screens/demo-path-form.tsx`, in `AppProviders`) writes
+  every path from the home as `~` while a demo plays.
+- Tests, negatives first: `reduce.test.ts`, `start.test.ts`, `path-text.test.tsx`, `app-frame.test.tsx` (no banner
+  while a demo plays) and `review-screen.test.tsx` (no full path in the review and its confirmation; no Trash
+  sentence in the result).

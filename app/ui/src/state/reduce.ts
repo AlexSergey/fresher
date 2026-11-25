@@ -35,6 +35,8 @@ export type CoreAction =
   | { readonly settings: SettingsView; readonly type: 'settings-loaded' }
   | { readonly status: AccessStatus; readonly type: 'access-loaded' }
   | { readonly storageMap: StorageMap; readonly type: 'storage-map-loaded' }
+  // The demo player (demo/start.ts) began to play a scenario.
+  | { readonly type: 'demo-started' }
   | { readonly type: 'overview-requested' }
   // The quit question was answered, either way.
   | { readonly type: 'quit-answered' };
@@ -54,6 +56,9 @@ export type CoreState = {
   // What the result on screen did not see (guarded places, unreadable folders): the followed scan's `scan-coverage`,
   // or the last scan's coverage from the overview when the window did not follow it. `null` while a scan runs or none is known.
   readonly coverage: Coverage | null;
+  // A demo plays in a development build: the page renders nothing of its sandbox (the banner, where its Trash is), so
+  // a recording shows no private path and the player's check finds none (plan 038).
+  readonly demo: boolean;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
   // How many times an ignore list changed in this session: the finding pages start again (state/findings.ts).
@@ -107,6 +112,7 @@ export const INITIAL_STATE: CoreState = {
   appsMeasuring: null,
   cleanup: NO_CLEANUP,
   coverage: null,
+  demo: false,
   dictionary: null,
   failure: null,
   ignoreChanges: 0,
@@ -325,6 +331,8 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
       return withCleanup(state, reduceCleanup(state.cleanup, action));
     case 'command-failed':
       return { ...state, failure: action.failure };
+    case 'demo-started':
+      return state.demo ? state : { ...state, demo: true };
     case 'dictionary-loaded':
       return { ...state, dictionary: action.dictionary };
     case 'findings-added':
