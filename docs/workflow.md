@@ -25,9 +25,12 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
   so `main` stays free for small changes while the plan is built.
 - The git hooks run the Node tools, so a new worktree needs `node_modules`: run `npm ci` in it, or link the main
   checkout's folder (`ln -s ../fresher/node_modules node_modules`; the link is ignored by git).
-- A worktree builds into the main checkout's `target/`, never its own: run Cargo in it with
-  `CARGO_TARGET_DIR=../fresher/target` (absolute path in agents' briefs). A second `target/` is a second full build,
-  10–50 GB. Remove the worktree when its plan is merged (`git worktree remove ../fresher-NNN`).
+- A worktree builds into the main checkout's `target/` only while nothing else builds there: run Cargo in it with
+  `CARGO_TARGET_DIR=../fresher/target` (absolute path in agents' briefs). Cargo names a workspace's crates by their
+  path inside the workspace, so two checkouts building into one `target/` at the same time overwrite each other's
+  crates and fail with errors of the other's code. When `main` or another worktree builds meanwhile (a push's hooks,
+  another agent), the worktree uses its own `target/`: a second full build, 10–50 GB, removed with the worktree
+  (`git worktree remove ../fresher-NNN`).
 - The coverage build (`target/llvm-cov-target`, made by `npm run test:cov`) is another full build: when the disk runs
   short, remove it with `cargo llvm-cov clean --workspace`; the next coverage run rebuilds it.
 
