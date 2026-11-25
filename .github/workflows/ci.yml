@@ -42,6 +42,7 @@ jobs:
       - run: npm run check:notices
       - run: npm run check:crate-deps
       - run: npm run check:locks
+      - run: npm run check:version
       - run: npm run check:texts
       - run: npm run knip
       - run: npm run check:machete

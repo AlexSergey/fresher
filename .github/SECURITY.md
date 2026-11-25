@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The latest `main`, until the first release.
+The latest release, 0.1.x, and the latest `main`. A fix lands on `main` and ships in the next release.
 
 ## What counts
 
@@ -22,6 +22,7 @@ The rules are in [`deletion-safety.md`](../docs/restrictions/deletion-safety.md)
 Privately, through the repository's Security tab, "Report a vulnerability":
 <https://github.com/AlexSergey/fresher/security/advisories/new>. Do not open a public issue.
 
-Include the macOS version, the commit, the steps, and what was removed or reached.
+Include the macOS version, Fresher's version (Settings → About) or the commit, the steps, and what was removed or
+reached.
 
-You get an answer, a fix on `main`, and credit if you want it.
+You get an answer, a fix on `main` and in the next release, and credit if you want it.

@@ -170,3 +170,19 @@ Installed once per machine ([`quality.md`](./quality.md), "Setting up a machine"
 `ffmpeg` is installed by the developer (`brew install ffmpeg`), not by the repository. 7.1.1 is the Homebrew build
 checked on 2026-11-22; its licence is GPL-2.0-or-later as Homebrew builds it (LGPL-2.1-or-later without
 `--enable-gpl`). Only `npm run demo:record` uses it, to encode the recordings; it is never shipped.
+
+## GitHub Actions
+
+The actions the workflows run (`.github/workflows/`, `.github/actions/setup`), each pinned to a full commit SHA with
+its version in a comment ([`quality.md`](./quality.md), "Layer 5"). They run on GitHub's runners; none is shipped.
+
+| Action                            | Version | Licence           | What for                                                       |
+| --------------------------------- | ------- | ----------------- | -------------------------------------------------------------- |
+| `actions/checkout`                | 7.0.1   | MIT               | every job                                                      |
+| `actions/setup-node`              | 7.1.0   | MIT               | Node from `.nvmrc`, the npm cache                              |
+| `Swatinem/rust-cache`             | 2.9.3   | LGPL-3.0          | the cargo cache (off in the release workflow)                  |
+| `taiki-e/install-action`          | 2.90.5  | Apache-2.0 OR MIT | the cargo tools, typos and actionlint, checked by checksum     |
+| `actions/upload-artifact`         | 7.0.2   | MIT               | the coverage and e2e reports; the release's files              |
+| `actions/download-artifact`       | 8.0.2   | MIT               | the release's files, from the build job to the release job     |
+| `actions/attest-build-provenance` | 4.2.2   | MIT               | the release's build provenance (`gh attestation verify`)       |
+| `github/codeql-action`            | 4.39.3  | MIT               | CodeQL                                                         |

@@ -2,13 +2,19 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  appProblems,
+  archProblems,
   bundleProblems,
   defaultBundle,
+  dmgProblems,
   homeProblems,
   networkImports,
   networkProblems,
+  releaseBundle,
+  releaseImage,
   type Run,
   signatureFlags,
+  type Tools,
 } from './check-bundle.ts';
 
 type Answer = { readonly status: number; readonly stderr: string; readonly stdout: string };
@@ -37,6 +43,24 @@ const codesign =
 
     return args.includes('--entitlements') ? (answers.entitlements ?? ok()) : (answers.display ?? ok(SIGNED));
   };
+
+const lipoSaying =
+  (archs: string): Run =>
+  () =>
+    ok('', `${archs}\n`);
+
+// A fake hdiutil that answers each subcommand and records the calls.
+const hdiutil =
+  (calls: string[], answers: { attach?: Answer; detach?: Answer; verify?: Answer } = {}): Run =>
+  (args) => {
+    calls.push(args.join(' '));
+    const answer = answers[args[0] as 'attach' | 'detach' | 'verify'];
+
+    return answer ?? ok();
+  };
+
+const TOOLS: Tools = { codesign: codesign({}), lipo: lipoSaying('x86_64 arm64'), nm: () => ok('', '_open\n') };
+const EXECUTABLE = (): Buffer => Buffer.from('\0~/.cargo/registry/src/x.rs\0');
 
 describe('check-bundle', () => {
   describe('negative cases', () => {
@@ -90,6 +114,68 @@ describe('check-bundle', () => {
       assert.equal(homeProblems(executable, '/Users/someone').length, 1);
     });
 
+    it('an_executable_without_intel_or_apple_silicon_code_is_refused', () => {
+      assert.deepEqual(archProblems(lipoSaying('arm64'), '/x/Fresher.app'), [
+        'the executable has no x86_64 code (lipo -archs: arm64); build it with npm run build:release',
+      ]);
+      assert.equal(archProblems(lipoSaying('x86_64'), '/x/Fresher.app').length, 1);
+    });
+
+    it('an_executable_whose_architectures_cannot_be_listed_is_refused', () => {
+      const lipo: Run = () => ({ status: 1, stderr: 'not a Mach-O file', stdout: '' });
+      assert.match(archProblems(lipo, '/x/Fresher.app')[0] ?? '', /lipo -archs.*not a Mach-O/u);
+    });
+
+    it('a_release_app_is_held_to_both_architectures_and_every_other_check', () => {
+      const tools = { ...TOOLS, lipo: lipoSaying('arm64') };
+      assert.equal(appProblems(tools, '/x/Fresher.app', EXECUTABLE, '/Users/someone', true).length, 1);
+      assert.deepEqual(appProblems(tools, '/x/Fresher.app', EXECUTABLE, '/Users/someone', false), []);
+      const unreadable = (): Buffer => {
+        throw new Error('ENOENT');
+      };
+      assert.match(appProblems(TOOLS, '/x/Fresher.app', unreadable, '/u', true)[0] ?? '', /could not be read/u);
+    });
+
+    it('a_disk_image_that_does_not_verify_is_refused_and_not_opened', () => {
+      const calls: string[] = [];
+      const failing = { status: 1, stderr: 'checksum mismatch', stdout: '' };
+      const problems = dmgProblems(hdiutil(calls, { verify: failing }), '/x/F.dmg', '/m', () => []);
+      assert.deepEqual(problems, ['the disk image does not verify (hdiutil verify): checksum mismatch']);
+      assert.deepEqual(calls, ['verify -quiet /x/F.dmg']);
+    });
+
+    it('a_disk_image_that_cannot_be_opened_is_refused', () => {
+      const calls: string[] = [];
+      const failing = { status: 1, stderr: 'no mountable file systems', stdout: '' };
+      const problems = dmgProblems(hdiutil(calls, { attach: failing }), '/x/F.dmg', '/m', () => []);
+      assert.equal(problems.length, 1);
+      assert.equal(calls.length, 2);
+    });
+
+    it('an_app_in_the_disk_image_that_fails_a_check_is_refused_and_the_image_is_closed', () => {
+      const calls: string[] = [];
+      const checked: string[] = [];
+      const problems = dmgProblems(hdiutil(calls), '/x/F.dmg', '/m', (app) => {
+        checked.push(app);
+
+        return ['the executable has no x86_64 code'];
+      });
+      assert.deepEqual(problems, ['inside the disk image: the executable has no x86_64 code']);
+      assert.deepEqual(checked, ['/m/Fresher.app']);
+      assert.equal(calls.at(-1), 'detach /m');
+    });
+
+    it('a_disk_image_left_open_is_said', () => {
+      const failing = { status: 1, stderr: 'resource busy', stdout: '' };
+      assert.equal(dmgProblems(hdiutil([], { detach: failing }), '/x/F.dmg', '/m', () => []).length, 1);
+    });
+
+    it('no_disk_image_or_more_than_one_is_not_a_release_image', () => {
+      assert.equal(releaseImage([]), undefined);
+      assert.equal(releaseImage(['Fresher_0.1.0_aarch64.dmg', 'notes.txt']), undefined);
+      assert.equal(releaseImage(['Fresher_0.1.0_universal.dmg', 'Fresher_0.2.0_universal.dmg']), undefined);
+    });
+
     it('a_display_without_flags_has_none', () => {
       assert.deepEqual(signatureFlags('Executable=/x\nExecutable Segment flags=0x1\n'), []);
     });
@@ -122,9 +208,36 @@ describe('check-bundle', () => {
       assert.deepEqual(signatureFlags(SIGNED), ['adhoc', 'runtime']);
     });
 
+    it('a_universal_executable_passes', () => {
+      assert.deepEqual(archProblems(lipoSaying('x86_64 arm64'), '/x/Fresher.app'), []);
+      assert.deepEqual(appProblems(TOOLS, '/x/Fresher.app', EXECUTABLE, '/Users/someone', true), []);
+    });
+
+    it('a_disk_image_that_verifies_and_holds_a_passing_app_passes', () => {
+      const calls: string[] = [];
+      assert.deepEqual(
+        dmgProblems(hdiutil(calls), '/x/F.dmg', '/m', () => []),
+        [],
+      );
+      assert.deepEqual(calls, [
+        'verify -quiet /x/F.dmg',
+        'attach -readonly -nobrowse -noautoopen -mountpoint /m /x/F.dmg',
+        'detach /m',
+      ]);
+    });
+
+    it('the_one_universal_disk_image_is_the_release_image', () => {
+      assert.equal(
+        releaseImage(['Fresher_0.1.0_universal.dmg', 'bundle_dmg.sh', 'icon.icns']),
+        'Fresher_0.1.0_universal.dmg',
+      );
+    });
+
     it('the_default_bundle_is_under_the_cargo_target_folder', () => {
       assert.equal(defaultBundle('/repo', {}), '/repo/target/release/bundle/macos/Fresher.app');
       assert.equal(defaultBundle('/repo', { CARGO_TARGET_DIR: '/t' }), '/t/release/bundle/macos/Fresher.app');
+      assert.equal(releaseBundle('/repo', {}), '/repo/target/universal-apple-darwin/release/bundle');
+      assert.equal(releaseBundle('/repo', { CARGO_TARGET_DIR: '/t' }), '/t/universal-apple-darwin/release/bundle');
     });
   });
 });

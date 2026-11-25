@@ -35,7 +35,7 @@ level, with Xcode build data as the largest safe category"-->
 ## Install
 
 **[Download the latest `.dmg`](https://github.com/AlexSergey/fresher/releases/latest)**, open it and drag Fresher to
-Applications. It runs on macOS 13 or later, on Apple silicon and Intel.
+Applications. It runs on macOS 13 or later, on Apple silicon and Intel. What changed in each version: [the changelog](docs/changelog.md).
 
 ### First launch on macOS
 

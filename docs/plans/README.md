@@ -44,8 +44,9 @@ number; their order is set when they are approved.
 
 **Versions.** The version was reset to 0.1.0 on 2026-11-16 and stays there while the app is built: plans do not bump
 it (the user's decision: nobody has tested the app or looked for its bugs yet). The versions in the plans done before
-then (0.0.1 to 0.5.5) are kept as history; the "Version" of a plan not yet done is not a target any more. Numbering and
-an automated release are decided before the first release ([`../deferred/release-versioning.md`](../deferred/release-versioning.md)).
+then (0.0.1 to 0.5.5) are kept as history; the "Version" of a plan not yet done is not a target any more. The first
+release is 0.1.0, for testers (the user, 2026-11-25); how a release is cut: [`../workflow.md`](../workflow.md),
+"Releases" (plan [013](./013-release/readme.md)).
 
 | #   | Global plan                                                          | Status         | Version | Modules                                           |
 | --- | -------------------------------------------------------------------- | -------------- | ------- | ------------------------------------------------- |
@@ -61,7 +62,7 @@ an automated release are decided before the first release ([`../deferred/release
 | 010 | [History and watch mode](./010-history/readme.md)                    | 📝 draft       | 0.6.0   | core, store, engine, app/ui                       |
 | 011 | [Problems and reasons](./011-diagnostics/readme.md)                 | 🔨 in progress | 0.1.0   | core, engine, cleaner, testing, modules, app, app/ui |
 | 012 | [The storage map](./012-storage-map/readme.md)                       | 🔨 in progress | 0.1.0   | core, macos, scanner, engine, testing, sandbox, app, app/ui |
-| 013 | [Release and distribution](./013-release/readme.md)                  | 🔨 in progress | 0.1.0   | repo, ci, scripts, app, app/ui, docs              |
+| 013 | [Release and distribution](./013-release/readme.md)                  | 🔨 in progress (built, awaiting the user's look) | 0.1.0   | repo, ci, scripts, app, app/ui, docs              |
 | 014 | [Onboarding and the first scan](./014-onboarding/readme.md)          | 📝 draft       | 0.5.0   | engine, store, app/ui                             |
 | 015 | [Module groups and ignoring a module](./015-module-groups/readme.md) | 🔨 in progress | 0.1.0 | core, engine, modules, testing, app, app/ui |
 | 016 | [JetBrains IDE leftovers](./016-jetbrains/readme.md) | 🔨 in progress | 0.1.0 | modules, core, sandbox, testing, app, app/ui, docs |

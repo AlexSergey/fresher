@@ -14,17 +14,21 @@ The user's task, goals and non-goals: [`readme.md`](./readme.md). This page hold
 - **A stable identity**: the same bundle id, `io.github.alexsergey.fresher`, in every release — macOS ties granted
   permissions to it (and, once signed, to the signing identity). Development builds use a separate id (plan
   [007](../007-safe-development/readme.md)).
-- **The package (plan 02)**: a disk image with the app, for Apple silicon and Intel in one universal build; macOS 13
-  and later, the release checklist runs the app on the oldest and the newest supported version.
+- **The package (plan 02)**: a disk image with the app, for Apple silicon and Intel in one universal build
+  (`npm run build:release`), checked like the app and opened to check the app inside; macOS 13 and later, the release
+  checklist runs the app on the oldest and the newest supported version.
 - **Updates without the network**: the app never checks. About shows the version and where new versions are
   published, as plain text.
 - **One official place to download**, named in the README when the first release is published
   ([`deferred/readme-at-release.md`](../../deferred/readme-at-release.md)); every release lists its checksums.
-- **Versions and the changelog (plan 03, later)**: semantic versions from 0.1.0; the changelog from the Conventional
-  Commits ([`deferred/release-versioning.md`](../../deferred/release-versioning.md)).
-- **The release workflow (plan 04)**: a tag starts a CI job that builds with locked dependencies and attaches the
-  image and checksums to a draft release; a person publishes it after the checklist. Migrations are tested per
-  release on data folders written by earlier versions.
+- **Versions and the changelog (plan 03/02)**: semantic versions from 0.1.0, one version in every place, checked on
+  every push and set by one command; the changelog, `docs/changelog.md`, written by hand for the people who use the
+  app (agent's call 9 of the readme).
+- **The release workflow (plan 04)**: a tag starts a CI job that builds with locked dependencies and no caches,
+  attests the image's build provenance and attaches the image and checksums to a draft release whose text is the
+  release notes; a person publishes it after the checklist ([`../../workflow.md`](../../workflow.md), "Releases").
+  Migrations are checked per release on the data folder written by the previous version, from the second release
+  on.
 
 ### The licence notices (plan 03/01)
 

@@ -94,6 +94,7 @@ tokens' mirror** keeps `motion.css` and `motion.ts` equal ([`testing.md`](./test
 | staged-files guard    | any file over 1 MiB, any `*.sqlite` or `.env`      | `npm run check:staged`  |
 | crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module; a crate root other than `fresher-macos`'s without `#![forbid(unsafe_code)]` among its leading attributes (a commented-out one does not count); a file of `modules/*/src` naming `std::process` or `std::env`, aliasing `std`, or using `extern crate`, `include!` or `#[path]` (a module runs a tool through `CommandRunner`); a module with a build script or a third-party crate outside `serde`, `serde_json`, `thiserror`, `toml`, `tracing` (its tests may use any); a `Command::new` or command-port `.run` in `crates/*/src` or `modules/*/src` (tests left out) whose program is a bare name, which the system would look up in `PATH` | `npm run check:crate-deps` |
 | lock check | a `package-lock.json` package resolved from outside `https://registry.npmjs.org/` or without a `sha512` integrity, a local package that is not a workspace; a `Cargo.lock` crate from outside crates.io or without a checksum (`scripts/check-locks.ts`) | `npm run check:locks` |
+| version check | a place that holds another version than the workspace's `Cargo.toml`: both `package.json`, `app/tauri/tauri.conf.json`, the workspace's entries of `package-lock.json` and `Cargo.lock`; with a version given (the release workflow), also a missing changelog section or release notes (`scripts/release-version.ts`) | `npm run check:version` |
 | text check | an exclamation mark, a banned word, a text over its length, a category name of more than 4 words, a line with a full stop, a category without its six texts, a label without a description, "delete" outside a permanent delete, a lower-case "trash", a badly formed or unfinished text, in every English dictionary (`scripts/check-texts.ts`, [`writing.md`](./writing.md)) | `npm run check:texts` |
 
 ## Layer 3. Pre-commit (Husky + lint-staged)
@@ -129,8 +130,8 @@ Conventional Commits: `type(scope): subject`.
 1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint; then `npm run check:readme` (the README's generated
    table, links, images and claims; `npm run readme:generate` rewrites the table), `npm run check:notices` (the
    licence notices the app ships are up to date and every Rust and npm production licence is in `deny.toml`'s
-   allowlist; `npm run notices:generate` rewrites them), `npm run check:crate-deps`, `npm run check:locks` and
-   `npm run check:texts`
+   allowlist; `npm run notices:generate` rewrites them), `npm run check:crate-deps`, `npm run check:locks`,
+   `npm run check:version` and `npm run check:texts`
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
 4. `npm run test:scripts` — the repository scripts' tests
@@ -153,12 +154,14 @@ checksum (nothing is downloaded and run unverified).
 
 | Workflow     | Job     | Runs                                                                                           |
 | ------------ | ------- | ---------------------------------------------------------------------------------------------- |
-| `ci.yml`     | `lint`  | actionlint, `npm run lint`, `npm run check:readme`, `npm run check:notices` (after `cargo fetch --locked`), the crate dependency guard, the lock check, the text check, knip, cargo-machete, cargo-deny, typos, `npm audit` |
+| `ci.yml`     | `lint`  | actionlint, `npm run lint`, `npm run check:readme`, `npm run check:notices` (after `cargo fetch --locked`), the crate dependency guard, the lock check, the version check, the text check, knip, cargo-machete, cargo-deny, typos, `npm audit` |
 |              | `test`  | `npm run test:scripts`, `npm run test:cov`; the coverage and JUnit reports kept as an artifact |
 |              | `e2e`   | `npm run test:e2e` with the Playwright browsers; the report kept on failure                    |
 |              | `build` | `npm run build`: the app bundle, signed ad hoc with the hardened runtime, and its check (`npm run check:bundle`) |
 | `codeql.yml` | analyze | CodeQL (`security-extended`) for the workflows, TypeScript and Rust; on pull requests, on `main` and weekly |
 | `advisories.yml` | advisories | `cargo deny check advisories` and `npm audit --omit=dev`, weekly: an advisory published after the last push |
+| `release.yml` | `build` | on a pushed tag `v*.*.*`, or by hand as a dry run: the tag is on `main`, the version check with the tag's version, `npm run test:scripts`, `npm run build:release` (the universal app and its disk image, and their check), `SHA256SUMS`; the files kept as an artifact. No caches |
+|              | `release` | on a tag only: the files checked against `SHA256SUMS`, the build provenance attested, a draft release made with the image, `SHA256SUMS` and the release notes as its text; a person publishes it ([`workflow.md`](./workflow.md), "Releases") |
 
 The `ci.yml` jobs run one after another on `macos-latest`. Each starts with `.github/actions/setup`: Node from `.nvmrc`,
 the Rust toolchain from `rust-toolchain.toml`, the npm and cargo caches, `npm ci`. The cargo tools are installed at the
@@ -170,6 +173,11 @@ versions used locally; nextest runs with its `ci` profile (`.config/nextest.toml
 - Exact versions in `package.json` (`.npmrc`: `save-exact=true`), `package-lock.json` committed, `npm ci` in CI.
 - `Cargo.lock` committed; every cargo command in hooks and CI runs with `--locked`, `npm run build` too (`tauri build
   -- --locked`).
+- `npm run build:release` builds the release: one universal app for Apple silicon and Intel
+  (`--target universal-apple-darwin`) in a disk image (`Fresher_<version>_universal.dmg`), then `npm run check:bundle
+  -- --release` checks the app, both architectures (`lipo -archs`), the image (`hdiutil verify`) and the app inside it.
+  It sets `CI=true`, with which Tauri's disk image script skips laying out the image's window through Finder, so a
+  build on a developer's Mac opens no window and needs no automation permission.
 - `npm run build` remaps the home folder to `~` in the binary's paths (`--remap-path-prefix`), so the bundle names no
   account and does not depend on where it was built; `scripts/check-bundle.ts` fails on a binary that still holds it.
 - The Rust toolchain is pinned in `rust-toolchain.toml`; `rust-version` in the workspace is raised in the same change.

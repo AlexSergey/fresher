@@ -81,7 +81,8 @@
 - **Enforced by:** `bundle.macOS` in `app/tauri/tauri.conf.json` (`signingIdentity`, `hardenedRuntime`, no
   `entitlements`) and its test (`app/tauri/tests/config.rs`); `scripts/check-bundle.ts` (`npm run check:bundle`),
   which `npm run build` runs on the bundle it built, so CI's build job fails on a bundle without the `runtime` flag,
-  with entitlements, or whose strict verify fails (plan 041).
+  with entitlements, or whose strict verify fails (plan 041); `npm run build:release`, run by the release workflow,
+  checks the universal app and the app inside its disk image the same way (plan 013).
 - **Rule:** the core and the modules start an external program only by its absolute path, never by a bare name the
   system would look up in `PATH`, which a same-user program can change for the app.
 - **Enforced by:** the crate dependency guard (`scripts/check-crate-deps.ts`, `npm run check:crate-deps`, in the

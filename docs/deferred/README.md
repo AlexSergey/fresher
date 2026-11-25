@@ -10,7 +10,6 @@ needs. When it is done, its row and file are removed in the same change.
 
 | Item                                                             | Agreed     | Due at                   | What                                                                            |
 | ---------------------------------------------------------------- | ---------- | ------------------------ | ------------------------------------------------------------------------------- |
-| [Release versioning](./release-versioning.md) | 2026-11-16 | before the first release | the numbering from 0.1.0 and an automated release (bump, changelog, tag) |
 | [The fast scan on the developer's home](./fast-scan-home-run.md) | 2026-11-16 | before the first release | plan 004's budget run by hand: the home folder's scan, rescans, clones          |
 | [The first real cleanups in a sandbox](./removal-sandbox-run.md) | 2026-11-16 | before the first release | plan 008's run by hand: the real Trash, put back, Finder's Put Back, skips, quit |
 | [Settings export and import](./settings-export-import.md)        | 2026-11-16 | when a user asks         | Export… and Import… with a preview of the changes; today the file itself       |
@@ -39,5 +38,5 @@ needs. When it is done, its row and file are removed in the same change.
 | [More of the uninstall](./uninstall-system-files.md) | 2026-11-22 | when the user asks for it after the first release | an app's system-wide files (shown, never removed), files kept under the app's name, package managers beyond Homebrew casks, watch mode's growing apps |
 | [An app's small Library files in the footprint](./uninstall-small-library-parts.md) | 2026-11-22 | after plan 036's walk on the developer's Mac | the scan folds a Library file under 1 MiB no module asks for, so a settings plist or launch agent may be missing from the footprint; the Apps view should register interests for its places |
 | [App Management learned only from a refusal that means it](./app-management-denied-from-not-allowed.md) | 2026-11-22 | after plan 036's walk, or the next change to the cleaner | `Denied` is taught by any Trash refusal of the bundle; it needs a core `Failure` variant for `NotAllowed` and the cleaner's mapping |
-| [The README at the first release](./readme-at-release.md) | 2026-11-22 | when plan 013 publishes the first release | the package manager's line in the README's Install block; `SECURITY.md`'s supported versions name the release |
+| [The README at the first release](./readme-at-release.md) | 2026-11-22 | when plan 013 publishes the first release | the package manager's line in the README's Install block |
 | [A sandbox that starts accepted](./sandbox-case-settings-agreement.md) | 2026-11-23 | the next change to `crates/sandbox` | refuse a case file's `[settings]` of the agreement at generation, not only in the harness test |

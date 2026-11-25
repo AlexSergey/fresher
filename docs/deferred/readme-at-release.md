@@ -9,7 +9,8 @@ The README's download link, its release badge and the first-launch note were wri
 "Follow-up"); the social image's head did not change, so it was not rendered again. Left for the release:
 
 - **The package manager's one line** in the Install block, once a package for it exists.
-- **"Supported versions" of `.github/SECURITY.md`** names the release.
+
+`.github/SECURITY.md`'s "Supported versions" was done by plan 013 (0.1.x).
 
 ## Why
 

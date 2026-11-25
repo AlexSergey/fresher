@@ -1,20 +1,29 @@
 name: Setup
 description: Node from .nvmrc, Rust from rust-toolchain.toml, the npm and cargo caches, and npm ci.
 
+inputs:
+  cache:
+    description: >-
+      Restore and save the npm and cargo caches. The release workflow turns them off, so a release is built only from
+      the tagged tree and the locked downloads.
+    default: 'true'
+
 runs:
   using: composite
   steps:
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version-file: .nvmrc
-        cache: npm
+        cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
+        package-manager-cache: ${{ inputs.cache }}
 
-    # rustup reads the channel and the components from rust-toolchain.toml.
+    # rustup reads the channel, the components and the targets from rust-toolchain.toml.
     - name: Install the pinned Rust toolchain
       shell: bash
       run: rustup toolchain install --no-self-update
 
-    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+    - if: ${{ inputs.cache == 'true' }}
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
     - name: Install npm dependencies
       shell: bash
