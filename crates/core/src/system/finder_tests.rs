@@ -135,6 +135,18 @@ mod negative {
     }
 
     #[test]
+    fn a_project_deep_inside_another_s_artifact_folder_is_not_a_project() {
+        let projects = collect(vec![
+            marker("Cargo.toml", "/home/tool"),
+            marker("package.json", "/home/tool/target/a/b/c/web"),
+            marker("Cargo.toml", "/home/tool/targets/kept"),
+        ]);
+
+        let roots: Vec<_> = projects.iter().map(|project| project.root.to_str().unwrap()).collect();
+        assert_eq!(roots, ["/home/tool", "/home/tool/targets/kept"]);
+    }
+
+    #[test]
     fn a_file_match_an_unknown_index_and_a_lone_artifact_make_nothing() {
         let (local, mut file) = marker("package.json", "/home/web");
         file.kind = EntryKind::File;

@@ -114,11 +114,13 @@ impl ProjectFinder {
 
     /// The projects kept, by root, with the artifact and cache folders matched in them.
     fn found(&self) -> Vec<Found> {
-        let artifact_folders: Vec<PathBuf> =
+        let artifact_folders: BTreeSet<PathBuf> =
             self.roots.iter().flat_map(|(root, kinds)| artifact_paths(root, kinds)).collect();
+        // Inside an artifact folder: one of the root's ancestors, never the root itself, is one. Asked by ancestor, so
+        // the cost grows with the depth of a root, not with the number of projects.
         let nested = |root: &Path| {
             root.iter().any(|name| name == PACKAGES)
-                || artifact_folders.iter().any(|artifact| root.starts_with(artifact) && root != artifact.as_path())
+                || root.ancestors().skip(1).any(|ancestor| artifact_folders.contains(ancestor))
         };
         self.roots
             .iter()
