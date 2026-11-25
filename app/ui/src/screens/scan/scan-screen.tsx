@@ -80,8 +80,8 @@ const OTHER_VOLUME: Readonly<Record<ScanPhase, Exclude<ScanPhase, 'failed' | 'sc
 // "Where did my space go?": the toolbar with when the last scan finished and Scan again, the disk card of the first
 // volume (the scan's progress while it runs), a notice when the scan was stopped, what a missing permission or an
 // unreadable folder kept the scan from seeing (under its own heading), what waits in the Trash, a compact card for each
-// other volume, then "What you can remove": the category tiles in their groups, what was left out or only described,
-// and the floating selection bar.
+// other volume, then, once the scan has ended, "What you can remove": the category tiles in their groups, what was
+// left out or only described; and the floating selection bar. While a scan runs nothing below its card looks finished.
 // One control per action: the toolbar's Scan again only after a scan that finished, ended partial or was stopped;
 // before the first scan the disk card holds Scan, during a scan the progress holds Stop, and after a failed scan the
 // card's error holds Try again.
@@ -113,7 +113,6 @@ export const ScanScreen = (): JSX.Element => {
   const ignoredCount =
     ignored === undefined ? 0 : ignored.groups + ignored.modules + ignored.categories + ignored.paths;
   const volumes = storageMap?.volumes ?? [];
-  const views = scanning || scanned;
   const failure = scanFailure(lastScan, outcome);
   // The modules the scan runs (a scan learned of from an overview only runs every module the core lists), and which of
   // them have finished.
@@ -180,12 +179,12 @@ export const ScanScreen = (): JSX.Element => {
             volume={volume}
           />
         ))}
-        {views ? <SectionSeparator label={t('ui.screen.scan.separator')} /> : null}
-        {views && overview !== null ? (
-          <ScanGroups access={categoryAccess} scanning={scanning} totals={totals} unavailable={unavailable} />
+        {scanned ? <SectionSeparator label={t('ui.screen.scan.separator')} /> : null}
+        {scanned && overview !== null ? (
+          <ScanGroups access={categoryAccess} totals={totals} unavailable={unavailable} />
         ) : null}
-        {views ? <LeftOutOnly cards={[...totals, ...unavailable].map(({ category }) => category)} /> : null}
-        {views ? <DescribedOnly /> : null}
+        {scanned ? <LeftOutOnly cards={[...totals, ...unavailable].map(({ category }) => category)} /> : null}
+        {scanned ? <DescribedOnly /> : null}
         {ignoredCount > 0 ? (
           <p className={styles.ignored}>
             <span>{t('ui.screen.scan.ignored', { count: { kind: 'count', value: ignoredCount } })}</span>

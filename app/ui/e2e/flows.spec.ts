@@ -975,8 +975,9 @@ test.describe('negative cases', () => {
     await expect(page.getByRole('heading', { level: 2, name: DESCRIBED })).toHaveCount(0);
 
     await scanButton(page).click();
-    // The docker module has finished, the scan has not.
-    await expect(cards(page)).toHaveCount(4);
+    // The docker module has finished, the scan has not: nothing of what can be removed shows yet.
+    await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
     await expect(page.getByRole('heading', { level: 2, name: DESCRIBED })).toHaveCount(0);
 
     await releaseScan(page);

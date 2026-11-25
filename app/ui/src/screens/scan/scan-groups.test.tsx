@@ -37,7 +37,7 @@ const renderGroups = async (totals: readonly CategoryTotal[] = TOTALS): Promise<
   });
   render(
     <AppProviders store={store}>
-      <ScanGroups access={new Map()} scanning={false} totals={totals} unavailable={[]} />
+      <ScanGroups access={new Map()} totals={totals} unavailable={[]} />
     </AppProviders>,
   );
   await vi.waitFor(() => {

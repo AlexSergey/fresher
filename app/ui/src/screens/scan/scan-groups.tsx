@@ -21,7 +21,6 @@ import { type Zone, zoneSelectAll, zonesOf } from './zones';
 export type ScanGroupsProps = {
   // The categories that are limited or unavailable and what that says; a category not in it is ready.
   readonly access: ReadonlyMap<CategoryId, CardAccess>;
-  readonly scanning: boolean;
   // The categories the core counted.
   readonly totals: readonly CategoryTotal[];
   // Zero totals of the unavailable categories that found nothing: they are tiles too, never absent.
@@ -103,12 +102,10 @@ const Group = ({ children, onChoose, selectable, selection, zone }: GroupProps):
   );
 };
 
-const noop = (): void => undefined;
-
-// While scanning, the tiles found so far in one grid. After it, the category tiles in their groups, the safest first.
+// The category tiles of a finished scan in their groups, the safest first.
 // Nothing is selected until the user ticks it; a "Look before removing" tile ticked here only brings its category to
 // Review, where its items are ticked one by one (`Selection.toCheck`): its tile reads checked, mixed once some are.
-export const ScanGroups = ({ access, scanning, totals, unavailable }: ScanGroupsProps): JSX.Element => {
+export const ScanGroups = ({ access, totals, unavailable }: ScanGroupsProps): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
   const modules = useModules();
@@ -124,24 +121,6 @@ export const ScanGroups = ({ access, scanning, totals, unavailable }: ScanGroups
     ...unavailable.filter(({ category }) => !totals.some((total) => total.category === category)),
   ];
   const selectable = (category: CategoryId): boolean => access.get(category)?.kind !== 'unavailable';
-
-  if (scanning) {
-    // The tiles found so far, in one grid without groups or controls, and a stand-in for what is still coming.
-    return (
-      <CategoryGrid
-        access={access}
-        icon={(category) => iconOf(modules, category)}
-        label={t('ui.screen.scan.separator')}
-        onDetails={noop}
-        onIgnore={ignore}
-        onToggle={noop}
-        placeholder
-        scanning
-        selected={() => false}
-        totals={tiles}
-      />
-    );
-  }
 
   return (
     <>

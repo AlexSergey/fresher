@@ -382,14 +382,14 @@ describe('ScanScreen', () => {
       });
     });
 
-    it('a tile found while scanning has no checkbox, Details or menu', async () => {
+    it('while scanning nothing of what can be removed is shown yet', async () => {
       core({ getOverview: () => SCANNING, getStorageMap: () => DEMO_MAP_SCANNING });
       await renderOverview();
 
-      expect(await screen.findByRole('heading', { level: 3, name: 'Example downloads' })).toBeInTheDocument();
+      expect(await screen.findByRole('region', { name: 'Scanning' })).toBeInTheDocument();
+      expect(screen.queryByText('What you can remove')).toBeNull();
+      expect(screen.queryByRole('heading', { level: 3, name: 'Example downloads' })).toBeNull();
       expect(screen.queryByRole('checkbox')).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Details' })).toBeNull();
-      expect(screen.queryByRole('button', { name: /^Options for/u })).toBeNull();
     });
   });
 
@@ -556,12 +556,12 @@ describe('ScanScreen', () => {
       expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
     });
 
-    it('cards appear as totals arrive, each in the zone of its level', async () => {
+    it('the cards appear once the scan has ended, each in the zone of its level', async () => {
       let overview = SCANNING;
       core({ getOverview: () => overview });
       await renderOverview();
 
-      expect(await screen.findByRole('heading', { level: 3, name: 'Example downloads' })).toBeInTheDocument();
+      expect(await screen.findByRole('region', { name: 'Scanning' })).toBeInTheDocument();
 
       overview = DEMO_OVERVIEW;
       act(() => {
@@ -574,7 +574,7 @@ describe('ScanScreen', () => {
       expect(cardNames('Usually safe')).toStrictEqual(['Example downloads']);
     });
 
-    it('cards arrive during a scan the events started', async () => {
+    it('a scan the events started shows its card, and its cards once it ends', async () => {
       let overview = IDLE;
       core({ getOverview: () => overview });
       await renderOverview();
@@ -584,8 +584,15 @@ describe('ScanScreen', () => {
         pushEvents(SCAN_STARTED, FIRST_BATCH);
       });
 
+      expect(await screen.findByRole('button', { name: 'Stop' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 3, name: 'Example downloads' })).toBeNull();
+
+      overview = DEMO_OVERVIEW;
+      act(() => {
+        pushEvents(...DEMO_SCAN.slice(2));
+      });
+
       expect(await screen.findByRole('heading', { level: 3, name: 'Example downloads' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
     });
 
     it("a card's Details opens the category's details", async () => {
