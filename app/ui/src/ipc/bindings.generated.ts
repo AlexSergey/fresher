@@ -41,7 +41,7 @@ leftOut: Array<LeftOutCount>,
 /**
  * What the module described and does not offer, in the order it gave it.
  */
-insights: Array<Insight>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
+insights: Array<Insight>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "nothing-restored", scan: ScanId, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" };
 
 /**
  * A refused command as the UI receives it: the error, and the text to show for it, built by `CommandError::text()`.

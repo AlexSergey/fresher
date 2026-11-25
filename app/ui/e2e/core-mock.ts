@@ -247,6 +247,9 @@ export type CoreScript = {
   readonly largest?: boolean;
   // The by-meaning groups once the scan ended, in place of the demo volume's; the volume's own lines follow them.
   readonly meaning?: readonly MeaningGroup[];
+  // The app started a restore with nothing to restore: the first `get_overview` says scan 1 runs, then the core sends
+  // `nothing-restored` and answers as before it.
+  readonly quietRestore?: boolean;
   readonly refusals?: Partial<Readonly<Record<CommandKey, Refusal>>>;
   readonly scan?: readonly Event[];
   readonly scanned?: Overview;
@@ -304,6 +307,7 @@ type ByCommand = {
   // How many events a scan paced by `interval` streams.
   readonly paced: number;
   readonly pageOf: string;
+  readonly quietRestore: boolean;
   readonly refusals: Readonly<Record<string, Refusal>>;
   readonly release: string;
   readonly scan: readonly Event[];
@@ -410,6 +414,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     overviewOf: OVERVIEW_OF,
     paced: script.interval === undefined ? 0 : (script.scan ?? []).length,
     pageOf: PAGE_OF,
+    quietRestore: script.quietRestore ?? false,
     refusals: byCommand(script.refusals),
     release: RELEASE,
     scan: script.interval === undefined ? (script.scan ?? []) : [],
@@ -441,6 +446,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
     let streamed = 0;
     let held: readonly Event[] = [];
     let running = false;
+    let restoring = core.quietRestore;
     // The Trash lines the last `get_trash` answered, and the Trashes `open_trash` was asked to open.
     let listed = 0;
     const opened: number[] = [];
@@ -621,6 +627,13 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
         ];
 
         return overviewOf === undefined ? Promise.resolve(answers[command]) : overviewOf(streamed);
+      }
+      if (command === core.getOverview && restoring) {
+        restoring = false;
+        // Sent after this answer, as the engine's event follows the overview it answered while the restore ran.
+        send([{ scan: 1, type: 'nothing-restored' }]);
+
+        return Promise.resolve({ ...(answers[command] as Overview), status: { scan: 1, state: 'scanning' } });
       }
       if (command === core.getFindings && !(command in answers)) {
         const query = args.query as FindingsQuery;

@@ -80,7 +80,7 @@ export type CoreState = {
   // The modules the followed scan runs, as its `scan-started` listed them (a module switched off is not among them);
   // `null` until a `scan-started` arrived, as for a scan the UI learned of from an overview only.
   readonly scanModules: null | readonly ModuleId[];
-  // The newest scan the events told of, and whether it finished: what an overview answered later must not undo.
+  // The newest scan the events told of, and how far it got: what an overview answered later must not undo.
   readonly seen: null | SeenScan;
   // What the user picked for removal in this scan (state/selection.ts); nothing is picked when a scan starts.
   readonly selection: Selection;
@@ -96,7 +96,8 @@ export type CoreState = {
 
 type ScanEvent = Extract<Event, { readonly scan: ScanId }>;
 
-type SeenScan = { readonly finished: boolean; readonly scan: ScanId };
+// `nothing-restored`: a restore that ended without starting, so the last scan is still the one before it.
+type SeenScan = { readonly end: 'finished' | 'nothing-restored' | 'running'; readonly scan: ScanId };
 
 export const INITIAL_STATE: CoreState = {
   access: null,
@@ -187,6 +188,9 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
             ],
           })
         : state;
+    case 'nothing-restored':
+      // The restore an overview said was running ended without a result: the engine is idle, as it was before it.
+      return follows(event.scan) ? markStale({ ...state, status: { state: 'idle' } }) : state;
     case 'quit-requested':
       return state.quitAsked ? state : { ...state, quitAsked: true };
     case 'scan-coverage':
@@ -224,11 +228,29 @@ const changeSetting = (
   values: { ...settings.values, [key]: value },
 });
 
-const see = (seen: null | SeenScan, event: ScanEvent): null | SeenScan => {
-  const finished = event.type === 'scan-finished';
-  const known = seen !== null && (seen.scan > event.scan || (seen.scan === event.scan && (seen.finished || !finished)));
+const endOf = (event: ScanEvent): SeenScan['end'] => {
+  switch (event.type) {
+    case 'findings-added':
+    case 'findings-removed':
+    case 'module-finished':
+    case 'scan-coverage':
+    case 'scan-progress':
+    case 'scan-started':
+      return 'running';
+    case 'nothing-restored':
+      return 'nothing-restored';
+    case 'scan-finished':
+      return 'finished';
+  }
+};
 
-  return known ? seen : { finished, scan: event.scan };
+const see = (seen: null | SeenScan, event: ScanEvent): null | SeenScan => {
+  const end = endOf(event);
+  const known =
+    seen !== null &&
+    (seen.scan > event.scan || (seen.scan === event.scan && (seen.end !== 'running' || end === 'running')));
+
+  return known ? seen : { end, scan: event.scan };
 };
 
 // The overview is answered after the events, so an event that came before it may be newer than it is: an older
@@ -238,14 +260,17 @@ const loadOverview = (state: CoreState, overview: Overview): CoreState => {
   const { status } = overview;
 
   if (status.state === 'scanning') {
-    const outdated = seen !== null && (seen.scan > status.scan || (seen.scan === status.scan && seen.finished));
+    const outdated =
+      seen !== null && (seen.scan > status.scan || (seen.scan === status.scan && seen.end !== 'running'));
 
     return outdated ? state : { ...state, overview, scan: status.scan, status };
   }
 
-  // A scan the events started is running until its own `scan-finished` arrives; an earlier scan's totals are old.
+  // A scan the events started is running until its own `scan-finished` arrives; an earlier scan's totals are old. A
+  // restore that restored nothing left the last scan as it was.
   const last = overview.lastScan?.scan;
-  const outdated = seen !== null && (!seen.finished || last === undefined || last < seen.scan);
+  const outdated =
+    seen !== null && (seen.end === 'running' || (seen.end === 'finished' && (last === undefined || last < seen.scan)));
 
   // A restored result has no `scan-coverage` event: its coverage comes with the overview.
   return outdated
@@ -304,6 +329,7 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
       return { ...state, dictionary: action.dictionary };
     case 'findings-added':
     case 'module-finished':
+    case 'nothing-restored':
     case 'scan-finished':
     case 'scan-progress':
     case 'scan-started': {

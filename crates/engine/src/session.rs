@@ -66,7 +66,7 @@ pub(crate) struct Planned {
 /// engine keeps the state it had.
 ///
 /// A restore first collects the walk's matches (from memory, no disk): only then does it start, so a restore with
-/// nothing to restore publishes nothing and leaves the engine as it was.
+/// nothing to restore publishes only `NothingRestored` (the engine idle again first) and leaves the engine as it was.
 pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &ScanPlan) {
     let ids: Vec<ModuleId> = plan.modules.iter().map(|planned| planned.module.descriptor().id()).collect();
     let interests = all_interests(shared);
@@ -296,7 +296,8 @@ fn summary_of(walked: Result<WalkSummary, WalkError>) -> Option<WalkSummary> {
 }
 
 /// The matches and the summary of a `Restore` walk, collected before the scan starts; `None` for any other walk. A
-/// restore with nothing to restore ends here, quietly: the engine goes idle and nothing is published.
+/// restore with nothing to restore ends here, quietly: the engine goes idle, then `NothingRestored` tells whoever saw
+/// it running that it ended.
 fn restore(
     shared: &Shared,
     scan: ScanId,
@@ -315,6 +316,7 @@ fn restore(
         Err(error) => {
             tracing::info!(%error, "nothing was restored");
             lock_anyway(&shared.machine).finish(scan);
+            shared.bus.publish(&Event::NothingRestored { scan });
             Err(error)
         }
     }

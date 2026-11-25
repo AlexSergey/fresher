@@ -231,7 +231,8 @@ No database: the app keeps its own state in small plain files, with nothing to i
   FSEvents), reads again only those folders with their parents and the unreadable ones, copies the rest of the tree,
   then reads a sample of the copied folders: one difference, a gap in the journal, a position older than two weeks or
   too many changes, and the scan is full (`WalkSummary::fallback` says why). At launch the engine restores the last
-  state (`WalkMode::Restore`): the cache only, no folder read, the modules with interests run over its matches. The
+  state (`WalkMode::Restore`): the cache only, no folder read, the modules with interests run over its matches; with
+  nothing to restore the engine goes idle and sends only `NothingRestored`, so a UI that saw it running knows. The
   places walked outside the roots are never served from the cache: a rescan walks each again in full, whatever the
   journal says (it reports no read, and a status change through a hard link elsewhere moves no event in the folder),
   and a restore emits nothing inside one.

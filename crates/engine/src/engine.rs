@@ -209,8 +209,8 @@ impl Engine {
 
     /// Shows the last scan again without reading the disk, as an operation like a scan (refused while one runs): the
     /// walk restores its cached state and the enabled modules that declare interests run over its matches; the
-    /// modules without interests (they ask an external tool) do not run. With nothing to restore it ends quietly: no
-    /// event, and the engine stays without a last scan.
+    /// modules without interests (they ask an external tool) do not run. With nothing to restore it ends quietly: only
+    /// `NothingRestored`, and the engine stays as it was.
     pub fn restore(&self) -> Result<ScanId, CommandError> {
         self.start(WalkMode::Restore)
     }
@@ -584,9 +584,7 @@ mod tests {
             CommandError, DangerLevel, EngineStatus, Event, FindingId, Operation, ScanKind, ScanOutcome,
         };
 
-        use crate::testing::{
-            Fixture, ScriptedWalk, TestModule, bytes, engine, poison, scan, wait_for_finish, wait_until_idle,
-        };
+        use crate::testing::{Fixture, ScriptedWalk, TestModule, bytes, engine, poison, scan, wait_for_finish};
 
         #[test]
         fn refuses_a_scan_while_one_is_running() {
@@ -641,15 +639,16 @@ mod tests {
         }
 
         #[test]
-        fn nothing_to_restore_leaves_the_engine_idle_without_a_last_scan() {
+        fn nothing_to_restore_ends_idle_without_a_last_scan_and_says_so() {
             let walk = ScriptedWalk::new().failing(fresher_core::WalkError::NothingToRestore);
             let modes = walk.modes();
             let engine = engine(walk);
             let events = engine.subscribe();
 
-            engine.restore().unwrap();
+            let scan = engine.restore().unwrap();
 
-            wait_until_idle(&engine);
+            assert_eq!(events.recv_timeout(Duration::from_secs(10)), Ok(Event::NothingRestored { scan }));
+            assert_eq!(engine.status(), Ok(EngineStatus::Idle));
             assert_eq!(events.try_iter().count(), 0);
             assert_eq!(engine.overview().unwrap().last_scan, None);
             assert_eq!(*modes.lock().unwrap(), [fresher_core::WalkMode::Restore]);

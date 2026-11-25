@@ -177,17 +177,15 @@ mod negative {
     }
 
     #[test]
-    fn nothing_to_restore_leaves_the_engine_idle_without_a_last_scan() {
+    fn nothing_to_restore_ends_idle_without_a_last_scan_and_says_so() {
         let home = home("scan-basic.toml", Arc::new(Journal::default()));
         let events = home.engine.subscribe();
 
-        home.engine.restore().unwrap();
+        let scan = home.engine.restore().unwrap();
 
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
-        while home.engine.status() != Ok(fresher_core::EngineStatus::Idle) {
-            assert!(std::time::Instant::now() < deadline);
-            std::thread::yield_now();
-        }
+        let ended = events.recv_timeout(std::time::Duration::from_secs(30));
+        assert_eq!(ended, Ok(Event::NothingRestored { scan }));
+        assert_eq!(home.engine.status(), Ok(fresher_core::EngineStatus::Idle));
         assert_eq!(events.try_iter().count(), 0);
         assert_eq!(home.engine.overview().unwrap().last_scan, None);
     }

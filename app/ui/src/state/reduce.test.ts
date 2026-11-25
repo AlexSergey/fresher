@@ -11,6 +11,7 @@ import type {
   Sizes,
 } from '../ipc/bindings.generated';
 
+import { phaseOf } from '../screens/scan/phase';
 import {
   allFiles,
   DEMO_DICTIONARY,
@@ -223,6 +224,20 @@ describe('reduce', () => {
         { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
         loaded(scanning(4)),
       ]);
+
+      expect(state.status).toEqual({ state: 'idle' });
+      expect(state.overview).toBeNull();
+    });
+
+    it('a nothing-restored event of another scan changes nothing', () => {
+      const state = run([loaded(scanning(2)), { scan: 1, type: 'nothing-restored' }]);
+
+      expect(state.status).toEqual({ scan: 2, state: 'scanning' });
+      expect(state.scan).toBe(2);
+    });
+
+    it('keeps a restore that restored nothing idle when a stale overview says it still runs', () => {
+      const state = run([{ scan: 1, type: 'nothing-restored' }, loaded(scanning(1))]);
 
       expect(state.status).toEqual({ state: 'idle' });
       expect(state.overview).toBeNull();
@@ -490,6 +505,21 @@ describe('reduce', () => {
       expect(state.stale).toBe(true);
       expect(state.status).toEqual({ state: 'idle' });
       expect(state.outcome).toEqual({ kind: 'completed' });
+    });
+
+    it('a restore that restored nothing ends the scanning an overview reported', () => {
+      const state = run([loaded(scanning(1)), { scan: 1, type: 'nothing-restored' }]);
+
+      expect(state.status).toEqual({ state: 'idle' });
+      expect(state.stale).toBe(true);
+      expect(phaseOf(state.status, state.overview?.lastScan ?? null, state.outcome)).toBe('idle');
+    });
+
+    it('takes the idle overview answered after a restore that restored nothing', () => {
+      const state = run([{ scan: 1, type: 'nothing-restored' }, loaded(IDLE)]);
+
+      expect(state.overview).toEqual(IDLE);
+      expect(state.status).toEqual({ state: 'idle' });
     });
 
     it('a loaded map is kept', () => {

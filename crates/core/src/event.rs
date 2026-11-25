@@ -49,6 +49,11 @@ pub enum Event {
         outcome: ScanOutcome,
         kind: ScanKind,
     },
+    /// A restore found nothing to restore: it never started, published nothing else, and the engine went idle as it
+    /// was before it (the last scan unchanged). The one event a restore without a `ScanStarted` sends.
+    NothingRestored {
+        scan: ScanId,
+    },
     SettingChanged {
         key: SettingKey,
         value: SettingValue,
@@ -278,6 +283,13 @@ mod tests {
         }
 
         #[test]
+        fn nothing_restored_names_its_scan() {
+            let ended = Event::NothingRestored { scan: ScanId::new(5) };
+
+            assert_eq!(serde_json::to_value(ended).unwrap(), json!({ "type": "nothing-restored", "scan": 5 }));
+        }
+
+        #[test]
         fn exports_the_event_union_to_typescript() {
             let declaration = Event::decl(&Config::new());
 
@@ -288,6 +300,7 @@ mod tests {
                 "findings-added",
                 "module-finished",
                 "scan-finished",
+                "nothing-restored",
                 "setting-changed",
                 "access-changed",
                 "cleanup-started",
