@@ -1,8 +1,8 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-import { type CoreScript, mockCore, SCRIPTS, withheld } from './core-mock';
+import { type CoreScript, mockCore, releaseScan, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
-import { REVEALED } from './support/apps-mock';
+import { releaseMeasure, REVEALED } from './support/apps-mock';
 import { scanButton, scanFinished } from './support/cards';
 import { expectPutBack, preparedCommands } from './support/cleanup-mock';
 import { highTick, tickHigh } from './support/confirm';
@@ -158,6 +158,30 @@ test.describe('positive cases', () => {
 
     await expect(row.getByRole('listitem').filter({ hasText: 'Files it keeps for you' })).toBeVisible();
     await expect(row).toContainText('4 GB');
+  });
+
+  test('a scan from Apps shows its progress, then how many apps are measured, then the list', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.apps, apps: { measuring: true }, hold: 1 });
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('button', { name: 'Apps' }).click();
+    await page.getByRole('main').getByRole('button', { exact: true, name: 'Scan' }).click();
+
+    const card = page.getByRole('region', { name: 'Scanning' });
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('progressbar')).toBeVisible();
+    await expect(page.getByText(/^Measuring your apps/u)).toHaveCount(0);
+
+    await releaseScan(page);
+    await expect(card).toHaveCount(0);
+    await expect(page.getByText('Measuring your apps · 2 of 5')).toBeVisible();
+    await expect(page.getByRole('progressbar', { name: 'Measuring your apps · 2 of 5' })).toHaveAttribute(
+      'aria-valuenow',
+      '40',
+    );
+
+    await releaseMeasure(page);
+    await expect(appsList(page)).toBeVisible();
+    await expect(page.getByText(/^Measuring your apps/u)).toHaveCount(0);
   });
 
   test('the filter keeps the unused apps', async ({ page }) => {

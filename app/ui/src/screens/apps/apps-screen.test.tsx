@@ -78,10 +78,35 @@ describe('AppsScreen', () => {
       expect(await screen.findByText(/Homebrew installed this app/u)).toBeInTheDocument();
     });
 
-    it('shows the measuring line while the core answers', async () => {
+    it('shows the measuring line alone while the core answers and tells nothing', async () => {
       await show({ getApps: () => new Promise<AppsView>(() => undefined) });
 
       expect(await screen.findByText('Measuring your apps…')).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+    });
+
+    it('a measure that told every bundle shows the line alone until the list comes', async () => {
+      await show({ getApps: () => new Promise<AppsView>(() => undefined) });
+      await screen.findByText('Measuring your apps…');
+
+      act(() => {
+        pushEvents({ done: 12, total: 12, type: 'apps-measuring' });
+      });
+
+      expect(screen.getByText('Measuring your apps…')).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+    });
+
+    it('a scan running shows its card, not the measuring line', async () => {
+      await show({ getApps: () => new Promise<AppsView>(() => undefined) });
+      await screen.findByText('Measuring your apps…');
+
+      act(() => {
+        pushEvents({ modules: [], scan: 2, type: 'scan-started' });
+      });
+
+      expect(await screen.findByRole('region', { name: 'Scanning' })).toBeInTheDocument();
+      expect(screen.queryByText(/^Measuring your apps/u)).toBeNull();
     });
 
     it('asks to scan first before any scan and does not ask the core', async () => {
@@ -139,6 +164,21 @@ describe('AppsScreen', () => {
       await waitFor(() => {
         expect(getApps).toHaveBeenCalledTimes(2);
       });
+    });
+
+    it('shows how many apps of how many are measured, with its bar', async () => {
+      await show({ getApps: () => new Promise<AppsView>(() => undefined) });
+      await screen.findByText('Measuring your apps…');
+
+      act(() => {
+        pushEvents({ done: 3, total: 12, type: 'apps-measuring' });
+      });
+
+      expect(screen.getByText('Measuring your apps · 3 of 12')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar', { name: 'Measuring your apps · 3 of 12' })).toHaveAttribute(
+        'aria-valuenow',
+        '25',
+      );
     });
 
     it("shows the core's notice", async () => {

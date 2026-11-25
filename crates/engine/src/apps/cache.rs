@@ -1,15 +1,18 @@
 //! The bundle facts of the last committed state's listed apps: measured on the first listing (or page) after a
 //! commit, in parallel, outside every engine lock, and kept until another state is committed.
 
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use fresher_core::{
-    BundleFacts, CancelToken, CommandError, EngineStatus, InstalledApp, InstalledApps, Operation, StateId, SystemError,
+    BundleFacts, CancelToken, CommandError, EngineStatus, Event, InstalledApp, InstalledApps, Operation, StateId,
+    SystemError,
 };
 
 use crate::engine::Shared;
-use crate::error::lock;
+use crate::error::{lock, lock_anyway};
+use crate::throttle::Throttle;
 
 /// The most threads that measure bundles at once.
 const THREADS: usize = 4;
@@ -66,7 +69,7 @@ pub(crate) fn facts(
         lock(&shared.apps)?.measure = None;
         return Err(busy());
     }
-    let measured = measure(&*shared.ports.system.apps, installed, listed, &cancel);
+    let measured = measure_telling(shared, installed, listed, &cancel);
     let current = lock(&shared.results)?.state().map(|kept| kept.id());
     let mut cache = lock(&shared.apps)?;
     cache.measure = None;
@@ -86,9 +89,49 @@ pub(super) fn kept(shared: &Shared, state: StateId) -> Result<Option<Facts>, Com
     Ok((cache.state == Some(state)).then(|| cache.facts.clone()))
 }
 
-/// The facts of the bundles at `listed`, at most four at once. An app whose measure did not end (its thread could not
+/// How far a measure got: the bundles measured so far, the last count sent, and the throttle between them.
+#[derive(Default)]
+struct Told {
+    done: u32,
+    sent: Option<u32>,
+    throttle: Throttle<u32>,
+}
+
+/// [`measure`], telling how far it got by `AppsMeasuring`: `0` first, then at most one count every 50 ms, each sent
+/// under the lock that counts it so the counts never go down, and `total` last unless the measure was cancelled.
+fn measure_telling(shared: &Shared, installed: &[InstalledApp], listed: &[usize], cancel: &CancelToken) -> Facts {
+    let total = u32::try_from(listed.len()).unwrap_or(u32::MAX);
+    let clock = &*shared.ports.clock;
+    let told = Mutex::new(Told::default());
+    let offer = |told: &mut Told| {
+        if let Some(done) = told.throttle.offer(told.done, clock.now()) {
+            told.sent = Some(done);
+            shared.bus.publish(&Event::AppsMeasuring { done, total });
+        }
+    };
+    offer(&mut lock_anyway(&told));
+    let one_done = || {
+        let mut told = lock_anyway(&told);
+        told.done = told.done.saturating_add(1);
+        offer(&mut told);
+    };
+    let measured = measure(&*shared.ports.system.apps, installed, listed, cancel, &one_done);
+    let told = lock_anyway(&told);
+    if !cancel.is_cancelled() && told.sent != Some(total) {
+        shared.bus.publish(&Event::AppsMeasuring { done: total, total });
+    }
+    measured
+}
+
+/// The facts of the bundles at `listed`, at most four at once; `one_done` is called after each bundle. An app whose measure did not end (its thread could not
 /// start or panicked) stays `None`.
-fn measure(apps: &dyn InstalledApps, installed: &[InstalledApp], listed: &[usize], cancel: &CancelToken) -> Facts {
+fn measure(
+    apps: &dyn InstalledApps,
+    installed: &[InstalledApp],
+    listed: &[usize],
+    cancel: &CancelToken,
+    one_done: &(dyn Fn() + Sync),
+) -> Facts {
     let next = AtomicUsize::new(0);
     let work = || {
         let mut done = Vec::new();
@@ -98,6 +141,7 @@ fn measure(apps: &dyn InstalledApps, installed: &[InstalledApp], listed: &[usize
             }
             if let Some(app) = installed.get(at) {
                 done.push((at, apps.bundle(app, cancel)));
+                one_done();
             }
         }
         done

@@ -281,6 +281,12 @@ describe('reduce', () => {
       expect(after).toEqual({ ...before, access: allFiles('granted') });
     });
 
+    it('scan started forgets how far the measure of the apps got', () => {
+      const state = run([{ done: 3, total: 12, type: 'apps-measuring' }, started]);
+
+      expect(state.appsMeasuring).toBeNull();
+    });
+
     it('scan started clears the coverage', () => {
       const state = run([started, { coverage: LIMITED, scan: 1, type: 'scan-coverage' }, { ...started, scan: 2 }]);
 
@@ -324,6 +330,15 @@ describe('reduce', () => {
   });
 
   describe('positive cases', () => {
+    it('keeps how far the measure of the apps got, the last told', () => {
+      const state = run([
+        { done: 0, total: 12, type: 'apps-measuring' },
+        { done: 5, total: 12, type: 'apps-measuring' },
+      ]);
+
+      expect(state.appsMeasuring).toStrictEqual({ done: 5, total: 12 });
+    });
+
     it('keeps the left-outs of a finished module', () => {
       const state = run([started, moduleDone]);
 

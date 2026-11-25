@@ -231,7 +231,7 @@ export type CoreScript = {
   readonly answers?: Partial<Readonly<Record<CommandKey, unknown>>>;
   // The Apps screen's commands: the list, an app's page and Show in Finder (support/apps-mock.ts); `denied` is the world
   // after macOS refused to let Fresher move an app.
-  readonly apps?: { readonly denied?: boolean; readonly withheld?: boolean };
+  readonly apps?: { readonly denied?: boolean; readonly measuring?: boolean; readonly withheld?: boolean };
   // The cleanup commands over the scan's findings (support/cleanup-mock.ts); without it they are not answered.
   readonly cleanup?: CleanupScript;
   // Whether the app info says the core offers High findings: `offered` by default, as the core's tests run it.

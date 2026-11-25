@@ -6,12 +6,14 @@ import type {
   AppsQuery,
   AppSummary,
   AppsView,
+  Event,
   Refusal,
   UnusedFor,
 } from '../../src/ipc/bindings.generated';
 
 import { COMMANDS } from '../../src/ipc';
 import { APP_DETAILS, VIDEO_STUDIO_DENIED_DETAIL } from '../../src/test/app-detail';
+import { CLEANUP_HOOKS } from './cleanup-mock';
 
 // The Apps screen's commands of the mocked core: the list under its filter, an app's page and Show in Finder. It states
 // only what the core can produce together: the list comes largest first, the filter keeps the apps whose last use is
@@ -44,10 +46,16 @@ const ANSWER = '__fresherAppsAnswer';
 // The apps the mock revealed in Finder, by index, in the page.
 export const REVEALED = '__revealedApps';
 
+// The page's name of the function that ends a held measure (`measuring`).
+const RELEASE_MEASURE = '__fresherReleaseMeasure';
+
 type Setup = {
   readonly answer: string;
   readonly commands: readonly string[];
   readonly hook: string;
+  // The first list is held: it tells `apps-measuring` 0 then 2 of `total`, and answers with `total` of `total` once
+  // `releaseMeasure` is called.
+  readonly measuring: null | { readonly release: string; readonly send: string; readonly total: number };
   readonly revealed: string;
 };
 
@@ -100,9 +108,15 @@ const withheldSummary = ({ items, summary }: AppDetail): AppSummary => {
 // Adds the Apps commands to the mocked core of `core-mock.ts`, which calls the hook for every command.
 // `withheld` is the world of a core that withholds High: no page offers Everything or lists an item at High, and no
 // row of the list shows a part at High or counts its bytes.
+// `measuring` holds the first list as a slow measure of the bundles does, telling how far it got, until
+// `releaseMeasure`.
 export const mockApps = async (
   page: Page,
-  { denied = false, withheld = false }: { readonly denied?: boolean; readonly withheld?: boolean } = {},
+  {
+    denied = false,
+    measuring = false,
+    withheld = false,
+  }: { readonly denied?: boolean; readonly measuring?: boolean; readonly withheld?: boolean } = {},
 ): Promise<void> => {
   const details = APP_DETAILS.map((detail) =>
     denied && detail.summary.app.index === 0 ? VIDEO_STUDIO_DENIED_DETAIL : detail,
@@ -135,26 +149,62 @@ export const mockApps = async (
       const scope = globalThis as unknown as Record<string, unknown>;
       const revealed: number[] = [];
 
+      let held = setup.measuring;
+
       scope[setup.revealed] = revealed;
       scope[setup.hook] = (command: string, args: Record<string, unknown>): Promise<unknown> | undefined => {
         if (!setup.commands.includes(command)) {
           return undefined;
         }
         const answer = scope[setup.answer] as (command: string, args: Record<string, unknown>) => Promise<Answer>;
+        const measured = new Promise<void>((resolve) => {
+          if (command !== 'get_apps' || held === null) {
+            resolve();
 
-        return answer(command, args).then((result) => {
-          if ('refused' in result) {
-            // eslint-disable-next-line @typescript-eslint/only-throw-error -- the core rejects with a plain object
-            throw result.refused;
+            return;
           }
-          if (command === 'reveal_app') {
-            revealed.push((args.app as { readonly index: number }).index);
-          }
+          const { release, send, total } = held;
+          const tell = scope[send] as (events: readonly Event[]) => void;
 
-          return result.answer;
+          held = null;
+          tell([
+            { done: 0, total, type: 'apps-measuring' },
+            { done: 2, total, type: 'apps-measuring' },
+          ]);
+          scope[release] = (): void => {
+            tell([{ done: total, total, type: 'apps-measuring' }]);
+            resolve();
+          };
         });
+
+        return measured
+          .then(() => answer(command, args))
+          .then((result) => {
+            if ('refused' in result) {
+              // eslint-disable-next-line @typescript-eslint/only-throw-error -- the core rejects with a plain object
+              throw result.refused;
+            }
+            if (command === 'reveal_app') {
+              revealed.push((args.app as { readonly index: number }).index);
+            }
+
+            return result.answer;
+          });
       };
     },
-    { answer: ANSWER, commands: COMMAND_NAMES, hook: APPS_HOOK, revealed: REVEALED } satisfies Setup,
+    {
+      answer: ANSWER,
+      commands: COMMAND_NAMES,
+      hook: APPS_HOOK,
+      measuring: measuring ? { release: RELEASE_MEASURE, send: CLEANUP_HOOKS.send, total: details.length } : null,
+      revealed: REVEALED,
+    } satisfies Setup,
   );
+};
+
+// Ends the measure `measuring` held: it tells every bundle measured, and the list answers.
+export const releaseMeasure = async (page: Page): Promise<void> => {
+  await page.evaluate((release) => {
+    (globalThis as unknown as Record<string, () => void>)[release]?.();
+  }, RELEASE_MEASURE);
 };

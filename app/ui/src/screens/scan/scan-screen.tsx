@@ -9,7 +9,6 @@ import { Toolbar } from '../../design/layout/toolbar/toolbar';
 import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { DiskCard } from '../../product/disk-card/disk-card';
-import { ScanningCard } from '../../product/scanning-card/scanning-card';
 import { useScanAnnouncements } from '../../product/scanning-card/use-scan-announcements';
 import { SelectionBar } from '../../product/selection-bar/selection-bar';
 import { TrashLines } from '../../product/trash-line/trash-line';
@@ -26,10 +25,9 @@ import { useScanActions } from '../use-scan-actions';
 import { DescribedOnly } from './described-only';
 import { LeftOutOnly } from './left-out-only';
 import { phaseOf, scanFailure, type ScanPhase } from './phase';
-import { scanPercent } from './progress';
 import { ScanGroups } from './scan-groups';
+import { ScanProgressCard } from './scan-progress-card';
 import styles from './scan-screen.module.css';
-import { useLookingAt } from './use-looking-at';
 import { useScannedAgo } from './use-scanned-ago';
 import { openTrashLine, useTrash } from './use-trash';
 
@@ -94,9 +92,6 @@ export const ScanScreen = (): JSX.Element => {
   const status = useCore((state) => state.status);
   const overview = useCore((state) => state.overview);
   const outcome = useCore((state) => state.outcome);
-  const progress = useCore((state) => state.progress);
-  const finished = useCore((state) => state.modules);
-  const started = useCore((state) => state.scanModules);
   const selection = useCore((state) => state.selection);
   const storageMap = useCore((state) => state.storageMap);
   const trash = useTrash();
@@ -115,11 +110,6 @@ export const ScanScreen = (): JSX.Element => {
     ignored === undefined ? 0 : ignored.groups + ignored.modules + ignored.categories + ignored.paths;
   const volumes = storageMap?.volumes ?? [];
   const failure = scanFailure(lastScan, outcome);
-  // The modules the scan runs (a scan learned of from an overview only runs every module the core lists), which of
-  // them have finished, and the one the "Looking at" line names: those still running take turns while it runs.
-  const running = started ?? modules?.map(({ id }) => id) ?? [];
-  const done = finished.map(({ module }) => module);
-  const module = useLookingAt(scanning, running, done);
   const found = overview?.found ?? NOTHING;
 
   useScanAnnouncements(phase, found, failure);
@@ -148,19 +138,7 @@ export const ScanScreen = (): JSX.Element => {
         title={<h1 className={styles.title}>{t('ui.screen.scan.title')}</h1>}
       />
       <div className={styles.content}>
-        {scanning ? (
-          <ScanningCard
-            found={found}
-            module={module === null ? null : tText({ args: {}, key: `${module}.enabled.label` })}
-            percent={scanPercent(progress?.bytes ?? 0, progress?.expected ?? null, {
-              finished: done.length,
-              started: running.length,
-            })}
-            volumeName={volumes[0]?.name ?? ''}
-          />
-        ) : (
-          <Disk failure={failure} onScan={scan} phase={phase} volume={volumes[0]} />
-        )}
+        {scanning ? <ScanProgressCard /> : <Disk failure={failure} onScan={scan} phase={phase} volume={volumes[0]} />}
         {phase === 'idle' ? <p className={styles.intro}>{t('ui.screen.scan.intro')}</p> : null}
         {phase === 'stopped' ? (
           <Notice title={t('ui.screen.scan.stopped.title')} tone="warning">

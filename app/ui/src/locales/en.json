@@ -388,6 +388,7 @@
   "ui.screen.frame.nav.apps": "Apps",
   "ui.screen.apps.title": "Apps",
   "ui.screen.apps.measuring": "Measuring your apps…",
+  "ui.screen.apps.measuring-count": "Measuring your apps · {done} of {total}",
   "ui.screen.apps.empty": "No app fits this filter.",
   "ui.screen.apps.no-scan": "Scan first to see your apps.",
   "ui.screen.apps.list": "Apps, largest first",

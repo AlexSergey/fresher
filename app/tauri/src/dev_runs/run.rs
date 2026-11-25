@@ -206,6 +206,7 @@ impl Run {
             | Event::SettingChanged { .. }
             | Event::AccessChanged { .. }
             | Event::CleanupItems { .. }
+            | Event::AppsMeasuring { .. }
             | Event::QuitRequested => {}
         }
         None

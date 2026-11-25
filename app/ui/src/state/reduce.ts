@@ -46,6 +46,9 @@ export type CoreState = {
   readonly access: AccessStatus | null;
   // The agreement the first cleanup asks for, and the cleanup step waiting for it (state/agreement.ts).
   readonly agreement: AgreementState;
+  // How far the measure of the apps' bundles for the Apps list got, as the last `apps-measuring` told; `null` before
+  // one and once a scan starts.
+  readonly appsMeasuring: null | { readonly done: number; readonly total: number };
   // The cleanup from the review screen's button to its result (state/cleanup.ts).
   readonly cleanup: CleanupState;
   // What the result on screen did not see (guarded places, unreadable folders): the followed scan's `scan-coverage`,
@@ -102,6 +105,7 @@ type SeenScan = { readonly end: 'finished' | 'nothing-restored' | 'running'; rea
 export const INITIAL_STATE: CoreState = {
   access: null,
   agreement: NO_AGREEMENT,
+  appsMeasuring: null,
   cleanup: NO_CLEANUP,
   coverage: null,
   dictionary: null,
@@ -137,6 +141,7 @@ const startScan = (state: CoreState, event: Extract<Event, { readonly type: 'sca
 
   return {
     ...state,
+    appsMeasuring: null,
     coverage: null,
     failure: null,
     modules: [],
@@ -168,6 +173,8 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
   switch (event.type) {
     case 'access-changed':
       return { ...state, access: event.status };
+    case 'apps-measuring':
+      return { ...state, appsMeasuring: { done: event.done, total: event.total } };
     case 'cleanup-finished':
       return cleanupEnded(state, reduceCleanup(state.cleanup, event));
     case 'cleanup-items':
@@ -282,6 +289,7 @@ const loadOverview = (state: CoreState, overview: Overview): CoreState => {
 export const reduce = (state: CoreState, action: CoreAction): CoreState => {
   switch (action.type) {
     case 'access-changed':
+    case 'apps-measuring':
     case 'cleanup-finished':
     case 'cleanup-items':
     case 'cleanup-started':

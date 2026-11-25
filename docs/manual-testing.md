@@ -786,7 +786,7 @@ du -sh ~/Library/Caches/Google/Chrome/*/{Cache,"Code Cache"} ~/Library/Caches/Ch
 - [ ] With Full Disk Access: the line's first number against `du -sh ~/.Trash`; without it: the line shows only a
       share, or nothing.
 - [ ] Finder, Settings, Advanced, "Remove items from the Trash after 30 days" on: `defaults read com.apple.finder
-      FXRemoveOldTrashItems` prints `1`; the line shows a date only when a share is there.
+    FXRemoveOldTrashItems` prints `1`; the line shows a date only when a share is there.
 - [ ] With a USB disk holding something in its Trash and scanned: a line of its own, named after the disk.
 - [ ] Open Trash opens Finder's Trash window (`open ~/.Trash` does the same, with and without Full Disk Access).
 
@@ -871,6 +871,8 @@ ls /opt/homebrew/Caskroom    # the Homebrew apps
 du -sh /Applications/<app>.app   # three apps, against their sizes in the list
 ```
 
+- [ ] Scan from Apps (a fresh start, before any scan): the scanning card shows with its percent and "Looking at";
+      then "Measuring your apps · n of m" counts up with its bar until the list shows.
 - [ ] No Apple app is listed; an App Store (root-owned) app is shown "needs an administrator" with Show in Finder and
       is not offered; a Homebrew app shows the manager's sentence and command and is not offered.
 - [ ] The sizes of three apps match `du -sh` (sizes on disk).
@@ -1073,7 +1075,7 @@ plan 004's conclusions.
 - [ ] Confirm or overrule the decisions taken as recommended on 2026-11-16: the 10 s target on a warm tree, one thread
       per core, the tree-heap bar kept on its test; say whether a cold-scan target is wanted.
 - [ ] Optional, the generated big tree: `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture
-      ten_scans_of_the_large` (the footprint after ten scans stays within its budget).
+    ten_scans_of_the_large` (the footprint after ten scans stays within its budget).
 
 ### 5.2 The first real cleanups, in a sandbox ([deferred](./deferred/removal-sandbox-run.md), [008/08/02](./plans/008-safe-removal/08-finish/02-sandbox-run.md))
 
@@ -1166,37 +1168,37 @@ If it is not known, capture and send:
 
 Status as of the plan files on 2026-11-19: all are waiting for the run (no item above is ticked on the plan side).
 
-| Plan step                                                                                                    | Status                         | Section       |
-| ------------------------------------------------------------------------------------------------------------ | ------------------------------ | ------------- |
-| [006 readme "By hand"](./plans/006-permissions/readme.md#by-hand)                                            | pending                        | 3.2           |
-| [006/01/01 prompts and checks](./plans/006-permissions/01-probe-the-system/01-prompts-and-checks.md)         | pending (approved, not run)    | 3.1           |
-| [006/01/02 panes and reasons](./plans/006-permissions/01-probe-the-system/02-panes-and-reasons.md)           | pending (approved, not run)    | 3.1           |
-| [007/05/02 run and conclusions](./plans/007-safe-development/05-finish/02-run-and-conclusions.md)            | pending, in progress           | 1.1, 5.2      |
-| [011/03/01 docs and conclusions](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)               | pending, in progress           | 1.1           |
-| [012/06/02 run and conclusions](./plans/012-storage-map/06-finish/02-run-and-conclusions.md)                 | pending                        | 1.2, 2.1      |
-| [015/03/02 run and conclusions](./plans/015-module-groups/03-finish/02-run-and-conclusions.md)               | pending, in progress           | 1.1           |
-| [016/04/02 runs and conclusions](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.3, 2.2, 2.9 |
-| [017/04/02 runs and conclusions](./plans/017-temp-files/04-finish/02-run-and-conclusions.md)                 | pending, in progress           | 1.4, 2.3, 2.9 |
-| [018/04/02 runs and conclusions](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)           | pending                        | 1.5, 2.4, 2.9, 4 |
-| [019/04/02 runs and conclusions](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md)  | pending                        | 1.6, 2.5, 2.9, 4 |
-| [020/01/02 suffixed names bench](./plans/020-downloads/01-core-prerequisites/02-suffixed-names.md)           | step done, bench re-run pending | 4             |
-| [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                  | pending, in progress           | 1.7, 2.6, 2.9, 4 |
-| [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md) | pending | 1.8, 2.7, 2.9, 4 |
-| [026/03/03 run and conclusions](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md) | pending | 2.0 |
-| [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                         | deferred, due before release   | 5.1           |
-| [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                           | deferred, due before release   | 5.2           |
-| [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)            | pending                        | 1.9, 2.8      |
-| [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)            | pending                        | 1.11, 2.10 |
-| [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)            | pending                        | 1.12, 2.11 |
-| [030/03/02 runs and conclusions](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md)      | pending                        | 1.13, 2.12    |
-| [034/03/01](./plans/034-browser-caches/03-finish/01-docs-and-conclusions.md) | pending | 1.16, 2.14 |
-| [027/04/02 checks and the walk](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md)           | pending                        | 1.14          |
-| [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)            | pending                        | 1.14          |
-| [031/03/02 runs and conclusions](./plans/031-xcode/03-finish/02-run-and-conclusions.md)                    | pending                        | 1.18, 2.16    |
-| [032/06/01 docs and conclusions](./plans/032-docker/06-finish/01-docs-and-conclusions.md)                  | pending                        | 1.19, 2.17    |
-| [035/05/01 docs and conclusions](./plans/035-large-files/05-finish/01-docs-and-conclusions.md)               | pending                        | 1.20, 2.18    |
-| [036/05/01 docs and conclusions](./plans/036-uninstall/05-finish/01-docs-and-conclusions.md)                 | pending                        | 1.22, 2.20    |
-| Sandbox `cleanup-guards` (no pending step)                                                                   | optional                       | 1.10          |
+| Plan step                                                                                                   | Status                          | Section          |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------- |
+| [006 readme "By hand"](./plans/006-permissions/readme.md#by-hand)                                           | pending                         | 3.2              |
+| [006/01/01 prompts and checks](./plans/006-permissions/01-probe-the-system/01-prompts-and-checks.md)        | pending (approved, not run)     | 3.1              |
+| [006/01/02 panes and reasons](./plans/006-permissions/01-probe-the-system/02-panes-and-reasons.md)          | pending (approved, not run)     | 3.1              |
+| [007/05/02 run and conclusions](./plans/007-safe-development/05-finish/02-run-and-conclusions.md)           | pending, in progress            | 1.1, 5.2         |
+| [011/03/01 docs and conclusions](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)              | pending, in progress            | 1.1              |
+| [012/06/02 run and conclusions](./plans/012-storage-map/06-finish/02-run-and-conclusions.md)                | pending                         | 1.2, 2.1         |
+| [015/03/02 run and conclusions](./plans/015-module-groups/03-finish/02-run-and-conclusions.md)              | pending, in progress            | 1.1              |
+| [016/04/02 runs and conclusions](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md)                 | pending, in progress            | 1.3, 2.2, 2.9    |
+| [017/04/02 runs and conclusions](./plans/017-temp-files/04-finish/02-run-and-conclusions.md)                | pending, in progress            | 1.4, 2.3, 2.9    |
+| [018/04/02 runs and conclusions](./plans/018-developer-caches/04-finish/02-run-and-conclusions.md)          | pending                         | 1.5, 2.4, 2.9, 4 |
+| [019/04/02 runs and conclusions](./plans/019-uninstalled-app-leftovers/04-finish/02-run-and-conclusions.md) | pending                         | 1.6, 2.5, 2.9, 4 |
+| [020/01/02 suffixed names bench](./plans/020-downloads/01-core-prerequisites/02-suffixed-names.md)          | step done, bench re-run pending | 4                |
+| [020/05/02 runs and conclusions](./plans/020-downloads/05-finish/02-run-and-conclusions.md)                 | pending, in progress            | 1.7, 2.6, 2.9, 4 |
+| [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)            | pending                         | 1.8, 2.7, 2.9, 4 |
+| [026/03/03 run and conclusions](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md) | pending                         | 2.0              |
+| [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                        | deferred, due before release    | 5.1              |
+| [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                          | deferred, due before release    | 5.2              |
+| [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)           | pending                         | 1.9, 2.8         |
+| [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)         | pending                         | 1.11, 2.10       |
+| [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)             | pending                         | 1.12, 2.11       |
+| [030/03/02 runs and conclusions](./plans/030-installed-app-caches/03-finish/02-run-and-conclusions.md)      | pending                         | 1.13, 2.12       |
+| [034/03/01](./plans/034-browser-caches/03-finish/01-docs-and-conclusions.md)                                | pending                         | 1.16, 2.14       |
+| [027/04/02 checks and the walk](./plans/027-scan-screen/04-docs-and-finish/02-checks-and-walk.md)           | pending                         | 1.14             |
+| [028/02/02 checks and the walk](./plans/028-ignore-item/02-docs-and-finish/02-checks-and-walk.md)           | pending                         | 1.14             |
+| [031/03/02 runs and conclusions](./plans/031-xcode/03-finish/02-run-and-conclusions.md)                     | pending                         | 1.18, 2.16       |
+| [032/06/01 docs and conclusions](./plans/032-docker/06-finish/01-docs-and-conclusions.md)                   | pending                         | 1.19, 2.17       |
+| [035/05/01 docs and conclusions](./plans/035-large-files/05-finish/01-docs-and-conclusions.md)              | pending                         | 1.20, 2.18       |
+| [036/05/01 docs and conclusions](./plans/036-uninstall/05-finish/01-docs-and-conclusions.md)                | pending                         | 1.22, 2.20       |
+| Sandbox `cleanup-guards` (no pending step)                                                                  | optional                        | 1.10             |
 
 Writing the results down: for each item, ticked on the plan side means the box in that step's `## Conclusions` ticked and
 the numbers written under it, on `main`. Then tell the agent: a plan moves to done only when you have looked at its

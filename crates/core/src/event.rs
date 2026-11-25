@@ -84,6 +84,13 @@ pub enum Event {
     },
     /// The window is closing while a cleanup runs: the UI asks the user first.
     QuitRequested,
+    /// The bundles of the listed apps are being measured for the Apps list: `done` of `total` so far. The first says
+    /// `done: 0`, the last `done: total`; in between at most one every 50 ms, `done` never going down. None for a list
+    /// answered from what was measured before.
+    AppsMeasuring {
+        done: u32,
+        total: u32,
+    },
 }
 
 /// How a scan read the disk.
@@ -280,6 +287,10 @@ mod tests {
                 json!({ "type": "findings-removed", "scan": 2, "findings": [7] })
             );
             assert_eq!(serde_json::to_value(Event::QuitRequested).unwrap(), json!({ "type": "quit-requested" }));
+            assert_eq!(
+                serde_json::to_value(Event::AppsMeasuring { done: 1, total: 3 }).unwrap(),
+                json!({ "type": "apps-measuring", "done": 1, "total": 3 })
+            );
         }
 
         #[test]

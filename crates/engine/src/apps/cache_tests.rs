@@ -71,6 +71,17 @@ impl InstalledApps for Slow {
     }
 }
 
+/// The `(done, total)` of every `AppsMeasuring` sent so far on `events`.
+fn measuring(events: &std::sync::mpsc::Receiver<fresher_core::Event>) -> Vec<(u32, u32)> {
+    events
+        .try_iter()
+        .filter_map(|event| match event {
+            fresher_core::Event::AppsMeasuring { done, total } => Some((done, total)),
+            _ => None,
+        })
+        .collect()
+}
+
 /// Two states: the editor's cache in the first, nothing in the second.
 fn states() -> Vec<fresher_testing::FixedDiskState> {
     vec![state(1, &[("/home/Library/Caches/com.example.Editor", NodeKind::Folder, 1)]), state(2, &[])]
@@ -83,7 +94,7 @@ mod negative {
     use fresher_core::{AppsQuery, CommandError, EngineStatus, Operation, StateId};
 
     use super::super::super::fixture::{fixture, idle, rows};
-    use super::{Slow, states, two_apps};
+    use super::{Slow, measuring, states, two_apps};
     use crate::testing::{ScriptedWalk, scan, wait_for_finish};
 
     const BUSY: CommandError = CommandError::Busy { running: Operation::Scan };
@@ -165,6 +176,37 @@ mod negative {
     }
 
     #[test]
+    fn a_list_from_kept_facts_tells_no_measure() {
+        let engine = fixture(states(), Arc::new(two_apps()), idle()).engine();
+        scan(&engine);
+        rows(&engine);
+        let events = engine.subscribe();
+
+        rows(&engine);
+
+        assert_eq!(measuring(&events), []);
+    }
+
+    #[test]
+    fn a_cancelled_measure_never_tells_it_ended() {
+        let slow = Arc::new(Slow::new(two_apps()));
+        let engine = fixture(states(), Arc::clone(&slow) as _, idle()).engine();
+        scan(&engine);
+        let measures = engine.subscribe();
+
+        thread::scope(|scope| {
+            let listing = scope.spawn(|| engine.apps(AppsQuery::default()));
+            slow.wait_until_measuring();
+            let events = engine.subscribe();
+            engine.start_scan(crate::ScanMode::Auto).unwrap();
+            assert_eq!(listing.join().unwrap(), Err(BUSY));
+            wait_for_finish(&events);
+        });
+
+        assert_eq!(measuring(&measures).last(), Some(&(0, 2)), "only the start: no bundle ended, no end");
+    }
+
+    #[test]
     fn nothing_is_measured_during_a_scan() {
         let (walk, gate) = ScriptedWalk::held();
         let apps = Arc::new(two_apps());
@@ -193,7 +235,7 @@ mod positive {
     use fresher_testing::FakeRunningApps;
 
     use super::super::super::fixture::{fixture, idle, rows};
-    use super::{states, two_apps};
+    use super::{measuring, states, two_apps};
     use crate::testing::{ScriptedWalk, scan};
 
     #[test]
@@ -207,6 +249,21 @@ mod positive {
         engine.app(AppId::new(StateId::new(1), 0)).unwrap();
 
         assert_eq!(apps.bundle_calls(), 2);
+    }
+
+    #[test]
+    fn the_measure_tells_its_progress_from_none_to_every_bundle() {
+        let engine = fixture(states(), Arc::new(two_apps()), Arc::new(FakeRunningApps::default())).engine();
+        scan(&engine);
+        let events = engine.subscribe();
+
+        rows(&engine);
+
+        let told = measuring(&events);
+        assert_eq!(told.first(), Some(&(0, 2)));
+        assert_eq!(told.last(), Some(&(2, 2)));
+        assert!(told.windows(2).all(|pair| pair[0].0 <= pair[1].0), "never going down: {told:?}");
+        assert!(told.iter().all(|&(_, total)| total == 2));
     }
 
     #[test]
