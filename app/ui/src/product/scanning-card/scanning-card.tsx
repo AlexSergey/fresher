@@ -12,7 +12,8 @@ import styles from './scanning-card.module.css';
 export type ScanningCardProps = {
   // What the scan found so far.
   readonly found: Sizes;
-  // The name of the part the scan looks at; `null` when none is known. A new name fades in, without motion at once.
+  // The name of the part the scan looks at; `null` when none is known. A new name fades in and its colour keeps
+  // brightening and settling, to show the scan goes on; without full motion it shows at once and stands still.
   readonly module: null | string;
   // 0 to 100.
   readonly percent: number;
@@ -37,7 +38,12 @@ export const ScanningCard = ({ found, module, percent, volumeName }: ScanningCar
           {t('ui.scanning.percent', { percent: said })}
         </span>
         {module === null ? null : (
-          <span className={styles.looking} data-fade={motion === 'full' ? '' : undefined} key={module}>
+          <span
+            className={styles.looking}
+            data-fade={motion === 'full' ? '' : undefined}
+            data-shimmer={motion === 'full' ? '' : undefined}
+            key={module}
+          >
             {t('ui.scanning.looking-at', { module: { kind: 'text', value: module } })}
           </span>
         )}

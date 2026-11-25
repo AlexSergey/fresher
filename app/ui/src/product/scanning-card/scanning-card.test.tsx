@@ -38,6 +38,13 @@ describe('ScanningCard', () => {
       expect(screen.getByText('Looking at Developer caches')).not.toHaveAttribute('data-fade');
     });
 
+    it.each(['reduced', 'off'])('with %s motion the Looking at line does not shimmer', async (mode) => {
+      await setMotion(mode);
+      mount();
+
+      expect(screen.getByText('Looking at Developer caches')).not.toHaveAttribute('data-shimmer');
+    });
+
     it('no module known shows no Looking at line', () => {
       mount({ module: null });
 
@@ -69,6 +76,13 @@ describe('ScanningCard', () => {
       mount();
 
       expect(screen.getByText('Looking at Developer caches')).toHaveAttribute('data-fade');
+    });
+
+    it('with full motion the Looking at line shimmers', async () => {
+      await setMotion('full');
+      mount();
+
+      expect(screen.getByText('Looking at Developer caches')).toHaveAttribute('data-shimmer');
     });
 
     it('a partial found size is a lower bound', () => {

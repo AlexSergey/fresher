@@ -5,7 +5,8 @@ import { scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
 // The system's "Reduce motion" (Playwright's emulation, motion not forced off) in the real engines: the scanning
-// card's fill jumps and a screen change only fades; with full motion the fill glides and a new screen rises.
+// card's fill jumps, a screen change only fades and the "Looking at" line stands still; with full motion the fill
+// glides, a new screen rises and the line's colour keeps brightening and settling.
 
 type Arrival = { readonly opacity: number; readonly rise: number };
 
@@ -58,6 +59,10 @@ const scanning = async (page: Page): Promise<void> => {
   await expect(page.getByRole('progressbar', { name: /^Scanning, \d+ percent$/u })).toBeVisible();
 };
 
+// The names of the animations on the scanning card's "Looking at" line.
+const lookingAt = (page: Page): Promise<string> =>
+  page.getByText(/^Looking at /u).evaluate((line) => getComputedStyle(line).animationName);
+
 const changeScreen = async (page: Page): Promise<Arrival> => {
   await watchArrival(page);
   await page.getByRole('button', { name: 'Settings' }).click();
@@ -87,6 +92,12 @@ test.describe('negative cases', () => {
 
     expect(await changeScreen(page)).toStrictEqual({ opacity: 0, rise: 0 });
   });
+
+  test('the Looking at line under reduced motion does not shimmer', async ({ page }) => {
+    await scanning(page);
+
+    expect(await lookingAt(page)).not.toContain('looking-shimmer');
+  });
 });
 
 test.describe('positive cases', () => {
@@ -102,5 +113,11 @@ test.describe('positive cases', () => {
     await scanning(page);
 
     expect(await changeScreen(page)).toStrictEqual({ opacity: 0, rise: 4 });
+  });
+
+  test('the Looking at line under full motion shimmers', async ({ page }) => {
+    await scanning(page);
+
+    expect(await lookingAt(page)).toContain('looking-shimmer');
   });
 });
