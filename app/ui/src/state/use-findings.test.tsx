@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, type RenderResult, screen } from '@testing-library/react';
 import { type JSX, useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -26,12 +26,28 @@ const List = (): JSX.Element => {
   );
 };
 
-const renderList = (source: FindingsSource): void => {
+const renderList = (source: FindingsSource): RenderResult =>
   render(
     <FindingsContext value={source}>
       <List />
     </FindingsContext>,
   );
+
+const answering = (): FindingsSource =>
+  createFindingsSource((query) => Promise.resolve(pageOf(DEMO_FINDINGS, query)), {
+    clock: createFakeClock(),
+    maxPages: 10,
+    pageSize: 100,
+  });
+
+// Ten other lists ask for their first page: as many pages as the cache keeps.
+const showTenOthers = async (source: FindingsSource): Promise<void> => {
+  for (let other = 0; other < 10; other += 1) {
+    source.ensure({ ...VIEW, category: `demo.other-${String(other)}` }, 0, 9);
+  }
+  await act(async () => {
+    await Promise.resolve();
+  });
 };
 
 describe('useFindings', () => {
@@ -52,6 +68,17 @@ describe('useFindings', () => {
       );
 
       expect(await screen.findByText('unknown · loading · loading · refused')).toBeInTheDocument();
+    });
+
+    it('lets its rows go once the list unmounts', async () => {
+      const source = answering();
+      const { unmount } = renderList(source);
+      expect(await screen.findByText('2 · 1 · 3 · fine')).toBeInTheDocument();
+
+      unmount();
+      await showTenOthers(source);
+
+      expect(source.rowAt(VIEW, 0)).toBeUndefined();
     });
   });
 
@@ -76,6 +103,17 @@ describe('useFindings', () => {
       });
 
       expect(await screen.findByText('2 · 1 · 3 · fine')).toBeInTheDocument();
+    });
+
+    it('keeps its rows while it is mounted, whatever other lists ask', async () => {
+      const source = answering();
+      renderList(source);
+      expect(await screen.findByText('2 · 1 · 3 · fine')).toBeInTheDocument();
+
+      await showTenOthers(source);
+
+      expect(screen.getByText('2 · 1 · 3 · fine')).toBeInTheDocument();
+      expect(source.rowAt(VIEW, 0)?.id).toBe(1);
     });
   });
 });

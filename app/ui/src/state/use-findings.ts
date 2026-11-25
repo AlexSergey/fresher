@@ -1,4 +1,4 @@
-import { createContext, use, useCallback, useSyncExternalStore } from 'react';
+import { createContext, use, useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import type { Failure } from '../ipc';
 import type { Finding } from '../ipc/bindings.generated';
@@ -16,7 +16,8 @@ export type FindingRows = {
 
 export const FindingsContext = createContext<FindingsSource | null>(null);
 
-// The rows of the findings of `view`; the component renders again when a page of any list arrives.
+// The rows of the findings of `view`; the component renders again when a page of any list arrives. The rows it shows
+// stay in the source's cache until the component unmounts.
 export const useFindings = (view: FindingsView): FindingRows => {
   const source = use(FindingsContext);
 
@@ -27,6 +28,8 @@ export const useFindings = (view: FindingsView): FindingRows => {
   // Every answer of the source renders again, and the rows are read anew: `rowAt` is a new function each time.
   useSyncExternalStore(source.subscribe, source.version);
   const { category, module, order } = view;
+  // While the list is mounted its rows on screen stay in the cache; once it is gone they are dropped like any other.
+  useEffect(() => source.hold({ category, module, order }), [source, category, module, order]);
   const onRangeChange = useCallback(
     (first: number, last: number): void => {
       source.ensure({ category, module, order }, first, last);

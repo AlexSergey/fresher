@@ -581,7 +581,10 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   at the bottom on Scan and on a category's details; it counts what goes and, with nothing going, the categories to
   check in Review.
 - **Lists are paged**: `state/findings.ts` keeps at most 10 pages of 100 findings per app, least recently used
-  dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. A category's details ask the core
+  dropped, but never a page with rows on screen of a mounted list: with more lists on screen than that (Review with
+  every category selected) it keeps their pages and no more. `useFindings(view)` gives a virtualised list its total
+  and the rows it shows, and holds the view while the list is mounted; once it unmounts its pages are dropped like any
+  other. A category's details ask the core
   for `FindingsQuery.order: largest`. The pages start again on an ignore change (`CoreState.ignoreChanges`, bumped by
   a `core.ignore.*` setting change) as on a cleanup's removal, so an ignored row leaves at once and a restore brings
   it back.

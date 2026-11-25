@@ -126,7 +126,7 @@ import {
   JETBRAINS_SCAN,
   JETBRAINS_SETTINGS,
 } from '../src/test/jetbrains-scan';
-import { largeScan, scanningOverviewOf } from '../src/test/large-scan';
+import { type LargeScan, largeScan, scanningOverviewOf } from '../src/test/large-scan';
 import { LARGEST_DICTIONARY, LARGEST_ROWS, ownFindingOf } from '../src/test/largest-scan';
 import {
   LOCAL_AI_MODELS_DICTIONARY,
@@ -794,16 +794,19 @@ const CLEANUP = {
   history: HISTORY,
 } as const;
 
-// The large scan's module: the demo module with the generated categories.
-const LARGE_MODULES: readonly ModuleInfo[] = [
+// The demo module with the generated categories of a large scan.
+const modulesOf = (scan: LargeScan): readonly ModuleInfo[] => [
   {
-    categories: LARGE.overview.totals.map(({ category }) => readyCategory(category, 'safe')),
+    categories: scan.overview.totals.map(({ category }) => readyCategory(category, 'safe')),
     choices: [],
     group: 'debug',
     id: 'demo',
     settings: ['demo.enabled'],
   },
 ];
+
+// Fourteen categories of three findings: more finding lists at once than the ten pages the UI keeps.
+const WIDE = largeScan({ categories: 14, count: 42 });
 
 // The texts of the Ignored tabs the demo's own dictionary does not have.
 const IGNORING_DICTIONARY = {
@@ -1384,7 +1387,11 @@ export const SCRIPTS = {
   },
   // A thousand findings in three categories, paged by the lists.
   large: {
-    answers: { ...ANSWERS, getDictionary: { ...LARGE.dictionary, ...STORAGE_DICTIONARY }, getModules: LARGE_MODULES },
+    answers: {
+      ...ANSWERS,
+      getDictionary: { ...LARGE.dictionary, ...STORAGE_DICTIONARY },
+      getModules: modulesOf(LARGE),
+    },
     scan: LARGE.events,
     scanned: LARGE.overview,
   },
@@ -1528,6 +1535,12 @@ export const SCRIPTS = {
     },
     scan: UNUSED_TOOLCHAINS_NO_DOCUMENTS_SCAN,
     scanned: UNUSED_TOOLCHAINS_NO_DOCUMENTS_OVERVIEW,
+  },
+  // Fourteen categories of three findings each, in the groups of their findings.
+  wide: {
+    answers: { ...ANSWERS, getDictionary: { ...WIDE.dictionary, ...STORAGE_DICTIONARY }, getModules: modulesOf(WIDE) },
+    scan: WIDE.events,
+    scanned: WIDE.overview,
   },
   // The Xcode scan, streamed at once; the cleanup empties the two caches and moves the archive.
   xcode: {

@@ -19,6 +19,16 @@ const FOUND: FindingsView = { ...LARGEST, order: 'found' };
 // Every finding of the scan: 30 pages.
 const ALL: FindingsView = { category: null, module: 'demo', order: 'largest' };
 
+// Fourteen lists of one page each, as Review shows them once every category is selected: more than the ten pages the
+// cache keeps.
+const WIDE = largeScan({ categories: 14, count: 1400 });
+
+const LISTS: readonly FindingsView[] = Array.from({ length: 14 }, (_, at) => ({
+  category: `demo.large-${String(at)}`,
+  module: null,
+  order: 'largest',
+}));
+
 type Asked = {
   readonly query: FindingsQuery;
   readonly refuse: () => void;
@@ -96,6 +106,66 @@ describe('the findings source', () => {
       source.ensure(LARGEST, 10, 30);
 
       expect(core.asked).toHaveLength(1);
+    });
+
+    it('a page on screen is never evicted when more lists are shown than maxPages', async () => {
+      const source = sourceOf(coreAnswering(WIDE.findings));
+
+      for (const view of LISTS) {
+        source.hold(view);
+        source.ensure(view, 0, 9);
+        await settle();
+      }
+
+      expect(LISTS.filter((view) => source.rowAt(view, 0) === undefined)).toEqual([]);
+    });
+
+    it("a released view's pages can be evicted", async () => {
+      const source = sourceOf(coreAnswering(WIDE.findings));
+      const releases = LISTS.slice(0, 10).map((view) => {
+        const release = source.hold(view);
+        source.ensure(view, 0, 9);
+
+        return release;
+      });
+      await settle();
+
+      for (const release of releases.slice(0, 4)) {
+        release();
+      }
+      for (const view of LISTS.slice(10)) {
+        source.hold(view);
+        source.ensure(view, 0, 9);
+      }
+      await settle();
+
+      expect(LISTS.slice(0, 4).filter((view) => source.rowAt(view, 0) !== undefined)).toEqual([]);
+      expect(source.held()).toBe(1000);
+    });
+
+    it('a view shown by two lists stays on screen until both are released', async () => {
+      const source = sourceOf(coreAnswering(WIDE.findings));
+      const [twice, ...others] = LISTS as readonly [FindingsView, ...FindingsView[]];
+      const first = source.hold(twice);
+      const second = source.hold(twice);
+      source.ensure(twice, 0, 9);
+      await settle();
+
+      first();
+      first();
+      for (const view of others) {
+        source.hold(view);
+        source.ensure(view, 0, 9);
+      }
+      await settle();
+
+      expect(source.rowAt(twice, 0)).toBeDefined();
+
+      second();
+      source.ensure(ALL, 0, 0);
+      await settle();
+
+      expect(source.rowAt(twice, 0)).toBeUndefined();
     });
 
     it('drops the least recently used page past ten', async () => {
@@ -348,6 +418,44 @@ describe('the findings source', () => {
         ),
       );
       expect(source.held()).toBe(200);
+    });
+
+    it('fourteen lists on screen each show their rows, and the cache holds their pages and no more', async () => {
+      const source = sourceOf(coreAnswering(WIDE.findings));
+
+      for (const view of LISTS) {
+        source.hold(view);
+        source.ensure(view, 0, 9);
+        await settle();
+      }
+
+      for (const view of LISTS) {
+        expect(source.rowAt(view, 9)?.category).toBe(view.category);
+      }
+      expect(source.held()).toBe(1400);
+    });
+
+    it('a cleanup asks again every page on screen of all fourteen lists', async () => {
+      let findings = WIDE.findings;
+      const source = sourceOf((query) => Promise.resolve(pageOf(findings, query)));
+      const store = storeOfScan();
+      source.follow(store);
+      for (const view of LISTS) {
+        source.hold(view);
+        source.ensure(view, 0, 9);
+      }
+      await settle();
+      const removed = LISTS.map((view) => source.rowAt(view, 0)?.id ?? 0);
+      findings = findings.filter((finding) => !removed.includes(finding.id));
+
+      store.dispatch({ findings: removed, scan: 1, type: 'findings-removed' });
+      await settle();
+
+      for (const view of LISTS) {
+        expect(source.total(view)).toBe(99);
+        expect(source.rowAt(view, 0)).toBeDefined();
+      }
+      expect(source.held()).toBe(14 * 99);
     });
 
     it('scrolls 100,000 findings and never holds more than 1,000', async () => {

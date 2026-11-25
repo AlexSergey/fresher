@@ -5,11 +5,13 @@ import type { CoreStore } from './store';
 
 import { failureOf } from '../ipc';
 
-// The findings of every list, asked of the core page by page and kept in a small cache, so the UI never holds
-// more than `pageSize × maxPages` findings, whatever the size of the scan.
+// The findings of every list, asked of the core page by page and kept in a small cache. A page that holds rows on
+// screen is never dropped, so a list never waits for a page nobody asks for again; the other pages are dropped least
+// recently used first. The cache holds at most `maxPages` pages, or the pages on screen when more lists show more
+// pages than that: never more than `pageSize × max(maxPages, pages on screen)` findings, whatever the size of the scan.
 export type FindingsSource = {
   // Loads the pages the rows `first`…`last` (inclusive) of a view need, each with one request; remembers the range
-  // as the view's rows on screen.
+  // as the view's rows on screen until the view is released.
   readonly ensure: (view: FindingsView, first: number, last: number) => void;
   // Why the view's last page could not be loaded, until a page of it loads again.
   readonly failure: (view: FindingsView) => Failure | null;
@@ -19,6 +21,9 @@ export type FindingsSource = {
   readonly follow: (store: CoreStore) => () => void;
   // How many findings the cache holds now.
   readonly held: () => number;
+  // A list shows the view from now on; the function it returns tells the list is gone. Once no list shows the view,
+  // its rows are no longer on screen: its pages are dropped like any other and refreshed no more.
+  readonly hold: (view: FindingsView) => () => void;
   // The finding at `index` of the view, or `undefined` while its page loads.
   readonly rowAt: (view: FindingsView, index: number) => Finding | undefined;
   readonly subscribe: (listener: () => void) => () => void;
@@ -54,6 +59,8 @@ export const createFindingsSource = (
   // Pages asked again while a request of theirs was on its way: asked once more when it ends.
   const again = new Set<string>();
   const shown = new Map<string, Shown>();
+  // How many mounted lists show each view.
+  const holders = new Map<string, number>();
   const listeners = new Set<() => void>();
   // A new scan starts a new generation: the answers of an older one are dropped.
   let generation = 0;
@@ -65,18 +72,6 @@ export const createFindingsSource = (
     version += 1;
     for (const listener of listeners) {
       listener();
-    }
-  };
-
-  const keep = (id: string, findings: readonly Finding[]): void => {
-    pages.delete(id);
-    pages.set(id, findings);
-
-    for (const oldest of pages.keys()) {
-      if (pages.size <= maxPages) {
-        break;
-      }
-      pages.delete(oldest);
     }
   };
 
@@ -92,6 +87,30 @@ export const createFindingsSource = (
     const from = Math.floor(first / pageSize);
 
     return Array.from({ length: Math.floor(end / pageSize) - from + 1 }, (_, at) => from + at);
+  };
+
+  // The pages that hold rows on screen: never dropped.
+  const onScreen = (): ReadonlySet<string> =>
+    new Set([...shown].flatMap(([key, range]) => pagesOf(key, range).map((page) => pageKey(key, page))));
+
+  const keep = (id: string, findings: readonly Finding[]): void => {
+    pages.delete(id);
+    pages.set(id, findings);
+
+    if (pages.size <= maxPages) {
+      return;
+    }
+
+    const pinned = onScreen();
+
+    for (const oldest of pages.keys()) {
+      if (pages.size <= maxPages) {
+        break;
+      }
+      if (!pinned.has(oldest)) {
+        pages.delete(oldest);
+      }
+    }
   };
 
   const load = (view: FindingsView, key: string, page: number): void => {
@@ -228,6 +247,27 @@ export const createFindingsSource = (
       };
     },
     held: () => [...pages.values()].reduce((sum, page) => sum + page.length, 0),
+    hold: (view): (() => void) => {
+      const key = keyOf(view);
+      holders.set(key, (holders.get(key) ?? 0) + 1);
+      let released = false;
+
+      return (): void => {
+        if (released) {
+          return;
+        }
+        released = true;
+
+        const left = (holders.get(key) ?? 1) - 1;
+
+        if (left > 0) {
+          holders.set(key, left);
+        } else {
+          holders.delete(key);
+          shown.delete(key);
+        }
+      };
+    },
     rowAt,
     subscribe: (listener): (() => void) => {
       listeners.add(listener);

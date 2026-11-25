@@ -1537,6 +1537,27 @@ test.describe('positive cases', () => {
     await expect(focused).toHaveAttribute('aria-posinset', total ?? '');
   });
 
+  test('with every one of fourteen categories selected, every Review tile shows its rows', async ({ page }) => {
+    await mockCore(page, SCRIPTS.wide);
+    await page.goto('/');
+    await scanButton(page).click();
+    await expect(cards(page)).toHaveCount(14);
+
+    for (let group = 1; group <= 14; group += 1) {
+      await page.getByRole('checkbox', { exact: true, name: `Select Example group ${String(group)}` }).check();
+    }
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+
+    const tiles = page.getByRole('article');
+    await expect(tiles).toHaveCount(14);
+    for (const tile of await tiles.all()) {
+      await expect(tile.getByRole('listitem')).toHaveCount(3);
+      await expect(tile.getByRole('listitem').first()).toHaveAccessibleName(/^Example: item-\d+/u);
+    }
+    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+  });
+
   test('switching the demo module off in the settings', async ({ page }) => {
     await mockCore(page, SCRIPTS.settings);
     await page.goto('/');

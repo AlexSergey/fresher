@@ -20,6 +20,7 @@ import {
 } from '../../test/cleanup-plan';
 import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW } from '../../test/demo-scan';
 import { FINDING_DICTIONARY, HIGH_FINDING, MEDIUM_FINDING } from '../../test/finding-fixtures';
+import { largeScan } from '../../test/large-scan';
 import { LARGEST_DICTIONARY, LARGEST_ROWS, ownFindingOf } from '../../test/largest-scan';
 import { pageOf } from '../../test/page-of';
 import { BUILD_DICTIONARY, SANDBOX_HOME, sandboxBuild } from '../../test/sandbox-build';
@@ -42,6 +43,18 @@ const OVERVIEW: Overview = {
     { category: 'demo.projects', count: 1, highestDanger: 'high', sizes: HIGH_FINDING.sizes },
   ],
 };
+
+// The scan the core answers: its findings, its overview and the names of its categories.
+type Scan = {
+  readonly dictionary: Readonly<Record<string, string>>;
+  readonly findings: readonly Finding[];
+  readonly overview: Overview;
+};
+
+const SCAN: Scan = { dictionary: {}, findings: FINDINGS, overview: OVERVIEW };
+
+// Fourteen categories of three findings: more lists than the ten pages the findings cache keeps.
+const WIDE_SCAN = largeScan({ categories: 14, count: 42 });
 
 // Only these commands read; anything else the screen sent would be a change.
 const READS: readonly CommandKey[] = ['getDictionary', 'getFindings', 'getModules', 'getOverview', 'subscribe'];
@@ -67,6 +80,7 @@ const renderReview = async (
   select: (store: CoreStore) => void,
   withBar = false,
   cleanup: Partial<CoreAnswers> = {},
+  scan: Scan = SCAN,
 ): Promise<Rendered> => {
   const commands: CommandKey[] = [];
   const changes: (readonly [CommandKey, unknown])[] = [];
@@ -90,10 +104,11 @@ const renderReview = async (
       ...CLEANUP_DICTIONARY,
       ...BUILD_DICTIONARY,
       ...STORAGE_DICTIONARY,
+      ...scan.dictionary,
     })),
-    getFindings: recorded('getFindings', (args) => pageOf(FINDINGS, (args as { query: FindingsQuery }).query)),
+    getFindings: recorded('getFindings', (args) => pageOf(scan.findings, (args as { query: FindingsQuery }).query)),
     getModules: recorded('getModules', () => DEMO_MODULES),
-    getOverview: recorded('getOverview', () => OVERVIEW),
+    getOverview: recorded('getOverview', () => scan.overview),
     subscribe: recorded('subscribe', () => null),
   });
   const navigation = createNavigation();
@@ -365,6 +380,17 @@ describe('ReviewScreen', () => {
       ).toBeInTheDocument();
       expect(await within(caches).findByRole('list', { name: 'The items of Example caches' })).toBeInTheDocument();
       expect(await within(caches).findAllByRole('listitem')).toHaveLength(2);
+    });
+
+    it('with more categories selected than the findings cache keeps pages, every tile shows its rows', async () => {
+      const categories = WIDE_SCAN.overview.totals.map(({ category }) => category);
+      await renderReview(pickCategory(...categories), false, {}, WIDE_SCAN);
+
+      expect(tileNames()).toHaveLength(14);
+      for (const each of screen.getAllByRole('article')) {
+        expect(await within(each).findAllByRole('checkbox', { name: /^Select Example: item-/u })).toHaveLength(3);
+      }
+      expect(screen.queryAllByRole('list', { busy: true })).toStrictEqual([]);
     });
 
     it("the summary matches the selection bar's", async () => {
