@@ -60,8 +60,9 @@ The user, 2026-11-25 (translated):
 1. **The first release is 0.1.0**, for testers, not 1.0.0. 1.0.0 comes after real testing.
 2. **0.1.0 ships unsigned**: no Apple Developer account for now; signing and notarization come later (plan 01 is on
    hold). The release notes tell users how to open it: try to open Fresher once, then System Settings → Privacy &
-   Security → "Open Anyway" next to the line about Fresher, and confirm. The README is left as it is for now (the
-   user postponed it); only this plan records the instruction until plan 04 writes the release notes.
+   Security → "Open Anyway" next to the line about Fresher, and confirm. Later the same day the user asked for the
+   instruction in the README too, as a temporary "First launch on macOS" section under Install; the rest of the
+   README stays postponed. Removing the quarantine attribute is never suggested.
 3. **The app id stays `io.github.alexsergey.fresher`**: no own domain. Open question 3 is closed; no trademark search
    for 0.1.0.
 4. **Do the licence notices now**: ship the licences of every Rust and npm dependency in the app (plan 03/01).

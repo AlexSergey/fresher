@@ -36,8 +36,16 @@ npm install
 npm run build
 ```
 
-The app is written to `target/release/bundle/macos/Fresher.app`. A build you make yourself is not signed: the first
-time, open it with right-click → Open.
+The app is written to `target/release/bundle/macos/Fresher.app`.
+
+### First launch on macOS
+
+Fresher 0.1.0 is not signed with an Apple Developer ID or notarized yet, so macOS blocks the first launch of a
+downloaded copy.
+
+1. Move Fresher.app to Applications and open it once; macOS says it cannot verify it.
+2. Open System Settings → Privacy & Security, scroll down, and click "Open Anyway" next to the line about Fresher.
+3. Confirm with your password. After that Fresher opens normally.
 
 ## What it finds
 
