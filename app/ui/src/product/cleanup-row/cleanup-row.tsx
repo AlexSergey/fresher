@@ -30,8 +30,21 @@ const dateOf = (summary: CleanupSummary): { readonly date: { readonly kind: 'dat
   date: { kind: 'date', value: summary.started },
 });
 
-// Where a cleanup's items are now, in a word or two.
+// Where a cleanup's items are now, in a word or two: what was put back first, as it is the user's last act on it.
 const stateOf = (summary: CleanupSummary): string => {
+  const total = { kind: 'count', value: summary.count } as const;
+
+  if (summary.putBack > 0) {
+    const count = { kind: 'count', value: summary.putBack } as const;
+
+    return summary.inTrash === 0
+      ? t('ui.cleanup-row.state.put-back', { count, total })
+      : t('ui.cleanup-row.state.put-back-in-trash', {
+          count,
+          left: { kind: 'count', value: summary.inTrash },
+          total,
+        });
+  }
   if (summary.ended === 'interrupted') {
     return t('ui.cleanup-row.state.interrupted');
   }
@@ -44,10 +57,7 @@ const stateOf = (summary: CleanupSummary): string => {
 
   return summary.inTrash === 0
     ? t('ui.cleanup-row.state.not-in-trash')
-    : t('ui.cleanup-row.state.in-trash', {
-        count: { kind: 'count', value: summary.inTrash },
-        total: { kind: 'count', value: summary.count },
-      });
+    : t('ui.cleanup-row.state.in-trash', { count: { kind: 'count', value: summary.inTrash }, total });
 };
 
 // One cleanup of the history: its date, how it went, how many items, where they are now and its size. Opens it.

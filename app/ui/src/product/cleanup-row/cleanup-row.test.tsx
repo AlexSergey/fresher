@@ -122,6 +122,12 @@ describe('CleanupRow', () => {
       ]);
       unmount();
     });
+
+    it('a cleanup nothing was put back from does not say put back', () => {
+      const row = openRowOf({ ...MOVED_DETAIL.summary, putBack: 0 });
+
+      expect(row).not.toHaveTextContent('Put back');
+    });
   });
 
   describe('positive cases', () => {
@@ -137,6 +143,26 @@ describe('CleanupRow', () => {
       fireEvent.click(row);
 
       expect(onOpen).toHaveBeenCalledOnce();
+    });
+
+    it('a cleanup put back in full says so', () => {
+      const row = openRowOf({ ...MOVED_DETAIL.summary, inTrash: 0, putBack: 3 });
+
+      expect(row).toHaveTextContent('Put back: 3 of 3');
+      expect(row).not.toHaveTextContent('In the Trash:');
+    });
+
+    it('a cleanup put back in part says what is still in the Trash', () => {
+      const row = openRowOf({ ...MOVED_DETAIL.summary, inTrash: 1, putBack: 2 });
+
+      expect(row).toHaveTextContent('Put back: 2 of 3 · In the Trash: 1');
+    });
+
+    it('a stopped cleanup put back says put back', () => {
+      const row = openRowOf(cleanupSummaryOf(4, STOPPED_REPORT, { inTrash: 0, putBack: 1 }));
+
+      expect(row).toHaveTextContent('Put back: 1 of 3');
+      expect(row).not.toHaveTextContent('Stopped');
     });
   });
 });

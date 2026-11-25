@@ -5,6 +5,7 @@ import type { CleanupId, CleanupItemView } from '../../ipc/bindings.generated';
 import { ListRow } from '../../design/data/list-row/list-row';
 import { VirtualList } from '../../design/data/virtual-list/virtual-list';
 import { Notice } from '../../design/feedback/notice/notice';
+import { useToasts } from '../../design/feedback/toast/toaster';
 import { PageHeader } from '../../design/layout/page-header/page-header';
 import { Surface } from '../../design/layout/surface/surface';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
@@ -68,10 +69,16 @@ const Items = ({ cleanup, items }: ItemsProps): JSX.Element => {
   );
 };
 
-// One cleanup: how it went, its items with what became of each, and putting back what is still in the Trash.
+// One cleanup: how it went, its items with what became of each, and putting back what is still in the Trash. A put
+// back where every item came back goes to the list of cleanups, where this one's row tells it, with a toast saying
+// so; one where any item stayed keeps each item's answer here.
 export const CleanupScreen = ({ cleanup: id }: { readonly cleanup: CleanupId }): JSX.Element => {
   const { navigate } = useNavigation();
-  const cleanup = useCleanup(id);
+  const { show } = useToasts();
+  const cleanup = useCleanup(id, (count) => {
+    show({ text: t('ui.screen.cleanups.put-back-done', { count: { kind: 'count', value: count } }), tone: 'success' });
+    navigate({ kind: 'cleanups' });
+  });
   const { detail } = cleanup;
   const summary = detail?.summary;
   const inTrash = detail?.items.some((item) => item.trash === 'in-trash') ?? false;

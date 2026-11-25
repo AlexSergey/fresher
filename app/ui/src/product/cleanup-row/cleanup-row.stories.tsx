@@ -52,6 +52,11 @@ export const stories = [
     'in-trash': { render: cleanup(MOVED_DETAIL.summary), surface: 'raised', width: 640 },
     interrupted: { render: cleanup(INTERRUPTED_DETAIL.summary), surface: 'raised', width: 640 },
     'not-in-trash': { render: cleanup({ ...MOVED_DETAIL.summary, inTrash: 0 }), surface: 'raised', width: 640 },
+    'put-back': {
+      render: cleanup({ ...MOVED_DETAIL.summary, inTrash: 1, putBack: 2 }),
+      surface: 'raised',
+      width: 640,
+    },
     stopped: { render: cleanup(cleanupSummaryOf(4, STOPPED_REPORT, {})), surface: 'raised', width: 640 },
   }),
   ...storiesOf('CleanupItemRow', {

@@ -77,7 +77,10 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] **Plan 007, the trial run** ([007/05/02](./plans/007-safe-development/05-finish/02-run-and-conclusions.md)).
       Record under its Conclusions.
   1. `rm -rf sandbox/trial && npm run dev:sandbox -- trial`: the banner shows; scan; walk `EXPECTED.md` case by case.
-     Select and confirm a cleanup to the sandbox's Trash; Cleanups screen, put back: the items return.
+     Select and confirm a cleanup to the sandbox's Trash; Cleanups screen, put back: the items return, the app goes
+     to the list of cleanups with "1 item is back where it was." and the row says "Put back: 1 of n · In the Trash:
+     …"; Put back all lands the same way with "Put back: n of n". A put back that fails (an item at its old place)
+     stays on the cleanup with the reason on that item.
   2. Quit. `npm run sandbox -- trial` again (regenerate over the existing folder): the removed items come back and
      nothing else changes.
   3. `npm run dev:sandbox -- trial --real-trash`: one cleanup to the real Trash; put it back (the app, then once
@@ -1086,8 +1089,9 @@ file's order; the real Trash, the real process table, an image and the real wind
 - [ ] **Move to the Trash**: the confirmation lists what will not be removed and why (the held folder in use, naming its
       holder; the image's folder; the unmarked folder as "Development build"); progress; the result "Moved to the
       Trash", the measured space about 0, the Trash sentence; the items are in the Trash.
-- [ ] **Put back**: Cleanups shows "In the Trash: n of n"; one item put back from the app, another with Finder's own Put
-      Back; the history then shows it no longer in the Trash.
+- [ ] **Put back**: Cleanups shows "In the Trash: n of n"; one item put back from the app (the list of cleanups opens,
+      the toast says it is back, the row says "Put back: 1 of n"), another with Finder's own Put Back; the history
+      then shows it no longer in the Trash.
 - [ ] **Never touched**: the held folder, the image's folder (skipped, no Trash), the unmarked folder, the look-alike
       and the bare folder are all still in place.
 - [ ] **Permanent delete** of the trial folders left: "Freed", the measured space next to the estimate; nothing in the

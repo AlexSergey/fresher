@@ -1026,7 +1026,11 @@ count: number, counts: OutcomeCounts, moved: Sizes, deleted: Sizes,
 /**
  * How many of its items are still in the Trash.
  */
-inTrash: number, };
+inTrash: number, 
+/**
+ * How many of its items were put back where they were.
+ */
+putBack: number, };
 
 /**
  * The answer of `get_cleanup`: one cleanup with every item.

@@ -19,9 +19,10 @@ export type OneCleanup = {
   readonly showInTrash: () => void;
 };
 
-// One cleanup of the history, and putting its items back. A refusal is shown with its text; an unreachable core is
-// the frame's error.
-export const useCleanup = (cleanup: CleanupId): OneCleanup => {
+// One cleanup of the history, and putting its items back. A put back where every item came back is told to
+// `onAllBack` with their count; any other keeps each item's answer to show. A refusal is shown with its text; an
+// unreachable core is the frame's error.
+export const useCleanup = (cleanup: CleanupId, onAllBack: (count: number) => void): OneCleanup => {
   const store = useCoreStore();
   const [detail, setDetail] = useState<CleanupDetail | null>(null);
   const [answers, setAnswers] = useState<ReadonlyMap<number, string>>(() => new Map());
@@ -52,6 +53,11 @@ export const useCleanup = (cleanup: CleanupId): OneCleanup => {
     putBack: (items): void => {
       setRefusal(null);
       putBack({ cleanup, items: items === null ? null : [...items] }).then((report) => {
+        if (report.items.length > 0 && report.items.every((item) => item.outcome.kind === 'put-back')) {
+          onAllBack(report.items.length);
+
+          return;
+        }
         setAnswers(
           (shown) => new Map([...shown, ...report.items.map((item) => [item.index, tText(item.text)] as const)]),
         );

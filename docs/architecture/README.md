@@ -632,7 +632,11 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   red when ticked, the High tick for a High plan, what will not be removed and why); then the progress with Stop
   (`product/cleanup-progress/`) and the result (`product/result-summary/`, the space measured beside the estimate).
   The Cleanups screen (`screens/cleanups/`) lists the history from the journal; one cleanup shows each item with its
-  outcome and puts back one item or all still in the Trash. Every text of an outcome or a reason comes from the core.
+  outcome and puts back one item or all still in the Trash. A put back where every item came back goes to the list,
+  with a success toast ("1 item is back where it was.", spoken by the toast region), where the cleanup's row says
+  "Put back: n of m" (with "· In the Trash: k" while some stay), from the summary's `putBack` and `inTrash` counts; a
+  put back where any item stayed keeps the cleanup on screen with each item's answer. Every text of an outcome or a
+  reason comes from the core.
 - **The Trash line** (plan 037; `product/trash-line/`, fed by `screens/scan/use-trash.ts`): under the scan screen's
   disk card, one line per `TrashLine` of `get_trash`, "Waiting in the Trash: 23 GB, 20 GB of it from cleanups here", the
   date the app's share leaves by itself when the core gives one, and **Open Trash**, the only action (never one that

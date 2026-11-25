@@ -4,7 +4,7 @@ import { type CoreScript, mockCore, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import { REVEALED } from './support/apps-mock';
 import { scanButton, scanFinished } from './support/cards';
-import { preparedCommands } from './support/cleanup-mock';
+import { expectPutBack, preparedCommands } from './support/cleanup-mock';
 import { highTick, tickHigh } from './support/confirm';
 
 // The Apps screen and an app's page on the mocked core: the list and its filter, the uninstall with each choice through
@@ -270,7 +270,7 @@ test.describe('positive cases', () => {
     await expect(item).toContainText('In the Trash.');
     await item.getByRole('button', { name: 'Put back' }).click();
 
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('an uninstall of everything goes on after the tick', async ({ page }) => {

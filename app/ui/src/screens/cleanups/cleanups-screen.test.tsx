@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CleanupDetail, CleanupId, CleanupsPage, CleanupsQuery } from '../../ipc/bindings.generated';
 
 import { type CoreAnswers, mockCore, refuse, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
-import { createNavigation, type Navigation } from '../../state/navigation';
+import { createNavigation, type Navigation, useNavigation } from '../../state/navigation';
 import { createCoreStore } from '../../state/store';
 import { setMotion } from '../../test/animation';
 import {
@@ -78,6 +79,14 @@ const pagesOf =
   };
 
 const detailOf = (detail: CleanupDetail) => (): CleanupDetail => detail;
+
+// The history's two screens as the frame shows them: one cleanup, or else the list.
+const Shown = (): React.JSX.Element => {
+  const navigation = useNavigation();
+  const shown = useSyncExternalStore(navigation.subscribe, navigation.getScreen);
+
+  return shown.kind === 'cleanup' ? <CleanupScreen cleanup={shown.cleanup} /> : <CleanupsScreen />;
+};
 
 const itemRow = (name: string): HTMLElement =>
   screen.getAllByRole('listitem').find((row) => row.textContent.includes(name)) ?? screen.getByText(name);
@@ -159,8 +168,8 @@ describe('CleanupScreen', () => {
     renderScreen(<CleanupScreen cleanup={cleanup} />, answers);
 
   describe('negative cases', () => {
-    it('an occupied place is explained and the item stays', async () => {
-      open(3, {
+    it('an occupied place is explained, the item stays and the screen too', async () => {
+      const { navigation } = open(3, {
         getCleanup: detailOf(MOVED_DETAIL),
         putBack: () => ({
           items: [
@@ -176,6 +185,28 @@ describe('CleanupScreen', () => {
         await within(itemRow('editor-cache')).findByText(/Something is already at its old place/u),
       ).toBeInTheDocument();
       expect(screen.getAllByRole('listitem')).toHaveLength(3);
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'scan' });
+      expect(screen.queryByText(/back where/u)).toBeNull();
+    });
+
+    it('a put back all where one item stayed keeps every answer on the cleanup', async () => {
+      const { navigation } = open(3, {
+        getCleanup: detailOf(MOVED_DETAIL),
+        putBack: () => ({
+          items: [
+            { index: 0, outcome: { kind: 'put-back' }, text: { args: {}, key: 'core.cleanup.put-back.put-back' } },
+            { index: 1, outcome: { kind: 'failed' }, text: { args: {}, key: 'core.cleanup.put-back.failed' } },
+          ],
+        }),
+      });
+      await screen.findByText('editor-cache');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Put back all still in the Trash' }));
+
+      expect(await within(itemRow('editor-cache')).findByText(/Put back where it was\./u)).toBeInTheDocument();
+      const second = MOVED_DETAIL.items[1]?.path?.split('/').at(-1) ?? '';
+      expect(within(itemRow(second)).getByText(/macOS refused to move it back/u)).toBeInTheDocument();
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'scan' });
     });
 
     it('a refused put back shows the core’s text', async () => {
@@ -222,18 +253,13 @@ describe('CleanupScreen', () => {
       expect(seen).toContainEqual(['putBack', { request: { cleanup: 3, items: null } }]);
     });
 
-    it('a put back updates its row', async () => {
-      const back = {
-        ...MOVED_DETAIL,
-        items: MOVED_DETAIL.items.map((item, index) =>
-          index === 0 ? { ...item, putBack: { kind: 'put-back' as const }, trash: null } : item,
-        ),
-      };
-      let detail = MOVED_DETAIL;
-      const { seen } = open(3, {
-        getCleanup: () => detail,
+    it('a put back lands on the list, where its cleanup says it, and is announced', async () => {
+      let page = HISTORY;
+      const { navigation, seen } = renderScreen(<Shown />, {
+        getCleanup: detailOf(MOVED_DETAIL),
+        getCleanups: () => page,
         putBack: () => {
-          detail = back;
+          page = { ...HISTORY, cleanups: [{ ...MOVED_DETAIL.summary, inTrash: 2, putBack: 1 }] };
 
           return {
             items: [
@@ -242,13 +268,43 @@ describe('CleanupScreen', () => {
           };
         },
       });
+      act(() => {
+        navigation.navigate({ cleanup: 3, kind: 'cleanup' });
+      });
       await screen.findByText('editor-cache');
 
       fireEvent.click(within(itemRow('editor-cache')).getByRole('button', { name: 'Put back' }));
 
-      expect(await within(itemRow('editor-cache')).findByText(/Put back where it was\./u)).toBeInTheDocument();
-      expect(within(itemRow('editor-cache')).queryByRole('button', { name: 'Put back' })).toBeNull();
+      const toasts = await screen.findByRole('region', { name: 'Notifications' });
+      expect(await within(toasts).findByText('1 item is back where it was.')).toBeInTheDocument();
+      expect(navigation.getScreen()).toStrictEqual({ kind: 'cleanups' });
+      expect(
+        await screen.findByRole('button', { name: /^Cleanup of Jan 2, 2025.*Put back: 1 of 3 · In the Trash: 2/u }),
+      ).toBeInTheDocument();
       expect(seen).toContainEqual(['putBack', { request: { cleanup: 3, items: [0] } }]);
+    });
+
+    it('a put back all that brought every item back says how many', async () => {
+      const { navigation } = renderScreen(<Shown />, {
+        getCleanup: detailOf(MOVED_DETAIL),
+        getCleanups: () => ({ ...HISTORY, cleanups: [{ ...MOVED_DETAIL.summary, inTrash: 0, putBack: 3 }] }),
+        putBack: () => ({
+          items: [0, 1, 2].map((index) => ({
+            index,
+            outcome: { kind: 'put-back' as const },
+            text: { args: {}, key: 'core.cleanup.put-back.put-back' },
+          })),
+        }),
+      });
+      act(() => {
+        navigation.navigate({ cleanup: 3, kind: 'cleanup' });
+      });
+      await screen.findByText('editor-cache');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Put back all still in the Trash' }));
+
+      expect(await screen.findByText('3 items are back where they were.')).toBeInTheDocument();
+      expect(await screen.findByText('Put back: 3 of 3')).toBeInTheDocument();
     });
 
     it('show in the trash asks the core', async () => {

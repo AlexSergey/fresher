@@ -607,7 +607,7 @@ mod tests {
             let detail = engine.cleanup(id).unwrap();
             assert_eq!(detail.items[1].trash, Some(TrashState::InTrash));
             assert_eq!(detail.items[1].put_back, Some(PutBackOutcome::Occupied));
-            assert_eq!(detail.summary.in_trash, 3);
+            assert_eq!((detail.summary.in_trash, detail.summary.put_back), (3, 0));
             assert_eq!(journal.recorded()[0].put_backs[0].outcome, PutBackOutcome::Occupied);
         }
 
@@ -960,8 +960,11 @@ mod tests {
             let records: Vec<_> =
                 journal.recorded()[0].put_backs.iter().map(|record| (record.cleanup, record.index)).collect();
             assert_eq!(records, [(id, 0), (id, 1), (id, 2)]);
-            assert_eq!(engine.cleanup(id).unwrap().summary.in_trash, 0);
-            assert_eq!(engine.cleanups(0, 10).waiting, ByteSize::ZERO);
+            let summary = engine.cleanup(id).unwrap().summary;
+            assert_eq!((summary.in_trash, summary.put_back), (0, 3));
+            let page = engine.cleanups(0, 10);
+            assert_eq!((page.cleanups[0].in_trash, page.cleanups[0].put_back), (0, 3));
+            assert_eq!(page.waiting, ByteSize::ZERO);
             assert_eq!(engine.put_back(id, None).unwrap().items, []);
             assert_eq!(id, CleanupId::new(1));
         }

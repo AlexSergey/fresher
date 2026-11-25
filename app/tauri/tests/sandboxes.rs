@@ -393,6 +393,7 @@ mod negative {
                 moved: sizes(allocated),
                 deleted: Sizes::ZERO,
                 in_trash: 1,
+                put_back: 0,
             };
             let item = CleanupItemView {
                 index: 0,

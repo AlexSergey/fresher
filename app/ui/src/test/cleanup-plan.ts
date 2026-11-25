@@ -314,11 +314,15 @@ export const STOPPED_REPORT: CleanupReport = reportOf(DEMO_PLAN, {
 // The space on the disk could not be read.
 export const UNMEASURED_REPORT: CleanupReport = reportOf(DEMO_PLAN, { measured: null });
 
-// One cleanup of the history: `inTrash` of its items still in the Trash.
+// One cleanup of the history: `inTrash` of its items still in the Trash, `putBack` of them put back.
 export const cleanupSummaryOf = (
   cleanup: CleanupId,
   report: CleanupReport,
-  { inTrash = report.counts.moved, started = 1_735_646_400 }: { readonly inTrash?: number; readonly started?: number },
+  {
+    inTrash = report.counts.moved,
+    putBack = 0,
+    started = 1_735_646_400,
+  }: { readonly inTrash?: number; readonly putBack?: number; readonly started?: number },
 ): CleanupSummary => ({
   cleanup,
   count: Object.values(report.counts).reduce((sum, count) => sum + count, 0),
@@ -328,6 +332,7 @@ export const cleanupSummaryOf = (
   inTrash,
   method: report.method,
   moved: report.moved,
+  putBack,
   started,
 });
 
@@ -426,6 +431,7 @@ export const CLEANUP_DICTIONARY: Dictionary = {
   'core.cleanup.outcome.moved': 'Moved to the Trash.',
   'core.cleanup.outcome.not-reached': 'Not removed: the cleanup stopped before this item.',
   'core.cleanup.outcome.unknown': 'Unknown: Fresher stopped during this cleanup. Check the Trash.',
+  'core.cleanup.put-back.failed': 'macOS refused to move it back, so it stayed in the Trash.',
   'core.cleanup.put-back.gone': 'It is no longer in the Trash, so it cannot be put back.',
   'core.cleanup.put-back.occupied':
     'Something is already at its old place, so it stayed in the Trash. Show it in the Trash to decide.',

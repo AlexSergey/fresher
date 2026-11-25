@@ -28,7 +28,13 @@ import {
   scanFinished,
   tickItemsOf,
 } from './support/cards';
-import { preparedCommands, preparedSelections, releaseCleanup, requestQuit } from './support/cleanup-mock';
+import {
+  expectPutBack,
+  preparedCommands,
+  preparedSelections,
+  releaseCleanup,
+  requestQuit,
+} from './support/cleanup-mock';
 import { highTick, tickHigh } from './support/confirm';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { closedGroups, settingsPage } from './support/settings';
@@ -1714,12 +1720,14 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const editor = items.getByRole('listitem').filter({ hasText: 'editor-cache' });
     await editor.getByRole('button', { name: 'Put back' }).click();
+
+    await expect(heading(page, 'Cleanups')).toBeFocused();
+    await expectPutBack(page, 1);
+    const cleanups = page.getByRole('list', { name: 'Cleanups, newest first' });
+    await expect(cleanups).toContainText('Put back: 1 of 3 · In the Trash: 2');
+    await cleanups.getByRole('button', { name: /Jan 2, 2025/ }).click();
     await expect(editor).toContainText('Put back where it was.');
     await expect(editor.getByRole('button', { name: 'Put back' })).toHaveCount(0);
-
-    await page.getByRole('button', { name: 'All cleanups' }).click();
-    await expect(heading(page, 'Cleanups')).toBeFocused();
-    await expect(page.getByRole('list', { name: 'Cleanups, newest first' })).toContainText('In the Trash: 2 of 3');
   });
 
   test('the permanent path: its own tick, the red button and Freed', async ({ page }) => {
@@ -1916,7 +1924,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const caches = items.getByRole('listitem').filter({ hasText: 'WebStorm2024.3' }).first();
     await caches.getByRole('button', { name: 'Put back' }).click();
-    await expect(caches).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('ignoring the module in Settings hides its totals, Settings lists it and turning it off restores it', async ({
@@ -2011,7 +2019,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: 'pip-unpack-ak3j2' }).first();
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('old logs and old crash reports show their cards with their sizes and item counts', async ({ page }) => {
@@ -2082,7 +2090,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: 'old-tool.log' }).first();
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the logs switch and the days field, which cannot go below 7', async ({ page }) => {
@@ -2210,7 +2218,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: '_cacache' }).first();
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('ignoring npm’s cache keeps the other caches, and restoring brings it back', async ({ page }) => {
@@ -2387,7 +2395,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: '640 MB' }).first();
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the switch and the days for removed apps', async ({ page }) => {
@@ -2460,7 +2468,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: 'video.mov' });
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('an unfinished download goes to the Trash with its placeholder and comes back', async ({ page }) => {
@@ -2479,7 +2487,7 @@ test.describe('positive cases', () => {
     await expect(items.getByRole('listitem')).toHaveCount(2);
     const item = items.getByRole('listitem').filter({ hasText: 'movie.mp4.crdownload' });
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the switch and the days for downloads', async ({ page }) => {
@@ -2567,7 +2575,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: 'target' });
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the switch and the days for old projects', async ({ page }) => {
@@ -2653,7 +2661,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: 'models--meta--tiny' });
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Ollama models show on Scan with their freed size', async ({ page }) => {
@@ -2732,7 +2740,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem');
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the switch for local AI models', async ({ page }) => {
@@ -2810,7 +2818,7 @@ test.describe('positive cases', () => {
     const item = items.getByRole('listitem').filter({ hasText: /^com\.example\.Editor(?!\.)/ });
     await expect(item).toContainText('In the Trash.');
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test("an open browser's cache cannot be selected", async ({ page }) => {
@@ -2906,7 +2914,7 @@ test.describe('positive cases', () => {
     await expect(empty).not.toContainText('In the Trash.');
     await expect(item).toContainText('In the Trash.');
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the switch for caches of your apps', async ({ page }) => {
@@ -2998,7 +3006,7 @@ test.describe('positive cases', () => {
     const archive = items.getByRole('listitem').filter({ hasText: '.xcarchive' });
     await expect(archive).toContainText('In the Trash.');
     await archive.getByRole('button', { name: 'Put back' }).click();
-    await expect(archive).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test("Settings shows the switch for Xcode's files", async ({ page }) => {
@@ -3081,7 +3089,7 @@ test.describe('positive cases', () => {
     const items = page.getByRole('list', { name: 'The items of this cleanup' });
     const item = items.getByRole('listitem').filter({ hasText: '1.70.0-aarch64-apple-darwin' });
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('Settings shows the Node versions switch off by default', async ({ page }) => {
@@ -3294,7 +3302,7 @@ test.describe('positive cases', () => {
     const item = items.getByRole('listitem').filter({ hasText: LARGEST.disk });
     await expect(item).toContainText('In the Trash.');
     await item.getByRole('button', { name: 'Put back' }).click();
-    await expect(item).toContainText('Put back where it was.');
+    await expectPutBack(page, 1);
   });
 
   test('the agreement is not asked again once accepted', async ({ page }) => {

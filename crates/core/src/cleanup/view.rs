@@ -122,6 +122,8 @@ pub struct CleanupSummary {
     pub deleted: Sizes,
     /// How many of its items are still in the Trash.
     pub in_trash: u32,
+    /// How many of its items were put back where they were.
+    pub put_back: u32,
 }
 
 /// The answer of `get_cleanup`: one cleanup with every item.
@@ -261,6 +263,7 @@ mod tests {
                 moved: Sizes::ZERO,
                 deleted: Sizes::ZERO,
                 in_trash: 1,
+                put_back: 0,
             };
             let detail = CleanupDetail {
                 summary,

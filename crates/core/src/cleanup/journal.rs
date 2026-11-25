@@ -204,6 +204,7 @@ impl RecordedCleanup {
             self.put_backs.iter().any(|record| record.index == index && record.outcome == PutBackOutcome::PutBack)
         };
         let trashed = self.items.iter().filter(|record| !record.trashed.is_empty() && !put_back(record.index));
+        let returned = self.begin.items.iter().filter(|item| put_back(item.index));
         CleanupSummary {
             cleanup: self.cleanup,
             started: self.begin.at,
@@ -214,6 +215,7 @@ impl RecordedCleanup {
             moved: report.moved,
             deleted: report.deleted,
             in_trash: u32::try_from(trashed.count()).unwrap_or(u32::MAX),
+            put_back: u32::try_from(returned.count()).unwrap_or(u32::MAX),
         }
     }
 }
@@ -337,8 +339,8 @@ mod tests {
             let occupied = cleanup(vec![moved(0)], Some(Ended::Completed), vec![put_back(PutBackOutcome::Occupied)]);
             let done = cleanup(vec![moved(0)], Some(Ended::Completed), vec![put_back(PutBackOutcome::PutBack)]);
 
-            assert_eq!(occupied.summary().in_trash, 1);
-            assert_eq!(done.summary().in_trash, 0);
+            assert_eq!((occupied.summary().in_trash, occupied.summary().put_back), (1, 0));
+            assert_eq!((done.summary().in_trash, done.summary().put_back), (0, 1));
         }
     }
 
@@ -392,6 +394,7 @@ mod tests {
             assert_eq!((summary.started, summary.ended, summary.count), (Timestamp::from_secs(5), Ended::Cancelled, 3));
             assert_eq!(summary.moved.allocated, ByteSize::new(4096 + 8192));
             assert_eq!((summary.in_trash, summary.counts.unknown), (2, 1));
+            assert_eq!(summary.put_back, 0);
         }
     }
 }

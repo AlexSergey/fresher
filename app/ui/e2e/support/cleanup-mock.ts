@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 import type {
   AppId,
@@ -273,7 +273,11 @@ export const mockCleanup = async (
             items: detail.items.map((item) =>
               wanted.includes(item) ? { ...item, putBack: { kind: 'put-back' }, trash: null } : item,
             ),
-            summary: { ...detail.summary, inTrash: detail.summary.inTrash - wanted.length },
+            summary: {
+              ...detail.summary,
+              inTrash: detail.summary.inTrash - wanted.length,
+              putBack: detail.summary.putBack + wanted.length,
+            },
           });
         }
 
@@ -410,3 +414,13 @@ export const preparedCommands = (page: Page): Promise<readonly string[]> =>
 
 // The selections the UI sent with `prepare_cleanup` so far, in order: ids only, as the core takes them.
 export const preparedSelections = (page: Page): readonly CleanupSelection[] => SELECTIONS.get(page) ?? [];
+
+// A put back where every item came back: the list of cleanups, the toast saying how many, and the row saying so.
+export const expectPutBack = async (page: Page, count: number): Promise<void> => {
+  const said = count === 1 ? '1 item is back where it was.' : `${String(count)} items are back where they were.`;
+
+  await expect(page.getByRole('region', { name: 'Notifications' })).toContainText(said);
+  await expect(page.getByRole('list', { name: 'Cleanups, newest first' })).toContainText(
+    `Put back: ${String(count)} of`,
+  );
+};
