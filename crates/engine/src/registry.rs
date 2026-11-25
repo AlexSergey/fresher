@@ -3,8 +3,9 @@
 use std::sync::Arc;
 
 use fresher_core::{
-    AccessStatus, CategoryDescriptor, DescriptorError, Dictionary, DictionaryError, Module, ModuleDescriptor,
-    ModuleGroup, ModuleId, ModuleInfo, SchemaError, SettingsSchema, TextKey, ToolCommand, core_dictionary,
+    AccessStatus, CategoryDescriptor, DescriptorError, Dictionary, DictionaryError, HighLevel, Module,
+    ModuleDescriptor, ModuleGroup, ModuleId, ModuleInfo, SchemaError, SettingsSchema, TextKey, ToolCommand,
+    core_dictionary,
 };
 
 /// Every module of the app, with the settings schema and the dictionary they make together.
@@ -114,6 +115,26 @@ impl Registry {
     fn descriptors(&self) -> impl Iterator<Item = &ModuleDescriptor> {
         self.modules.iter().map(|module| module.descriptor())
     }
+}
+
+/// `module` as `high` lets the UI see it: its categories `high` does not offer left out, and out of its choices, a
+/// choice left with none dropped.
+pub(crate) fn withhold(mut module: ModuleInfo, high: HighLevel) -> ModuleInfo {
+    let withheld: Vec<_> = module
+        .categories
+        .iter()
+        .filter(|category| !high.offers(category.descriptor.danger()))
+        .map(|category| category.descriptor.id())
+        .collect();
+    if withheld.is_empty() {
+        return module;
+    }
+    module.categories.retain(|category| !withheld.contains(&category.descriptor.id()));
+    for choice in &mut module.choices {
+        choice.categories.retain(|category| !withheld.contains(category));
+    }
+    module.choices.retain(|choice| !choice.categories.is_empty());
+    module
 }
 
 /// Refuses a module of the group `Debug` unless `development_build`: that group never ships.

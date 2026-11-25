@@ -2,10 +2,11 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { type CoreScript, mockCore, SCRIPTS } from './core-mock';
-import { details, openDetails, scanButton, scanFinished } from './support/cards';
+import { details, openDetails, scanButton, scanFinished, tickItemsOf } from './support/cards';
 import { requestQuit } from './support/cleanup-mock';
 import { nextFrames } from './support/frames';
 import { motionOff } from './support/motion';
+import { settingsPage } from './support/settings';
 
 // The automated checker over every screen in each of its states and every story of the gallery: no violation of
 // WCAG 2.1 A and AA. Motion is off, so nothing is checked mid-animation.
@@ -101,7 +102,8 @@ const tempSettings = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.temp);
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: 'General' })).toBeFocused();
+  await settingsPage(page, 'Temporary files', 'System', 'Temporary files');
   const days = page.getByRole('spinbutton', { name: 'Offer temporary files unchanged for' });
   await expect(days).toHaveValue('7');
   await days.scrollIntoViewIfNeeded();
@@ -112,7 +114,8 @@ const logsSettings = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.logs);
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: 'General' })).toBeFocused();
+  await settingsPage(page, 'Logs and crash reports', 'System', 'Logs and crash reports');
   const days = page.getByRole('spinbutton', { name: 'Offer logs and crash reports unchanged for' });
   await expect(days).toHaveValue('7');
   await days.scrollIntoViewIfNeeded();
@@ -125,8 +128,8 @@ const reviewDownloads = async (page: Page): Promise<void> => {
   await page.goto('/');
   await scanButton(page).click();
   await scanFinished(page);
-  await page.getByRole('checkbox', { name: 'Select Installers of installed apps' }).check();
-  await page.getByRole('checkbox', { name: 'Select Big downloads you have not opened' }).check();
+  await page.getByRole('checkbox', { name: 'Select Old installers' }).check();
+  await tickItemsOf(page, 'Big unopened downloads');
   await go(page, /^Review/, 'Review');
 };
 
@@ -135,10 +138,10 @@ const ollamaConfirmation = async (page: Page): Promise<Locator> => {
   await page.goto('/');
   await scanButton(page).click();
   await scanFinished(page);
-  await page.getByRole('checkbox', { name: 'Select Ollama models' }).check();
+  await tickItemsOf(page, 'Ollama models');
   await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Review' })).toBeFocused();
-  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
   const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await dialog.getByRole('button', { name: /^and 3 more files that go with it/ }).click();
@@ -147,18 +150,20 @@ const ollamaConfirmation = async (page: Page): Promise<Locator> => {
   return dialog;
 };
 
-// WebStorm's three categories ticked, the review open and the confirmation (it names Medium) asked for.
+// WebStorm's three categories ticked (its settings, Look before removing, one by one), the review open and the confirmation (it names Medium) asked for.
 const jetbrainsConfirmation = async (page: Page): Promise<Locator> => {
   await mockCore(page, SCRIPTS.jetbrains);
   await page.goto('/');
   await scanButton(page).click();
   await scanFinished(page);
-  for (const name of ['Caches', 'Logs', 'Settings and plugins']) {
-    await page.getByRole('checkbox', { name: new RegExp(`^Select ${name} of older`) }).check();
+  for (const name of ['caches', 'logs']) {
+    await page.getByRole('checkbox', { name: new RegExp(`^Select Old JetBrains IDE ${name}`) }).check();
   }
+  const settings = await page.getByRole('heading', { level: 3, name: /^Old JetBrains IDE settings/u }).textContent();
+  await tickItemsOf(page, settings ?? '');
   await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Review' })).toBeFocused();
-  await page.getByRole('button', { name: 'Move to Trash…' }).click();
+  await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
   const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
 
@@ -180,7 +185,7 @@ test.describe('positive cases', () => {
     test('the Scan screen during a scan', async ({ page }) => {
       await open(page, SCRIPTS.live);
       await scan(page, '2.3 GB');
-      await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
+      await expect(page.getByRole('progressbar', { name: /^Scanning, \d+ percent$/u })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -212,7 +217,7 @@ test.describe('positive cases', () => {
     test('the Scan screen after a partial scan', async ({ page }) => {
       await open(page, SCRIPTS.partial);
       await scan(page, '2.6 GB');
-      await expect(page.getByText('This scan is incomplete')).toBeVisible();
+      await expect(page.getByText('This scan is not complete')).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -255,23 +260,23 @@ test.describe('positive cases', () => {
     });
 
     for (const [script, category, line] of [
-      ['jetbrains', 'Settings and plugins of older JetBrains IDEs', '2 items left out (600 MB)'],
+      ['jetbrains', 'Old JetBrains IDE settings', '2 items left out (600 MB)'],
       ['temp', 'Old temporary files', '4,712 items left out (790 MB)'],
-      ['logs', 'Old logs of your apps', '1 item left out (3 MB)'],
+      ['logs', 'Old app logs', '1 item left out (3 MB)'],
       ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)'],
-      ['appCaches', 'Caches of your apps', '1 item left out (90 MB)'],
+      ['appCaches', 'App caches', '1 item left out (90 MB)'],
       ['appCachesBrowsers', 'Browser caches', '1 item left out (30 MB)'],
-      ['appCachesBrowsers', 'Caches of web-based apps', 'Redis Insight: GPUCache'],
+      ['appCachesBrowsers', 'Web-based app caches', 'Redis Insight: GPUCache'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)'],
       ['staleProjects', 'Packages of old projects', '2 items left out (1.3 GB)'],
       ['localAiModels', 'Hugging Face models', '1 item left out (300 MB)'],
-      ['unusedToolchains', 'Unused Node versions (nvm)', '1 item left out (110 MB)'],
+      ['unusedToolchains', 'Unused Node versions', '1 item left out (110 MB)'],
     ] as const) {
       test(`the details of ${category}, with its left-out lines`, async ({ page }) => {
         await detailsAfter(page, SCRIPTS[script], category);
         await expect(details(page)).toContainText(line);
-        await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
+        await expect(details(page).getByRole('checkbox').first()).toBeVisible();
 
         expect(await violations(page)).toStrictEqual([]);
       });
@@ -282,10 +287,10 @@ test.describe('positive cases', () => {
       await page.goto('/');
       await scanButton(page).click();
       await scanFinished(page);
-      const section = page.getByRole('region', { name: 'Described, not cleaned' });
+      const section = page.getByRole('region', { name: 'Shown, never removed' });
       await expect(section).toContainText('OrbStack');
       // The totals have arrived: the layout no longer moves.
-      await expect(page.getByText('in 5 items · 4 categories')).toBeVisible();
+      await expect(page.locator('[data-card]')).toHaveCount(4);
       await section.scrollIntoViewIfNeeded();
 
       expect(await violations(page)).toStrictEqual([]);
@@ -301,7 +306,7 @@ test.describe('positive cases', () => {
         await scanButton(page).click();
         await scanFinished(page);
         await page
-          .getByRole('region', { name: 'Described, not cleaned' })
+          .getByRole('region', { name: 'Shown, never removed' })
           .getByRole('button', { name: 'Details' })
           .click();
         await expect(page.getByRole('heading', { level: 1, name: title })).toBeFocused();
@@ -327,13 +332,13 @@ test.describe('positive cases', () => {
 
     test('the details of the Xcode archives', async ({ page }) => {
       await detailsAfter(page, SCRIPTS.xcode, 'Xcode archives');
-      await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
+      await expect(details(page).getByRole('checkbox').first()).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
 
     test('the details of an unused toolchains category before Documents is allowed', async ({ page }) => {
-      await detailsAfter(page, SCRIPTS.unusedToolchainsNoDocuments, 'Unused Rust toolchains');
+      await detailsAfter(page, SCRIPTS.unusedToolchainsNoDocuments, 'Unused Rust versions');
       await expect(page.getByRole('button', { name: 'Let Fresher look there' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
@@ -372,7 +377,7 @@ test.describe('positive cases', () => {
 
     test("the details of Ollama's models", async ({ page }) => {
       await detailsAfter(page, SCRIPTS.localAiModelsOllama, 'Ollama models');
-      await expect(page.getByRole('checkbox', { name: /^Select all/ })).toBeVisible();
+      await expect(details(page).getByRole('checkbox').first()).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -385,39 +390,24 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
-    test('the review with the safe part and the danger zone', async ({ page }) => {
+    test('the review with a tile of each group, one a Look tile', async ({ page }) => {
       await reviewDownloads(page);
-      await expect(page.getByRole('region', { name: 'Danger zone' })).toBeVisible();
+      await expect(page.getByRole('article')).toHaveCount(2);
+      await expect(page.getByRole('region', { name: 'Ready to remove' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
 
     test('the confirmation of a High plan, its tick off and on', async ({ page }) => {
       await reviewDownloads(page);
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
       const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
       await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
 
       expect(await violations(page)).toStrictEqual([]);
 
       await dialog.getByRole('checkbox', { name: 'I understand these may be the only copy of my data' }).check();
-      await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
-
-      expect(await violations(page)).toStrictEqual([]);
-    });
-
-    test('the question before Select all of the High zone', async ({ page }) => {
-      await mockCore(page, SCRIPTS.downloads);
-      await page.goto('/');
-      await scanButton(page).click();
-      await scanFinished(page);
-      await page
-        .getByRole('region', { exact: true, name: 'High risk' })
-        .getByRole('checkbox', { name: 'Select all' })
-        .click();
-      await expect(
-        page.getByRole('dialog', { name: 'Select everything at High?' }).getByRole('button', { name: 'Cancel' }),
-      ).toBeFocused();
+      await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeEnabled();
 
       expect(await violations(page)).toStrictEqual([]);
     });
@@ -431,7 +421,7 @@ test.describe('positive cases', () => {
 
     test('the confirmation of a cleanup', async ({ page }) => {
       await reviewAll(page, SCRIPTS.cleaningLeftOut);
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
       await expect(page.getByRole('dialog').getByRole('button', { name: 'Cancel' })).toBeFocused();
 
       expect(await violations(page)).toStrictEqual([]);
@@ -439,7 +429,7 @@ test.describe('positive cases', () => {
 
     test('the agreement before the first cleanup', async ({ page }) => {
       await reviewAll(page, { ...SCRIPTS.cleaning, agreement: 'not-accepted' });
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
       await expect(page.getByRole('dialog', { name: 'Before your first cleanup' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
@@ -447,7 +437,7 @@ test.describe('positive cases', () => {
 
     test('the full licence', async ({ page }) => {
       await reviewAll(page, { ...SCRIPTS.cleaning, agreement: 'not-accepted' });
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
       await page.getByRole('button', { name: 'Read the full licence' }).click();
       await expect(page.getByRole('dialog', { name: 'Licence' })).toBeVisible();
 
@@ -456,8 +446,8 @@ test.describe('positive cases', () => {
 
     test('a cleanup under way, with the quit question', async ({ page }) => {
       await reviewAll(page, SCRIPTS.cleaningHeld);
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
       await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
@@ -470,8 +460,8 @@ test.describe('positive cases', () => {
 
     test('the result of a cleanup', async ({ page }) => {
       await reviewAll(page, SCRIPTS.cleaning);
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
       await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
@@ -479,8 +469,8 @@ test.describe('positive cases', () => {
 
     test('the help when something was removed that is needed', async ({ page }) => {
       await reviewAll(page, SCRIPTS.cleaning);
-      await page.getByRole('button', { name: 'Move to Trash…' }).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('button', { exact: true, name: 'Move to the Trash' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
       await page.getByRole('button', { name: 'Removed something you need?' }).click();
       await expect(page.getByRole('dialog', { name: 'Removed something you need?' })).toBeVisible();
 
@@ -552,26 +542,46 @@ test.describe('positive cases', () => {
       expect(await violations(page)).toStrictEqual([]);
     });
 
-    test('the settings of every kind', async ({ page }) => {
+    test('the General page of the settings', async ({ page }) => {
       await open(page, SCRIPTS.settings);
-      await go(page, 'Settings', 'Settings');
-      await expect(page.getByText('Version 0.0.1')).toBeVisible();
+      await go(page, 'Settings', 'General');
+      await expect(page.getByRole('button', { name: 'Reset all settings…' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the page of a module in the settings', async ({ page }) => {
+      await open(page, SCRIPTS.settings);
+      await go(page, 'Settings', 'General');
+      await settingsPage(page, 'Demo module', 'Debug', 'Demo module');
+      await expect(page.getByRole('switch', { name: 'Look for Demo module' })).toBeChecked();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the results of the settings search, the tree counting and dimming', async ({ page }) => {
+      await open(page, SCRIPTS.settings);
+      await go(page, 'Settings', 'General');
+      await page.getByRole('searchbox', { name: 'Search settings' }).fill('days');
+      await expect(page.getByRole('heading', { level: 1, name: '1 setting matches “days”' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
 
     test('the About group, with the agreement not accepted', async ({ page }) => {
       await open(page, { ...SCRIPTS.settings, agreement: 'not-accepted' });
-      await go(page, 'Settings', 'Settings');
+      await go(page, 'Settings', 'General');
+      await settingsPage(page, 'About', 'About');
       await expect(page.getByText('Not accepted yet. Fresher asks before your first cleanup.')).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });
 
-    for (const tab of ['Ignored groups', 'Ignored modules', 'Ignored items']) {
+    for (const tab of ['Sections', 'Not looked for', 'Items']) {
       test(`the Ignored section of Settings, ${tab}`, async ({ page }) => {
         await open(page, SCRIPTS.ignoring);
-        await go(page, 'Settings', 'Settings');
+        await go(page, 'Settings', 'General');
+        await settingsPage(page, 'Ignored', 'Ignored');
         await page.getByRole('switch', { name: 'Ignore Debug' }).click();
         await page.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
         await expect(page.getByRole('tab', { name: new RegExp(`^${tab}`) })).toHaveAttribute('aria-selected', 'true');
@@ -582,8 +592,9 @@ test.describe('positive cases', () => {
 
     test('the settings a newer version saved', async ({ page }) => {
       await open(page, SCRIPTS.readOnly);
-      await go(page, 'Settings', 'Settings');
-      await expect(page.getByRole('switch', { name: 'Demo module' })).toBeDisabled();
+      await go(page, 'Settings', 'General');
+      await settingsPage(page, 'Demo module', 'Debug', 'Demo module');
+      await expect(page.getByRole('switch', { name: 'Look for Demo module' })).toBeDisabled();
 
       expect(await violations(page)).toStrictEqual([]);
     });

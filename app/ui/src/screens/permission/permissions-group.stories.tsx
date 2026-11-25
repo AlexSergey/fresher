@@ -30,7 +30,12 @@ const MODULES: readonly ModuleInfo[] = [
     categories: [
       {
         availability: { kind: 'ready' },
-        descriptor: { danger: 'low', id: 'docker.images', needs: [{ capability: DOCKER, kind: 'required' }] },
+        descriptor: {
+          danger: 'low',
+          icon: 'archive',
+          id: 'docker.images',
+          needs: [{ capability: DOCKER, kind: 'required' }],
+        },
       },
     ],
     choices: [],

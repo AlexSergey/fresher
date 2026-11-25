@@ -22,13 +22,13 @@ import { DEMO_FINDINGS, DEMO_MODULES, DEMO_OVERVIEW } from '../../test/demo-scan
 import { FINDING_DICTIONARY, HIGH_FINDING, MEDIUM_FINDING } from '../../test/finding-fixtures';
 import { LARGEST_DICTIONARY, LARGEST_ROWS, ownFindingOf } from '../../test/largest-scan';
 import { pageOf } from '../../test/page-of';
-import { BUILD_DICTIONARY, sandboxBuild } from '../../test/sandbox-build';
+import { BUILD_DICTIONARY, SANDBOX_HOME, sandboxBuild } from '../../test/sandbox-build';
 import { STORAGE_DICTIONARY } from '../../test/storage-map';
 import { fakeViewport } from '../../test/viewport';
 import { AppProviders } from '../app-providers';
 import { ReviewScreen } from './review-screen';
 
-const [EDITOR_CACHE, INSTALLER, BROWSER_CACHE] = DEMO_FINDINGS as readonly [Finding, Finding, Finding];
+const [, INSTALLER, BROWSER_CACHE] = DEMO_FINDINGS as readonly [Finding, Finding, Finding];
 
 const FINDINGS: readonly Finding[] = [...DEMO_FINDINGS, HIGH_FINDING];
 
@@ -123,7 +123,7 @@ const CLEANUP: Partial<CoreAnswers> = {
   prepareCleanup: () => DEMO_PLAN,
 };
 
-const removeButton = (): HTMLElement => screen.getByRole('button', { name: 'Move to Trash…' });
+const removeButton = (): HTMLElement => screen.getByRole('button', { name: 'Move to the Trash' });
 
 const openConfirmation = async (): Promise<HTMLElement> => {
   removeButton().focus();
@@ -148,8 +148,12 @@ const pickCategory =
     }
   };
 
-const groupNames = (): readonly string[] =>
-  screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent);
+const tileNames = (): readonly string[] =>
+  screen.queryAllByRole('article').map((tile) => within(tile).getByRole('heading', { level: 2 }).textContent);
+
+const tile = (name: string): HTMLElement => screen.getByRole('article', { name });
+
+const reviewBar = (): HTMLElement => screen.getByRole('region', { name: 'Ready to remove' });
 
 const summaryRegion = (): HTMLElement => screen.getByRole('region', { name: 'What you are about to remove' });
 
@@ -169,32 +173,45 @@ afterEach(async () => {
 
 describe('ReviewScreen', () => {
   describe('negative cases', () => {
-    it('has no Select all: everything listed is already selected', async () => {
-      await renderReview(pickCategory('demo.downloads'));
-
-      expect(screen.queryByRole('checkbox', { name: 'Select all' })).toBeNull();
-    });
-
-    it('shows no warning icon on a Safe zone', async () => {
-      await renderReview(pickCategory('demo.caches'));
-
-      const title = screen.getByRole('heading', { level: 3, name: 'Safe' });
-
-      // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
-      expect(title.parentElement?.querySelector('svg')).toBeNull();
-    });
-
-    it('an empty selection shows the empty state, with a way back to the overview', async () => {
+    it('with nothing going and nothing to check it shows the empty state', async () => {
       const { navigation } = await renderReview(() => undefined);
 
       expect(screen.getByRole('heading', { level: 1, name: 'Review' })).toBeInTheDocument();
       expect(screen.getByText('Nothing is selected')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Move to Trash…' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Clear selection' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Move to the Trash' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: 'Go to Scan' }));
 
       expect(navigation.getScreen()).toStrictEqual({ kind: 'scan' });
+    });
+
+    it('has no Select all: a tile has its own all-checkbox', async () => {
+      await renderReview(pickCategory('demo.downloads'));
+
+      expect(screen.queryByRole('checkbox', { name: 'Select all' })).toBeNull();
+      expect(within(tile('Example downloads')).getByRole('checkbox', { name: 'All Example downloads' })).toBeChecked();
+    });
+
+    it('Move to the Trash stays inactive while only categories to check are selected', async () => {
+      const { changes } = await renderReview(pickCategory('demo.projects'), false, CLEANUP);
+
+      expect(tile('Example projects')).toBeInTheDocument();
+      expect(removeButton()).toBeDisabled();
+      expect(removeButton()).toHaveAccessibleDescription('Tick at least one item first.');
+      expect(within(reviewBar()).getByText('Tick at least one item first.')).toBeVisible();
+      expect(await screen.findByRole('checkbox', { name: 'Select Example: old-project' })).not.toBeChecked();
+
+      fireEvent.click(removeButton());
+
+      expect(changes).toStrictEqual([]);
+    });
+
+    it('findings picked one by one have no checkbox for all of their category', async () => {
+      await renderReview(pickFinding(INSTALLER));
+
+      expect(tile('Example downloads')).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox', { name: 'All Example downloads' })).toBeNull();
     });
 
     it('cancel discards the plan', async () => {
@@ -234,7 +251,7 @@ describe('ReviewScreen', () => {
       await openConfirmation();
 
       expect(screen.getByRole('checkbox', { name: /^Delete permanently instead/ })).not.toBeChecked();
-      expect(screen.getByRole('button', { name: 'Move to Trash' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Yes, move to the Trash' })).toBeInTheDocument();
     });
 
     it.each([
@@ -247,7 +264,7 @@ describe('ReviewScreen', () => {
       });
       await openConfirmation();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, move to the Trash' }));
 
       const notice = await screen.findByRole('alert');
       expect(notice).toHaveTextContent(CLEANUP_DICTIONARY[refusal.text.key] ?? '');
@@ -260,61 +277,33 @@ describe('ReviewScreen', () => {
       expect(removeButton()).toBeEnabled();
     });
 
-    it('unticking the last item of a picked group removes the group', async () => {
+    it('unticking the last item of a picked group removes its tile', async () => {
       await renderReview((store) => {
         pickFinding(HIGH_FINDING)(store);
         pickCategory('demo.downloads')(store);
       });
-      expect(groupNames()).toStrictEqual(['Example downloads', 'Example projects']);
+      expect(tileNames()).toStrictEqual(['Example downloads', 'Example projects']);
 
       await untick('old-project');
 
-      expect(groupNames()).toStrictEqual(['Example downloads']);
+      expect(tileNames()).toStrictEqual(['Example downloads']);
     });
 
-    it('unticking the last item of a selected category removes the group', async () => {
+    it('unticking the last item of a selected category removes its tile', async () => {
       await renderReview(pickCategory('demo.downloads'));
 
       await untick('installer.dmg');
 
-      expect(screen.queryAllByRole('heading', { level: 4 })).toHaveLength(0);
+      expect(tileNames()).toStrictEqual([]);
       expect(screen.getByText('Nothing is selected')).toBeInTheDocument();
     });
 
-    it('a selection without Medium or High has no danger part', async () => {
+    it('a Safe and Low selection has no chip that counts what is not checked', async () => {
       await renderReview(pickCategory('demo.caches', 'demo.downloads'));
 
-      expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toStrictEqual([
-        'Safe to remove',
-      ]);
-      expect(screen.queryByRole('region', { name: 'Danger zone' })).toBeNull();
-    });
+      await untick('browser-cache');
 
-    it('the reach line shows only from Medium', async () => {
-      const { store } = await renderReview(pickCategory('demo.caches', 'demo.downloads'));
-
-      expect(within(summaryRegion()).queryByText(/^Your selection reaches the danger zone/u)).toBeNull();
-
-      act(() => {
-        pickFinding(IMAGE)(store);
-      });
-
-      expect(
-        within(summaryRegion()).getByText(
-          `Your selection reaches the danger zone: ${FINDING_DICTIONARY['core.danger.medium.meaning'] ?? ''}`,
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it('the highest level never shows by colour alone', async () => {
-      await renderReview(pickFinding(HIGH_FINDING, EDITOR_CACHE));
-      const summary = summaryRegion();
-
-      expect(within(summary).getByText('Highest danger level:')).toBeInTheDocument();
-      expect(within(summary).getByText('High')).toBeInTheDocument();
-      expect(within(summary).getByText(FINDING_DICTIONARY['core.danger.high.meaning'] ?? '')).toBeInTheDocument();
-      // eslint-disable-next-line testing-library/no-node-access -- the level's icon is decorative, it has no role
-      expect(summary.querySelector('[data-level="high"] svg')).not.toBeNull();
+      expect(within(summaryRegion()).queryByText(/not checked/u)).toBeNull();
     });
   });
 
@@ -332,58 +321,48 @@ describe('ReviewScreen', () => {
       expect(screen.queryByText(CLEANUP_DICTIONARY['core.error.plan-gone'] as string)).not.toBeInTheDocument();
     });
 
-    it('a selection across Safe and High shows the safe part and the danger zone apart', async () => {
+    it("the summary's chips list each group with its size, Look with its not checked count", async () => {
       await renderReview((store) => {
-        pickCategory('demo.caches')(store);
-        pickFinding(HIGH_FINDING, IMAGE)(store);
+        pickCategory('demo.caches', 'demo.projects')(store);
+        pickFinding(IMAGE)(store);
       });
+      const summary = summaryRegion();
 
-      const parts = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
-      const safe = screen.getByRole('region', { name: 'Safe to remove' });
-      const danger = screen.getByRole('region', { name: 'Danger zone' });
-
-      expect(parts).toStrictEqual(['Safe to remove', 'Danger zone']);
-      expect(safe).toHaveAttribute('data-part', 'safe');
-      expect(danger).toHaveAttribute('data-part', 'danger');
-      expect(danger).toHaveAttribute('data-level', 'high');
-      expect(within(safe).getByText(CLEANUP_DICTIONARY['core.danger.part.safe.meaning'] ?? '')).toBeInTheDocument();
-      expect(within(danger).getByText(CLEANUP_DICTIONARY['core.danger.part.danger.meaning'] ?? '')).toBeInTheDocument();
-      expect(within(safe).getByRole('region', { name: 'Safe' })).toBeInTheDocument();
-      expect(
-        within(danger)
-          .getAllByRole('heading', { level: 3 })
-          .map((heading) => heading.textContent),
-      ).toStrictEqual(['Medium', 'High']);
-      const high = within(danger).getByRole('region', { name: 'High' });
-      expect(within(high).getByText(FINDING_DICTIONARY['core.danger.high.meaning'] ?? '')).toBeInTheDocument();
-      const title = within(danger).getByRole('heading', { level: 3, name: 'High' });
-
-      // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative, without a role
-      expect(title.parentElement?.querySelector('svg')).not.toBeNull();
-      expect(within(high).getByRole('region', { name: 'Example projects' })).toBeInTheDocument();
+      expect(within(summary).getByText('1.8 GB', { selector: '.u-visually-hidden' })).toBeInTheDocument();
+      expect(within(summary).getByText('goes to the Trash · 3 items')).toBeInTheDocument();
+      expect(within(summary).getByText('You can put them back from Cleanups')).toBeInTheDocument();
+      expect(within(summary).getByRole('img')).toHaveAccessibleName(
+        'Size of each group: Safe to remove, 1.8 GB; Look before removing, 420 MB; Only if you are sure, 0 bytes',
+      );
+      expect(within(summary).getByText('· 1 not checked')).toBeInTheDocument();
+      // eslint-disable-next-line testing-library/no-node-access -- a chip has no role: its level is data on it
+      expect(within(summary).getByText('· 1 not checked').parentElement).toHaveAttribute('data-level', 'high');
     });
 
-    it('a picked own file is listed under Your own files in the High zone', async () => {
+    it('a picked own file is a tile of its own in the High group, with no all-checkbox', async () => {
       await renderReview(pickFinding(ownFindingOf(LARGEST_ROWS[0] as (typeof LARGEST_ROWS)[number], 101)));
 
-      const high = within(screen.getByRole('region', { name: 'Danger zone' })).getByRole('region', { name: 'High' });
+      const own = tile('Your own files');
 
-      expect(within(high).getByRole('region', { name: 'Your own files' })).toBeInTheDocument();
-      expect(within(high).getByText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '')).toBeInTheDocument();
+      expect(within(own).getByText('Only if you are sure · May hold the only copy of your data')).toBeInTheDocument();
+      expect(within(own).getByText('1 picked')).toBeInTheDocument();
+      expect(within(own).queryByText(/checked/u)).toBeNull();
+      expect(within(own).queryByRole('checkbox', { name: /^All / })).toBeNull();
     });
 
-    it('groups follow the zones, then size order, and show what is lost', async () => {
+    it('tiles follow the groups, then size order, each with its line and its pill', async () => {
       await renderReview((store) => {
         pickCategory('demo.downloads', 'demo.caches')(store);
         pickFinding(HIGH_FINDING)(store);
       });
 
-      expect(groupNames()).toStrictEqual(['Example caches', 'Example downloads', 'Example projects']);
-      for (const category of ['demo.projects', 'demo.caches', 'demo.downloads']) {
-        expect(screen.getByText(FINDING_DICTIONARY[`${category}.if-removed`] ?? '')).toBeInTheDocument();
-      }
-      const caches = screen.getByRole('region', { name: 'Example caches' });
-      expect(within(caches).getByText('2 items')).toBeInTheDocument();
+      expect(tileNames()).toStrictEqual(['Example caches', 'Example downloads', 'Example projects']);
+      const caches = tile('Example caches');
+      expect(within(caches).getByText('Safe to remove · Apps make these again on their own')).toBeInTheDocument();
+      expect(within(caches).getByText('2 of 2 checked')).toBeInTheDocument();
+      expect(
+        within(tile('Example projects')).getByText('Only if you are sure · May hold the only copy of your data'),
+      ).toBeInTheDocument();
       expect(await within(caches).findByRole('list', { name: 'The items of Example caches' })).toBeInTheDocument();
       expect(await within(caches).findAllByRole('listitem')).toHaveLength(2);
     });
@@ -393,30 +372,53 @@ describe('ReviewScreen', () => {
         pickCategory('demo.caches')(store);
         pickFinding(HIGH_FINDING, INSTALLER)(store);
       }, true);
-      const bar = screen.getByRole('region', { name: 'Selection' });
-      const summary = summaryRegion();
+      const selectionBar = screen.getByRole('region', { name: 'Selection' });
 
-      expect(within(bar).getByText('4 items selected')).toBeInTheDocument();
-      expect(within(summary).getByText('4 items')).toBeInTheDocument();
-      expect(within(summary).getByText('4.9 GB', { selector: '[aria-hidden]' })).toBeInTheDocument();
-      expect(within(bar).getByText('4.9 GB', { selector: 'span:not([aria-hidden])' })).toBeInTheDocument();
-      expect(within(bar).getByText('High')).toBeInTheDocument();
-      expect(within(summary).getByText('High')).toBeInTheDocument();
+      expect(within(selectionBar).getByText('4 items selected')).toBeInTheDocument();
+      expect(within(reviewBar()).getByText('4 items')).toBeInTheDocument();
+      expect(within(summaryRegion()).getByText('goes to the Trash · 4 items')).toBeInTheDocument();
+      expect(within(summaryRegion()).getAllByText('4.9 GB', { selector: '[aria-hidden]' })).not.toHaveLength(0);
+      expect(within(reviewBar()).getByText('4.9 GB', { selector: '[aria-hidden]' })).toBeInTheDocument();
+      expect(within(selectionBar).getByText('4.9 GB', { selector: 'span:not([aria-hidden])' })).toBeInTheDocument();
     });
 
-    it('unticking a row updates the summary and keeps the row, unticked', async () => {
+    it('unticking an item takes it out of the summary and keeps the row, unticked', async () => {
       const { store } = await renderReview(pickCategory('demo.caches'));
 
       await untick('browser-cache');
 
-      expect(within(summaryRegion()).getByText('1 item')).toBeInTheDocument();
-      expect(within(summaryRegion()).getByText('1.5 GB', { selector: '[aria-hidden]' })).toBeInTheDocument();
+      expect(within(summaryRegion()).getByText('goes to the Trash · 1 item')).toBeInTheDocument();
+      expect(within(reviewBar()).getByText('1.5 GB', { selector: '[aria-hidden]' })).toBeInTheDocument();
+      expect(within(tile('Example caches')).getByText('1 of 2 checked')).toBeInTheDocument();
       expect(screen.getByRole('checkbox', { name: 'Select Example: browser-cache' })).not.toBeChecked();
       expect(screen.getByRole('checkbox', { name: 'Select Example: editor-cache' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'All Example caches' })).toBePartiallyChecked();
       expect(store.getState().selection.categories.get('demo.caches')?.has(BROWSER_CACHE.id)).toBe(true);
     });
 
-    it('Move to Trash checks each item, then opens the core’s plan', async () => {
+    it('an item ticked in Review goes', async () => {
+      const { changes } = await renderReview(pickCategory('demo.projects'), false, CLEANUP);
+
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'Select Example: old-project' }));
+      await openConfirmation();
+
+      expect(changes).toStrictEqual([
+        ['prepareCleanup', { selection: { categories: [], findings: [HIGH_FINDING.id] } }],
+      ]);
+    });
+
+    it('ticking all of a Look category in Review sends the category', async () => {
+      const { changes } = await renderReview(pickCategory('demo.projects'), false, CLEANUP);
+
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'All Example projects' }));
+      await openConfirmation();
+
+      expect(changes).toStrictEqual([
+        ['prepareCleanup', { selection: { categories: [{ category: 'demo.projects', except: [] }], findings: [] } }],
+      ]);
+    });
+
+    it('the bar removes through the confirmation: the core checks each item, then opens its plan', async () => {
       let answer: (plan: typeof DEMO_PLAN) => void = () => undefined;
       await renderReview(pickCategory('demo.caches'), false, {
         prepareCleanup: () =>
@@ -425,9 +427,9 @@ describe('ReviewScreen', () => {
           }),
       });
 
-      fireEvent.click(removeButton());
+      fireEvent.click(within(reviewBar()).getByRole('button', { name: 'Move to the Trash' }));
 
-      expect(screen.getByText('Checking each item…')).toHaveAttribute('role', 'status');
+      expect(within(reviewBar()).getByRole('status')).toHaveTextContent('Checking each item…');
       expect(screen.queryByRole('dialog')).toBeNull();
 
       act(() => {
@@ -444,7 +446,7 @@ describe('ReviewScreen', () => {
       const { changes, store } = await renderReview(pickCategory('demo.caches'), false, CLEANUP);
       await openConfirmation();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, move to the Trash' }));
       await vi.waitFor(() => {
         expect(store.getState().cleanup).toMatchObject({ cleanup: 1, kind: 'running' });
       });
@@ -469,9 +471,9 @@ describe('ReviewScreen', () => {
       await openConfirmation();
 
       fireEvent.click(screen.getByRole('checkbox', { name: /^Delete permanently instead/ }));
-      const confirm = screen.getByRole('button', { name: 'Delete permanently' });
-      expect(confirm).toHaveAttribute('data-variant', 'danger');
-      fireEvent.click(confirm);
+      const confirmButton = screen.getByRole('button', { name: 'Delete permanently' });
+      expect(confirmButton).toHaveAttribute('data-variant', 'danger');
+      fireEvent.click(confirmButton);
       await vi.waitFor(() => {
         expect(changes).toHaveLength(2);
       });
@@ -488,7 +490,7 @@ describe('ReviewScreen', () => {
         revealInTrash,
       });
       await openConfirmation();
-      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, move to the Trash' }));
       const events = cleanupEventsOf(DEMO_PLAN, MOVED_REPORT);
 
       expect(await screen.findByText('Moving 1 of 3 to the Trash…')).toBeInTheDocument();
@@ -522,10 +524,10 @@ describe('ReviewScreen', () => {
     it("a sandbox build's finished Trash cleanup says where the sandbox's Trash is", async () => {
       const { store } = await renderReview(pickCategory('demo.caches'), false, {
         ...CLEANUP,
-        appInfo: () => ({ build: sandboxBuild(), version: '0.1.0' }),
+        appInfo: () => ({ build: sandboxBuild(), high: 'offered', home: SANDBOX_HOME, version: '0.1.0' }),
       });
       await openConfirmation();
-      fireEvent.click(screen.getByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, move to the Trash' }));
       await screen.findByText('Moving 1 of 3 to the Trash…');
       const events = cleanupEventsOf(DEMO_PLAN, MOVED_REPORT);
       act(() => {
@@ -541,10 +543,10 @@ describe('ReviewScreen', () => {
       ).toBeInTheDocument();
     });
 
-    it('Clear selection empties the selection', async () => {
+    it("the bar's Clear empties the selection", async () => {
       const { store } = await renderReview(pickCategory('demo.caches'));
 
-      fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
+      fireEvent.click(within(reviewBar()).getByRole('button', { name: 'Clear' }));
 
       expect(store.getState().selection.categories.size).toBe(0);
       expect(screen.getByText('Nothing is selected')).toBeInTheDocument();

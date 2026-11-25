@@ -1,12 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Access, Overview, StorageMap, TrashView } from '../../ipc/bindings.generated';
+import type { Access, Overview, TrashView } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse, sampleAgreementAnswers } from '../../ipc/mock';
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
+import { type WallClock } from '../../state/wall-clock';
 import { setMotion } from '../../test/animation';
 import { cardNames, cardOf } from '../../test/cards';
 import {
@@ -23,6 +24,7 @@ import {
   LIMITED_COVERAGE,
   SCAN_STARTED,
 } from '../../test/demo-scan';
+import { createFakeClock } from '../../test/fake-clock';
 import {
   DEMO_MAP_COMPLETE,
   DEMO_MAP_NO_SCAN,
@@ -104,25 +106,11 @@ const WITH_HIGH: Overview = {
   ],
 };
 
-// The demo overview with the High categories `categories`, one finding of 2 GB each.
-const withHighCategories = (categories: readonly string[]): Overview => ({
-  ...DEMO_OVERVIEW,
-  totals: [
-    ...DEMO_OVERVIEW.totals,
-    ...categories.map((category) => ({
-      category,
-      count: 1,
-      highestDanger: 'high' as const,
-      sizes: { allocated: 2 * GB, completeness: 'complete' as const, logical: 2 * GB, reclaimable: 2 * GB },
-    })),
-  ],
-});
-
 const HIGH_DICTIONARY = {
   ...DICTIONARY,
-  'core.danger.high.meaning': 'May hold the only copy of your data. Removing it can lose work.',
+  'core.danger.high.meaning': 'May hold the only copy of your data',
   'core.danger.high.name': 'High',
-  'core.danger.high.zone': 'High risk',
+  'core.danger.high.zone': 'Only if you are sure',
   'demo.projects.name': 'Example projects',
 };
 
@@ -131,7 +119,7 @@ const renderWithHigh = async (): Promise<{ readonly high: HTMLElement; readonly 
   core({ getDictionary: () => HIGH_DICTIONARY, getOverview: () => WITH_HIGH });
   const { store } = await renderOverview();
 
-  return { high: await screen.findByRole('region', { name: 'High risk' }), store };
+  return { high: await screen.findByRole('region', { name: 'Only if you are sure' }), store };
 };
 
 const selectedCategories = (store: CoreStore): readonly string[] => [...store.getState().selection.categories.keys()];
@@ -148,28 +136,24 @@ const TRASH: TrashView = {
   ],
 };
 
-// The scanning map with `gigabytes` more explained, taken from what is not scanned yet: the sum holds.
-const fill = (map: StorageMap, gigabytes: number): StorageMap => ({
-  ...map,
-  volumes: map.volumes.map((volume) => ({
-    ...volume,
-    parts: volume.parts.map((part) => {
-      const delta =
-        part.kind.kind === 'explained' ? gigabytes * GB : part.kind.kind === 'not-scanned-yet' ? -gigabytes * GB : 0;
-
-      return { ...part, sizes: { ...part.sizes, allocated: part.sizes.allocated + delta } };
-    }),
-  })),
-});
+// The time of day of the tests: two minutes after the demo scan finished; its timers never run.
+const FIXED_CLOCK: WallClock = {
+  epochMs: () => ((DEMO_OVERVIEW.lastScan?.finished ?? 0) + 120) * 1000,
+  now: () => 0,
+  setTimeout: () => () => undefined,
+};
 
 type Rendered = { readonly navigation: Navigation; readonly store: CoreStore; readonly unmount: () => void };
 
 // The overview, once the core has answered its dictionary, its modules and its overview.
-const renderOverview = async (navigation: Navigation = createNavigation()): Promise<Rendered> => {
+const renderOverview = async (
+  navigation: Navigation = createNavigation(),
+  wallClock: WallClock = FIXED_CLOCK,
+): Promise<Rendered> => {
   const store = createCoreStore();
 
   const { unmount } = render(
-    <AppProviders navigation={navigation} store={store}>
+    <AppProviders navigation={navigation} store={store} wallClock={wallClock}>
       <ScanScreen />
     </AppProviders>,
   );
@@ -215,7 +199,7 @@ describe('ScanScreen', () => {
       await renderOverview();
 
       expect(screen.queryByText(/you ignored/u)).toBeNull();
-      expect(screen.queryByText('Rescan to apply')).toBeNull();
+      expect(screen.queryByText('Scan again to apply it')).toBeNull();
     });
 
     it('before a scan there are no cards and no zero sizes', async () => {
@@ -230,16 +214,37 @@ describe('ScanScreen', () => {
       expect(screen.queryByText(/\b0 B\b/)).toBeNull();
     });
 
-    it('before a scan the hero names the volume and its ring is empty', async () => {
+    it('before a scan the disk card names the volume and its centre holds Scan', async () => {
       core();
 
       await renderOverview();
 
-      expect(await screen.findByText('Space on Macintosh HD, internal disk')).toBeInTheDocument();
-      expect(screen.getByRole('img', { name: 'Space on Macintosh HD' })).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { level: 2, name: 'Macintosh HD · internal' })).toBeNull();
+      const disk = await screen.findByRole('region', { name: 'Your disk' });
+      expect(within(disk).getByText('Macintosh HD')).toBeInTheDocument();
+      expect(within(disk).getByRole('button', { name: 'Scan' })).toBeInTheDocument();
+      expect(within(disk).getByText('Not scanned yet')).toBeInTheDocument();
       expect(screen.queryByRole('radiogroup', { name: 'Show the space' })).toBeNull();
       expect(screen.queryByRole('list', { name: 'Places' })).toBeNull();
+    });
+
+    it('before a scan there is no separator and no group', async () => {
+      core();
+
+      await renderOverview();
+
+      await screen.findByRole('region', { name: 'Your disk' });
+      expect(screen.queryByText('What you can remove')).toBeNull();
+      expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+      expect(screen.queryByText(/ago$/u)).toBeNull();
+    });
+
+    it('before the core names a volume, Scan stands alone', async () => {
+      core({ getStorageMap: refuse(BUSY) });
+
+      await renderOverview();
+
+      expect(screen.getByRole('button', { name: 'Scan' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Your disk' })).toBeNull();
     });
 
     it('a partial scan shows the notice', async () => {
@@ -247,8 +252,8 @@ describe('ScanScreen', () => {
 
       await renderOverview();
 
-      expect(await screen.findByText('This scan is incomplete')).toBeInTheDocument();
-      expect(screen.getByText(/sizes are at least what is shown/)).toBeInTheDocument();
+      expect(await screen.findByText('This scan is not complete')).toBeInTheDocument();
+      expect(screen.getByText(/the real sizes may be larger/)).toBeInTheDocument();
     });
 
     it('a finished scan shows no notice', async () => {
@@ -257,7 +262,7 @@ describe('ScanScreen', () => {
       await renderOverview();
 
       expect(await screen.findByRole('list', { name: 'Safe to remove' })).toBeInTheDocument();
-      expect(screen.queryByText('This scan is incomplete')).toBeNull();
+      expect(screen.queryByText('This scan is not complete')).toBeNull();
     });
 
     it.each<Access>(['granted', 'unknown'])('a %s access shows no permission card', async (access) => {
@@ -270,7 +275,7 @@ describe('ScanScreen', () => {
         expect(probed).toHaveBeenCalledOnce();
       });
       expect(screen.queryByText('Fresher cannot see every folder')).toBeNull();
-      expect(screen.queryByText('Full Disk Access is not confirmed')).toBeNull();
+      expect(screen.queryByText('Fresher cannot tell if it has Full Disk Access')).toBeNull();
     });
 
     it('a refused access probe shows no permission card and leaves the refusal to the frame', async () => {
@@ -317,6 +322,20 @@ describe('ScanScreen', () => {
       expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
     });
 
+    it('an Only if you are sure group has no Select all and its tile ticked selects none of its items', async () => {
+      const { high, store } = await renderWithHigh();
+
+      expect(within(high).queryByRole('checkbox', { name: 'Select all' })).toBeNull();
+      expect(within(high).getByRole('heading', { level: 3, name: 'Example projects' })).toBeInTheDocument();
+      expect(within(high).getByRole('button', { name: 'Details' })).toBeInTheDocument();
+
+      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select Example projects' }));
+
+      expect(selectedCategories(store)).toStrictEqual([]);
+      expect([...store.getState().selection.toCheck]).toStrictEqual(['demo.projects']);
+      expect(screen.getByRole('region', { name: 'Selection' })).toHaveTextContent(/^1 to check in Review/u);
+    });
+
     it('Select all of a Safe zone does not ask', async () => {
       const { store } = await renderWithHigh();
 
@@ -326,45 +345,6 @@ describe('ScanScreen', () => {
 
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(selectedCategories(store)).toStrictEqual(['demo.caches']);
-    });
-
-    it('unticking a High zone does not ask', async () => {
-      const { high, store } = await renderWithHigh();
-      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).toBeNull();
-      });
-
-      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
-
-      expect(screen.queryByRole('dialog')).toBeNull();
-      expect(selectedCategories(store)).toStrictEqual([]);
-    });
-
-    it('a category gone from a High zone while its question is open is not selected', async () => {
-      const { high, store } = await renderWithHigh();
-      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
-
-      act(() => {
-        store.dispatch({ overview: withHighCategories(['demo.archives']), type: 'overview-loaded' });
-      });
-      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Select all' }));
-
-      expect(selectedCategories(store)).toStrictEqual(['demo.archives']);
-    });
-
-    it('Cancel on the question of a High zone selects nothing', async () => {
-      const { high, store } = await renderWithHigh();
-
-      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).toBeNull();
-      });
-      expect(selectedCategories(store)).toStrictEqual([]);
-      expect(within(high).getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
     });
 
     it("a Select all of the Safe zone leaves the other zones' cards unticked", async () => {
@@ -389,6 +369,16 @@ describe('ScanScreen', () => {
       await waitFor(() => {
         expect(startScan).toHaveBeenCalledOnce();
       });
+    });
+
+    it('a tile found while scanning has no checkbox, Details or menu', async () => {
+      core({ getOverview: () => SCANNING, getStorageMap: () => DEMO_MAP_SCANNING });
+      await renderOverview();
+
+      expect(await screen.findByRole('heading', { level: 3, name: 'Example downloads' })).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Details' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Options for/u })).toBeNull();
     });
   });
 
@@ -417,32 +407,14 @@ describe('ScanScreen', () => {
       });
       const { navigation } = await renderOverview();
 
-      expect(await screen.findByText('5 things you ignored are left out of these results.')).toBeInTheDocument();
-      expect(screen.getByText('Rescan to apply')).toBeInTheDocument();
+      expect(await screen.findByText('5 things you ignored are not shown here.')).toBeInTheDocument();
+      expect(screen.getByText('Scan again to apply it')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Show in Settings' }));
 
       expect(navigation.getScreen()).toEqual({ kind: 'settings', tab: 'groups' });
     });
 
-    it('the ring takes the not scanned yet part down while scanning', async () => {
-      core({ getOverview: () => SCANNING, getStorageMap: () => DEMO_MAP_SCANNING });
-      const { store } = await renderOverview();
-      const bar = async (name: RegExp): Promise<HTMLElement> => screen.findByRole('img', { name });
-
-      expect(await bar(/^Space on Macintosh HD: .*Not scanned yet 361\.8 GB/u)).toBeInTheDocument();
-
-      act(() => {
-        store.dispatch({ storageMap: fill(DEMO_MAP_SCANNING, 120), type: 'storage-map-loaded' });
-      });
-      expect(await bar(/^Space on Macintosh HD: .*Not scanned yet 241\.8 GB/u)).toBeInTheDocument();
-
-      act(() => {
-        store.dispatch({ storageMap: fill(DEMO_MAP_SCANNING, 300), type: 'storage-map-loaded' });
-      });
-      expect(await bar(/^Space on Macintosh HD: .*Not scanned yet 61\.8 GB/u)).toBeInTheDocument();
-    });
-
-    it('a second volume keeps its collapsed map under the hero', async () => {
+    it('a second volume has its compact disk card under the first', async () => {
       const home = DEMO_MAP_COMPLETE.volumes[0];
       const archive = home === undefined ? [] : [{ ...home, kind: 'external' as const, name: 'Archive' }];
       core({
@@ -452,10 +424,41 @@ describe('ScanScreen', () => {
 
       await renderOverview();
 
-      expect(await screen.findByRole('heading', { level: 2, name: 'Archive · external' })).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { level: 2, name: 'Macintosh HD · internal' })).toBeNull();
-      expect(screen.getByRole('img', { name: /^Space on Macintosh HD/u })).toBeVisible();
-      expect(screen.getByRole('button', { name: 'Archive · external' })).toHaveAttribute('aria-expanded', 'false');
+      const second = await screen.findByRole('region', { name: 'Archive' });
+      const first = screen.getByRole('region', { name: 'Your disk' });
+      expect(second).toHaveAttribute('data-compact');
+      expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(within(second).queryByRole('button', { name: 'Scan' })).toBeNull();
+    });
+
+    it('the disk card, then the separator, then the groups', async () => {
+      core({ getOverview: () => DEMO_OVERVIEW, getStorageMap: () => DEMO_MAP_COMPLETE });
+
+      await renderOverview();
+
+      const safe = await screen.findByRole('region', { name: 'Safe to remove' });
+      const disk = screen.getByRole('region', { name: 'Your disk' });
+      const separator = screen.getByText('What you can remove');
+      expect(disk.compareDocumentPosition(separator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(separator.compareDocumentPosition(safe) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(within(safe).getByText('· Apps make these again on their own')).toBeInTheDocument();
+    });
+
+    it('Scan again shows after a finished scan with when it was scanned, read again each minute', async () => {
+      const clock = createFakeClock();
+      const finished = DEMO_OVERVIEW.lastScan?.finished ?? 0;
+      core({ getOverview: () => DEMO_OVERVIEW });
+
+      await renderOverview(createNavigation(), { ...clock, epochMs: () => (finished + 150) * 1000 + clock.now() });
+
+      expect(await screen.findByRole('button', { name: 'Scan again' })).toBeInTheDocument();
+      expect(screen.getByText('2 minutes ago')).toBeInTheDocument();
+
+      act(() => {
+        clock.advance(60_000);
+      });
+
+      expect(screen.getByText('3 minutes ago')).toBeInTheDocument();
     });
 
     it('the cards sit in their danger zones, the safest first', async () => {
@@ -466,45 +469,16 @@ describe('ScanScreen', () => {
       await screen.findByRole('region', { name: 'Safe to remove' });
       expect(screen.getAllByRole('heading', { level: 2 }).map(({ textContent }) => textContent)).toStrictEqual([
         'Safe to remove',
-        'Low risk',
+        'Usually safe',
       ]);
       expect(cardNames('Safe to remove')).toStrictEqual(['Example caches']);
-      expect(cardNames('Low risk')).toStrictEqual(['Example downloads']);
-    });
-
-    it('Select all of a High zone asks, then selects', async () => {
-      const { high, store } = await renderWithHigh();
-
-      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
-
-      const dialog = screen.getByRole('dialog', { name: 'Select everything at High?' });
-      expect(selectedCategories(store)).toStrictEqual([]);
-      expect(within(dialog).getByText(HIGH_DICTIONARY['core.danger.high.meaning'])).toBeInTheDocument();
-      expect(within(dialog).getByText('Nothing is removed until you confirm it in Review.')).toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
-
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Select all' }));
-
-      expect(selectedCategories(store)).toStrictEqual(['demo.projects']);
-      expect(within(high).getByRole('checkbox', { name: 'Select all' })).toBeChecked();
-    });
-
-    it('Select all of a High zone selects the categories the zone holds when it is answered', async () => {
-      const { high, store } = await renderWithHigh();
-      fireEvent.click(within(high).getByRole('checkbox', { name: 'Select all' }));
-
-      act(() => {
-        store.dispatch({ overview: withHighCategories(['demo.projects', 'demo.archives']), type: 'overview-loaded' });
-      });
-      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Select all' }));
-
-      expect(selectedCategories(store)).toStrictEqual(['demo.projects', 'demo.archives']);
+      expect(cardNames('Usually safe')).toStrictEqual(['Example downloads']);
     });
 
     it("a zone's Select all selects every category of that zone and nothing else", async () => {
       core({ getOverview: () => DEMO_OVERVIEW });
       const { store } = await renderOverview();
-      const low = await screen.findByRole('region', { name: 'Low risk' });
+      const low = await screen.findByRole('region', { name: 'Usually safe' });
 
       fireEvent.click(within(low).getByRole('checkbox', { name: 'Select all' }));
 
@@ -519,7 +493,7 @@ describe('ScanScreen', () => {
       core({ getOverview: () => DEMO_OVERVIEW });
       const { store } = await renderOverview();
       const safe = await screen.findByRole('region', { name: 'Safe to remove' });
-      const low = screen.getByRole('region', { name: 'Low risk' });
+      const low = screen.getByRole('region', { name: 'Usually safe' });
       fireEvent.click(within(safe).getByRole('checkbox', { name: 'Select all' }));
       fireEvent.click(within(low).getByRole('checkbox', { name: 'Select all' }));
 
@@ -544,7 +518,7 @@ describe('ScanScreen', () => {
       expect(store.getState().selection.categories.size).toBe(0);
     });
 
-    it('Scan starts a scan and the hero shows scanning', async () => {
+    it('while scanning the card holds the swoosh and the toolbar holds Stop', async () => {
       const startScan = vi.fn(() => 1);
       core({ startScan });
       await renderOverview();
@@ -554,11 +528,20 @@ describe('ScanScreen', () => {
         expect(startScan).toHaveBeenCalledOnce();
       });
       act(() => {
-        pushEvents(SCAN_STARTED);
+        pushEvents(SCAN_STARTED, {
+          bytes: 1_500_000_000,
+          entries: 10,
+          expected: 3_000_000_000,
+          scan: 1,
+          type: 'scan-progress',
+        });
       });
 
+      const card = screen.getByRole('region', { name: 'Scanning' });
+      expect(within(card).getByRole('progressbar', { name: 'Scanning, 50 percent' })).toBeInTheDocument();
+      expect(within(card).getByText('Scanning Macintosh HD')).toBeInTheDocument();
+      expect(within(card).getByText('Looking at Demo module')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
-      expect(screen.getByRole('group', { name: 'Parts of the scan' })).toHaveTextContent('Demo module');
       expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
     });
 
@@ -577,7 +560,7 @@ describe('ScanScreen', () => {
       await waitFor(() => {
         expect(cardNames('Safe to remove')).toStrictEqual(['Example caches']);
       });
-      expect(cardNames('Low risk')).toStrictEqual(['Example downloads']);
+      expect(cardNames('Usually safe')).toStrictEqual(['Example downloads']);
     });
 
     it('cards arrive during a scan the events started', async () => {

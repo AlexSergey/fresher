@@ -10,9 +10,10 @@ use fresher_core::{
     AGREEMENT_VERSION, Access, AccessProbe, AccessStatus, AgreementView, AppDetail, AppId, AppsQuery, AppsView,
     CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal, CleanupPlanView, CleanupSelection,
     CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary, DiskState, DiskWalk, EngineStatus,
-    Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery, KnownFolder, ModuleInfo, Operation,
-    Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate, SettingsStore,
-    SettingsView, SystemUi, SystemUiError, TextKey, Timestamp, TrashView, UninstallChoice, Volumes, WalkMode,
+    Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery, HighLevel, KnownFolder, ModuleInfo,
+    Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate,
+    SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, Timestamp, TrashView, UninstallChoice, Volumes,
+    WalkMode,
 };
 
 use crate::access::AccessView;
@@ -26,7 +27,8 @@ use crate::session::{self, Planned, ScanPlan};
 use crate::settings::{self as settings_rules, Settings};
 use crate::state::{Machine, OperationThread, Running};
 use crate::storage::roots::{RootVolumes, expand_home};
-use crate::{EventBus, Registry};
+use crate::withheld::Withheld;
+use crate::{EventBus, Registry, registry};
 
 /// How long `shutdown` waits for the cancelled operation's thread before it gives up on it.
 const SHUTDOWN_DEADLINE: Duration = Duration::from_secs(5);
@@ -88,6 +90,8 @@ pub struct Engine {
 #[derive(Debug)]
 pub(crate) struct Shared {
     pub(crate) registry: Registry,
+    /// Whether High findings are offered; set at build, never changed.
+    pub(crate) high: HighLevel,
     pub(crate) ports: Ports,
     pub(crate) bus: EventBus,
     pub(crate) machine: Mutex<Machine>,
@@ -129,24 +133,36 @@ impl Shared {
 
 impl Engine {
     /// An idle engine over the registered modules that cannot clean: every cleanup is refused with
-    /// `CleaningBlocked`. The settings are loaded through the port here. It fails only if the core's own settings
-    /// repeat a key.
-    pub fn new(registry: Registry, ports: Ports) -> Result<Self, SchemaError> {
-        Self::build(registry, ports, None)
+    /// `CleaningBlocked`. `high` says whether High findings are offered: withheld, none leaves the engine and every way
+    /// to remove one is refused (`HighWithheld`). The settings are loaded through the port here. It fails only if the
+    /// core's own settings repeat a key.
+    pub fn new(registry: Registry, ports: Ports, high: HighLevel) -> Result<Self, SchemaError> {
+        Self::build(registry, ports, None, high)
     }
 
-    /// An idle engine over the registered modules that cleans through `cleanup`.
-    pub fn with_cleanup(registry: Registry, ports: Ports, cleanup: CleanupPorts) -> Result<Self, SchemaError> {
-        Self::build(registry, ports, Some(cleanup))
+    /// An idle engine over the registered modules that cleans through `cleanup`; `high` as for [`Self::new`].
+    pub fn with_cleanup(
+        registry: Registry,
+        ports: Ports,
+        cleanup: CleanupPorts,
+        high: HighLevel,
+    ) -> Result<Self, SchemaError> {
+        Self::build(registry, ports, Some(cleanup), high)
     }
 
-    fn build(registry: Registry, ports: Ports, cleanup: Option<CleanupPorts>) -> Result<Self, SchemaError> {
+    fn build(
+        registry: Registry,
+        ports: Ports,
+        cleanup: Option<CleanupPorts>,
+        high: HighLevel,
+    ) -> Result<Self, SchemaError> {
         let settings = Settings::load(registry.schema()?, &*ports.settings);
         let access = AccessView::new(Arc::clone(&ports.access), Arc::clone(&ports.commands), registry.tool_checks());
-        let mut results = Results::new();
+        let mut results = Results::new(Withheld::new(high, registry.categories()));
         results.set_ignored(settings.ignored(&registry));
         let shared = Shared {
             registry,
+            high,
             ports,
             bus: EventBus::new(),
             machine: Mutex::new(Machine::new()),
@@ -165,6 +181,16 @@ impl Engine {
     /// A receiver of every event published from now on.
     pub fn subscribe(&self) -> Receiver<Event> {
         self.shared.bus.subscribe()
+    }
+
+    /// Whether this engine offers High findings, as it was built.
+    pub fn high_level(&self) -> HighLevel {
+        self.shared.high
+    }
+
+    /// The home folder the engine was given, where `~` leads; `None` when its known folders do not locate one.
+    pub fn home_folder(&self) -> Option<PathBuf> {
+        self.shared.home()
     }
 
     pub fn status(&self) -> Result<EngineStatus, CommandError> {
@@ -339,10 +365,12 @@ impl Engine {
     }
 
     /// The registered modules for the UI, in registration order, each category with its availability as the
-    /// switches of the guarded places allow it.
+    /// switches of the guarded places allow it. While High is withheld, a module lists no High category, and a choice
+    /// left with no category is dropped.
     pub fn modules(&self) -> Vec<ModuleInfo> {
         let opted_in = coverage::opted_in(&lock_anyway(&self.shared.settings));
-        self.shared.registry.modules(&coverage::as_opted(&self.shared.access.status(), &opted_in))
+        let modules = self.shared.registry.modules(&coverage::as_opted(&self.shared.access.status(), &opted_in));
+        modules.into_iter().map(|module| registry::withhold(module, self.shared.high)).collect()
     }
 
     /// Every problem the registered modules declare: the reasons a module may give for leaving an item out.
@@ -535,6 +563,10 @@ impl Engine {
         Ok(ScanPlan { roots, places, opt_ins, modules, mode, ignored: settings.ignored(&self.shared.registry) })
     }
 }
+
+#[cfg(test)]
+#[path = "high_tests.rs"]
+mod high_tests;
 
 impl Drop for Engine {
     fn drop(&mut self) {

@@ -1,28 +1,18 @@
 import type { DangerLevel } from '../../ipc/bindings.generated';
 
-import { type IconShape, OctagonAlert, Shield, ShieldCheck, TriangleAlert } from '../../design/icons/icons';
+import { Eye, type IconShape, Shield, ShieldAlert, ShieldCheck } from '../../design/icons/icons';
 
 // The zones in the order they are shown: the safest first, the riskiest last.
 export const ZONE_ORDER: readonly DangerLevel[] = ['safe', 'low', 'medium', 'high'];
 
-// Review's two parts: a grouping of the levels for display only; each part's name and meaning are the core's
-// (`core.danger.part.<part>.*`).
-export type DangerPart = 'danger' | 'safe';
+// The levels whose items the user ticks one by one, "Look before removing": a group or a category of them is never
+// selected whole for the user. Their names and lines are the core's.
+export const BY_HAND: ReadonlySet<DangerLevel> = new Set(['high', 'medium']);
 
-export const PART_OF: Readonly<Record<DangerLevel, DangerPart>> = {
-  high: 'danger',
-  low: 'safe',
-  medium: 'danger',
-  safe: 'safe',
-};
-
-// The parts in the order they are shown: the safe part first.
-export const PART_ORDER: readonly DangerPart[] = ['safe', 'danger'];
-
-// The icons escalate in shape with the level, as the danger badge's do.
-export const LEVEL_ICONS: Readonly<Record<DangerLevel, IconShape>> = {
-  high: OctagonAlert,
+// The icons of the group headings: safe, low, medium and high each have their own shield or eye.
+export const GROUP_ICONS: Readonly<Record<DangerLevel, IconShape>> = {
+  high: ShieldAlert,
   low: Shield,
-  medium: TriangleAlert,
+  medium: Eye,
   safe: ShieldCheck,
 };

@@ -55,7 +55,7 @@ fn groups(state: &FixedDiskState, apps: Vec<InstalledApp>, findings: &[Finding],
         files: Arc::new(fresher_testing::NoFiles),
     });
     let places = AppPlaces::of(state, &facts);
-    let shares = Shares::of(state, ignored);
+    let shares = Shares::of(state, ignored, &crate::withheld::Withheld::offered());
     Groups(meaning(state, &shares, &places, findings, &state.roots()))
 }
 
@@ -563,7 +563,7 @@ mod property {
                 ..Ignored::default()
             };
             let places = AppPlaces::of(&state, &facts);
-            let shares = Shares::of(&state, &ignored);
+            let shares = Shares::of(&state, &ignored, &crate::withheld::Withheld::offered());
 
             let groups = meaning(&state, &shares, &places, &findings, &fresher_core::DiskState::roots(&state));
 

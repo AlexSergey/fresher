@@ -8,12 +8,13 @@ import { DangerBadge } from '../../design/data/danger-badge/danger-badge';
 import { ListRow } from '../../design/data/list-row/list-row';
 import { PathText } from '../../design/data/path-text/path-text';
 import { SizeText } from '../../design/data/size-text/size-text';
-import { Settings } from '../../design/icons/icons';
+import { Ellipsis, Settings } from '../../design/icons/icons';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
 import { Menu, type MenuItem } from '../../design/primitives/menu/menu';
 import { Skeleton } from '../../design/primitives/skeleton/skeleton';
 import { Tooltip } from '../../design/primitives/tooltip/tooltip';
 import { t, tText } from '../../i18n';
+import { shortPath } from '../paths/short-path';
 import { honestSize } from '../sizes';
 import styles from './finding-row.module.css';
 import { RemovabilityNote } from './removability-note';
@@ -23,6 +24,8 @@ export type FindingRowProps = Forced &
   Partial<VirtualRowProps> & {
     // `undefined` while its page loads: the row is a skeleton of the same height.
     readonly finding: Finding | undefined;
+    // The home folder the core reports: a `review` row shows a path below it from `~`.
+    readonly home?: null | string;
     // The items of the row's settings menu; without any the row has no menu.
     readonly menu?: readonly MenuItem[] | undefined;
     // The menu starts open, without taking the focus: for the gallery.
@@ -31,16 +34,21 @@ export type FindingRowProps = Forced &
     readonly onReveal?: ((finding: Finding) => void) | undefined;
     readonly onToggle: (finding: Finding) => void;
     readonly selected: boolean;
+    // `review`: the compact row of a Review tile; `details`: the row of a category's items. Neither shows the level
+    // badge (the accessible name still reads the level); a `details` row shows its path from `~` too.
+    readonly variant?: FindingRowVariant;
     // A skeleton row keeps the menu column's room when its list has menus.
     readonly withMenu?: boolean;
   };
 
+export type FindingRowVariant = 'default' | 'details' | 'review';
+
 // The class of a frame of finding rows: their height (52 px) and the widths of the level and size columns.
 export const findingRowsClass = styles.rows ?? '';
 
-const SubjectText = ({ subject }: { readonly subject: Subject }): JSX.Element =>
+const SubjectText = ({ home, subject }: { readonly home: null | string; readonly subject: Subject }): JSX.Element =>
   subject.kind === 'path' ? (
-    <PathText path={subject.value} />
+    <PathText display={shortPath(subject.value, home)} path={subject.value} />
   ) : (
     <span className={styles.external}>
       {t('ui.finding-list.external', {
@@ -53,12 +61,20 @@ const SubjectText = ({ subject }: { readonly subject: Subject }): JSX.Element =>
 // The row of a page still loading: skeleton lines where the title, the subject and the values will be.
 const LoadingRow = ({
   row,
+  variant,
   withMenu,
 }: {
   readonly row: Forced & Partial<VirtualRowProps>;
+  readonly variant: FindingRowVariant;
   readonly withMenu: boolean;
 }): JSX.Element => (
-  <div {...row} aria-label={t('ui.finding-list.loading')} className={styles.loading} role="listitem">
+  <div
+    {...row}
+    aria-label={t('ui.finding-list.loading')}
+    className={styles.loading}
+    data-variant={variant}
+    role="listitem"
+  >
     <span className={styles.lines}>
       <span className={styles.title}>
         <Skeleton shape="line" />
@@ -67,11 +83,13 @@ const LoadingRow = ({
         <Skeleton shape="line" />
       </span>
     </span>
-    <span className={styles.level}>
-      <span className={styles.badge}>
-        <Skeleton shape="line" />
+    {variant === 'default' ? (
+      <span className={styles.level}>
+        <span className={styles.badge}>
+          <Skeleton shape="line" />
+        </span>
       </span>
-    </span>
+    ) : null}
     <span className={styles.value}>
       <span className={styles.amount}>
         <Skeleton shape="line" />
@@ -86,21 +104,25 @@ const LoadingRow = ({
 // reason, which the level's badge also shows in a tooltip. A selected High row lights its edge in High's colour.
 // A finding the core says the app may not remove keeps its level and size but has no checkbox and is never shown
 // selected; its removability's word stands before the level, with what the user can do on demand. With `menu`, a
-// settings button ends the row; it is a tab stop only in the list's focused row.
+// settings button ends the row; it is a tab stop only in the list's focused row. The `review` variant is the compact
+// row of a Review tile: no level badge and no selection tint, an unticked row dimmed instead. The `details` row of a
+// category's items has no level badge or tint either: the name, its short path under it, the size and the menu.
 export const FindingRow = ({
   finding,
+  home = null,
   menu,
   menuOpen,
   onReveal,
   onToggle,
   selected,
+  variant = 'default',
   withMenu = false,
   ...row
 }: FindingRowProps): JSX.Element => {
   const reasonId = useId();
 
   if (finding === undefined) {
-    return <LoadingRow row={row} withMenu={withMenu} />;
+    return <LoadingRow row={row} variant={variant} withMenu={withMenu} />;
   }
 
   const title = tText(finding.title);
@@ -108,6 +130,8 @@ export const FindingRow = ({
   const level = levelName(finding.danger);
   const size = honestSize(finding.sizes);
   const { removability } = finding;
+  const review = variant === 'review';
+  const details = variant === 'details';
   const named = {
     level: { kind: 'text', value: level },
     size: { kind: 'text', value: size.accessibleText },
@@ -126,7 +150,9 @@ export const FindingRow = ({
               removability: { kind: 'text', value: removabilityName(removability) },
             })
       }
-      {...(finding.danger === 'high' ? { edgeLevel: 'high' as const } : {})}
+      compact={review}
+      flat={details}
+      {...(finding.danger === 'high' && !review ? { edgeLevel: 'high' as const } : {})}
       leading={
         removability === 'removable' ? (
           <Checkbox
@@ -146,7 +172,7 @@ export const FindingRow = ({
       selected={removability === 'removable' && selected}
       subtitle={
         <>
-          <SubjectText subject={finding.subject} />
+          <SubjectText home={review || details ? home : null} subject={finding.subject} />
           <span hidden id={reasonId}>
             {reason}
           </span>
@@ -158,11 +184,13 @@ export const FindingRow = ({
           {removability === 'removable' ? null : (
             <RemovabilityNote finding={finding} onReveal={onReveal} removability={removability} />
           )}
-          <span className={styles.level}>
-            <Tooltip content={reason} repeatsName>
-              {() => <DangerBadge label={level} level={finding.danger} size="small" />}
-            </Tooltip>
-          </span>
+          {variant === 'default' ? (
+            <span className={styles.level}>
+              <Tooltip content={reason} repeatsName>
+                {() => <DangerBadge label={level} level={finding.danger} size="small" />}
+              </Tooltip>
+            </span>
+          ) : null}
           <span className={styles.value}>
             <SizeText {...size} />
           </span>
@@ -171,7 +199,7 @@ export const FindingRow = ({
               {menu.length === 0 ? null : (
                 <Menu
                   defaultOpen={menuOpen}
-                  icon={Settings}
+                  icon={details ? Ellipsis : Settings}
                   items={menu}
                   label={t('ui.finding-list.options', { title: { kind: 'text', value: title } })}
                   // The menu lives only in the list's roving model: the list gives the row its tabIndex.

@@ -858,7 +858,8 @@ mod tests {
                 system_ui: fixture.system_ui,
                 system: fixture.system,
             };
-            let engine = crate::Engine::new(crate::Registry::new().unwrap(), ports).unwrap();
+            let engine =
+                crate::Engine::new(crate::Registry::new().unwrap(), ports, fresher_core::HighLevel::Offered).unwrap();
 
             let page = engine.cleanups(0, 10);
 

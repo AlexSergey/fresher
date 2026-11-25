@@ -22,7 +22,7 @@ const DICTIONARY = {
   'core.group.development.description': 'Tools for building software.',
   'core.group.system.description': 'What macOS and your apps keep for themselves.',
   'core.ignore.groups.description': 'Hides everything the modules of this group find.',
-  'core.ignore.modules.description': 'Hides everything this module finds.',
+  'core.ignore.modules.description': 'Fresher stops looking for these and never removes what they find.',
   'jetbrains.enabled.label': 'JetBrains',
 };
 
@@ -91,7 +91,7 @@ describe('IgnoredGroup', () => {
         expect(control).toBeDisabled();
       }
       expect(screen.getByRole('button', { name: 'Restore Development' })).toBeDisabled();
-      fireEvent.click(screen.getByRole('tab', { name: 'Ignored modules · 1' }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Not looked for · 1' }));
       expect(screen.getByRole('button', { name: 'Restore Demo module' })).toBeDisabled();
     });
 
@@ -101,7 +101,7 @@ describe('IgnoredGroup', () => {
       const lock = screen.getByRole('switch', { name: 'Ignore JetBrains' });
       expect(lock).toBeChecked();
       expect(lock).toBeDisabled();
-      expect(screen.getByText('Ignored with its group: Development')).toBeInTheDocument();
+      expect(screen.getByText('Ignored with its section: Development')).toBeInTheDocument();
       expect(screen.getByRole('switch', { name: 'Ignore Demo module' })).toBeEnabled();
       fireEvent.click(lock);
       expect(sent).toEqual({ ignored: [], restored: [] });
@@ -114,7 +114,7 @@ describe('IgnoredGroup', () => {
       expect(screen.getAllByRole('switch')).toHaveLength(2);
     });
 
-    it('says nothing is ignored in Ignored items when it is empty', async () => {
+    it('says nothing is ignored in Items when it is empty', async () => {
       await show({}, { opensOn: 'items' });
 
       expect(screen.getByText('Nothing is ignored.')).toBeInTheDocument();
@@ -130,26 +130,26 @@ describe('IgnoredGroup', () => {
         'core.ignore.paths': { kind: 'paths', value: ['/Users/ann/keep'] },
       });
 
-      expect(screen.getByRole('tab', { name: 'Ignored groups · 1' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'Ignored modules · 1' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'Ignored items · 2' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Sections · 1' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Not looked for · 1' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Items · 2' })).toBeInTheDocument();
     });
 
     it('opens on the first tab with an entry', async () => {
       await show({ 'core.ignore.paths': { kind: 'paths', value: ['/a'] } });
-      expect(screen.getByRole('tab', { name: 'Ignored items · 1' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'Items · 1' })).toHaveAttribute('aria-selected', 'true');
     });
 
-    it('opens on Ignored groups when nothing is ignored', async () => {
+    it('opens on Sections when nothing is ignored', async () => {
       await show();
 
-      expect(screen.getByRole('tab', { name: 'Ignored groups' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'Sections' })).toHaveAttribute('aria-selected', 'true');
     });
 
     it('opens on the tab it is told', async () => {
       await show({}, { opensOn: 'modules' });
 
-      expect(screen.getByRole('tab', { name: 'Ignored modules' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'Not looked for' })).toHaveAttribute('aria-selected', 'true');
     });
 
     it('a group switch ignores the group and a turned-off one restores it', async () => {

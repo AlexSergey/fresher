@@ -124,7 +124,7 @@ describe('LeftOutOnly', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]).toHaveAccessibleName('Example downloads');
       expect(rows[0]).toHaveTextContent('1 item left out (157.3 MB): The app that made it is open.');
-      expect(screen.getByText('The scan found these, but left every item out. Each line says why.')).toBeVisible();
+      expect(screen.getByText('· The scan found these, but left every item out. Each line says why.')).toBeVisible();
     });
 
     it("Details opens the category's details", async () => {

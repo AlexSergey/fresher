@@ -91,7 +91,7 @@ mod app {
             system_ui: Arc::new(FakeSystemUi::default()),
             system: fake_system(home),
         };
-        let engine = Engine::new(registry, ports).unwrap();
+        let engine = Engine::new(registry, ports, fresher_core::HighLevel::Offered).unwrap();
         let roots = SettingValue::Folders(vec![home.to_path_buf()]);
         engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
         let events = engine.subscribe();

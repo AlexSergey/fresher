@@ -95,8 +95,9 @@ cleanups of a hundred items through the real journal.
     cache; `Ports { order: MatchOrder::Reversed, .. }` hands it the matches last first, so a test can check that its
     answers do not depend on the walk's order; `Ports { avoid: vec!["Library/Logs".into()], .. }` (paths relative to
     the fixture root) leaves those folders unopened, so a place among them reaches `finish` as `PlaceSeen::NotScanned`.
-  - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category has its five texts and every
-    setting (`<module>.enabled` included) its label and description, every key is in the module's namespace;
+  - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category names an icon (not
+    `generic`) and has its six texts and every setting (`<module>.enabled` included) its label and description, every
+    key is in the module's namespace;
     `Catalogue::Required(docs/categories)` also wants each category's catalogue file with the same danger level
     (`Catalogue::DevOnly` for the dev-only `demo` and `trial`). `assert_texts_used(&module, &runs)` — every text is a
     descriptor key or used by a finding of the runs, and every finding's text exists with the args its placeholders
@@ -254,6 +255,14 @@ cleanups of a hundred items through the real journal.
   `crates/engine/src/ignore_module_tests.rs` — ignoring a module and a group, and restoring them without a rescan;
   `crates/core/src/settings/core_schema.rs` holds the guard that no core setting names the confirmation, a danger
   level or the removal.
+- **The High switch** (plan 042): `crates/engine/src/high_tests.rs` — negatives first: under `Withheld` no High
+  finding is in a page, a total, the found size, "Can be freed", a module's categories or choices or a published
+  left-out; a finding raised to High is left out; an insight part at High is not published; an app page lists no
+  footprint item of a High kind and an Apps row no part of one (nor its bytes); a prepare with a High item, a Largest
+  pick and an uninstall of everything are refused with `HighWithheld` before the agreement check, with no plan kept;
+  then `Offered` as before and every lower level kept. `crates/e2e/tests/high_withheld.rs` does the same on files (a
+  withheld home offers nothing at High and refuses its plan; the same home offered lists it). The sandbox's
+  `high-withheld.toml` runs as the app ships (below).
 - `app/tauri/tests/bindings.rs` — the IPC types: every type the commands and events carry is rendered by `ts-rs` and
   compared byte for byte with `app/ui/src/ipc/bindings.generated.ts`; no listed type refers to an unlisted one, no
   number becomes a `bigint`, no field is in snake_case. `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test
@@ -306,24 +315,43 @@ cleanups of a hundred items through the real journal.
   its ignore part (`e2e/support/ignore-mock.ts`, `SCRIPTS.ignoring`) answers `ignore` and `restore_ignored` for
   modules, groups and items (`ignore` with a finding, `restore_ignored` with a path) and keeps the lists for the
   session; `get_findings` leaves out the findings at or inside an ignored path, but the category totals are not
-  recomputed; `e2e/core-mock.spec.ts` proves its paging. Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
+  recomputed; `e2e/core-mock.spec.ts` proves its paging. The mock's app info says `high: 'offered'` by default, so
+  every script stays what the core can produce; a script's `high` option sets it, and `withheld(script)`
+  (`e2e/support/withheld.ts`, re-exported from `core-mock.ts`) turns a script into what a withholding core produces
+  from the same home: no finding whose level or category is High, no total, found size, left-out or module category
+  of those, no insight part at High, and the Apps mock's `withheld` world (no Everything choice, no item at High on a
+  page, no part at High in a row nor its bytes). Its known limit: it does not touch the cleanup and Largest parts of a
+  script, so a spec that cleans or picks under `withheld` must state only what a withholding core would answer.
+  Screenshots in `app/ui/e2e/screenshots/`, per browser. WebKit is the
   reference engine (the app runs in WebKit on macOS); Chromium runs too. The suite runs on `npm run build:e2e` (the
   app and the gallery in `dist-e2e/`), served with the app's production CSP; every spec checks that the policy
   refused nothing. The screenshots are compared only on the developer's Mac, by the pre-push checks: the CI runner has
   another macOS version, which draws text a few pixels differently, so CI runs the suite with `--ignore-snapshots`
   (every other check still runs) and turns on full keyboard access (`AppleKeyboardUIMode` 3), without which WebKit's
   Tab skips buttons. When the runner has the developer's macOS version, CI can compare the screenshots again.
+  `--update-snapshots` keeps a baseline whose difference is under the tolerance (50 pixels), so a small change can
+  leave a committed screenshot that is not the real render: after a change that touches many screens, delete the
+  baselines first and take them again (`npm run test:e2e:update --workspace app/ui`), then look at them.
 - **The Apps screens' flows** (plan 036, `e2e/apps.spec.ts`, `e2e/support/apps-mock.ts`): the list, its filter and each
   not-offered reason; the app's page with its footprint item by item; the two choices (radios, by keyboard); the
   notice of App Management; a refused uninstall reloading the page; the confirmation with one item and "and N more
   files"; Review showing a refusal. Scenarios `apps` and `appsDenied`; the gallery holds the product components.
-- **The Scan screen's flows** (`e2e/scan.spec.ts`, `e2e/flows.spec.ts`): the ring and the legend highlight each other
-  and the legend's "i" opens the core's description; a card's settings menu opens, closes on Escape and works by
-  keyboard (Ignore category, Ignore module); a finding row's menu on a category's details closes on Escape,
-  ignores one item by keyboard (the row leaves and the focus goes to its neighbour), Restore in Settings brings it
-  back, and Review's rows have no menu; a zone's Select all ticks only that zone; a card's Details opens the
-  category's details with every finding; the selection bar shows on Scan and on the details; the short window's
-  sidebar scrolls to Settings (`e2e/layout.spec.ts`).
+- **The Scan screen's flows** (`e2e/scan.spec.ts`, `e2e/flows.spec.ts`; plan 042): the disk card's legend and arcs
+  highlight each other and each "i" opens the core's description; the scanning card's percent and "Looking at";
+  a group's Select all (Safe and Usually safe only) ticks only that group, and a Look before removing group has none;
+  a Look tile ticked on Scan sends nothing until its items are ticked in Review, and the bar says how many are to
+  check; one menu on tiles and rows (Show in Finder, Ignore this item, Ignore all), closing on
+  Escape and working by keyboard (an ignored row leaves and the focus goes to its neighbour; Restore in Settings
+  brings it back); a tile's Details opens the category's details with every finding; the selection bar shows on Scan
+  and on the details; Largest is absent from the sidebar under `withheld`; the short window's sidebar scrolls to
+  Settings (`e2e/layout.spec.ts`).
+- **Review's flows** (`e2e/flows.spec.ts`): the summary card and its chips, a Look tile's items unticked and its pill
+  amber, Move to the Trash inactive while nothing is ticked, ticking one item or the tile's all-checkbox, the pill
+  turning green, the items the core receives (`preparedSelections` of `e2e/support/cleanup-mock.ts`).
+- **Settings' flows** (`e2e/flows.spec.ts`, `e2e/keyboard.spec.ts`, `e2e/visual.spec.ts`): the tree's group opens
+  with Enter and a module opens its page (its switch last); the search says when nothing matches, lists every match
+  marked, opens the page with the setting focused on a click or on Enter, and Esc clears it; dragging a slider saves
+  the number, and a number typed outside its limits is refused and the slider does not move.
 - **The gallery** (`app/ui/gallery.html`, `src/gallery/`): every component in every state, each `*.stories.tsx`
   found by `import.meta.glob`; built only by `build:e2e`, never into the app's `dist/`. `gallery.spec.ts` photographs
   every story in WebKit; `visual.spec.ts` photographs every screen in each of its states in WebKit and Chromium.
@@ -560,6 +588,9 @@ The case files:
   status change (40 days, or 5). The second runs with Spotlight off, a world of its own: a removed app's files are
   left out (`spotlight-unread`); in `npm run sandbox -- all` Spotlight is then off for every case file
   ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+- `high-withheld.toml`: the High switch as the app ships it (plan 042), on the `app-leftovers` module, with
+  `high = "withheld"`. A removed app's support folder (High) is not offered and is the user's folders on the map; the
+  same app's caches (Safe) are offered and go to the Trash.
 - `large-files.toml`: the Largest screen, on the `trial` module, every case with a `[case.largest]` and the smallest
   size listed set to 10 MB in its `[settings]`. A file under `Library`, in the Trash, in a hidden folder, inside a
   package and below the minimum are never listed; `Public`, a standard folder, cannot be chosen (sandbox mode keeps out
@@ -731,7 +762,12 @@ temporary too), run through the app's own sandbox composition (`sandbox_engine`)
 the generated sandbox's `now`), volumes, open files and commands, the running apps of the generated sandbox's
 `world.toml`, its access (a fake that knows nothing when it states none), its receipts and macOS version, and its
 stated facts (as sandbox mode takes
-them), and only the case file's `module` registered. Every negative must not
+them), and only the case file's `module` registered. The app, in sandbox mode too, withholds High (plan 042); the
+autotest runs every case file with High offered (`SandboxMode::offering_high`), so the High positives of the modules
+stay checked, but a file that says `high = "withheld"`: it runs as the app ships, and whatever its cases say, no
+finding, no category total and no part of the map's "Explained" may hold a High item (the map explains exactly what
+was found). `EXPECTED.md` adds "Not shown in the app: High is withheld in this release." under every High positive of
+a file without `high`, since the app on that sandbox does not offer it. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
 `after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. The agreement's guard is
@@ -771,6 +807,7 @@ keeps its report.
 ```toml
 feature = "trial"   # the feature: a module's id, or a part of the core (`cleanup-guards`)
 module = "trial"    # the module the autotest registers (absent: every module of the app)
+# high = "withheld" # optional, the only value: run with High withheld, as the app does (absent: High offered)
 
 # Negative cases first, then positive ones; names are unique; paths are relative to the sandbox folder, whose fake
 # home is `home/`.
@@ -778,7 +815,7 @@ module = "trial"    # the module the autotest registers (absent: every module of
 name = "a trial folder with no marker next to it is never offered"
 kind = "negative"
 [[case.file]]
-path = "home/bare/fresher-trial-cache/blob.bin"
+path = "home/bare/Sample app cache/blob.bin"
 size = 1048576
 
 [[case]]
@@ -787,11 +824,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/work"
 [[case.file]]
-path = "home/work/fresher-trial-cache/blob.bin"
+path = "home/work/Sample app cache/blob.bin"
 size = 52428800
 fill = "data"
 [case.expect]
-item = "home/work/fresher-trial-cache"
+item = "home/work/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"   # in-trash | emptied | skipped (with `reason`, a SkipCode as serialized)
@@ -801,7 +838,7 @@ reason = "trial.error.failed"   # one of the module's declared problems (`with_p
 items = 1                    # at least 1; the file's expectations of one category and reason add up
 [case.map]                   # optional, on any case
 part = "explained"           # explained (a positive) | your-folders (a negative)
-at = "home/work/fresher-trial-cache"   # optional: by default the folder of the case's first file
+at = "home/work/Sample app cache"   # optional: by default the folder of the case's first file
 [case.largest]               # optional, on any case
 shown = "offered"            # offered | absent | withheld | not-seen
 at = "home/VMs/Old.utm"      # optional for offered and absent (by default the case's first file); required otherwise
@@ -931,6 +968,9 @@ scan keeps out. The exception is a folder the world states `access` for: the sta
 place in `home/` to the engine's coverage, which decides it as on a Mac (walked when granted, tried once its switch is
 on when not asked, skipped when denied); the real home's places stay avoided whatever the world says.
 
+A case file may say `high = "withheld"` beside `feature` and `module` (any other value is refused with the file's parse
+error): the autotest then runs it with High withheld, as the app does, instead of offered.
+
 A case file may also have a file-level `[settings]` table, beside `feature` and `module`: the values of the
 modules' settings, by key `<module>.<name>` in kebab case, each a bool, an integer or a string
 (`"unused-toolchains.node-versions" = true`). A module's off-by-default switch is turned on this way. Like
@@ -990,19 +1030,24 @@ real `docs/` or `README.md`: they use strings or folders made in the system's te
 interface's and every module's English dictionary. Its test, `scripts/check-texts.test.ts`, runs each rule on a small dictionary: negative cases first (an exclamation
 mark, a name over its length, a plural counted by its own segment, a banned word as a whole word only, "delete" outside
 a permanent delete, a lower-case "trash", a label without a description, a category missing a part, a double space, an
-unfinished sentence, a dictionary that cannot be read thrown, not skipped), then positive ones (a `{placeholder}` that
+unfinished sentence, a category's `line` over 50 characters or ending with a full stop, a category name of more than
+four words (`NAME_WORDS`, rule `name-words`, not for `ui.` texts), a dictionary that cannot be read thrown, not
+skipped), then positive ones (a `{placeholder}` that
 is not read as "trash", `ui.` labels without a description or parts, a clean dictionary, an exempt key, a module
 without a dictionary skipped). Every `EXEMPT` entry carries its reason.
 
-### The agreement and the danger zone in the interface
+### The agreement and the Look items in the interface
 
-Unit tests: the gate in `state/cleanup-actions.ts` and `state/agreement.ts` (the sheet before a prepare, one acceptance
-per click, a refusal of the acceptance shown as a toast), the sheet, the licence dialog and About, Review's two parts,
-the High tick of the confirmation and Scan's question before a Select all of Medium or High. The e2e specs run against
-the mocked IPC: the agreement is accepted by default and a script says `agreement: 'not-accepted'`
-(`e2e/support/agreement-mock.ts`); the cleanup mock refuses a High echo without the tick as the core does. "A changed
-text asks again" is proven by the core's and the UI's unit tests; it has no browser-level scenario until a second
-version of the text exists.
+Plan 042 replaced 039's Review parts and Scan question. Unit tests: the gate in `state/cleanup-actions.ts` and
+`state/agreement.ts` (the sheet before a prepare, one acceptance per click, a refusal of the acceptance shown as a
+toast), the sheet, the licence dialog and About; the tick model in `state/selection.test.ts` (a Look before removing
+category ticked on Scan joins `toCheck` and selects none of its items, a module choice never selects one whole,
+`tick-all` and `untick-all`); Review's tiles (a Look item never ticked for the user, the pill of how many are checked,
+the summary's chips); the High tick of the confirmation (unused in the app while High is withheld, kept with its
+tests). The e2e specs run against the mocked IPC: the agreement is accepted by default and a script says
+`agreement: 'not-accepted'` (`e2e/support/agreement-mock.ts`); the cleanup mock refuses a High echo without the tick
+as the core does. "A changed text asks again" is proven by the core's and the UI's unit tests; it has no
+browser-level scenario until a second version of the text exists.
 
 ### Demo recordings
 

@@ -12,6 +12,7 @@ import { createFindingsSource } from '../state/findings';
 import { createNavigation, type Navigation, NavigationContext } from '../state/navigation';
 import { CoreContext, type CoreStore } from '../state/store';
 import { FindingsContext } from '../state/use-findings';
+import { systemWallClock, type WallClock, WallClockContext } from '../state/wall-clock';
 import { ModulesContext } from './use-modules';
 
 export type AppProvidersProps = {
@@ -19,6 +20,8 @@ export type AppProvidersProps = {
   // The screen to show; a new one, at the overview, when not given (a test passes its own to read where it went).
   readonly navigation?: Navigation;
   readonly store: CoreStore;
+  // The time of day; the system's when not given (a test fixes it).
+  readonly wallClock?: WallClock;
 };
 
 // The finding lists keep at most 10 pages of 100 findings in all (plan 003/05).
@@ -26,8 +29,13 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 
 // Everything a screen reads, around the app: the core's store (connected to the core once), the finding pages, the
-// navigation, the modules the core lists, the toasts and the one polite announcer.
-export const AppProviders = ({ children, navigation, store }: AppProvidersProps): JSX.Element => {
+// navigation, the modules the core lists, the time of day, the toasts and the one polite announcer.
+export const AppProviders = ({
+  children,
+  navigation,
+  store,
+  wallClock = systemWallClock,
+}: AppProvidersProps): JSX.Element => {
   const [ownNavigation] = useState(createNavigation);
   const [findings] = useState(() =>
     createFindingsSource(getFindings, { clock: systemClock, maxPages: MAX_PAGES, pageSize: PAGE_SIZE }),
@@ -102,9 +110,11 @@ export const AppProviders = ({ children, navigation, store }: AppProvidersProps)
       <NavigationContext value={navigation ?? ownNavigation}>
         <FindingsContext value={findings}>
           <ModulesContext value={modules}>
-            <Toaster closeLabel={t('ui.screen.frame.close')} label={t('ui.screen.frame.toasts')}>
-              <Announcer>{children}</Announcer>
-            </Toaster>
+            <WallClockContext value={wallClock}>
+              <Toaster closeLabel={t('ui.screen.frame.close')} label={t('ui.screen.frame.toasts')}>
+                <Announcer>{children}</Announcer>
+              </Toaster>
+            </WallClockContext>
           </ModulesContext>
         </FindingsContext>
       </NavigationContext>

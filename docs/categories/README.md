@@ -19,12 +19,12 @@ There is no "Other", "Miscellaneous" or "System data" category. Space no rule re
 The danger level says what the user risks by removing a category. It is shown next to the category, on the
 confirmation screen, and the confirmation names the highest level among the selected items.
 
-| Level      | Meaning                                                                                          | Examples                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| **Safe**   | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | logs, Xcode derived data, a removed app's caches, an IDE's caches, Docker build cache          |
-| **Low**    | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, a browser's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, unused Docker images, an unfinished download, an unused Rust toolchain, old device support files |
-| **Medium** | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, stopped Docker containers, an unused Node version |
-| **High**   | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, iOS device backups, a removed app's support folder, a big download you have not opened, Xcode archives |
+| Level      | Shown as | Meaning                                                                                          | Examples                                                                   |
+| ---------- | -------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| **Safe**   | Safe to remove | Rebuilt automatically when needed; removing it costs nothing but a little time.                  | logs, Xcode derived data, a removed app's caches, an IDE's caches, Docker build cache          |
+| **Low**    | Usually safe | Rebuilt on demand, but it costs time or bandwidth (a download, a rebuild).                       | an installed app's cache, a browser's cache, package manager caches, a downloaded AI model, `node_modules`, an old project's `node_modules`, unused Docker images, an unfinished download, an unused Rust toolchain, old device support files |
+| **Medium** | Look before removing | Can be restored, but not automatically; you may lose settings or need to set something up again. | settings of an older IDE version, an old project's Python environment, old iOS simulators, stopped Docker containers, an unused Node version |
+| **High**   | Only if you are sure | May hold the only copy of your data; removing it can lose work.                                  | Docker volumes, iOS device backups, a removed app's support folder, a big download you have not opened, Xcode archives |
 
 The levels are final for a category in its default form; a rule may raise (never lower) a level for a specific finding,
 for example a `node_modules` of a project touched yesterday.

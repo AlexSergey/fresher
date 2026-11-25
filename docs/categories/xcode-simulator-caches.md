@@ -6,7 +6,7 @@
 
 ## What it is
 
-Files the iOS simulators keep to start faster, one set for each version of macOS you ran them on. Made by the Simulator, part of Xcode.
+Files the iOS simulators keep to start faster. Made by the Simulator, part of Xcode.
 
 ## Where it lives
 

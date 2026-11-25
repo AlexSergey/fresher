@@ -12,6 +12,7 @@ import type {
 
 import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'json' };
 import toolchainTexts from '../../../../modules/unused-toolchains/locales/en.json' with { type: 'json' };
+import { iconOf } from './category-icons';
 import { accessStatus, FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
 
@@ -112,6 +113,7 @@ const needed = (id: string, danger: Finding['danger'], ready: boolean): ModuleIn
   availability: ready ? { kind: 'ready' } : { kind: 'unavailable', missing: [DOCUMENTS] },
   descriptor: {
     danger,
+    icon: iconOf(id),
     id,
     needs: [{ capability: DOCUMENTS, kind: 'required' }],
   },

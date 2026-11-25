@@ -1,0 +1,22 @@
+/* The logo's colours, from the tokens: the leaf's graphite, the swoosh's iris and the star. */
+@layer components {
+  .bodyTop {
+    stop-color: var(--logo-body-top);
+  }
+
+  .bodyBottom {
+    stop-color: var(--gray-950);
+  }
+
+  .swooshStart {
+    stop-color: var(--swoosh-start);
+  }
+
+  .swooshEnd {
+    stop-color: var(--swoosh-end);
+  }
+
+  .star {
+    fill: var(--text-primary);
+  }
+}

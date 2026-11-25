@@ -6,8 +6,8 @@
 
 ## What it is
 
-Caches, logs and saved window positions of apps that are no longer on this Mac. Made by the apps themselves, while
-they were installed; each item names its app by its id, such as `com.example.App`.
+Caches, logs and saved windows of apps that are no longer on this Mac. Made by the apps themselves, while they were
+installed; each item names its app by its id, such as `com.example.App`.
 
 ## Where it lives
 
@@ -20,7 +20,7 @@ Three places in `~/Library`, one finding per item, each a folder named by the ap
 
 ## What happens if you remove it
 
-They go to the Trash. Nothing you made is in them. They come back only if you install the app again: it makes them
+They go to the Trash, and nothing you made is in them. They come back only if you install the app again: it makes them
 anew.
 
 ## How the app decides

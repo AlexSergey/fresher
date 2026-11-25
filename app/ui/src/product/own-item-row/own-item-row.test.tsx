@@ -62,7 +62,7 @@ describe('OwnItemRow', () => {
     it('a folder says nothing of Scan when Scan explains none of it', () => {
       inList(<OwnItemRow checked={false} row={{ ...FOLDER, explained: { ...FOLDER.explained, allocated: 0 } }} />);
 
-      expect(screen.queryByText(/Explained on Scan/u)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Can be freed on Scan/u)).not.toBeInTheDocument();
     });
   });
 
@@ -99,7 +99,7 @@ describe('OwnItemRow', () => {
       const onOpen = vi.fn();
       inList(<OwnItemRow checked={false} onOpen={onOpen} row={FOLDER} />);
 
-      expect(screen.getByText(/Folder · Explained on Scan: 3.1 GB/u)).toBeVisible();
+      expect(screen.getByText(/Folder · Can be freed on Scan: 3.1 GB/u)).toBeVisible();
 
       fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
@@ -109,7 +109,7 @@ describe('OwnItemRow', () => {
     it('a withheld folder keeps its Open button and says why', () => {
       inList(<OwnItemRow checked={false} onOpen={vi.fn()} row={FOLDER} />);
 
-      expect(screen.getByText('Part of it is explained on Scan. Open it to choose the rest.')).toBeVisible();
+      expect(screen.getByText('Part of it is on Scan. Open it to choose the rest.')).toBeVisible();
       expect(screen.getByRole('button', { name: 'Open' })).toBeVisible();
     });
   });

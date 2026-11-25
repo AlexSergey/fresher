@@ -16,6 +16,7 @@ const total = (category: CategoryId, highestDanger: DangerLevel, count = 1): Cat
 const whole = (...categories: readonly CategoryId[]): Selection => ({
   categories: new Map(categories.map((category) => [category, new Map()])),
   findings: new Map(),
+  toCheck: new Set(),
 });
 
 // A real finding of the demo scan, placed in the zone's category `a`.
@@ -94,13 +95,14 @@ describe('zoneSelectAll', () => {
       const selection: Selection = {
         categories: new Map([[PICKED.category, new Map([[PICKED.id, PICKED]])]]),
         findings: new Map(),
+        toCheck: new Set(),
       };
 
       expect(zoneSelectAll(selection, zone, always)?.checked).toBe('mixed');
     });
 
     it('is mixed when findings of a category are picked one by one', () => {
-      const selection: Selection = { categories: new Map(), findings: new Map([[PICKED.id, PICKED]]) };
+      const selection: Selection = { ...NOTHING_SELECTED, findings: new Map([[PICKED.id, PICKED]]) };
 
       expect(zoneSelectAll(selection, zone, always)?.checked).toBe('mixed');
     });

@@ -13,6 +13,7 @@ import type {
 
 import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'json' };
 import downloadsTexts from '../../../../modules/downloads/locales/en.json' with { type: 'json' };
+import { iconOf } from './category-icons';
 import { accessStatus, FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
 
@@ -135,7 +136,7 @@ const needsDownloads = [{ capability: DOWNLOADS, kind: 'required' }] as const;
 
 const descriptorOf = (id: string, danger: Finding['danger'], ready: boolean): ModuleInfo['categories'][number] => ({
   availability: ready ? { kind: 'ready' } : { kind: 'unavailable', missing: [DOWNLOADS] },
-  descriptor: { danger, id, needs: [...needsDownloads] },
+  descriptor: { danger, icon: iconOf(id), id, needs: [...needsDownloads] },
 });
 
 const modulesOf = (ready: boolean): readonly ModuleInfo[] => [

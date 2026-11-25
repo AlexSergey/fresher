@@ -134,13 +134,13 @@ describe('ResultSummary', () => {
       expect(screen.queryByRole('heading', { name: 'Freed' })).toBeNull();
       expect(screen.getByText('Moved 3 items to the Trash')).toBeInTheDocument();
       expect(screen.getByText('You get the space back when you empty the Trash.')).toBeInTheDocument();
-      expect(screen.getByText('Space freed on the disk now: about 100 MB (measured).')).toBeInTheDocument();
+      expect(screen.getByText('Space freed so far: about 100 MB.')).toBeInTheDocument();
     });
 
     it('an unmeasured space says so', () => {
       renderSummary({ report: UNMEASURED_REPORT });
 
-      expect(screen.getByText('The space freed on the disk now could not be measured.')).toBeInTheDocument();
+      expect(screen.getByText('Fresher could not measure the space freed on the disk now.')).toBeInTheDocument();
       expect(screen.queryByText(/about/u)).toBeNull();
     });
 
@@ -241,7 +241,7 @@ describe('ResultSummary', () => {
       renderSummary({ report: DELETED_REPORT });
 
       expect(screen.getByRole('region', { name: 'Freed' })).toBeInTheDocument();
-      expect(screen.getByText('Measured on the disk: about 2.4 GB.')).toBeInTheDocument();
+      expect(screen.getByText('Freed on the disk: about 2.4 GB.')).toBeInTheDocument();
     });
 
     it('the result lists skipped items with their reasons', () => {

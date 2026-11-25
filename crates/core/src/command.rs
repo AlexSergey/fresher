@@ -615,7 +615,7 @@ mod tests {
             assert_eq!(
                 serde_json::to_value(&info.categories[1]).unwrap(),
                 json!({
-                    "descriptor": { "id": "demo.logs", "danger": "low", "needs": [] },
+                    "descriptor": { "id": "demo.logs", "danger": "low", "needs": [], "icon": "generic" },
                     "availability": { "kind": "ready" },
                 })
             );

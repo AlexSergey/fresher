@@ -1,4 +1,4 @@
-# Unused Node versions (nvm)
+# Unused Node versions
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/unused-toolchains`) · **Since:** 0.1.0
 
@@ -14,7 +14,9 @@ Versions of Node.js that nvm installed and that nothing on this Mac points at: n
 
 ## What happens if you remove it
 
-The version's folder goes to the Trash with every global package installed with it. An editor set to this exact Node stops finding it. It comes back with one command, `nvm install <x.y.z>` (the finding names it), and a download; global packages you installed with it must be installed again. The app cannot see whether a version holds global packages, which is why the level is Medium.
+The global packages installed with it go too, and an editor set to this exact version stops finding it. It comes back
+with one command, `nvm install <x.y.z>` (the finding names it), and a download; global packages you installed with it
+must be installed again. The app cannot see whether a version holds global packages, which is why the level is Medium.
 
 ## How the app decides
 

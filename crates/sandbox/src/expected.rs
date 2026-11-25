@@ -2,7 +2,9 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::time::SystemTime;
 
-use fresher_core::{Access, Capability, DangerLevel, Dictionary, ModuleId, SkipCode, Timestamp, core_dictionary};
+use fresher_core::{
+    Access, Capability, DangerLevel, Dictionary, HighLevel, ModuleId, SkipCode, Timestamp, core_dictionary,
+};
 use fresher_testing::{AppBundle, Stated, StatedFlag, StatedKind, StatedOwner};
 
 use crate::generate::LeftOutFile;
@@ -15,6 +17,9 @@ use crate::{
 /// The header's sentence on the agreement every fresh sandbox asks for before its first cleanup.
 const AGREEMENT: &str = "\nBefore the first cleanup, a fresh sandbox asks you to accept the short agreement: Not now starts \
                          nothing; I understand goes on to the confirmation.\n";
+
+/// The line under a High positive of a file the autotest runs with High offered.
+const WITHHELD_IN_THE_APP: &str = "Not shown in the app: High is withheld in this release.";
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
@@ -43,6 +48,11 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
             .flat_map(|kind| file.cases().iter().filter(move |case| case.kind() == kind));
         for case in ordered {
             let _ = writeln!(text, "- [ ] **{}**: {}.", case.name(), sentence(case, file.module()));
+            // The autotest offers High in this file, but the app always withholds it.
+            let high = case.expect().is_some_and(|expect| expect.danger() == DangerLevel::High);
+            if high && file.high() == HighLevel::Offered {
+                let _ = writeln!(text, "  - {WITHHELD_IN_THE_APP}");
+            }
             for app in case.tree().apps() {
                 let open = case.running_apps().any(|running| running.path == app.path);
                 let _ = writeln!(text, "  - {}{}.", installed(app), if open { " (open)" } else { "" });
@@ -216,7 +226,7 @@ fn insight_sentence(insight: &InsightExpectation) -> String {
     };
     let copy = if insight.commands() > 0 { " Copy puts the command on the clipboard." } else { "" };
     format!(
-        "Under «Described, not cleaned», the card «{}» shows {} numbers; {parts}.{copy} Nothing of it can be selected.",
+        "Under «Shown, never removed», the card «{}» shows {} numbers; {parts}.{copy} Nothing of it can be selected.",
         insight.identity(),
         insight.figures()
     )
@@ -359,9 +369,9 @@ feature = "trial"
 name = "a look-alike is never offered"
 kind = "negative"
 [[case.dir]]
-path = "home/work/fresher-trial-cache2"
+path = "home/work/Sample app cache2"
 [[case.file]]
-path = "home/work/fresher-trial-cache2/look-alike.bin"
+path = "home/work/Sample app cache2/look-alike.bin"
 [[case.file]]
 path = "home/other.bin"
 
@@ -369,9 +379,9 @@ path = "home/other.bin"
 name = "a cache goes to the Trash"
 kind = "positive"
 [[case.file]]
-path = "home/work/fresher-trial-cache/blob.bin"
+path = "home/work/Sample app cache/blob.bin"
 [case.expect]
-item = "home/work/fresher-trial-cache"
+item = "home/work/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
@@ -380,9 +390,9 @@ after-cleanup = "in-trash"
 name = "a busy cache is skipped"
 kind = "positive"
 [[case.file]]
-path = "home/busy/fresher-trial-cache/blob.bin"
+path = "home/busy/Sample app cache/blob.bin"
 [case.expect]
-item = "home/busy/fresher-trial-cache"
+item = "home/busy/Sample app cache"
 category = "trial.caches"
 danger = "low"
 after-cleanup = "skipped"
@@ -397,11 +407,22 @@ reason = "in-use"
         use crate::expected::checklist;
 
         #[test]
+        fn a_high_positive_of_a_withheld_file_has_no_withheld_line() {
+            let cases = CASES.replace("feature = \"trial\"\n", "feature = \"trial\"\nhigh = \"withheld\"\n");
+            let cases = cases.replace("danger = \"safe\"", "danger = \"high\"");
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            assert!(text.contains("offered in *trial.caches* (High)"), "{text}");
+            assert!(!text.contains("Not shown in the app"), "{text}");
+        }
+
+        #[test]
         fn a_negative_names_only_its_top_paths() {
             let text = checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             assert!(text.contains(
-                "never offered: `home/work/fresher-trial-cache2`, `home/other.bin`; still there after the cleanup."
+                "never offered: `home/work/Sample app cache2`, `home/other.bin`; still there after the cleanup."
             ));
             assert!(!text.contains("look-alike.bin"));
         }
@@ -435,7 +456,7 @@ reason = "in-use"
             let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             assert!(text.contains(
-                "never offered by `trial`: `home/work/fresher-trial-cache2`, `home/other.bin`; still there after the cleanup."
+                "never offered by `trial`: `home/work/Sample app cache2`, `home/other.bin`; still there after the cleanup."
             ));
         }
     }
@@ -528,7 +549,7 @@ reason = "in-use"
                 "  - on the overview, by place: `home/work` is in *Your folders*, nothing of it explained."
             );
             assert!(lines[2].starts_with("- [ ] **a cache goes to the Trash**"));
-            assert_eq!(lines[3], "  - on the overview, by place: `home/work/fresher-trial-cache` is explained.");
+            assert_eq!(lines[3], "  - on the overview, by place: `home/work/Sample app cache` is explained.");
             assert!(lines[4].starts_with("- [ ] **a busy cache is skipped**"));
         }
 
@@ -561,8 +582,10 @@ reason = "in-use"
                      choose what is inside.",
                     "  - On Largest, nothing in `home/Documents` is listed, and the notice above the list says Fresher \
                      did not look there and how to allow it.",
+                    "  - Not shown in the app: High is withheld in this release.",
                     "  - On Largest, `home/A/Photos.zip` is listed as *Archive* and can be chosen. It names `Photos` \
                      beside it.",
+                    "  - Not shown in the app: High is withheld in this release.",
                     "  - On Largest, `home/B` is listed and can be chosen.",
                 ]
             );
@@ -702,9 +725,9 @@ reason = "in-use"
             assert_eq!(
                 lines,
                 [
-                    "  - Under «Described, not cleaned», the card «orbstack» shows 3 numbers; its Details lists 4 parts, \
+                    "  - Under «Shown, never removed», the card «orbstack» shows 3 numbers; its Details lists 4 parts, \
                      3 with a command to copy. Copy puts the command on the clipboard. Nothing of it can be selected.",
-                    "  - Under «Described, not cleaned», the card «docker-desktop» shows 2 numbers; its Details lists no \
+                    "  - Under «Shown, never removed», the card «docker-desktop» shows 2 numbers; its Details lists no \
                      part. Nothing of it can be selected.",
                 ]
             );
@@ -751,6 +774,22 @@ reason = "in-use"
         }
 
         #[test]
+        fn a_high_positive_says_it_is_not_shown_in_the_app() {
+            let cases = CASES.replace("danger = \"safe\"", "danger = \"high\"");
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            assert!(
+                text.contains(
+                    "`home/work/Sample app cache`; in the sandbox's Trash after the cleanup.\n  - Not shown in the \
+                     app: High is withheld in this release.\n"
+                ),
+                "{text}"
+            );
+            assert_eq!(text.matches("Not shown in the app").count(), 1, "{text}");
+        }
+
+        #[test]
         fn the_checklist_lists_every_case_negatives_first() {
             let text =
                 checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/tmp/sandbox/trial"), super::now());
@@ -759,12 +798,12 @@ reason = "in-use"
             assert_eq!(
                 lines,
                 [
-                    "- [ ] **a look-alike is never offered**: never offered: `home/work/fresher-trial-cache2`, \
+                    "- [ ] **a look-alike is never offered**: never offered: `home/work/Sample app cache2`, \
                  `home/other.bin`; still there after the cleanup.",
                     "- [ ] **a cache goes to the Trash**: offered in *trial.caches* (Safe): \
-                 `home/work/fresher-trial-cache`; in the sandbox's Trash after the cleanup.",
+                 `home/work/Sample app cache`; in the sandbox's Trash after the cleanup.",
                     "- [ ] **a busy cache is skipped**: offered in *trial.caches* (Low): \
-                 `home/busy/fresher-trial-cache`; skipped by the cleanup (`in-use`), still there.",
+                 `home/busy/Sample app cache`; skipped by the cleanup (`in-use`), still there.",
                 ]
             );
             assert!(text.contains("From `fixtures/sandboxes/trial.toml`."));

@@ -12,7 +12,7 @@ describe('the texts of a finding', () => {
   describe('positive cases', () => {
     it("a level's word and sentence come from the core's dictionary", () => {
       expect(levelName('high')).toBe('High');
-      expect(levelMeaning('high')).toBe('May hold the only copy of your data. Removing it can lose work.');
+      expect(levelMeaning('high')).toBe('May hold the only copy of your data');
     });
   });
 });

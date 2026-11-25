@@ -21,8 +21,8 @@ use std::cell::OnceCell;
 use std::collections::{BTreeMap, BTreeSet};
 
 use fresher_core::{
-    Capability, CategoryDescriptor, CategoryId, Claim, DaySetting, DescriptorError, FindingSink, GuardedFolder,
-    IdError, InstalledApp, Interest, InterestError, KnownFolder, Locales, Match, Module, ModuleContext,
+    Capability, CategoryDescriptor, CategoryIcon, CategoryId, Claim, DaySetting, DescriptorError, FindingSink,
+    GuardedFolder, IdError, InstalledApp, Interest, InterestError, KnownFolder, Locales, Match, Module, ModuleContext,
     ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need, Pattern, Receipt, RunningApp, RunningSet, SettingError,
     SystemFacts, TextKeyError, Timestamp,
 };
@@ -95,7 +95,7 @@ impl DownloadsModule {
         let needs = || vec![Need::required(Capability::Folder(GuardedFolder::Downloads))];
         let categories = Categories::new(|category| {
             let id = CategoryId::new(id, category.id())?;
-            Ok(CategoryDescriptor::new(id, category.danger()).with_needs(needs()))
+            Ok(CategoryDescriptor::new(id, category.danger()).with_icon(CategoryIcon::Download).with_needs(needs()))
         })?;
         let report = Report::new(categories)?;
         let (categories, problems) = (report.categories(), report.problems());

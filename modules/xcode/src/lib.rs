@@ -18,9 +18,9 @@ mod report;
 use std::cell::OnceCell;
 
 use fresher_core::{
-    AppIdError, CategoryDescriptor, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError,
-    Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, RunningSet,
-    TextKeyError,
+    AppIdError, CategoryDescriptor, CategoryIcon, CategoryId, DescriptorError, FindingSink, IdError, Interest,
+    InterestError, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
+    RunningSet, TextKeyError,
 };
 
 use crate::categories::CATEGORIES;
@@ -70,7 +70,11 @@ impl XcodeModule {
         let id = ModuleId::new("xcode")?;
         let categories = CATEGORIES
             .into_iter()
-            .map(|(category, danger)| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, category)?, danger)))
+            .map(|(category, danger)| {
+                Ok::<_, IdError>(
+                    CategoryDescriptor::new(CategoryId::new(id, category)?, danger).with_icon(icon(category)),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let report = Report::new(categories.clone())?;
         let locales = Locales { en: include_str!("../locales/en.json") };
@@ -133,6 +137,16 @@ impl Module for XcodeModule {
             self.report.tell(row, candidate, verdict, &recent, out);
         }
         Ok(())
+    }
+}
+
+/// The icon of each category; one it does not list is generic, which the module contract refuses.
+fn icon(category: &str) -> CategoryIcon {
+    match category {
+        "xcode.device-support" | "xcode.simulator-caches" => CategoryIcon::Device,
+        "xcode.previews" => CategoryIcon::Build,
+        "xcode.archives" => CategoryIcon::Archive,
+        _ => CategoryIcon::Generic,
     }
 }
 

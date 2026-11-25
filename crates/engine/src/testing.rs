@@ -12,10 +12,11 @@ use fresher_core::{
     AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION, AGREEMENT_VERSION_KEY, AutoEmpty, ByteSize, CancelToken,
     CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan, DangerLevel, Depth,
     DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest, ItemDone, LeftOutItem,
-    Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need, NewFinding,
-    Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal, ScanKind, SettingsStore,
-    Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand,
-    ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need,
+    NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal, ScanKind,
+    SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
+    Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress,
+    WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeFinderSettings, FakeSystemUi, FakeVolumes,
@@ -44,6 +45,8 @@ pub(crate) struct TestModule {
 #[derive(Clone, Copy, Debug)]
 enum OnMatch {
     Find,
+    /// Only seen: the walk's facts of the entry are kept, and the module finds in `finish`.
+    Quiet,
     Fail,
     Panic,
 }
@@ -53,6 +56,7 @@ pub(crate) struct TestModuleBuilder {
     id: ModuleId,
     group: ModuleGroup,
     categories: Vec<CategoryDescriptor>,
+    choices: Vec<ModuleChoice>,
     tool_checks: Vec<ToolCommand>,
     problems: Vec<TextKey>,
     locales: &'static str,
@@ -71,6 +75,7 @@ impl TestModule {
             id: ModuleId::new(id).unwrap(),
             group: ModuleGroup::Development,
             categories: Vec::new(),
+            choices: Vec::new(),
             tool_checks: Vec::new(),
             problems: Vec::new(),
             locales: "{}",
@@ -91,6 +96,13 @@ impl TestModuleBuilder {
 
     pub(crate) fn category(mut self, id: &'static str, danger: DangerLevel) -> Self {
         self.categories.push(CategoryDescriptor::new(CategoryId::new(self.id, id).unwrap(), danger));
+        self
+    }
+
+    /// A choice `name` of the module's categories `categories`.
+    pub(crate) fn choice(mut self, name: &str, categories: &[&'static str]) -> Self {
+        let ids = categories.iter().map(|id| CategoryId::new(self.id, id).unwrap()).collect();
+        self.choices.push(ModuleChoice::new(name, ids));
         self
     }
 
@@ -136,6 +148,12 @@ impl TestModuleBuilder {
         self
     }
 
+    /// The module finds nothing on a match: what it finds, it finds in `finish`, about the entries it matched.
+    pub(crate) const fn quiet_on_match(mut self) -> Self {
+        self.on_match = OnMatch::Quiet;
+        self
+    }
+
     pub(crate) const fn failing_on_match(mut self) -> Self {
         self.on_match = OnMatch::Fail;
         self
@@ -166,6 +184,9 @@ impl TestModuleBuilder {
             descriptor = descriptor.with_tool_check(check).unwrap();
         }
         descriptor = descriptor.with_problems(self.problems).unwrap();
+        if !self.choices.is_empty() {
+            descriptor = descriptor.with_choices(self.choices).unwrap();
+        }
         TestModule {
             descriptor,
             interests: self.interests,
@@ -200,6 +221,7 @@ impl Module for TestModule {
                 out.push(finding(&self.descriptor.categories()[0], matched.path.clone(), matched.sizes));
                 Ok(())
             }
+            OnMatch::Quiet => Ok(()),
             OnMatch::Fail => Err(ModuleError::Failed { reason: text("test.module.failed") }),
             OnMatch::Panic => panic_now("a module panics on a match"),
         }
@@ -673,6 +695,8 @@ pub(crate) struct Fixture {
     pub(crate) finder: Arc<FakeFinderSettings>,
     /// Whether the settings hold the acceptance of the current agreement when the engine is built.
     agreement: bool,
+    /// The engine's High switch; `Offered` unless a test says otherwise.
+    high: fresher_core::HighLevel,
 }
 
 impl Fixture {
@@ -691,7 +715,14 @@ impl Fixture {
             volumes: Arc::default(),
             finder: Arc::new(FakeFinderSettings::new(AutoEmpty::Unknown)),
             agreement: true,
+            high: fresher_core::HighLevel::Offered,
         }
+    }
+
+    /// The engine's High switch.
+    pub(crate) const fn high(mut self, high: fresher_core::HighLevel) -> Self {
+        self.high = high;
+        self
     }
 
     /// The engine's settings do not hold the acceptance of the agreement: a fresh install.
@@ -776,7 +807,7 @@ impl Fixture {
             finder: self.finder,
             trashes: Vec::new(),
         };
-        Engine::with_cleanup(registry, ports, cleanup).unwrap()
+        Engine::with_cleanup(registry, ports, cleanup, self.high).unwrap()
     }
 }
 

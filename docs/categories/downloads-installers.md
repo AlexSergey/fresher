@@ -1,4 +1,4 @@
-# Installers of installed apps
+# Old installers
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
@@ -15,8 +15,7 @@ newer. Made by you, when you downloaded the app.
 
 ## What happens if you remove it
 
-They go to the Trash. The app stays installed; to install it again, download it again. It comes back only if you
-download it again.
+The app stays installed; to install it again, download it again. It comes back only if you download it again.
 
 ## How the app decides
 

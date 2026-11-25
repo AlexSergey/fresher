@@ -37,15 +37,30 @@ export const stories = storiesOf('SelectionBar', {
       logical: 42_800_000_000,
       reclaimable: 42_800_000_000,
     },
+    toCheck: { categories: 0 },
   }),
   'one-safe': shown({
     count: 1,
     highest: 'safe',
     sizes: { allocated: 1_500_000_000, completeness: 'complete', logical: 1_500_000_000, reclaimable: 1_500_000_000 },
+    toCheck: { categories: 0 },
+  }),
+  'only-to-check': shown({
+    count: 0,
+    highest: null,
+    sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+    toCheck: { categories: 1 },
   }),
   partial: shown({
     count: 12,
     highest: 'medium',
     sizes: { allocated: 7_300_000_000, completeness: 'partial', logical: 7_300_000_000, reclaimable: 7_300_000_000 },
+    toCheck: { categories: 0 },
+  }),
+  'to-check': shown({
+    count: 3,
+    highest: 'safe',
+    sizes: { allocated: 2_100_000_000, completeness: 'complete', logical: 2_100_000_000, reclaimable: 2_100_000_000 },
+    toCheck: { categories: 2 },
   }),
 });

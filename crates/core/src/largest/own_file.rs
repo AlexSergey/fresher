@@ -1,14 +1,15 @@
 //! The core's own category: the files and folders the user picks on the Largest screen.
 
-use crate::{CategoryDescriptor, CategoryId, DangerLevel, NodeKind, Text, TextArg, TextKey};
+use crate::{CategoryDescriptor, CategoryIcon, CategoryId, DangerLevel, NodeKind, Text, TextArg, TextKey};
 
 /// The id of the core's own category.
 pub const OWN_FILE_ID: &str = "core.own-file";
 
 /// The core's own category, `core.own-file`: items the user chose by hand, never found by a scan. Always High: Fresher
-/// cannot tell what such an item holds. It has no module, no switch and no card.
+/// cannot tell what such an item holds. It has no module, no switch and no card, and the generic icon: it can be
+/// anything.
 pub fn own_file() -> CategoryDescriptor {
-    CategoryDescriptor::new(CategoryId::own_file(), DangerLevel::High)
+    CategoryDescriptor::new(CategoryId::own_file(), DangerLevel::High).with_icon(CategoryIcon::Generic)
 }
 
 /// The title of a picked item: its name.
@@ -29,7 +30,7 @@ pub fn own_file_reason(kind: NodeKind) -> Text {
 mod tests {
     mod positive {
         use super::super::{OWN_FILE_ID, own_file, own_file_reason, own_file_title};
-        use crate::{DangerLevel, ModuleId, NodeKind, TextArg};
+        use crate::{CategoryIcon, DangerLevel, ModuleId, NodeKind, TextArg};
 
         #[test]
         fn the_title_of_a_pick_names_it() {
@@ -56,6 +57,7 @@ mod tests {
             assert_eq!(category.id().module(), ModuleId::system());
             assert_eq!(category.danger(), DangerLevel::High);
             assert_eq!(category.needs(), []);
+            assert_eq!(category.icon(), CategoryIcon::Generic);
         }
     }
 }

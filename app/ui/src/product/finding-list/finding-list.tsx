@@ -8,11 +8,13 @@ import { EmptyState } from '../../design/feedback/empty-state/empty-state';
 import { ErrorState } from '../../design/feedback/error-state/error-state';
 import { CircleCheck } from '../../design/icons/icons';
 import { t, tText } from '../../i18n';
-import { FindingRow, findingRowsClass } from '../finding-row/finding-row';
+import { FindingRow, findingRowsClass, type FindingRowVariant } from '../finding-row/finding-row';
 import styles from './finding-list.module.css';
 
 export type FindingListProps = {
   readonly failure: FindingListFailure | null;
+  // The home folder the core reports, for the `review` rows' paths (`~/…`).
+  readonly home?: null | string;
   readonly isSelected: (finding: Finding) => boolean;
   // The list's accessible name.
   readonly label: string;
@@ -28,6 +30,9 @@ export type FindingListProps = {
   readonly rowAt: (index: number) => Finding | undefined;
   // How many findings the list has; `undefined` until the core answered its first page.
   readonly total: number | undefined;
+  // `review`: the compact rows of a Review tile (44 px, no level badge) with no column names; `details`: the rows
+  // of a category's items (52 px, no level badge, no column names), paths from `~`.
+  readonly variant?: FindingRowVariant;
 };
 
 // Why the rows could not be loaded: the core refused with its text, or could not be reached (`Failure` of `ipc/`).
@@ -36,8 +41,8 @@ type FindingListFailure = { readonly kind: 'refused'; readonly refusal: Refusal 
 // Skeleton rows shown while the first page loads.
 const LOADING_ROWS = 8;
 
-// Pixels: `--size-finding-row`.
-const ROW_HEIGHT = 52;
+// Pixels: `--size-finding-row`, and `--size-row` for the compact rows of Review.
+const ROW_HEIGHT: Readonly<Record<FindingRowVariant, number>> = { default: 52, details: 52, review: 44 };
 
 type Range = { readonly first: number; readonly last: number };
 
@@ -63,6 +68,7 @@ const Header = (): JSX.Element => (
 // refused. Rows of a page that arrives fade in; a row the refreshed order moves glides to its new place.
 export const FindingList = ({
   failure,
+  home = null,
   isSelected,
   label,
   menuOf,
@@ -71,6 +77,7 @@ export const FindingList = ({
   onToggle,
   rowAt,
   total,
+  variant = 'default',
 }: FindingListProps): JSX.Element => {
   const rangeRef = useRef<Range>({ first: 0, last: LOADING_ROWS - 1 });
   const loading = total === undefined;
@@ -124,14 +131,16 @@ export const FindingList = ({
           <FindingRow
             {...row}
             finding={finding}
+            home={home}
             menu={finding === undefined ? undefined : menuOf?.(finding)}
             onReveal={onReveal}
             onToggle={onToggle}
             selected={finding !== undefined && isSelected(finding)}
+            variant={variant}
             withMenu={menuOf !== undefined}
           />
         )}
-        rowHeight={ROW_HEIGHT}
+        rowHeight={ROW_HEIGHT[variant]}
       />
     );
   })();
@@ -139,10 +148,10 @@ export const FindingList = ({
   return (
     <div
       aria-busy={loading || undefined}
-      className={`${styles.frame ?? ''} ${findingRowsClass}`}
+      className={variant === 'review' ? styles.frame : `${styles.frame ?? ''} ${findingRowsClass}`}
       data-menu={menuOf === undefined ? undefined : ''}
     >
-      {failure === null && total !== 0 ? <Header /> : null}
+      {failure === null && total !== 0 && variant === 'default' ? <Header /> : null}
       <div className={styles.body}>{body}</div>
     </div>
   );

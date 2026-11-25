@@ -1,4 +1,4 @@
-# Safari downloads you can resume
+# Paused Safari downloads
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
@@ -6,7 +6,7 @@
 
 ## What it is
 
-Downloads Safari paused or could not finish. Double-clicking one in Finder resumes it. Made by Safari, while it
+Downloads Safari paused or could not finish; double-clicking one in Finder resumes it. Made by Safari, while it
 downloads a file.
 
 ## Where it lives

@@ -10,10 +10,10 @@ mod decide;
 mod names;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink, IdError, Interest,
-    InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError,
-    ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text, TextArg, TextKey, TextKeyError,
-    Timestamp,
+    CategoryDescriptor, CategoryIcon, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink,
+    IdError, Interest, InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext,
+    ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text,
+    TextArg, TextKey, TextKeyError, Timestamp,
 };
 
 use crate::decide::{Item, NoSystem, Reason, Scan, Verdict, decide};
@@ -138,7 +138,8 @@ impl TempModule {
     /// A [`TempError`] when one of its own constants is invalid: a bug, which its tests catch.
     pub fn new() -> Result<Self, TempError> {
         let id = ModuleId::new("temp")?;
-        let category = CategoryDescriptor::new(CategoryId::new(id, OLD_FILES)?, DangerLevel::Safe);
+        let category = CategoryDescriptor::new(CategoryId::new(id, OLD_FILES)?, DangerLevel::Safe)
+            .with_icon(CategoryIcon::Temporary);
         let locales = Locales { en: include_str!("../locales/en.json") };
         let settings = vec![OLDER_THAN.descriptor(id)?];
         let left_out = LeftOutKeys::new()?;

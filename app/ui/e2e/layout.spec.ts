@@ -77,6 +77,6 @@ test.describe('positive cases', () => {
 
     await page.keyboard.press('Enter');
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'General' })).toBeVisible();
   });
 });

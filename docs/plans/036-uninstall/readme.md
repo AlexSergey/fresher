@@ -3,6 +3,9 @@
 **Status:** 🔨 in progress (awaiting the user's walk) · **Version:** 0.1.0 · **Date:** 2026-11-22 ·
 **Modules:** core, macos, system, engine, testing, sandbox, e2e, app, app/ui, docs
 
+> While High is withheld (plan [042](../042-plain-interface/readme.md)), an app's page offers only "Keep my settings"
+> and lists no file of a High kind, the Apps list leaves those parts out, and an uninstall of everything is refused.
+
 Written as a one-file draft on 2026-11-22 and approved the same day by the user's delegation (Decisions, below). The
 design, with the facts checked on the developer's Mac and every agent's call: [`00-design.md`](./00-design.md).
 

@@ -6,7 +6,7 @@ import { useNavigation } from '../../state/navigation';
 import { useCore } from '../../state/store';
 import styles from './described-only.module.css';
 
-// What the modules of the last scan described and do not offer to clean, under the zones: one card per insight, in
+// What the modules of the last scan described and do not offer to clean, under the groups (a heading like theirs): one card per insight, in
 // the modules' order, each with Details. Nothing while a scan runs, for a hidden module, or when nothing was described.
 export const DescribedOnly = (): JSX.Element | null => {
   const headingId = useId();
@@ -25,10 +25,14 @@ export const DescribedOnly = (): JSX.Element | null => {
 
   return (
     <section aria-labelledby={headingId} className={styles.section}>
-      <h2 className={styles.title} id={headingId}>
-        {t('ui.screen.scan.described.title')}
-      </h2>
-      <p className={styles.text}>{t('ui.screen.scan.described.text')}</p>
+      <div className={styles.heading}>
+        <h2 className={styles.title} id={headingId}>
+          {t('ui.screen.scan.described.title')}
+        </h2>
+        <p className={styles.text}>
+          {t('ui.screen.scan.group-line', { line: { kind: 'text', value: t('ui.screen.scan.described.text') } })}
+        </p>
+      </div>
       <ul className={styles.cards}>
         {described.map(({ insight, module }) => (
           <li

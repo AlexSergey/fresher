@@ -9,10 +9,10 @@
 mod settings;
 
 use fresher_core::{
-    ByteSize, CategoryDescriptor, CategoryId, Completeness, DangerLevel, DescriptorError, FindingSink, IdError,
-    Interest, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
-    NewFinding, Removal, RemovalError, SettingError, Sizes, Subject, Text, TextArg, TextKey, TextKeyError, ToolCommand,
-    ToolId,
+    ByteSize, CategoryDescriptor, CategoryIcon, CategoryId, Completeness, DangerLevel, DescriptorError, FindingSink,
+    IdError, Interest, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
+    ModuleId, NewFinding, Removal, RemovalError, SettingError, Sizes, Subject, Text, TextArg, TextKey, TextKeyError,
+    ToolCommand, ToolId,
 };
 
 /// The made-up root every example path is under.
@@ -97,12 +97,14 @@ pub struct DemoModule {
 impl DemoModule {
     pub fn new() -> Result<Self, DemoError> {
         let id = ModuleId::new("demo")?;
-        let category = |name, danger| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, name)?, danger));
+        let category = |name, danger, icon| {
+            Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, name)?, danger).with_icon(icon))
+        };
         let categories = vec![
-            category("demo.caches", DangerLevel::Safe)?,
-            category("demo.downloads", DangerLevel::Low)?,
-            category("demo.images", DangerLevel::Medium)?,
-            category("demo.volumes", DangerLevel::High)?,
+            category("demo.caches", DangerLevel::Safe, CategoryIcon::Cache)?,
+            category("demo.downloads", DangerLevel::Low, CategoryIcon::Download)?,
+            category("demo.images", DangerLevel::Medium, CategoryIcon::Archive)?,
+            category("demo.volumes", DangerLevel::High, CategoryIcon::Archive)?,
         ];
         let settings = vec![settings::count_setting(id)?];
         let locales = Locales { en: include_str!("../locales/en.json") };

@@ -90,7 +90,7 @@ mod app {
             system_ui: Arc::new(FakeSystemUi::default()),
             system: fresher_testing::fake_system(folder),
         };
-        Engine::new(registry, ports).unwrap()
+        Engine::new(registry, ports, fresher_core::HighLevel::Offered).unwrap()
     }
 
     /// The app's engine on the data folder `folder`, with the demo module and a walk that finds nothing.

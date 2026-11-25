@@ -24,8 +24,9 @@ mod report;
 use std::cell::OnceCell;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError, Locales, Match,
-    Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, RunningSet, TextKeyError,
+    CategoryDescriptor, CategoryIcon, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError,
+    Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, RunningSet,
+    TextKeyError,
 };
 
 use crate::apps::Apps;
@@ -85,7 +86,11 @@ impl AppCachesModule {
         let id = ModuleId::new("app-caches")?;
         let categories = CATEGORIES
             .into_iter()
-            .map(|(category, danger)| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, category)?, danger)))
+            .map(|(category, danger)| {
+                Ok::<_, IdError>(
+                    CategoryDescriptor::new(CategoryId::new(id, category)?, danger).with_icon(icon(category)),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let report = Report::new(categories.clone())?;
         let locales = Locales { en: include_str!("../locales/en.json") };
@@ -160,6 +165,15 @@ impl Module for AppCachesModule {
             }
         }
         Ok(())
+    }
+}
+
+/// The icon of each category; one it does not list is generic, which the module contract refuses.
+fn icon(category: &str) -> CategoryIcon {
+    match category {
+        "app-caches.library-caches" => CategoryIcon::Cache,
+        "app-caches.browsers" | "app-caches.web-engine" => CategoryIcon::Browser,
+        _ => CategoryIcon::Generic,
     }
 }
 

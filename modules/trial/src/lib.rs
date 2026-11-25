@@ -1,7 +1,7 @@
 //! The trial module: folders made only to try a cleanup, so a development build has something real to clean.
 //!
-//! Registered in development builds only. Its rules claim a folder named `fresher-trial-cache` (moved to the Trash)
-//! or `fresher-trial-kept` (emptied, kept) only when the sandbox marker lies right next to it; the cleaner checks the
+//! Registered in development builds only. Its rules claim a folder named `Sample app cache` (moved to the Trash)
+//! or `Old sample downloads` (emptied, kept) only when the sandbox marker lies right next to it; the cleaner checks the
 //! marker's signature again before it removes anything. In `finish` it lists the objects of a made-up tool,
 //! `fresher-trial-tool`, which only the fake command runner of the tests answers.
 
@@ -10,9 +10,9 @@
 mod tool;
 
 use fresher_core::{
-    Capability, CategoryDescriptor, CategoryId, DangerLevel, DescriptorError, FindingSink, IdError, Interest, Locales,
-    Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need, RemovalError, Text,
-    TextKey, TextKeyError, ToolCommand, ToolId,
+    Capability, CategoryDescriptor, CategoryIcon, CategoryId, DangerLevel, DescriptorError, FindingSink, IdError,
+    Interest, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need,
+    RemovalError, Text, TextKey, TextKeyError, ToolCommand, ToolId,
 };
 use fresher_rules::{RuleError, RuleSet};
 
@@ -53,11 +53,14 @@ impl TrialModule {
     pub fn new() -> Result<Self, TrialError> {
         let id = ModuleId::new("trial")?;
         let tool = ToolId::new(TRIAL_TOOL)?;
-        let category = |name, danger| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, name)?, danger));
+        let category = |name, danger, icon| {
+            Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, name)?, danger).with_icon(icon))
+        };
         let categories = vec![
-            category("trial.caches", DangerLevel::Safe)?,
-            category("trial.kept", DangerLevel::Low)?,
-            category("trial.tool", DangerLevel::Medium)?.with_needs(vec![Need::required(Capability::Tool(tool))]),
+            category("trial.caches", DangerLevel::Safe, CategoryIcon::Cache)?,
+            category("trial.kept", DangerLevel::Low, CategoryIcon::Archive)?,
+            category("trial.tool", DangerLevel::Medium, CategoryIcon::Toolchain)?
+                .with_needs(vec![Need::required(Capability::Tool(tool))]),
         ];
         let locales = Locales { en: include_str!("../locales/en.json") };
         let failed = TextKey::new("trial.error.failed")?;
@@ -124,7 +127,7 @@ mod tests {
 
             assert_eq!(
                 names,
-                [&Pattern::FolderName("fresher-trial-cache".into()), &Pattern::FolderName("fresher-trial-kept".into())]
+                [&Pattern::FolderName("Sample app cache".into()), &Pattern::FolderName("Old sample downloads".into())]
             );
             assert!(module.interests().iter().all(|interest| interest.siblings() == [".fresher-sandbox"]));
         }

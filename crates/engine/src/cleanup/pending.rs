@@ -127,14 +127,18 @@ pub(crate) struct Planned {
     pub(crate) purpose: Purpose,
 }
 
-/// The tail every plan is made by: refused when cleaning is blocked; `selected` (in the confirmation's order) sorted
-/// out, the findings kept rehearsed (`Depth::Quick`) with the context of the purpose's scope as it stands now, frozen,
-/// and kept as the pending plan, unless an operation started or a plan died meanwhile.
+/// The tail every plan is made by: refused with `HighWithheld` when an item of `selected` is High while High is
+/// withheld, before anything else is checked; refused when cleaning is blocked; `selected` (in the confirmation's
+/// order) sorted out, the findings kept rehearsed (`Depth::Quick`) with the context of the purpose's scope as it stands
+/// now, frozen, and kept as the pending plan, unless an operation started or a plan died meanwhile.
 pub(crate) fn rehearse_and_keep(
     shared: &Shared,
     planned: Planned,
     selected: &[&Finding],
 ) -> Result<CleanupPlanView, CommandError> {
+    if selected.iter().any(|finding| !shared.high.offers(finding.finding().danger())) {
+        return Err(CommandError::HighWithheld);
+    }
     let Planned { deaths, scan, roots, purpose } = planned;
     let ports = blocked::check(&*lock(&shared.settings)?, shared.cleanup.as_ref())?;
     let sorted = plan::sort_out(selected, &[]);
@@ -305,7 +309,7 @@ mod tests {
                 .category("alpha.caches", fresher_core::DangerLevel::Safe)
                 .folder("Caches");
             registry.register(alpha.boxed()).unwrap();
-            let engine = Engine::new(registry, ports).unwrap();
+            let engine = Engine::new(registry, ports, fresher_core::HighLevel::Offered).unwrap();
             scan(&engine);
 
             let error = engine.prepare_cleanup(&select(&[1], &[]));

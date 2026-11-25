@@ -6,7 +6,8 @@
 
 ## What it is
 
-The builds you archived in Xcode to publish an app, each with the debug symbols of that version. Made by Xcode, when you choose Product, then Archive.
+The builds you archived in Xcode to publish an app, with what you need to read its crash reports. Made by Xcode, when
+you choose Product, then Archive.
 
 ## Where it lives
 
@@ -14,7 +15,9 @@ The builds you archived in Xcode to publish an app, each with the debug symbols 
 
 ## What happens if you remove it
 
-The archive goes to the Trash. Without it you cannot read the crash reports of that version or publish that build again. No: nothing makes an archive again. That is why the level is High: an archive may hold the only copy of the build and the debug symbols of a version people still use. Keep the archives of every version still in use.
+You can no longer read that version's crash reports or publish that build again. No: nothing makes an archive again.
+That is why the level is High: an archive may hold the only copy of the build and the debug symbols of a version people
+still use. Keep the archives of every version still in use.
 
 ## How the app decides
 

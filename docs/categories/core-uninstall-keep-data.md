@@ -1,4 +1,4 @@
-# Apps you uninstall, keeping their data
+# Apps, keeping their data
 
 **Danger level:** Medium · **Rule:** none (the core's code, `crates/engine/src/apps/uninstall.rs`; made by no module: the
 user chooses it on an app's page) · **Since:** 0.1.0
@@ -14,6 +14,7 @@ paths move to the Trash together.
 | Text          | Key                              | Wording |
 | ------------- | -------------------------------- | ------- |
 | Name          | `core.uninstall-keep-data.name`        | Apps you uninstall, keeping their data |
+| Line          | `core.uninstall-keep-data.line`        | The app, with its data kept |
 | What it is    | `core.uninstall-keep-data.what`        | An app you chose to uninstall from its page, with the caches, logs, saved windows and login items it made. |
 | Made by       | `core.uninstall-keep-data.made-by`     | You installed the app; the app made the rest while it ran. |
 | If removed    | `core.uninstall-keep-data.if-removed`  | The app and those files go to the Trash together. Its settings and the files it keeps for you stay, so it starts where it left off if you install it again. |

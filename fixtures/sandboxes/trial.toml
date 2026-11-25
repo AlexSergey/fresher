@@ -9,7 +9,7 @@ kind = "negative"
 [[case.marker]]
 path = "home/look-alike"
 [[case.file]]
-path = "home/look-alike/fresher-trial-cache2/look-alike.bin"
+path = "home/look-alike/Sample app cache2/look-alike.bin"
 size = 4194304
 age = "30d"
 
@@ -17,7 +17,7 @@ age = "30d"
 name = "a trial folder with no marker next to it is never offered"
 kind = "negative"
 [[case.file]]
-path = "home/bare/fresher-trial-cache/blob.bin"
+path = "home/bare/Sample app cache/blob.bin"
 size = 1048576
 
 [[case]]
@@ -26,7 +26,7 @@ kind = "negative"
 [[case.marker]]
 path = "home/named"
 [[case.file]]
-path = "home/named/fresher-trial-cache.txt"
+path = "home/named/Sample app cache.txt"
 size = 2048
 
 [[case]]
@@ -44,15 +44,15 @@ kind = "positive"
 [[case.marker]]
 path = "home/work"
 [[case.file]]
-path = "home/work/fresher-trial-cache/blob.bin"
+path = "home/work/Sample app cache/blob.bin"
 size = 52428800
 fill = "data"
 [[case.file]]
-path = "home/work/fresher-trial-cache/nested/blob.bin"
+path = "home/work/Sample app cache/nested/blob.bin"
 size = 2048
 fill = "data"
 [case.expect]
-item = "home/work/fresher-trial-cache"
+item = "home/work/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
@@ -63,11 +63,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/keep"
 [[case.file]]
-path = "home/keep/fresher-trial-kept/entry.bin"
+path = "home/keep/Old sample downloads/entry.bin"
 size = 8192
 age = "10d"
 [case.expect]
-item = "home/keep/fresher-trial-kept"
+item = "home/keep/Old sample downloads"
 category = "trial.kept"
 danger = "low"
 after-cleanup = "emptied"

@@ -1,209 +1,95 @@
-import { type JSX, type ReactNode, useId, useState } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 
-import type { SettingsView } from '../../ipc/bindings.generated';
-import type { Settings } from './use-settings';
+import type { SettingKey } from '../../ipc/bindings.generated';
 
-import { PageHeader } from '../../design/layout/page-header/page-header';
-import { Surface } from '../../design/layout/surface/surface';
 import { Toolbar } from '../../design/layout/toolbar/toolbar';
-import { Button } from '../../design/primitives/button/button';
-import { t, tText } from '../../i18n';
-import { AgreementLines } from '../../product/agreement-sheet/agreement-lines';
-import { LicenceDialog } from '../../product/licence-dialog/licence-dialog';
-import { SettingsRow } from '../../product/settings-row/settings-row';
-import { isAccepted } from '../../state/agreement';
-import { useNavigation } from '../../state/navigation';
-import { useCore } from '../../state/store';
-import { PermissionsGroup } from '../permission/permissions-group';
-import { useAppInfo } from '../use-app-info';
+import { type SettingsPage as Page, useNavigation } from '../../state/navigation';
 import { useModules } from '../use-modules';
-import { FileNotice, isReadOnly } from './file-notice';
-import { IgnoredGroup } from './ignored-group';
-import { OwnDataGroup } from './own-data-group';
-import { RescanNotice } from './rescan-notice';
-import { type SettingsGroup, settingsGroups } from './settings-groups';
+import { focusSetting } from './focus-setting';
+import { settingsGroups } from './settings-groups';
+import { SettingsPage } from './settings-page';
 import styles from './settings-screen.module.css';
+import { type SearchHit, searchSettings, settingsEntries } from './settings-search';
+import { SearchResults, SettingsSearch } from './settings-search-view';
+import { SettingsSidebar } from './settings-sidebar';
 import { useSettings } from './use-settings';
 
-// "What can I change?": the groups in order (General, Scan, each module group with its modules, Ignored, Permissions,
-// Fresher's own data, About); why the settings file cannot be changed, when it cannot; "Rescan to apply" when a change waits for a scan.
+// "What can I change?": a sidebar of the sections (General, Scan, Ignored, Permissions, About, then what the scan looks
+// for: each module group with its modules) beside the page of the current one, or the results of the search while it
+// holds text.
 export const SettingsScreen = (): JSX.Element => {
   const settings = useSettings();
   const modules = useModules();
-  // Read once: the Ignored tab to open on is only the starting tab, so the screen needs no subscription.
+  // Read once: the page, Ignored tab and setting to open on are only the starting ones, so the screen needs no
+  // subscription.
   const screen = useNavigation().getScreen();
-  const { view } = settings;
-  const ignoredId = useId();
-  const ownDataId = useId();
-  const groups = view === null || modules === null ? null : settingsGroups(view.settings, modules);
-  const readOnly = view !== null && isReadOnly(view.file);
-  const rows = (group: SettingsGroup, inView: SettingsView): JSX.Element => (
-    <Group group={group} key={group.kind === 'core' ? group.group : group.module} settings={settings} view={inView} />
+  const opensOn = screen.kind === 'settings' ? screen.tab : undefined;
+  const [page, setPage] = useState<Page>(
+    screen.kind === 'settings'
+      ? (screen.page ?? { kind: opensOn === undefined ? 'general' : 'ignored' })
+      : { kind: 'general' },
   );
-  const moduleGroups = (inView: SettingsView): readonly JSX.Element[] =>
-    (groups?.modules ?? []).map(({ group, items }) => (
-      <ModuleGroupRows group={group} key={group}>
-        {items.map((item) => rows(item, inView))}
-      </ModuleGroupRows>
-    ));
+  const [query, setQuery] = useState('');
+  // The setting to focus once its page shows: asked by the screen that opened Settings or by a click on a hit.
+  const focusRef = useRef<null | SettingKey>(screen.kind === 'settings' ? (screen.focus ?? null) : null);
+  const { view } = settings;
+  const groups = settingsGroups(view?.settings ?? [], modules ?? []);
+  const searching = query.trim() !== '';
+  const hits = searching ? searchSettings(query, settingsEntries(groups, view?.values ?? {})) : null;
+
+  const loaded = view !== null;
+
+  useEffect(() => {
+    if (focusRef.current !== null && loaded && !searching) {
+      focusSetting(focusRef.current);
+      focusRef.current = null;
+    }
+  }, [loaded, searching]);
+
+  const open = (hit: SearchHit): void => {
+    setQuery('');
+    setPage(hit.entry.page);
+    focusRef.current = hit.entry.key;
+  };
 
   return (
     <>
       <Toolbar />
-      <PageHeader title={t('ui.screen.frame.nav.settings')} />
-      <div className={styles.content}>
-        {view === null ? null : <FileNotice file={view.file} />}
-        <RescanNotice />
-        {view === null || groups === null ? null : (
-          <>
-            {groups.before.map((group) => rows(group, view))}
-            {moduleGroups(view)}
-            <IgnoredGroup
-              headingId={ignoredId}
-              modules={modules ?? []}
-              readOnly={readOnly}
-              view={view}
-              {...(screen.kind === 'settings' && screen.tab !== undefined ? { opensOn: screen.tab } : {})}
+      <div className={styles.body}>
+        <SettingsSidebar
+          groups={groups.modules}
+          hits={hits}
+          onSelect={setPage}
+          page={page}
+          search={
+            <SettingsSearch
+              onEnter={() => {
+                const first = hits?.[0];
+
+                if (first !== undefined) {
+                  open(first);
+                }
+              }}
+              onQuery={setQuery}
+              query={query}
             />
-            <PermissionsGroup settings={settings} view={view} />
-          </>
+          }
+        />
+        {hits === null ? (
+          <SettingsPage
+            general={groups.general}
+            groups={groups.modules}
+            modules={modules ?? []}
+            page={page}
+            scan={groups.scan}
+            settings={settings}
+            view={view}
+            {...(opensOn === undefined ? {} : { opensOn })}
+          />
+        ) : (
+          <SearchResults hits={hits} onOpen={open} query={query} />
         )}
-        <OwnDataGroup headingId={ownDataId} readOnly={readOnly} />
-        <AboutGroup />
       </div>
     </>
-  );
-};
-
-// The heading of each of the core's groups of rows.
-const GROUP_HEADINGS = {
-  general: 'ui.screen.settings.group.general',
-  scan: 'ui.screen.settings.group.scan',
-} as const;
-
-// A module group's modules under the group's name.
-const ModuleGroupRows = ({
-  children,
-  group,
-}: {
-  readonly children: ReactNode;
-  readonly group: string;
-}): JSX.Element => {
-  const headingId = useId();
-
-  return (
-    <section aria-labelledby={headingId} className={styles.group}>
-      <h2 className={styles.heading} id={headingId}>
-        {tText({ args: {}, key: `core.group.${group}.name` })}
-      </h2>
-      {children}
-    </section>
-  );
-};
-
-type GroupProps = {
-  readonly group: SettingsGroup;
-  readonly settings: Settings;
-  readonly view: SettingsView;
-};
-
-// One group of rows under its heading: the core group's name, or the module's name for a module's.
-const Group = ({ group, settings, view }: GroupProps): JSX.Element => {
-  const headingId = useId();
-  const readOnly = isReadOnly(view.file);
-
-  return (
-    <section aria-labelledby={headingId} className={styles.group}>
-      {group.kind === 'core' ? (
-        <h2 className={styles.heading} id={headingId}>
-          {t(GROUP_HEADINGS[group.group])}
-        </h2>
-      ) : (
-        <h3 className={styles.moduleHeading} id={headingId}>
-          {tText({ args: {}, key: `${group.module}.enabled.label` })}
-        </h3>
-      )}
-      <Surface elevation={1} padding="none">
-        <div className={styles.rows}>
-          {group.descriptors.map((descriptor) => {
-            const refusal = settings.refusals[descriptor.key];
-
-            return (
-              <SettingsRow
-                descriptor={descriptor}
-                key={descriptor.key}
-                onChange={(value) => {
-                  settings.change(descriptor.key, value);
-                }}
-                problem={view.problems.find((problem) => problem.key === descriptor.key) ?? null}
-                readOnly={readOnly}
-                {...(refusal === undefined ? {} : { refusal })}
-                {...(descriptor.kind.kind === 'folders'
-                  ? {
-                      onAddFolder: (): void => {
-                        settings.addFolder(descriptor.key);
-                      },
-                    }
-                  : {})}
-                value={view.values[descriptor.key] ?? descriptor.default}
-              />
-            );
-          })}
-        </div>
-      </Surface>
-    </section>
-  );
-};
-
-// The app's version, the agreement and when it was accepted, and the licence. The licences of what it is built from
-// come before the first release.
-const AboutGroup = (): JSX.Element => {
-  const headingId = useId();
-  const version = useAppInfo()?.version ?? null;
-  const agreement = useCore((state) => state.agreement.view);
-  const [licence, setLicence] = useState(false);
-
-  return (
-    <section aria-labelledby={headingId} className={styles.group}>
-      <h2 className={styles.heading} id={headingId}>
-        {t('ui.screen.settings.group.about')}
-      </h2>
-      <Surface elevation={1} padding="none">
-        <div className={styles.rows}>
-          {version === null ? null : (
-            <p className={styles.line}>{t('ui.app.version', { version: { kind: 'text', value: version } })}</p>
-          )}
-          {agreement === null ? null : (
-            <div className={styles.agreement}>
-              <p className={styles.agreementTitle}>{tText(agreement.title)}</p>
-              <AgreementLines view={agreement} />
-              <p className={styles.groupText}>
-                {isAccepted(agreement)
-                  ? t('ui.agreement.accepted-on', { date: { kind: 'date', value: agreement.accepted.at } })
-                  : t('ui.agreement.not-accepted')}
-              </p>
-            </div>
-          )}
-          <p className={styles.line}>{t('ui.screen.settings.about.licence')}</p>
-          <div className={styles.line}>
-            <Button
-              onClick={() => {
-                setLicence(true);
-              }}
-              size="small"
-              variant="secondary"
-            >
-              {t('ui.agreement.licence')}
-            </Button>
-          </div>
-        </div>
-      </Surface>
-      <LicenceDialog
-        onClose={() => {
-          setLicence(false);
-        }}
-        open={licence}
-      />
-    </section>
   );
 };

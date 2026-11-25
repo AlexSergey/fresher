@@ -17,7 +17,7 @@ test.describe('negative cases', () => {
     await mockCore(page);
     await page.goto('/');
 
-    await expect(page.getByText('The app could not reach its core. Restart the app.')).toBeVisible();
+    await expect(page.getByText('Fresher stopped answering. Quit it and open it again.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 
@@ -42,13 +42,13 @@ test.describe('positive cases', () => {
     await expect(navScan(page)).toHaveAttribute('aria-current', 'page');
   });
 
-  test('streams a scan into the size it found', async ({ page }) => {
+  test('streams a scan into its tiles', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
 
     await scanButton(page).click();
 
-    await expect(page.getByText('2.6 GB').first()).toBeAttached();
+    await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
     await expect(page.locator('[data-card]')).toHaveCount(2);
   });
 
@@ -58,7 +58,8 @@ test.describe('positive cases', () => {
 
     await page.getByRole('button', { name: 'Settings' }).click();
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeFocused();
+    await expect(page.getByRole('heading', { level: 1, name: 'General' })).toBeFocused();
+    await page.getByRole('button', { exact: true, name: 'About' }).click();
     await expect(page.getByText('Version 0.0.1')).toBeVisible();
   });
 });

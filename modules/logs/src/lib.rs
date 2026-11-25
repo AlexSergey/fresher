@@ -11,10 +11,10 @@ mod decide;
 mod names;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink, IdError, Interest,
-    InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError,
-    ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text, TextArg, TextKey, TextKeyError,
-    Timestamp,
+    CategoryDescriptor, CategoryIcon, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink,
+    IdError, Interest, InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext,
+    ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text,
+    TextArg, TextKey, TextKeyError, Timestamp,
 };
 
 use crate::decide::{Item, Reason, Scan, Verdict, decide};
@@ -86,8 +86,10 @@ impl LogsModule {
     /// A [`LogsError`] when one of its own constants is invalid: a bug, which its tests catch.
     pub fn new() -> Result<Self, LogsError> {
         let id = ModuleId::new("logs")?;
-        let app_logs = CategoryDescriptor::new(CategoryId::new(id, APP_LOGS)?, DangerLevel::Safe);
-        let crash_reports = CategoryDescriptor::new(CategoryId::new(id, CRASH_REPORTS)?, DangerLevel::Safe);
+        let app_logs =
+            CategoryDescriptor::new(CategoryId::new(id, APP_LOGS)?, DangerLevel::Safe).with_icon(CategoryIcon::Log);
+        let crash_reports = CategoryDescriptor::new(CategoryId::new(id, CRASH_REPORTS)?, DangerLevel::Safe)
+            .with_icon(CategoryIcon::Log);
         let locales = Locales { en: include_str!("../locales/en.json") };
         let settings = vec![OLDER_THAN.descriptor(id)?];
         let left_out = Reason::ALL

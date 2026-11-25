@@ -7,7 +7,7 @@ type Kind = 'groups' | 'items' | 'modules';
 
 const TABS = [
   { label: 'Ignored groups', value: 'groups' },
-  { count: 2, label: 'Ignored modules', value: 'modules' },
+  { count: 2, label: 'Not looked for', value: 'modules' },
   { count: 0, label: 'Ignored items', value: 'items' },
 ] as const;
 
@@ -27,7 +27,7 @@ describe('Tabs', () => {
       show('modules');
 
       expect(screen.getByRole('tab', { name: 'Ignored groups' })).toHaveAttribute('tabindex', '-1');
-      expect(screen.getByRole('tab', { name: 'Ignored modules · 2' })).toHaveAttribute('tabindex', '0');
+      expect(screen.getByRole('tab', { name: 'Not looked for · 2' })).toHaveAttribute('tabindex', '0');
       expect(screen.getByRole('tab', { name: 'Ignored items' })).toHaveAttribute('tabindex', '-1');
     });
 
@@ -54,8 +54,8 @@ describe('Tabs', () => {
 
       expect(screen.getByRole('tablist', { name: 'Ignored' })).toBeInTheDocument();
       expect(screen.getAllByRole('tab')).toHaveLength(3);
-      expect(screen.getByRole('tab', { name: 'Ignored modules · 2' })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByRole('tabpanel', { name: 'Ignored modules · 2' })).toHaveTextContent('The panel');
+      expect(screen.getByRole('tab', { name: 'Not looked for · 2' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tabpanel', { name: 'Not looked for · 2' })).toHaveTextContent('The panel');
     });
 
     it('moves with Left and Right, wrapping, and to the ends with End and Home', () => {
@@ -74,7 +74,7 @@ describe('Tabs', () => {
 
       fireEvent.keyDown(screen.getByRole('tab', { name: 'Ignored groups' }), { key: 'ArrowRight' });
 
-      expect(screen.getByRole('tab', { name: 'Ignored modules · 2' })).toHaveFocus();
+      expect(screen.getByRole('tab', { name: 'Not looked for · 2' })).toHaveFocus();
     });
 
     it('selects the tab that is clicked', () => {

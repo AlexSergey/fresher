@@ -4,9 +4,9 @@ use std::cmp::Reverse;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    AppId, AppOffer, AppSummary, AppsQuery, BundleFacts, Completeness, DiskState, FootprintKind, InstalledApp,
-    InstalledBy, KnownFolder, KnownFolders, LastUse, NotOffered, PartSizes, Protection, RunningApp, Sizes, StateId,
-    SystemError, Timestamp,
+    AppId, AppOffer, AppSummary, AppsQuery, BundleFacts, Completeness, DiskState, FootprintKind, HighLevel,
+    InstalledApp, InstalledBy, KnownFolder, KnownFolders, LastUse, NotOffered, PartSizes, Protection, RunningApp,
+    Sizes, StateId, SystemError, Timestamp,
 };
 
 use super::footprint::{FootprintCx, Part, footprint};
@@ -56,13 +56,6 @@ pub(crate) struct Listed {
     pub(crate) parts: Vec<Part>,
     pub(crate) last_used: Option<Timestamp>,
     pub(crate) installed_by: Option<InstalledBy>,
-}
-
-impl Listed {
-    /// The bundle and every part, kept parts too.
-    pub(crate) fn sizes(&self) -> Sizes {
-        self.parts.iter().fold(self.bundle, |total, part| add(total, part.sizes))
-    }
 }
 
 /// Whether `app` is listed at all: not Apple's nor Fresher's own, not under the system's apps folder, directly in an
@@ -135,16 +128,24 @@ pub(crate) fn row(listing: &Listing<'_>, index: usize, app: &InstalledApp) -> Li
     }
 }
 
-/// The row of `listed`, an app of `state`, as the list shows it at `now`.
-pub(crate) fn summary(listed: &Listed, app: &InstalledApp, state: StateId, now: Timestamp) -> AppSummary {
-    let sizes = listed.sizes();
+/// The row of `listed`, an app of `state`, as the list shows it at `now`. Its sizes and parts are those `high` offers:
+/// while High is withheld, no part of a High kind and none of its bytes.
+pub(crate) fn summary(
+    listed: &Listed,
+    app: &InstalledApp,
+    state: StateId,
+    now: Timestamp,
+    high: HighLevel,
+) -> AppSummary {
+    let shown = listed.parts.iter().filter(|part| high.offers(part.kind.danger()));
+    let sizes = shown.clone().fold(listed.bundle, |total, part| add(total, part.sizes));
     let last_use = match listed.last_used {
         Some(since) if now.secs().saturating_sub(since.secs()) > UNUSED_AFTER => LastUse::Unused { since },
         Some(_) => LastUse::Used,
         None => LastUse::Unknown,
     };
     let mut parts = vec![PartSizes { kind: FootprintKind::Bundle, sizes: listed.bundle }];
-    for part in &listed.parts {
+    for part in shown {
         match parts.iter_mut().find(|sizes| sizes.kind == part.kind) {
             Some(sizes) => sizes.sizes = add(sizes.sizes, part.sizes),
             None => parts.push(PartSizes { kind: part.kind, sizes: part.sizes }),

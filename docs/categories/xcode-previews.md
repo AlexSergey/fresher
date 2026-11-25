@@ -14,7 +14,8 @@ What Xcode builds to show your SwiftUI previews. Made by Xcode.
 
 ## What happens if you remove it
 
-What is inside the folder goes to the Trash and the folder stays. Yes: Xcode builds the previews again the next time you open a preview; the first one takes longer.
+Nothing is lost; the folder stays and what is inside goes to the Trash. Yes: Xcode builds the previews again the next
+time you open a preview; the first one takes longer.
 
 ## How the app decides
 

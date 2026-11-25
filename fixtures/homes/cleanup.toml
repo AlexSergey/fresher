@@ -6,32 +6,32 @@
 
 # A cache the trial module claims whole: moved to the Trash. `shared.bin` has a second name in `home/notes`.
 [[file]]
-path = "home/sandbox/fresher-trial-cache/blob.bin"
+path = "home/sandbox/Sample app cache/blob.bin"
 size = 1048576
 modified = 1762000000
 
 [[file]]
-path = "home/sandbox/fresher-trial-cache/nested/blob.bin"
+path = "home/sandbox/Sample app cache/nested/blob.bin"
 size = 2048
 modified = 1762000000
 
 [[file]]
-path = "home/sandbox/fresher-trial-cache/shared.bin"
+path = "home/sandbox/Sample app cache/shared.bin"
 size = 4096
 modified = 1762000000
 
 [[hardlink]]
 path = "home/notes/shared.bin"
-target = "home/sandbox/fresher-trial-cache/shared.bin"
+target = "home/sandbox/Sample app cache/shared.bin"
 
 # A folder the trial module empties and keeps; one of its entries is a link to a file outside the root.
 [[file]]
-path = "home/sandbox/fresher-trial-kept/entry.bin"
+path = "home/sandbox/Old sample downloads/entry.bin"
 size = 8192
 modified = 1762000000
 
 [[symlink]]
-path = "home/sandbox/fresher-trial-kept/link-out"
+path = "home/sandbox/Old sample downloads/link-out"
 target = "../../../outside/target.bin"
 
 # A build folder the test's own module claims, holding a trial cache of its own: picking both leaves the inner one
@@ -42,7 +42,7 @@ size = 16384
 modified = 1762000000
 
 [[file]]
-path = "home/sandbox/fresher-e2e-build/fresher-trial-cache/blob.bin"
+path = "home/sandbox/fresher-e2e-build/Sample app cache/blob.bin"
 size = 4096
 modified = 1762000000
 
@@ -54,7 +54,7 @@ modified = 1762000000
 
 # A trial cache in the protected place: offered, never removed.
 [[file]]
-path = "home/protected/fresher-trial-cache/blob.bin"
+path = "home/protected/Sample app cache/blob.bin"
 size = 4096
 modified = 1762000000
 
@@ -65,7 +65,7 @@ size = 64
 modified = 1762000000
 
 [[file]]
-path = "home/not-a-sandbox/fresher-trial-cache/blob.bin"
+path = "home/not-a-sandbox/Sample app cache/blob.bin"
 size = 4096
 modified = 1762000000
 

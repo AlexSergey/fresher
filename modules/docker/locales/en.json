@@ -32,7 +32,7 @@
   "docker.part.volumes.detail.one": "{count} volume no container uses.",
   "docker.part.volumes.detail.other": "{count} volumes no container uses.",
   "docker.part.volumes.none": "No unused volumes.",
-  "docker.part.volumes.effect": "A volume may hold the only copy of a database. This command removes only volumes without a name; named volumes stay. Docker counts both here.",
+  "docker.part.volumes.effect": "A volume may hold the only copy of a database. The command removes only volumes without a name; Docker counts both here.",
   "docker.note.disk-unseen": "Fresher could not see the disk file. Allow access to other apps' data in Settings and scan again.",
   "docker.note.never-runs": "Fresher never runs these commands. Copy one into Terminal; Docker asks you to confirm before it removes anything."
 }

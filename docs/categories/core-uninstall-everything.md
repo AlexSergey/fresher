@@ -1,4 +1,4 @@
-# Apps you uninstall with everything they left
+# Apps and their data
 
 **Danger level:** High · **Rule:** none (the core's code, `crates/engine/src/apps/uninstall.rs`; made by no module: the
 user chooses it on an app's page) · **Since:** 0.1.0
@@ -15,6 +15,7 @@ the Trash together.
 | Text          | Key                              | Wording |
 | ------------- | -------------------------------- | ------- |
 | Name          | `core.uninstall-everything.name`        | Apps you uninstall with everything they left |
+| Line          | `core.uninstall-everything.line`        | The app and everything it left |
 | What it is    | `core.uninstall-everything.what`        | An app you chose to uninstall from its page, with every file of it Fresher found by its id: caches, logs, settings, sign-ins and the files it keeps for you. |
 | Made by       | `core.uninstall-everything.made-by`     | You installed the app; the app made the rest while it ran. |
 | If removed    | `core.uninstall-everything.if-removed`  | The app and all those files go to the Trash together. If you install it again, it starts fresh: its settings, sign-ins and the files it kept for you are gone. |

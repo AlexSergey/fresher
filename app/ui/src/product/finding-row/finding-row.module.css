@@ -31,6 +31,30 @@
     color: var(--text-primary);
   }
 
+  /* A compact row (Review's) dims the size of an unticked item: the row gives the colour. */
+  [data-compact] .value {
+    color: inherit;
+  }
+
+  /* A compact loading row (Review's) has the row's padding. */
+  .loading[data-variant='review'] {
+    padding: 0 var(--space-4) 0 62px;
+  }
+
+  .loading[data-variant='review'] .lines {
+    padding-left: 0;
+  }
+
+  /* A details loading row has the row's padding and gap (14 px); the checkbox's room is 16 px. */
+  .loading[data-variant='details'] {
+    padding: 0 var(--space-3-5);
+    gap: var(--space-3-5);
+  }
+
+  .loading[data-variant='details'] .lines {
+    padding-left: calc(var(--space-4) + var(--space-3-5));
+  }
+
   /* The empty place of the checkbox (16 px) on a row that cannot be selected. */
   .noCheckbox {
     display: inline-block;

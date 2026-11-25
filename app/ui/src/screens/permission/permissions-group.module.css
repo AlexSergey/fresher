@@ -1,9 +1,9 @@
-/* The heading of the group with its "Check again" at the end. */
+/* The group's "Check again" at the end. */
 @layer components {
   .title {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: var(--space-4);
   }
 }

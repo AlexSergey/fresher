@@ -11,10 +11,15 @@ export type ListRowProps = Forced &
     // What a finding row reads instead of its content ("Xcode caches, Safe, 12.4 GB") and why it is listed.
     readonly 'aria-describedby'?: string;
     readonly 'aria-label'?: string;
+    // A dense row of a tile's list: no selection tint or edge, an unticked row dimmed instead; 44 px, the title in
+    // body text over a small subtitle.
+    readonly compact?: boolean;
     // Greyed out; a virtual list does not toggle it.
     readonly disabled?: boolean;
     // The selected row's leading edge in this level's colour instead of the accent.
     readonly edgeLevel?: Level;
+    // A row of a framed list (a category's items): padded 14 px, no selection tint or edge, a divider under it.
+    readonly flat?: boolean;
     // A checkbox or an icon. A selectable row's checkbox is what tells assistive technology it is selected.
     readonly leading?: ReactNode;
     readonly selected?: boolean;
@@ -28,8 +33,10 @@ export type ListRowProps = Forced &
 // A 44 px row of a list: a leading slot, a title with its subtitle, a trailing slot. Hover lightens it, selection tints
 // it and lights its leading edge; the focus ring is drawn inside, so a scrolling list never clips it.
 export const ListRow = ({
+  compact = false,
   disabled = false,
   edgeLevel,
+  flat = false,
   leading,
   selected = false,
   subtitle,
@@ -42,7 +49,9 @@ export const ListRow = ({
     {...rest}
     aria-disabled={disabled ? true : undefined}
     className={styles.row}
+    data-compact={compact ? true : undefined}
     data-disabled={disabled ? true : undefined}
+    data-flat={flat ? true : undefined}
     data-level={edgeLevel}
     data-selected={selected ? true : undefined}
     role="listitem"

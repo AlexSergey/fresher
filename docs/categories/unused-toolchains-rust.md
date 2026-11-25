@@ -1,4 +1,4 @@
-# Unused Rust toolchains
+# Unused Rust versions
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/unused-toolchains`) · **Since:** 0.1.0
 
@@ -6,7 +6,8 @@
 
 ## What it is
 
-Versions of the Rust compiler that rustup installed and that nothing on this Mac points at: not rustup's default, not an override, not a project's toolchain file. Made by rustup, the installer of Rust. One finding per toolchain, titled "Rust" and the folder's name (for example `1.75.0-aarch64-apple-darwin`).
+Versions of Rust that rustup installed and that nothing on this Mac asks for. Made by rustup, the installer of Rust. One
+finding per toolchain, titled "Rust" and the folder's name (for example `1.75.0-aarch64-apple-darwin`).
 
 ## Where it lives
 
@@ -14,7 +15,9 @@ Versions of the Rust compiler that rustup installed and that nothing on this Mac
 
 ## What happens if you remove it
 
-The toolchain's folder goes to the Trash. A project, a script or an editor that asks for this exact version gets an error until it is installed again. It comes back with one command, `rustup toolchain install <name>` (the finding names it), and a download of a few hundred megabytes. Components and targets you added to it must be added again. Nothing of yours lives in a toolchain, which is why the level is Low.
+Anything that asks for this exact version stops working until it is installed again. It comes back with one command,
+`rustup toolchain install <name>` (the finding names it), and a download of a few hundred megabytes. Components and
+targets you added to it must be added again. Nothing of yours lives in a toolchain, which is why the level is Low.
 
 ## How the app decides
 

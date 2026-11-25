@@ -11,7 +11,7 @@ import { SegmentedControl } from '../../design/primitives/segmented-control/segm
 import { Select } from '../../design/primitives/select/select';
 import { Switch } from '../../design/primitives/switch/switch';
 import { t } from '../../i18n';
-import { NumberField } from './number-field';
+import { NumberRow } from './number-row';
 import styles from './settings-row.module.css';
 import { optionText, problemText, settingText } from './texts';
 
@@ -25,6 +25,8 @@ export type SettingsRowProps = {
   readonly readOnly: boolean;
   // The core's text of a change it refused: the row's error, in place of the stored value's problem.
   readonly refusal?: string;
+  // The label and description to show in place of the setting's own (a module's on/off switch says "Look for ...").
+  readonly texts?: { readonly description: string; readonly label: string };
   readonly value: SettingValue;
 };
 
@@ -40,13 +42,14 @@ export const SettingsRow = ({
   problem,
   readOnly,
   refusal,
+  texts,
   value,
 }: SettingsRowProps): JSX.Element => {
   const labelId = useId();
   const descriptionId = useId();
   const errorId = useId();
   const readOnlyId = useId();
-  const label = settingText(descriptor.key, 'label');
+  const label = texts?.label ?? settingText(descriptor.key, 'label');
   const error = refusal ?? (problem === null ? undefined : problemText(problem));
   // A number shows its problem in its own field; every other kind under its control.
   const rowError = descriptor.kind.kind === 'number' ? undefined : error;
@@ -60,6 +63,7 @@ export const SettingsRow = ({
       aria-labelledby={labelId}
       className={styles.row}
       data-kind={descriptor.kind.kind}
+      data-setting={descriptor.key}
       role="group"
     >
       <div className={styles.text}>
@@ -67,7 +71,7 @@ export const SettingsRow = ({
           {label}
         </span>
         <p className={styles.description} id={descriptionId}>
-          {settingText(descriptor.key, 'description')}
+          {texts?.description ?? settingText(descriptor.key, 'description')}
         </p>
       </div>
       <div className={styles.control}>
@@ -133,7 +137,7 @@ const Control = ({ descriptor, error, label, onAddFolder, onChange, readOnly, va
 
   if (kind.kind === 'number' && shown.kind === 'number') {
     return (
-      <NumberField
+      <NumberRow
         disabled={readOnly}
         label={label}
         max={kind.max}

@@ -1,0 +1,93 @@
+/*
+ * A category tile: the icon badge, the name over its one line and the checkbox on top; the size, the count, Details
+ * and the options menu at the bottom. The tile's border takes the category's level; it does not move on hover.
+ */
+@layer components {
+  .tile {
+    display: grid;
+  }
+
+  .top {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .name {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-callout-size);
+    font-weight: 600;
+    line-height: var(--type-callout-line);
+  }
+
+  .line {
+    overflow: hidden;
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tile[data-level='medium'] .line {
+    color: var(--tile-line-medium);
+  }
+
+  /* What the access says (limited or unavailable): readable, not dimmed (WCAG contrast). */
+  .reason {
+    margin-top: var(--space-1);
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .tile[data-unavailable] .top > :first-child {
+    opacity: 0.6;
+  }
+
+  .check {
+    display: inline-flex;
+    flex: none;
+  }
+
+  .bottom {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .size > [data-numeric][data-size] {
+    color: var(--text-primary);
+    font-size: calc(24rem / 13);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .count {
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    white-space: nowrap;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .details button[data-variant] {
+    color: var(--accent-text);
+  }
+
+  .bottom > :last-child {
+    align-self: center;
+  }
+}

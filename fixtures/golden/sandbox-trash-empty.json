@@ -8,7 +8,7 @@
         "outcome": {
           "kind": "moved"
         },
-        "path": "home/trash-empty-work/fresher-trial-cache",
+        "path": "home/trash-empty-work/Sample app cache",
         "trash": "in-trash"
       }
     ],
@@ -21,7 +21,7 @@
       "danger": "safe",
       "logical": 1048576,
       "module": "trial",
-      "subject": "home/trash-empty-work/fresher-trial-cache"
+      "subject": "home/trash-empty-work/Sample app cache"
     }
   ],
   "map": {
@@ -138,12 +138,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache"
+        "path": "home/.Trash/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 1048576,
-        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+        "path": "home/.Trash/Sample app cache/blob.bin"
       },
       {
         "kind": "dir",

@@ -6,7 +6,8 @@
 
 ## What it is
 
-Datasets that programs downloaded from Hugging Face to train or test models, one folder per dataset. Made by programs that use Hugging Face's libraries (Python scripts, notebooks, training tools).
+Data that programs downloaded from Hugging Face to train or test AI models, one folder per dataset. Made by programs
+that use Hugging Face, such as Python scripts and training tools.
 
 ## Where it lives
 
@@ -16,7 +17,8 @@ The tool's sign: the folder holds both `blobs` and `snapshots`. Without them the
 
 ## What happens if you remove it
 
-The dataset's folder goes to the Trash. A program that needs the dataset downloads it again; until then, folders that link to its files see them missing. Yes, by download the next time a program asks for it, which needs the network and can take long for a big dataset. A gated or private dataset also needs your Hugging Face login.
+A program that needs the dataset downloads it again; until then, links to its files stop working. Yes, by download when
+a program asks for it, which can take long; a private dataset also needs your Hugging Face login.
 
 ## How the app decides
 

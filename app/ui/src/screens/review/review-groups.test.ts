@@ -1,91 +1,134 @@
 import { describe, expect, it } from 'vitest';
 
-import type { DangerLevel } from '../../ipc/bindings.generated';
-import type { ReviewGroup, ReviewZone } from './review-groups';
+import type { CategoryTotal, DangerLevel } from '../../ipc/bindings.generated';
 
-import { reviewParts, reviewZones } from './review-groups';
+import { NOTHING_SELECTED } from '../../state/selection';
+import { findingOf } from '../../test/finding-fixtures';
+import { reviewGroups, reviewLevels } from './review-groups';
 
-const group = (category: string, highest: DangerLevel, allocated: number): ReviewGroup => ({
+const total = (category: string, level: DangerLevel, count: number, allocated: number): CategoryTotal => ({
   category,
-  count: 1,
-  highest,
-  rows: { findings: [], kind: 'picked' },
+  count,
+  highestDanger: level,
   sizes: { allocated, completeness: 'complete', logical: allocated, reclaimable: allocated },
 });
 
-describe('reviewZones', () => {
+// A "Look before removing" category of 3 findings, 3,000 bytes in all.
+const PHOTOS = total('demo.photos', 'medium', 3, 3_000);
+
+const CACHES = total('demo.caches', 'safe', 2, 5_000);
+
+const LOGS = total('demo.logs', 'low', 1, 9_000);
+
+const ARCHIVES = total('demo.archives', 'safe', 1, 8_000);
+
+const PHOTO = findingOf({ bytes: 1_000, category: 'demo.photos', id: 7, level: 'medium', name: 'holiday.jpg' });
+
+const CACHE = findingOf({ bytes: 2_000, category: 'demo.caches', id: 3, level: 'safe', name: 'cache' });
+
+const TOTALS = [PHOTOS, CACHES, LOGS, ARCHIVES];
+
+const selected = (...categories: readonly string[]): typeof NOTHING_SELECTED => ({
+  ...NOTHING_SELECTED,
+  categories: new Map(categories.map((category) => [category, new Map()])),
+});
+
+describe('reviewGroups', () => {
   describe('negative cases', () => {
-    it('leaves out a zone with no group', () => {
-      const zones = reviewZones([group('a', 'high', 1), group('b', 'safe', 2)]);
+    it('a category to check with no tick sums to nothing, all of it unchecked', () => {
+      const [group] = reviewGroups({ ...NOTHING_SELECTED, toCheck: new Set(['demo.photos']) }, [PHOTOS]);
 
-      expect(zones.map((zone) => zone.level)).toStrictEqual(['safe', 'high']);
+      expect(group).toMatchObject({
+        category: 'demo.photos',
+        count: 0,
+        highest: 'medium',
+        rows: { kind: 'to-check', listed: 3, ticked: new Map() },
+        sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+        unchecked: 3,
+      });
     });
 
-    it('never puts a group in a lower zone than its highest level', () => {
-      const zones = reviewZones([group('a', 'medium', 1), group('b', 'low', 9)]);
-
-      for (const zone of zones) {
-        expect(zone.groups.every((member) => member.highest === zone.level)).toBe(true);
-      }
-    });
-
-    it('has no zone for no groups', () => {
-      expect(reviewZones([])).toStrictEqual([]);
+    it('a category to check the overview no longer lists is not shown', () => {
+      expect(reviewGroups({ ...NOTHING_SELECTED, toCheck: new Set(['demo.photos']) }, [])).toStrictEqual([]);
     });
   });
 
   describe('positive cases', () => {
-    it('orders the zones Safe to High', () => {
-      const zones = reviewZones([
-        group('a', 'high', 1),
-        group('b', 'medium', 1),
-        group('c', 'safe', 1),
-        group('d', 'low', 1),
+    it('a category to check is listed with its ticked items', () => {
+      const ticked = new Map([[PHOTO.id, PHOTO]]);
+      const groups = reviewGroups({ ...NOTHING_SELECTED, findings: ticked, toCheck: new Set(['demo.photos']) }, [
+        PHOTOS,
       ]);
 
-      expect(zones.map((zone) => zone.level)).toStrictEqual(['safe', 'low', 'medium', 'high']);
+      expect(groups).toHaveLength(1);
+      expect(groups[0]?.rows).toStrictEqual({ kind: 'to-check', listed: 3, ticked });
+      expect(groups[0]?.count).toBe(1);
+      expect(groups[0]?.unchecked).toBe(2);
+      expect(groups[0]?.sizes.allocated).toBe(1_000);
     });
 
-    it('keeps the groups largest first inside a zone', () => {
-      const [zone] = reviewZones([group('big', 'low', 9), group('small', 'low', 1)]);
+    it('orders the groups Safe to High, largest first within one', () => {
+      const groups = reviewGroups(
+        { ...selected('demo.logs', 'demo.caches', 'demo.archives'), toCheck: new Set(['demo.photos']) },
+        TOTALS,
+      );
 
-      expect(zone?.groups.map((member) => member.category)).toStrictEqual(['big', 'small']);
+      expect(groups.map((group) => group.category)).toStrictEqual([
+        'demo.archives',
+        'demo.caches',
+        'demo.logs',
+        'demo.photos',
+      ]);
+    });
+
+    it("a selected category's items ticked off count as unchecked", () => {
+      const [group] = reviewGroups(
+        { ...NOTHING_SELECTED, categories: new Map([['demo.caches', new Map([[CACHE.id, CACHE]])]]) },
+        TOTALS,
+      );
+
+      expect(group?.count).toBe(1);
+      expect(group?.unchecked).toBe(1);
+      expect(group?.sizes.allocated).toBe(3_000);
     });
   });
 });
 
-const zone = (level: DangerLevel): ReviewZone => ({ groups: [group(level, level, 1)], level });
-
-describe('reviewParts', () => {
+describe('reviewLevels', () => {
   describe('negative cases', () => {
-    it('a selection without Medium or High has no danger part', () => {
-      const parts = reviewParts([zone('safe'), zone('low')]);
-
-      expect(parts.map((part) => part.part)).toStrictEqual(['safe']);
-    });
-
-    it('a part with no zone is left out', () => {
-      expect(reviewParts([zone('high')]).map((part) => part.part)).toStrictEqual(['danger']);
-      expect(reviewParts([])).toStrictEqual([]);
+    it('leaves out a group with no category', () => {
+      expect(
+        reviewLevels(reviewGroups(selected('demo.logs'), TOTALS), TOTALS).map((level) => level.level),
+      ).toStrictEqual(['low']);
+      expect(reviewLevels([], TOTALS)).toStrictEqual([]);
     });
   });
 
   describe('positive cases', () => {
-    it('Medium and High go to the danger part, Safe and Low to the safe part, in that order', () => {
-      const parts = reviewParts([zone('high'), zone('safe'), zone('medium'), zone('low')]);
+    it('sums each group with the store rule and counts what is not checked', () => {
+      const selection = {
+        ...selected('demo.caches', 'demo.archives', 'demo.logs'),
+        findings: new Map([[PHOTO.id, PHOTO]]),
+        toCheck: new Set(['demo.photos']),
+      };
 
-      expect(parts.map((part) => [part.part, part.zones.map((member) => member.level)])).toStrictEqual([
-        ['safe', ['safe', 'low']],
-        ['danger', ['medium', 'high']],
+      expect(reviewLevels(reviewGroups(selection, TOTALS), TOTALS)).toStrictEqual([
+        {
+          level: 'safe',
+          sizes: { allocated: 13_000, completeness: 'complete', logical: 13_000, reclaimable: 13_000 },
+          unchecked: 0,
+        },
+        {
+          level: 'low',
+          sizes: { allocated: 9_000, completeness: 'complete', logical: 9_000, reclaimable: 9_000 },
+          unchecked: 0,
+        },
+        {
+          level: 'medium',
+          sizes: { allocated: 1_000, completeness: 'complete', logical: 1_000, reclaimable: 1_000 },
+          unchecked: 2,
+        },
       ]);
-    });
-
-    it("a part's highest level is its riskiest zone's", () => {
-      expect(reviewParts([zone('safe'), zone('low'), zone('medium')]).map((part) => part.highest)).toStrictEqual([
-        'low',
-        'medium',
-      ]);
-      expect(reviewParts([zone('safe'), zone('high')]).map((part) => part.highest)).toStrictEqual(['safe', 'high']);
     });
   });
 });

@@ -106,8 +106,8 @@ mod negative {
             [
                 not_in_sandbox,
                 not_in_sandbox,
-                &SkipReason::Covered,
                 not_in_sandbox,
+                &SkipReason::Covered,
                 not_in_sandbox,
                 not_in_sandbox,
                 not_in_sandbox
@@ -173,16 +173,16 @@ mod positive {
         let findings = home.findings();
         let history = home.engine.cleanups(0, 10);
         let detail = home.engine.cleanup(cleanup).unwrap();
-        let cache = index_of(&home, &detail.items, "home/sandbox/fresher-trial-cache");
+        let cache = index_of(&home, &detail.items, "home/sandbox/Sample app cache");
         let back = home.engine.put_back(cleanup, Some(&[cache])).unwrap();
         let again = home.engine.put_back(cleanup, Some(&[cache])).unwrap();
         assert_eq!(back.items[0].outcome, PutBackOutcome::PutBack);
         assert_eq!(again.items[0].outcome, PutBackOutcome::PutBack);
         assert_eq!(detail.items[cache as usize].trash, Some(TrashState::InTrash));
-        assert!(home.path("home/sandbox/fresher-trial-cache/nested/blob.bin").exists());
+        assert!(home.path("home/sandbox/Sample app cache/nested/blob.bin").exists());
         assert!(!home.path("home/sandbox/fresher-e2e-build").exists());
         assert!(home.path("home/sandbox/keep-me.txt").exists());
-        assert!(home.path("home/sandbox/fresher-trial-kept").is_dir());
+        assert!(home.path("home/sandbox/Old sample downloads").is_dir());
         assert_outside_untouched(&home, &outside_before);
         let report = json!({
             "plan": view,
@@ -231,8 +231,8 @@ mod positive {
         home.scan();
         let outside_before = outside(&home);
         let view = home.prepare();
-        let cache = home.path("home/sandbox/fresher-trial-cache");
-        fs::rename(&cache, home.path("home/sandbox/fresher-trial-cache-old")).unwrap();
+        let cache = home.path("home/sandbox/Sample app cache");
+        fs::rename(&cache, home.path("home/sandbox/Sample app cache-old")).unwrap();
         fs::create_dir(&cache).unwrap();
         fs::write(cache.join("blob.bin"), b"a new folder of the same name").unwrap();
 
@@ -256,9 +256,9 @@ mod positive {
         let (cleanup, events) = home.clean(&view, "permanent");
 
         assert!(!home.path("trash").exists(), "nothing goes to the Trash");
-        assert!(!home.path("home/sandbox/fresher-trial-cache").exists());
+        assert!(!home.path("home/sandbox/Sample app cache").exists());
         assert!(!home.path("home/sandbox/fresher-e2e-build").exists());
-        assert_eq!(fs::read_dir(home.path("home/sandbox/fresher-trial-kept")).unwrap().count(), 0);
+        assert_eq!(fs::read_dir(home.path("home/sandbox/Old sample downloads")).unwrap().count(), 0);
         assert_outside_untouched(&home, &outside_before);
         let report = json!({
             "events": events,

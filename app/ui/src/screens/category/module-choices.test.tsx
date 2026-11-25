@@ -6,7 +6,12 @@ import type { CategoryId, ModuleInfo } from '../../ipc/bindings.generated';
 import { mockCore, sampleAgreementAnswers, sampleStorageAnswers } from '../../ipc/mock';
 import { createNavigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
-import { APP_LEFTOVERS_DICTIONARY, APP_LEFTOVERS_MODULES, APP_LEFTOVERS_TOTALS } from '../../test/app-leftovers-scan';
+import {
+  APP_LEFTOVERS_DICTIONARY,
+  APP_LEFTOVERS_MODULES,
+  APP_LEFTOVERS_OVERVIEW,
+  APP_LEFTOVERS_TOTALS,
+} from '../../test/app-leftovers-scan';
 import { DEMO_MODULES } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
 import { ModuleChoices } from './module-choices';
@@ -25,6 +30,8 @@ const showChoices = async (
   category: CategoryId = 'app-leftovers.caches',
 ): Promise<CoreStore> => {
   const store = createCoreStore();
+  // The totals tell each category's level: Settings (Medium) and Data (High) are "Look before removing".
+  store.dispatch({ overview: { ...APP_LEFTOVERS_OVERVIEW, totals }, type: 'overview-loaded' });
   const navigation = createNavigation();
   const choices = (): React.JSX.Element => (
     <AppProviders navigation={navigation} store={store}>
@@ -107,6 +114,15 @@ describe('ModuleChoices', () => {
       expect(keepSettings).toBeDisabled();
       expect(store.getState().selection.categories.size).toBe(0);
     });
+
+    it('a module’s choice never selects a Look before removing category whole', async () => {
+      const store = await showChoices(APP_LEFTOVERS, APP_LEFTOVERS_TOTALS);
+
+      fireEvent.click(await screen.findByRole('button', { name: EVERYTHING }));
+
+      expect(store.getState().selection.categories.has('app-leftovers.settings')).toBe(false);
+      expect(store.getState().selection.categories.has('app-leftovers.data')).toBe(false);
+    });
   });
 
   describe('positive cases', () => {
@@ -134,16 +150,13 @@ describe('ModuleChoices', () => {
       expect([...store.getState().selection.categories.keys()]).toEqual(['app-leftovers.caches']);
     });
 
-    it('selects the three categories for Remove everything', async () => {
+    it('Remove everything selects the Safe category and brings the two others to Review to check', async () => {
       const store = await showChoices(APP_LEFTOVERS, APP_LEFTOVERS_TOTALS);
 
       fireEvent.click(await screen.findByRole('button', { name: EVERYTHING }));
 
-      expect([...store.getState().selection.categories.keys()]).toEqual([
-        'app-leftovers.caches',
-        'app-leftovers.settings',
-        'app-leftovers.data',
-      ]);
+      expect([...store.getState().selection.categories.keys()]).toEqual(['app-leftovers.caches']);
+      expect([...store.getState().selection.toCheck]).toEqual(['app-leftovers.settings', 'app-leftovers.data']);
     });
 
     it('selects only the categories of the choice that hold a finding', async () => {
@@ -154,10 +167,8 @@ describe('ModuleChoices', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: EVERYTHING }));
 
-      expect([...store.getState().selection.categories.keys()]).toEqual([
-        'app-leftovers.caches',
-        'app-leftovers.settings',
-      ]);
+      expect([...store.getState().selection.categories.keys()]).toEqual(['app-leftovers.caches']);
+      expect([...store.getState().selection.toCheck]).toEqual(['app-leftovers.settings']);
     });
   });
 });

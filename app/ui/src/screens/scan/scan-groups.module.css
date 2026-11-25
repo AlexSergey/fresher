@@ -1,0 +1,53 @@
+/* A group of Scan: its heading row (the level's icon, the name, "· its line", Select all at the end), then its tiles. */
+@layer components {
+  .group {
+    --group-fg: var(--level-safe-fg);
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .group[data-level='low'] {
+    --group-fg: var(--level-low-fg);
+  }
+
+  .group[data-level='medium'] {
+    --group-fg: var(--level-medium-fg);
+  }
+
+  .group[data-level='high'] {
+    --group-fg: var(--level-high-fg);
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .icon {
+    display: inline-flex;
+    color: var(--group-fg);
+  }
+
+  .name {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: calc(14rem / 13);
+    font-weight: 600;
+    line-height: var(--type-body-line);
+  }
+
+  .line {
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+
+  .select {
+    margin-left: auto;
+    font-size: var(--type-footnote-size);
+  }
+}

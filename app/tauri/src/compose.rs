@@ -12,7 +12,7 @@ use fresher_cleaner::DryRunToken;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, FinderSettings, FolderReader, InstallRecords, InstalledApps,
+    AccessProbe, Build, Clock, CommandRunner, FinderSettings, FolderReader, HighLevel, InstallRecords, InstalledApps,
     KnownFolders, Module, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError, SystemPorts,
     Volumes,
 };
@@ -256,6 +256,8 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
         access: Arc::new(MacAccess::new(home.to_path_buf(), macos_version(Path::new("/")))),
         cleanup,
         only: None,
+        // The first release withholds High (plan 042); development builds too, so the walk sees what ships.
+        high: HighLevel::Withheld,
     })
 }
 
@@ -290,6 +292,8 @@ pub(crate) struct Shared {
     pub(crate) apps: Arc<dyn InstalledApps>,
     /// The installer receipts and the macOS version: the Mac's, or the sandbox's world's.
     pub(crate) installs: Arc<dyn InstallRecords>,
+    /// Whether the engine offers High findings: withheld in the app, offered by the sandbox autotest.
+    pub(crate) high: HighLevel,
 }
 
 /// The engine both paths share: the real walk of the disk over `shared`, the app's modules and its settings file.
@@ -308,6 +312,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         only,
         apps,
         installs,
+        high,
     } = shared;
     let options = ScannerOptions {
         standing_avoid: avoid,
@@ -336,7 +341,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         system_ui,
         system,
     };
-    Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup)?)
+    Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup, high)?)
 }
 
 /// The system's ports, whose small files are read through `reader`, the walk's own (in sandbox mode the sandbox's
@@ -633,7 +638,7 @@ mod tests {
 
             until_finished(&events, is_cleanup_finished);
             assert!(view.summary.count > 0);
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
             assert_eq!(listing(tree.root()), before);
             let items = engine.cleanup(id).unwrap().items;
             assert_eq!(items.len(), view.summary.count as usize);
@@ -712,7 +717,7 @@ mod tests {
     mod positive {
         use std::path::{Path, PathBuf};
 
-        use crate::compose::{bundle_of, checked_user_temp, engine, user_temp};
+        use crate::compose::{MACOS_POLICY, bundle_of, checked_user_temp, engine, engine_with, user_temp};
 
         #[test]
         fn the_systems_small_files_read_a_file_of_the_home_through_the_lens() {
@@ -822,6 +827,15 @@ mod tests {
 
             let ids: Vec<&str> = engine.modules().iter().map(|module| module.id.as_str()).collect();
             assert_eq!(ids, expected);
+        }
+
+        #[test]
+        fn the_normal_engine_withholds_high() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+
+            let engine = engine_with(folder.path(), home.path(), &MACOS_POLICY).unwrap();
+
+            assert_eq!(engine.high_level(), fresher_core::HighLevel::Withheld);
         }
 
         #[test]

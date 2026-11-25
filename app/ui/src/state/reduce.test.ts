@@ -219,7 +219,7 @@ describe('reduce', () => {
 
     it('keeps a scan the events finished when a stale overview says it still runs', () => {
       const state = run([
-        { bytes: 2048, entries: 10, scan: 4, type: 'scan-progress' },
+        { bytes: 2048, entries: 10, expected: null, scan: 4, type: 'scan-progress' },
         { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },
         loaded(scanning(4)),
       ]);
@@ -395,14 +395,24 @@ describe('reduce', () => {
       const state = run([
         { dictionary: DEMO_DICTIONARY, type: 'dictionary-loaded' },
         loaded(scanning(4)),
-        { bytes: 2048, entries: 10, scan: 4, type: 'scan-progress' },
+        { bytes: 2048, entries: 10, expected: null, scan: 4, type: 'scan-progress' },
       ]);
 
       expect(state.dictionary).toBe(DEMO_DICTIONARY);
       expect(state.scan).toBe(4);
-      expect(state.progress).toEqual({ bytes: 2048, entries: 10 });
+      expect(state.progress).toEqual({ bytes: 2048, entries: 10, expected: null });
       const cleaning = run([loaded({ ...IDLE, status: { cleanup: 3, state: 'cleaning' } })]);
       expect(cleaning.status).toEqual({ cleanup: 3, state: 'cleaning' });
+    });
+
+    it('keeps the bytes and the estimate of a progress', () => {
+      const state = run([
+        loaded(scanning(4)),
+        { bytes: 1024, entries: 5, expected: null, scan: 4, type: 'scan-progress' },
+        { bytes: 2048, entries: 10, expected: 8192, scan: 4, type: 'scan-progress' },
+      ]);
+
+      expect(state.progress).toEqual({ bytes: 2048, entries: 10, expected: 8192 });
     });
 
     it('keeps the settings view and the access status the core answered', () => {
@@ -470,7 +480,7 @@ describe('reduce', () => {
 
     it('follows the scan an overview reports after a reload during that scan', () => {
       const state = run([
-        { bytes: 1024, entries: 5, scan: 4, type: 'scan-progress' },
+        { bytes: 1024, entries: 5, expected: 4096, scan: 4, type: 'scan-progress' },
         loaded(scanning(4)),
         { findings: DEMO_FINDINGS.slice(0, 1).map((finding) => ({ ...finding })), scan: 4, type: 'findings-added' },
         { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 4, type: 'scan-finished' },

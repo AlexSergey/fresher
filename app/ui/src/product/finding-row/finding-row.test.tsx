@@ -22,9 +22,7 @@ const inList = (row: React.JSX.Element): void => {
   render(<div role="list">{row}</div>);
 };
 
-const MENU = (onSelect: () => void): readonly MenuItem[] => [
-  { description: 'Hides it and never removes it.', key: 'ignore', label: 'Ignore this item', onSelect },
-];
+const MENU = (onSelect: () => void): readonly MenuItem[] => [{ key: 'ignore', label: 'Ignore this item', onSelect }];
 
 beforeEach(() => {
   setCoreDictionary(FINDING_DICTIONARY);
@@ -149,6 +147,22 @@ describe('FindingRow', () => {
 
       expect(screen.getByRole('listitem')).toHaveAccessibleName('Example: mail-downloads, Low, at least 640 MB');
     });
+    it('a default row shows the full path, whatever the home', () => {
+      inList(<FindingRow finding={SAFE_FINDING} home="/demo" onToggle={vi.fn()} selected={false} />);
+
+      expect(screen.getByText('/demo/editor-cache', { selector: '[aria-hidden="true"]' })).toBeInTheDocument();
+      expect(screen.queryByText('~/editor-cache')).not.toBeInTheDocument();
+    });
+
+    it('a compact row shows no level badge', () => {
+      inList(<FindingRow finding={HIGH_FINDING} onToggle={vi.fn()} selected variant="review" />);
+
+      const row = screen.getByRole('listitem');
+
+      expect(row).toHaveAttribute('data-compact', 'true');
+      expect(row).not.toHaveAttribute('data-level');
+      expect(screen.queryByText('High')).not.toBeInTheDocument();
+    });
   });
 
   describe('positive cases', () => {
@@ -180,8 +194,30 @@ describe('FindingRow', () => {
 
       const row = screen.getByRole('listitem', { name: 'Example: editor-cache, Safe, 1.5 GB' });
 
-      expect(row).toHaveAccessibleDescription('Example data from the demo module: it does not exist on your disk.');
+      expect(row).toHaveAccessibleDescription('Made up by the demo; it is not on your disk.');
       expect(screen.getByText('/demo/editor-cache', { selector: '.u-visually-hidden' })).toBeInTheDocument();
+    });
+
+    it('a review row shows its path from ~, its accessible text keeping the full path', () => {
+      inList(<FindingRow finding={SAFE_FINDING} home="/demo" onToggle={vi.fn()} selected variant="review" />);
+
+      expect(screen.getByText('~/editor-cache')).toBeInTheDocument();
+      expect(screen.getByText('/demo/editor-cache', { selector: '.u-visually-hidden' })).toBeInTheDocument();
+    });
+
+    it('a details row shows no level badge, keeps the level in its name and its path from ~', () => {
+      inList(<FindingRow finding={SAFE_FINDING} home="/demo" onToggle={vi.fn()} selected={false} variant="details" />);
+
+      expect(screen.getByRole('listitem', { name: 'Example: editor-cache, Safe, 1.5 GB' })).toBeInTheDocument();
+      expect(screen.queryByText('Safe')).toBeNull();
+      expect(screen.getByText('~/editor-cache')).toBeInTheDocument();
+    });
+
+    it('a compact row still reads the level in its name', () => {
+      inList(<FindingRow finding={MEDIUM_FINDING} onToggle={vi.fn()} selected={false} variant="review" />);
+
+      expect(screen.getByRole('listitem', { name: /, Medium, / })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: /^Select / })).not.toBeChecked();
     });
 
     it('the checkbox toggles the finding', () => {
@@ -203,7 +239,7 @@ describe('FindingRow', () => {
     it('the instruction is shown on demand', () => {
       inList(<FindingRow finding={ADMIN_FINDING} onReveal={vi.fn()} onToggle={vi.fn()} selected={false} />);
       const how =
-        'Only an administrator can remove this. Show it in Finder and drag it to the Trash; macOS will ask for an administrator password.';
+        'Only an administrator can remove this. Show it in Finder and drag it to the Trash; macOS asks for the password.';
 
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 

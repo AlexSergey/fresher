@@ -6,12 +6,12 @@ category = "trial.caches"
 danger = "safe"
 removal = "trash"
 [rule.look]
-folder-name = "fresher-trial-cache"
+folder-name = "Sample app cache"
 [rule.recognize]
 sibling = ".fresher-sandbox"
-# `fresher-trial-cache2`, `fresher-trial-cache.txt`: they only resemble it.
+# `Sample app cache2`, `Sample app cache.txt`: they only resemble it.
 [[rule.must-not-match]]
-name = "fresher-trial-cache?*"
+name = "Sample app cache?*"
 
 [[rule]]
 id = "kept"
@@ -19,9 +19,9 @@ category = "trial.kept"
 danger = "low"
 removal = "empty-folder"
 [rule.look]
-folder-name = "fresher-trial-kept"
+folder-name = "Old sample downloads"
 [rule.recognize]
 sibling = ".fresher-sandbox"
-# `fresher-trial-kept2`, `fresher-trial-kept.txt`: they only resemble it.
+# `Old sample downloads2`, `Old sample downloads.txt`: they only resemble it.
 [[rule.must-not-match]]
-name = "fresher-trial-kept?*"
+name = "Old sample downloads?*"

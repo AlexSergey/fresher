@@ -154,6 +154,9 @@ const planFor =
     );
   };
 
+// The selections `prepare_cleanup` received on each page, in order: what the UI sent the core.
+const SELECTIONS = new WeakMap<Page, readonly CleanupSelection[]>();
+
 // Adds the cleanup commands to the mocked core of `core-mock.ts`, which calls `invoke` first for every command.
 // `confirmed` is told the plan of every cleanup the user confirmed (the Largest mock forgets what it moved).
 export const mockCleanup = async (
@@ -162,7 +165,14 @@ export const mockCleanup = async (
   script: CleanupScript,
   confirmed?: (plan: CleanupPlanView) => void,
 ): Promise<void> => {
-  await page.exposeFunction(PLAN_OF, planFor(findings, script));
+  const planOfSelection = planFor(findings, script);
+  const selections: CleanupSelection[] = [];
+  SELECTIONS.set(page, selections);
+  await page.exposeFunction(PLAN_OF, (selection: CleanupSelection, id: number) => {
+    selections.push(selection);
+
+    return planOfSelection(selection, id);
+  });
   // The plan of the uninstall of an app of the mock's apps (support/apps-mock.ts): never over the scan's findings.
   await page.exposeFunction(UNINSTALL_PLAN_OF, (app: AppId, choice: UninstallChoice, id: number) => {
     const detail = APP_DETAILS.find(
@@ -397,3 +407,6 @@ export const requestQuit = async (page: Page): Promise<void> => {
 // The commands that asked the core for a plan so far (`prepare_cleanup`, `prepare_uninstall`), in order.
 export const preparedCommands = (page: Page): Promise<readonly string[]> =>
   page.evaluate((name) => (globalThis as unknown as Record<string, string[]>)[name] ?? [], PREPARED);
+
+// The selections the UI sent with `prepare_cleanup` so far, in order: ids only, as the core takes them.
+export const preparedSelections = (page: Page): readonly CleanupSelection[] => SELECTIONS.get(page) ?? [];

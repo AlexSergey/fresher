@@ -51,13 +51,55 @@
   .row[data-kind='ids'] .control,
   .row[data-kind='paths'] .control {
     display: block;
-    max-width: 320px;
   }
 
   .row[data-kind='folders'] .control,
   .row[data-kind='ids'] .control,
   .row[data-kind='paths'] .control {
     max-width: none;
+  }
+
+  /*
+   * A number: the slider, the compact field and its unit in one line; the field's limits and error follow under it.
+   * The field's own wrapper dissolves so its input and notes are cells of this grid.
+   */
+  .numberRow {
+    display: grid;
+    align-items: center;
+    column-gap: 14px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: var(--space-1-5);
+  }
+
+  .sliderCell {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .fieldCell,
+  .fieldCell > div {
+    display: contents;
+  }
+
+  .fieldCell input {
+    width: 52px;
+    height: auto;
+    padding: 5px 7px;
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+  }
+
+  .fieldCell p {
+    margin: 0;
+    grid-column: 1 / -1;
+  }
+
+  .unit {
+    color: var(--text-secondary);
+    font-size: 13px;
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .folders {

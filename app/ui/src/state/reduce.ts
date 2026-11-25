@@ -66,7 +66,12 @@ export type CoreState = {
   readonly outcome: null | ScanOutcome;
   // The totals per category, everything found and the last scan, as `get_overview` answered them.
   readonly overview: null | Overview;
-  readonly progress: null | { readonly bytes: ByteSize; readonly entries: number };
+  // The last progress of the scan: what it walked, and what it will most likely walk (`null` when the core cannot tell).
+  readonly progress: null | {
+    readonly bytes: ByteSize;
+    readonly entries: number;
+    readonly expected: ByteSize | null;
+  };
   // The window was closed during a cleanup: the frame asks whether to stop after the item in hand and quit.
   readonly quitAsked: boolean;
   // The findings the last cleanup removed: the finding pages drop them (state/findings.ts).
@@ -190,7 +195,9 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
       // The overview is always asked for once more at the end, so the last totals are the finished scan's.
       return follows(event.scan) ? markStale({ ...state, outcome: event.outcome, status: { state: 'idle' } }) : state;
     case 'scan-progress':
-      return follows(event.scan) ? { ...state, progress: { bytes: event.bytes, entries: event.entries } } : state;
+      return follows(event.scan)
+        ? { ...state, progress: { bytes: event.bytes, entries: event.entries, expected: event.expected } }
+        : state;
     case 'scan-started':
       return startScan(state, event);
     case 'setting-changed': {
@@ -270,9 +277,16 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
     }
     case 'choose':
     case 'clear':
+    case 'tick-all':
     case 'toggle-category':
-    case 'toggle-finding': {
-      const selection = reduceSelection(state.selection, action);
+    case 'toggle-finding':
+    case 'untick-all': {
+      const totals = state.overview?.totals ?? [];
+      const selection = reduceSelection(
+        state.selection,
+        action,
+        (category) => totals.find((total) => total.category === category)?.highestDanger,
+      );
 
       return selection === state.selection ? state : { ...state, selection };
     }

@@ -23,7 +23,7 @@ export type SizeTextProps = {
   | { readonly completeness: 'unknown'; readonly hint?: never; readonly text?: never }
 );
 
-type SizeTextSize = 'body' | 'callout' | 'display' | 'hero' | 'title-3';
+type SizeTextSize = 'body' | 'callout' | 'display' | 'hero' | 'title-1' | 'title-3';
 
 const UNKNOWN = '—';
 

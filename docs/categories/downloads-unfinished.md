@@ -6,9 +6,9 @@
 
 ## What it is
 
-Downloads that stopped before they finished: the part a browser fetched before it was closed or the download failed.
-Made by the browser, while it downloads a file. A file of Firefox's `.part` comes with an empty file of the final
-name beside it, which is offered with it.
+Downloads that stopped before they finished, when a browser was closed or the download failed. Made by the browser,
+while it downloads a file. A file of Firefox's `.part` comes with an empty file of the final name beside it, which is
+offered with it.
 
 ## Where it lives
 
@@ -18,7 +18,7 @@ browsers that write them are in `modules/downloads/unfinished.toml`.
 
 ## What happens if you remove it
 
-They go to the Trash. To get the file, download it again. It comes back only if you download the file again.
+They go to the Trash; to get the file, download it again. It comes back only if you download the file again.
 
 ## How the app decides
 

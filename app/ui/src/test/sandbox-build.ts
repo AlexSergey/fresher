@@ -8,6 +8,9 @@ import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'js
 
 export const SANDBOX_PATH = '/Users/dev/sandboxes/trial';
 
+// The sandbox's own home, the one its engine works on.
+export const SANDBOX_HOME = `${SANDBOX_PATH}/home`;
+
 // Where the sandbox's cleanups go: its own Trash folder, as the core says it.
 export const SANDBOX_TRASH: Text = {
   args: { path: { kind: 'path', value: `${SANDBOX_PATH}/home/.Trash` } },

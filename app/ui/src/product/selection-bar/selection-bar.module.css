@@ -1,13 +1,14 @@
 /*
- * The selection bar: a solid panel at elevation 3, centred at the bottom of its screen (the screen is its containing
- * block). It rises --distance-3 and fades in; its exit is a fade, played by the component.
+ * The selection bar: a floating panel, centred 18 px above the bottom of its screen (the screen is its containing
+ * block). It rises --distance-3 and fades in; its exit is a fade, played by the component. Review's bar takes its
+ * anchor, panel and actions.
  */
 @layer components {
   .anchor {
     position: absolute;
     z-index: var(--z-selection-bar);
     right: 0;
-    bottom: var(--space-6);
+    bottom: 18px;
     left: 0;
     display: flex;
     justify-content: center;
@@ -17,10 +18,21 @@
   .bar {
     display: flex;
     align-items: center;
-    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
-    animation: selection-bar-in var(--duration-base) var(--ease-enter);
+    padding: var(--space-2) var(--space-2) var(--space-2) 18px;
+    border: 1px solid var(--border-solid);
+    border-radius: 12px;
+    background: var(--surface-floating);
+    box-shadow: var(--shadow-floating);
+    font-size: var(--type-body-size);
     gap: var(--space-4);
     pointer-events: auto;
+    white-space: nowrap;
+  }
+
+  /* The selection bar's own panel: the shared one, rising as it comes. */
+  .rising {
+    composes: bar;
+    animation: selection-bar-in var(--duration-base) var(--ease-enter);
   }
 
   .count {
@@ -29,27 +41,25 @@
   }
 
   .total {
-    font-size: var(--type-title-3-size);
-    font-weight: var(--type-title-3-weight);
-    letter-spacing: var(--type-title-3-tracking);
-    line-height: var(--type-title-3-line);
+    font-size: var(--type-callout-size);
+    font-weight: 600;
+    line-height: var(--type-callout-line);
     white-space: nowrap;
   }
 
-  .level {
-    display: inline-flex;
+  .toCheck {
+    color: var(--tile-line-medium);
+    white-space: nowrap;
   }
 
-  .total:focus-visible,
-  .level:focus-visible {
+  .total:focus-visible {
     border-radius: var(--radius-sm);
     box-shadow: var(--focus-ring);
   }
 
   .actions {
     display: inline-flex;
-    padding-left: var(--space-2);
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
 
   @keyframes selection-bar-in {

@@ -11,6 +11,7 @@ import type {
 } from '../ipc/bindings.generated';
 
 import aiTexts from '../../../../modules/local-ai-models/locales/en.json' with { type: 'json' };
+import { iconOf } from './category-icons';
 import { FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
 
@@ -122,7 +123,7 @@ export const LOCAL_AI_MODELS_LM_STUDIO_OPEN_FINDINGS: readonly Finding[] = HUGGI
 
 const readyCategory = (id: string, danger: Finding['danger']): ModuleInfo['categories'][number] => ({
   availability: { kind: 'ready' },
-  descriptor: { danger, id, needs: [] },
+  descriptor: { danger, icon: iconOf(id), id, needs: [] },
 });
 
 // `get_modules`: the module in the group Development, its four categories, its switch, no choice.

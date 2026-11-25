@@ -117,7 +117,7 @@ test.describe('positive cases', () => {
 
     await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('menuitem', { name: 'Ignore this category' })).toBeFocused();
+    await expect(page.getByRole('menuitem', { name: 'Show in Finder' })).toBeFocused();
     await page.keyboard.press('Space');
 
     await expect(page.getByRole('menu')).toHaveCount(0);

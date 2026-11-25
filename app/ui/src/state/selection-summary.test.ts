@@ -34,12 +34,20 @@ const selected = (
 ): Selection => ({
   categories: new Map(categories.map(([id, excluded]) => [id, new Map(excluded)])),
   findings: new Map(findings),
+  toCheck: new Set(),
 });
+
+const NOTHING_TO_CHECK = { categories: 0, unticked: 0 };
 
 describe('summarize', () => {
   describe('negative cases', () => {
     it('counts nothing when nothing is selected', () => {
-      expect(summarize(NOTHING_SELECTED, TOTALS)).toEqual({ count: 0, highest: null, sizes: sizes(0) });
+      expect(summarize(NOTHING_SELECTED, TOTALS)).toEqual({
+        count: 0,
+        highest: null,
+        sizes: sizes(0),
+        toCheck: NOTHING_TO_CHECK,
+      });
     });
 
     it('a partial size makes the summary partial', () => {
@@ -65,6 +73,20 @@ describe('summarize', () => {
       expect(summary.highest).toBe('medium');
     });
 
+    it('a category to check counts nothing that goes', () => {
+      const summary = summarize({ ...NOTHING_SELECTED, toCheck: new Set(['demo.caches']) }, TOTALS);
+
+      expect(summary.count).toBe(0);
+      expect(summary.highest).toBeNull();
+      expect(summary.sizes).toEqual(sizes(0));
+    });
+
+    it('a category to check the overview no longer lists is not to check', () => {
+      expect(summarize({ ...NOTHING_SELECTED, toCheck: new Set(['demo.gone']) }, TOTALS).toCheck).toEqual(
+        NOTHING_TO_CHECK,
+      );
+    });
+
     it('a category the overview no longer lists counts nothing', () => {
       expect(summarize(selected([['demo.gone', []]]), TOTALS)).toEqual(summarize(NOTHING_SELECTED, TOTALS));
     });
@@ -76,7 +98,20 @@ describe('summarize', () => {
         count: 100,
         highest: 'medium',
         sizes: sizes(10_000),
+        toCheck: NOTHING_TO_CHECK,
       });
+    });
+
+    it('a category to check counts its unticked items', () => {
+      const ticked = pick('demo.caches', 400, 'medium');
+      const summary = summarize(
+        { ...NOTHING_SELECTED, findings: new Map([[1, ticked]]), toCheck: new Set(['demo.caches']) },
+        TOTALS,
+      );
+
+      expect(summary.toCheck).toEqual({ categories: 1, unticked: 99 });
+      expect(summary.count).toBe(1);
+      expect(summary.sizes).toEqual(sizes(400));
     });
 
     it('a category minus an exclusion counts the rest', () => {
@@ -98,7 +133,7 @@ describe('summarize', () => {
         TOTALS,
       );
 
-      expect(summary).toEqual({ count: 5, highest: 'high', sizes: sizes(3_020) });
+      expect(summary).toEqual({ count: 5, highest: 'high', sizes: sizes(3_020), toCheck: NOTHING_TO_CHECK });
     });
   });
 });

@@ -3,7 +3,8 @@
 //! The rule is the claims' (`crate::claims::resolve`) on the tree's own sizes, over every owned node: the deepest
 //! owner owns its subtree, an outer owner keeps its sizes minus those of the owners nearest inside it. An owner whose
 //! category is ignored, or whose path is at or below an ignored path, is not counted: the bytes it keeps are the
-//! user's folders, never an outer owner's.
+//! user's folders, never an outer owner's. So is an owner the High switch withholds (its category is High, or a
+//! finding raised to High is at its path): "Can be freed" never holds what is not offered.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -12,8 +13,9 @@ use fresher_core::{ByteSize, CategoryId, DiskState, NodeId, Sizes};
 
 use crate::claims::minus;
 use crate::settings::Ignored;
+use crate::withheld::Withheld;
 
-/// The owned bytes of one state under one pair of ignore lists, built once by [`Shares::of`].
+/// The owned bytes of one state under one set of ignore lists and the High switch, built once by [`Shares::of`].
 #[derive(Debug)]
 pub(crate) struct Shares {
     /// Every owned path, counted or not.
@@ -53,16 +55,17 @@ struct Owner {
 }
 
 impl Shares {
-    /// The shares of `state`, the owners `ignored` hides not counted. Pure; a sum past `u64::MAX` bytes stays at the
-    /// maximum and is logged once.
-    pub(crate) fn of(state: &dyn DiskState, ignored: &Ignored) -> Self {
+    /// The shares of `state`, the owners `ignored` hides or `withheld` withholds not counted, exactly alike. Pure; a
+    /// sum past `u64::MAX` bytes stays at the maximum and is logged once.
+    pub(crate) fn of(state: &dyn DiskState, ignored: &Ignored, withheld: &Withheld) -> Self {
         let owners: Vec<Owner> = state
             .owned()
             .into_iter()
             .filter_map(|(id, category)| {
                 let path = state.path(id)?;
                 let sizes = state.node(id)?.sizes;
-                let counted = if ignored.hides_place(category, &path) { Counted::Ignored } else { Counted::Yes };
+                let hidden = ignored.hides_place(category, &path) || withheld.hides_owner(category, &path);
+                let counted = if hidden { Counted::Ignored } else { Counted::Yes };
                 Some(Owner { id, category, path, sizes, counted })
             })
             .collect();

@@ -295,7 +295,7 @@ module = "trial"
 name = "a trial folder with no marker next to it is never offered"
 kind = "negative"
 [[case.file]]
-path = "home/bare/fresher-trial-cache/blob.bin"
+path = "home/bare/Sample app cache/blob.bin"
 size = 1048576
 age = "30d"
 
@@ -305,11 +305,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/work"
 [[case.file]]
-path = "home/work/fresher-trial-cache/blob.bin"
+path = "home/work/Sample app cache/blob.bin"
 size = 4096
 fill = "data"
 [case.expect]
-item = "home/work/fresher-trial-cache"
+item = "home/work/Sample app cache"
 category = "trial.caches"
 danger = "low"
 after-cleanup = "in-trash"
@@ -443,7 +443,7 @@ name = "Mine"
 
         #[test]
         fn a_file_with_a_hard_link_from_outside_is_never_rewritten() {
-            for own in ["home/work/fresher-trial-cache/blob.bin", "EXPECTED.md", ".fresher-sandbox", "world.toml"] {
+            for own in ["home/work/Sample app cache/blob.bin", "EXPECTED.md", ".fresher-sandbox", "world.toml"] {
                 let folder = tempfile::tempdir().unwrap();
                 let outside = tempfile::tempdir().unwrap();
                 run(&[trial()], folder.path()).unwrap();
@@ -487,19 +487,17 @@ name = "Mine"
         fn a_second_run_removes_nothing() {
             let folder = tempfile::tempdir().unwrap();
             run(&[trial()], folder.path()).unwrap();
-            let stranger = folder.path().join("home/bare/fresher-trial-cache/stranger.txt");
+            let stranger = folder.path().join("home/bare/Sample app cache/stranger.txt");
             fs::write(&stranger, "mine").unwrap();
-            fs::create_dir_all(folder.path().join("home/.Trash/fresher-trial-cache")).unwrap();
+            fs::create_dir_all(folder.path().join("home/.Trash/Sample app cache")).unwrap();
             fs::create_dir_all(folder.path().join(".fresher-data/cache")).unwrap();
-            let own = folder.path().join("home/work/fresher-trial-cache/blob.bin");
+            let own = folder.path().join("home/work/Sample app cache/blob.bin");
             fs::write(&own, "changed").unwrap();
 
             let strangers = run(&[trial()], folder.path()).unwrap();
 
             let expected: Vec<PathBuf> =
-                ["home/.Trash/fresher-trial-cache", "home/bare/fresher-trial-cache/stranger.txt"]
-                    .map(PathBuf::from)
-                    .into();
+                ["home/.Trash/Sample app cache", "home/bare/Sample app cache/stranger.txt"].map(PathBuf::from).into();
             assert_eq!(strangers, expected);
             assert_eq!(fs::read_to_string(&stranger).unwrap(), "mine");
             assert_eq!(fs::metadata(&own).unwrap().len(), 4096);
@@ -615,12 +613,12 @@ name = "Mine"
                     ("home", EntryKind::Dir),
                     ("home/.Trash", EntryKind::Dir),
                     ("home/bare", EntryKind::Dir),
-                    ("home/bare/fresher-trial-cache", EntryKind::Dir),
-                    ("home/bare/fresher-trial-cache/blob.bin", EntryKind::File),
+                    ("home/bare/Sample app cache", EntryKind::Dir),
+                    ("home/bare/Sample app cache/blob.bin", EntryKind::File),
                     ("home/work", EntryKind::Dir),
                     ("home/work/.fresher-sandbox", EntryKind::File),
-                    ("home/work/fresher-trial-cache", EntryKind::Dir),
-                    ("home/work/fresher-trial-cache/blob.bin", EntryKind::File),
+                    ("home/work/Sample app cache", EntryKind::Dir),
+                    ("home/work/Sample app cache/blob.bin", EntryKind::File),
                     ("private", EntryKind::Dir),
                     ("private/tmp", EntryKind::Dir),
                     ("private/var", EntryKind::Dir),
@@ -636,7 +634,7 @@ name = "Mine"
             );
             let marker = fs::read_to_string(folder.path().join("sandbox/trial").join(SANDBOX_MARKER)).unwrap();
             assert_eq!(marker, format!("{SANDBOX_SIGNATURE}\ncase files: trial.toml\n"));
-            let blob = folder.path().join("sandbox/trial/home/bare/fresher-trial-cache/blob.bin");
+            let blob = folder.path().join("sandbox/trial/home/bare/Sample app cache/blob.bin");
             assert_eq!(fs::metadata(&blob).unwrap().len(), 1_048_576);
             assert_eq!(
                 fs::metadata(&blob).unwrap().modified().unwrap(),

@@ -10,7 +10,7 @@
           "moved": 1,
           "skipped": 0
         },
-        "path": "home/keep/fresher-trial-kept",
+        "path": "home/keep/Old sample downloads",
         "trash": "in-trash"
       },
       {
@@ -20,7 +20,7 @@
         "outcome": {
           "kind": "moved"
         },
-        "path": "home/work/fresher-trial-cache",
+        "path": "home/work/Sample app cache",
         "trash": "in-trash"
       }
     ],
@@ -33,7 +33,7 @@
       "danger": "low",
       "logical": 8192,
       "module": "trial",
-      "subject": "home/keep/fresher-trial-kept"
+      "subject": "home/keep/Old sample downloads"
     },
     {
       "app": null,
@@ -41,7 +41,7 @@
       "danger": "safe",
       "logical": 52430848,
       "module": "trial",
-      "subject": "home/work/fresher-trial-cache"
+      "subject": "home/work/Sample app cache"
     }
   ],
   "map": {
@@ -156,29 +156,29 @@
         "path": "home/.Trash"
       },
       {
-        "kind": "file",
-        "logical_size": 8192,
-        "path": "home/.Trash/entry.bin"
-      },
-      {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache"
+        "path": "home/.Trash/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 52428800,
-        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+        "path": "home/.Trash/Sample app cache/blob.bin"
       },
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache/nested"
+        "path": "home/.Trash/Sample app cache/nested"
       },
       {
         "kind": "file",
         "logical_size": 2048,
-        "path": "home/.Trash/fresher-trial-cache/nested/blob.bin"
+        "path": "home/.Trash/Sample app cache/nested/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 8192,
+        "path": "home/.Trash/entry.bin"
       },
       {
         "kind": "dir",
@@ -188,12 +188,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/bare/fresher-trial-cache"
+        "path": "home/bare/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 1048576,
-        "path": "home/bare/fresher-trial-cache/blob.bin"
+        "path": "home/bare/Sample app cache/blob.bin"
       },
       {
         "kind": "dir",
@@ -208,7 +208,7 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/keep/fresher-trial-kept"
+        "path": "home/keep/Old sample downloads"
       },
       {
         "kind": "dir",
@@ -223,12 +223,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/look-alike/fresher-trial-cache2"
+        "path": "home/look-alike/Sample app cache2"
       },
       {
         "kind": "file",
         "logical_size": 4194304,
-        "path": "home/look-alike/fresher-trial-cache2/look-alike.bin"
+        "path": "home/look-alike/Sample app cache2/look-alike.bin"
       },
       {
         "kind": "dir",
@@ -243,7 +243,7 @@
       {
         "kind": "file",
         "logical_size": 2048,
-        "path": "home/named/fresher-trial-cache.txt"
+        "path": "home/named/Sample app cache.txt"
       },
       {
         "kind": "dir",

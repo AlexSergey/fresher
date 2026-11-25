@@ -35,8 +35,26 @@ export const openDetails = async (page: Page, name: string): Promise<void> => {
 // The open category's details, for what they say: the screen the app shows, not the one fading out.
 export const details = (page: Page): Locator => page.locator('[data-screen^="category:"]:not([aria-hidden])');
 
-// Picks an item of a card's menu: "Ignore this category", or "Ignore" and the module's name.
+// Picks an item of a card's menu: "Ignore all" and the category's name.
 export const fromCardMenu = async (page: Page, card: string, item: string): Promise<void> => {
   await page.getByRole('button', { name: `Options for ${card}` }).click();
   await page.getByRole('menuitem', { name: item }).click();
+};
+
+// Ticks a "Look before removing" category's tile on Scan, which only brings it to Review, then ticks every one of its
+// items there one by one, as a user does, and goes back to Scan. Every item is ticked: the tile's all-checkbox in
+// Review reads checked.
+export const tickItemsOf = async (page: Page, name: string): Promise<void> => {
+  await page.getByRole('checkbox', { exact: true, name: `Select ${name}` }).check();
+  await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Review' })).toBeFocused();
+  const tile = page.getByRole('article', { exact: true, name });
+  const items = tile.getByRole('checkbox', { name: /^Select /u });
+  await expect(items.first()).toBeVisible();
+  for (const item of await items.all()) {
+    await item.check();
+  }
+  await expect(tile.getByRole('checkbox', { exact: true, name: `All ${name}` })).toBeChecked();
+  await navScan(page).click();
+  await scanFinished(page);
 };

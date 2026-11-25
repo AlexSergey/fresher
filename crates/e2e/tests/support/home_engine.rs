@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
-    Access, AutoEmpty, ByteSize, Capability, InstalledApps, Module, Protection, RunningApps, SystemPorts, VolumeFacts,
-    VolumeId,
+    Access, AutoEmpty, ByteSize, Capability, HighLevel, InstalledApps, Module, Protection, RunningApps, SystemPorts,
+    VolumeFacts, VolumeId,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry};
 use fresher_sandbox::Sandbox;
@@ -69,11 +69,13 @@ pub(crate) struct Extras {
     /// Whether the user accepts the agreement as the engine starts, as before their first cleanup; otherwise the
     /// settings file holds what it holds.
     pub(crate) accept: bool,
+    /// The engine's High switch.
+    pub(crate) high: HighLevel,
 }
 
 impl Default for Extras {
     /// A fresh system interface, Finder's setting unknown, the home's Trash only, no command answered, the sandbox's
-    /// places protection alone, the parts' installed and running apps, the agreement accepted.
+    /// places protection alone, the parts' installed and running apps, the agreement accepted, High offered.
     fn default() -> Self {
         Self {
             system_ui: Arc::new(FakeSystemUi::default()),
@@ -84,6 +86,7 @@ impl Default for Extras {
             apps: None,
             running: None,
             accept: true,
+            high: HighLevel::Offered,
         }
     }
 }
@@ -169,7 +172,7 @@ pub(crate) fn engine_with(
     for module in given.modules {
         registry.register(module).unwrap();
     }
-    let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+    let engine = Engine::with_cleanup(registry, ports, cleanup, extras.high).unwrap();
     if extras.accept {
         engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
     }

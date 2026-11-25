@@ -15,7 +15,7 @@ import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
 import { XCODE_DICTIONARY } from '../src/test/xcode-scan';
-import { mockCore, releaseScan, SCRIPTS } from './core-mock';
+import { mockCore, releaseScan, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import {
   cardNames,
@@ -26,10 +26,12 @@ import {
   openDetails,
   scanButton,
   scanFinished,
+  tickItemsOf,
 } from './support/cards';
-import { preparedCommands, releaseCleanup, requestQuit } from './support/cleanup-mock';
+import { preparedCommands, preparedSelections, releaseCleanup, requestQuit } from './support/cleanup-mock';
 import { highTick, tickHigh } from './support/confirm';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
+import { closedGroups, settingsPage } from './support/settings';
 
 // The user's paths through the screens on the mocked core, by pointer and by keyboard alone.
 
@@ -50,28 +52,33 @@ const heading = (page: Page, name: string): Locator => page.getByRole('heading',
 
 const cards = (page: Page): Locator => page.locator('[data-card]');
 
+// A category's tile on Scan, by its name.
+const tileOf = (page: Page, name: string): Locator =>
+  cards(page).filter({ has: page.getByRole('heading', { exact: true, level: 3, name }) });
+
 const zone = (page: Page, name: string): Locator => page.getByRole('region', { exact: true, name });
 
-// Ticks a Scan zone's Select all; a Medium or High zone asks first, and the user answers Select all.
+// The group a category's details name under its title, by the level the tests below speak of.
+const GROUP_OF = {
+  High: 'Only if you are sure',
+  Low: 'Usually safe',
+  Medium: 'Look before removing',
+  Safe: 'Safe to remove',
+} as const;
+
+// Ticks a Scan group's Select all: only Safe to remove and Usually safe have one.
 const selectZone = async (page: Page, name: string): Promise<void> => {
   await zone(page, name).getByRole('checkbox', { name: 'Select all' }).click();
-  const level = { 'High risk': 'High', 'Medium risk': 'Medium' }[name];
-  if (level !== undefined) {
-    await page
-      .getByRole('dialog', { name: `Select everything at ${level}?` })
-      .getByRole('button', { name: 'Select all' })
-      .click();
-  }
   await expect(zone(page, name).getByRole('checkbox', { name: 'Select all' })).toBeChecked();
 };
 
 const selectionBar = (page: Page): Locator => page.getByRole('region', { name: 'Selection' });
 
-const removeButton = (page: Page): Locator => page.getByRole('button', { name: 'Move to Trash…' });
+const removeButton = (page: Page): Locator => page.getByRole('button', { exact: true, name: 'Move to the Trash' });
 
 const notifications = (page: Page): Locator => page.getByRole('region', { name: 'Notifications' });
 
-const QUIT = 'A cleanup is running. Stop after the current item and quit?';
+const QUIT = 'Stop the cleanup and quit?';
 
 // Scans, ticks both categories and opens the review: the demo plan's three findings.
 const reviewAll = async (page: Page): Promise<void> => {
@@ -101,11 +108,31 @@ const openIgnoring = async (page: Page): Promise<void> => {
 
 const openSettings = (page: Page): Promise<void> => page.getByRole('button', { exact: true, name: 'Settings' }).click();
 
+// Settings on the page of the module `name`.
+const openModulePage = async (page: Page, name: string): Promise<void> => {
+  await openSettings(page);
+  await settingsPage(page, name, ...(await closedGroups(page)), name);
+};
+
+// Settings on its Ignored page.
+const openIgnored = async (page: Page): Promise<void> => {
+  await openSettings(page);
+  await settingsPage(page, 'Ignored', 'Ignored');
+};
+
+// Turns a module off, as the user does: Settings, Ignored, "Not looked for", then back to Scan.
+const stopLookingFor = async (page: Page, module: string): Promise<void> => {
+  await openIgnored(page);
+  await page.getByRole('tab', { name: /^Not looked for/ }).click();
+  await page.getByRole('switch', { name: `Ignore ${module}` }).click();
+  await navScan(page).click();
+};
+
 const JB = {
-  caches: 'Caches of older JetBrains IDEs',
-  logs: 'Logs of older JetBrains IDEs',
-  settings: 'Settings and plugins of older JetBrains IDEs',
-  uninstalled: 'Data of JetBrains IDEs no longer installed',
+  caches: 'Old JetBrains IDE caches',
+  logs: 'Old JetBrains IDE logs',
+  settings: 'Old JetBrains IDE settings',
+  uninstalled: 'Removed JetBrains IDE data',
 } as const;
 
 // The module's own texts, as its locale file has them.
@@ -122,12 +149,14 @@ const scanned = async (page: Page, script: (typeof SCRIPTS)[keyof typeof SCRIPTS
 // Scans the JetBrains script.
 const openJetbrains = (page: Page): Promise<void> => scanned(page, SCRIPTS.jetbrains);
 
-// Ticks WebStorm's three categories on their cards and opens the review.
+// Ticks WebStorm's caches and logs on their tiles, its settings (Look before removing) one by one, and opens the
+// review.
 const reviewWebStorm = async (page: Page): Promise<void> => {
   await openJetbrains(page);
-  for (const name of [JB.caches, JB.logs, JB.settings]) {
+  for (const name of [JB.caches, JB.logs]) {
     await page.getByRole('checkbox', { name: `Select ${name}` }).check();
   }
+  await tickItemsOf(page, JB.settings);
   await page.getByRole('region', { name: 'Selection' }).getByRole('button', { name: 'Review' }).click();
   await expect(heading(page, 'Review')).toBeFocused();
 };
@@ -289,7 +318,7 @@ const XC_ARCHIVES = xc('archives.name');
 // The docker module's own texts, as its locale file has them.
 const dk = (key: string): string => DOCKER_DICTIONARY[`docker.${key}`] ?? '';
 
-const DESCRIBED = 'Described, not cleaned';
+const DESCRIBED = 'Shown, never removed';
 
 const described = (page: Page): Locator => page.getByRole('region', { name: DESCRIBED });
 
@@ -390,18 +419,37 @@ const reviewDisk = async (page: Page): Promise<void> => {
   await expect(heading(page, 'Review')).toBeFocused();
 };
 
-// Scans the downloads, ticks the installers (Low) and the big untouched file (High), and opens the review.
+// Scans the downloads, ticks the installers (Low) on their tile and the big untouched file (High) in its details, and
+// opens the review.
 const reviewDownloads = async (page: Page): Promise<void> => {
   await openDownloads(page);
   await page.getByRole('checkbox', { name: `Select ${DL_INSTALLERS}` }).check();
-  await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+  await tickItemsOf(page, DL_LARGE);
   await selectionBar(page).getByRole('button', { name: 'Review' }).click();
   await expect(heading(page, 'Review')).toBeFocused();
 };
 
-const HIGH_MEANING = 'May hold the only copy of your data. Removing it can lose work.';
-
 test.describe('negative cases', () => {
+  test('the sidebar has no Largest while High is withheld', async ({ page }) => {
+    await mockCore(page, withheld(SCRIPTS.largest));
+    await page.goto('/');
+    await scanButton(page).click();
+    await scanFinished(page);
+
+    await expect(page.getByRole('navigation').getByRole('button', { name: 'Apps' })).toBeVisible();
+    await expect(page.getByRole('navigation').getByRole('button', { name: 'Largest' })).toHaveCount(0);
+  });
+
+  test('no High tile is on Scan while High is withheld', async ({ page }) => {
+    await mockCore(page, withheld(SCRIPTS.appLeftovers));
+    await page.goto('/');
+    await scanButton(page).click();
+    await scanFinished(page);
+
+    await expect(zone(page, 'Safe to remove')).toBeVisible();
+    await expect(zone(page, 'Only if you are sure')).toHaveCount(0);
+  });
+
   test('an empty Trash shows no Trash line', async ({ page }) => {
     await scanned(page, SCRIPTS.demo);
 
@@ -421,7 +469,7 @@ test.describe('negative cases', () => {
     await mockCore(page, SCRIPTS.trashCleaning);
     await reviewAll(page);
     await removeButton(page).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toBeVisible();
     await expect(page.getByRole('button', { name: /empty/i })).toHaveCount(0);
@@ -480,7 +528,7 @@ test.describe('negative cases', () => {
       await reviewAll(page);
 
       await removeButton(page).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
       const notice = page.getByRole('alert');
       await expect(notice).toContainText(CLEANUP_DICTIONARY[refusal.text.key] ?? '');
@@ -519,7 +567,7 @@ test.describe('negative cases', () => {
     await mockCore(page, SCRIPTS.cleaningHeld);
     await reviewAll(page);
     await removeButton(page).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
     await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
 
     await requestQuit(page);
@@ -540,7 +588,7 @@ test.describe('negative cases', () => {
     const category = details(page);
     await expect(category).toContainText(`4,712 items left out (790 MB): ${tmp('left-out.recent')}`);
     await expect(category.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await category.getByRole('checkbox', { name: `Select all ${TEMP_CATEGORY}` }).check();
+    await category.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('5 items selected');
     await expect(selectionBar(page)).not.toContainText('4,712');
   });
@@ -552,7 +600,7 @@ test.describe('negative cases', () => {
     const category = details(page);
     await expect(category).toContainText(`1 item left out (3 MB): ${lg('left-out.recent')}`);
     await expect(category.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await category.getByRole('checkbox', { name: `Select all ${LOGS_CATEGORY}` }).check();
+    await category.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
   });
 
@@ -566,14 +614,14 @@ test.describe('negative cases', () => {
 
     await expect(page.getByRole('checkbox', { name: 'Select Example caches' })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Select Example downloads' })).not.toBeChecked();
-    await expect(zone(page, 'Low risk').getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
+    await expect(zone(page, 'Usually safe').getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
     await expect(selectionBar(page)).toContainText('2 items selected');
   });
 
   test('a value of 6 days is refused with a message and the saved value stays 7', async ({ page }) => {
     await mockCore(page, SCRIPTS.temp);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, tmp('enabled.label'));
     const days = page.getByRole('spinbutton', { name: tmp('older-than-days.label') });
     await expect(days).toHaveValue('7');
     await recordUpdates(page);
@@ -581,6 +629,20 @@ test.describe('negative cases', () => {
     await days.fill('6');
 
     await expect(page.getByText('Enter a whole number from 7 to 30.')).toBeVisible();
+    expect(await sentUpdates(page)).toBe(0);
+  });
+
+  test('a number typed outside its limits is refused and the slider does not move', async ({ page }) => {
+    await mockCore(page, SCRIPTS.temp);
+    await page.goto('/');
+    await openModulePage(page, tmp('enabled.label'));
+    const slider = page.getByRole('slider', { name: `${tmp('older-than-days.label')}, days` });
+    await recordUpdates(page);
+
+    await page.getByRole('spinbutton', { name: tmp('older-than-days.label') }).fill('99');
+
+    await expect(page.getByText('Enter a whole number from 7 to 30.')).toBeVisible();
+    await expect(slider).toHaveValue('7');
     expect(await sentUpdates(page)).toBe(0);
   });
 
@@ -593,14 +655,14 @@ test.describe('negative cases', () => {
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, XCODE_DATA);
     await expect(details(page)).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
-    await expect(details(page)).toContainText('Everything found here was left out: the lines above say why.');
+    await expect(details(page)).toContainText('Everything found here was left out. The lines above say why.');
     await expect(details(page).getByRole('checkbox')).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, GRADLE);
 
     await expect(details(page)).toContainText(`1 item left out (35 MB): ${dev('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${GRADLE}` }).check();
+    await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('4.3 GB');
   });
@@ -615,7 +677,7 @@ test.describe('negative cases', () => {
     await expect(details(page)).toContainText(`1 item left out (220 MB): ${left('left-out.running')}`);
     await expect(details(page)).not.toContainText(left('left-out.used-recently'));
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${LEFTOVERS_CACHES}` }).check();
+    await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('220 MB');
   });
@@ -645,7 +707,13 @@ test.describe('negative cases', () => {
 
     await expect(details(page)).toContainText(`1 item left out (1.2 GB): ${dl('left-out.recent')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${DL_LARGE}` }).check();
+    // A "Look before removing" category has no Select all: its items are ticked one by one.
+    await expect(page.getByRole('checkbox', { name: /^Select all \d+$/ })).toHaveCount(0);
+    const items = details(page).getByRole('checkbox', { name: /^Select /u });
+    await expect(items.first()).toBeVisible();
+    for (const item of await items.all()) {
+      await item.check();
+    }
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('1.2 GB');
   });
@@ -664,7 +732,7 @@ test.describe('negative cases', () => {
 
     await expect(details(page)).toContainText(`2 items left out (1.3 GB): ${sp('left-out.recent')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${SP_DEPENDENCIES}` }).check();
+    await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('1.3 GB');
   });
@@ -675,7 +743,7 @@ test.describe('negative cases', () => {
 
     await expect(details(page)).toContainText(`1 item left out (90 MB): ${ac('left-out.app-open')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${AC_NAME}` }).check();
+    await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('3 items selected');
     await expect(selectionBar(page)).not.toContainText('90 MB');
   });
@@ -689,14 +757,14 @@ test.describe('negative cases', () => {
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, AI_LM_STUDIO);
     await expect(details(page)).toContainText(`1 item left out (4.7 GB): ${ai('left-out.app-open')}`);
-    await expect(details(page)).toContainText('Everything found here was left out: the lines above say why.');
+    await expect(details(page)).toContainText('Everything found here was left out. The lines above say why.');
     await expect(details(page).getByRole('checkbox')).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, AI_HF_MODELS);
 
     await expect(details(page)).toContainText(`1 item left out (300 MB): ${ai('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${AI_HF_MODELS}` }).check();
+    await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('300 MB');
   });
@@ -720,7 +788,13 @@ test.describe('negative cases', () => {
 
     await expect(details(page)).toContainText(`1 item left out (110 MB): ${ut('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${UT_NODE}` }).check();
+    // A "Look before removing" category has no Select all: its items are ticked one by one.
+    await expect(page.getByRole('checkbox', { name: /^Select all \d+$/ })).toHaveCount(0);
+    const items = details(page).getByRole('checkbox', { name: /^Select /u });
+    await expect(items.first()).toBeVisible();
+    for (const item of await items.all()) {
+      await item.check();
+    }
     await expect(selectionBar(page)).toContainText('1 item selected');
     await expect(selectionBar(page)).not.toContainText('110 MB');
   });
@@ -757,10 +831,10 @@ test.describe('negative cases', () => {
   test('an ignored cache category is in no total', async ({ page }) => {
     await openDevCaches(page);
 
-    await fromCardMenu(page, NPM, 'Ignore this category');
+    await fromCardMenu(page, NPM, `Ignore all ${NPM}`);
 
     await expect(cards(page).filter({ hasText: NPM })).toHaveCount(0);
-    await expect(page.getByText('8.3 GB').first()).toBeVisible();
+    await expect(cards(page).first()).toBeVisible();
     await expect(page.getByText('17.2 GB')).toHaveCount(0);
   });
 
@@ -768,7 +842,7 @@ test.describe('negative cases', () => {
     await openTemp(page);
     await page.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
 
-    await fromCardMenu(page, TEMP_CATEGORY, `Ignore ${tmp('enabled.label')}`);
+    await stopLookingFor(page, tmp('enabled.label'));
 
     await expect(cards(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
@@ -804,7 +878,7 @@ test.describe('negative cases', () => {
     expect(JSON.parse(recorded ?? 'null')).toBeNull();
   });
 
-  test("Review's rows have no menu", async ({ page }) => {
+  test("Review's rows have the same menu as the details", async ({ page }) => {
     await openTemp(page);
     await page.getByRole('checkbox', { name: `Select ${TEMP_CATEGORY}` }).check();
 
@@ -812,21 +886,28 @@ test.describe('negative cases', () => {
 
     await expect(heading(page, 'Review')).toBeFocused();
     await expect(page.getByRole('list', { name: `The items of ${TEMP_CATEGORY}` })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Options for / })).toHaveCount(0);
+    await page
+      .getByRole('button', { name: /^Options for / })
+      .first()
+      .click();
+    await expect(page.getByRole('menuitem')).toHaveText([/^Show in Finder/u, /^Ignore this item/u, /^Ignore all /u]);
+    await expect(page.getByRole('separator')).toHaveCount(1);
   });
 
   test("nothing of Xcode's is selected before the user picks it", async ({ page }) => {
     await openXcode(page);
 
-    for (const name of [XC_DEVICE_SUPPORT, XC_PREVIEWS, XC_SIMULATOR, XC_ARCHIVES]) {
+    for (const name of [XC_DEVICE_SUPPORT, XC_PREVIEWS, XC_SIMULATOR]) {
       await expect(page.getByRole('checkbox', { name: `Select ${name}` })).not.toBeChecked();
     }
+    await expect(tileOf(page, XC_ARCHIVES).getByRole('checkbox')).not.toBeChecked();
     await expect(selectionBar(page)).toHaveCount(0);
     await zone(page, 'Safe to remove').getByRole('checkbox', { name: 'Select all' }).check();
     await expect(page.getByRole('checkbox', { name: `Select ${XC_PREVIEWS}` })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: `Select ${XC_SIMULATOR}` })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: `Select ${XC_DEVICE_SUPPORT}` })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${XC_ARCHIVES}` })).not.toBeChecked();
+    await expect(tileOf(page, XC_ARCHIVES).getByRole('checkbox')).not.toBeChecked();
+    await expect(tileOf(page, XC_ARCHIVES)).not.toHaveAttribute('data-selected');
     await expect(selectionBar(page)).toContainText('2 items selected');
   });
 
@@ -837,7 +918,7 @@ test.describe('negative cases', () => {
 
     await expect(details(page)).toContainText(`1 item left out (300 MB): ${xc('left-out.special')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
-    await page.getByRole('checkbox', { name: `Select all ${XC_DEVICE_SUPPORT}` }).check();
+    await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
     await expect(selectionBar(page)).not.toContainText('300 MB');
   });
@@ -846,8 +927,10 @@ test.describe('negative cases', () => {
     await openDocker(page);
 
     await expect(described(page).getByRole('checkbox')).toHaveCount(0);
-    for (const name of ['Safe to remove', 'Low risk', 'High risk']) {
-      await selectZone(page, name);
+    await selectZone(page, 'Safe to remove');
+    await selectZone(page, 'Usually safe');
+    for (const name of await zone(page, 'Only if you are sure').getByRole('heading', { level: 3 }).allTextContents()) {
+      await tickItemsOf(page, name);
     }
 
     // Xcode's five findings are the whole selection; the section adds none.
@@ -856,8 +939,10 @@ test.describe('negative cases', () => {
 
   test('the insight screen has no selection bar and Review never lists Docker', async ({ page }) => {
     await openDocker(page);
-    for (const name of ['Safe to remove', 'Low risk', 'High risk']) {
-      await selectZone(page, name);
+    await selectZone(page, 'Safe to remove');
+    await selectZone(page, 'Usually safe');
+    for (const name of await zone(page, 'Only if you are sure').getByRole('heading', { level: 3 }).allTextContents()) {
+      await tickItemsOf(page, name);
     }
     await openInsight(page, 'OrbStack');
 
@@ -973,7 +1058,7 @@ test.describe('negative cases', () => {
     await reviewDownloads(page);
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
-    const confirm = dialog.getByRole('button', { name: 'Move to Trash' });
+    const confirm = dialog.getByRole('button', { name: 'Yes, move to the Trash' });
 
     await expect(highTick(dialog)).not.toBeChecked();
     await expect(confirm).toBeDisabled();
@@ -988,48 +1073,106 @@ test.describe('negative cases', () => {
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
     await tickHigh(dialog);
-    await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeEnabled();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toHaveCount(0);
 
     await removeButton(page).click();
 
     await expect(highTick(dialog)).not.toBeChecked();
-    await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeDisabled();
   });
 
-  test('Select all in the danger zone asks first and Cancel selects nothing', async ({ page }) => {
+  test('a Look before removing group has no Select all', async ({ page }) => {
     await openDownloads(page);
-    const high = zone(page, 'High risk');
+    const high = zone(page, 'Only if you are sure');
 
-    await high.getByRole('checkbox', { name: 'Select all' }).click();
-    const question = page.getByRole('dialog', { name: 'Select everything at High?' });
-    await expect(question).toContainText(HIGH_MEANING);
-    await expect(question).toContainText('Nothing is removed until you confirm it in Review.');
-    await expect(question.getByRole('button', { name: 'Cancel' })).toBeFocused();
-    await question.getByRole('button', { name: 'Cancel' }).click();
-
-    await expect(question).toHaveCount(0);
-    await expect(high.getByRole('checkbox', { name: 'Select all' })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${DL_LARGE}` })).not.toBeChecked();
+    await expect(high.getByRole('heading', { level: 3, name: DL_LARGE })).toBeVisible();
+    await expect(high.getByRole('checkbox', { name: 'Select all' })).toHaveCount(0);
+    await expect(high.getByRole('checkbox', { exact: true, name: `Select ${DL_LARGE}` })).not.toBeChecked();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(selectionBar(page)).toHaveCount(0);
   });
 
   test('nothing in the danger zone is selected before you pick it', async ({ page }) => {
     await openDownloads(page);
 
-    for (const name of ['Medium risk', 'High risk']) {
-      const checkboxes = zone(page, name).getByRole('checkbox');
-      await expect(checkboxes.first()).toBeVisible();
-      for (const checkbox of await checkboxes.all()) {
-        await expect(checkbox).not.toBeChecked();
+    for (const name of ['Look before removing', 'Only if you are sure']) {
+      await expect(zone(page, name).getByRole('heading', { level: 3 }).first()).toBeVisible();
+      await expect(zone(page, name).getByRole('checkbox', { name: 'Select all' })).toHaveCount(0);
+      await expect(zone(page, name).getByRole('checkbox').first()).toBeVisible();
+      for (const box of await zone(page, name).getByRole('checkbox').all()) {
+        await expect(box).not.toBeChecked();
       }
     }
     await expect(selectionBar(page)).toHaveCount(0);
   });
+
+  test('a Look before removing category ticked on Scan sends nothing until its items are ticked', async ({ page }) => {
+    await openLeftovers(page);
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_CACHES}` }).check();
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_SETTINGS}` }).check();
+
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).toContainText('· 1 to check in Review');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    const settings = page.getByRole('article', { exact: true, name: LEFTOVERS_SETTINGS });
+    await expect(settings.getByRole('checkbox', { name: /^Select /u }).first()).toBeVisible();
+    for (const item of await settings.getByRole('checkbox', { name: /^Select /u }).all()) {
+      await expect(item).not.toBeChecked();
+    }
+    await removeButton(page).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
+    await expect(dialog).not.toContainText('Medium');
+    expect(preparedSelections(page)).toStrictEqual([
+      { categories: [{ category: 'app-leftovers.caches', except: [] }], findings: [] },
+    ]);
+  });
+
+  test('a Look tile shows how many of its items are not checked', async ({ page }) => {
+    await openLeftovers(page);
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_SETTINGS}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    const settings = page.getByRole('article', { exact: true, name: LEFTOVERS_SETTINGS });
+    const summary = page.getByRole('region', { name: 'What you are about to remove' });
+
+    await expect(settings).toContainText(/0 of \d+ checked/u);
+    await expect(settings).toContainText('· tick each one you have checked');
+    await expect(summary).toContainText(/· \d+ not checked/u);
+    await settings
+      .getByRole('checkbox', { name: /^Select /u })
+      .first()
+      .check();
+    await expect(settings).toContainText(/1 of \d+ checked/u);
+  });
+
+  test("the bar's button is inactive while nothing is ticked", async ({ page }) => {
+    await openLeftovers(page);
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_SETTINGS}` }).check();
+    await expect(selectionBar(page)).toContainText('1 to check in Review');
+    await expect(selectionBar(page)).not.toContainText('items selected');
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+
+    await expect(page.getByRole('article', { exact: true, name: LEFTOVERS_SETTINGS })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Ready to remove' })).toContainText('Tick at least one item first.');
+    await expect(removeButton(page)).toBeDisabled();
+    await expect(removeButton(page)).toHaveAccessibleDescription('Tick at least one item first.');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await preparedCommands(page)).toStrictEqual([]);
+  });
 });
 
 test.describe('positive cases', () => {
+  test('the sidebar has Largest when High is offered', async ({ page }) => {
+    await scanned(page, SCRIPTS.largest);
+
+    await expect(page.getByRole('navigation').getByRole('button', { name: 'Largest' })).toBeVisible();
+  });
+
   test('the scan screen shows what waits in the Trash and how much is from cleanups here', async ({ page }) => {
     await scanned(page, SCRIPTS.trash);
 
@@ -1050,7 +1193,7 @@ test.describe('positive cases', () => {
     await reviewAll(page);
     await expect(trashLine(page)).toHaveCount(0);
     await removeButton(page).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
     await page.getByRole('region', { name: 'Moved to the Trash' }).getByRole('button', { name: 'Done' }).click();
     await navScan(page).click();
 
@@ -1061,7 +1204,7 @@ test.describe('positive cases', () => {
     await mockCore(page, SCRIPTS.trashCleaning);
     await reviewAll(page);
     await removeButton(page).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Look at what is there and empty it yourself if you no longer need it.');
@@ -1074,7 +1217,7 @@ test.describe('positive cases', () => {
     await mockCore(page, SCRIPTS.trashCleaning);
     await reviewAll(page);
     await removeButton(page).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
     const button = page.getByRole('region', { name: 'Moved to the Trash' }).getByRole('button', {
       name: 'Removed something you need?',
     });
@@ -1112,15 +1255,15 @@ test.describe('positive cases', () => {
     await expect(trashLine(page)).toContainText('Finder removes them by itself by Jan 1, 2026.');
   });
 
-  test("Ignore this category from a card's menu takes it out of every total", async ({ page }) => {
+  test("Ignore all from a card's menu takes the category out of every total", async ({ page }) => {
     await openIgnoring(page);
 
     await page.getByRole('button', { name: 'Options for Example caches' }).click();
-    await page.getByRole('menuitem', { name: 'Ignore this category' }).click();
+    await page.getByRole('menuitem', { name: 'Ignore all Example caches' }).click();
 
     await expect(cards(page)).toHaveCount(1);
     await expect(cardNames(page)).toHaveText(['Example downloads']);
-    await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
+    await expect(page.getByText('1 thing you ignored is not shown here.')).toBeVisible();
     const recorded = await page.evaluate(() => sessionStorage.getItem('fresher.mock.ignore'));
     expect(JSON.parse(recorded ?? 'null')).toMatchObject({ categories: ['demo.caches'] });
   });
@@ -1140,6 +1283,18 @@ test.describe('positive cases', () => {
     expect(JSON.parse(recorded ?? 'null')).toMatchObject({ paths: ['/demo/editor-cache'] });
   });
 
+  test("Ignore all from a row's menu ignores its category", async ({ page }) => {
+    await openIgnoring(page);
+    await openDetails(page, 'Example caches');
+
+    await page.getByRole('button', { name: 'Options for Example: editor-cache' }).click();
+    await page.getByRole('menuitem', { name: 'Ignore all Example caches' }).click();
+
+    const recorded = async (): Promise<unknown> =>
+      JSON.parse((await page.evaluate(() => sessionStorage.getItem('fresher.mock.ignore'))) ?? 'null') as unknown;
+    await expect.poll(recorded).toMatchObject({ categories: ['demo.caches'] });
+  });
+
   test('Settings lists the ignored item by its path and Restore brings its row back', async ({ page }) => {
     await openIgnoring(page);
     await openDetails(page, 'Example caches');
@@ -1148,8 +1303,8 @@ test.describe('positive cases', () => {
     const list = page.getByRole('list', { name: 'The items of Example caches' });
     await expect(list.getByRole('listitem')).toHaveCount(1);
 
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored items/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Items/ }).click();
     const restore = page.getByRole('button', { name: 'Restore /demo/editor-cache' });
     await expect(restore).toBeVisible();
     await restore.click();
@@ -1168,6 +1323,9 @@ test.describe('positive cases', () => {
 
     await tabTo(page, page.getByRole('button', { name: 'Options for Example: editor-cache' }));
     await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem', { name: 'Show in Finder' })).toBeFocused();
+    // The arrow keys skip the separator after Show in Finder.
+    await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('menuitem', { name: 'Ignore this item' })).toBeFocused();
     await page.keyboard.press('Enter');
 
@@ -1182,14 +1340,11 @@ test.describe('positive cases', () => {
 
     await tabTo(page, options);
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('menuitem', { name: 'Ignore this category' })).toBeFocused();
-    await page.keyboard.press('ArrowDown');
-    await expect(page.getByRole('menuitem', { name: 'Ignore Demo module' })).toBeFocused();
-    await page.keyboard.press('ArrowUp');
+    await expect(page.getByRole('menuitem', { name: 'Ignore all Example caches' })).toBeFocused();
     await page.keyboard.press('Enter');
 
     await expect(cards(page)).toHaveCount(1);
-    await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
+    await expect(page.getByText('1 thing you ignored is not shown here.')).toBeVisible();
   });
 
   test("Space on a card's menu item chooses it and leaves the menu closed", async ({ page }) => {
@@ -1198,7 +1353,7 @@ test.describe('positive cases', () => {
 
     await tabTo(page, options);
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('menuitem', { name: 'Ignore this category' })).toBeFocused();
+    await expect(page.getByRole('menuitem', { name: 'Ignore all Example caches' })).toBeFocused();
     await page.keyboard.press('Space');
 
     await expect(cards(page)).toHaveCount(1);
@@ -1245,10 +1400,13 @@ test.describe('positive cases', () => {
     await choice(page, 'keep-settings').click();
 
     await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).not.toContainText('to check in Review');
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_SETTINGS}` })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_DATA}` })).not.toBeChecked();
+    for (const name of [LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
+      await expect(tileOf(page, name)).not.toHaveAttribute('data-selected');
+      await expect(tileOf(page, name).getByRole('checkbox')).not.toBeChecked();
+    }
   });
 
   test("Select all of a zone, then the selection bar's Review lists those categories", async ({ page }) => {
@@ -1257,7 +1415,7 @@ test.describe('positive cases', () => {
     await scanButton(page).click();
     await expect(cards(page)).toHaveCount(2);
 
-    await zone(page, 'Low risk').getByRole('checkbox', { name: 'Select all' }).check();
+    await zone(page, 'Usually safe').getByRole('checkbox', { name: 'Select all' }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
 
@@ -1268,29 +1426,68 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('list', { name: 'The items of Example caches' })).toHaveCount(0);
   });
 
-  test('from a scan to the review of what was ticked, in the zones of the Scan screen', async ({ page }) => {
+  test('from a scan to the review of what was ticked, one tile per category in the groups of the Scan screen', async ({
+    page,
+  }) => {
     await mockCore(page, SCRIPTS.demo);
     await reviewAll(page);
 
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove']);
-    await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Safe', 'Low']);
-    await expect(zone(page, 'Safe').getByRole('heading', { level: 4 })).toHaveText('Example caches');
-    await expect(zone(page, 'Low').getByRole('heading', { level: 4 })).toHaveText('Example downloads');
-    await expect(page.getByRole('checkbox', { name: 'Select all' })).toHaveCount(0);
-    await expect(page.getByRole('region', { name: 'What you are about to remove' })).not.toContainText(
-      'Your selection reaches the danger zone',
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Example caches', 'Example downloads']);
+    await expect(page.getByRole('article', { name: 'Example caches' })).toContainText(
+      'Safe to remove · Apps make these again on their own',
     );
+    await expect(page.getByRole('article', { name: 'Example downloads' })).toContainText('Usually safe · ');
+    await expect(page.getByRole('checkbox', { name: 'Select all' })).toHaveCount(0);
+    const summary = page.getByRole('region', { name: 'What you are about to remove' });
+    await expect(summary).toContainText('goes to the Trash · 3 items');
+    await expect(
+      summary.getByRole('img', { name: /^Size of each group: Safe to remove, .+; Usually safe, .+$/u }),
+    ).toBeVisible();
+    await expect(summary).not.toContainText('not checked');
   });
 
-  test('unticking the last row of a zone removes the zone', async ({ page }) => {
+  test('unticking the last row of a tile removes the tile', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await reviewAll(page);
-    await expect(zone(page, 'Low')).toBeVisible();
+    await expect(page.getByRole('article', { name: 'Example downloads' })).toBeVisible();
 
     await page.getByRole('checkbox', { name: 'Select Example: installer.dmg' }).click();
 
-    await expect(zone(page, 'Low')).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Safe']);
+    await expect(page.getByRole('article', { name: 'Example downloads' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Example caches']);
+  });
+
+  test('unticking an item takes it out of the summary', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await reviewAll(page);
+    const summary = page.getByRole('region', { name: 'What you are about to remove' });
+    const caches = page.getByRole('article', { name: 'Example caches' });
+    await expect(summary).toContainText('goes to the Trash · 3 items');
+
+    await page.getByRole('checkbox', { name: 'Select Example: browser-cache' }).click();
+
+    await expect(summary).toContainText('goes to the Trash · 2 items');
+    await expect(page.getByRole('region', { name: 'Ready to remove' })).toContainText('2 items');
+    await expect(caches).toContainText('1 of 2 checked');
+    await expect(caches.getByRole('checkbox', { name: 'All Example caches' })).toBeChecked({ indeterminate: true });
+  });
+
+  test("a tile's pill turns green when every item is checked", async ({ page }) => {
+    await openLeftovers(page);
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_SETTINGS}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    const settings = page.getByRole('article', { exact: true, name: LEFTOVERS_SETTINGS });
+    const pill = settings.getByText(/^\d+ of \d+ checked$/u);
+    await expect(settings.getByRole('checkbox', { name: /^Select /u }).first()).toBeVisible();
+    await expect(pill).not.toHaveAttribute('data-all');
+
+    for (const item of await settings.getByRole('checkbox', { name: /^Select /u }).all()) {
+      await item.check();
+    }
+
+    await expect(pill).toHaveAttribute('data-all', 'true');
+    await expect(page.getByRole('region', { name: 'What you are about to remove' })).not.toContainText('not checked');
   });
 
   test("the selection bar's Clear empties the selection on the overview", async ({ page }) => {
@@ -1311,11 +1508,11 @@ test.describe('positive cases', () => {
     await page.goto('/');
 
     await scanButton(page).click();
-    await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
+    await expect(page.getByRole('progressbar', { name: /^Scanning, \d+ percent$/u })).toBeVisible();
 
     await page.getByRole('button', { name: 'Stop' }).click();
 
-    await expect(page.getByText('This scan is incomplete')).toBeVisible();
+    await expect(page.getByText('This scan is not complete')).toBeVisible();
     await expect(cards(page)).toHaveText([/1 item/, /1 item/]);
     await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
   });
@@ -1342,7 +1539,8 @@ test.describe('positive cases', () => {
     await mockCore(page, SCRIPTS.settings);
     await page.goto('/');
     await page.getByRole('button', { exact: true, name: 'Settings' }).click();
-    const enabled = page.getByRole('switch', { name: 'Demo module' });
+    await settingsPage(page, 'Demo module', 'Debug', 'Demo module');
+    const enabled = page.getByRole('switch', { name: 'Look for Demo module' });
     await expect(enabled).toBeChecked();
 
     await enabled.click();
@@ -1350,10 +1548,67 @@ test.describe('positive cases', () => {
     await expect(enabled).not.toBeChecked();
   });
 
+  test.describe('the settings search', () => {
+    const open = async (page: Page): Promise<Locator> => {
+      await mockCore(page, SCRIPTS.settings);
+      await page.goto('/');
+      await openSettings(page);
+      await expect(heading(page, 'General')).toBeVisible();
+
+      return page.getByRole('searchbox', { name: 'Search settings' });
+    };
+
+    test('a search with no match says so and leaves the settings unchanged', async ({ page }) => {
+      const field = await open(page);
+
+      await field.fill('zebra');
+
+      await expect(heading(page, 'Nothing matches “zebra”')).toBeVisible();
+      await field.fill('');
+      await expect(heading(page, 'General')).toBeVisible();
+      await expect(page.getByRole('radio', { name: 'Follow your Mac' })).toBeChecked();
+    });
+
+    test('a search lists every setting whose label or description matches, the match marked', async ({ page }) => {
+      const field = await open(page);
+
+      await field.fill('days');
+
+      await expect(heading(page, '1 setting matches “days”')).toBeVisible();
+      const hit = page.getByRole('button', { name: /Stale after/u });
+      await expect(hit).toContainText('Scan');
+      await expect(hit).toContainText('90 days. A project untouched for this long counts as stale.');
+      await expect(hit.locator('mark')).toHaveText('days');
+    });
+
+    test('a click opens the page with the setting focused', async ({ page }) => {
+      const field = await open(page);
+      await field.fill('days');
+
+      await page.getByRole('button', { name: /Stale after/u }).click();
+
+      await expect(heading(page, 'Scan')).toBeVisible();
+      await expect(field).toHaveValue('');
+      await expect(page.getByRole('slider', { name: 'Stale after, days' })).toBeFocused();
+    });
+
+    test('Esc clears the search', async ({ page }) => {
+      const field = await open(page);
+      await field.fill('days');
+      await expect(heading(page, '1 setting matches “days”')).toBeVisible();
+
+      await page.keyboard.press('Escape');
+
+      await expect(field).toHaveValue('');
+      await expect(heading(page, 'General')).toBeVisible();
+    });
+  });
+
   test('adding a scan folder with the picker, then resetting the list', async ({ page }) => {
     await mockCore(page, SCRIPTS.settings);
     await page.goto('/');
     await page.getByRole('button', { exact: true, name: 'Settings' }).click();
+    await settingsPage(page, 'Scan', 'Scan');
     const folders = page.getByRole('group', { name: 'Folders to scan' });
 
     await folders.getByRole('button', { name: 'Add folder…' }).click();
@@ -1420,7 +1675,7 @@ test.describe('positive cases', () => {
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
     await expect(dialog).toContainText('You get the space back when you empty the Trash.');
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     await expect(page.getByText('Moving 2 of 3 to the Trash…')).toBeVisible();
     await expect(page.getByRole('progressbar', { name: 'Cleanup progress' })).toHaveAttribute('aria-valuenow', '33');
@@ -1459,7 +1714,7 @@ test.describe('positive cases', () => {
 
     const result = page.getByRole('region', { name: 'Freed' });
     await expect(result).toContainText('Deleted 3 items permanently');
-    await expect(result).toContainText('Measured on the disk: about 2.6 GB.');
+    await expect(result).toContainText('Freed on the disk: about 2.6 GB.');
     await expect(result.getByRole('button', { name: 'Show in the Trash' })).toHaveCount(0);
   });
 
@@ -1467,7 +1722,7 @@ test.describe('positive cases', () => {
     await mockCore(page, SCRIPTS.cleaningHeld);
     await reviewAll(page);
     await removeButton(page).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     await page.getByRole('button', { name: 'Stop' }).click();
 
@@ -1495,14 +1750,14 @@ test.describe('positive cases', () => {
     page,
   }) => {
     await openIgnoring(page);
-    await openSettings(page);
+    await openIgnored(page);
 
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
 
     await navScan(page).click();
-    await expect(page.getByText('1 thing you ignored is left out of these results.')).toBeVisible();
+    await expect(page.getByText('1 thing you ignored is not shown here.')).toBeVisible();
     await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
+    await openIgnored(page);
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(2);
@@ -1511,15 +1766,15 @@ test.describe('positive cases', () => {
 
   test('ignoring the module from Settings hides its cards and turning it off brings them back', async ({ page }) => {
     await openIgnoring(page);
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Not looked for/ }).click();
 
     await page.getByRole('switch', { name: 'Ignore Demo module' }).click();
 
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Not looked for/ }).click();
     await page.getByRole('switch', { name: 'Ignore Demo module' }).click();
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(2);
@@ -1527,16 +1782,16 @@ test.describe('positive cases', () => {
 
   test('a module of an ignored group is locked with its note and turning the group off frees it', async ({ page }) => {
     await openIgnoring(page);
-    await openSettings(page);
+    await openIgnored(page);
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
-    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await page.getByRole('tab', { name: /^Not looked for/ }).click();
 
     const locked = page.getByRole('switch', { name: 'Ignore Demo module' });
     await expect(locked).toBeDisabled();
-    await expect(page.getByText('Ignored with its group: Debug')).toBeVisible();
-    await page.getByRole('tab', { name: /^Ignored groups/ }).click();
+    await expect(page.getByText('Ignored with its section: Debug')).toBeVisible();
+    await page.getByRole('tab', { name: /^Sections/ }).click();
     await page.getByRole('switch', { name: 'Ignore Debug' }).click();
-    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await page.getByRole('tab', { name: /^Not looked for/ }).click();
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeEnabled();
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(2);
@@ -1544,34 +1799,23 @@ test.describe('positive cases', () => {
 
   test('ignored modules and groups stay ignored after a reload', async ({ page }) => {
     await openIgnoring(page);
-    await fromCardMenu(page, 'Example caches', 'Ignore Demo module');
+    await stopLookingFor(page, 'Demo module');
     await expect(cards(page)).toHaveCount(0);
 
     await page.reload();
 
-    await openSettings(page);
-    await expect(page.getByRole('tab', { name: /^Ignored modules/ })).toHaveAttribute('aria-selected', 'true');
+    await openIgnored(page);
+    await expect(page.getByRole('tab', { name: /^Not looked for/ })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
   });
 
   test('the ignored line on the overview opens Settings on the tab with an entry', async ({ page }) => {
     await openIgnoring(page);
-    await fromCardMenu(page, 'Example caches', 'Ignore Demo module');
+    await stopLookingFor(page, 'Demo module');
 
     await page.getByRole('button', { name: 'Show in Settings' }).click();
 
-    await expect(page.getByRole('tab', { name: /^Ignored modules/ })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
-  });
-
-  test("Ignore Demo module from a card's menu moves it to the Ignored modules tab", async ({ page }) => {
-    await openIgnoring(page);
-
-    await fromCardMenu(page, 'Example downloads', 'Ignore Demo module');
-
-    await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
-    await expect(page.getByRole('tab', { name: 'Ignored modules · 1' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^Not looked for/ })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('switch', { name: 'Ignore Demo module' })).toBeChecked();
   });
 
@@ -1580,7 +1824,7 @@ test.describe('positive cases', () => {
     await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
     await expect(page.getByRole('button', { name: /^Review \d+ items? selected/ })).toBeVisible();
 
-    await fromCardMenu(page, 'Example caches', 'Ignore Demo module');
+    await stopLookingFor(page, 'Demo module');
 
     await expect(cards(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
@@ -1590,17 +1834,17 @@ test.describe('positive cases', () => {
     await openJetbrains(page);
 
     for (const [name, level] of [
-      [JB.caches, 'Safe'],
-      [JB.logs, 'Safe'],
-      [JB.settings, 'Medium'],
-      [JB.uninstalled, 'Medium'],
+      [JB.caches, 'Safe to remove'],
+      [JB.logs, 'Safe to remove'],
+      [JB.settings, 'Look before removing'],
+      [JB.uninstalled, 'Look before removing'],
     ] as const) {
       await openDetails(page, name);
-      await expect(details(page).getByRole('region', { name: 'Danger level' })).toContainText(level);
+      await expect(details(page)).toContainText(level);
       await page.getByRole('button', { name: 'Back to Scan' }).click();
     }
     await openDetails(page, JB.caches);
-    const about = details(page).getByRole('region', { name: 'About it' });
+    const about = details(page);
     await expect(about).toContainText(jb('caches.what'));
     await expect(about).toContainText(jb('caches.if-removed'));
   });
@@ -1623,7 +1867,7 @@ test.describe('positive cases', () => {
     await openDetails(page, JB.uninstalled);
 
     const removed = details(page);
-    await expect(removed).toContainText('Medium');
+    await expect(removed).toContainText('Look before removing');
     await expect(removed).toContainText('2 items');
     await expect(removed).toContainText(jb('uninstalled.what'));
     await expect(removed).toContainText(jb('uninstalled.if-removed'));
@@ -1641,7 +1885,7 @@ test.describe('positive cases', () => {
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
     await expect(dialog).toContainText('Medium');
     await expect(dialog).toContainText(jb('settings.if-removed'));
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 3 items to the Trash');
@@ -1652,16 +1896,16 @@ test.describe('positive cases', () => {
     await expect(caches).toContainText('Put back where it was.');
   });
 
-  test("ignoring the module from a card's menu hides its totals, Settings lists it and turning it off restores it", async ({
+  test('ignoring the module in Settings hides its totals, Settings lists it and turning it off restores it', async ({
     page,
   }) => {
     await openJetbrains(page);
 
-    await fromCardMenu(page, JB.caches, 'Ignore JetBrains IDEs');
+    await stopLookingFor(page, 'JetBrains IDEs');
 
     await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Not looked for/ }).click();
     const ignored = page.getByRole('switch', { name: 'Ignore JetBrains IDEs' });
     await expect(ignored).toBeChecked();
     await ignored.click();
@@ -1674,13 +1918,13 @@ test.describe('positive cases', () => {
   }) => {
     await openJetbrains(page);
     await expect(cards(page)).toHaveCount(4);
-    await openSettings(page);
+    await openIgnored(page);
 
     await page.getByRole('switch', { name: 'Ignore Development' }).click();
 
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
+    await openIgnored(page);
     await page.getByRole('switch', { name: 'Ignore Development' }).click();
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(4);
@@ -1689,12 +1933,12 @@ test.describe('positive cases', () => {
   test('the module’s days setting is in Settings with its text', async ({ page }) => {
     await mockCore(page, SCRIPTS.jetbrains);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, jb('enabled.label'));
 
     const days = page.getByRole('spinbutton', { name: jb('uninstalled-after-days.label') });
     await expect(days).toHaveValue('30');
     await expect(page.getByText(jb('uninstalled-after-days.description'))).toBeVisible();
-    await expect(page.getByRole('switch', { name: jb('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${jb('enabled.label')}` })).toBeChecked();
   });
 
   test('the details of Temporary files show the category, Safe and its texts', async ({ page }) => {
@@ -1736,7 +1980,7 @@ test.describe('positive cases', () => {
     const dialog = page.getByRole('dialog', { name: 'Move 5 items to the Trash?' });
     await expect(dialog).toContainText('Safe');
     await expect(dialog).toContainText(tmp('old-files.if-removed'));
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 5 items to the Trash');
@@ -1759,7 +2003,7 @@ test.describe('positive cases', () => {
     await expect(cards(page).filter({ hasText: lg('crash-reports.name') })).toContainText('1 item');
   });
 
-  test('the details of Old logs of your apps show the category, Safe and its texts', async ({ page }) => {
+  test('the details of Old app logs show the category, Safe and its texts', async ({ page }) => {
     await openLogs(page);
 
     await openDetails(page, LOGS_CATEGORY);
@@ -1807,7 +2051,7 @@ test.describe('positive cases', () => {
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
     await expect(dialog).toContainText(lg('app-logs.if-removed'));
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 2 items to the Trash');
@@ -1821,12 +2065,12 @@ test.describe('positive cases', () => {
   test('Settings shows the logs switch and the days field, which cannot go below 7', async ({ page }) => {
     await mockCore(page, SCRIPTS.logs);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, lg('enabled.label'));
 
     const days = page.getByRole('spinbutton', { name: lg('older-than-days.label') });
     await expect(days).toHaveValue('7');
     await expect(page.getByText(lg('older-than-days.description'))).toBeVisible();
-    await expect(page.getByRole('switch', { name: lg('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${lg('enabled.label')}` })).toBeChecked();
     await recordUpdates(page);
 
     await days.fill('6');
@@ -1835,15 +2079,32 @@ test.describe('positive cases', () => {
     expect(await sentUpdates(page)).toBe(0);
   });
 
+  test('dragging the slider saves the number', async ({ page }) => {
+    await mockCore(page, SCRIPTS.temp);
+    await page.goto('/');
+    await openModulePage(page, tmp('enabled.label'));
+    const slider = page.getByRole('slider', { name: `${tmp('older-than-days.label')}, days` });
+    const days = page.getByRole('spinbutton', { name: tmp('older-than-days.label') });
+    await expect(slider).toHaveValue('7');
+    await recordUpdates(page);
+
+    await slider.focus();
+    await page.keyboard.press('ArrowRight');
+
+    await expect(slider).toHaveValue('8');
+    await expect(days).toHaveValue('8');
+    expect(await sentUpdates(page)).toBe(1);
+  });
+
   test('Settings has the number field at 7 days with its text, and 14 is accepted', async ({ page }) => {
     await mockCore(page, SCRIPTS.temp);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, tmp('enabled.label'));
 
     const days = page.getByRole('spinbutton', { name: tmp('older-than-days.label') });
     await expect(days).toHaveValue('7');
     await expect(page.getByText(tmp('older-than-days.description'))).toBeVisible();
-    await expect(page.getByRole('switch', { name: tmp('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${tmp('enabled.label')}` })).toBeChecked();
 
     await recordUpdates(page);
 
@@ -1854,30 +2115,28 @@ test.describe('positive cases', () => {
     await expect(page.getByText('Enter a whole number from 7 to 30.')).toHaveCount(0);
   });
 
-  test("ignoring the module from a card's menu and the group System from Settings, then restoring both", async ({
-    page,
-  }) => {
+  test('ignoring the module and the group System from Settings, then restoring both', async ({ page }) => {
     await openTemp(page);
 
-    await fromCardMenu(page, TEMP_CATEGORY, `Ignore ${tmp('enabled.label')}`);
+    await stopLookingFor(page, tmp('enabled.label'));
 
     await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored modules/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Not looked for/ }).click();
     const ignored = page.getByRole('switch', { name: 'Ignore Temporary files' });
     await expect(ignored).toBeChecked();
     await ignored.click();
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(1);
 
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored groups/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Sections/ }).click();
     await page.getByRole('switch', { name: 'Ignore System' }).click();
 
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(0);
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored groups/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Sections/ }).click();
     await page.getByRole('switch', { name: 'Ignore System' }).click();
     await navScan(page).click();
     await expect(cards(page)).toHaveCount(1);
@@ -1896,12 +2155,12 @@ test.describe('positive cases', () => {
     await openDevCaches(page);
 
     await openDetails(page, XCODE_DATA);
-    await expect(details(page)).toContainText('Safe');
+    await expect(details(page)).toContainText('Safe to remove');
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, NPM);
 
     const npm = details(page);
-    await expect(npm).toContainText('Low');
+    await expect(npm).toContainText('Usually safe');
     for (const key of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(npm).toContainText(dev(`npm.${key}`));
     }
@@ -1920,7 +2179,7 @@ test.describe('positive cases', () => {
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
     await expect(dialog).toContainText('Low');
     await expect(dialog).toContainText(dev('npm.if-removed'));
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 3 items to the Trash');
@@ -1934,14 +2193,14 @@ test.describe('positive cases', () => {
   test('ignoring npm’s cache keeps the other caches, and restoring brings it back', async ({ page }) => {
     await openDevCaches(page);
 
-    await fromCardMenu(page, NPM, 'Ignore this category');
+    await fromCardMenu(page, NPM, `Ignore all ${NPM}`);
 
     await expect(cards(page).filter({ hasText: NPM })).toHaveCount(0);
     for (const name of [CARGO, GRADLE, XCODE_DATA]) {
       await expect(cards(page).filter({ hasText: name })).toBeVisible();
     }
-    await openSettings(page);
-    await page.getByRole('tab', { name: /^Ignored items/ }).click();
+    await openIgnored(page);
+    await page.getByRole('tab', { name: /^Items/ }).click();
     await page.getByRole('button', { name: `Restore ${NPM}` }).click();
     await navScan(page).click();
     await expect(cards(page).filter({ hasText: NPM })).toContainText('8.9 GB');
@@ -1950,7 +2209,7 @@ test.describe('positive cases', () => {
   test('ignoring the developer caches module hides them all', async ({ page }) => {
     await openDevCaches(page);
 
-    await fromCardMenu(page, NPM, `Ignore ${dev('enabled.label')}`);
+    await stopLookingFor(page, dev('enabled.label'));
 
     await expect(cards(page)).toHaveCount(0);
   });
@@ -1958,9 +2217,9 @@ test.describe('positive cases', () => {
   test('Settings shows the developer caches switch alone', async ({ page }) => {
     await mockCore(page, SCRIPTS.devCaches);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, dev('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: dev('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${dev('enabled.label')}` })).toBeChecked();
     await expect(page.getByText(dev('enabled.description'))).toBeVisible();
     await expect(page.getByRole('spinbutton')).toHaveCount(0);
   });
@@ -1984,7 +2243,7 @@ test.describe('positive cases', () => {
     ] as const) {
       await openDetails(page, name);
       const category = details(page);
-      await expect(category).toContainText(danger);
+      await expect(category).toContainText(GROUP_OF[danger as keyof typeof GROUP_OF]);
       for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(left(`${key}.${text}`));
       }
@@ -1992,23 +2251,79 @@ test.describe('positive cases', () => {
     }
   });
 
-  test('Remove everything selects the three categories and the review names High', async ({ page }) => {
+  test('Remove everything brings its Look categories to Review to check; ticked there, the review names High', async ({
+    page,
+  }) => {
     await openLeftovers(page);
     await openDetails(page, LEFTOVERS_DATA);
 
     await choice(page, 'everything').click();
 
     await page.getByRole('button', { name: 'Back to Scan' }).click();
-    for (const name of [LEFTOVERS_CACHES, LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
-      await expect(page.getByRole('checkbox', { name: `Select ${name}` })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` })).toBeChecked();
+    for (const name of [LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
+      await expect(tileOf(page, name)).toHaveAttribute('data-selected', 'true');
+      await expect(tileOf(page, name).getByRole('checkbox')).toBeChecked();
     }
-    await expect(selectionBar(page)).toContainText('5 items selected');
+    // Only the caches go: the Look categories are to check, nothing of them is ticked for the user.
+    await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).toContainText('· 2 to check in Review');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await expect(heading(page, 'Review')).toBeFocused();
+    for (const name of [LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
+      await expect(page.getByRole('checkbox', { exact: true, name: `All ${name}` })).not.toBeChecked();
+      await page.getByRole('checkbox', { exact: true, name: `All ${name}` }).check();
+    }
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 5 items to the Trash?' });
     await expect(dialog).toContainText('High');
     await expect(dialog).toContainText(left('data.if-removed'));
+    expect(preparedSelections(page)).toStrictEqual([
+      {
+        categories: [
+          { category: 'app-leftovers.caches', except: [] },
+          { category: 'app-leftovers.settings', except: [] },
+          { category: 'app-leftovers.data', except: [] },
+        ],
+        findings: [],
+      },
+    ]);
+  });
+
+  test('an item ticked in Review goes', async ({ page }) => {
+    await openLeftovers(page);
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_SETTINGS}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+    const settings = page.getByRole('article', { exact: true, name: LEFTOVERS_SETTINGS });
+
+    await settings
+      .getByRole('checkbox', { name: /^Select /u })
+      .first()
+      .check();
+    await expect(settings.getByRole('checkbox', { exact: true, name: `All ${LEFTOVERS_SETTINGS}` })).not.toBeChecked();
+    await removeButton(page).click();
+
+    await expect(page.getByRole('dialog', { name: 'Move 1 item to the Trash?' })).toBeVisible();
+    const [sent] = preparedSelections(page);
+    expect(sent?.categories).toStrictEqual([]);
+    expect(sent?.findings).toHaveLength(1);
+  });
+
+  test('ticking all of a Look category in Review sends the category', async ({ page }) => {
+    await openLeftovers(page);
+    await page.getByRole('checkbox', { exact: true, name: `Select ${LEFTOVERS_DATA}` }).check();
+    await selectionBar(page).getByRole('button', { name: 'Review' }).click();
+    await expect(heading(page, 'Review')).toBeFocused();
+
+    await page.getByRole('checkbox', { exact: true, name: `All ${LEFTOVERS_DATA}` }).check();
+    await removeButton(page).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
+    await expect(dialog).toContainText('High');
+    expect(preparedSelections(page)).toStrictEqual([
+      { categories: [{ category: 'app-leftovers.data', except: [] }], findings: [] },
+    ]);
   });
 
   test('Keep settings selects only the caches and the review names Safe', async ({ page }) => {
@@ -2020,9 +2335,12 @@ test.describe('positive cases', () => {
     await page.getByRole('button', { name: 'Back to Scan' }).click();
 
     await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_CACHES}` })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_SETTINGS}` })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${LEFTOVERS_DATA}` })).not.toBeChecked();
+    for (const name of [LEFTOVERS_SETTINGS, LEFTOVERS_DATA]) {
+      await expect(tileOf(page, name)).not.toHaveAttribute('data-selected');
+      await expect(tileOf(page, name).getByRole('checkbox')).not.toBeChecked();
+    }
     await expect(selectionBar(page)).toContainText('2 items selected');
+    await expect(selectionBar(page)).not.toContainText('to check in Review');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
@@ -2038,7 +2356,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 2 items to the Trash');
@@ -2052,9 +2370,9 @@ test.describe('positive cases', () => {
   test('Settings shows the switch and the days for removed apps', async ({ page }) => {
     await mockCore(page, SCRIPTS.appLeftovers);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, left('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: left('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${left('enabled.label')}` })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: left('uninstalled-after-days.label') })).toHaveValue('30');
     await expect(page.getByText(left('uninstalled-after-days.description'))).toBeVisible();
   });
@@ -2080,7 +2398,7 @@ test.describe('positive cases', () => {
     ] as const) {
       await openDetails(page, name);
       const category = details(page);
-      await expect(category).toContainText(danger);
+      await expect(category).toContainText(GROUP_OF[danger as keyof typeof GROUP_OF]);
       for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(dl(`${key}.${text}`));
       }
@@ -2092,7 +2410,7 @@ test.describe('positive cases', () => {
     await openDownloads(page);
 
     await page.getByRole('checkbox', { name: `Select ${DL_INSTALLERS}` }).check();
-    await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+    await tickItemsOf(page, DL_LARGE);
 
     await expect(selectionBar(page)).toContainText('3 items selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
@@ -2106,12 +2424,12 @@ test.describe('positive cases', () => {
   test('the installers and the big file go to the Trash and come back from the Cleanups', async ({ page }) => {
     await openDownloads(page);
     await page.getByRole('checkbox', { name: `Select ${DL_INSTALLERS}` }).check();
-    await page.getByRole('checkbox', { name: `Select ${DL_LARGE}` }).check();
+    await tickItemsOf(page, DL_LARGE);
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
     await tickHigh(dialog);
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 3 items to the Trash');
@@ -2129,7 +2447,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 2 items to the Trash');
@@ -2144,9 +2462,9 @@ test.describe('positive cases', () => {
   test('Settings shows the switch and the days for downloads', async ({ page }) => {
     await mockCore(page, SCRIPTS.downloads);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, dl('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: dl('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${dl('enabled.label')}` })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: dl('older-than-days.label') })).toHaveValue('30');
     await expect(page.getByText(dl('older-than-days.description'))).toBeVisible();
   });
@@ -2171,7 +2489,7 @@ test.describe('positive cases', () => {
     ] as const) {
       await openDetails(page, name);
       const category = details(page);
-      await expect(category).toContainText(danger);
+      await expect(category).toContainText(GROUP_OF[danger as keyof typeof GROUP_OF]);
       for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(sp(`${key}.${text}`));
       }
@@ -2199,7 +2517,7 @@ test.describe('positive cases', () => {
   test('selecting the Python environments and the build output makes the review name Medium', async ({ page }) => {
     await openStaleProjects(page);
 
-    await page.getByRole('checkbox', { name: `Select ${SP_PYTHON}` }).check();
+    await tickItemsOf(page, SP_PYTHON);
     await page.getByRole('checkbox', { name: `Select ${SP_BUILD}` }).check();
 
     await expect(selectionBar(page)).toContainText('2 items selected');
@@ -2214,11 +2532,11 @@ test.describe('positive cases', () => {
   test('a build output goes to the Trash and comes back from the Cleanups', async ({ page }) => {
     await openStaleProjects(page);
     await page.getByRole('checkbox', { name: `Select ${SP_BUILD}` }).check();
-    await page.getByRole('checkbox', { name: `Select ${SP_PYTHON}` }).check();
+    await tickItemsOf(page, SP_PYTHON);
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 2 items to the Trash');
@@ -2232,9 +2550,9 @@ test.describe('positive cases', () => {
   test('Settings shows the switch and the days for old projects', async ({ page }) => {
     await mockCore(page, SCRIPTS.staleProjects);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, sp('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: sp('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${sp('enabled.label')}` })).toBeChecked();
     await expect(page.getByRole('spinbutton', { name: sp('unused-for-days.label') })).toHaveValue('365');
     await expect(page.getByText(sp('unused-for-days.description'))).toBeVisible();
   });
@@ -2258,7 +2576,7 @@ test.describe('positive cases', () => {
     ] as const) {
       await openDetails(page, name);
       const category = details(page);
-      await expect(category).toContainText(danger);
+      await expect(category).toContainText(GROUP_OF[danger as keyof typeof GROUP_OF]);
       for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(ai(`${key}.${text}`));
       }
@@ -2286,7 +2604,7 @@ test.describe('positive cases', () => {
   test('selecting an LM Studio model makes the review name Medium', async ({ page }) => {
     await openLocalAiModels(page);
 
-    await page.getByRole('checkbox', { name: `Select ${AI_LM_STUDIO}` }).check();
+    await tickItemsOf(page, AI_LM_STUDIO);
 
     await expect(selectionBar(page)).toContainText('1 item selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
@@ -2304,7 +2622,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 1 item to the Trash');
@@ -2349,7 +2667,7 @@ test.describe('positive cases', () => {
 
     const category = details(page);
     await expect(category.getByRole('heading', { name: AI_OLLAMA })).toBeVisible();
-    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('Medium');
+    await expect(category).toContainText('Look before removing');
     for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(category).toContainText(ai(`ollama.${text}`));
     }
@@ -2358,7 +2676,7 @@ test.describe('positive cases', () => {
 
   test('the confirm dialog lists the files that go with a model on demand', async ({ page }) => {
     await scanned(page, SCRIPTS.localAiModelsOllama);
-    await page.getByRole('checkbox', { name: `Select ${AI_OLLAMA}` }).check();
+    await tickItemsOf(page, AI_OLLAMA);
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
@@ -2383,7 +2701,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 1 item to the Trash');
@@ -2397,9 +2715,9 @@ test.describe('positive cases', () => {
   test('Settings shows the switch for local AI models', async ({ page }) => {
     await mockCore(page, SCRIPTS.localAiModels);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, ai('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: ai('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${ai('enabled.label')}` })).toBeChecked();
     await expect(page.getByText(ai('enabled.description'))).toBeVisible();
   });
 
@@ -2417,7 +2735,7 @@ test.describe('positive cases', () => {
     await openDetails(page, AC_NAME);
 
     const category = details(page);
-    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('Low');
+    await expect(category).toContainText('Usually safe');
     for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(category).toContainText(ac(`library-caches.${text}`));
     }
@@ -2458,7 +2776,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 2 items to the Trash');
@@ -2497,7 +2815,7 @@ test.describe('positive cases', () => {
     await openDetails(page, AC_BROWSERS);
 
     const category = details(page);
-    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('Low');
+    await expect(category).toContainText('Usually safe');
     for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(category).toContainText(ac(`browsers.${text}`));
     }
@@ -2553,7 +2871,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 2 items to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 2 items to the Trash');
@@ -2571,9 +2889,9 @@ test.describe('positive cases', () => {
   test('Settings shows the switch for caches of your apps', async ({ page }) => {
     await mockCore(page, SCRIPTS.appCaches);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, ac('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: ac('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${ac('enabled.label')}` })).toBeChecked();
     await expect(page.getByText(ac('enabled.description'))).toBeVisible();
   });
 
@@ -2596,7 +2914,7 @@ test.describe('positive cases', () => {
     await openDetails(page, XC_ARCHIVES);
 
     const category = details(page);
-    await expect(category.getByRole('region', { name: 'Danger level' })).toContainText('High');
+    await expect(category).toContainText('Only if you are sure');
     for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
       await expect(category).toContainText(xc(`archives.${text}`));
     }
@@ -2623,7 +2941,7 @@ test.describe('positive cases', () => {
   test('choosing an archive makes the review name High', async ({ page }) => {
     await openXcode(page);
 
-    await page.getByRole('checkbox', { name: `Select ${XC_ARCHIVES}` }).check();
+    await tickItemsOf(page, XC_ARCHIVES);
 
     await expect(selectionBar(page)).toContainText('1 item selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
@@ -2636,14 +2954,15 @@ test.describe('positive cases', () => {
 
   test('a cleanup moves the archive and empties the caches, and put back brings the archive back', async ({ page }) => {
     await openXcode(page);
-    for (const name of [XC_PREVIEWS, XC_SIMULATOR, XC_ARCHIVES]) {
+    for (const name of [XC_PREVIEWS, XC_SIMULATOR]) {
       await page.getByRole('checkbox', { name: `Select ${name}` }).check();
     }
+    await tickItemsOf(page, XC_ARCHIVES);
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
     await tickHigh(dialog);
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 3 items to the Trash');
@@ -2662,9 +2981,9 @@ test.describe('positive cases', () => {
   test("Settings shows the switch for Xcode's files", async ({ page }) => {
     await mockCore(page, SCRIPTS.xcode);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, xc('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: xc('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${xc('enabled.label')}` })).toBeChecked();
     await expect(page.getByText(xc('enabled.description'))).toBeVisible();
   });
 
@@ -2687,7 +3006,7 @@ test.describe('positive cases', () => {
     ] as const) {
       await openDetails(page, name);
       const category = details(page);
-      await expect(category).toContainText(danger);
+      await expect(category).toContainText(GROUP_OF[danger as keyof typeof GROUP_OF]);
       for (const text of ['what', 'made-by', 'if-removed', 'comes-back']) {
         await expect(category).toContainText(ut(`${key}.${text}`));
       }
@@ -2713,7 +3032,7 @@ test.describe('positive cases', () => {
   test('selecting a Node version makes the review name Medium', async ({ page }) => {
     await openUnusedToolchains(page);
 
-    await page.getByRole('checkbox', { name: `Select ${UT_NODE}` }).check();
+    await tickItemsOf(page, UT_NODE);
 
     await expect(selectionBar(page)).toContainText('1 item selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
@@ -2731,7 +3050,7 @@ test.describe('positive cases', () => {
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 1 item to the Trash');
@@ -2745,9 +3064,9 @@ test.describe('positive cases', () => {
   test('Settings shows the Node versions switch off by default', async ({ page }) => {
     await mockCore(page, SCRIPTS.unusedToolchainsNoDocuments);
     await page.goto('/');
-    await openSettings(page);
+    await openModulePage(page, ut('enabled.label'));
 
-    await expect(page.getByRole('switch', { name: ut('enabled.label') })).toBeChecked();
+    await expect(page.getByRole('switch', { name: `Look for ${ut('enabled.label')}` })).toBeChecked();
     await expect(page.getByRole('switch', { name: ut('node-versions.label') })).not.toBeChecked();
     await expect(page.getByText(ut('node-versions.description'))).toBeVisible();
   });
@@ -2907,12 +3226,10 @@ test.describe('positive cases', () => {
     await expect(selectionBar(page)).toContainText('1 item selected');
     await selectionBar(page).getByRole('button', { name: 'Review' }).click();
     await expect(heading(page, 'Review')).toBeFocused();
-    const own = page.getByRole('region', { name: 'Your own files' });
+    const own = page.getByRole('article', { name: 'Your own files' });
     await expect(own).toContainText(LARGEST.disk);
-    await expect(own).toContainText(LARGEST_DICTIONARY['core.own-file.if-removed'] ?? '');
-    await expect(zone(page, 'Danger zone').getByRole('region', { exact: true, name: 'High' })).toContainText(
-      'Your own files',
-    );
+    await expect(own).toContainText('Only if you are sure · May hold the only copy of your data');
+    await expect(own).toContainText('1 picked');
 
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
@@ -2929,7 +3246,7 @@ test.describe('positive cases', () => {
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
     await tickHigh(dialog);
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 1 item to the Trash');
 
     await page.getByRole('navigation').getByRole('button', { name: 'Largest' }).click();
@@ -2946,7 +3263,7 @@ test.describe('positive cases', () => {
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
     await tickHigh(dialog);
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await result.getByRole('button', { name: 'See this cleanup' }).click();
@@ -2989,6 +3306,7 @@ test.describe('positive cases', () => {
   test('Settings shows the agreement and when it was accepted', async ({ page }) => {
     await scanned(page, SCRIPTS.demo);
     await openSettings(page);
+    await settingsPage(page, 'About', 'About');
 
     const about = page.getByRole('region', { name: 'About' });
 
@@ -3000,6 +3318,7 @@ test.describe('positive cases', () => {
     await mockCore(page, { ...SCRIPTS.demo, agreement: 'not-accepted' });
     await page.goto('/');
     await openSettings(page);
+    await settingsPage(page, 'About', 'About');
 
     await expect(page.getByRole('region', { name: 'About' })).toContainText(
       'Not accepted yet. Fresher asks before your first cleanup.',
@@ -3020,42 +3339,17 @@ test.describe('positive cases', () => {
     await agreementSheet(page).getByRole('button', { name: 'Not now' }).click();
 
     await openSettings(page);
+    await settingsPage(page, 'About', 'About');
     await page.getByRole('region', { name: 'About' }).getByRole('button', { name: 'Read the full licence' }).click();
 
     await expect(licence).toContainText('Permission is hereby granted');
-  });
-
-  test('Review shows the safe part and the danger zone apart', async ({ page }) => {
-    await reviewDownloads(page);
-
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Safe to remove', 'Danger zone']);
-    const safe = zone(page, 'Safe to remove');
-    const danger = zone(page, 'Danger zone');
-    await expect(safe).toHaveAttribute('data-part', 'safe');
-    await expect(safe).toContainText('Each of these comes back by itself or with a download.');
-    await expect(safe.getByRole('heading', { level: 3 })).toHaveText(['Low']);
-    await expect(safe).toContainText(DL_INSTALLERS);
-    await expect(danger).toHaveAttribute('data-part', 'danger');
-    await expect(danger).toHaveAttribute('data-level', 'high');
-    await expect(danger).toContainText(
-      'Each of these may hold settings or work that do not come back by themselves. Check them one by one.',
-    );
-    await expect(danger.getByRole('heading', { level: 3 })).toHaveText(['High']);
-    await expect(danger).toContainText(DL_LARGE);
-  });
-
-  test('Review names how far the selection reaches', async ({ page }) => {
-    await reviewDownloads(page);
-    const summary = page.getByRole('region', { name: 'What you are about to remove' });
-
-    await expect(summary).toContainText(`Your selection reaches the danger zone: ${HIGH_MEANING}`);
   });
 
   test('the High tick lets the cleanup go on and is sent with it', async ({ page }) => {
     await reviewDownloads(page);
     await removeButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });
-    const confirm = dialog.getByRole('button', { name: 'Move to Trash' });
+    const confirm = dialog.getByRole('button', { name: 'Yes, move to the Trash' });
     await expect(confirm).toBeDisabled();
 
     await tickHigh(dialog);
@@ -3066,33 +3360,30 @@ test.describe('positive cases', () => {
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 3 items to the Trash');
   });
 
-  test('Select all in the danger zone selects after the question', async ({ page }) => {
-    await openDownloads(page);
-    const high = zone(page, 'High risk');
+  test('Select all of Safe to remove ticks its tiles', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await scanButton(page).click();
+    const safe = zone(page, 'Safe to remove');
 
-    await high.getByRole('checkbox', { name: 'Select all' }).click();
-    const question = page.getByRole('dialog', { name: 'Select everything at High?' });
-    await question.getByRole('button', { name: 'Select all' }).click();
+    await safe.getByRole('checkbox', { name: 'Select all' }).check();
 
-    await expect(question).toHaveCount(0);
-    await expect(high.getByRole('checkbox', { name: 'Select all' })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: `Select ${DL_LARGE}` })).toBeChecked();
-    await expect(selectionBar(page)).toContainText('1 item selected');
+    await expect(safe.getByRole('checkbox', { name: 'Select Example caches' })).toBeChecked();
+    await expect(selectionBar(page)).toContainText('2 items selected');
 
-    await high.getByRole('checkbox', { name: 'Select all' }).click();
+    await safe.getByRole('checkbox', { name: 'Select all' }).uncheck();
 
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(safe.getByRole('checkbox', { name: 'Select Example caches' })).not.toBeChecked();
     await expect(selectionBar(page)).toHaveCount(0);
   });
 
-  test('a picked file is reviewed in the danger zone', async ({ page }) => {
+  test('a picked file is reviewed on a tile of the Only if you are sure group', async ({ page }) => {
     await reviewDisk(page);
 
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Danger zone']);
-    const high = zone(page, 'Danger zone').getByRole('region', { exact: true, name: 'High' });
-    await expect(high.getByRole('region', { name: 'Your own files' })).toContainText(LARGEST.disk);
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Your own files']);
+    await expect(page.getByRole('article', { name: 'Your own files' })).toContainText(LARGEST.disk);
     await expect(page.getByRole('region', { name: 'What you are about to remove' })).toContainText(
-      `Your selection reaches the danger zone: ${HIGH_MEANING}`,
+      'Only if you are sure',
     );
   });
 });

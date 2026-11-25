@@ -23,6 +23,14 @@ The app deletes files from a real person's disk. These rules hold in every versi
   keyboard),
   `a_together_item_shows_its_subject_and_the_parts_after_it` (`crates/core/src/cleanup/view.rs`),
   `a_together_item_with_a_covered_part_is_left_out_whole` (`crates/engine/src/cleanup/plan.rs`).
+- **A "Look before removing" item goes only when the user ticked it** (plan 042): an item at a level the user checks by
+  hand (`BY_HAND`: Medium and High) is never ticked for the user. A Look category ticked on Scan joins
+  `Selection.toCheck` and sends nothing; an item of it goes only when the user ticks it in Review or on its details,
+  or ticks the Review tile's all-checkbox (`tick-all`, sent from that checkbox only). A module choice or a group's
+  Select all never selects a Look category whole, and no group or details screen has a Select all for one; the core's
+  selection receives only what goes. Enforced in the UI (`app/ui/src/state/selection.ts`); the confirmation and the
+  core's checks above stay the gate. Tests: `app/ui/src/state/selection.test.ts`, the Review and Scan flows of
+  `app/ui/e2e/flows.spec.ts`.
 
 ## The agreement
 
@@ -92,6 +100,35 @@ The app deletes files from a real person's disk. These rules hold in every versi
   UI's e2e mock, which refuses a High echo without the tick as the core does. The confirmation
   (`app/ui/src/product/confirm-dialog/confirm-dialog.tsx`) shows the tick above the permanent choice and apart from it,
   cleared at every opening, and keeps its confirm button inactive until it is ticked, in Review and on an app's page.
+- **Unused while High is withheld** (below): no plan reaches High, so the tick is never shown in the app; it stays,
+  with its tests, for when High is offered again.
+
+## High is withheld in the first release
+
+- **Rule:** while the app sets `HighLevel::Withheld` (every build of the first release, development included), no
+  finding at High leaves the engine: no page, total, found size, "Can be freed", module category or choice, or
+  left-out names one; no insight part at High is described (the Docker card loses its volumes line), no app page
+  lists a footprint item of a High kind and no Apps row shows a part of a High kind (their sizes neither); and every
+  prepare with a High item, every Largest pick and every uninstall of everything is refused (`HighWithheld`), acting
+  on nothing.
+- **Not covered today:** a finding at a lower level whose path is, or holds, a withheld finding's path is not refused:
+  the engine only checks each item's own level and category. No module produces such a pair now; a module that would
+  must be checked against this rule first.
+- **Why:** the user's decision of 2026-11-24: the first release offers only what comes back or what the user can check
+  by eye.
+- **Enforced by:** the switch is a required argument of `Engine::new` and `Engine::with_cleanup`
+  (`crates/engine/src/engine.rs`); `Withheld` (`crates/engine/src/withheld.rs`) leaves a finding out of
+  `Results::shown` (`crates/engine/src/results.rs`) when its own level or its category is High, and out of the
+  published `FindingsAdded`; `Shares::of` (`crates/engine/src/storage/shares.rs`) counts a High owner as an ignored
+  one; `modules()` drops High categories and the choices left empty (`crates/engine/src/registry.rs`); the scan drops
+  a High category's left-outs and every insight part at High (`crates/engine/src/session.rs`); `rehearse_and_keep`
+  (`crates/engine/src/cleanup/pending.rs`) refuses a High item first, before the agreement and the settings file are
+  checked; `pick_own_item` (`crates/engine/src/own.rs`) and `prepare_uninstall` with `Everything`
+  (`crates/engine/src/apps/uninstall.rs`) refuse; the app page leaves `Everything` out of its choices and the items
+  of a High kind out of its footprint (`crates/engine/src/apps/page.rs`), and an Apps row leaves them out of its
+  parts and sizes (`crates/engine/src/apps/list.rs`). The UI hides Largest from the sidebar (`AppInfo.high`): the
+  core still answers its queries, and refuses the pick. Tests: `crates/engine/src/high_tests.rs`,
+  `crates/e2e/tests/high_withheld.rs`; the sandbox's `high-withheld.toml` (step 02).
 
 ## Re-check before delete
 

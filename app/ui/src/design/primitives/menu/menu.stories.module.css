@@ -2,7 +2,7 @@
 @layer components {
   .stage {
     display: flex;
-    height: 176px;
+    height: 280px;
     align-items: flex-start;
     justify-content: flex-end;
     padding: var(--space-2);

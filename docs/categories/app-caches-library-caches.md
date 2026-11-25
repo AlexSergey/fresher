@@ -1,4 +1,4 @@
-# Caches of your apps
+# App caches
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/app-caches`) · **Since:** 0.1.0
 
@@ -6,8 +6,7 @@
 
 ## What it is
 
-Files your installed apps keep in your Library's Caches folder to open and work faster, one folder per app. Made by the
-apps themselves; each item names its app.
+Files apps save so they don't fetch or build them twice. Made by the apps themselves; each item names its app.
 
 ## Where it lives
 
@@ -18,10 +17,10 @@ line of the storage map.
 
 ## What happens if you remove it
 
-What is inside the folder goes to the Trash and the folder stays: the app may expect it to exist. Your documents and the
-app's settings are kept elsewhere and stay. Yes, the app makes it again as it needs it. Its next start may be slower,
-and an app that kept music, videos or maps for offline use downloads them again. That is why the level is Low, not
-Safe.
+Nothing is lost. Some apps open a little slower once. What is inside the folder goes to the Trash and the folder stays:
+the app may expect it to exist. Your documents and the app's settings are kept elsewhere and stay. Yes, by itself, the
+next time the app needs it. An app that kept music, videos or maps for offline use downloads them again; that is why
+the level is Low, not Safe.
 
 ## How the app decides
 

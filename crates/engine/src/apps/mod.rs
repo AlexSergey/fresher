@@ -41,7 +41,7 @@ pub(crate) fn apps(shared: &Shared, query: AppsQuery) -> Result<AppsView, Comman
     let now = now(shared);
     let summaries = list::rows(&listing)
         .iter()
-        .filter_map(|row| Some(list::summary(row, installed.get(row.index)?, committed.state.id(), now)))
+        .filter_map(|row| Some(list::summary(row, installed.get(row.index)?, committed.state.id(), now, shared.high)))
         .collect();
     Ok(AppsView::listed(list::filtered(summaries, query, now)))
 }
@@ -57,9 +57,9 @@ pub(crate) fn app(shared: &Shared, id: AppId) -> Result<AppDetail, CommandError>
     let listing = listing(shared, &committed, installed, &protection, &facts, running.as_deref());
     let app = installed.get(index).ok_or(CommandError::UnknownApp { id })?;
     let row: Listed = list::row(&listing, index, app);
-    let summary = list::summary(&row, app, committed.state.id(), now(shared));
+    let summary = list::summary(&row, app, committed.state.id(), now(shared), shared.high);
     let management = shared.access.management().access();
-    Ok(page::detail(&row, app, summary, categories(shared, app)?, management))
+    Ok(page::detail(&row, app, summary, categories(shared, app)?, management, shared.high))
 }
 
 /// Shows app `id`'s bundle in Finder, selected; refused as [`app`] refuses.

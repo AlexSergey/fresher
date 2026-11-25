@@ -1,0 +1,70 @@
+/*
+ * The scanning card: the swoosh fills the card, the volume's name, the percent and what the scan looks at stand
+ * top-left, what it found so far bottom-right.
+ */
+@layer components {
+  .card {
+    position: relative;
+    height: 226px;
+    border: 1px solid var(--tile-border);
+    border-radius: 18px;
+    background: var(--surface-card);
+    overflow: hidden;
+  }
+
+  .swoosh {
+    position: absolute;
+    inset: 0;
+  }
+
+  .top,
+  .bottom {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .top {
+    top: 22px;
+    left: 28px;
+    gap: 4px;
+  }
+
+  .bottom {
+    right: 28px;
+    bottom: 22px;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .title,
+  .caption {
+    color: var(--text-secondary);
+  }
+
+  .title {
+    font-size: 1rem;
+  }
+
+  .caption {
+    font-size: var(--type-footnote-size);
+  }
+
+  .percent {
+    font-size: calc(34rem / 13);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .looking {
+    color: var(--text-legend);
+    font-size: 1rem;
+  }
+
+  .found {
+    color: var(--part-can-be-freed);
+    font-size: calc(22rem / 13);
+    font-weight: 700;
+  }
+}

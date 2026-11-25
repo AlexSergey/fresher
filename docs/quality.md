@@ -93,7 +93,7 @@ tokens' mirror** keeps `motion.css` and `motion.ts` equal ([`testing.md`](./test
 | typos (`_typos.toml`) | misspellings in code and docs (Rust, TS, Markdown) | `npm run check:typos`   |
 | staged-files guard    | any file over 1 MiB, any `*.sqlite` or `.env`      | `npm run check:staged`  |
 | crate dependency guard | an edge between workspace crates outside the dependency table (`scripts/check-crate-deps.ts`); a module depending on another module; a crate root other than `fresher-macos`'s without `#![forbid(unsafe_code)]`; a file of `modules/*/src` naming `std::process` or `std::env` (a module runs a tool through `CommandRunner`) | `npm run check:crate-deps` |
-| text check | an exclamation mark, a banned word, a text over its length, a category without its five parts, a label without a description, "delete" outside a permanent delete, a lower-case "trash", a badly formed or unfinished text, in every English dictionary (`scripts/check-texts.ts`, [`writing.md`](./writing.md)) | `npm run check:texts` |
+| text check | an exclamation mark, a banned word, a text over its length, a category name of more than 4 words, a line with a full stop, a category without its six texts, a label without a description, "delete" outside a permanent delete, a lower-case "trash", a badly formed or unfinished text, in every English dictionary (`scripts/check-texts.ts`, [`writing.md`](./writing.md)) | `npm run check:texts` |
 
 ## Layer 3. Pre-commit (Husky + lint-staged)
 
@@ -103,7 +103,7 @@ runs only on the staged files:
 | Staged files                            | Runs                                                                        |
 | --------------------------------------- | --------------------------------------------------------------------------- |
 | `*.rs`                                  | `rustfmt` on the files, then Clippy once over the workspace (`-D warnings`) |
-| `*.{ts,tsx}`                            | `prettier --write`, `eslint --fix` on the files, then `tsc --noEmit` once   |
+| `*.{ts,tsx}` but `*.generated.ts`       | `prettier --write`, `eslint --fix` on the files, then `tsc --noEmit` once   |
 | `*.{js,cjs,mjs}`, `*.json`              | `prettier --write`, `eslint --fix`                                          |
 | `*.{md,yml,yaml,css,html}`              | `prettier --write`                                                          |
 | `*.toml`                                | `taplo fmt`                                                                 |

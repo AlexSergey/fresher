@@ -6,8 +6,8 @@
 
 ## What it is
 
-The packages and apps Homebrew downloaded to install or upgrade them. Once installed, they are not needed. Made by
-Homebrew, the package manager for the command line.
+Packages and apps Homebrew downloaded to install them; once installed, they are not needed. Made by Homebrew, a tool
+that installs apps and command-line tools.
 
 ## Where it lives
 
@@ -19,9 +19,8 @@ the folder is not claimed.
 
 ## What happens if you remove it
 
-They go to the Trash. Everything Homebrew installed keeps working; Homebrew tidies its own links to them on its next
-cleanup. Only when Homebrew installs or upgrades something: it downloads what it needs then. Homebrew also clears old
-downloads on its own.
+Nothing is lost. Everything Homebrew installed keeps working. Only when Homebrew installs or upgrades something; it also
+clears old downloads on its own.
 
 ## How the app decides
 

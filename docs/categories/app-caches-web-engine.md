@@ -1,4 +1,4 @@
-# Caches of web-based apps
+# Web-based app caches
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/app-caches`, table `apps.toml`) · **Since:** 0.1.0
 
@@ -6,8 +6,8 @@
 
 ## What it is
 
-Files that apps built with web technology, such as chat apps and code editors, keep in their own support folder to draw
-their windows and run faster. Made by the apps themselves; each item names its app and the cache folder.
+Files apps built on web pages, such as chat apps and code editors, keep to run faster. Made by the apps themselves; each
+item names its app.
 
 ## Where it lives
 
@@ -23,9 +23,8 @@ storage map.
 ## What happens if you remove it
 
 What is inside the folder goes to the Trash and the folder stays. Your messages, files, settings and sign-ins are kept
-elsewhere in the app's folder and stay: they sit beside the caches, and the module never touches a name its row does
-not list. Yes, the app makes it again as it needs it. Its next start may be slower. That is why the level is Low, not
-Safe.
+elsewhere in the app's folder and stay: they sit beside the caches, and the module never touches a name its row does not
+list. Yes, by itself; the app's next start may be slower. That is why the level is Low, not Safe.
 
 ## How the app decides
 

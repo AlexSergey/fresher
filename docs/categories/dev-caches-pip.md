@@ -6,8 +6,8 @@
 
 ## What it is
 
-Copies of the Python packages pip downloaded or built, kept so that the next install is faster. Made by pip, the package
-installer of Python.
+Copies of the Python packages pip downloaded or built, so the next install is faster. Made by pip, Python's package
+installer.
 
 ## Where it lives
 
@@ -19,8 +19,8 @@ Without it the folder is not claimed.
 
 ## What happens if you remove it
 
-It goes to the Trash; the space comes back when you empty it. Your projects and the packages installed in them keep
-working. Yes. pip downloads each package again the next time it installs it.
+Nothing is lost. Your projects and the packages in them keep working. Yes, pip downloads each package again when it
+installs it.
 
 ## How the app decides
 

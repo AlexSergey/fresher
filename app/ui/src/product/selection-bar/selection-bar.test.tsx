@@ -15,6 +15,14 @@ const MANY: SelectionBarProps['summary'] = {
   count: 128,
   highest: 'high',
   sizes: { allocated: 4_200_000_000, completeness: 'complete', logical: 4_200_000_000, reclaimable: 4_200_000_000 },
+  toCheck: { categories: 0 },
+};
+
+const NOTHING_GOES: SelectionBarProps['summary'] = {
+  count: 0,
+  highest: null,
+  sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+  toCheck: { categories: 0 },
 };
 
 const bar = (props: Partial<SelectionBarProps> = {}): React.JSX.Element => (
@@ -42,28 +50,26 @@ describe('SelectionBar', () => {
 
       expect(screen.queryByRole('region', { name: 'Selection' })).not.toBeInTheDocument();
 
-      rerender(
-        bar({
-          summary: {
-            count: 0,
-            highest: null,
-            sizes: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
-          },
-        }),
-      );
+      rerender(bar({ summary: NOTHING_GOES }));
 
       expect(screen.queryByRole('region', { name: 'Selection' })).not.toBeInTheDocument();
       expect(status()).toBeEmptyDOMElement();
     });
 
-    it('the highest level is shown with its icon and word', () => {
+    it('says nothing is to check when no category is', () => {
+      render(bar());
+
+      expect(screen.getByRole('region', { name: 'Selection' })).not.toHaveTextContent('to check in Review');
+    });
+
+    it('shows no danger level', () => {
       render(bar());
 
       const region = screen.getByRole('region', { name: 'Selection' });
 
-      expect(region).toHaveTextContent(/Highest danger level:\s*High/u);
-      // eslint-disable-next-line testing-library/no-node-access -- the badge's icon is decoration beside its word
-      expect(region.querySelector('[data-level="high"] svg')).not.toBeNull();
+      expect(region).not.toHaveTextContent('High');
+      // eslint-disable-next-line testing-library/no-node-access -- a level badge would carry its level as data
+      expect(region.querySelector('[data-level]')).toBeNull();
     });
 
     it('is announced once when it appears, not on every change', () => {
@@ -107,26 +113,42 @@ describe('SelectionBar', () => {
       expect(total).toHaveAccessibleDescription('The space on the disk that everything you selected takes.');
     });
 
-    it('the highest level has its meaning as a description when it has the focus', () => {
-      render(bar());
+    it('shows while only categories to check are selected, and leads with how many', () => {
+      render(bar({ summary: { ...NOTHING_GOES, toCheck: { categories: 2 } } }));
 
-      // eslint-disable-next-line testing-library/no-node-access -- the hinted element has no role to query by
-      const level = screen.getByText('High').closest('[tabindex]') as HTMLElement;
-      act(() => {
-        level.focus();
-      });
+      const region = screen.getByRole('region', { name: 'Selection' });
 
-      expect(level).toHaveAccessibleDescription('May hold the only copy of your data. Removing it can lose work.');
+      expect(region).toHaveTextContent(/^2 to check in Review/u);
+      expect(region).not.toHaveTextContent('items selected');
+      expect(status()).toHaveTextContent('2 to check in Review');
+      expect(screen.getByRole('button', { name: 'Review' })).toBeVisible();
     });
 
-    it('the selection bar shows count, size and highest level', () => {
+    it('a change of the categories to check alone is announced', () => {
+      const { rerender } = render(bar());
+
+      rerender(bar({ summary: { ...MANY, toCheck: { categories: 1 } } }));
+
+      expect(status()).toHaveTextContent('128 items selected, 4.2 GB in all · 1 to check in Review');
+      expect(screen.getByRole('region', { name: 'Selection' })).toHaveTextContent('· 1 to check in Review');
+    });
+
+    it('the selection bar shows count, size, Clear and Review', () => {
       render(bar());
 
       const region = screen.getByRole('region', { name: 'Selection' });
 
       expect(region).toHaveTextContent('128 items selected');
       expect(screen.getByText('4.2 GB', { selector: '.u-visually-hidden' })).toBeInTheDocument();
-      expect(region).toHaveTextContent('High');
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Review' })).toBeInTheDocument();
+    });
+
+    it('floats on its own panel, 18 px above the bottom', () => {
+      expect(css).toMatch(/bottom: 18px;/u);
+      expect(css).toMatch(/background: var\(--surface-floating\);/u);
+      expect(css).toMatch(/border: 1px solid var\(--border-solid\);/u);
+      expect(css).toMatch(/box-shadow: var\(--shadow-floating\);/u);
     });
 
     it('a partial total reads as a lower bound', () => {
@@ -136,6 +158,7 @@ describe('SelectionBar', () => {
             count: 1,
             highest: 'safe',
             sizes: { allocated: 640_000_000, completeness: 'partial', logical: 1, reclaimable: 640_000_000 },
+            toCheck: { categories: 0 },
           },
         }),
       );

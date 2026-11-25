@@ -23,8 +23,12 @@ use crate::results::{Committed, add};
 /// Refused while an operation runs (`Busy`), for an app of another state or one the list leaves out (`UnknownApp`),
 /// and `UninstallRefused` when the app is not offered now (asked again: the apps running now among it), its bundle is
 /// not on disk as listed (`Unmeasured`), or the bundle and its parts are more than one item may hold
-/// (`TooManyFiles`, never truncated). A part the rehearsal refuses leaves the whole item out with its reason.
+/// (`TooManyFiles`, never truncated). A part the rehearsal refuses leaves the whole item out with its reason. A choice
+/// at High (`Everything`) is refused with `HighWithheld` while High is withheld, before anything is read.
 pub(crate) fn prepare(shared: &Shared, id: AppId, choice: UninstallChoice) -> Result<CleanupPlanView, CommandError> {
+    if !shared.high.offers(uninstall_category(choice).danger()) {
+        return Err(CommandError::HighWithheld);
+    }
     lock(&shared.machine)?.idle()?;
     let deaths = lock(&shared.pending)?.kill();
     let (committed, scanning) = committed(shared)?;

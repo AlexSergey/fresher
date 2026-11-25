@@ -1,0 +1,95 @@
+/*
+ * A category on Review: a tile with no padding of its own, its header (the all-checkbox, the icon, the name over its
+ * line, the pill of how many are checked, the size) over its items, set apart by a divider (warm on a Look tile). The
+ * list is as tall as its rows (`--review-rows`, at most six) and scrolls past them.
+ */
+@layer components {
+  .header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+
+  /* The place of the all-checkbox on a tile without one (16 px). */
+  .noCheckbox {
+    display: inline-block;
+    width: var(--space-4);
+    flex: none;
+  }
+
+  .text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .name {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-callout-size);
+    font-weight: 600;
+    line-height: var(--type-callout-line);
+  }
+
+  .line {
+    overflow: hidden;
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header[data-look] .line {
+    color: var(--tile-line-medium);
+  }
+
+  .pill {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 10px;
+    background-color: var(--level-medium-icon-bg);
+    color: var(--level-medium-fg);
+    font-size: calc(11rem / 13);
+    gap: var(--space-1);
+    line-height: calc(14rem / 13);
+    white-space: nowrap;
+  }
+
+  .pill[data-all] {
+    background-color: var(--level-safe-icon-bg);
+    color: var(--level-safe-fg);
+  }
+
+  .size {
+    display: inline-flex;
+    width: 80px;
+    flex: none;
+    justify-content: flex-end;
+  }
+
+  .size > [data-numeric][data-size] {
+    color: var(--text-primary);
+    font-size: calc(18rem / 13);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .items {
+    padding: var(--space-1) 0 var(--space-2);
+    border-top: 1px solid var(--border-divider);
+  }
+
+  .items[data-look] {
+    border-top-color: var(--tile-divider-medium);
+  }
+
+  .list {
+    height: calc(var(--review-rows) * var(--size-row));
+  }
+}

@@ -9,6 +9,7 @@ use fresher_core::{ByteSize, DiskState, ItemRule};
 use crate::largest::{HomeItems, Item, Items};
 use crate::settings::Ignored;
 use crate::storage::shares::Shares;
+use crate::withheld::Withheld;
 
 /// The shares of a state, built as the first map query after a commit builds them, with nothing ignored.
 #[derive(Debug)]
@@ -19,7 +20,7 @@ pub struct SharesBench {
 impl SharesBench {
     /// Builds the shares of `state`, nothing ignored.
     pub fn build(state: &dyn DiskState) -> Self {
-        Self { shares: Shares::of(state, &Ignored::default()) }
+        Self { shares: Shares::of(state, &Ignored::default(), &Withheld::offered()) }
     }
 
     /// The bytes the shares hold on the heap.

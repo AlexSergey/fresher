@@ -6,9 +6,8 @@
 
 ## What it is
 
-The support folders of apps that are no longer on this Mac. An app may have kept documents, databases or downloads
-here. Made by the apps themselves, while they were installed; each item names its app by its id, such as
-`com.example.App`.
+What apps no longer on this Mac kept for you, such as documents, databases or downloads. Made by the apps themselves,
+while they were installed; each item names its app by its id, such as `com.example.App`.
 
 ## Where it lives
 
@@ -17,9 +16,8 @@ container (`Containers/<id>`) is not offered here (see the end of this page).
 
 ## What happens if you remove it
 
-They go to the Trash. Anything the app kept only here is lost once you empty the Trash, so look inside first if you are
-not sure. It does not come back. High, not lower: nothing tells a cache from a library of notes, so when in doubt the
-level is higher.
+Anything the app kept only here is lost once you empty the Trash, so look inside first. It does not come back. High, not
+lower: nothing tells a cache from a library of notes, so when in doubt the level is higher.
 
 ## How the app decides
 

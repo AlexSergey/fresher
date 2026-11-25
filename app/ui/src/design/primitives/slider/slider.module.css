@@ -1,0 +1,31 @@
+/* The native range input, tinted with the accent, between its two end labels. */
+@layer components {
+  .slider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .end {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: var(--type-caption-line);
+  }
+
+  .range {
+    min-width: 0;
+    flex: 1;
+    accent-color: var(--accent-fill-top);
+  }
+
+  .range:disabled {
+    opacity: 0.5;
+  }
+
+  .range:focus-visible,
+  .range[data-focus] {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+  }
+}

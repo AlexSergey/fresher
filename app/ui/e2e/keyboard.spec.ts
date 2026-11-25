@@ -5,6 +5,7 @@ import { scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { nextFrames } from './support/frames';
 import { motionOff } from './support/motion';
+import { settingsPage } from './support/settings';
 
 /* eslint-disable playwright/no-conditional-in-test, playwright/no-conditional-expect -- the sweep walks whatever focus stops each story holds */
 
@@ -195,10 +196,10 @@ test.describe('negative cases', () => {
       ['Largest', 'Largest files and folders'],
       [/^Review/, 'Review'],
       ['Cleanups', 'Cleanups'],
-      ['Settings', 'Settings'],
+      ['Settings', 'General'],
       ['Scan', 'Scan'],
     ] as const) {
-      await page.getByRole('navigation').getByRole('button', { name: nav }).focus();
+      await page.getByRole('navigation', { name: 'Screens' }).getByRole('button', { name: nav }).focus();
       await page.keyboard.press('Enter');
       await expect(heading(page, name)).toBeFocused();
     }
@@ -216,7 +217,7 @@ test.describe('negative cases', () => {
     await stop.focus();
     await page.keyboard.press('Enter');
 
-    await expect(page.getByText('This scan is incomplete')).toBeVisible();
+    await expect(page.getByText('This scan is not complete')).toBeVisible();
     expect(await focusKept(page)).toBe(true);
   });
 });
@@ -247,7 +248,7 @@ test.describe('positive cases', () => {
       .getByRole('navigation')
       .getByRole('button', { name: /^Review/ })
       .click();
-    const remove = page.getByRole('button', { name: 'Move to Trash…' });
+    const remove = page.getByRole('button', { exact: true, name: 'Move to the Trash' });
     await remove.focus();
 
     await page.keyboard.press('Enter');
@@ -259,7 +260,26 @@ test.describe('positive cases', () => {
     await expect(remove).toBeFocused();
   });
 
-  test('a hint shows on keyboard focus: an icon button, a level badge and a number', async ({ page }) => {
+  test("Space on a Review tile's focused row unticks it, and its pill follows", async ({ page }) => {
+    await mockCore(page, SCRIPTS.cleaning);
+    await page.goto('/');
+    await scanButton(page).click();
+    await page.getByRole('checkbox', { name: 'Select Example caches' }).check();
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: /^Review/ })
+      .click();
+    const caches = page.getByRole('article', { name: 'Example caches' });
+    await expect(caches).toContainText('2 of 2 checked');
+
+    await caches.getByRole('listitem').first().focus();
+    await page.keyboard.press('Space');
+
+    await expect(caches).toContainText('1 of 2 checked');
+    await expect(caches.getByRole('checkbox', { name: 'All Example caches' })).toBeChecked({ indeterminate: true });
+  });
+
+  test('a hint shows on keyboard focus: an icon button and a number', async ({ page }) => {
     await mockCore(page, SCRIPTS.cleaning);
     await page.goto('/');
     await scanButton(page).click();
@@ -268,18 +288,13 @@ test.describe('positive cases', () => {
     await page.getByRole('button', { name: 'Options for Example caches' }).first().focus();
     await expect(page.getByRole('tooltip')).toHaveText('Options for Example caches');
 
-    await page.getByText('Safe', { exact: true }).first().locator('xpath=ancestor::*[@tabindex="0"][1]').focus();
-    await expect(page.getByRole('tooltip')).toContainText('Comes back by itself');
-
     await page.getByRole('region', { name: 'Selection' }).locator('[data-numeric]').focus();
     await expect(page.getByRole('tooltip')).toHaveText('The space on the disk that everything you selected takes.');
 
-    await page
-      .getByText('Found', { exact: true })
-      .locator('xpath=following-sibling::*[1]//*[@tabindex="0"]|following-sibling::*[@tabindex="0"]')
-      .first()
-      .focus();
-    await expect(page.getByRole('tooltip')).toContainText('The space the scan found in all categories.');
+    await page.getByRole('checkbox', { name: 'Select all' }).first().focus();
+    await expect(page.getByRole('tooltip')).toHaveText(
+      'Ticks every category in this group. Nothing is removed until you confirm it in Review.',
+    );
   });
 
   test('a hint shows on keyboard focus: a filter of Largest', async ({ page }) => {
@@ -307,9 +322,10 @@ test.describe('positive cases', () => {
     await page.goto('/');
     await page.getByRole('navigation').getByRole('button', { name: 'Settings' }).focus();
     await page.keyboard.press('Enter');
-    await expect(heading(page, 'Settings')).toBeFocused();
-    const groups = page.getByRole('tab', { name: /^Ignored groups/ });
-    const modules = page.getByRole('tab', { name: /^Ignored modules/ });
+    await expect(heading(page, 'General')).toBeFocused();
+    await settingsPage(page, 'Ignored', 'Ignored');
+    const groups = page.getByRole('tab', { name: /^Sections/ });
+    const modules = page.getByRole('tab', { name: /^Not looked for/ });
     await groups.focus();
 
     await page.keyboard.press('ArrowRight');
@@ -324,9 +340,52 @@ test.describe('positive cases', () => {
     await ignoreGroup.focus();
     await page.keyboard.press('Space');
     await expect(ignoreGroup).toBeChecked();
-    await expect(page.getByRole('tab', { name: 'Ignored groups · 1' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Sections · 1' })).toBeVisible();
     await page.keyboard.press('Space');
     await expect(ignoreGroup).not.toBeChecked();
+  });
+
+  test('the tree of Settings: a group opens with Enter and a module opens its page', async ({ page }) => {
+    await mockCore(page, SCRIPTS.settings);
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('button', { name: 'Settings' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(heading(page, 'General')).toBeFocused();
+    const tree = page.getByRole('navigation', { name: 'Settings sections' });
+    const group = tree.getByRole('button', { name: 'Debug' });
+    await expect(group).toHaveAttribute('aria-expanded', 'false');
+
+    await group.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Tab');
+    await expect(tree.getByRole('button', { name: 'Demo module' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(heading(page, 'Demo module')).toBeVisible();
+    await expect(tree.getByRole('button', { name: 'Demo module' })).toHaveAttribute('aria-current', 'page');
+    await settingsPage(page, 'Demo module');
+  });
+
+  test('the search of Settings: Enter opens the first hit with its setting focused, Esc clears', async ({ page }) => {
+    await mockCore(page, SCRIPTS.settings);
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('button', { name: 'Settings' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(heading(page, 'General')).toBeFocused();
+    const field = page.getByRole('searchbox', { name: 'Search settings' });
+
+    await field.focus();
+    await page.keyboard.type('days');
+    await expect(heading(page, '1 setting matches “days”')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(field).toHaveValue('');
+    await expect(field).toBeFocused();
+    await page.keyboard.type('days');
+    await page.keyboard.press('Enter');
+
+    await expect(heading(page, 'Scan')).toBeVisible();
+    await expect(page.getByRole('slider', { name: 'Stale after, days' })).toBeFocused();
   });
 
   // The stories are shared among this many tests, which run in parallel.

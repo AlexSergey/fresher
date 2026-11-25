@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 
 import { stories as storiesOf } from '../../gallery/story';
-import { withTexts } from '../scan-hero/story-data';
+import { withTexts } from '../../test/story-data';
 import { ProblemText } from './problem-text';
 
 const shown = (args: Record<string, { readonly kind: 'text'; readonly value: string }>): (() => JSX.Element) =>

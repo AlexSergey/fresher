@@ -6,8 +6,8 @@
 
 ## What it is
 
-Installers of a macOS version this Mac already runs or has passed. Each takes 12 to 15 GB. Made by you or the App
-Store, when you downloaded macOS.
+Installers of a macOS version this Mac already runs or has passed; each takes 12 to 15 GB. Made by you or the App Store,
+when you downloaded macOS.
 
 ## Where it lives
 

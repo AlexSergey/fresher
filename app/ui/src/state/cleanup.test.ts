@@ -20,11 +20,14 @@ import {
   TOOL_ONLY_PLAN,
   TOOL_PLAN,
 } from '../test/cleanup-plan';
-import { DEMO_FINDINGS } from '../test/demo-scan';
+import { DEMO_FINDINGS, DEMO_OVERVIEW } from '../test/demo-scan';
 import { confirmationOf } from './cleanup';
 import { confirm, discard, prepare, prepareUninstallPlan, quitAfter, showInTrash, stop } from './cleanup-actions';
 import { type CoreAction, type CoreState, INITIAL_STATE, reduce } from './reduce';
 import { createCoreStore } from './store';
+
+// The totals tell each category's level: a Safe category is selected whole.
+const TOTALS_LOADED: CoreAction = { overview: DEMO_OVERVIEW, type: 'overview-loaded' };
 
 const run = (actions: readonly CoreAction[], from: CoreState = INITIAL_STATE): CoreState =>
   actions.reduce(reduce, from);
@@ -62,6 +65,7 @@ describe('the cleanup state', () => {
       mockCore({ ...sampleAgreementAnswers, prepareCleanup: refuse(TOO_MANY_ITEMS) });
       const store = createCoreStore();
       store.dispatch({ type: 'agreement-loaded', view: AGREEMENT_ACCEPTED });
+      store.dispatch(TOTALS_LOADED);
       store.dispatch({ category: 'demo.caches', type: 'toggle-category' });
 
       prepare(store);
@@ -191,7 +195,12 @@ describe('the cleanup state', () => {
     });
 
     it('a finished uninstall does not empty the selection', () => {
-      const selected = run([{ category: 'demo.caches', type: 'toggle-category' }, ...UNINSTALLING, EVENTS.started]);
+      const selected = run([
+        TOTALS_LOADED,
+        { category: 'demo.caches', type: 'toggle-category' },
+        ...UNINSTALLING,
+        EVENTS.started,
+      ]);
 
       const state = run([EVENTS.finished], selected);
 
@@ -271,6 +280,7 @@ describe('the cleanup state', () => {
         },
       });
       const store = createCoreStore();
+      store.dispatch(TOTALS_LOADED);
       store.dispatch({ category: 'demo.caches', type: 'toggle-category' });
       store.dispatch({ finding: EDITOR_CACHE, type: 'toggle-finding' });
       store.dispatch({ finding: INSTALLER, type: 'toggle-finding' });
@@ -354,7 +364,12 @@ describe('the cleanup state', () => {
     });
 
     it('a finished cleanup empties the selection', () => {
-      const selected = run([{ category: 'demo.caches', type: 'toggle-category' }, ...RUNNING, EVENTS.started]);
+      const selected = run([
+        TOTALS_LOADED,
+        { category: 'demo.caches', type: 'toggle-category' },
+        ...RUNNING,
+        EVENTS.started,
+      ]);
 
       const state = run([EVENTS.finished], selected);
 

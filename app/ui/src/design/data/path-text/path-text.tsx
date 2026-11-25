@@ -6,6 +6,8 @@ import styles from './path-text.module.css';
 import { truncateMiddle } from './truncate';
 
 export type PathTextProps = {
+  // What is shown in place of the path (`~/…`); the tooltip and the accessible text keep the full path.
+  readonly display?: string;
   readonly path: string;
 };
 
@@ -14,7 +16,8 @@ const PROBE = '0000000000';
 
 // A path in mono, cut in the middle to fit its width, so its start and its file name stay; the full path is in its
 // tooltip and in its accessible text. Measured again whenever its width changes.
-export const PathText = ({ path }: PathTextProps): JSX.Element => {
+export const PathText = ({ display, path }: PathTextProps): JSX.Element => {
+  const shown = display ?? path;
   const frameRef = useRef<HTMLSpanElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
   // How many characters fit; `null` until measured, when the whole path shows.
@@ -50,7 +53,7 @@ export const PathText = ({ path }: PathTextProps): JSX.Element => {
         {PROBE}
       </span>
       <Tooltip content={path} repeatsName>
-        {() => <span aria-hidden="true">{fit === null ? path : truncateMiddle(path, fit)}</span>}
+        {() => <span aria-hidden="true">{fit === null ? shown : truncateMiddle(shown, fit)}</span>}
       </Tooltip>
       <VisuallyHidden>{path}</VisuallyHidden>
     </span>

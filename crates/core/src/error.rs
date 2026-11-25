@@ -106,11 +106,15 @@ pub enum CommandError {
     /// is gone; nothing was removed.
     #[error("the risk of a High item was not confirmed")]
     HighRiskNotUnderstood,
+    /// A prepare, a pick or an uninstall that would act on a High item while High is withheld. Nothing was kept or
+    /// removed.
+    #[error("High items are withheld in this version")]
+    HighWithheld,
 }
 
 impl CommandError {
     /// Every code, in declaration order: each has a text `core.error.<code>` in the core's dictionary.
-    pub const CODES: [&str; 33] = [
+    pub const CODES: [&str; 34] = [
         "busy",
         "not-running",
         "unknown-finding",
@@ -144,6 +148,7 @@ impl CommandError {
         "uninstall-refused",
         "agreement-changed",
         "high-risk-not-understood",
+        "high-withheld",
     ];
 
     /// The `code` the error is serialized with.
@@ -182,6 +187,7 @@ impl CommandError {
             Self::UninstallRefused { .. } => "uninstall-refused",
             Self::AgreementChanged => "agreement-changed",
             Self::HighRiskNotUnderstood => "high-risk-not-understood",
+            Self::HighWithheld => "high-withheld",
         }
     }
 
@@ -221,7 +227,8 @@ impl CommandError {
             | Self::UnknownApp { .. }
             | Self::UninstallRefused { .. }
             | Self::AgreementChanged
-            | Self::HighRiskNotUnderstood => text,
+            | Self::HighRiskNotUnderstood
+            | Self::HighWithheld => text,
         }
     }
 }
@@ -284,7 +291,8 @@ pub(crate) mod tests {
             | CommandError::UnknownApp { .. }
             | CommandError::UninstallRefused { .. }
             | CommandError::AgreementChanged
-            | CommandError::HighRiskNotUnderstood => error,
+            | CommandError::HighRiskNotUnderstood
+            | CommandError::HighWithheld => error,
         };
         vec![
             sample(CommandError::Busy { running: Operation::Scan }),
@@ -320,6 +328,7 @@ pub(crate) mod tests {
             sample(CommandError::UninstallRefused { reason: NotOffered::Open }),
             sample(CommandError::AgreementChanged),
             sample(CommandError::HighRiskNotUnderstood),
+            sample(CommandError::HighWithheld),
         ]
     }
 
@@ -447,6 +456,7 @@ pub(crate) mod tests {
                     vec![],
                     vec![],
                     vec!["id"],
+                    vec![],
                     vec![],
                     vec![],
                     vec![],

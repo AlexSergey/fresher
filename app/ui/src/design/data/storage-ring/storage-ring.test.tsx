@@ -210,5 +210,23 @@ describe('StorageRing', () => {
 
       expect(gapLabelNode()).toHaveAttribute('data-highlighted');
     });
+
+    it('a look with butt caps, no glow and a thickness draws square-ended arcs of that band', () => {
+      render(
+        <StorageRing
+          {...ring({
+            accessibleName: 'The whole disk',
+            look: { caps: 'butt', gap: 3, glow: false, minSweep: 5 },
+            thickness: 16,
+          })}
+        />,
+      );
+
+      expect(screen.getByRole('img', { name: 'The whole disk' })).toBeInTheDocument();
+      expect(arcs().every((arc) => arc.getAttribute('data-cap') === 'square')).toBe(true);
+      // eslint-disable-next-line testing-library/no-node-access -- the ring's layers are decoration, without roles
+      expect(document.querySelector('[data-glow="off"]')).not.toBeNull();
+      expect(arcs()[0]).toHaveAttribute('r', '108');
+    });
   });
 });

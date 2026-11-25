@@ -1,4 +1,4 @@
-# Big downloads you have not opened
+# Big unopened downloads
 
 **Danger level:** High · **Rule:** none (the module's code, `modules/downloads`) · **Since:** 0.1.0
 
@@ -6,8 +6,7 @@
 
 ## What it is
 
-Files of 1 GB or more in Downloads that you have not opened or changed for a long time. Only you know whether you
-still need them. Made by you, when you downloaded them.
+Files of 1 GB or more in Downloads that you have not opened for a long time. Made by you, when you downloaded them.
 
 ## Where it lives
 
@@ -16,8 +15,7 @@ of the module claims and that is not a `.dmg` or `.pkg`.
 
 ## What happens if you remove it
 
-They go to the Trash. Anything you have only here is lost once you empty the Trash, so look at each one first. It does
-not come back.
+Anything you have only here is lost once you empty the Trash, so look at each one first. It does not come back.
 
 ## How the app decides
 

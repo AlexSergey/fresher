@@ -1,0 +1,235 @@
+{
+  "cleanup": {
+    "items": [
+      {
+        "action": "remove",
+        "category": "app-leftovers.caches",
+        "danger": "safe",
+        "outcome": {
+          "kind": "moved"
+        },
+        "path": "home/Library/Caches/com.example.Withheld",
+        "trash": "in-trash"
+      }
+    ],
+    "leftOut": []
+  },
+  "findings": [
+    {
+      "app": "com.example.Withheld",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Caches/com.example.Withheld"
+    },
+    {
+      "app": "com.example.Withheld",
+      "category": "app-leftovers.caches",
+      "danger": "safe",
+      "logical": 4096,
+      "module": "app-leftovers",
+      "subject": "home/Library/Saved Application State/com.example.Withheld.savedState"
+    }
+  ],
+  "map": {
+    "places": [
+      {
+        "at": "home/Library/Application Support/com.example.Withheld",
+        "case": "a removed app's support folder is not offered while High is withheld",
+        "path": [
+          "home/Library/Application Support/com.example.Withheld"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 0,
+            "logical": 4096,
+            "path": "home/Library/Application Support/com.example.Withheld"
+          }
+        ]
+      },
+      {
+        "at": "home/Library/Caches/com.example.Withheld",
+        "case": "the same removed app's caches go to the Trash",
+        "path": [
+          "home/Library/Caches/com.example.Withheld"
+        ],
+        "rows": [
+          {
+            "allocated": 4096,
+            "explained": 4096,
+            "logical": 4096,
+            "path": "home/Library/Caches/com.example.Withheld"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "capacity": 1073741824,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 8192,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 4096,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67109832,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 738184248,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [
+      {
+        "fromCleanups": 4096,
+        "goneBy": null,
+        "index": 0,
+        "volume": "Sandbox",
+        "waiting": 4096
+      }
+    ],
+    "before": []
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 114,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/com.example.Withheld"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/.Trash/com.example.Withheld/Cache.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Application Support/com.example.Withheld"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Application Support/com.example.Withheld/library.db"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Caches"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Library/Saved Application State/com.example.Withheld.savedState"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Library/Saved Application State/com.example.Withheld.savedState/data.data"
+      },
+      {
+        "kind": "file",
+        "logical_size": 854,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 13256
+  }
+}

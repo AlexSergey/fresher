@@ -11,6 +11,7 @@ import type {
 } from '../ipc/bindings.generated';
 
 import staleTexts from '../../../../modules/stale-projects/locales/en.json' with { type: 'json' };
+import { iconOf } from './category-icons';
 import { FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
 
@@ -126,7 +127,7 @@ export const STALE_PROJECTS_FINDINGS: readonly Finding[] = [
 
 const readyCategory = (id: string, danger: Finding['danger']): ModuleInfo['categories'][number] => ({
   availability: { kind: 'ready' },
-  descriptor: { danger, id, needs: [] },
+  descriptor: { danger, icon: iconOf(id), id, needs: [] },
 });
 
 // `get_modules`: the module in the group Development, its four categories, its two settings, no choice.

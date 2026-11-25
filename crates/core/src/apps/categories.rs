@@ -1,6 +1,6 @@
 //! The two categories of an uninstall: the core's own, offered only from an app's page, never on Scan.
 
-use crate::{CategoryDescriptor, DangerLevel, Text, TextArg, TextKey, UninstallChoice};
+use crate::{CategoryDescriptor, CategoryIcon, DangerLevel, Text, TextArg, TextKey, UninstallChoice};
 
 /// `core.uninstall-keep-data` at Medium and `core.uninstall-everything` at High, in `UninstallChoice::ALL`'s order.
 /// No registry holds them: no scan finds them.
@@ -8,13 +8,13 @@ pub fn uninstall_categories() -> [CategoryDescriptor; 2] {
     UninstallChoice::ALL.map(uninstall_category)
 }
 
-/// The category of an uninstall with `choice`.
+/// The category of an uninstall with `choice`, with the app icon.
 pub fn uninstall_category(choice: UninstallChoice) -> CategoryDescriptor {
     let danger = match choice {
         UninstallChoice::KeepData => DangerLevel::Medium,
         UninstallChoice::Everything => DangerLevel::High,
     };
-    CategoryDescriptor::new(choice.category(), danger)
+    CategoryDescriptor::new(choice.category(), danger).with_icon(CategoryIcon::App)
 }
 
 /// The title of an uninstall finding: the app's name.
@@ -25,7 +25,9 @@ pub fn uninstall_title(app: &str) -> Text {
 #[cfg(test)]
 mod tests {
     mod positive {
-        use crate::{DangerLevel, ModuleId, TextArg, UninstallChoice, uninstall_categories, uninstall_title};
+        use crate::{
+            CategoryIcon, DangerLevel, ModuleId, TextArg, UninstallChoice, uninstall_categories, uninstall_title,
+        };
 
         #[test]
         fn each_choice_names_its_category() {
@@ -41,6 +43,7 @@ mod tests {
                 assert_eq!(choice.category(), category.id());
                 assert_eq!(category.id().module(), ModuleId::system());
                 assert_eq!(category.needs(), []);
+                assert_eq!(category.icon(), CategoryIcon::App);
             }
         }
 

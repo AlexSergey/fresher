@@ -1,0 +1,23 @@
+@layer components {
+  .separator {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: var(--space-1);
+  }
+
+  .label {
+    color: var(--text-secondary);
+    font-size: calc(12rem / 13);
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .line {
+    flex: 1;
+    height: 1px;
+    background: var(--separator-line);
+  }
+}

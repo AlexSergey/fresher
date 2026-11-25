@@ -18,10 +18,55 @@ impl DangerLevel {
     pub const ALL: [Self; 4] = [Self::Safe, Self::Low, Self::Medium, Self::High];
 }
 
+/// Whether the engine offers High findings at all. The first release withholds High: the app sets the switch when it
+/// starts (plan 042), and tests and the sandbox autotest name it explicitly.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum HighLevel {
+    /// Every level is offered.
+    Offered,
+    /// No High finding leaves the engine, and every way to remove one is refused.
+    Withheld,
+}
+
+impl HighLevel {
+    /// Whether a finding or a category at `level` is offered: false only for `High` while withheld.
+    pub const fn offers(self, level: DangerLevel) -> bool {
+        !matches!((self, level), (Self::Withheld, DangerLevel::High))
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    mod negative {
+        use crate::{DangerLevel, HighLevel};
+
+        #[test]
+        fn withheld_does_not_offer_high() {
+            assert!(!HighLevel::Withheld.offers(DangerLevel::High));
+        }
+    }
+
     mod positive {
-        use crate::DangerLevel;
+        use crate::{DangerLevel, HighLevel};
+
+        #[test]
+        fn offered_offers_every_level() {
+            assert!(DangerLevel::ALL.iter().all(|level| HighLevel::Offered.offers(*level)));
+        }
+
+        #[test]
+        fn withheld_offers_safe_to_medium() {
+            for level in [DangerLevel::Safe, DangerLevel::Low, DangerLevel::Medium] {
+                assert!(HighLevel::Withheld.offers(level), "{level:?}");
+            }
+        }
+
+        #[test]
+        fn the_switch_serializes_as_kebab_case() {
+            assert_eq!(serde_json::to_value(HighLevel::Withheld).unwrap(), "withheld");
+            assert_eq!(serde_json::from_str::<HighLevel>("\"offered\"").unwrap(), HighLevel::Offered);
+        }
 
         #[test]
         fn danger_levels_order_from_safe_to_high() {

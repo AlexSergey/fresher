@@ -258,14 +258,15 @@ fn relative_paths(value: &mut Value, root: &Path) {
 #[cfg(test)]
 pub(crate) mod sample {
     use fresher_core::{
-        ByteSize, CategoryDescriptor, CategoryId, Claim, DangerLevel, FindingSink, Interest, LeftOutItem, Locales,
-        Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding, Pattern,
-        Removal, SettingDescriptor, Sizes, Subject, Text, TextArg, TextKey,
+        ByteSize, CategoryDescriptor, CategoryIcon, CategoryId, Claim, DangerLevel, FindingSink, Interest, LeftOutItem,
+        Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleId, NewFinding,
+        Pattern, Removal, SettingDescriptor, Sizes, Subject, Text, TextArg, TextKey,
     };
 
     /// The dictionary of [`CacheModule`]: every key it uses, nothing more.
     pub(crate) const EN: &str = r#"{
         "sample.caches.name": "Caches",
+        "sample.caches.line": "Kept files",
         "sample.caches.what": "Files an app keeps to start faster.",
         "sample.caches.made-by": "Many apps.",
         "sample.caches.if-removed": "The app rebuilds them.",
@@ -301,7 +302,8 @@ pub(crate) mod sample {
 
         pub(crate) fn with_settings(en: &'static str, settings: Vec<SettingDescriptor>) -> Self {
             let id = ModuleId::new("sample").unwrap();
-            let category = CategoryDescriptor::new(CategoryId::new(id, "sample.caches").unwrap(), DangerLevel::Low);
+            let category = CategoryDescriptor::new(CategoryId::new(id, "sample.caches").unwrap(), DangerLevel::Low)
+                .with_icon(CategoryIcon::Cache);
             let descriptor = ModuleDescriptor::new(
                 id,
                 fresher_core::ModuleGroup::Development,
@@ -323,6 +325,27 @@ pub(crate) mod sample {
 
         pub(crate) fn new() -> Self {
             Self::with_dictionary(EN)
+        }
+
+        /// This module, its category with the generic icon.
+        pub(crate) fn without_icon(mut self) -> Self {
+            let category = self.descriptor.categories()[0].clone().with_icon(CategoryIcon::Generic);
+            let descriptor = &self.descriptor;
+            let settings = descriptor.settings().to_vec();
+            self.descriptor = ModuleDescriptor::new(
+                descriptor.id(),
+                descriptor.group(),
+                vec![category],
+                settings,
+                descriptor.locales(),
+            )
+            .unwrap();
+            self
+        }
+
+        /// The icon of its category.
+        pub(crate) fn descriptor_icon(&self) -> CategoryIcon {
+            self.descriptor.categories()[0].icon()
         }
 
         pub(crate) fn failing() -> Self {

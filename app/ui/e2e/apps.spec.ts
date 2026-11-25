@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-import { type CoreScript, mockCore, SCRIPTS } from './core-mock';
+import { type CoreScript, mockCore, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import { REVEALED } from './support/apps-mock';
 import { scanButton, scanFinished } from './support/cards';
@@ -47,6 +47,30 @@ const KEEP = /Remove the app, keep its settings and data/;
 const EVERYTHING = /Remove the app and everything it left/;
 
 test.describe('negative cases', () => {
+  test("an app's page offers only Keep my settings and lists no High file while High is withheld", async ({ page }) => {
+    await openApp(page, 'Video Studio', withheld(SCRIPTS.apps));
+
+    await expect(page.getByRole('radio', { name: KEEP })).toBeChecked();
+    await expect(page.getByRole('radio', { name: EVERYTHING })).toHaveCount(0);
+    const files = page.getByRole('region', { name: 'Its files on your disk' });
+    await expect(files.getByRole('region', { name: 'Caches' })).toBeVisible();
+    await expect(files.getByRole('region', { name: 'Files it keeps for you' })).toHaveCount(0);
+  });
+
+  test('an Apps row shows no High part and leaves its bytes out while High is withheld', async ({ page }) => {
+    await openApps(page, withheld(SCRIPTS.apps));
+    const row = appRow(page, 'Video Studio');
+
+    await row.getByRole('button', { name: 'What it takes' }).click();
+
+    await expect(row.getByRole('listitem').filter({ hasText: 'Caches' })).toBeVisible();
+    for (const part of ['Files it keeps for you', 'Its private folder', "Shared with its maker's other apps"]) {
+      await expect(row.getByRole('listitem').filter({ hasText: part })).toHaveCount(0);
+    }
+    await expect(row).toContainText('3.5 GB');
+    await expect(row).not.toContainText('4 GB');
+  });
+
   test('an app a manager installed shows its reason, its command and no button', async ({ page }) => {
     await openApp(page, 'Terminal Pro');
 
@@ -104,7 +128,7 @@ test.describe('negative cases', () => {
     await page.getByRole('radio', { name: EVERYTHING }).check();
     await uninstallButton(page).click();
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
-    const confirm = dialog.getByRole('button', { name: 'Move to Trash' });
+    const confirm = dialog.getByRole('button', { name: 'Yes, move to the Trash' });
 
     await expect(highTick(dialog)).not.toBeChecked();
     await expect(confirm).toBeDisabled();
@@ -121,11 +145,21 @@ test.describe('negative cases', () => {
 
     await expect(dialog).toContainText('Medium');
     await expect(highTick(dialog)).toHaveCount(0);
-    await expect(dialog.getByRole('button', { name: 'Move to Trash' })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeEnabled();
   });
 });
 
 test.describe('positive cases', () => {
+  test('an Apps row shows every part and counts every byte while High is offered', async ({ page }) => {
+    await openApps(page);
+    const row = appRow(page, 'Video Studio');
+
+    await row.getByRole('button', { name: 'What it takes' }).click();
+
+    await expect(row.getByRole('listitem').filter({ hasText: 'Files it keeps for you' })).toBeVisible();
+    await expect(row).toContainText('4 GB');
+  });
+
   test('the filter keeps the unused apps', async ({ page }) => {
     await openApps(page);
     await expect(appsList(page).getByRole('listitem').filter({ hasText: 'takes' })).not.toHaveCount(0);
@@ -148,7 +182,7 @@ test.describe('positive cases', () => {
     await expect(dialog).toContainText('Video Studio');
     await expect(dialog).toContainText('Medium');
     await expect(dialog.getByRole('button', { name: 'and 4 more files that go with it: Video Studio' })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     const result = page.getByRole('region', { name: 'Moved to the Trash' });
     await expect(result).toContainText('Moved 1 item to the Trash');
@@ -188,12 +222,13 @@ test.describe('positive cases', () => {
   }) => {
     await openApp(page, 'Video Studio');
 
-    const files = page.getByRole('region', { name: 'What it would lose' });
+    const files = page.getByRole('region', { name: 'Its files on your disk' });
     await expect(files.getByRole('region', { name: 'Caches' })).toContainText('Goes with both choices');
     await expect(files.getByRole('region', { name: 'Settings' })).toContainText('Only with everything');
+    await expect(files.getByRole('region', { name: 'Files it keeps for you' })).toBeVisible();
     await expect(files).toContainText('Other apps by the same maker may use this folder');
-    await page.getByRole('button', { name: 'Caches of your apps' }).click();
-    await expect(heading(page, 'Caches of your apps')).toBeVisible();
+    await page.getByRole('button', { name: 'App caches' }).click();
+    await expect(heading(page, 'App caches')).toBeVisible();
   });
 
   test('the App Management notice asks nothing before macOS refused', async ({ page }) => {
@@ -245,7 +280,7 @@ test.describe('positive cases', () => {
     const dialog = page.getByRole('dialog', { name: 'Move 1 item to the Trash?' });
 
     await tickHigh(dialog);
-    await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+    await dialog.getByRole('button', { name: 'Yes, move to the Trash' }).click();
 
     // The core mock refuses a High echo without the tick: the uninstall runs only because it was sent.
     await expect(page.getByRole('region', { name: 'Moved to the Trash' })).toContainText('Moved 1 item to the Trash');

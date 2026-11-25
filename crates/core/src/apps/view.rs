@@ -99,9 +99,9 @@ pub struct AppSummary {
     pub app: AppId,
     pub name: String,
     pub version: Option<String>,
-    /// The bundle and every part, kept parts too.
+    /// The bundle and every part, kept parts too; while High is withheld, no part of a High kind.
     pub sizes: Sizes,
-    /// The sizes by kind, kept parts too.
+    /// The sizes by kind, kept parts too; while High is withheld, no High kind.
     pub parts: Vec<PartSizes>,
     pub last_used: Option<Timestamp>,
     pub summary: Text,

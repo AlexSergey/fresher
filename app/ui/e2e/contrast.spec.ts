@@ -49,11 +49,14 @@ const colouredLight = (page: Page): Promise<readonly string[]> =>
 const noiseShown = (page: Page): Promise<boolean> =>
   page.evaluate(() => getComputedStyle(document.documentElement, '::after').display !== 'none');
 
-// The alpha of a colour as computed (`rgba(…, a)`; an `rgb(…)` is opaque).
-const alphaOf = (colour: string): number => {
-  const channels = /rgba?\(([^)]+)\)/u.exec(colour)?.[1]?.split(/[\s,/]+/u) ?? [];
+// How much a colour stands out on the dark window, as computed (`rgba(…, a)`; an `rgb(…)` is opaque): its mean
+// channel times its alpha.
+const strengthOf = (colour: string): number => {
+  const [red = 0, green = 0, blue = 0, alpha = 1] = (/rgba?\(([^)]+)\)/u.exec(colour)?.[1]?.split(/[\s,/]+/u) ?? [])
+    .filter((part) => part !== '')
+    .map(Number);
 
-  return channels.length === 4 ? Number(channels[3]) : 1;
+  return ((red + green + blue) / 3) * alpha;
 };
 
 const firstCard = (page: Page): Locator => page.locator('[data-card]').first();
@@ -71,7 +74,7 @@ const scanned = async (page: Page): Promise<void> => {
   await page.mouse.move(0, 0);
 };
 
-// The border of a card that is not selected (a selected card's border is the accent).
+// The border of a tile that is not selected.
 const cardBorder = (page: Page): Promise<string> =>
   page
     .locator('[data-card]')
@@ -120,7 +123,7 @@ test.describe('positive cases', () => {
         const page = await browser.newPage({ contrast });
         await motionOff(page);
         await scanned(page);
-        borders.push(alphaOf(await cardBorder(page)));
+        borders.push(strengthOf(await cardBorder(page)));
         await page.close();
       }
 

@@ -50,6 +50,7 @@ describe('the defaults of the selection', () => {
           [7, findingOf({ category: 'demo.downloads', id: 7, level: 'low', name: 'seven' })],
           [8, findingOf({ category: 'demo.logs', id: 8, level: 'safe', name: 'eight' })],
         ]),
+        toCheck: new Set(),
       };
 
       const answer = selectByLevel(before, TOTALS, 'safe');

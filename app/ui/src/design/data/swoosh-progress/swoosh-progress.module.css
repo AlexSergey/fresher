@@ -1,0 +1,71 @@
+/*
+ * The logo's swoosh as a progress line, drawn by its parent's box. The fill grows by its dash; unknown progress is a
+ * short dash running along the track while `--loop-state` runs.
+ */
+@layer components {
+  .swoosh {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .track {
+    stroke: var(--swoosh-track);
+  }
+
+  .start {
+    stop-color: var(--swoosh-start);
+  }
+
+  .end {
+    stop-color: var(--swoosh-end);
+  }
+
+  .star {
+    fill: var(--text-primary);
+  }
+
+  /* The round start of the fill: a dash pushed back along the path has no cap of its own there. */
+  .cap {
+    fill: var(--swoosh-start);
+  }
+
+  .dash {
+    transition: stroke-dashoffset var(--duration-slow) var(--ease-enter);
+  }
+
+  .sweep {
+    animation: swoosh-sweep var(--duration-sweep) var(--ease-linear) infinite;
+    animation-play-state: var(--loop-state);
+  }
+
+  /* Reduced motion: the fill jumps to its value; the unknown dash rests. */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .dash {
+      transition: none;
+    }
+
+    :root:not([data-motion='full']) .sweep {
+      animation: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .dash {
+    transition: none;
+  }
+
+  :root[data-motion='reduced'] .sweep {
+    animation: none;
+  }
+
+  @keyframes swoosh-sweep {
+    from {
+      stroke-dashoffset: 160;
+    }
+
+    to {
+      stroke-dashoffset: -1000;
+    }
+  }
+}

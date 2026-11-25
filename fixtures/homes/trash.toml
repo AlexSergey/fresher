@@ -4,12 +4,12 @@
 # scan, and a plain file no one claims. Every file holds data.
 
 [[file]]
-path = "home/work-a/fresher-trial-cache/blob.bin"
+path = "home/work-a/Sample app cache/blob.bin"
 size = 65536
 fill = "data"
 
 [[file]]
-path = "home/work-b/fresher-trial-cache/blob.bin"
+path = "home/work-b/Sample app cache/blob.bin"
 size = 32768
 fill = "data"
 

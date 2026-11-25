@@ -135,7 +135,7 @@ mod positive {
         let view = home.prepare();
         let (_, events) = home.clean(&view, "trash");
         assert!(matches!(events.last(), Some(Event::CleanupFinished { .. })));
-        assert!(!home.path("home/sandbox/fresher-trial-cache").exists());
+        assert!(!home.path("home/sandbox/Sample app cache").exists());
         assert!(home.path("trash").read_dir().unwrap().next().is_some());
         assert_eq!(home.engine.cleanups(0, 10).total, 1);
     }
@@ -159,7 +159,7 @@ mod positive {
         home.scan();
         let view = home.prepare();
         let (cleanup, _) = home.clean(&view, "trash");
-        let cache = home.path("home/sandbox/fresher-trial-cache");
+        let cache = home.path("home/sandbox/Sample app cache");
         let detail = home.engine.cleanup(cleanup).unwrap();
         let item = detail.items.iter().find(|item| item.path.as_deref() == Some(cache.as_path())).unwrap();
         assert_eq!(item.trash, Some(TrashState::InTrash));
@@ -171,7 +171,7 @@ mod positive {
 
         assert!(!home.engine.agreement().unwrap().is_accepted());
         assert_eq!(back.items[0].outcome, PutBackOutcome::PutBack);
-        assert!(home.path("home/sandbox/fresher-trial-cache/nested/blob.bin").exists());
+        assert!(home.path("home/sandbox/Sample app cache/nested/blob.bin").exists());
         home.scan();
         let caches = json!({ "findings": [], "categories": [{ "category": "trial.caches", "except": [] }] });
         let refused = CommandError::CleaningBlocked { reason: BlockedReason::Agreement };

@@ -262,7 +262,7 @@ mod tests {
                 matches!(events.last(), Some(Event::CleanupFinished { report, .. }) if report.ended == Ended::Cancelled)
             );
             assert_eq!(shell.engine().status(), Ok(EngineStatus::Idle));
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists(), "the item was not reached");
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists(), "the item was not reached");
             // The window is destroyed; the mock runtime does not report it, so this shows the close is let through.
             assert!(!holds_close(shell.app.handle()));
         }
@@ -282,7 +282,7 @@ mod tests {
 
             let events = until_finished(&events, is_cleanup_finished);
             assert_eq!(events.iter().filter(|event| **event == Event::QuitRequested).count(), 1);
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists(), "the item was not reached");
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists(), "the item was not reached");
         }
 
         #[test]

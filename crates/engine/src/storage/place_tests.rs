@@ -35,7 +35,7 @@ fn node(state: &FixedDiskState, path: &str) -> NodeId {
 
 /// The first page of up to 50 rows of `path`, nothing ignored.
 fn open(state: &FixedDiskState, path: &str) -> PlaceView {
-    let shares = Shares::of(state, &Ignored::default());
+    let shares = Shares::of(state, &Ignored::default(), &crate::withheld::Withheld::offered());
     place_view(state, &shares, node(state, path), Descent::Through, 0, 50).unwrap()
 }
 
@@ -119,7 +119,7 @@ mod negative {
     #[test]
     fn a_root_asked_for_no_rows_is_its_own_path_and_nothing_more() {
         let state = folders(&[("/home", 100), ("/home/Library", 95)]);
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         let view = place_view(&state, &shares, node(&state, "/home"), Descent::Stay, 0, 0).unwrap();
 
@@ -158,7 +158,7 @@ mod negative {
     #[test]
     fn a_next_page_does_not_descend_again() {
         let state = folders(&[("/home", 100), ("/home/Library", 95), ("/home/Library/a", 95), ("/home/x", 5)]);
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         let view = place_view(&state, &shares, node(&state, "/home"), Descent::Through, 1, 50).unwrap();
 
@@ -170,7 +170,7 @@ mod negative {
     #[test]
     fn a_breadcrumb_step_does_not_descend_again() {
         let state = folders(&[("/home", 100), ("/home/Library", 95), ("/home/Library/a", 95), ("/home/x", 5)]);
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         let view = place_view(&state, &shares, node(&state, "/home"), Descent::Stay, 0, 50).unwrap();
 
@@ -181,7 +181,7 @@ mod negative {
     #[test]
     fn a_node_of_another_state_is_none() {
         let state = folders(&[("/home", 100)]);
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         assert_eq!(place_view(&state, &shares, NodeId::new(StateId::new(2), 0), Descent::Through, 0, 50), None);
     }
@@ -342,7 +342,7 @@ mod property {
                     state = state.with_owner(path, category(CATEGORIES[*owner]));
                 }
             }
-            let shares = Shares::of(&state, &Ignored::default());
+            let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
             for path in &paths {
                 let first = place_view(&state, &shares, state.find(path).unwrap(), Descent::Through, 0, limit).unwrap();

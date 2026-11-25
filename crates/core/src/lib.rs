@@ -63,7 +63,7 @@ pub use apps::{
 };
 pub use cachedir::{CACHEDIR_SIGNATURE, CACHEDIR_TAG, is_valid_cachedir_tag};
 pub use cancel::CancelToken;
-pub use category::{CategoryDescriptor, CategoryText};
+pub use category::{CategoryDescriptor, CategoryIcon, CategoryText};
 pub use cleanup::{
     Act, Action, ActionKind, BeginRecord, BlockedReason, CategoryPick, Cleaner, CleanupContext, CleanupDetail,
     CleanupId, CleanupItemRef, CleanupItemView, CleanupJournal, CleanupPlan, CleanupPlanView, CleanupReport,
@@ -81,7 +81,7 @@ pub use command::{
     SettingUpdate, SettingsFile, SettingsView,
 };
 pub use coverage::{Coverage, NotEntered, UnreadableCount};
-pub use danger::DangerLevel;
+pub use danger::{DangerLevel, HighLevel};
 pub use dictionary::{Dictionary, DictionaryError};
 pub use disk_state::{
     ChildOrder, DiskState, ItemRule, ItemVisit, NodeId, NodeInfo, NodeKind, NodePage, NotScanned, StateId,
@@ -126,7 +126,7 @@ pub use settings::{
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{
     AppRef, CategoryShare, Descent, MapPart, MapPhase, MapPlace, MeaningGroup, PartKind, PlaceName, PlaceRow,
-    PlaceShare, PlaceView, RemainderReason, StorageMap, StorageMapError, VolumeMap,
+    PlaceShare, PlaceView, RemainderReason, StorageMap, StorageMapError, SummaryKind, SummaryPart, VolumeMap,
 };
 pub use store::{FormatVersion, SettingsStore, StoreError, StoredSettings, VersionPolicy};
 pub use subject::Subject;

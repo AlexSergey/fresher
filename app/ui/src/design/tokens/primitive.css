@@ -13,6 +13,7 @@
     --gray-850: #1c1f25;
     --gray-800: #1f232a;
     --gray-750: #262b33;
+    --gray-725: #2a2f38;
     --gray-700: #313741;
     --gray-600: #444b57;
     --gray-500: #5a616d;
@@ -36,7 +37,6 @@
     /* The muted hues of the neutral parts of a disk: no light, each at least 3:1 on the raised surface. */
     --slate-400: #7d8696;
     --slate-500: #646b78;
-    --plum-400: #8f7fa8;
     --teal-400: #5f9590;
     --stone-400: #9d9180;
 
@@ -87,5 +87,36 @@
     --red-400-a32: rgb(255 107 112 / 32%);
     --red-400-a40: rgb(255 107 112 / 40%);
     --red-400-a45: rgb(255 107 112 / 45%);
+
+    /* The mockups' colours (docs/mockups/0.1.0). */
+    --blue-400: #5b7cfa;
+    --violet-400: #b18cf5;
+    --pink-400: #f07ab0;
+    --iris-200: #9aa6ff;
+    --iris-200-a0: rgb(154 166 255 / 0%);
+    --iris-200-a25: rgb(154 166 255 / 25%);
+    --iris-200-a45: rgb(154 166 255 / 45%);
+    --iris-600-a35: rgb(84 101 235 / 35%);
+    --night-800: #1d2140;
+    --gray-875: #1a1d23;
+    --gray-650: #3a414d;
+    --gray-200: #c9ced6;
+    --gray-700-a0: rgb(49 55 65 / 0%);
+    --green-900: #2b4a3b;
+    --cyan-900: #26404a;
+    --amber-900: #5a4620;
+    --amber-925: #2e2616;
+    --amber-950: #1e1b14;
+    --amber-975: #17150f;
+    --amber-200: #d9c79f;
+    --green-400-a8: rgb(61 214 140 / 8%);
+    --green-400-a12: rgb(61 214 140 / 12%);
+    --cyan-400-a8: rgb(76 195 230 / 8%);
+    --cyan-400-a12: rgb(76 195 230 / 12%);
+    --amber-400-a10: rgb(245 181 68 / 10%);
+    --amber-400-a14: rgb(245 181 68 / 14%);
+    --red-400-a12: rgb(255 107 112 / 12%);
+    --white-a3: rgb(255 255 255 / 3%);
+    --floating-a92: rgb(28 31 37 / 92%);
   }
 }

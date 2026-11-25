@@ -147,7 +147,7 @@ describe('AppScreen', () => {
       await screen.findByRole('button', { name: 'Uninstall…' });
 
       uninstall();
-      fireEvent.click(await screen.findByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Yes, move to the Trash' }));
       const events = cleanupEventsOf(planOf('keep-data'), MOVED_REPORT);
       act(() => {
         pushEvents(events.started, ...events.items, events.finished);
@@ -194,7 +194,7 @@ describe('AppScreen', () => {
       const dialog = await screen.findByRole('dialog');
       expect(within(dialog).queryByRole('checkbox')).toBeNull();
       expect(within(dialog).queryByText(/Delete permanently/u)).toBeNull();
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Yes, move to the Trash' }));
       expect(
         confirmCleanup.mock.calls.map(
           ([args]) => (args as { readonly confirmation: Confirmation }).confirmation.method,
@@ -240,11 +240,11 @@ describe('AppScreen', () => {
     it('lists every file with its kept reason', async () => {
       await show();
 
-      const files = await screen.findByRole('region', { name: 'What it would lose' });
+      const files = await screen.findByRole('region', { name: 'Its files on your disk' });
 
       expect(within(files).getByRole('region', { name: 'Caches' })).toBeVisible();
       expect(within(files).getByText(/Other apps by the same maker may use this folder/u)).toBeVisible();
-      expect(screen.getByText('Files an app keeps under another name than its id are not listed.')).toBeVisible();
+      expect(screen.getByText('Files an app keeps under another name are not listed.')).toBeVisible();
     });
 
     it('chooses keep-data when it opens', async () => {
@@ -304,7 +304,7 @@ describe('AppScreen', () => {
       fireEvent.click(await screen.findByRole('radio', { name: /everything it left/u }));
       uninstall();
       const dialog = await screen.findByRole('dialog');
-      const confirm = within(dialog).getByRole('button', { name: 'Move to Trash' });
+      const confirm = within(dialog).getByRole('button', { name: 'Yes, move to the Trash' });
 
       expect(confirm).toBeDisabled();
       fireEvent.click(
@@ -327,7 +327,7 @@ describe('AppScreen', () => {
       await screen.findByRole('button', { name: 'Uninstall…' });
       uninstall();
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Move to Trash' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Yes, move to the Trash' }));
 
       expect(navigation.getScreen()).toStrictEqual({ kind: 'review' });
     });
@@ -335,7 +335,7 @@ describe('AppScreen', () => {
     it('links each category of the app', async () => {
       const { navigation } = await show();
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Caches of your apps' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'App caches' }));
 
       expect(navigation.getScreen()).toStrictEqual({ category: 'app-caches.library-caches', kind: 'category' });
     });

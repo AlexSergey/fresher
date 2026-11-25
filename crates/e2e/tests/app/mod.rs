@@ -140,7 +140,7 @@ pub(crate) fn engine_on(
         system_ui: Arc::new(FakeSystemUi::default()),
         system: fresher_testing::fake_system(root),
     };
-    Engine::new(registry, ports).unwrap()
+    Engine::new(registry, ports, fresher_core::HighLevel::Offered).unwrap()
 }
 
 /// Runs one scan and gives its events; fails after 30 s instead of hanging.

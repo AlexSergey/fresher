@@ -6,8 +6,8 @@
 
 ## What it is
 
-Reports macOS writes when an app crashes, stops responding or uses too much of your Mac, to help its developer find
-the cause. Nothing has changed them for at least a week (the setting runs from 7 to 90 days and can only be raised).
+Reports macOS writes when an app crashes or stops responding, to help its developer find the cause. Nothing has changed
+them for at least a week (the setting runs from 7 to 90 days and can only be raised).
 
 ## Where it lives
 

@@ -60,7 +60,7 @@ describe('PermissionCard', () => {
           <p>Not seen.</p>
         </PermissionCard>,
       );
-      const unknown = screen.getByText('Full Disk Access is not confirmed');
+      const unknown = screen.getByText('Fresher cannot tell if it has Full Disk Access');
 
       // eslint-disable-next-line testing-library/no-node-access -- the tone is drawn, not named
       expect(unknown.closest('[data-tone]')).toHaveAttribute('data-tone', 'info');

@@ -1,4 +1,4 @@
-import { type JSX, useId } from 'react';
+import type { JSX } from 'react';
 
 import type { SettingsView } from '../../ipc/bindings.generated';
 import type { Settings } from '../settings/use-settings';
@@ -20,13 +20,15 @@ import { useAccessStatus } from './use-access';
 // the four opt-in switches (the core's `core.access.*` settings) and a way to check again. The heading and the switches
 // show at once; the states once the core has answered.
 export const PermissionsGroup = ({
+  headingId,
   settings,
   view,
 }: {
+  // The page's heading, which names the group.
+  readonly headingId: string;
   readonly settings: Settings;
   readonly view: SettingsView;
 }): JSX.Element => {
-  const headingId = useId();
   const store = useCoreStore();
   const status = useAccessStatus();
   const modules = useModules();
@@ -56,9 +58,6 @@ export const PermissionsGroup = ({
   return (
     <section aria-labelledby={headingId} className={screenStyles.group}>
       <div className={styles.title}>
-        <h2 className={screenStyles.heading} id={headingId}>
-          {t('ui.screen.settings.group.permissions')}
-        </h2>
         <Button
           onClick={() => {
             refreshAccess().catch(failed);

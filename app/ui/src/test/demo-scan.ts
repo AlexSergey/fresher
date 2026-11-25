@@ -15,6 +15,8 @@ import type {
   SettingsView,
 } from '../ipc/bindings.generated';
 
+import { iconOf } from './category-icons';
+
 // A scan of the demo module as the core streams it, with the texts it needs: shared by the unit and the e2e tests.
 
 // A scan that saw everything: no guarded place left out, no folder unreadable.
@@ -48,7 +50,7 @@ export const ACCESS_DICTIONARY: Dictionary = {
 // A category that needs nothing, so it is ready whatever the access.
 export const readyCategory = (id: string, danger: DangerLevel): CategoryInfo => ({
   availability: { kind: 'ready' },
-  descriptor: { danger, id, needs: [] },
+  descriptor: { danger, icon: iconOf(id), id, needs: [] },
 });
 
 // What `get_access_status` answers with each capability of `states` in its state, and no other capability.
@@ -191,19 +193,21 @@ export const DEMO_DICTIONARY: Dictionary = {
   'core.error.busy': 'The app is already running a {running}. Wait for it to finish, or cancel it.',
   'core.group.debug.name': 'Debug',
   'core.group.development.name': 'Development',
-  'core.ignore.modules.description': 'Hides everything this module finds and never cleans it.',
+  'core.ignore.modules.description': 'Fresher stops looking for these and never removes what they find.',
   'core.left-out.summary.one': '{count} item left out ({size}):',
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'core.scan.outcome.completed': 'The scan is complete.',
   'core.scan.outcome.failed': 'The scan could not finish.',
   'core.scan.outcome.partial': 'The scan stopped early or could not read some folders. What it found so far is shown.',
+  'demo.caches.line': 'Made-up caches to try Fresher',
   'demo.caches.name': 'Example caches',
-  'demo.caches.what': 'Example data: made-up cache folders of made-up apps, shown by the demo module.',
+  'demo.caches.what': 'Made-up cache folders of made-up apps.',
+  'demo.downloads.line': 'Made-up downloads to try Fresher',
   'demo.downloads.name': 'Example downloads',
-  'demo.downloads.what': 'Example data: made-up installers and archives in a made-up Downloads folder.',
+  'demo.downloads.what': 'Made-up installers and archives in a made-up Downloads folder.',
   'demo.enabled.description': 'Shows made-up example findings, so the app can be tried without touching your disk.',
   'demo.enabled.label': 'Demo module',
-  'demo.finding.reason': 'Example data from the demo module: it does not exist on your disk.',
+  'demo.finding.reason': 'Made up by the demo; it is not on your disk.',
   'demo.finding.title': 'Example: {name}',
   'demo.left-out.open': 'The app that made it is open. Quit the app, then scan again.',
 };
@@ -218,7 +222,7 @@ export const DENIED: AccessStatus = allFiles('denied');
 export const DEMO_LIVE_SCAN: readonly Event[] = [
   SCAN_STARTED,
   FIRST_BATCH,
-  { bytes: 2_250_000_000, entries: 18_432, scan: 1, type: 'scan-progress' },
+  { bytes: 2_250_000_000, entries: 18_432, expected: 3_000_000_000, scan: 1, type: 'scan-progress' },
   ...DEMO_SCAN.slice(2),
 ];
 
@@ -361,11 +365,11 @@ export const SETTINGS_READ_ONLY: SettingsView = { ...SETTINGS_OF_EVERY_KIND, fil
 export const SCRIPTS_DICTIONARY: Dictionary = {
   ...DEMO_DICTIONARY,
   'core.completeness.partial': 'Some files could not be read, so the real size is a little bigger.',
-  'core.danger.low.meaning': 'Comes back when needed, but that takes time or a download.',
-  'core.danger.safe.meaning': 'Comes back by itself when needed. Removing it costs only a little time.',
+  'core.danger.low.meaning': 'You may need to download them again',
+  'core.danger.safe.meaning': 'Apps make these again on their own',
   'core.error.settings-read-only':
-    'Your settings cannot be changed now: they were saved by a newer version of the app, or the settings file could ' +
-    'not be read. Restart or update the app, then try again.',
+    'Your settings cannot be changed now: a newer version of the app saved them, or the file could not be read. ' +
+    'Restart or update the app, then try again.',
   'core.motion.description': 'How much the app animates.',
   'core.motion.label': 'Motion',
   'core.motion.options.reduced': 'Reduced',

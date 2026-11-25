@@ -33,7 +33,7 @@ module = "trial"
 name = "a trial folder with no marker next to it is never offered"
 kind = "negative"
 [[case.file]]
-path = "home/bare/fresher-trial-cache/blob.bin"
+path = "home/bare/Sample app cache/blob.bin"
 size = 4096
 
 [[case]]
@@ -42,11 +42,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/work"
 [[case.file]]
-path = "home/work/fresher-trial-cache/blob.bin"
+path = "home/work/Sample app cache/blob.bin"
 size = 4096
 fill = "data"
 [case.expect]
-item = "home/work/fresher-trial-cache"
+item = "home/work/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
@@ -418,6 +418,14 @@ mod negative {
     }
 
     #[test]
+    fn sandbox_mode_withholds_high_by_default() {
+        let mode = SandboxMode::from_env(env(&[("FRESHER_SANDBOX", "/tmp/s")])).unwrap().unwrap();
+
+        assert_eq!(mode.high, fresher_core::HighLevel::Withheld);
+        assert_eq!(SandboxMode::new("/tmp/s", crate::sandbox::SandboxTrash::Sandbox).high, mode.high);
+    }
+
+    #[test]
     fn a_relative_sandbox_path_does_not_start() {
         let refusal = SandboxMode::from_env(env(&[("FRESHER_SANDBOX", "sandbox/trial")]));
 
@@ -463,8 +471,8 @@ mod negative {
     fn the_real_homes_places_that_prompt_are_not_walked() {
         let world = World::new();
         let documents = fs::canonicalize(world.real_home()).unwrap().join("Documents");
-        fs::create_dir_all(documents.join("fresher-trial-cache")).unwrap();
-        fs::write(documents.join("fresher-trial-cache/blob.bin"), [0; 64]).unwrap();
+        fs::create_dir_all(documents.join("Sample app cache")).unwrap();
+        fs::write(documents.join("Sample app cache/blob.bin"), [0; 64]).unwrap();
         fs::write(documents.join(SANDBOX_MARKER), format!("{}\n", fresher_core::SANDBOX_SIGNATURE)).unwrap();
         let engine = world.start();
         let roots = SettingValue::Folders(vec!["~".into(), documents.clone()]);
@@ -484,8 +492,8 @@ mod negative {
         let real_home = fs::canonicalize(world.real_home()).unwrap();
         let guarded = [sandbox_home.join("Library/Containers/com.example.app"), real_home.join("Desktop")];
         for place in &guarded {
-            fs::create_dir_all(place.join("fresher-trial-cache")).unwrap();
-            fs::write(place.join("fresher-trial-cache/blob.bin"), [0; 64]).unwrap();
+            fs::create_dir_all(place.join("Sample app cache")).unwrap();
+            fs::write(place.join("Sample app cache/blob.bin"), [0; 64]).unwrap();
             fs::write(place.join(SANDBOX_MARKER), format!("{}\n", fresher_core::SANDBOX_SIGNATURE)).unwrap();
         }
         let engine = world.start();
@@ -505,8 +513,8 @@ mod negative {
         let world = World::new();
         super::grant_downloads(&world, "granted");
         let downloads = fs::canonicalize(world.real_home()).unwrap().join("Downloads");
-        fs::create_dir_all(downloads.join("fresher-trial-cache")).unwrap();
-        fs::write(downloads.join("fresher-trial-cache/blob.bin"), [0; 64]).unwrap();
+        fs::create_dir_all(downloads.join("Sample app cache")).unwrap();
+        fs::write(downloads.join("Sample app cache/blob.bin"), [0; 64]).unwrap();
         fs::write(downloads.join(SANDBOX_MARKER), format!("{}\n", fresher_core::SANDBOX_SIGNATURE)).unwrap();
         let engine = super::start_with_access(&world);
         let roots = SettingValue::Folders(vec!["~".into(), downloads.clone()]);
@@ -516,7 +524,7 @@ mod negative {
 
         assert!(!found(&engine).is_empty(), "the sandbox's own trial cache is found");
         assert!(found(&engine).iter().all(|path| !path.starts_with(&downloads)), "{:?}", found(&engine));
-        assert!(!super::has_node(&engine, &downloads.join("fresher-trial-cache")));
+        assert!(!super::has_node(&engine, &downloads.join("Sample app cache")));
     }
 
     #[test]
@@ -609,7 +617,7 @@ mod negative {
 
         let home = world.sandbox().home();
         let found = super::removability(&engine);
-        assert_eq!(found, [(home.join("work/fresher-trial-cache"), fresher_core::Removability::Removable)]);
+        assert_eq!(found, [(home.join("work/Sample app cache"), fresher_core::Removability::Removable)]);
         let ports = crate::sandbox::SandboxPorts::real(&world.sandbox()).unwrap();
         assert!(ports.stated.is_empty());
     }
@@ -618,7 +626,7 @@ mod negative {
     #[test]
     fn an_item_outside_the_sandbox_is_left_out() {
         let world = World::new();
-        let outside = FixtureTree::from_toml_str("[[file]]\npath = \"fresher-trial-cache/blob.bin\"\nsize = 4096\n")
+        let outside = FixtureTree::from_toml_str("[[file]]\npath = \"Sample app cache/blob.bin\"\nsize = 4096\n")
             .unwrap()
             .with_sandbox()
             .unwrap();
@@ -630,10 +638,10 @@ mod negative {
         scan(&engine);
         let view = prepare(&engine);
 
-        assert!(found(&engine).contains(&root.join("fresher-trial-cache")));
+        assert!(found(&engine).contains(&root.join("Sample app cache")));
         assert_eq!(view.left_out.len(), 1, "{view:?}");
         assert_eq!(view.left_out[0].reason(), &SkipReason::NotInSandbox);
-        assert!(root.join("fresher-trial-cache/blob.bin").exists());
+        assert!(root.join("Sample app cache/blob.bin").exists());
     }
 }
 
@@ -646,6 +654,13 @@ mod positive {
 
     use super::{SANDBOX_MARKER, World, clean, env, found, prepare, scan};
     use crate::sandbox::{SandboxMode, SandboxTrash};
+
+    #[test]
+    fn offering_high_offers_it() {
+        let mode = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).offering_high();
+
+        assert_eq!(mode.high, fresher_core::HighLevel::Offered);
+    }
 
     #[test]
     fn the_own_trash_names_its_folder() {
@@ -857,7 +872,7 @@ mod positive {
         let world = World::new();
         let sandbox = world.sandbox();
         let entry =
-            "\n[[entry]]\npath = \"home/work/fresher-trial-cache\"\nowner = \"system\"\nflags = [\"system-lock\"]\n";
+            "\n[[entry]]\npath = \"home/work/Sample app cache\"\nowner = \"system\"\nflags = [\"system-lock\"]\n";
         let text = fs::read_to_string(sandbox.world()).unwrap() + entry;
         fs::write(sandbox.world(), text).unwrap();
         let engine = super::start_stated(&world);
@@ -865,7 +880,7 @@ mod positive {
         scan(&engine);
 
         let ports = crate::sandbox::SandboxPorts::real(&sandbox).unwrap();
-        let cache = sandbox.home().join("work/fresher-trial-cache");
+        let cache = sandbox.home().join("work/Sample app cache");
         assert_eq!(
             ports.stated.get(&cache).and_then(|stated| stated.owner),
             Some(fresher_testing::StatedOwner::System)
@@ -930,7 +945,7 @@ mod positive {
         scan(&engine);
 
         let home = world.sandbox().home();
-        assert_eq!(found(&engine), [home.join("work/fresher-trial-cache")]);
+        assert_eq!(found(&engine), [home.join("work/Sample app cache")]);
     }
 
     #[test]
@@ -959,9 +974,9 @@ mod positive {
         clean(&engine, &prepare(&engine));
 
         let home = sandbox.home();
-        assert!(!home.join("work/fresher-trial-cache").exists());
-        assert!(sandbox.trash().join("0-fresher-trial-cache/blob.bin").is_file());
-        assert!(home.join("bare/fresher-trial-cache/blob.bin").is_file(), "the negative is untouched");
+        assert!(!home.join("work/Sample app cache").exists());
+        assert!(sandbox.trash().join("0-Sample app cache/blob.bin").is_file());
+        assert!(home.join("bare/Sample app cache/blob.bin").is_file(), "the negative is untouched");
         assert!(home.join("work").join(SANDBOX_MARKER).is_file());
         assert!(fs::read_dir(world.real_home()).unwrap().next().is_none());
     }

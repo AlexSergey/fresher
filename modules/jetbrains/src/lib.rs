@@ -22,9 +22,9 @@ mod products;
 mod uninstalled;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, DangerLevel, DaySetting, DescriptorError, EntryKind, FindingSink, IdError,
-    Interest, InterestError, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError,
-    ModuleGroup, ModuleId, NewFinding, Removal, RunningSet, SettingError, Subject, Text, TextArg, TextKey,
+    CategoryDescriptor, CategoryIcon, CategoryId, DangerLevel, DaySetting, DescriptorError, EntryKind, FindingSink,
+    IdError, Interest, InterestError, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor,
+    ModuleError, ModuleGroup, ModuleId, NewFinding, Removal, RunningSet, SettingError, Subject, Text, TextArg, TextKey,
     TextKeyError, Timestamp,
 };
 
@@ -177,10 +177,13 @@ impl JetBrainsModule {
     pub fn new() -> Result<Self, JetBrainsError> {
         let id = ModuleId::new("jetbrains")?;
         let category = |place: Place| {
-            Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, place.category())?, place.danger()))
+            Ok::<_, IdError>(
+                CategoryDescriptor::new(CategoryId::new(id, place.category())?, place.danger()).with_icon(icon(place)),
+            )
         };
         let categories = PLACES.into_iter().map(category).collect::<Result<Vec<_>, _>>()?;
-        let uninstalled = CategoryDescriptor::new(CategoryId::new(id, UNINSTALLED)?, DangerLevel::Medium);
+        let uninstalled = CategoryDescriptor::new(CategoryId::new(id, UNINSTALLED)?, DangerLevel::Medium)
+            .with_icon(CategoryIcon::Editor);
         let mut listed = categories.clone();
         listed.push(uninstalled.clone());
         listed.sort_by_key(|category| category.id().as_str());
@@ -330,6 +333,14 @@ impl Module for JetBrainsModule {
             self.decide_uninstalled(&product, folders, cx, out);
         }
         Ok(())
+    }
+}
+
+/// The icon of the category of `place`.
+const fn icon(place: Place) -> CategoryIcon {
+    match place {
+        Place::Logs => CategoryIcon::Log,
+        Place::Settings | Place::Caches => CategoryIcon::Editor,
     }
 }
 

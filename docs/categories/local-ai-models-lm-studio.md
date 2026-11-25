@@ -6,7 +6,8 @@
 
 ## What it is
 
-The models LM Studio keeps to run them on this Mac, one folder per model. Made by LM Studio, an app that runs language models locally.
+The models LM Studio keeps to run on this Mac, one folder per model. Made by LM Studio, an app that runs AI models on
+your Mac.
 
 ## Where it lives
 
@@ -16,7 +17,8 @@ The tool's sign: the place itself. A folder two levels down in LM Studio's model
 
 ## What happens if you remove it
 
-The model's folder goes to the Trash and LM Studio no longer lists it. Your chats and LM Studio's settings stay. If you downloaded it in LM Studio, it comes back: download it there again. A model you added yourself comes back only from your own copy.
+LM Studio no longer lists the model. Your chats and LM Studio's settings stay. If you downloaded it in LM Studio, it
+comes back: download it there again. A model you added yourself comes back only from your own copy.
 
 ## How the app decides
 

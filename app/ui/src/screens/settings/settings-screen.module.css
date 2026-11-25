@@ -1,9 +1,11 @@
-/* The settings screen: its groups on the content column, each a raised panel of rows. */
+/* The settings screen: a sidebar of sections and the page; the parts of a page are raised panels of rows. */
 @layer components {
-  .content {
-    display: grid;
-    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-8);
-    gap: var(--space-8);
+  /* The sidebar of sections beside the page, stretched to the frame's height under the toolbar. */
+  .body {
+    display: flex;
+    min-height: calc(100vh - var(--size-toolbar));
+    min-height: calc(100cqh - var(--size-toolbar));
+    flex: 1;
   }
 
   .group {

@@ -6,8 +6,7 @@
 
 ## What it is
 
-Copies of every package npm has downloaded, kept so that installing the same version again needs no download. Made by
-npm, the package manager that comes with Node.js.
+Copies of the packages npm downloaded, so the next install needs no download. Made by npm, which comes with Node.js.
 
 ## Where it lives
 
@@ -19,9 +18,8 @@ not claimed.
 
 ## What happens if you remove it
 
-It goes to the Trash; the space comes back when you empty it. Your projects and the packages installed in them keep
-working. Yes. npm downloads each package again the next time a project installs it, which needs the network and takes
-longer.
+Nothing is lost. Your projects and the packages in them keep working. Yes, npm downloads each package again when a
+project needs it.
 
 ## How the app decides
 

@@ -6,8 +6,8 @@
 
 ## What it is
 
-Copies of the packages Yarn has downloaded, kept so that the next install needs no download. Made by Yarn, a package
-manager for JavaScript projects.
+Copies of the packages Yarn downloaded, so the next install needs no download. Made by Yarn, a package manager for
+JavaScript.
 
 ## Where it lives
 
@@ -19,9 +19,8 @@ it the folder is not claimed.
 
 ## What happens if you remove it
 
-It goes to the Trash; the space comes back when you empty it. Your projects and the packages installed in them keep
-working. Yes. Yarn downloads each package again on the next install that needs it, which needs the network and takes
-longer.
+Nothing is lost. Your projects and the packages in them keep working. Yes, Yarn downloads each package again when a
+project needs it.
 
 ## How the app decides
 

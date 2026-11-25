@@ -160,6 +160,10 @@ const DESIGN_PAIRS: readonly Pair[] = [
     { bar: TEXT, fg: `--level-${level}-fg`, on: '--surface-raised' },
   ]),
   { bar: NON_TEXT, fg: '--border-control', on: '--surface-raised' },
+  { bar: TEXT, fg: '--text-on-fill', on: '--menu-item-active' },
+  { bar: TEXT, fg: '--text-legend', on: '--gray-900' },
+  { bar: TEXT, fg: '--tile-line-medium', on: '--amber-950' },
+  { bar: TEXT, fg: '--text-tertiary', on: '--gray-875' },
 ];
 
 const FIXTURE = tokensOf(`

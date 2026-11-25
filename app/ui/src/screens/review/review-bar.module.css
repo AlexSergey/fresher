@@ -1,0 +1,12 @@
+/* Review's bar: the selection bar's floating panel (its anchor, panel and actions), without its rise. */
+@layer components {
+  .count {
+    color: var(--text-secondary);
+  }
+
+  .total > [data-numeric][data-size] {
+    font-size: var(--type-callout-size);
+    font-weight: 600;
+    line-height: var(--type-callout-line);
+  }
+}

@@ -18,6 +18,7 @@ use crate::settings::Ignored;
 use crate::storage::attribution::AppPlaces;
 use crate::storage::roots::RootVolumes;
 use crate::storage::shares::Shares;
+use crate::withheld::Withheld;
 
 /// The findings of one scan, in id order. Ids keep increasing across scans, so an id from an earlier scan is unknown.
 /// Also the disk state of the last committed scan, kept until another scan commits one, with the owners of its places
@@ -32,6 +33,10 @@ pub(crate) struct Results {
     /// uninstall's bundle and parts among them): the Largest screen and the Apps list leave them out.
     gone: Vec<PathBuf>,
     ignored: Ignored,
+    /// What the High switch leaves out of every answer, set once at build.
+    withheld: Withheld,
+    /// `withheld` with the paths of `state`'s findings raised to High: the owners the shares leave out.
+    state_withheld: Arc<Withheld>,
     roots: Vec<PathBuf>,
     /// The places the current scan walks outside its roots.
     walked: Vec<Place>,
@@ -68,6 +73,8 @@ impl fmt::Debug for Results {
             .field("own", &self.own.len())
             .field("gone", &self.gone)
             .field("ignored", &self.ignored)
+            .field("withheld", &self.withheld)
+            .field("state_withheld", &self.state_withheld)
             .field("roots", &self.roots)
             .field("walked", &self.walked)
             .field("limited", &self.limited)
@@ -98,12 +105,15 @@ pub(crate) struct Filter<'a> {
 }
 
 impl Results {
-    pub(crate) fn new() -> Self {
+    /// No findings yet; `withheld` leaves its findings out of every answer.
+    pub(crate) fn new(withheld: Withheld) -> Self {
         Self {
             findings: Vec::new(),
             own: Vec::new(),
             gone: Vec::new(),
             ignored: Ignored::default(),
+            state_withheld: Arc::new(withheld.clone()),
+            withheld,
             roots: Vec::new(),
             walked: Vec::new(),
             limited: BTreeSet::new(),
@@ -181,7 +191,7 @@ impl Results {
         Some(FindingId::new(id))
     }
 
-    /// The findings the user sees, in id order: those the ignore lists do not hide.
+    /// The findings the user sees, in id order: those neither the ignore lists nor the High switch hide.
     pub(crate) fn visible(&self) -> Vec<Finding> {
         self.shown().cloned().collect()
     }
@@ -226,7 +236,17 @@ impl Results {
     }
 
     fn shown(&self) -> impl Iterator<Item = &Finding> + Clone {
-        self.findings.iter().filter(|finding| !self.ignored.hides(finding))
+        self.findings.iter().filter(|finding| self.is_shown(finding))
+    }
+
+    /// Whether the user sees `finding`: the ignore lists do not hide it, and the High switch does not withhold it.
+    fn is_shown(&self, finding: &Finding) -> bool {
+        !self.ignored.hides(finding) && !self.withheld.hides(finding)
+    }
+
+    /// What the High switch leaves out.
+    pub(crate) const fn withheld(&self) -> &Withheld {
+        &self.withheld
     }
 
     /// The places the current scan walked outside its roots.
@@ -314,6 +334,7 @@ impl Results {
         self.state_walked = Arc::from(self.walked.as_slice());
         self.state_findings =
             self.findings.iter().filter(|finding| finding.finding().app().is_some()).cloned().collect();
+        self.state_withheld = Arc::new(self.withheld.with_raised(&self.findings));
     }
 
     pub(crate) fn state(&self) -> Option<Arc<dyn DiskState>> {
@@ -330,6 +351,7 @@ impl Results {
             own: Arc::from(self.own.as_slice()),
             gone: Arc::from(self.gone.as_slice()),
             ignored: self.ignored.clone(),
+            withheld: Arc::clone(&self.state_withheld),
             volumes: self.state_volumes.clone(),
             walked: Arc::clone(&self.state_walked),
             findings: Arc::clone(&self.state_findings),
@@ -371,8 +393,8 @@ impl Results {
 
     /// The finding `id` the user sees, or the pick `id`.
     pub(crate) fn finding(&self, id: FindingId) -> Result<Finding, CommandError> {
-        let found = by_id(&self.findings, id).filter(|finding| !self.ignored.hides(finding));
-        let pick = || by_id(&self.own, id).filter(|finding| !self.ignored.hides(finding));
+        let found = by_id(&self.findings, id).filter(|finding| self.is_shown(finding));
+        let pick = || by_id(&self.own, id).filter(|finding| self.is_shown(finding));
         found.or_else(pick).cloned().ok_or(CommandError::UnknownFinding { id })
     }
 
@@ -452,12 +474,14 @@ pub(crate) struct Committed {
     pub(crate) gone: Arc<[PathBuf]>,
     shares: Arc<OnceLock<Shares>>,
     ignored: Ignored,
+    withheld: Arc<Withheld>,
 }
 
 impl Committed {
-    /// The state's shares under the ignore lists taken with it, built by the first caller and kept in the results.
+    /// The state's shares under the ignore lists and the High switch taken with it, built by the first caller and
+    /// kept in the results.
     pub(crate) fn shares(&self) -> &Shares {
-        self.shares.get_or_init(|| Shares::of(&*self.state, &self.ignored))
+        self.shares.get_or_init(|| Shares::of(&*self.state, &self.ignored, &self.withheld))
     }
 
     /// The paths the ignore list taken with the state holds.
@@ -526,7 +550,7 @@ mod tests {
 
     /// Results holding one finding per entry, ids from 1 in the order given.
     fn results(findings: &[(&CategoryDescriptor, Sizes)]) -> Results {
-        let mut results = Results::new();
+        let mut results = Results::new(crate::withheld::Withheld::offered());
         let batch: Vec<Finding> = (1..)
             .zip(findings)
             .map(|(id, (category, sizes))| {
@@ -539,7 +563,7 @@ mod tests {
 
     /// Results holding one `alpha` finding of 1 byte per path, ids from 1 in the order given.
     fn at(paths: &[&str]) -> Results {
-        let mut results = Results::new();
+        let mut results = Results::new(crate::withheld::Withheld::offered());
         let batch: Vec<Finding> = (1..)
             .zip(paths)
             .map(|(id, path)| {
@@ -619,7 +643,7 @@ mod tests {
 
         #[test]
         fn a_new_state_forgets_the_gone_paths() {
-            let mut results = Results::new();
+            let mut results = Results::new(crate::withheld::Withheld::offered());
             keep_state(&mut results, 1);
             let pick = picked(&mut results, "/f/mine.iso");
             results.remove(&[pick.id()], &[pick.id()], &[]);

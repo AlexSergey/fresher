@@ -20,9 +20,8 @@ Four places in `~/Library`, one finding per item, named by the app's id:
 
 ## What happens if you remove it
 
-They go to the Trash. If you install the app again, it starts with its default settings and you may need to sign in
-again. They do not come back: a reinstalled app starts with its default settings. Medium, not Safe: the settings
-cannot be made again.
+If you install the app again, it starts with its default settings and you may need to sign in again. They do not come
+back: a reinstalled app starts with its default settings. Medium, not Safe: the settings cannot be made again.
 
 ## How the app decides
 

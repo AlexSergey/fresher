@@ -216,7 +216,7 @@ fn started(tree: FixtureTree, setup: Setup, data: Arc<tempfile::TempDir>) -> Hom
         system_ui: Arc::new(FakeSystemUi::default()),
         system: fresher_testing::fake_system(&root),
     };
-    let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+    let engine = Engine::with_cleanup(registry, ports, cleanup, fresher_core::HighLevel::Offered).unwrap();
     if setup.accept {
         engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
     }

@@ -11,6 +11,7 @@ const rulesOf = (dictionary: Dictionary): RuleId[] => checkDictionary('en.json',
 const CATEGORY: Dictionary = {
   'm.c.comes-back': 'Only if an app makes them again.',
   'm.c.if-removed': 'They go to the Trash.',
+  'm.c.line': 'Files nothing has used',
   'm.c.made-by': 'Many apps.',
   'm.c.name': 'Old files',
   'm.c.what': 'Files nothing has used.',
@@ -75,6 +76,24 @@ describe('check-texts', () => {
       assert.deepEqual(rulesOf(partial), ['category-parts', 'category-parts', 'category-parts']);
     });
 
+    it('reports a category missing its line', () => {
+      const partial = Object.fromEntries(Object.entries(CATEGORY).filter(([key]) => key !== 'm.c.line'));
+
+      assert.deepEqual(rulesOf(partial), ['category-parts', 'category-parts', 'category-parts', 'category-parts']);
+    });
+
+    it('reports a line over 50 characters', () => {
+      assert.deepEqual(rulesOf({ ...CATEGORY, 'm.c.line': 'x'.repeat(51) }), ['length']);
+    });
+
+    it('reports a line ending with a full stop', () => {
+      assert.deepEqual(rulesOf({ ...CATEGORY, 'm.c.line': 'Files nothing has used.' }), ['form']);
+    });
+
+    it('reports a category name of five words', () => {
+      assert.deepEqual(rulesOf({ ...CATEGORY, 'm.c.name': 'Old files of your apps' }), ['name-words']);
+    });
+
     it('reports a double space', () => {
       assert.deepEqual(rulesOf({ 'a.b': 'Two  spaces' }), ['form']);
       assert.deepEqual(rulesOf({ 'a.b': ' padded' }), ['form']);
@@ -95,6 +114,18 @@ describe('check-texts', () => {
   });
 
   describe('positive cases', () => {
+    it('passes a line of 50 characters', () => {
+      assert.deepEqual(rulesOf({ ...CATEGORY, 'm.c.line': 'x'.repeat(50) }), []);
+    });
+
+    it('passes a four-word name', () => {
+      assert.deepEqual(rulesOf({ ...CATEGORY, 'm.c.name': 'Old files of apps' }), []);
+    });
+
+    it('does not count the words of a ui name', () => {
+      assert.deepEqual(rulesOf({ 'ui.a.name': 'One two three four five six' }), []);
+    });
+
     it('does not read a placeholder name as a lower-case trash', () => {
       assert.deepEqual(rulesOf({ 'ui.a.b': 'Sandbox · {trash}' }), []);
     });

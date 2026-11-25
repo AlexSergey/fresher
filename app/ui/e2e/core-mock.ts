@@ -6,6 +6,7 @@ import type {
   Event,
   Finding,
   FindingsQuery,
+  HighLevel,
   MeaningGroup,
   ModuleInfo,
   Overview,
@@ -155,7 +156,7 @@ import {
   OLLAMA_TOTALS,
 } from '../src/test/ollama-scan';
 import { pageOf } from '../src/test/page-of';
-import { BUILD_DICTIONARY, sandboxBuild } from '../src/test/sandbox-build';
+import { BUILD_DICTIONARY, SANDBOX_HOME, sandboxBuild } from '../src/test/sandbox-build';
 import {
   STALE_PROJECTS_DICTIONARY,
   STALE_PROJECTS_FINDINGS,
@@ -219,6 +220,8 @@ import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanu
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
 import { LARGEST_HOOK, mockLargest, ownIdOf } from './support/largest-mock';
 
+export { withheld } from './support/withheld';
+
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
 export type CoreScript = {
@@ -228,9 +231,11 @@ export type CoreScript = {
   readonly answers?: Partial<Readonly<Record<CommandKey, unknown>>>;
   // The Apps screen's commands: the list, an app's page and Show in Finder (support/apps-mock.ts); `denied` is the world
   // after macOS refused to let Fresher move an app.
-  readonly apps?: { readonly denied?: boolean };
+  readonly apps?: { readonly denied?: boolean; readonly withheld?: boolean };
   // The cleanup commands over the scan's findings (support/cleanup-mock.ts); without it they are not answered.
   readonly cleanup?: CleanupScript;
+  // Whether the app info says the core offers High findings: `offered` by default, as the core's tests run it.
+  readonly high?: HighLevel;
   // The scan streams this many events, then waits for `releaseScan` (or Stop): the live states can be looked at.
   readonly hold?: number;
   // The ignore commands of modules and groups, kept in the tab's session storage (support/ignore-mock.ts).
@@ -342,18 +347,29 @@ const withRefreshAccess = <T>(
     ? answers
     : { ...answers, refreshAccess: answers.getAccessStatus };
 
-// The names and meanings of Review's two parts, as the core's dictionary has them.
-const PART_TEXTS: Dictionary = Object.fromEntries(
-  Object.entries(coreTexts as Dictionary).filter(([key]) => key.startsWith('core.danger.part.')),
+// The danger levels' names, meanings and group names, as the core's dictionary has them: Review's tiles and summary
+// read them.
+const DANGER_TEXTS: Dictionary = Object.fromEntries(
+  Object.entries(coreTexts as Dictionary).filter(([key]) => key.startsWith('core.danger.')),
 );
 
-// The core's dictionary also holds the agreement's texts and Review's parts, whatever the script's own dictionary is.
+// The core's dictionary also holds the agreement's texts and the danger levels', whatever the script's own dictionary
+// is.
 const withCoreTexts = <T>(
   answers: Partial<Readonly<Record<CommandKey, T>>> = {},
 ): Partial<Readonly<Record<CommandKey, T>>> =>
   typeof answers.getDictionary === 'object' && answers.getDictionary !== null
-    ? { ...answers, getDictionary: { ...AGREEMENT_DICTIONARY, ...PART_TEXTS, ...answers.getDictionary } }
+    ? { ...answers, getDictionary: { ...AGREEMENT_DICTIONARY, ...DANGER_TEXTS, ...answers.getDictionary } }
     : answers;
+
+// The app info answers the script's `high`, when it states one.
+const withHigh = <T>(
+  answers: Partial<Readonly<Record<CommandKey, T>>> = {},
+  high: HighLevel | undefined,
+): Partial<Readonly<Record<CommandKey, T>>> =>
+  high === undefined || typeof answers.appInfo !== 'object' || answers.appInfo === null
+    ? answers
+    : { ...answers, appInfo: { ...answers.appInfo, high } };
 
 const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Readonly<Record<string, T>> =>
   Object.fromEntries((Object.entries(table) as [CommandKey, T][]).map(([key, value]) => [COMMANDS[key], value]));
@@ -374,7 +390,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
   );
   const setup: ByCommand = {
     agreementHook: AGREEMENT_HOOK,
-    answers: byCommand(withCoreTexts(withRefreshAccess(script.answers))),
+    answers: byCommand(withHigh(withCoreTexts(withRefreshAccess(script.answers)), script.high)),
     appsHook: APPS_HOOK,
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
@@ -638,10 +654,20 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
       return Promise.resolve(answers[command]);
     };
 
+    // The last scan finished two minutes before the page's clock reads it, so Scan says "2 minutes ago" on any day.
+    const recently = (answer: unknown): unknown => {
+      const lastScan = (answer as null | undefined | { readonly lastScan?: unknown })?.lastScan;
+
+      return typeof lastScan === 'object' && lastScan !== null
+        ? { ...(answer as object), lastScan: { ...lastScan, finished: Math.floor(Date.now() / 1000) - 120 } }
+        : answer;
+    };
+
     let nextCallback = 1;
     Object.defineProperty(globalThis, '__TAURI_INTERNALS__', {
       value: {
-        invoke,
+        invoke: (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> =>
+          command === core.getOverview ? invoke(command, args).then(recently) : invoke(command, args),
         transformCallback: (callback: (message: unknown) => void): number => {
           const id = nextCallback;
           nextCallback += 1;
@@ -680,7 +706,7 @@ export const releaseScan = async (page: Page): Promise<void> => {
 
 // What the core answers before any scan: the demo module, its texts and settings, Full Disk Access granted.
 const ANSWERS = {
-  appInfo: { build: { kind: 'release' }, version: '0.0.1' },
+  appInfo: { build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.0.1' },
   cancelScan: null,
   getAccessStatus: GRANTED,
   getDictionary: { ...SCRIPTS_DICTIONARY, ...STORAGE_DICTIONARY },
@@ -1283,7 +1309,12 @@ export const SCRIPTS = {
     scanned: DEV_CACHES_XCODE_OPEN_OVERVIEW,
   },
   // A development build on the real home folder: the banner says nothing can be removed outside a sandbox.
-  development: { answers: { ...ANSWERS, appInfo: { build: { kind: 'development' }, version: '0.1.0' } } },
+  development: {
+    answers: {
+      ...ANSWERS,
+      appInfo: { build: { kind: 'development' }, high: 'offered', home: '/Users/someone', version: '0.1.0' },
+    },
+  },
   // Xcode's scan with the docker module describing OrbStack (answered, four parts, three commands) and offering nothing.
   docker: {
     answers: DOCKER_ANSWERS,
@@ -1423,7 +1454,7 @@ export const SCRIPTS = {
   sandboxed: {
     answers: {
       ...ANSWERS,
-      appInfo: { build: sandboxBuild(['running']), version: '0.1.0' },
+      appInfo: { build: sandboxBuild(['running']), high: 'offered', home: SANDBOX_HOME, version: '0.1.0' },
       getDictionary: { ...ANSWERS.getDictionary, ...BUILD_DICTIONARY },
     },
   },

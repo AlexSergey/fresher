@@ -8,17 +8,17 @@ import { DEMO_DICTIONARY, DEMO_FINDINGS } from './demo-scan';
 
 export const FINDING_DICTIONARY: Dictionary = {
   ...DEMO_DICTIONARY,
-  'core.danger.high.meaning': 'May hold the only copy of your data. Removing it can lose work.',
+  'core.danger.high.meaning': 'May hold the only copy of your data',
   'core.danger.high.name': 'High',
-  'core.danger.low.meaning': 'Comes back when needed, but that takes time or a download.',
-  'core.danger.medium.meaning': 'Can be restored, but not by itself. You may need to set something up again.',
+  'core.danger.low.meaning': 'You may need to download them again',
+  'core.danger.medium.meaning': 'May hold something you still want',
   'core.danger.medium.name': 'Medium',
-  'core.danger.safe.meaning': 'Comes back by itself when needed. Removing it costs only a little time.',
+  'core.danger.safe.meaning': 'Apps make these again on their own',
   'core.removability.locked.how':
     "This item is locked. Unlock it in Finder's Get Info window if you want to remove it.",
   'core.removability.locked.name': 'Locked',
   'core.removability.needs-administrator.how':
-    'Only an administrator can remove this. Show it in Finder and drag it to the Trash; macOS will ask for an administrator password.',
+    'Only an administrator can remove this. Show it in Finder and drag it to the Trash; macOS asks for the password.',
   'core.removability.needs-administrator.name': 'Needs an administrator',
   'core.removability.protected-by-system.how':
     'macOS protects this item to keep the system working. Fresher shows it only so you know what takes the space.',

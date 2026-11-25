@@ -14,7 +14,7 @@ use std::time::{Duration, SystemTime};
 use fresher_app::{SandboxMode, SandboxPorts, SandboxTrash, access_of, sandbox_engine};
 use fresher_core::{
     Access, BlockedReason, ByteSize, Capability, CleanupDetail, CleanupPlanView, CleanupSelection, CommandError,
-    Confirmation, DangerLevel, Event, Finding, FindingOrder, FindingsQuery, LeftOutCount, RecordedOutcome,
+    Confirmation, DangerLevel, Event, Finding, FindingOrder, FindingsQuery, HighLevel, LeftOutCount, RecordedOutcome,
     SANDBOX_MARKER, Subject, TrashState, VolumeFacts, VolumeId, Volumes,
 };
 use fresher_engine::{Engine, ScanMode};
@@ -161,6 +161,7 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
         }
     }
     let map = check_map(name, &file, &engine, &sandbox, &findings)?;
+    crate::withheld::check_withheld(name, &file, &engine, &findings)?;
     let trash_before = engine.trash();
     crate::trash::check_before(name, &trash_before)?;
     if let Some(selection) = selection_of(name, &positives)? {
@@ -253,7 +254,11 @@ impl World {
             .map_err(|error| failure(name, error))?;
         let generated = generate(files, &self.folder.path().join(SANDBOX), now, &real, current_user())
             .map_err(|error| failure(name, format!("the sandbox cannot be generated: {error}")))?;
+        // The app withholds High; the autotest offers it, so a file's High positives are checked, unless a file says
+        // `high = "withheld"` and proves that the app as it ships offers nothing High.
         let mode = SandboxMode::new(generated.sandbox.path(), SandboxTrash::Sandbox);
+        let mode =
+            if files.iter().any(|file| file.high() == HighLevel::Withheld) { mode } else { mode.offering_high() };
         let mode = match module {
             None => mode,
             Some(id) => mode.only(fresher_core::ModuleId::new(leak(id)).map_err(|error| failure(name, error))?),

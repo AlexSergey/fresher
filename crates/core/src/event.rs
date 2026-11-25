@@ -21,6 +21,8 @@ pub enum Event {
         #[ts(type = "number")]
         entries: u64,
         bytes: ByteSize,
+        /// The size the scan will most likely walk, in the measure of `bytes`; `None` when nothing tells.
+        expected: Option<ByteSize>,
     },
     FindingsAdded {
         scan: ScanId,
@@ -148,7 +150,14 @@ mod tests {
 
         #[test]
         fn events_serialize_with_a_type_tag() {
-            let progress = Event::ScanProgress { scan: ScanId::new(1), entries: 10, bytes: ByteSize::new(2048) };
+            let progress = Event::ScanProgress {
+                scan: ScanId::new(1),
+                entries: 10,
+                bytes: ByteSize::new(2048),
+                expected: Some(ByteSize::new(4096)),
+            };
+            let unknown =
+                Event::ScanProgress { scan: ScanId::new(1), entries: 0, bytes: ByteSize::new(0), expected: None };
             let failed = Event::ModuleFinished {
                 scan: ScanId::new(1),
                 module: ModuleId::new("demo").unwrap(),
@@ -159,7 +168,11 @@ mod tests {
 
             assert_eq!(
                 serde_json::to_value(progress).unwrap(),
-                json!({ "type": "scan-progress", "scan": 1, "entries": 10, "bytes": 2048 })
+                json!({ "type": "scan-progress", "scan": 1, "entries": 10, "bytes": 2048, "expected": 4096 })
+            );
+            assert_eq!(
+                serde_json::to_value(unknown).unwrap(),
+                json!({ "type": "scan-progress", "scan": 1, "entries": 0, "bytes": 0, "expected": null })
             );
             assert_eq!(
                 serde_json::to_value(failed).unwrap(),

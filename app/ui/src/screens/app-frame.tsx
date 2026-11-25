@@ -102,6 +102,7 @@ export const AppFrame = (): JSX.Element => {
   const screen = useScreen(
     modules?.flatMap((module) => module.categories.map(({ descriptor }) => descriptor.id)) ?? null,
     refs,
+    info?.high ?? null,
   );
   const loaded = useCore((state) => state.dictionary !== null);
   const unreachable = useCore((state) => state.failure?.kind === 'unreachable');

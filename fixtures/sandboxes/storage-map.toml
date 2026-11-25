@@ -19,12 +19,12 @@ part = "your-folders"
 name = "a look-alike of a trial cache is your folder"
 kind = "negative"
 [[case.file]]
-path = "home/project/fresher-trial-cache2/look-alike.bin"
+path = "home/project/Sample app cache2/look-alike.bin"
 size = 4194304
 fill = "data"
 [case.map]
 part = "your-folders"
-at = "home/project/fresher-trial-cache2"
+at = "home/project/Sample app cache2"
 
 # Two names of one file take its blocks once.
 [[case]]
@@ -73,11 +73,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/project"
 [[case.file]]
-path = "home/project/fresher-trial-cache/blob.bin"
+path = "home/project/Sample app cache/blob.bin"
 size = 12582912
 fill = "data"
 [case.expect]
-item = "home/project/fresher-trial-cache"
+item = "home/project/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
@@ -92,15 +92,15 @@ kind = "positive"
 [[case.marker]]
 path = "home/nest"
 [[case.file]]
-path = "home/nest/fresher-trial-cache/blob.bin"
+path = "home/nest/Sample app cache/blob.bin"
 size = 4194304
 fill = "data"
 [[case.file]]
-path = "home/nest/fresher-trial-cache/fresher-trial-cache/blob.bin"
+path = "home/nest/Sample app cache/Sample app cache/blob.bin"
 size = 4194304
 fill = "data"
 [case.expect]
-item = "home/nest/fresher-trial-cache"
+item = "home/nest/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"

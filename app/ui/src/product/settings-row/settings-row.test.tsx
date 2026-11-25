@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -106,8 +108,25 @@ describe('SettingsRow', () => {
       expect(screen.getByText('Enter a whole number from 1 to 365.')).toBeInTheDocument();
     });
 
+    it('a read-only file disables both the slider and the field', () => {
+      renderRow(NUMBER, { readOnly: true });
+
+      expect(screen.getByRole('slider', { name: 'Stale after, days' })).toBeDisabled();
+      expect(screen.getByRole('spinbutton', { name: 'Stale after' })).toBeDisabled();
+    });
+
+    it('a typed number outside the limits is not sent and the slider keeps the stored value', () => {
+      const onChange = vi.fn();
+      renderRow(NUMBER, { onChange, value: { kind: 'number', value: 90 } });
+
+      fireEvent.change(screen.getByRole('spinbutton', { name: 'Stale after' }), { target: { value: '400' } });
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByRole('slider', { name: 'Stale after, days' })).toHaveValue('90');
+    });
+
     it('a read-only settings file disables every control and says why', () => {
-      const why = 'Read-only: the settings file cannot be changed safely by this version of the app.';
+      const why = 'Read-only: this version of Fresher cannot change the settings file safely.';
 
       for (const descriptor of [SWITCH, NUMBER, FEW_CHOICES, MANY_CHOICES, FOLDERS]) {
         const { unmount } = renderRow(descriptor, {
@@ -214,6 +233,79 @@ describe('SettingsRow', () => {
       expect(onChange).toHaveBeenCalledExactlyOnceWith({ kind: 'number', value: 90 });
     });
 
+    it("the slider shows the core's bounds", () => {
+      renderRow(NUMBER, { value: { kind: 'number', value: 90 } });
+      const slider = screen.getByRole('slider', { name: 'Stale after, days' });
+
+      expect(slider).toHaveAttribute('min', '1');
+      expect(slider).toHaveAttribute('max', '365');
+      expect(slider).toHaveValue('90');
+      expect(screen.getByText('days')).toBeInTheDocument();
+    });
+
+    it('moving the slider sends one value on release and moves the field as it goes', () => {
+      const onChange = vi.fn();
+      renderRow(NUMBER, { onChange });
+      const slider = screen.getByRole('slider', { name: 'Stale after, days' });
+
+      fireEvent.input(slider, { target: { value: '40' } });
+      fireEvent.input(slider, { target: { value: '45' } });
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByRole('spinbutton', { name: 'Stale after' })).toHaveValue(45);
+
+      fireEvent.pointerUp(slider);
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({ kind: 'number', value: 45 });
+    });
+
+    it('a released slider stays where it was let go until the stored value comes back', () => {
+      const onChange = vi.fn();
+      const { rerender } = renderRow(NUMBER, { onChange, value: { kind: 'number', value: 90 } });
+      const slider = screen.getByRole('slider', { name: 'Stale after, days' });
+      const row = (value: number): JSX.Element => (
+        <SettingsRow
+          descriptor={NUMBER}
+          onChange={onChange}
+          problem={null}
+          readOnly={false}
+          value={{ kind: 'number', value }}
+        />
+      );
+
+      fireEvent.input(slider, { target: { value: '40' } });
+      fireEvent.pointerUp(slider);
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({ kind: 'number', value: 40 });
+      expect(slider).toHaveValue('40');
+      expect(screen.getByRole('spinbutton', { name: 'Stale after' })).toHaveValue(40);
+
+      rerender(row(40));
+
+      expect(slider).toHaveValue('40');
+
+      rerender(row(60));
+
+      expect(slider).toHaveValue('60');
+    });
+
+    it('typing a valid number moves the slider', () => {
+      const { rerender } = renderRow(NUMBER);
+
+      fireEvent.change(screen.getByRole('spinbutton', { name: 'Stale after' }), { target: { value: '90' } });
+      rerender(
+        <SettingsRow
+          descriptor={NUMBER}
+          onChange={vi.fn()}
+          problem={null}
+          readOnly={false}
+          value={{ kind: 'number', value: 90 }}
+        />,
+      );
+
+      expect(screen.getByRole('slider', { name: 'Stale after, days' })).toHaveValue('90');
+    });
+
     it('a number without a unit names only its limits', () => {
       renderRow({ ...NUMBER, kind: { kind: 'number', max: 10, min: 0, unit: null } });
 
@@ -276,7 +368,7 @@ describe('SettingsRow', () => {
         [SWITCH, { key: 'demo.enabled', kind: 'wrong-type' }, 'The saved value was of the wrong kind'],
         [MANY_CHOICES, { key: 'demo.every', kind: 'unknown-choice' }, 'The saved choice is not one of the options'],
         [FOLDERS, { folder: '/System', key: 'demo.roots', kind: 'refused-folder' }, '/System cannot be scanned'],
-        [SWITCH, { key: 'demo.old', kind: 'unknown-key' }, 'This setting is not known'],
+        [SWITCH, { key: 'demo.old', kind: 'unknown-key' }, 'does not know this setting'],
       ];
 
       for (const [descriptor, problem, words] of problems) {

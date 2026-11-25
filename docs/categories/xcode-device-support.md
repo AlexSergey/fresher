@@ -1,4 +1,4 @@
-# Xcode device support files
+# Device debug files
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/xcode`) · **Since:** 0.1.0
 
@@ -6,7 +6,8 @@
 
 ## What it is
 
-Debug information Xcode copies from an iPhone, iPad, Apple Watch, Apple TV or Vision Pro the first time you connect it, one folder per system version. Made by Xcode.
+Files Xcode copies from an iPhone, iPad or other Apple device the first time you connect it, to debug apps on it. Made
+by Xcode.
 
 ## Where it lives
 
@@ -14,7 +15,8 @@ Debug information Xcode copies from an iPhone, iPad, Apple Watch, Apple TV or Vi
 
 ## What happens if you remove it
 
-The folder goes to the Trash. You can still build and run apps; debugging on a device of that version waits until Xcode copies the files again. Yes: Xcode copies them again when you connect a device on that version, which takes a few minutes. That is why the level is Low, not Safe.
+You can still build and run apps; Xcode copies the files again when you next debug on that device. Yes: Xcode copies
+them again when you connect a device on that version, which takes a few minutes. That is why the level is Low, not Safe.
 
 ## How the app decides
 

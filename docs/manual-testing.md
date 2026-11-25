@@ -101,8 +101,8 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] **Plan 015, module groups** ([015/03/02](./plans/015-module-groups/03-finish/02-run-and-conclusions.md)).
   1. `npm run dev:sandbox -- trial`: scan; Scan's cards of `demo` and `trial` sit in their danger zones.
   2. Settings, Ignored groups, Debug on: Scan updates at once, nothing of the two is offered in
-     Review. Off: everything is back with no rescan. Repeat with the module `trial` alone (Ignore module from a card's
-     settings menu) and restore it in Settings, Ignored modules.
+     Review. Off: everything is back with no rescan. Repeat with the module `trial` alone (Settings, Ignored, Not
+     looked for: its switch) and restore it there.
   3. Quit and open again: the ignored lists are kept. A cleanup prepared before an ignore is refused after it.
   4. `EXPECTED.md` of `trial` walked as in 007: nothing changed in what is offered.
   5. On the real Mac, `npm run dev` shows the group tabs. They read well with VoiceOver (Cmd-F5) and answer the arrow
@@ -113,8 +113,8 @@ them in this order because the first ones teach the screens used by the rest.
 
 - [ ] `rm -rf sandbox/storage-map && npm run dev:sandbox -- storage-map`; every line of `EXPECTED.md` holds,
       including the map's lines (the ring and its legend; the legend's "i" explains each part).
-- [ ] Ignore and restore a category: its bytes move to "Your folders" and back, the total unchanged, no rescan.
-- [ ] During a scan: "Explained" grows as findings arrive; "Explained" plus "Not scanned yet" stays the used space;
+- [ ] Ignore and restore a category: its bytes move to "Your files and apps" and back, the total unchanged, no rescan.
+- [ ] During a scan: "Can be freed" grows as findings arrive; it plus "Your files and apps" stays the used space;
       at the end the full map replaces it in one move. Quit and reopen: the restored map shows at once.
 
 ### 1.3 JetBrains ([016/04/02](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md))
@@ -126,7 +126,7 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] Select every positive, confirm: the Medium level and the settings' sentence are on the confirmation; the folders
       land in `sandbox/jetbrains/home/.Trash`; Cleanups, put back: they return. Repeat with `--real-trash`: Finder's Put
       Back restores them.
-- [ ] Ignore the module, then the group Development, from Settings and from a card's settings menu (Ignore module); restore in Settings, Ignored.
+- [ ] Ignore the module, then the group Development, from Settings (a module has no menu item); restore in Settings, Ignored.
 - [ ] The two extra case files also run clean: `npm run dev:sandbox -- jetbrains-unknown-app-installed` and
       `jetbrains-unknown-app-open` (their `EXPECTED.md` lists the expected left-outs; not in the step's list, but each has
       its autotest and a look costs a minute).
@@ -243,7 +243,7 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] `rm -rf sandbox/unused-toolchains-documents-denied && npm run dev:sandbox -- unused-toolchains-documents-denied`:
       Scan's cards of the two categories say they need Documents,
       and their Details screen offers "Let Fresher look there"; nothing is offered.
-- [ ] Ignore the Rust category from its card's menu on Scan, then the module; restore both in Settings, Ignored.
+- [ ] Ignore the Rust category from its card's menu on Scan, then the module from Settings, Ignored, Not looked for; restore both there.
 
 ### 1.12 Ollama's models ([029/04/02](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md))
 
@@ -267,7 +267,7 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
 - [ ] `rm -rf sandbox/app-caches && npm run dev:sandbox -- app-caches`. Scan; walk `EXPECTED.md`, negatives first:
       nothing of a negative is offered by `app-caches` (`OtherTool`, Apple's `com.apple.Maps`, Fresher's own, the
       removed app's `com.example.Lost`, the vendor's `com.example`, the link `com.example.Reader.Linked`); the socket
-      case reads as kept with its reason; each positive is offered in "Caches of your apps" at Low, titled `Scribe` and
+      case reads as kept with its reason; each positive is offered in "App caches" at Low, titled `Scribe` and
       `Player: com.example.Player.ShipIt`, each reason naming the app and a size.
 - [ ] The storage map: the offered caches in the explained part, each in its app's line; `home/Library/Caches/OtherTool`
       in your folders.
@@ -277,7 +277,7 @@ The module has no page of its own (plan 027): its two categories are cards on Sc
       Cleanups, put back: both entries are back inside the folder.
 - [ ] `npm run dev:sandbox -- app-caches-app-open`: Mailer's cache is kept "This app, or a part of it, is open..."; the
       closed Notes app's is offered.
-- [ ] `npm run dev:sandbox -- app-leftovers`: the installed Editor's caches are offered by "Caches of your apps", and
+- [ ] `npm run dev:sandbox -- app-leftovers`: the installed Editor's caches are offered by "App caches", and
       that file's negatives read "never offered by `app-leftovers`", which still holds.
 - [ ] Ignore one cache, then the category, then the module; restore each.
 
@@ -400,6 +400,9 @@ Quit any development window first (the app is single-instance). Section 2.19 is 
 
 ### 1.23 The agreement, the danger zone and the wording ([039/05/01](./plans/039-agreement-and-wording/05-finish/01-docs-and-conclusions.md))
 
+> Plan 042 replaced Review's two parts, the "Danger zone" and Scan's question before a Select all of Medium or High,
+> and hides High in this release: walk the agreement, the licence, About and put back here, and the screens in 1.24.
+
 Each sandbox from a fresh folder, so each meets the agreement anew: `rm -rf sandbox/downloads && npm run dev:sandbox --
 downloads` (Low, Medium and High) and `rm -rf sandbox/app-leftovers && npm run dev:sandbox -- app-leftovers` (Safe,
 Medium and High); then `uninstall` and `large-files`. The `docker` file offers nothing to remove, so it is not part of
@@ -426,6 +429,36 @@ this walk.
 - [ ] VoiceOver (Cmd-F5) on the agreement sheet and the confirmation: every line, tick and button is read with its
       description.
 
+### 1.24 A plain interface ([042/09/01](./plans/042-plain-interface/09-finish/01-docs-and-conclusions.md))
+
+Each sandbox from a fresh folder: `rm -rf sandbox/<name> && npm run dev:sandbox -- <name>`. The app withholds High in
+every build: nothing at High shows anywhere.
+
+- [ ] `trial`: Scan before a scan: the disk card holds Scan in its ring. Scan: the scanning card's swoosh fills, the
+      percent climbs (never past 99 % before the end), "Looking at …" and the size found so far change. After: the disk
+      card's five parts with their sizes; each "i" opens its sentence; hovering a legend row lights its arc and the
+      reverse. "2 minutes ago" beside Scan again. The separator "What you can remove", the groups with their lines,
+      the tiles with icon, name, line, size, count, Details and `⋯`; readable trial names.
+- [ ] `stale-projects` (Look before removing items): tick a Look tile on Scan; the bar says "1 to check in Review" and
+      the group has no Select all. Review: the tile's items unticked, the pill amber, the summary chip "· N not
+      checked", Move to the Trash inactive. Tick one item: the summary grows. Tick the tile's all-checkbox: the pill
+      turns green. Move to the Trash, "Yes, move to the Trash"; then put back from Cleanups.
+- [ ] `app-leftovers`: no data folders anywhere (High withheld). The caches tile; its details: Back "Scan", three
+      answers side by side, who makes it under "What it is", the left-out "i" bar, the items with the app's name first
+      and the path small under it. The menus (`⋯` on a tile and a row, the gear on a Review row): Show in Finder, Ignore
+      this item, then Ignore all <category> (no "Stop looking for"); the pointed item fills with the accent; no
+      hint shows on a menu item.
+- [ ] `uninstall`: Apps: no row lists "Files it keeps for you", "Its private folder" or "Shared with its maker's other
+      apps", and the sizes leave them out; an app's page offers only "Keep my settings" and lists no such file. No
+      Largest in the sidebar.
+- [ ] Settings: the second sidebar; the tree under "What it looks for" opens and closes; a module's page with its
+      switch last. Search "days": the hits listed with "days" marked and counted in the tree; Enter opens the first
+      with its setting focused; Esc clears. Drag a slider (the value is saved when you let go); type a number out of
+      bounds in the field beside it: refused.
+- [ ] The logo beside "Fresher" in the sidebar; the primary buttons' sheen; the app icon in the Dock and in Finder.
+- [ ] Read every screen once for the voice of [`writing.md`](./writing.md).
+- [ ] The real Mac, `npm run dev`: no High anywhere (no data folders, no "Only if you are sure" group), no Largest.
+
 ## 2. The real Mac: one recorded run
 
 `npm run dev` records everything you do in one file; the agent checks the file against the disk with
@@ -445,8 +478,8 @@ run.
 3. [ ] Scan `~` once; wait for the end. **Second check, before any other cleanup:** select one small offered item,
        Review, Confirm to the Trash: it must end "Development build: a dry run..." and still be where it was in Finder.
        If it ends anything else, **stop: quit the app without confirming anything more** and tell the agent.
-4. [ ] On Scan, press Select all in each danger zone; Review: the dialog names the count, the size and the highest
-       danger; Confirm to the Trash (not "Delete permanently"). Every item that passes its checks ends
+4. [ ] On Scan, press Select all in each group that has one (Safe to remove, Usually safe); Review: the dialog names
+       the count, the size and the highest danger; Confirm to the Trash (not "Delete permanently"). Every item that passes its checks ends
        "Development build: a dry run..."; an item a check refuses keeps its own reason; nothing is freed. Finder: two of
        the offered folders are still where they were.
 5. [ ] Cleanups: the dry runs are listed; Put back answers that nothing went to the Trash.
@@ -473,7 +506,7 @@ diskutil apfs list | head -60
 ```
 
 - [ ] The bar's parts add up to the capacity of `df -k` for the home's volume.
-- [ ] "macOS" equals the used space of `/`, Preboot and Update; "Swap and sleep image" the used space of
+- [ ] "macOS" equals the used space of `/`, Preboot and Update; "System space" holds the used space of
       `/System/Volumes/VM`; Free the available space.
 - [ ] "Outside the scanned folders" lists its reasons, with the unreadable folders' count and the permission.
 - [ ] The purgeable note is there, at least zero.

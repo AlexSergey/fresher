@@ -3,8 +3,8 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use fresher_core::{
-    Access, BundleId, Capability, CategoryDescriptor, CategoryId, DangerLevel, GuardedFolder, IdError, ModuleId,
-    OWN_FILE_ID, RunningApp, SettingKey, SkipCode, SystemVersion, TextKey, is_kebab_case, own_file,
+    Access, BundleId, Capability, CategoryDescriptor, CategoryId, DangerLevel, GuardedFolder, HighLevel, IdError,
+    ModuleId, OWN_FILE_ID, RunningApp, SettingKey, SkipCode, SystemVersion, TextKey, is_kebab_case, own_file,
 };
 use fresher_testing::{AppBundle, TreeDescription, time_at_age};
 use serde::{Deserialize, Serialize};
@@ -23,6 +23,8 @@ pub struct CaseFile {
     feature: String,
     module: Option<ModuleId>,
     demo: Option<Demo>,
+    /// `high = "withheld"`: the file runs with High withheld, as the app does; offered when absent.
+    high: HighLevel,
     /// The file's `[settings]`: the values of the modules' settings, shared by every case of the file.
     settings: BTreeMap<String, toml::Value>,
     cases: Vec<Case>,
@@ -135,6 +137,7 @@ struct RawCaseFile {
     feature: String,
     module: Option<String>,
     demo: Option<RawDemo>,
+    high: Option<RawHigh>,
     #[serde(default)]
     settings: BTreeMap<String, toml::Value>,
     #[serde(default, rename = "case")]
@@ -284,6 +287,13 @@ pub(crate) fn stated_capability(key: &str) -> Option<Capability> {
     .find(|capability| capability.id() == key)
 }
 
+/// The one value of the top-level `high`: any other is refused by the file's parse error.
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum RawHigh {
+    Withheld,
+}
+
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 enum RawAfterCleanup {
@@ -362,7 +372,11 @@ impl CaseFile {
                 Ok(case)
             })
             .collect::<Result<_, CaseError>>()?;
-        Ok(Self { feature: raw.feature, module, demo, settings: raw.settings, cases })
+        let high = match raw.high {
+            Some(RawHigh::Withheld) => HighLevel::Withheld,
+            None => HighLevel::Offered,
+        };
+        Ok(Self { feature: raw.feature, module, demo, high, settings: raw.settings, cases })
     }
 
     /// Checks every expectation against the categories and the declared problems of the modules: the category
@@ -430,6 +444,11 @@ impl CaseFile {
     /// The module the autotest registers; `None` registers every module of the app.
     pub const fn module(&self) -> Option<ModuleId> {
         self.module
+    }
+
+    /// Whether the autotest runs the file with High offered (no `high` key) or withheld (`high = "withheld"`).
+    pub const fn high(&self) -> HighLevel {
+        self.high
     }
 
     /// The `[demo]` header of a demo world; `None` for a test's case file.
@@ -1040,7 +1059,7 @@ mod tests {
 name = "a trial folder with no marker next to it is never offered"
 kind = "negative"
 [[case.file]]
-path = "home/bare/fresher-trial-cache/blob.bin"
+path = "home/bare/Sample app cache/blob.bin"
 size = 1048576
 "#;
 
@@ -1080,8 +1099,8 @@ after-cleanup = "in-trash"
     fn cache(danger: &str) -> String {
         positive(
             "a trial cache goes to the Trash",
-            "home/work/fresher-trial-cache/blob.bin",
-            "home/work/fresher-trial-cache",
+            "home/work/Sample app cache/blob.bin",
+            "home/work/Sample app cache",
             danger,
         )
     }
@@ -1117,6 +1136,18 @@ after-cleanup = "in-trash"
 
         fn refused(text: &str) -> CaseError {
             CaseFile::parse(text).unwrap_err()
+        }
+
+        #[test]
+        fn a_high_key_other_than_withheld_is_refused() {
+            for value in ["\"offered\"", "\"Withheld\"", "\"\"", "true"] {
+                let text = format!("feature = \"trial\"\nmodule = \"trial\"\nhigh = {value}\n{NEGATIVE}");
+
+                let error = refused(&text);
+
+                assert!(matches!(&error, CaseError::Parse { .. }), "{value}: {error}");
+                assert!(error.to_string().contains("high"), "{value}: {error}");
+            }
         }
 
         #[test]
@@ -1203,8 +1234,8 @@ after-cleanup = "in-trash"
 
         #[test]
         fn an_item_that_is_not_the_cases_is_refused() {
-            for item in ["home/bare/fresher-trial-cache", "home/work/fresher-trial-cache/other", "", "/home/work"] {
-                let text = file(&[&positive("p", "home/work/fresher-trial-cache/blob.bin", item, "low")]);
+            for item in ["home/bare/Sample app cache", "home/work/Sample app cache/other", "", "/home/work"] {
+                let text = file(&[&positive("p", "home/work/Sample app cache/blob.bin", item, "low")]);
 
                 assert!(matches!(refused(&text), CaseError::ItemNotInCase { case, .. } if case == "p"), "{item}");
             }
@@ -1261,7 +1292,7 @@ after-cleanup = "in-trash"
         #[test]
         fn a_path_outside_the_sandbox_is_refused() {
             for path in ["../outside", "/etc/hosts", "home/../../outside", "./home/a", ""] {
-                let text = file(&[&NEGATIVE.replace("home/bare/fresher-trial-cache/blob.bin", path)]);
+                let text = file(&[&NEGATIVE.replace("home/bare/Sample app cache/blob.bin", path)]);
 
                 assert!(matches!(refused(&text), CaseError::PathOutsideSandbox { .. }), "{path:?}");
             }
@@ -1293,7 +1324,7 @@ after-cleanup = "in-trash"
 
         #[test]
         fn a_map_at_outside_the_case_is_refused() {
-            for at in ["home/work", "home/bare/other", "home/bare/fresher-trial-cache/blob.bin/x", "", "/home/bare"] {
+            for at in ["home/work", "home/bare/other", "home/bare/Sample app cache/blob.bin/x", "", "/home/bare"] {
                 let text = file(&[&format!("{NEGATIVE}[case.map]\npart = \"your-folders\"\nat = \"{at}\"\n")]);
 
                 assert!(
@@ -1308,7 +1339,7 @@ after-cleanup = "in-trash"
         fn a_map_of_a_case_whose_first_file_is_at_the_root_needs_an_at() {
             let text = file(&[&format!(
                 "{}[case.map]\npart = \"your-folders\"\n",
-                NEGATIVE.replace("home/bare/fresher-trial-cache/blob.bin", "loose.bin")
+                NEGATIVE.replace("home/bare/Sample app cache/blob.bin", "loose.bin")
             )]);
 
             assert!(
@@ -1737,7 +1768,9 @@ after-cleanup = "in-trash"
         use std::path::Path;
         use std::time::{Duration, SystemTime};
 
-        use fresher_core::{Access, Capability, DangerLevel, GuardedFolder, ModuleId, SkipCode, SystemVersion};
+        use fresher_core::{
+            Access, Capability, DangerLevel, GuardedFolder, HighLevel, ModuleId, SkipCode, SystemVersion,
+        };
         use fresher_testing::FIXTURE_NOW;
 
         use super::{
@@ -1745,6 +1778,22 @@ after-cleanup = "in-trash"
         };
         use crate::world::StatedTool;
         use crate::{AfterCleanup, Case, CaseFile, CaseKind, MapPartName, merged_settings};
+
+        #[test]
+        fn a_file_without_high_offers_it() {
+            let parsed = CaseFile::parse(&file(&[NEGATIVE, &cache("low")])).unwrap();
+
+            assert_eq!(parsed.high(), HighLevel::Offered);
+        }
+
+        #[test]
+        fn high_withheld_is_read() {
+            let text = format!("feature = \"trial\"\nmodule = \"trial\"\nhigh = \"withheld\"\n{NEGATIVE}");
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            assert_eq!(parsed.high(), HighLevel::Withheld);
+        }
 
         #[test]
         fn settings_are_read_for_every_case_of_the_file() {
@@ -1838,7 +1887,7 @@ after-cleanup = "in-trash"
             assert_eq!(kinds, [CaseKind::Negative, CaseKind::Positive]);
             assert!(parsed.cases()[0].expect().is_none());
             let expect = parsed.cases()[1].expect().unwrap();
-            assert_eq!(expect.item(), Path::new("home/work/fresher-trial-cache"));
+            assert_eq!(expect.item(), Path::new("home/work/Sample app cache"));
             assert_eq!(expect.category().as_str(), "trial.caches");
             assert_eq!(expect.danger(), DangerLevel::Low);
             assert_eq!(expect.after(), AfterCleanup::InTrash);
@@ -1860,7 +1909,7 @@ after-cleanup = "in-trash"
             let positive = parsed.cases()[2].map().unwrap();
             assert_eq!(
                 (positive.part(), positive.at()),
-                (MapPartName::Explained, Path::new("home/work/fresher-trial-cache"))
+                (MapPartName::Explained, Path::new("home/work/Sample app cache"))
             );
         }
 
@@ -2067,8 +2116,8 @@ after-cleanup = "in-trash"
             let now = SystemTime::UNIX_EPOCH + Duration::from_secs(FIXTURE_NOW);
             parsed.tree().unwrap().build_at(folder.path(), now).unwrap();
 
-            assert!(folder.path().join("home/bare/fresher-trial-cache/blob.bin").is_file());
-            assert!(folder.path().join("home/work/fresher-trial-cache/blob.bin").is_file());
+            assert!(folder.path().join("home/bare/Sample app cache/blob.bin").is_file());
+            assert!(folder.path().join("home/work/Sample app cache/blob.bin").is_file());
             assert!(folder.path().join("home/work").join(fresher_core::SANDBOX_MARKER).is_file());
         }
     }

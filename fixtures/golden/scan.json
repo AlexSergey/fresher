@@ -11,12 +11,14 @@
     {
       "bytes": 0,
       "entries": 4,
+      "expected": null,
       "scan": 1,
       "type": "scan-progress"
     },
     {
       "bytes": 66133836,
       "entries": 23,
+      "expected": null,
       "scan": 1,
       "type": "scan-progress"
     },

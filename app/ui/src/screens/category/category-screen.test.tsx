@@ -36,6 +36,7 @@ import {
 } from '../../test/demo-scan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
 import { pageOf } from '../../test/page-of';
+import { sandboxBuild } from '../../test/sandbox-build';
 import { fakeViewport } from '../../test/viewport';
 import { AppProviders } from '../app-providers';
 import { CategoryScreen } from './category-screen';
@@ -196,6 +197,25 @@ describe('CategoryScreen', () => {
       expect(screen.queryByRole('list', { name: 'The items of Example downloads' })).toBeNull();
     });
 
+    it('the details have no Scan button', async () => {
+      core();
+
+      await renderDetails('demo.caches');
+
+      expect(screen.queryByRole('button', { name: 'Scan' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
+    });
+
+    it('a Look before removing category has no Select all', async () => {
+      core({ getOverview: () => APP_LEFTOVERS_OVERVIEW });
+
+      await renderDetails('app-leftovers.settings', APP_LEFTOVERS);
+
+      expect(await screen.findAllByRole('checkbox')).toHaveLength(2);
+      expect(screen.queryByRole('checkbox', { name: /^Select all/u })).toBeNull();
+      expect(screen.queryByText(/^Select all/u)).toBeNull();
+    });
+
     it('shows no choice of the module that does not touch the category', async () => {
       core({ getOverview: () => APP_LEFTOVERS_OVERVIEW });
 
@@ -224,7 +244,7 @@ describe('CategoryScreen', () => {
       scanned(store, [DOWNLOADS_LEFT_OUT], { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) });
 
       expect(screen.queryByText('Nothing found here')).toBeNull();
-      expect(screen.getByText('Everything found here was left out: the lines above say why.')).toBeVisible();
+      expect(screen.getByText('Everything found here was left out. The lines above say why.')).toBeVisible();
       expect(within(leftOutLines() as HTMLElement).getAllByRole('listitem')).toHaveLength(1);
     });
 
@@ -261,14 +281,16 @@ describe('CategoryScreen', () => {
         expect(store.getState().failure).toStrictEqual({ kind: 'refused', refusal: NOTHING_TO_REVEAL });
       });
     });
-    it("a tool's object has no row menu", async () => {
+    it("a tool's object has no Show in Finder and no Ignore this item", async () => {
       core({ getFindings: withToolItem });
       await renderDetails('demo.caches');
-
       await screen.findByRole('listitem', { name: /^Example: editor-cache/u });
 
-      expect(screen.queryByRole('button', { name: 'Options for Example: editor-cache' })).toBeNull();
-      expect(screen.getByRole('button', { name: 'Options for Example: browser-cache' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Example: editor-cache' }));
+
+      expect(screen.queryByRole('menuitem', { name: 'Show in Finder' })).toBeNull();
+      expect(screen.queryByRole('menuitem', { name: 'Ignore this item' })).toBeNull();
+      expect(screen.getAllByRole('menuitem')).toHaveLength(1);
     });
 
     it('a refused ignore keeps the row and shows the failure', async () => {
@@ -301,33 +323,55 @@ describe('CategoryScreen', () => {
       core();
       const { store } = await renderDetails('demo.caches');
       await screen.findByRole('listitem', { name: /^Example: editor-cache/u });
-      const scan = screen.getByRole('button', { name: 'Scan' });
-      scan.focus();
+      const elsewhere = document.body.appendChild(document.createElement('button'));
+      elsewhere.focus();
 
       act(() => {
         store.dispatch({ overview: WITHOUT_CACHES, type: 'overview-loaded' });
       });
 
-      expect(scan).toHaveFocus();
+      expect(elsewhere).toHaveFocus();
       expect(screen.getByRole('button', { name: 'Back to Scan' })).not.toHaveFocus();
+      elsewhere.remove();
     });
   });
 
   describe('positive cases', () => {
-    it("names the category, what it is and its level with the core's meaning", async () => {
+    it('shows the name, the group, the size and the count', async () => {
       core();
 
       await renderDetails('demo.caches');
 
-      expect(screen.getByText(text('demo.caches.what'), { selector: 'header p' })).toBeVisible();
-      const level = screen.getByRole('region', { name: 'Danger level' });
-      expect(level).toHaveTextContent('Safe');
-      expect(level).toHaveTextContent(FINDING_DICTIONARY['core.danger.safe.meaning'] as string);
-      expect(level).toHaveTextContent('Safe to remove');
-      const about = screen.getByRole('region', { name: 'About it' });
-      expect(about).toHaveTextContent('Apps that keep caches.');
-      expect(about).toHaveTextContent('The apps start a little slower once.');
-      expect(about).toHaveTextContent('Yes, as the apps run.');
+      expect(screen.getByRole('heading', { level: 1, name: 'Example caches' })).toBeVisible();
+      expect(screen.getByText('Safe to remove')).toBeVisible();
+      expect(screen.getByText('2 items')).toBeVisible();
+      expect(screen.getAllByText('1.8 GB').length).toBeGreaterThan(0);
+    });
+
+    it('answers what it is, who makes it, what happens if removed and whether it comes back', async () => {
+      core();
+
+      await renderDetails('demo.caches');
+
+      const what = screen.getByRole('region', { name: 'What it is' });
+      expect(what).toHaveTextContent(text('demo.caches.what'));
+      expect(what).toHaveTextContent('Apps that keep caches.');
+      const removed = screen.getByRole('region', { name: 'If you remove it' });
+      expect(removed).toHaveTextContent('The apps start a little slower once.');
+      const back = screen.getByRole('region', { name: 'Comes back?' });
+      expect(back).toHaveTextContent('Yes, as the apps run.');
+      expect(screen.queryByRole('region', { name: 'Danger level' })).toBeNull();
+    });
+
+    it('shows each item with its name, a path from ~ and no level badge', async () => {
+      core({ appInfo: () => ({ build: sandboxBuild(), high: 'offered', home: '/demo', version: '0.1.0' }) });
+
+      await renderDetails('demo.caches');
+
+      const row = await screen.findByRole('listitem', { name: /^Example: editor-cache/u });
+      expect(row).toHaveAccessibleName(/Safe/u);
+      expect(within(row).queryByText('Safe')).toBeNull();
+      expect(within(row).getByText('~/editor-cache')).toBeInTheDocument();
     });
 
     it('lists the left-out lines of this category only', async () => {
@@ -341,14 +385,37 @@ describe('CategoryScreen', () => {
       expect(lines[0]).toHaveTextContent('1 item left out (157.3 MB)');
     });
 
-    it("the head's checkbox selects the whole category", async () => {
+    it('shows each left-out line as a bar led by an i icon', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderDetails('demo.caches');
+
+      scanned(store, [DEMO_LEFT_OUT]);
+
+      const line = within(leftOutLines() as HTMLElement).getByRole('listitem');
+      // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative: it has no role to query
+      expect(line.querySelector('svg')).not.toBeNull();
+      expect(leftOutLines()).toHaveAttribute('data-bar');
+    });
+
+    it('Select all selects a Safe category whole', async () => {
       core();
       const { store } = await renderDetails('demo.caches');
 
-      fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all Example caches' }));
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all 2' }));
 
       expect([...store.getState().selection.categories.keys()]).toStrictEqual(['demo.caches']);
-      expect(screen.getByRole('checkbox', { name: 'Select all Example caches' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Select all 2' })).toBeChecked();
+    });
+
+    it('a Look before removing category still ticks its rows one by one', async () => {
+      core({ getOverview: () => APP_LEFTOVERS_OVERVIEW });
+      const { store } = await renderDetails('app-leftovers.settings', APP_LEFTOVERS);
+
+      const [first] = await screen.findAllByRole('checkbox');
+      fireEvent.click(first as HTMLElement);
+
+      expect(store.getState().selection.categories.size).toBe(0);
+      expect(store.getState().selection.findings.size).toBe(1);
     });
 
     it('shows the selection bar once something is selected', async () => {
@@ -435,15 +502,19 @@ describe('CategoryScreen', () => {
       });
     });
 
-    it('the menu item carries its sentence', async () => {
+    it("a row's menu lists its items in order with its separators", async () => {
       core();
       await renderDetails('demo.caches');
 
       fireEvent.click(await screen.findByRole('button', { name: 'Options for Example: editor-cache' }));
+      // eslint-disable-next-line testing-library/no-node-access -- the order of items and separators is the point
+      const entries = [...screen.getByRole('menu').querySelectorAll('[role="menuitem"], [role="separator"]')];
 
-      expect(await screen.findByRole('menuitem', { name: 'Ignore this item' })).toHaveAccessibleDescription(
-        'Hides it, and everything inside it, from the results and never removes it. You can restore it in Settings.',
-      );
+      expect(
+        entries.map((entry) =>
+          entry.getAttribute('role') === 'separator' ? '-' : entry.firstElementChild?.textContent,
+        ),
+      ).toStrictEqual(['Show in Finder', '-', 'Ignore this item', 'Ignore all Example caches']);
     });
 
     it('when the last row leaves, the focus goes to Back to Scan', async () => {

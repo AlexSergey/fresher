@@ -39,6 +39,42 @@
     --accent-fill-bottom: var(--iris-700);
     --accent-fill: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill-bottom));
     --accent-glow: var(--iris-500-a35);
+
+    /* The mockups' surfaces, tile borders, chips, separators, swoosh and menu hover (docs/mockups/0.1.0). */
+    --surface-card: radial-gradient(120% 140% at 20% 0%, var(--night-800) 0%, var(--gray-900) 55%);
+    --surface-tile: linear-gradient(180deg, var(--gray-875), var(--gray-900));
+    --surface-tile-medium: linear-gradient(180deg, var(--amber-950), var(--amber-975));
+    --surface-floating: var(--floating-a92);
+    --shadow-floating: 0 10px 30px var(--black-a55);
+    --surface-row-hover: var(--white-a3);
+    --border-solid: var(--gray-700);
+    --border-divider: var(--gray-800);
+    --tile-border: var(--gray-750);
+    --tile-border-hover: var(--gray-650);
+    --tile-border-safe: var(--green-900);
+    --tile-border-low: var(--cyan-900);
+    --tile-border-medium: var(--amber-900);
+    --tile-border-high: var(--red-400-a32);
+    --tile-divider-medium: var(--amber-925);
+    --tile-line-medium: var(--amber-200);
+    --level-safe-chip: var(--green-400-a8);
+    --level-low-chip: var(--cyan-400-a8);
+    --level-medium-chip: var(--amber-400-a10);
+    --level-high-chip: var(--red-400-a12);
+    --level-safe-icon-bg: var(--green-400-a12);
+    --level-low-icon-bg: var(--cyan-400-a12);
+    --level-medium-icon-bg: var(--amber-400-a14);
+    --level-high-icon-bg: var(--red-400-a12);
+    --text-legend: var(--gray-200);
+    --separator-line: linear-gradient(90deg, var(--gray-700), var(--gray-700-a0));
+    --swoosh-start: var(--iris-700);
+    --swoosh-end: var(--iris-200);
+    --swoosh-track: var(--gray-750);
+    --logo-body-top: var(--gray-725);
+    --accent-sheen: linear-gradient(115deg, var(--iris-200-a0) 45%, var(--iris-200-a45) 100%), var(--accent-fill);
+    --accent-sheen-shadow: inset 0 0 0 1px var(--iris-200-a25), 0 4px 14px var(--iris-600-a35);
+    --menu-item-active: var(--iris-700);
+    --menu-item-active-text: var(--text-on-fill);
     --danger-fill-top: var(--red-600);
     --danger-fill-bottom: var(--red-700);
     --danger-fill: linear-gradient(180deg, var(--danger-fill-top), var(--danger-fill-bottom));
@@ -51,11 +87,9 @@
     --level-low-fg: var(--cyan-400);
     --level-low-tint: var(--cyan-400-tint);
     --level-low-border: var(--cyan-400-a32);
-    --level-low-glow: var(--cyan-400-a40);
     --level-medium-fg: var(--amber-400);
     --level-medium-tint: var(--amber-400-tint);
     --level-medium-border: var(--amber-400-a32);
-    --level-medium-glow: var(--amber-400-a40);
     --level-high-fg: var(--red-400);
     --level-high-tint: var(--red-400-tint);
     --level-high-border: var(--red-400-a32);
@@ -63,8 +97,11 @@
 
     /* The parts of a disk (a map's bar and ring): muted hues, no light; each at least 3:1 on the raised surface.
        `free` is an outline only, `unknown` is hatched. */
+    --part-can-be-freed: var(--green-400);
+    --part-files-and-apps: var(--blue-400);
+    --part-system-space: var(--pink-400);
     --part-your-folders: var(--slate-400);
-    --part-mac-os: var(--plum-400);
+    --part-mac-os: var(--violet-400);
     --part-swap-and-sleep: var(--teal-400);
     --part-other-volume: var(--stone-400);
     --part-disk-own: var(--slate-500);
@@ -127,6 +164,7 @@
     --space-1-5: 6px;
     --space-2: 8px;
     --space-3: 12px;
+    --space-3-5: 14px;
     --space-4: 16px;
     --space-5: 20px;
     --space-6: 24px;
@@ -166,22 +204,17 @@
     --elevation-3-border: var(--border-strong);
     --elevation-3-shadow: inset 0 1px 0 var(--white-a4), 0 24px 64px -16px var(--black-a70), 0 0 0 1px var(--black-a60);
 
-    /* Glows: a 1 px ring and a 20 px halo in the accent's or the level's colour. */
+    /* Glows: a 1 px ring and a 20 px halo in the accent's or High's colour. */
     --glow-accent: 0 0 0 1px var(--iris-500-a45), 0 0 20px var(--iris-500-a30);
-    --glow-safe: 0 0 0 1px var(--green-400-a45), 0 0 20px var(--green-400-a30);
-    --glow-low: 0 0 0 1px var(--cyan-400-a45), 0 0 20px var(--cyan-400-a30);
-    --glow-medium: 0 0 0 1px var(--amber-400-a45), 0 0 20px var(--amber-400-a30);
     --glow-high: 0 0 0 1px var(--red-400-a45), 0 0 20px var(--red-400-a30);
 
     /* The focus ring: crisp, with a soft glow, drawn as a box shadow so it follows the radius. */
     --focus-ring: 0 0 0 2px var(--surface-window), 0 0 0 4px var(--accent-text), 0 0 16px 2px var(--iris-400-a45);
 
     /* Stacking. */
-    --z-content: 0;
     --z-sticky: 10;
     --z-selection-bar: 40;
     --z-toast: 50;
-    --z-dialog: 100;
     --z-tooltip: 200;
     --z-texture: 300;
   }
@@ -196,15 +229,18 @@
       --text-secondary: var(--gray-100);
       --accent-glow: var(--white-a0);
       --level-safe-glow: var(--white-a0);
-      --level-low-glow: var(--white-a0);
-      --level-medium-glow: var(--white-a0);
       --level-high-glow: var(--white-a0);
       --glow-accent: none;
-      --glow-safe: none;
-      --glow-low: none;
-      --glow-medium: none;
+      --accent-sheen-shadow: none;
       --glow-high: none;
       --focus-ring: 0 0 0 2px var(--surface-window), 0 0 0 4px var(--accent-text);
+      /* The mockups' card loses its coloured light; the tiles' hairlines take their level's full colour. */
+      --surface-card: var(--surface-raised);
+      --tile-border: var(--border-control);
+      --tile-border-safe: var(--level-safe-fg);
+      --tile-border-low: var(--level-low-fg);
+      --tile-border-medium: var(--level-medium-fg);
+      --tile-border-high: var(--level-high-fg);
     }
   }
 }

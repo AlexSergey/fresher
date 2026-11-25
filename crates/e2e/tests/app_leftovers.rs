@@ -470,7 +470,7 @@ mod access {
             system_ui: Arc::new(FakeSystemUi::default()),
             system: fresher_testing::fake_system(home.path()),
         };
-        let engine = Engine::new(registry, ports).unwrap();
+        let engine = Engine::new(registry, ports, fresher_core::HighLevel::Offered).unwrap();
         let module = engine.modules().into_iter().next().unwrap();
         module
             .categories

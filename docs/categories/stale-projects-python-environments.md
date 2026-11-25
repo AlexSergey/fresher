@@ -1,4 +1,4 @@
-# Python environments of old projects
+# Old Python environments
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/stale-projects`) · **Since:** 0.1.0
 
@@ -14,7 +14,9 @@ Beside a project's marker file (`pyproject.toml`, `setup.py`): `.venv` and `venv
 
 ## What happens if you remove it
 
-They go to the Trash. Your code stays. To work on the project again, make a new environment and install its packages; a package you installed by hand and listed nowhere has to be found again. It comes back only when you make the environment again. That is why its danger level is Medium.
+Your code stays; to work on the project again, make a new environment and install its packages, and find again any
+package you added by hand. It comes back only when you make the environment again. That is why its danger level is
+Medium.
 
 ## How the app decides
 

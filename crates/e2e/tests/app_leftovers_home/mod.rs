@@ -14,7 +14,7 @@ mod home;
 #[path = "../support/home_cleanup.rs"]
 mod home_cleanup;
 #[path = "../support/home_engine.rs"]
-mod home_engine;
+pub(crate) mod home_engine;
 #[path = "../support/home_rescan.rs"]
 mod home_rescan;
 #[path = "../support/home_scan.rs"]
@@ -136,7 +136,7 @@ pub(crate) fn left_out(events: &[Event]) -> Vec<(String, String, u32)> {
 }
 
 /// The engine's parts in `setup` on `sandbox`: the app's modules in its order, two threads.
-fn parts(sandbox: &Sandbox, setup: Setup) -> Parts {
+pub(crate) fn parts(sandbox: &Sandbox, setup: Setup) -> Parts {
     let avoid = match setup.avoid {
         Avoid::Nothing => Vec::new(),
         Avoid::PlacesThatPrompt => places_that_prompt(&sandbox.home()),

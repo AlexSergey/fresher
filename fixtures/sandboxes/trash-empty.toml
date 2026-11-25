@@ -19,11 +19,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/trash-empty-work"
 [[case.file]]
-path = "home/trash-empty-work/fresher-trial-cache/blob.bin"
+path = "home/trash-empty-work/Sample app cache/blob.bin"
 size = 1048576
 fill = "data"
 [case.expect]
-item = "home/trash-empty-work/fresher-trial-cache"
+item = "home/trash-empty-work/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"

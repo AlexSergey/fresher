@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryText, DETAIL_ARG, DangerLevel, DescriptorError, Dictionary, DictionaryError, Insight,
-    Module, ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text, TextKey,
+    CategoryDescriptor, CategoryIcon, CategoryText, DETAIL_ARG, DangerLevel, DescriptorError, Dictionary,
+    DictionaryError, Insight, Module, ModuleDescriptor, ModuleOutcome, Removal, SettingKey, Text, TextKey,
 };
 
 use crate::ModuleRun;
@@ -34,6 +34,8 @@ pub enum ContractProblem {
     Dictionary(DictionaryError),
     #[error("`{key}` has no text in the dictionary")]
     MissingText { key: String },
+    #[error("category `{category}` names no icon")]
+    NoIcon { category: String },
     #[error("category `{category}` has no catalogue file {}", .path.display())]
     MissingCatalogueFile { category: String, path: PathBuf },
     #[error("the catalogue file of `{category}` names the danger level {found:?}, the category has {expected:?}")]
@@ -56,10 +58,11 @@ pub enum ContractProblem {
     DuplicateInsight { identity: String },
 }
 
-/// Every way `module` breaks the module contract: its descriptor validates; every category has its five texts, every
-/// setting (`<module>.enabled` included) its label and description and every declared problem and every choice
-/// (label and description) its text; every key of its dictionary is in its namespace and no text names `{detail}`;
-/// with [`Catalogue::Required`], every category has its catalogue file with the same danger level.
+/// Every way `module` breaks the module contract: its descriptor validates; every category names an icon (not the
+/// generic one, which only the core's own categories name) and has its six texts, every setting (`<module>.enabled`
+/// included) its label and description and every declared problem and every choice (label and description) its text;
+/// every key of its dictionary is in its namespace and no text names `{detail}`; with [`Catalogue::Required`], every
+/// category has its catalogue file with the same danger level.
 pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<ContractProblem> {
     let descriptor = module.descriptor();
     let mut problems = Vec::new();
@@ -75,6 +78,8 @@ pub fn check_module_contract(module: &dyn Module, catalogue: &Catalogue) -> Vec<
     if let Err(error) = revalidated {
         problems.push(ContractProblem::Descriptor(error));
     }
+    let generic = descriptor.categories().iter().filter(|category| category.icon() == CategoryIcon::Generic);
+    problems.extend(generic.map(|category| ContractProblem::NoIcon { category: category.id().as_str().into() }));
     match Dictionary::parse(descriptor.id().as_str(), descriptor.locales().en) {
         Ok(dictionary) => {
             let missing = descriptor_keys(descriptor).into_iter().filter(|key| texts_of(&dictionary, key).is_empty());
@@ -174,7 +179,7 @@ pub fn check_removals_matched(runs: &[ModuleRun]) -> Vec<ContractProblem> {
     unmatched.map(|finding| ContractProblem::UnmatchedRemoval { identity: finding.key().identity().into() }).collect()
 }
 
-/// The keys a descriptor implies: the five texts of every category, the label and description of every setting,
+/// The keys a descriptor implies: the six texts of every category, the label and description of every setting,
 /// the `<module>.enabled` switch the settings schema adds included, and every declared problem.
 fn descriptor_keys(descriptor: &ModuleDescriptor) -> Vec<String> {
     let categories = descriptor
@@ -421,7 +426,10 @@ mod tests {
 
         #[test]
         fn the_contract_fails_for_a_category_without_its_text() {
-            let en = r#"{ "sample.caches.name": "Caches", "sample.caches.what": "Files.", "sample.caches.made-by": "Apps." }"#;
+            let en = r#"{
+                "sample.caches.name": "Caches", "sample.caches.line": "Kept files", "sample.caches.what": "Files.",
+                "sample.caches.made-by": "Apps."
+            }"#;
 
             let problems = check_module_contract(&CacheModule::with_dictionary(en), &Catalogue::DevOnly);
 
@@ -437,10 +445,28 @@ mod tests {
         }
 
         #[test]
+        fn a_module_category_without_an_icon_fails_the_contract() {
+            let problems = check_module_contract(&CacheModule::new().without_icon(), &Catalogue::DevOnly);
+
+            assert_eq!(problems, [ContractProblem::NoIcon { category: "sample.caches".into() }]);
+            assert_eq!(problems[0].to_string(), "category `sample.caches` names no icon");
+        }
+
+        #[test]
+        fn a_category_without_its_line_fails_the_contract() {
+            let en = crate::run_module::sample::EN.replace(r#""sample.caches.line": "Kept files","#, "");
+
+            let problems = check_module_contract(&CacheModule::with_dictionary(String::leak(en)), &Catalogue::DevOnly);
+
+            assert_eq!(problems, [ContractProblem::MissingText { key: "sample.caches.line".into() }]);
+        }
+
+        #[test]
         fn the_contract_fails_without_the_texts_of_the_enabled_switch() {
             let en = r#"{
-                "sample.caches.name": "Caches", "sample.caches.what": "Files.", "sample.caches.made-by": "Apps.",
-                "sample.caches.if-removed": "Rebuilt.", "sample.caches.comes-back": "Yes.",
+                "sample.caches.name": "Caches", "sample.caches.line": "Kept files", "sample.caches.what": "Files.",
+                "sample.caches.made-by": "Apps.", "sample.caches.if-removed": "Rebuilt.",
+                "sample.caches.comes-back": "Yes.",
                 "sample.enabled.label": "Sample"
             }"#;
 
@@ -561,8 +587,9 @@ mod tests {
         #[test]
         fn an_unused_key_fails() {
             let en = r#"{
-                "sample.caches.name": "Caches", "sample.caches.what": "Files.", "sample.caches.made-by": "Apps.",
-                "sample.caches.if-removed": "Rebuilt.", "sample.caches.comes-back": "Yes.",
+                "sample.caches.name": "Caches", "sample.caches.line": "Kept files", "sample.caches.what": "Files.",
+                "sample.caches.made-by": "Apps.", "sample.caches.if-removed": "Rebuilt.",
+                "sample.caches.comes-back": "Yes.",
                 "sample.item.title": "{name}", "sample.item.reason": "Named Caches.", "sample.item.old": "Unused."
             }"#;
             let module = CacheModule::with_dictionary(en);
@@ -575,8 +602,9 @@ mod tests {
         #[test]
         fn a_missing_placeholder_arg_fails() {
             let en = r#"{
-                "sample.caches.name": "Caches", "sample.caches.what": "Files.", "sample.caches.made-by": "Apps.",
-                "sample.caches.if-removed": "Rebuilt.", "sample.caches.comes-back": "Yes.",
+                "sample.caches.name": "Caches", "sample.caches.line": "Kept files", "sample.caches.what": "Files.",
+                "sample.caches.made-by": "Apps.", "sample.caches.if-removed": "Rebuilt.",
+                "sample.caches.comes-back": "Yes.",
                 "sample.item.title": "{name}", "sample.item.reason": "Named Caches, {size}."
             }"#;
             let module = CacheModule::with_dictionary(en);
@@ -675,7 +703,10 @@ mod tests {
         use super::together_with;
         use super::{catalogue_file, docs, full_insight, runs};
         use crate::run_module::sample::{CacheModule, en_with};
-        use crate::{Catalogue, assert_module_contract, assert_texts_used, check_removals_matched, check_texts_used};
+        use crate::{
+            Catalogue, assert_module_contract, assert_texts_used, check_module_contract, check_removals_matched,
+            check_texts_used,
+        };
 
         #[test]
         fn a_together_removal_of_matched_parts_is_not_flagged() {
@@ -720,6 +751,14 @@ mod tests {
         }
 
         #[test]
+        fn a_module_with_icons_and_lines_passes() {
+            let module = CacheModule::new();
+
+            assert_eq!(module.descriptor_icon(), fresher_core::CategoryIcon::Cache);
+            assert_eq!(check_module_contract(&module, &Catalogue::DevOnly), []);
+        }
+
+        #[test]
         fn a_choice_text_no_run_uses_is_not_unused() {
             let en =
                 en_with(r#""sample.choice.keep.label": "Keep", "sample.choice.keep.description": "Keeps the caches.""#);
@@ -751,8 +790,9 @@ mod tests {
         #[test]
         fn a_plural_text_stands_for_its_key() {
             let en = r#"{
-                "sample.caches.name": "Caches", "sample.caches.what": "Files.", "sample.caches.made-by": "Apps.",
-                "sample.caches.if-removed": "Rebuilt.", "sample.caches.comes-back": "Yes.",
+                "sample.caches.name": "Caches", "sample.caches.line": "Kept files", "sample.caches.what": "Files.",
+                "sample.caches.made-by": "Apps.", "sample.caches.if-removed": "Rebuilt.",
+                "sample.caches.comes-back": "Yes.",
                 "sample.item.title.one": "{name}", "sample.item.title.other": "{name}s", "sample.item.reason": "Caches."
             }"#;
             let module = CacheModule::with_dictionary(en);

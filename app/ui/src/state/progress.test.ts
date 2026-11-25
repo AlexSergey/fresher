@@ -6,7 +6,13 @@ import { FIRST_BATCH, SCAN_STARTED } from '../test/demo-scan';
 import { createFakeClock } from '../test/fake-clock';
 import { throttleProgress } from './progress';
 
-const progress = (entries: number): CoreAction => ({ bytes: entries * 10, entries, scan: 1, type: 'scan-progress' });
+const progress = (entries: number): CoreAction => ({
+  bytes: entries * 10,
+  entries,
+  expected: 1000,
+  scan: 1,
+  type: 'scan-progress',
+});
 
 const throttled = (): {
   readonly advance: (ms: number) => void;

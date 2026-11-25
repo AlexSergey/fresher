@@ -3,28 +3,28 @@
 
 # Names that only resemble the trial folders, right next to the marker.
 [[file]]
-path = "look-alike/fresher-trial-cache2/blob.bin"
+path = "look-alike/Sample app cache2/blob.bin"
 size = 4096
 modified = 1762000000
 
 [[file]]
-path = "look-alike/fresher-trial-cache.txt/blob.bin"
+path = "look-alike/Sample app cache.txt/blob.bin"
 size = 4096
 modified = 1762000000
 
 [[file]]
-path = "look-alike/fresher-trial-kept2/blob.bin"
+path = "look-alike/Old sample downloads2/blob.bin"
 size = 4096
 modified = 1762000000
 
 # Files, not folders, with the trial names.
 [[file]]
-path = "file/fresher-trial-cache"
+path = "file/Sample app cache"
 size = 4096
 modified = 1762000000
 
 [[file]]
-path = "file/fresher-trial-kept"
+path = "file/Old sample downloads"
 size = 4096
 modified = 1762000000
 
@@ -35,20 +35,20 @@ size = 4096
 modified = 1762000000
 
 [[symlink]]
-path = "link/fresher-trial-cache"
+path = "link/Sample app cache"
 target = "../outside/data"
 
 [[symlink]]
-path = "link/fresher-trial-kept"
+path = "link/Old sample downloads"
 target = "../outside/data"
 
 # Trial folders with no marker next to them.
 [[file]]
-path = "unmarked/fresher-trial-cache/blob.bin"
+path = "unmarked/Sample app cache/blob.bin"
 size = 4096
 modified = 1762000000
 
 [[file]]
-path = "marked-above/deeper/fresher-trial-kept/blob.bin"
+path = "marked-above/deeper/Old sample downloads/blob.bin"
 size = 4096
 modified = 1762000000

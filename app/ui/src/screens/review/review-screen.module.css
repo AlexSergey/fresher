@@ -1,144 +1,21 @@
 /*
- * The review screen: the summary panel, then the selection's parts (safe, then danger, the danger part framed in its
- * highest level's colour), each holding one danger zone per level, each holding a section per category, each over a
- * finding list as tall as its rows (`--review-rows`, at most six) that scrolls past them.
+ * The review screen: its title in the toolbar, then the summary card, the separator and one tile per category on the
+ * column, with room at the bottom for the floating bar.
  */
 @layer components {
+  .title {
+    font: inherit;
+  }
+
   .content {
-    display: grid;
-    padding: 0 var(--content-inset, var(--size-gutter)) var(--space-10);
-    gap: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2) var(--content-inset, var(--size-gutter)) calc(var(--space-12) * 2);
+    gap: var(--space-4);
   }
 
   .empty {
     display: grid;
     padding: var(--space-16) var(--content-inset, var(--size-gutter));
-  }
-
-  .summary {
-    display: grid;
-    align-items: center;
-    gap: var(--space-6);
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .figures {
-    display: grid;
-    gap: var(--space-1);
-  }
-
-  .count {
-    color: var(--text-secondary);
-  }
-
-  .level {
-    min-width: 0;
-  }
-
-  .remove {
-    display: grid;
-    max-width: 320px;
-    gap: var(--space-2);
-    justify-items: end;
-  }
-
-  .reaches {
-    margin: var(--space-2) 0 0;
-    color: var(--text-secondary);
-    font-size: var(--type-footnote-size);
-    line-height: var(--type-footnote-line);
-  }
-
-  .checking {
-    color: var(--text-secondary);
-    font-size: var(--type-footnote-size);
-    line-height: var(--type-footnote-line);
-    text-align: right;
-  }
-
-  .part {
-    display: grid;
-    gap: var(--space-6);
-  }
-
-  .part[data-part='danger'] {
-    --part-fg: var(--level-medium-fg);
-
-    padding: var(--space-6);
-    border: 1px solid var(--part-fg);
-    border-radius: var(--radius-lg);
-  }
-
-  .part[data-part='danger'][data-level='high'] {
-    --part-fg: var(--level-high-fg);
-  }
-
-  .partHead {
-    display: grid;
-    gap: var(--space-1);
-  }
-
-  .partName {
-    margin: 0;
-    color: var(--text-primary);
-    font-size: var(--type-title-2-size);
-    font-weight: var(--type-title-2-weight);
-    letter-spacing: var(--type-title-2-tracking);
-    line-height: var(--type-title-2-line);
-  }
-
-  .partMeaning {
-    margin: 0;
-    color: var(--text-secondary);
-  }
-
-  .zoneGroups {
-    display: grid;
-    gap: var(--space-8);
-  }
-
-  .group {
-    display: grid;
-    gap: var(--space-3);
-  }
-
-  .groupHeader {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .groupName {
-    min-width: 0;
-    flex: 1;
-    font-size: var(--type-title-3-size);
-    font-weight: var(--type-title-3-weight);
-    letter-spacing: var(--type-title-3-tracking);
-    line-height: var(--type-title-3-line);
-  }
-
-  .groupCount {
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-
-  .groupSize {
-    display: inline-flex;
-    min-width: 72px;
-    justify-content: flex-end;
-  }
-
-  .lost {
-    color: var(--text-secondary);
-  }
-
-  /* The list's column names, then its rows. */
-  .list {
-    height: calc(var(--review-rows) * var(--size-finding-row) + 2 * var(--space-2) + var(--type-caption-line) + 1px);
-  }
-
-  .listSurface {
-    height: 100%;
-    overflow: hidden;
   }
 }

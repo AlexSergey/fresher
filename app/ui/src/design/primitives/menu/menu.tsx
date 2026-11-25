@@ -6,12 +6,26 @@ import { IconButton } from '../icon-button/icon-button';
 import styles from './menu.module.css';
 import { type MenuPlace, placeMenu } from './place';
 
-export type MenuItem = {
-  readonly description?: string;
+export type MenuItem = MenuAction | MenuSeparator;
+
+// A line between groups of actions: not an action, so the arrow keys skip it.
+export type MenuSeparator = { readonly kind: 'separator' };
+
+type MenuAction = {
   readonly key: string;
   readonly label: string;
   readonly onSelect: () => void;
+  // The label in the secondary text colour: for the far-reaching choice at the end.
+  readonly quiet?: boolean;
 };
+
+export const SEPARATOR: MenuSeparator = { kind: 'separator' };
+
+const isAction = (item: MenuItem | undefined): item is MenuAction => item !== undefined && !('kind' in item);
+
+// The positions of the actions among the items.
+const actionPositions = (items: readonly MenuItem[]): readonly number[] =>
+  items.flatMap((item, index) => (isAction(item) ? [index] : []));
 
 export type MenuProps = {
   // Open from the start, without taking the focus: for the gallery.
@@ -24,6 +38,37 @@ export type MenuProps = {
   readonly tabIndex?: -1 | 0;
 };
 
+type MenuRowProps = {
+  readonly active: boolean;
+  readonly id: string;
+  readonly item: MenuAction;
+  readonly onChoose: () => void;
+  readonly onFocus: () => void;
+  // The pointer rests on it: it becomes the active item, so only one item is ever filled.
+  readonly onPoint: () => void;
+  readonly rowRef: (element: HTMLDivElement | null) => void;
+};
+
+// One action: its label.
+const MenuRow = ({ active, id, item, onChoose, onFocus, onPoint, rowRef }: MenuRowProps): JSX.Element => (
+  // The menu's own key handler serves the keyboard; a click is the pointer's way to choose.
+  // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events -- see above
+  <div
+    aria-labelledby={`${id}-${item.key}-label`}
+    className={styles.item}
+    data-active={active ? true : undefined}
+    data-quiet={item.quiet === true ? true : undefined}
+    onClick={onChoose}
+    onFocus={onFocus}
+    onPointerEnter={onPoint}
+    ref={rowRef}
+    role="menuitem"
+    tabIndex={active ? 0 : -1}
+  >
+    <span id={`${id}-${item.key}-label`}>{item.label}</span>
+  </div>
+);
+
 // A button that opens a short list of actions, in a portal on <body>, placed by the component. The focus rests on one
 // item at a time (arrows, Home and End move it, Enter or Space chooses). Choosing closes the menu, gives the focus back
 // to the trigger, then calls the item; Escape does the same without a choice; Tab and a pointer down outside close it.
@@ -35,7 +80,10 @@ export const Menu = ({ defaultOpen = false, icon, items, label, tabIndex = 0 }: 
   // Set when the focus has to follow the active item: not for a menu forced open.
   const focusItemRef = useRef(false);
   const [open, setOpen] = useState(defaultOpen);
-  const [active, setActive] = useState(0);
+  const positions = actionPositions(items);
+  const first = positions[0] ?? 0;
+  const last = positions.at(-1) ?? 0;
+  const [active, setActive] = useState(first);
   const [place, setPlace] = useState<MenuPlace | null>(null);
 
   const openAt = (index: number): void => {
@@ -116,22 +164,22 @@ export const Menu = ({ defaultOpen = false, icon, items, label, tabIndex = 0 }: 
   const onTriggerKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      openAt(event.key === 'ArrowDown' ? 0 : items.length - 1);
+      openAt(event.key === 'ArrowDown' ? first : last);
     }
   };
 
-  const choose = (item: MenuItem): void => {
+  const choose = (item: MenuAction): void => {
     closeToTrigger();
     item.onSelect();
   };
 
   const onMenuKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
-    const last = items.length - 1;
+    const at = positions.indexOf(active);
     const target: Partial<Record<string, number>> = {
-      ArrowDown: active === last ? 0 : active + 1,
-      ArrowUp: active === 0 ? last : active - 1,
+      ArrowDown: positions[at + 1] ?? first,
+      ArrowUp: positions[at - 1] ?? last,
       End: last,
-      Home: 0,
+      Home: first,
     };
     const next = target[event.key];
 
@@ -149,7 +197,7 @@ export const Menu = ({ defaultOpen = false, icon, items, label, tabIndex = 0 }: 
       event.preventDefault();
       const item = items[active];
 
-      if (item !== undefined) {
+      if (isAction(item)) {
         choose(item);
       }
     }
@@ -167,7 +215,7 @@ export const Menu = ({ defaultOpen = false, icon, items, label, tabIndex = 0 }: 
           if (open) {
             closeToTrigger();
           } else {
-            openAt(0);
+            openAt(first);
           }
         }}
         onKeyDown={onTriggerKeyDown}
@@ -188,34 +236,37 @@ export const Menu = ({ defaultOpen = false, icon, items, label, tabIndex = 0 }: 
               style={place === null ? undefined : { left: place.left, top: place.top }}
               tabIndex={-1}
             >
-              {items.map((item, index) => (
-                // The menu's own key handler serves the keyboard; a click is the pointer's way to choose.
-                // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events -- see above
-                <div
-                  aria-describedby={item.description === undefined ? undefined : `${id}-${item.key}-description`}
-                  aria-labelledby={`${id}-${item.key}-label`}
-                  className={styles.item}
-                  key={item.key}
-                  onClick={() => {
-                    choose(item);
-                  }}
-                  onFocus={() => {
-                    setActive(index);
-                  }}
-                  ref={(element) => {
-                    itemsRef.current[index] = element;
-                  }}
-                  role="menuitem"
-                  tabIndex={index === active ? 0 : -1}
-                >
-                  <span id={`${id}-${item.key}-label`}>{item.label}</span>
-                  {item.description === undefined ? null : (
-                    <span className={styles.description} id={`${id}-${item.key}-description`}>
-                      {item.description}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {items.map((item, index) =>
+                isAction(item) ? (
+                  <MenuRow
+                    active={index === active}
+                    id={id}
+                    item={item}
+                    key={item.key}
+                    onChoose={() => {
+                      choose(item);
+                    }}
+                    onFocus={() => {
+                      setActive(index);
+                    }}
+                    onPoint={() => {
+                      // The menu takes the focus, so only the pointed item is marked.
+                      focusItemRef.current = false;
+                      if (document.activeElement !== itemsRef.current[index]) {
+                        menuRef.current?.focus();
+                      }
+
+                      setActive(index);
+                    }}
+                    rowRef={(element) => {
+                      itemsRef.current[index] = element;
+                    }}
+                  />
+                ) : (
+                  // eslint-disable-next-line @eslint-react/no-array-index-key -- a separator has no identity but its place
+                  <div className={styles.separator} key={`separator-${index}`} role="separator" />
+                ),
+              )}
             </div>,
             document.body,
           )

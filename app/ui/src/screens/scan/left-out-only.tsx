@@ -2,6 +2,7 @@ import { type JSX, useId } from 'react';
 
 import type { CategoryId, LeftOutCount, SettingValue } from '../../ipc/bindings.generated';
 
+import { Tile } from '../../design/layout/tile/tile';
 import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { LeftOutLines } from '../../product/left-out-lines/left-out-lines';
@@ -51,27 +52,32 @@ const LeftOutRow = ({ category, counts }: Row): JSX.Element => {
 
   return (
     <li aria-labelledby={nameId} className={styles.row}>
-      <div className={styles.head}>
-        <h3 className={styles.name} id={nameId}>
-          {tText({ args: {}, key: `${category}.name` })}
-        </h3>
-        <Button
-          aria-describedby={nameId}
-          onClick={() => {
-            navigation.navigate({ category, kind: 'category' });
-          }}
-          size="small"
-          variant="ghost"
-        >
-          {t('ui.category-card.details')}
-        </Button>
-      </div>
-      <LeftOutLines counts={counts} />
+      <Tile>
+        <div className={styles.head}>
+          <h3 className={styles.name} id={nameId}>
+            {tText({ args: {}, key: `${category}.name` })}
+          </h3>
+          <span className={styles.details}>
+            <Button
+              aria-describedby={nameId}
+              onClick={() => {
+                navigation.navigate({ category, kind: 'category' });
+              }}
+              size="small"
+              variant="ghost"
+            >
+              {t('ui.category-card.details')}
+            </Button>
+          </span>
+        </div>
+        <LeftOutLines counts={counts} />
+      </Tile>
     </li>
   );
 };
 
-// What the last scan found but left out whole, under the zones: one row per category, with its lines and Details.
+// What the last scan found but left out whole, under the groups: a heading like theirs, then one tile per category,
+// with its lines and Details.
 // Nothing before a scan, during one (its totals arrive after its left-outs, so a category with findings would show
 // here first), or when every category with left-outs has a card.
 export const LeftOutOnly = ({ cards }: LeftOutOnlyProps): JSX.Element | null => {
@@ -89,10 +95,14 @@ export const LeftOutOnly = ({ cards }: LeftOutOnlyProps): JSX.Element | null => 
 
   return (
     <section aria-labelledby={headingId} className={styles.section}>
-      <h2 className={styles.title} id={headingId}>
-        {t('ui.screen.scan.left-out.title')}
-      </h2>
-      <p className={styles.text}>{t('ui.screen.scan.left-out.text')}</p>
+      <div className={styles.heading}>
+        <h2 className={styles.title} id={headingId}>
+          {t('ui.screen.scan.left-out.title')}
+        </h2>
+        <p className={styles.text}>
+          {t('ui.screen.scan.group-line', { line: { kind: 'text', value: t('ui.screen.scan.left-out.text') } })}
+        </p>
+      </div>
       <ul className={styles.rows}>
         {rows.map((row) => (
           <LeftOutRow category={row.category} counts={row.counts} key={row.category} />

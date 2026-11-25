@@ -438,11 +438,6 @@ export const CLEANUP_DICTIONARY: Dictionary = {
   'core.cleanup.trash.replaced': 'Something else is in its place in the Trash.',
   'core.danger.high.name': 'High',
   'core.danger.medium.name': 'Medium',
-  'core.danger.part.danger.meaning':
-    'Each of these may hold settings or work that do not come back by themselves. Check them one by one.',
-  'core.danger.part.danger.name': 'Danger zone',
-  'core.danger.part.safe.meaning': 'Each of these comes back by itself or with a download.',
-  'core.danger.part.safe.name': 'Safe to remove',
   'core.error.cleaning-blocked': 'Fresher cannot remove anything right now, so nothing was removed.',
   'core.error.not-in-trash': 'This item is no longer in the Trash.',
   'core.error.plan-gone':

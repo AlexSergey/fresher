@@ -1,4 +1,4 @@
-# Build output of old projects
+# Builds of old projects
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/stale-projects`) · **Since:** 0.1.0
 
@@ -14,7 +14,7 @@ Beside a project's marker file: `target` (Rust, Maven), `build` and `.gradle` (G
 
 ## What happens if you remove it
 
-They go to the Trash. Your code stays; the next build makes them again, which takes a while. They come back with the next build.
+Your code stays; the next build makes them again, which takes a while. They come back with the next build.
 
 ## How the app decides
 

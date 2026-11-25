@@ -128,4 +128,79 @@
   .row[data-disabled] .trailing {
     color: var(--text-disabled);
   }
+
+  /* Compact: the rows of a tile's list, flush with the tile, padded past its header's checkbox and icon. */
+  .row[data-compact] {
+    padding: 7px var(--space-4) 7px 62px;
+    border-radius: 0;
+  }
+
+  .row[data-compact]::before,
+  .row[data-compact]::after {
+    content: none;
+  }
+
+  .row[data-compact]:hover:not([data-disabled]),
+  .row[data-compact][data-hover] {
+    background-color: var(--surface-row-hover);
+  }
+
+  .row[data-compact] .title {
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-weight);
+    line-height: calc(17rem / 13);
+  }
+
+  .row[data-compact] .subtitle {
+    color: var(--text-tertiary);
+    font-size: calc(11rem / 13);
+    line-height: calc(14rem / 13);
+  }
+
+  /* A path or a line set in the subtitle takes its size and colour. */
+  .row[data-compact] .subtitle > * {
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .row[data-compact] .trailing {
+    color: var(--text-primary);
+  }
+
+  .row[data-compact]:not([data-selected]) .title {
+    color: var(--text-secondary);
+  }
+
+  .row[data-compact]:not([data-selected]) .trailing {
+    color: var(--text-tertiary);
+  }
+
+  /* Flat: a row of a framed list, as the category's items: no tint or edge, 14 px of padding, a divider under it. */
+  .row[data-flat] {
+    padding: 0 var(--space-3-5);
+    border-bottom: 1px solid var(--border-divider);
+    border-radius: 0;
+    gap: var(--space-3-5);
+  }
+
+  .row[data-flat]::before,
+  .row[data-flat]::after {
+    content: none;
+  }
+
+  .row[data-flat] .title {
+    font-size: calc(14rem / 13);
+    font-weight: 500;
+    line-height: calc(18rem / 13);
+  }
+
+  .row[data-flat] .subtitle {
+    color: var(--text-tertiary);
+  }
+
+  .row[data-flat] .trailing {
+    color: var(--text-primary);
+    font-size: calc(14rem / 13);
+  }
 }

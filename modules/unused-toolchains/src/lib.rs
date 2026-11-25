@@ -21,8 +21,9 @@ mod toolchains;
 use std::path::Path;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, DescriptorError, EntryKind, FindingSink, IdError, Interest, InterestError, Locales,
-    Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, SettingError, TextKeyError,
+    CategoryDescriptor, CategoryIcon, CategoryId, DescriptorError, EntryKind, FindingSink, IdError, Interest,
+    InterestError, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
+    SettingError, TextKeyError,
 };
 
 use crate::categories::{CATEGORIES, needs};
@@ -76,7 +77,11 @@ impl UnusedToolchainsModule {
         let categories = CATEGORIES
             .into_iter()
             .map(|(category, danger)| {
-                Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, category)?, danger).with_needs(needs()))
+                Ok::<_, IdError>(
+                    CategoryDescriptor::new(CategoryId::new(id, category)?, danger)
+                        .with_icon(CategoryIcon::Toolchain)
+                        .with_needs(needs()),
+                )
             })
             .collect::<Result<Vec<_>, _>>()?;
         let report = Report::new(categories.clone())?;

@@ -46,7 +46,7 @@ mod negative {
         let state =
             state(&[("/home", sizes(100)), ("/home/Caches", sizes(40))]).with_owner(Path::new("/home/Caches"), caches);
 
-        let shares = Shares::of(&state, &ignoring(&["demo.caches"], &[]));
+        let shares = Shares::of(&state, &ignoring(&["demo.caches"], &[]), &crate::withheld::Withheld::offered());
 
         assert_eq!(shares.category(caches), Sizes::ZERO);
         assert_eq!(shares.categories().count(), 0);
@@ -66,7 +66,7 @@ mod negative {
             .with_owner(Path::new("/home/Other"), other);
         let hidden = Ignored { hidden_modules: vec![ModuleId::new("demo").unwrap()], ..Ignored::default() };
 
-        let shares = Shares::of(&state, &hidden);
+        let shares = Shares::of(&state, &hidden, &crate::withheld::Withheld::offered());
 
         assert_eq!(shares.category(caches), Sizes::ZERO);
         assert_eq!(shares.category(other), sizes(25), "only the hidden module's owners leave");
@@ -86,7 +86,7 @@ mod negative {
         .with_owner(Path::new("/home/Library/Caches"), caches)
         .with_owner(Path::new("/home/LibraryX"), caches);
 
-        let shares = Shares::of(&state, &ignoring(&[], &["/home/Library"]));
+        let shares = Shares::of(&state, &ignoring(&[], &["/home/Library"]), &crate::withheld::Withheld::offered());
 
         assert_eq!(shares.category(caches), sizes(30), "a shared prefix is not below the ignored path");
         assert_eq!(shares.explained(&state, node(&state, "/home/Library")), Sizes::ZERO);
@@ -101,7 +101,7 @@ mod negative {
             .with_owner(Path::new("/home/Caches"), caches)
             .with_owner(Path::new("/home/Caches/app"), logs);
 
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         assert_eq!((shares.category(caches), shares.category(logs)), (sizes(35), sizes(25)));
         assert_eq!(shares.kept_by(node(&state, "/home/Caches")), Some((caches, sizes(35))));
@@ -118,7 +118,7 @@ mod negative {
             .with_owner(Path::new("/home/Caches"), caches)
             .with_owner(Path::new("/home/Caches/app"), logs);
 
-        let shares = Shares::of(&state, &ignoring(&["demo.logs"], &[]));
+        let shares = Shares::of(&state, &ignoring(&["demo.logs"], &[]), &crate::withheld::Withheld::offered());
 
         assert_eq!((shares.category(caches), shares.category(logs)), (sizes(35), Sizes::ZERO));
         assert_eq!(shares.kept_by(node(&state, "/home/Caches/app")), None, "an ignored owner keeps nothing");
@@ -135,7 +135,7 @@ mod negative {
             .with_owner(Path::new("/home/a"), caches)
             .with_owner(Path::new("/home/b"), logs);
 
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         assert_eq!((shares.category(caches), shares.category(logs)), (sizes(30), sizes(20)));
         assert_eq!(shares.explained(&state, node(&state, "/home/a")), sizes(30));
@@ -151,7 +151,7 @@ mod negative {
             .with_owner(Path::new("/home/a"), caches)
             .with_owner(Path::new("/home/b"), caches);
 
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         assert_eq!(shares.category(caches), most);
         assert_eq!(shares.roots()[0].explained, most);
@@ -215,7 +215,7 @@ mod positive {
             let tree = FixtureTree::from_toml(&fixture).unwrap();
             let state = walked(&tree);
 
-            let shares = Shares::of(&*state, &Ignored::default());
+            let shares = Shares::of(&*state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
             assert_eq!(shares.roots().len(), 1, "{}", fixture.display());
             for share in shares.roots() {
@@ -242,7 +242,7 @@ mod positive {
         .with_owner(Path::new("/home/Library/Caches/app"), other)
         .with_owner(Path::new("/home/Library/Logs"), logs);
 
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         let explained = |path: &str| shares.explained(&state, node(&state, path));
         assert_eq!(explained("/home"), sizes(400));
@@ -268,7 +268,11 @@ mod positive {
         .with_owner(Path::new("/home/Caches/app/blobs/kept"), logs)
         .with_owner(Path::new("/home/Caches/app/blobs/hidden"), logs);
 
-        let shares = Shares::of(&state, &ignoring(&[], &["/home/Caches/app/blobs/hidden"]));
+        let shares = Shares::of(
+            &state,
+            &ignoring(&[], &["/home/Caches/app/blobs/hidden"]),
+            &crate::withheld::Withheld::offered(),
+        );
 
         let explained = |path: &str| shares.explained(&state, node(&state, path));
         assert_eq!(explained("/home/Caches/app"), sizes(100), "all but the ignored owner inside");
@@ -284,7 +288,7 @@ mod positive {
         let state = state(&[("/home", partial), ("/home/Caches", sizes(40)), ("/data", sizes(10))])
             .with_owner(Path::new("/home/Caches"), caches);
 
-        let shares = Shares::of(&state, &Ignored::default());
+        let shares = Shares::of(&state, &Ignored::default(), &crate::withheld::Withheld::offered());
 
         let (home, data) = (shares.roots()[0], shares.roots()[1]);
         assert_eq!(shares.roots().len(), 2);
@@ -386,7 +390,7 @@ mod property {
                 ..Ignored::default()
             };
 
-            let shares = Shares::of(&state, &ignored);
+            let shares = Shares::of(&state, &ignored, &crate::withheld::Withheld::offered());
 
             let by_category = shares.categories().fold([0; 3], |total, (_, sizes)| add(total, bytes(sizes)));
             let by_root = shares.roots().iter().fold([0; 3], |total, share| add(total, bytes(share.explained)));

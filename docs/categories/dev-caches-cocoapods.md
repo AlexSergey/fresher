@@ -6,8 +6,8 @@
 
 ## What it is
 
-Copies of the libraries CocoaPods downloaded for iOS and macOS projects. Made by CocoaPods, a dependency manager for
-Swift and Objective-C projects.
+Copies of the libraries CocoaPods downloaded for iOS and macOS projects. Made by CocoaPods, a tool that adds libraries
+to iOS and macOS projects.
 
 ## Where it lives
 
@@ -18,8 +18,8 @@ The tool's sign: the folder holds `Pods`, where CocoaPods keeps its downloads. W
 
 ## What happens if you remove it
 
-It goes to the Trash. Your projects keep the libraries already installed in them. Yes. CocoaPods downloads each library
-again the next time a project installs it.
+Nothing is lost. Your projects keep the libraries already in them. Yes, CocoaPods downloads each library again when a
+project needs it.
 
 ## How the app decides
 

@@ -29,7 +29,6 @@ import type {
   IgnoreTarget,
   LargestPage,
   LargestQuery,
-  MeaningGroup,
   ModuleInfo,
   NodeId,
   Overview,
@@ -217,10 +216,6 @@ export const getOwnData = (): Promise<OwnData> => call('getOwnData');
 
 // The map of every volume that holds a scan root: parts that add up to each volume's capacity.
 export const getStorageMap = (): Promise<StorageMap> => call('getStorageMap');
-
-// The by-meaning groups of the volume at index `volume` of the map.
-export const getStorageMeaning = (volume: number): Promise<readonly MeaningGroup[]> =>
-  call('getStorageMeaning', { volume });
 
 export const getDictionary = (locale: string): Promise<Dictionary> => call('getDictionary', { locale });
 

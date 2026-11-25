@@ -1,4 +1,14 @@
-import type { CategoryTotal, MapPart, MeaningGroup, PartKind, StorageMap } from '../ipc/bindings.generated';
+import type {
+  CategoryTotal,
+  MapPart,
+  MeaningGroup,
+  PartKind,
+  Sizes,
+  StorageMap,
+  SummaryKind,
+  SummaryPart,
+  VolumeMap,
+} from '../ipc/bindings.generated';
 
 const GB = 1_000_000_000;
 
@@ -10,6 +20,51 @@ const part = (kind: PartKind, gigabytes: number, reclaimable = 0): MapPart => ({
     logical: Math.round(gigabytes * GB),
     reclaimable: Math.round(reclaimable * GB),
   },
+});
+
+// The summary part each kind of map part belongs to. Test code only: the rule lives in
+// crates/core/src/storage/summary.rs (`SummaryKind::of`), which the fixtures mirror.
+const SUMMARY_OF: Readonly<Record<PartKind['kind'], SummaryKind>> = {
+  'disk-own': 'system-space',
+  explained: 'can-be-freed',
+  free: 'free',
+  'mac-os': 'mac-os',
+  'not-scanned-yet': 'files-and-apps',
+  'other-volume': 'files-and-apps',
+  remainder: 'files-and-apps',
+  'swap-and-sleep': 'system-space',
+  'your-folders': 'files-and-apps',
+};
+
+export const SUMMARY_KINDS: readonly SummaryKind[] = [
+  'can-be-freed',
+  'files-and-apps',
+  'mac-os',
+  'system-space',
+  'free',
+];
+
+const COMPLETENESS: readonly Sizes['completeness'][] = ['complete', 'partial', 'unknown'];
+
+const addSizes = (a: Sizes, b: Sizes): Sizes => ({
+  allocated: a.allocated + b.allocated,
+  completeness:
+    COMPLETENESS[Math.max(COMPLETENESS.indexOf(a.completeness), COMPLETENESS.indexOf(b.completeness))] ?? 'unknown',
+  logical: a.logical + b.logical,
+  reclaimable: a.reclaimable + b.reclaimable,
+});
+
+const ZERO: Sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 };
+
+// The volume with its five summary parts filled from its parts, as the core's `VolumeMap::new` fills them.
+export const withSummary = (volume: Omit<VolumeMap, 'summary'>): VolumeMap => ({
+  ...volume,
+  summary: SUMMARY_KINDS.map((kind): SummaryPart => ({
+    kind,
+    sizes: volume.parts
+      .filter((mapPart) => SUMMARY_OF[mapPart.kind.kind] === kind)
+      .reduce((sum, mapPart) => addSizes(sum, mapPart.sizes), ZERO),
+  })),
 });
 
 // The parts of the gallery's sample volume: a home volume after a complete scan; they add up to its capacity.
@@ -27,7 +82,7 @@ export const SAMPLE_PARTS: readonly MapPart[] = [
 export const SAMPLE_STORAGE_MAP: StorageMap = {
   phase: { kind: 'complete', state: 1 },
   volumes: [
-    {
+    withSummary({
       capacity: 499_600_000_000,
       diskChanged: false,
       kind: 'internal',
@@ -36,7 +91,7 @@ export const SAMPLE_STORAGE_MAP: StorageMap = {
       places: [],
       purgeable: 18 * GB,
       roots: [{ index: 0, state: 1 }],
-    },
+    }),
   ],
 };
 
@@ -47,13 +102,13 @@ export const SAMPLE_MEANING: readonly MeaningGroup[] = SAMPLE_PARTS.map((sample)
 
 // The core's texts of the storage map (crates/core/locales/en.json, `core.storage.*`), for the tests and the stories.
 export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {
-  'core.danger.high.meaning': 'May hold the only copy of your data. Removing it can lose work.',
-  'core.danger.high.zone': 'High risk',
-  'core.danger.low.meaning': 'Comes back when needed, but that takes time or a download.',
-  'core.danger.low.zone': 'Low risk',
-  'core.danger.medium.meaning': 'Can be restored, but not by itself. You may need to set something up again.',
-  'core.danger.medium.zone': 'Medium risk',
-  'core.danger.safe.meaning': 'Comes back by itself when needed. Removing it costs only a little time.',
+  'core.danger.high.meaning': 'May hold the only copy of your data',
+  'core.danger.high.zone': 'Only if you are sure',
+  'core.danger.low.meaning': 'You may need to download them again',
+  'core.danger.low.zone': 'Usually safe',
+  'core.danger.medium.meaning': 'May hold something you still want',
+  'core.danger.medium.zone': 'Look before removing',
+  'core.danger.safe.meaning': 'Apps make these again on their own',
   'core.danger.safe.zone': 'Safe to remove',
   'core.storage.changed':
     'The disk changed during the scan, so some numbers are a little off. Scan again for exact numbers.',
@@ -68,35 +123,31 @@ export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {
   'core.storage.not-scanned.unreadable.guarded': 'Protected by macOS. Full Disk Access lets the next scan measure it.',
   'core.storage.not-scanned.unreadable.no-permission': 'Its permissions do not let Fresher read it.',
   'core.storage.part.disk-own.description':
-    "Space the disk keeps for itself, such as the recovery system and the file system's records. It cannot be cleaned.",
+    'Space the disk keeps for itself, such as the recovery system. It cannot be cleaned.',
   'core.storage.part.disk-own.name': "The disk's own space",
   'core.storage.part.explained.description':
-    'What Fresher recognised, such as caches, logs and old build files. Each item says how safe it is to remove.',
-  'core.storage.part.explained.name': 'Explained',
+    'What Fresher found that you can remove, such as caches, logs and old builds.',
+  'core.storage.part.explained.name': 'Can be freed',
   'core.storage.part.free.description': 'Space you can still use for new files.',
   'core.storage.part.free.name': 'Free',
-  'core.storage.part.mac-os.description':
-    'The system itself and the files it needs to start and update. macOS looks after this space; it cannot be cleaned.',
+  'core.storage.part.mac-os.description': 'The system itself. macOS looks after it, and it cannot be cleaned.',
   'core.storage.part.mac-os.name': 'macOS',
   'core.storage.part.not-scanned-yet.description':
     'Space the scan has not reached yet. It shrinks as the scan goes on.',
   'core.storage.part.not-scanned-yet.name': 'Not scanned yet',
   'core.storage.part.other-volume.description':
-    'Another volume of yours on the same disk. Add it in Settings → Scan to see inside.',
-  'core.storage.part.other-volume.name': 'Another volume',
+    'Another part of the same disk. Add it in Settings → Scan to look inside.',
+  'core.storage.part.other-volume.name': 'Another part of the disk',
   'core.storage.part.swap-and-sleep.description':
-    'Memory macOS keeps on the disk when it runs low or the Mac sleeps. macOS looks after it; restarting the Mac can ' +
-    'make it smaller.',
-  'core.storage.part.swap-and-sleep.name': 'Swap and sleep image',
-  'core.storage.part.your-folders.description':
-    'Files Fresher looked at but does not recognise. Fresher never suggests removing them.',
-  'core.storage.part.your-folders.name': 'Your folders',
+    'Memory macOS keeps on the disk when it runs low or the Mac sleeps. Restarting the Mac can make it smaller.',
+  'core.storage.part.swap-and-sleep.name': 'Memory kept on disk',
+  'core.storage.part.your-folders.description': 'Files Fresher looked at but does not offer to remove.',
+  'core.storage.part.your-folders.name': 'Your files and apps',
   'core.storage.place.trash.description': 'You get this space back when you empty the Trash.',
   'core.storage.place.trash.name': 'Trash',
   'core.storage.purgeable': 'macOS can free about {size} more on its own when space runs low',
   'core.storage.reason.changed-during-scan': 'Files changed on the disk while the scan ran.',
-  'core.storage.reason.snapshots-and-bookkeeping':
-    "Local snapshots and the file system's own records, which macOS looks after.",
+  'core.storage.reason.snapshots-and-bookkeeping': "Copies macOS keeps for backups, and the disk's own records.",
   'core.storage.reason.unreadable': 'Folders Fresher could not read. Allowing access lets the next scan measure them.',
   'core.storage.remainder.not-measured.description':
     'Used space the scan could not measure. The reasons are listed below.',
@@ -105,6 +156,18 @@ export const STORAGE_DICTIONARY: Readonly<Record<string, string>> = {
     "Apps, the system's data and other users' files, which the scan did not look at. Add the disk in Settings → Scan " +
     'to see inside.',
   'core.storage.remainder.outside.name': 'Outside the scanned folders',
+  'core.storage.summary.can-be-freed.description':
+    'What Fresher found that you can remove, sorted below by what removing it costs.',
+  'core.storage.summary.can-be-freed.name': 'Can be freed',
+  'core.storage.summary.files-and-apps.description':
+    'Your documents, apps and everything else Fresher does not offer to remove.',
+  'core.storage.summary.files-and-apps.name': 'Your files and apps',
+  'core.storage.summary.free.description': 'Space you can still use for new files.',
+  'core.storage.summary.free.name': 'Free',
+  'core.storage.summary.mac-os.description': 'The system itself, which macOS looks after; Fresher never touches it.',
+  'core.storage.summary.mac-os.name': 'macOS',
+  'core.storage.summary.system-space.description': 'Memory macOS keeps on disk, and space the disk keeps for itself.',
+  'core.storage.summary.system-space.name': 'System space',
 };
 
 // The parts every phase of the demo volume shares: the system's volumes, the disk's own space and Free.
@@ -118,7 +181,7 @@ const DEMO_VOLUME_PARTS: readonly MapPart[] = [
 const demoVolume = (phase: StorageMap['phase'], scanned: readonly MapPart[]): StorageMap => ({
   phase,
   volumes: [
-    {
+    withSummary({
       capacity: 499_600_000_000,
       diskChanged: false,
       kind: 'internal',
@@ -127,7 +190,7 @@ const demoVolume = (phase: StorageMap['phase'], scanned: readonly MapPart[]): St
       places: [],
       purgeable: 18 * GB,
       roots: phase.kind === 'complete' ? [{ index: 0, state: phase.state }] : [],
-    },
+    }),
   ],
 });
 

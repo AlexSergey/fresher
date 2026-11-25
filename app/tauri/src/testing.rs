@@ -234,7 +234,9 @@ impl Shell {
             system: fresher_testing::fake_system(&home),
         };
         let app = mock_app();
-        app.manage(Engine::with_cleanup(registry().unwrap(), ports, cleanup).unwrap());
+        app.manage(
+            Engine::with_cleanup(registry().unwrap(), ports, cleanup, fresher_core::HighLevel::Offered).unwrap(),
+        );
         app.manage(EventForwarder::default());
         app.manage(data);
         Self { app, folder }

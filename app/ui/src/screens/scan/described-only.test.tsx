@@ -61,7 +61,7 @@ const renderSection = async (
   return { navigation, store };
 };
 
-const section = (): HTMLElement | null => screen.queryByRole('region', { name: 'Described, not cleaned' });
+const section = (): HTMLElement | null => screen.queryByRole('region', { name: 'Shown, never removed' });
 
 describe('DescribedOnly', () => {
   describe('negative cases', () => {
@@ -122,7 +122,9 @@ describe('DescribedOnly', () => {
         .map((heading) => heading.textContent);
       expect(titles).toStrictEqual(['Example tool', 'Example tool (stopped)']);
       expect(
-        screen.getByText('Fresher shows what these take and how you can free it yourself. It never removes any of it.'),
+        screen.getByText(
+          '· Fresher shows what these take and how you can free it yourself. It never removes any of it.',
+        ),
       ).toBeVisible();
     });
 

@@ -70,8 +70,13 @@ small `thiserror` error of its own: no panicking path.
   `with_tool_check` refuses a check no category needs, and the registry refuses a needed tool with no check
   (`DescriptorError::MissingToolCheck`). The engine resolves the rest
   ([`permissions.md`](./permissions.md)).
-- A category id is `<id>.<name>`; its five texts are found by convention: `<id>.<name>.name`, `.what`, `.made-by`,
-  `.if-removed`, `.comes-back`.
+- A category id is `<id>.<name>`; its six texts are found by convention: `<id>.<name>.name`, `.line`, `.what`,
+  `.made-by`, `.if-removed`, `.comes-back`. The `line` (at most 50 characters, no full stop) is what its tile says
+  under its name.
+- A category names an icon from a fixed set (`CategoryIcon`: cache, build, download, project, toolchain, log,
+  temporary, app, model, editor, browser, device, archive, generic) with `CategoryDescriptor::with_icon`; the UI draws
+  each key's shape beside the name and never picks an icon itself. A module's category never names `generic`, which
+  only the core's own categories name (`core.own-file`); the module contract refuses it.
 - A setting key is `<id>.<name>`, with `<id>.<name>.label` and `.description`. The settings schema adds the switch
   `<id>.enabled` for every module; the module ships its label and description too. A module with an "unchanged
   for N days" setting declares a `DaySetting` constant (name, range, default) and uses its `descriptor(id)` and
@@ -418,7 +423,7 @@ A module ships only when every box is ticked:
 - [ ] Every category is documented in [`../categories/`](../categories/README.md) as `<id>-<name>.md`, with the same
       danger level as its descriptor, and listed in the catalogue table.
 - [ ] A module with an "unchanged for N days" setting uses `DaySetting`, not its own copy.
-- [ ] Every category has its five texts; every setting, `<id>.enabled` included, its label and description.
+- [ ] Every category names an icon other than `generic` and has its six texts; every setting, `<id>.enabled` included, its label and description.
 - [ ] A module with choices gives each its two texts (`<id>.choice.<name>.label` and `.description`), and each choice
       names categories of the module only.
 - [ ] Every text is plain English, short and without jargon; every choice says what the user keeps or loses (rule 7

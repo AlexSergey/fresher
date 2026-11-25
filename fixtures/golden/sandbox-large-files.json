@@ -48,7 +48,7 @@
         "outcome": {
           "kind": "moved"
         },
-        "path": "home/cache-project/fresher-trial-cache",
+        "path": "home/cache-project/Sample app cache",
         "trash": "in-trash"
       }
     ],
@@ -93,7 +93,7 @@
       "danger": "safe",
       "logical": 12582912,
       "module": "trial",
-      "subject": "home/cache-project/fresher-trial-cache"
+      "subject": "home/cache-project/Sample app cache"
     }
   ],
   "largest": {
@@ -335,12 +335,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache"
+        "path": "home/.Trash/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 12582912,
-        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+        "path": "home/.Trash/Sample app cache/blob.bin"
       },
       {
         "kind": "file",

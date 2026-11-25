@@ -2,19 +2,28 @@ import type { JSX } from 'react';
 
 import { stories as storiesOf } from '../../../gallery/story';
 import { Settings } from '../../icons/icons';
-import { Menu, type MenuItem } from './menu';
+import { Menu, type MenuItem, SEPARATOR } from './menu';
 import styles from './menu.stories.module.css';
 
 const noop = (): void => undefined;
 
+// The row's menu: Finder, a separator, the item and its category, a separator, a far-reaching choice (quiet, as the last one).
 const ITEMS: readonly MenuItem[] = [
+  { key: 'reveal', label: 'Show in Finder', onSelect: noop },
+  SEPARATOR,
   {
-    description: 'Hides it from the results and never removes it.',
-    key: 'category',
-    label: 'Ignore this category',
+    key: 'item',
+    label: 'Ignore this item',
     onSelect: noop,
   },
-  { description: 'Hides every category of this module.', key: 'module', label: 'Ignore Caches', onSelect: noop },
+  { key: 'category', label: 'Ignore all App caches', onSelect: noop },
+  SEPARATOR,
+  {
+    key: 'quiet',
+    label: 'A far-reaching choice…',
+    onSelect: noop,
+    quiet: true,
+  },
 ];
 
 const stage = (props: { readonly bottom?: boolean; readonly defaultOpen?: boolean }): (() => JSX.Element) =>

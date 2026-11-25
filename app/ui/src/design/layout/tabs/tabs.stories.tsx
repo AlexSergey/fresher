@@ -9,13 +9,13 @@ type Kind = 'groups' | 'items' | 'modules';
 
 const TABS = [
   { label: 'Ignored groups', value: 'groups' },
-  { label: 'Ignored modules', value: 'modules' },
+  { label: 'Not looked for', value: 'modules' },
   { label: 'Ignored items', value: 'items' },
 ] as const;
 
 const COUNTED = [
   { count: 1, label: 'Ignored groups', value: 'groups' },
-  { count: 0, label: 'Ignored modules', value: 'modules' },
+  { count: 0, label: 'Not looked for', value: 'modules' },
   { count: 3, label: 'Ignored items', value: 'items' },
 ] as const;
 

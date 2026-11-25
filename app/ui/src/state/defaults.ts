@@ -11,7 +11,8 @@ export type SelectedByLevel =
   | { readonly kind: 'selected'; readonly selection: Selection };
 
 // Adds to the selection every category whose highest level is `level`, so none of their findings is above it. Only
-// `safe` may be selected this way: any other level is refused, and the user picks those one by one.
+// `safe` may be selected this way: any other level is refused, and the user picks those one by one (a "Look before
+// removing" category ticked on Scan is only brought to Review, `Selection.toCheck`).
 export const selectByLevel = (
   selection: Selection,
   totals: readonly CategoryTotal[],
@@ -31,5 +32,5 @@ export const selectByLevel = (
 
   const findings = new Map([...selection.findings].filter(([, picked]) => !categories.has(picked.category)));
 
-  return { kind: 'selected', selection: { categories, findings } };
+  return { kind: 'selected', selection: { ...selection, categories, findings } };
 };

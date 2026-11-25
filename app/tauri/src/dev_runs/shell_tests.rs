@@ -328,7 +328,7 @@ mod positive {
         let findings = trial["findings"].as_array().unwrap();
         let mut names: Vec<String> = findings.iter().map(|finding| last_name(&finding["subject"]["value"])).collect();
         names.sort();
-        assert_eq!(names, ["fresher-trial-cache", "fresher-trial-kept"]);
+        assert_eq!(names, ["Old sample downloads", "Sample app cache"]);
         for finding in findings {
             assert_ne!(finding["titleText"].as_str().unwrap(), "", "{finding}");
             assert_ne!(finding["reasonText"].as_str().unwrap(), "", "{finding}");
@@ -356,10 +356,10 @@ mod positive {
         assert_eq!(clear["ended"], "completed");
         assert_eq!(
             outcomes(&record, "debug"),
-            [pair("fresher-trial-cache", "would-move"), pair("fresher-trial-kept", "would-empty")]
+            [pair("Old sample downloads", "would-empty"), pair("Sample app cache", "would-move")]
         );
         assert_eq!(clear["groups"]["debug"][0]["module"], "trial");
-        assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+        assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
     }
 
     #[test]
@@ -373,8 +373,8 @@ mod positive {
 
         let record = snapshot(folder.path());
         assert_eq!(record["clear"][0]["method"], "permanent");
-        assert_eq!(outcomes(&record, "debug"), [pair("fresher-trial-cache", "would-delete")]);
-        assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+        assert_eq!(outcomes(&record, "debug"), [pair("Sample app cache", "would-delete")]);
+        assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
     }
 
     #[test]
@@ -387,7 +387,7 @@ mod positive {
         record_cleanup(&shell, &runs, &caches_only(), "trash");
 
         let record = snapshot(folder.path());
-        assert_eq!(outcomes(&record, "debug"), [pair("fresher-trial-cache", "moved")]);
+        assert_eq!(outcomes(&record, "debug"), [pair("Sample app cache", "moved")]);
         assert_eq!(record["clear"][0]["dryRun"], false);
         assert_eq!(record["scans"][0]["removed"].as_array().map(Vec::len), Some(1));
     }

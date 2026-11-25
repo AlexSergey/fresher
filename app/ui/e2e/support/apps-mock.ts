@@ -63,10 +63,58 @@ const listOf = (details: readonly AppDetail[], { unused }: AppsQuery): AppsView 
   };
 };
 
+// The summary of `detail` while High is withheld (mirrors crates/engine/src/apps/list.rs): no part of a kind whose
+// items are at High, and its size and sentence without their bytes.
+const withheldSummary = ({ items, summary }: AppDetail): AppSummary => {
+  // The engine asks `kind.danger()`; the mock takes High from the items' danger, the same for today's fixtures.
+  const high = new Set(items.filter(({ danger }) => danger === 'high').map(({ kind }) => kind));
+  const gone = summary.parts
+    .filter(({ kind }) => high.has(kind))
+    .reduce(
+      (sum, { sizes }) => ({
+        allocated: sum.allocated + sizes.allocated,
+        logical: sum.logical + sizes.logical,
+        reclaimable: sum.reclaimable + sizes.reclaimable,
+      }),
+      { allocated: 0, logical: 0, reclaimable: 0 },
+    );
+  const sizes = {
+    ...summary.sizes,
+    allocated: summary.sizes.allocated - gone.allocated,
+    logical: summary.sizes.logical - gone.logical,
+    reclaimable: summary.sizes.reclaimable - gone.reclaimable,
+  };
+  const size = summary.summary.args.size;
+
+  return {
+    ...summary,
+    parts: summary.parts.filter(({ kind }) => !high.has(kind)),
+    sizes,
+    summary:
+      size?.kind === 'size'
+        ? { ...summary.summary, args: { ...summary.summary.args, size: { kind: 'size', value: sizes.allocated } } }
+        : summary.summary,
+  };
+};
+
 // Adds the Apps commands to the mocked core of `core-mock.ts`, which calls the hook for every command.
-export const mockApps = async (page: Page, { denied = false }: { readonly denied?: boolean } = {}): Promise<void> => {
+// `withheld` is the world of a core that withholds High: no page offers Everything or lists an item at High, and no
+// row of the list shows a part at High or counts its bytes.
+export const mockApps = async (
+  page: Page,
+  { denied = false, withheld = false }: { readonly denied?: boolean; readonly withheld?: boolean } = {},
+): Promise<void> => {
   const details = APP_DETAILS.map((detail) =>
     denied && detail.summary.app.index === 0 ? VIDEO_STUDIO_DENIED_DETAIL : detail,
+  ).map((detail) =>
+    withheld
+      ? {
+          ...detail,
+          choices: detail.choices.filter(({ choice }) => choice !== 'everything'),
+          items: detail.items.filter(({ danger }) => danger !== 'high'),
+          summary: withheldSummary(detail),
+        }
+      : detail,
   );
 
   await page.exposeFunction(ANSWER, (command: string, args: Record<string, unknown>): Answer => {

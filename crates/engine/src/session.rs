@@ -7,10 +7,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use fresher_core::{
-    AccessStatus, Availability, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts, Event, Finding,
-    FindingId, FindingSink, Insight, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext, ModuleError,
-    ModuleId, ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability, ScanId,
-    ScanKind, ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    AccessStatus, Availability, ByteSize, CancelToken, Capability, CategoryId, ClaimedPath, Coverage, EntryFacts,
+    Event, Finding, FindingId, FindingSink, Insight, InterestSet, LastScan, LeftOutItem, Match, Module, ModuleContext,
+    ModuleError, ModuleId, ModuleOutcome, ModuleSettings, NewFinding, Place, PlaceSeen, ProjectFinder, Removability,
+    ScanId, ScanKind, ScanOutcome, SystemFacts, Timestamp, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 
 use crate::batch::Batcher;
@@ -18,11 +18,13 @@ use crate::claims;
 use crate::coverage;
 use crate::engine::Shared;
 use crate::error::lock_anyway;
+use crate::estimate;
 use crate::left_outs::LeftOuts;
 use crate::settings::Ignored;
 use crate::storage::attribution::AppPlaces;
 use crate::storage::roots::expand_home;
 use crate::throttle::Throttle;
+use crate::withheld::Withheld;
 
 /// What a scan runs, fixed when it starts: later changes to the settings wait for the next scan.
 pub(crate) struct ScanPlan {
@@ -69,7 +71,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let interests = all_interests(shared);
     let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
     // The previous scan's findings are forgotten only now that this scan runs.
-    let first_id = begin(shared, plan);
+    let (first_id, expected) = begin(shared, plan);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
 
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
@@ -96,7 +98,7 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
 
     let mut throttle = Throttle::default();
     let publish_progress = |progress: WalkProgress| {
-        shared.bus.publish(&Event::ScanProgress { scan, entries: progress.entries, bytes: progress.bytes });
+        shared.bus.publish(&Event::ScanProgress { scan, entries: progress.entries, bytes: progress.bytes, expected });
     };
     let mut projects = ProjectFinder::default();
     let walked = {
@@ -164,13 +166,16 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
 }
 
 /// Forgets the previous scan's findings for this scan's, with the volumes of its roots and places read first: a map
-/// query never sees this scan's findings with the last scan's volumes. Gives the scan's first id; `None` when the ids
-/// ran out.
-fn begin(shared: &Shared, plan: &ScanPlan) -> Option<u32> {
-    let mut walked = expand_home(&plan.roots, shared.home().as_deref());
+/// query never sees this scan's findings with the last scan's volumes. Gives the scan's first id (`None` when the ids
+/// ran out) and its estimate, taken from the last committed state before it is replaced (`crate::estimate`).
+fn begin(shared: &Shared, plan: &ScanPlan) -> (Option<u32>, Option<ByteSize>) {
+    let roots = expand_home(&plan.roots, shared.home().as_deref());
+    let mut walked = roots.clone();
     walked.extend(plan.places.iter().map(|place| place.path.clone()));
     let volumes = shared.read_volumes(&walked);
-    lock_anyway(&shared.results).begin(&plan.roots, &plan.places, volumes)
+    let mut results = lock_anyway(&shared.results);
+    let expected = estimate::expected(results.state().as_deref(), &roots, &volumes);
+    (results.begin(&plan.roots, &plan.places, volumes), expected)
 }
 
 /// Every registered module's interests, enabled or not, so turning one off never changes what the walk reads (design
@@ -406,6 +411,8 @@ struct Output<'a> {
     insights: Vec<(ModuleId, Vec<Insight>)>,
     /// The scan's ignore lists.
     ignored: &'a Ignored,
+    /// What the High switch leaves out: never published.
+    withheld: Withheld,
 }
 
 impl<'a> Output<'a> {
@@ -424,6 +431,7 @@ impl<'a> Output<'a> {
             left_outs: plan.modules.iter().map(|planned| LeftOuts::new(planned.module.descriptor())).collect(),
             insights: plan.modules.iter().map(|planned| (planned.module.descriptor().id(), Vec::new())).collect(),
             ignored: &plan.ignored,
+            withheld: lock_anyway(&shared.results).withheld().clone(),
         }
     }
 
@@ -455,7 +463,8 @@ impl<'a> Output<'a> {
     }
 
     /// Sends what the module left in the open batch, then its `ModuleFinished` with what it left out and what it
-    /// described, whatever its outcome: what it gave before it failed or was cancelled is still true.
+    /// described, whatever its outcome: what it gave before it failed or was cancelled is still true. Neither holds
+    /// what the High switch withholds: a left-out of a withheld category, an insight's part at a withheld level.
     fn module_finished(&mut self, index: usize, module: ModuleId, outcome: ModuleOutcome) -> ModuleOutcome {
         if let Some(batch) = self.batcher.take() {
             self.send(batch);
@@ -463,8 +472,12 @@ impl<'a> Output<'a> {
         if let ModuleOutcome::Failed { reason } = &outcome {
             tracing::warn!(module = module.as_str(), reason = reason.key().as_str(), "a module failed");
         }
-        let left_out = self.left_outs.get_mut(index).map(LeftOuts::take).unwrap_or_default();
-        let insights = self.insights.get_mut(index).map(|(_, given)| std::mem::take(given)).unwrap_or_default();
+        let mut left_out = self.left_outs.get_mut(index).map(LeftOuts::take).unwrap_or_default();
+        left_out.retain(|count| !self.withheld.hides_category(count.category));
+        let mut insights = self.insights.get_mut(index).map(|(_, given)| std::mem::take(given)).unwrap_or_default();
+        for insight in &mut insights {
+            insight.retain_parts(|part| !self.withheld.hides_level(part.danger));
+        }
         let finished = Event::ModuleFinished { scan: self.scan, module, outcome: outcome.clone(), left_out, insights };
         self.shared.bus.publish(&finished);
         outcome
@@ -484,9 +497,13 @@ impl<'a> Output<'a> {
         }
     }
 
+    /// Keeps `batch` in the results and publishes the findings of it the High switch does not withhold, if any.
     fn send(&self, batch: Vec<Finding>) {
         lock_anyway(&self.shared.results).append(&batch);
-        self.shared.bus.publish(&Event::FindingsAdded { scan: self.scan, findings: batch });
+        let offered: Vec<Finding> = batch.into_iter().filter(|finding| !self.withheld.hides(finding)).collect();
+        if !offered.is_empty() {
+            self.shared.bus.publish(&Event::FindingsAdded { scan: self.scan, findings: offered });
+        }
     }
 }
 

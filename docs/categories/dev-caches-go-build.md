@@ -6,8 +6,8 @@
 
 ## What it is
 
-Compiled pieces of Go programs, kept so that the next build only compiles what changed. Made by The Go tools, on every
-build or test.
+Compiled pieces of Go programs, so the next build only compiles what changed. Made by The Go tools, on every build or
+test.
 
 ## Where it lives
 
@@ -19,8 +19,7 @@ not claimed.
 
 ## What happens if you remove it
 
-It goes to the Trash. Your code and the programs you built stay. Yes. The next build compiles everything again, with no
-download; it is slower once.
+Nothing is lost. Your code and the programs you built stay. Yes, with the next build, which is slower once.
 
 ## How the app decides
 

@@ -113,7 +113,15 @@ describe('FindingList', () => {
     it("an unreachable core shows the app's own text", () => {
       render(list({ failure: { kind: 'unreachable' }, total: undefined }));
 
-      expect(screen.getByText('The app could not reach its core. Restart the app.')).toBeInTheDocument();
+      expect(screen.getByText('Fresher stopped answering. Quit it and open it again.')).toBeInTheDocument();
+    });
+
+    it("Review's compact list has no column names and no level badges", () => {
+      render(list({ variant: 'review' }));
+
+      expect(screen.queryByText('Size')).not.toBeInTheDocument();
+      expect(rows().every((row) => row.hasAttribute('data-compact'))).toBe(true);
+      expect(rows().map((row) => layerOf(row)?.parentElement?.style.height)).toStrictEqual(['44px', '44px', '44px']);
     });
 
     it('100,000 findings render no more than about 60 rows', () => {

@@ -16,9 +16,9 @@ mod name;
 mod tools;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError, LeftOutItem,
-    Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Removal,
-    Subject, Text, TextArg, TextKey, TextKeyError,
+    CategoryDescriptor, CategoryIcon, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError,
+    LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
+    NewFinding, Removal, Subject, Text, TextArg, TextKey, TextKeyError,
 };
 
 use crate::categories::CATEGORIES;
@@ -110,7 +110,11 @@ impl DevCachesModule {
         let id = ModuleId::new("dev-caches")?;
         let categories = CATEGORIES
             .into_iter()
-            .map(|(category, danger)| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, category)?, danger)))
+            .map(|(category, danger)| {
+                Ok::<_, IdError>(
+                    CategoryDescriptor::new(CategoryId::new(id, category)?, danger).with_icon(icon(category)),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let tools = Tools::shipped()?;
         let rows = tools
@@ -227,6 +231,20 @@ impl Module for DevCachesModule {
             }
         }
         Ok(())
+    }
+}
+
+/// The icon of each category; one it does not list is generic, which the module contract refuses.
+fn icon(category: &str) -> CategoryIcon {
+    match category {
+        "dev-caches.npm"
+        | "dev-caches.yarn"
+        | "dev-caches.homebrew"
+        | "dev-caches.cargo"
+        | "dev-caches.cocoapods"
+        | "dev-caches.pip" => CategoryIcon::Download,
+        "dev-caches.gradle" | "dev-caches.go-build" | "dev-caches.xcode-derived-data" => CategoryIcon::Build,
+        _ => CategoryIcon::Generic,
     }
 }
 

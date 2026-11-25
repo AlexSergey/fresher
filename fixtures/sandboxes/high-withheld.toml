@@ -1,0 +1,63 @@
+# The High switch as the app ships it (plan 042): the app withholds High, and every other case file runs with High
+# offered so its High positives are checked. This one runs with High withheld, on the `app-leftovers` module: a removed
+# app's support folder (High) is not offered, and its caches (Safe) still are and go to the Trash. Whatever its cases
+# say, the autotest also checks that no finding, no total and no part of the map's "Explained" holds a High item.
+#
+# The app's saved state proves its id; every entry states its age and status change (40 days), as in
+# `app-leftovers.toml`. The files are filled with data, so the map's numbers are blocks.
+feature = "high-withheld"
+module = "app-leftovers"
+high = "withheld"
+
+# Negative cases first, as in every test of the repository.
+
+[[case]]
+name = "a removed app's support folder is not offered while High is withheld"
+kind = "negative"
+[[case.dir]]
+path = "home/Library/Application Support/com.example.Withheld"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Application Support/com.example.Withheld/library.db"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.map]
+part = "your-folders"
+at = "home/Library/Application Support/com.example.Withheld"
+
+# Positive cases.
+
+[[case]]
+name = "the same removed app's caches go to the Trash"
+kind = "positive"
+[[case.dir]]
+path = "home/Library/Caches/com.example.Withheld"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Caches/com.example.Withheld/Cache.db"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[[case.dir]]
+path = "home/Library/Saved Application State/com.example.Withheld.savedState"
+age = "40d"
+changed = "40d"
+[[case.file]]
+path = "home/Library/Saved Application State/com.example.Withheld.savedState/data.data"
+size = 4096
+fill = "data"
+age = "40d"
+changed = "40d"
+[case.expect]
+item = "home/Library/Caches/com.example.Withheld"
+category = "app-leftovers.caches"
+danger = "safe"
+after-cleanup = "in-trash"
+[case.map]
+part = "explained"
+at = "home/Library/Caches/com.example.Withheld"

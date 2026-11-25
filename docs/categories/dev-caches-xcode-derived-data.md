@@ -6,10 +6,9 @@
 
 ## What it is
 
-What Xcode makes while it builds and indexes a project: compiled files, the code index and build logs, one folder per
-project. Made by Xcode, Apple's app for building apps. Xcode's other data (device support, previews, the simulators'
-caches and archives) is in the four categories of the `xcode` module
-([`xcode-device-support.md`](./xcode-device-support.md) and its three siblings).
+What Xcode makes while it builds a project: compiled files, its code index and build logs. Made by Xcode, Apple's app
+for making apps. Xcode's other data (device support, previews, the simulators' caches and archives) is in the four
+categories of the `xcode` module ([`xcode-device-support.md`](./xcode-device-support.md) and its three siblings).
 
 ## Where it lives
 
@@ -22,8 +21,7 @@ The tool's sign: the folder's name is a project's name, a dash and 28 lowercase 
 
 ## What happens if you remove it
 
-It goes to the Trash. Your projects and their code stay; Xcode builds and indexes them again when you open them. Yes.
-Xcode makes it again on the next build of the project, with no download; that build is slower.
+Nothing is lost. Your projects and their code stay. Yes, Xcode makes it again on the next build, which is slower once.
 
 ## How the app decides
 

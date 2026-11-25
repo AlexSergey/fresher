@@ -54,7 +54,7 @@ mod negative {
         let entry = fs::read_dir(&trash)
             .unwrap()
             .map(|entry| entry.unwrap().path())
-            .find(|path| path.file_name().is_some_and(|name| name.to_string_lossy().ends_with("fresher-trial-cache")))
+            .find(|path| path.file_name().is_some_and(|name| name.to_string_lossy().ends_with("Sample app cache")))
             .unwrap();
         let emptied = tempfile::tempdir().unwrap();
         assert_ne!(home.flow.engine.trash().trashes[0].from_cleanups, Sizes::ZERO, "counted while there");

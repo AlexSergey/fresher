@@ -1,14 +1,78 @@
 /*
- * A category's details: the toolbar, the header, then its parts on the content column (the level, what it is, the
- * left-outs, the choices, the findings), with room at the bottom for the selection bar. The findings sit in a frame of
- * up to twelve rows (`--rows`), so the page keeps its height while the list's pages load.
+ * A category's details: the toolbar, the header (name and group, size and count), then its parts on the content column
+ * (the answers, the left-out bars, the choices, the items), with room at the bottom for the selection bar. The items sit
+ * in a frame of up to twelve rows (`--rows`), so the page keeps its height while the list's pages load.
  */
 @layer components {
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: var(--space-2) var(--content-inset, var(--size-gutter)) var(--space-5);
+    gap: var(--space-4);
+  }
+
+  .name {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-1-5);
+  }
+
+  .title {
+    margin: 0;
+    font-size: var(--type-title-2-size);
+    font-weight: var(--type-title-2-weight);
+    letter-spacing: var(--type-title-2-tracking);
+    line-height: var(--type-title-2-line);
+  }
+
+  .group {
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    gap: var(--space-2);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: var(--radius-full);
+  }
+
+  .dot[data-level='safe'] {
+    background-color: var(--level-safe-fg);
+  }
+
+  .dot[data-level='low'] {
+    background-color: var(--level-low-fg);
+  }
+
+  .dot[data-level='medium'] {
+    background-color: var(--level-medium-fg);
+  }
+
+  .dot[data-level='high'] {
+    background-color: var(--level-high-fg);
+  }
+
+  .total {
+    display: flex;
+    flex: none;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .count {
+    color: var(--text-tertiary);
+  }
+
   .content {
     display: flex;
     flex-direction: column;
-    padding: var(--space-2) var(--content-inset, var(--size-gutter)) calc(var(--space-12) * 2);
-    gap: var(--space-6);
+    padding: 0 var(--content-inset, var(--size-gutter)) calc(var(--space-12) * 2);
+    gap: var(--space-5);
   }
 
   .part {
@@ -26,7 +90,6 @@
     line-height: var(--type-title-3-line);
   }
 
-  .zone,
   .note {
     margin: 0;
     color: var(--text-secondary);
@@ -34,38 +97,18 @@
     line-height: var(--type-footnote-line);
   }
 
-  .sentences {
-    display: grid;
-    margin: 0;
-    gap: var(--space-2) var(--space-4);
-    grid-template-columns: max-content minmax(0, 1fr);
-  }
-
-  .sentences dt {
-    color: var(--text-tertiary);
-  }
-
-  .sentences dd {
-    margin: 0;
-  }
-
-  .head {
-    display: flex;
-    align-items: center;
-    justify-self: stretch;
-    gap: var(--space-4);
-  }
-
-  .count {
-    margin-left: auto;
+  .selectAll {
+    padding: 0 var(--space-3-5);
     color: var(--text-secondary);
   }
 
   .findings {
-    /* The column names (about 33 px) and the rows. */
     justify-self: stretch;
-    height: calc(var(--rows) * var(--size-finding-row) + var(--space-10));
-    border: 1px solid var(--border-subtle);
+    height: calc(var(--rows) * var(--size-finding-row));
+    overflow: hidden;
+    border: 1px solid var(--border-divider);
     border-radius: var(--radius-md);
+    background-color: var(--surface-raised);
+    box-sizing: content-box;
   }
 }

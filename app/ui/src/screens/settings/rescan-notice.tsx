@@ -5,8 +5,8 @@ import { t } from '../../i18n';
 import { useCore } from '../../state/store';
 import { useScanActions } from '../use-scan-actions';
 
-// "Rescan to apply": a setting that applies at the next scan changed since the last scan. The app never rescans on its
-// own; the notice offers the scan. Nothing while a scan runs or when the last scan is current.
+// "Scan again to apply it": a setting that applies at the next scan changed since the last scan. The app never
+// rescans on its own; the notice offers the scan. Nothing while a scan runs or when the last scan is current.
 export const RescanNotice = (): JSX.Element | null => {
   const { scan } = useScanActions();
   const changed = useCore((state) => state.overview?.lastScan?.settingsChanged ?? false);

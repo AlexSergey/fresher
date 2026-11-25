@@ -4,7 +4,16 @@
 /**
  * The app's answer to "which build is this".
  */
-export type AppInfo = { version: string, build: Build, };
+export type AppInfo = { version: string, build: Build, 
+/**
+ * Whether its engine offers High findings: withheld in this release.
+ */
+high: HighLevel, 
+/**
+ * The home folder its engine works on (a sandbox's own home in sandbox mode), for showing a path as `~/…`;
+ * `None` when it is not known.
+ */
+home: string | null, };
 
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
@@ -19,7 +28,11 @@ export type Simulated = "running" | "spotlight" | "access" | "installs" | "tools
 /**
  * Something that happened; a discriminated union on `type` in TypeScript.
  */
-export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, 
+export type Event = { "type": "scan-started", scan: ScanId, modules: Array<ModuleId>, } | { "type": "scan-progress", scan: ScanId, entries: number, bytes: ByteSize, 
+/**
+ * The size the scan will most likely walk, in the measure of `bytes`; `None` when nothing tells.
+ */
+expected: ByteSize | null, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, 
 /**
  * What the module recognized and did not offer, counted per category and reason, sorted by category, then by
  * reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
@@ -40,7 +53,7 @@ export type Refusal = { error: CommandError, text: Text, };
  * Why a command was refused; serialized with a `code` tag. The UI shows `text()`, never the `Display` form, which is
  * for logs.
  */
-export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" } | { "code": "unknown-app", id: AppId, } | { "code": "uninstall-refused", reason: NotOffered, } | { "code": "agreement-changed" } | { "code": "high-risk-not-understood" };
+export type CommandError = { "code": "busy", running: Operation, } | { "code": "not-running" } | { "code": "unknown-finding", id: FindingId, } | { "code": "unknown-module", id: string, } | { "code": "unknown-setting", key: string, } | { "code": "invalid-setting-value", key: SettingKey, } | { "code": "unknown-locale", locale: string, } | { "code": "settings-read-only" } | { "code": "storage" } | { "code": "no-scan" } | { "code": "stale-node" } | { "code": "missing-capability", capability: Capability, } | { "code": "no-settings-pane", capability: Capability, } | { "code": "internal" } | { "code": "unknown-category", id: string, } | { "code": "nothing-to-clean" } | { "code": "too-many-items", limit: number, } | { "code": "plan-gone" } | { "code": "plan-mismatch" } | { "code": "cleaning-blocked", reason: BlockedReason, } | { "code": "unknown-cleanup", id: CleanupId, } | { "code": "unknown-cleanup-item" } | { "code": "not-in-trash" } | { "code": "cannot-ignore" } | { "code": "unknown-volume" } | { "code": "unknown-group", id: string, } | { "code": "nothing-to-reveal" } | { "code": "unknown-trash", index: number, } | { "code": "not-own-item" } | { "code": "unknown-app", id: AppId, } | { "code": "uninstall-refused", reason: NotOffered, } | { "code": "agreement-changed" } | { "code": "high-risk-not-understood" } | { "code": "high-withheld" };
 
 /**
  * The answer of `get_overview`.
@@ -251,7 +264,16 @@ export type CategoryDescriptor = { id: CategoryId, danger: DangerLevel,
 /**
  * The capabilities it needs to be found, or to be found whole.
  */
-needs: Array<Need>, };
+needs: Array<Need>, 
+/**
+ * The shape the UI draws beside its name.
+ */
+icon: CategoryIcon, };
+
+/**
+ * The icon a category names, one of a fixed set; the UI draws its shape. A module's category never names `Generic`.
+ */
+export type CategoryIcon = "cache" | "build" | "download" | "project" | "toolchain" | "log" | "temporary" | "app" | "model" | "editor" | "browser" | "device" | "archive" | "generic";
 
 /**
  * The id of a category: `<module>.<name>`, both kebab-case (`demo.caches`).
@@ -315,6 +337,12 @@ export type ScanKind = { "kind": "full" } | { "kind": "rescan", changedFolders: 
  * The danger level of a category or a finding, from `Safe` (comes back by itself) to `High` (the user's own data).
  */
 export type DangerLevel = "safe" | "low" | "medium" | "high";
+
+/**
+ * Whether the engine offers High findings at all. The first release withholds High: the app sets the switch when it
+ * starts (plan 042), and tests and the sandbox autotest name it explicitly.
+ */
+export type HighLevel = "offered" | "withheld";
 
 /**
  * The size of an item: the bytes its files hold, the bytes they take on disk, the bytes removing it frees, and how
@@ -589,7 +617,11 @@ export type MapPhase = { "kind": "no-scan" } | { "kind": "scanning" } | { "kind"
  * The map of one volume, drawn over the space it shares. Built only by [`VolumeMap::new`], so its parts always add up
  * to its capacity and come in the fixed order of [`PartKind`].
  */
-export type VolumeMap = { name: string, kind: MountKind, capacity: ByteSize, parts: Array<MapPart>, purgeable: ByteSize | null, roots: Array<NodeId>, 
+export type VolumeMap = { name: string, kind: MountKind, capacity: ByteSize, parts: Array<MapPart>, 
+/**
+ * What the disk card draws; the parts stay for the by-meaning view and the place view.
+ */
+summary: Array<SummaryPart>, purgeable: ByteSize | null, roots: Array<NodeId>, 
 /**
  * The roots that are walked places, each with its name: shown by that name, not by its folder's.
  */
@@ -619,6 +651,16 @@ export type PartKind = { "kind": "explained" } | { "kind": "your-folders" } | { 
  * Why some of a volume's used space was not measured: a plain line under the remainder, never a category.
  */
 export type RemainderReason = { "kind": "unreadable", folders: number, needs: Capability | null, } | { "kind": "snapshots-and-bookkeeping" } | { "kind": "changed-during-scan" };
+
+/**
+ * One part of a volume's summary. The headline is `sizes.allocated`.
+ */
+export type SummaryPart = { kind: SummaryKind, sizes: Sizes, };
+
+/**
+ * One of the five parts of a volume's summary, in the order they are drawn.
+ */
+export type SummaryKind = "can-be-freed" | "files-and-apps" | "mac-os" | "system-space" | "free";
 
 /**
  * One group of the by-meaning view, largest first within its kind.
@@ -1072,11 +1114,11 @@ export type AppsView = { apps: Array<AppSummary>, notice: Text | null, };
  */
 export type AppSummary = { app: AppId, name: string, version: string | null, 
 /**
- * The bundle and every part, kept parts too.
+ * The bundle and every part, kept parts too; while High is withheld, no part of a High kind.
  */
 sizes: Sizes, 
 /**
- * The sizes by kind, kept parts too.
+ * The sizes by kind, kept parts too; while High is withheld, no High kind.
  */
 parts: Array<PartSizes>, lastUsed: Timestamp | null, summary: Text, offer: AppOffer, };
 

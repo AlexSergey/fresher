@@ -11,6 +11,7 @@ import type {
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, refuse, sampleAgreementAnswers } from '../../ipc/mock';
+import { createNavigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { ACCESS_DICTIONARY, BUSY, DEMO_DICTIONARY, DEMO_MODULES, IDLE } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
@@ -59,7 +60,12 @@ const MODULES: readonly ModuleInfo[] = [
     categories: [
       {
         availability: { kind: 'ready' },
-        descriptor: { danger: 'low', id: 'docker.images', needs: [{ capability: DOCKER, kind: 'required' }] },
+        descriptor: {
+          danger: 'low',
+          icon: 'archive',
+          id: 'docker.images',
+          needs: [{ capability: DOCKER, kind: 'required' }],
+        },
       },
     ],
     choices: [],
@@ -99,8 +105,11 @@ const show = async (
     getSettings: () => settings,
     ...answers,
   });
+  const navigation = createNavigation();
+
+  navigation.navigate({ kind: 'settings', page: { kind: 'permissions' } });
   render(
-    <AppProviders store={store}>
+    <AppProviders navigation={navigation} store={store}>
       <SettingsScreen />
     </AppProviders>,
   );

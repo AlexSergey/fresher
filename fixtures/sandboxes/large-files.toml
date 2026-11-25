@@ -93,17 +93,17 @@ kind = "positive"
 [[case.marker]]
 path = "home/cache-project"
 [[case.file]]
-path = "home/cache-project/fresher-trial-cache/blob.bin"
+path = "home/cache-project/Sample app cache/blob.bin"
 size = 12582912
 fill = "data"
 [case.expect]
-item = "home/cache-project/fresher-trial-cache"
+item = "home/cache-project/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
 [case.largest]
 shown = "absent"
-at = "home/cache-project/fresher-trial-cache"
+at = "home/cache-project/Sample app cache"
 
 [[case]]
 name = "a large disk image is listed and goes to the Trash"

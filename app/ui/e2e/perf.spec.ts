@@ -334,7 +334,7 @@ test.describe('positive cases', () => {
       });
       const toSettings = await sampleOf(page, async () => {
         await page.getByRole('button', { name: 'Settings' }).click();
-        await expect(heading(page, 'Settings')).toBeFocused();
+        await expect(heading(page, 'General')).toBeFocused();
       });
       const toScan = await sampleOf(page, async () => {
         await navScan(page).click();

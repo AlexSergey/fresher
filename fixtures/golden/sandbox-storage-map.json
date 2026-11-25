@@ -8,7 +8,7 @@
         "outcome": {
           "kind": "moved"
         },
-        "path": "home/nest/fresher-trial-cache",
+        "path": "home/nest/Sample app cache",
         "trash": "in-trash"
       },
       {
@@ -18,7 +18,7 @@
         "outcome": {
           "kind": "moved"
         },
-        "path": "home/project/fresher-trial-cache",
+        "path": "home/project/Sample app cache",
         "trash": "in-trash"
       }
     ],
@@ -31,7 +31,7 @@
       "danger": "safe",
       "logical": 8388608,
       "module": "trial",
-      "subject": "home/nest/fresher-trial-cache"
+      "subject": "home/nest/Sample app cache"
     },
     {
       "app": null,
@@ -39,7 +39,7 @@
       "danger": "safe",
       "logical": 12582912,
       "module": "trial",
-      "subject": "home/project/fresher-trial-cache"
+      "subject": "home/project/Sample app cache"
     }
   ],
   "map": {
@@ -60,17 +60,17 @@
         ]
       },
       {
-        "at": "home/project/fresher-trial-cache2",
+        "at": "home/project/Sample app cache2",
         "case": "a look-alike of a trial cache is your folder",
         "path": [
-          "home/project/fresher-trial-cache2"
+          "home/project/Sample app cache2"
         ],
         "rows": [
           {
             "allocated": 4194304,
             "explained": 0,
             "logical": 4194304,
-            "path": "home/project/fresher-trial-cache2/look-alike.bin"
+            "path": "home/project/Sample app cache2/look-alike.bin"
           }
         ]
       },
@@ -124,32 +124,32 @@
         ]
       },
       {
-        "at": "home/project/fresher-trial-cache",
+        "at": "home/project/Sample app cache",
         "case": "a trial cache next to a marker is explained",
         "path": [
-          "home/project/fresher-trial-cache"
+          "home/project/Sample app cache"
         ],
         "rows": [
           {
             "allocated": 12582912,
             "explained": 12582912,
             "logical": 12582912,
-            "path": "home/project/fresher-trial-cache"
+            "path": "home/project/Sample app cache"
           }
         ]
       },
       {
-        "at": "home/nest/fresher-trial-cache",
+        "at": "home/nest/Sample app cache",
         "case": "a trial cache inside a trial cache counts once",
         "path": [
-          "home/nest/fresher-trial-cache"
+          "home/nest/Sample app cache"
         ],
         "rows": [
           {
             "allocated": 8388608,
             "explained": 8388608,
             "logical": 8388608,
-            "path": "home/nest/fresher-trial-cache"
+            "path": "home/nest/Sample app cache"
           }
         ]
       }
@@ -274,32 +274,32 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache"
+        "path": "home/.Trash/Sample app cache"
       },
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache"
+        "path": "home/.Trash/Sample app cache"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash/Sample app cache/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 4194304,
-        "path": "home/.Trash/fresher-trial-cache/blob.bin"
+        "path": "home/.Trash/Sample app cache/Sample app cache/blob.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4194304,
+        "path": "home/.Trash/Sample app cache/blob.bin"
       },
       {
         "kind": "file",
         "logical_size": 12582912,
-        "path": "home/.Trash/fresher-trial-cache/blob.bin"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
-        "path": "home/.Trash/fresher-trial-cache/fresher-trial-cache"
-      },
-      {
-        "kind": "file",
-        "logical_size": 4194304,
-        "path": "home/.Trash/fresher-trial-cache/fresher-trial-cache/blob.bin"
+        "path": "home/.Trash/Sample app cache/blob.bin"
       },
       {
         "kind": "file",
@@ -394,12 +394,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/project/fresher-trial-cache2"
+        "path": "home/project/Sample app cache2"
       },
       {
         "kind": "file",
         "logical_size": 4194304,
-        "path": "home/project/fresher-trial-cache2/look-alike.bin"
+        "path": "home/project/Sample app cache2/look-alike.bin"
       },
       {
         "kind": "file",

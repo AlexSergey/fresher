@@ -1,4 +1,4 @@
-# Cargo's downloaded crates
+# Cargo's download cache
 
 **Danger level:** Low · **Rule:** none (the module's code, `modules/dev-caches`) · **Since:** 0.1.0
 
@@ -6,8 +6,7 @@
 
 ## What it is
 
-The crates (Rust libraries) Cargo downloaded from its registry, packed and unpacked, kept so that the next build needs
-no download. Made by Cargo, Rust's build tool and package manager.
+Rust libraries Cargo downloaded, so the next build needs no download. Made by Cargo, Rust's build tool.
 
 ## Where it lives
 
@@ -20,8 +19,8 @@ only its name). Without it the folder is not claimed.
 
 ## What happens if you remove it
 
-They go to the Trash. Your projects, Cargo's settings and the programs you installed with Cargo stay. Yes. Cargo
-downloads each crate again the next time a project builds with it, which needs the network.
+Nothing is lost. Your projects and the programs you installed with Cargo stay. Yes, Cargo downloads each one again when
+a project builds with it.
 
 ## How the app decides
 

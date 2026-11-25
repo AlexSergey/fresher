@@ -6,8 +6,8 @@
 
 ## What it is
 
-The language models Ollama keeps to run them on this Mac: for each model a small list of its files and the layer files
-it names. Models can share layers. Made by Ollama, an app and a command that run language models locally.
+The AI models Ollama keeps to run on this Mac; models can share files. Made by Ollama, an app that runs AI models on
+your Mac.
 
 ## Where it lives
 

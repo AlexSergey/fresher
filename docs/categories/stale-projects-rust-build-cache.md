@@ -6,7 +6,8 @@
 
 ## What it is
 
-Files Cargo keeps only to build a Rust project faster: the incremental compilation folders and the separate build made to measure test coverage. They often take gigabytes, even in a project you work on every day. Made by Cargo and the Rust compiler on every build, and by cargo llvm-cov.
+Files Cargo keeps only to build Rust projects faster, often gigabytes, even in a project you work on every day. Made by
+Cargo and the Rust compiler on every build, and by cargo llvm-cov.
 
 ## Where it lives
 
@@ -14,7 +15,7 @@ Inside a Rust project's `target`: `target/*/incremental`, `target/*/*/incrementa
 
 ## What happens if you remove it
 
-They go to the Trash. Your code and your built programs stay; the next build takes longer once, while it makes them again. They come back with the next build.
+Your code and your built programs stay; the next build takes longer once. They come back with the next build.
 
 ## How the app decides
 

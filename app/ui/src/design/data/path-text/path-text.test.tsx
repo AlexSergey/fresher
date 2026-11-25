@@ -103,6 +103,14 @@ describe('PathText', () => {
       expect(screen.getByText(LONG)).toHaveClass('u-visually-hidden');
     });
 
+    it('shows its display text, the full path staying its accessible text', () => {
+      frameWidth = 80 * CELL;
+      render(<PathText display="~/Library/Caches" path="/Users/a/Library/Caches" />);
+
+      expect(shown()).toBe('~/Library/Caches');
+      expect(screen.getByText('/Users/a/Library/Caches')).toHaveClass('u-visually-hidden');
+    });
+
     it('the full path is in the tooltip', () => {
       vi.useFakeTimers();
       frameWidth = 40 * CELL;

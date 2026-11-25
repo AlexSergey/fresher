@@ -162,6 +162,11 @@ impl Insight {
     pub fn notes(&self) -> &[Text] {
         &self.notes
     }
+
+    /// Keeps only the parts for which `keep` holds, in their order.
+    pub fn retain_parts(&mut self, keep: impl FnMut(&InsightPart) -> bool) {
+        self.parts.retain(keep);
+    }
 }
 
 #[cfg(test)]

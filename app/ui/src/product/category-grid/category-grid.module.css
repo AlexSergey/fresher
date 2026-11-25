@@ -1,6 +1,6 @@
 /*
- * The category grid: one column, two from 560 px of its container, three from 840 px. A new card fades in and rises
- * --distance-1, staggered by its place (`--i`, at most --stagger-steps steps); moves are played by `useFlipList`.
+ * The category grid: two columns, one below 480 px of its container. A new tile fades in and rises --distance-1,
+ * staggered by its place (`--i`, at most --stagger-steps steps); moves are played by `useFlipList`.
  */
 @layer components {
   .container {
@@ -11,7 +11,7 @@
     display: grid;
     padding: 0;
     margin: 0;
-    gap: var(--space-4);
+    gap: var(--space-3);
     grid-template-columns: minmax(0, 1fr);
     list-style: none;
   }
@@ -22,15 +22,9 @@
     animation-delay: calc(min(var(--i), var(--stagger-steps)) * var(--stagger));
   }
 
-  @container (min-width: 560px) {
+  @container (min-width: 480px) {
     .grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @container (min-width: 840px) {
-    .grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 

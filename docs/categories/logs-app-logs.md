@@ -1,4 +1,4 @@
-# Old logs of your apps
+# Old app logs
 
 **Danger level:** Safe · **Rule:** none (the module's code, `modules/logs`) · **Since:** 0.1.0
 

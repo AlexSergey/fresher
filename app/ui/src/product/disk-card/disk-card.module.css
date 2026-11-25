@@ -1,0 +1,97 @@
+/*
+ * The disk card: a ring of the five parts with what can be freed in its centre, the volume's name and free space, and
+ * the legend beside it. Compact makes the ring smaller and the card tighter; the legend stays.
+ */
+@layer components {
+  .card {
+    --ring-track: var(--swoosh-track);
+
+    display: flex;
+    align-items: center;
+    padding: 22px 28px;
+    border: 1px solid var(--tile-border);
+    border-radius: 18px;
+    background: var(--surface-card);
+    gap: var(--space-10);
+  }
+
+  .card[data-compact] {
+    padding: 14px 18px;
+    gap: var(--space-6);
+  }
+
+  .ring {
+    flex: none;
+    padding: var(--ring-pad);
+  }
+
+  .centre {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .count {
+    font-size: calc(30rem / 13);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .card[data-compact] .count {
+    font-size: calc(17rem / 13);
+  }
+
+  .caption {
+    color: var(--part-can-be-freed);
+    font-size: var(--type-footnote-size);
+    white-space: nowrap;
+  }
+
+  .card[data-compact] .caption {
+    max-width: 52px;
+    font-size: var(--type-caption-size);
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .side {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .name {
+    font-size: var(--type-callout-size);
+    font-weight: 600;
+  }
+
+  .free {
+    color: var(--text-secondary);
+    font-size: var(--type-body-size);
+  }
+
+  .free b {
+    color: var(--text-primary);
+  }
+
+  .note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+  }
+}

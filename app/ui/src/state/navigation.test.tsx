@@ -66,6 +66,11 @@ describe('navigation', () => {
       expect(shown).toStrictEqual({ kind: 'scan' });
     });
 
+    it('largest falls back to Scan while High is withheld or not known yet', () => {
+      expect(screenToShow({ kind: 'largest' }, null, [], 'withheld')).toStrictEqual({ kind: 'scan' });
+      expect(screenToShow({ kind: 'largest' }, null)).toStrictEqual({ kind: 'scan' });
+    });
+
     it('keeps a category screen while the modules are not known yet', () => {
       expect(screenToShow({ category: 'demo.caches', kind: 'category' }, null)).toEqual({
         category: 'demo.caches',
@@ -90,6 +95,10 @@ describe('navigation', () => {
       expect(createNavigation().getScreen()).toEqual({ kind: 'scan' });
     });
 
+    it('largest is shown when High is offered', () => {
+      expect(screenToShow({ kind: 'largest' }, null, [], 'offered')).toStrictEqual({ kind: 'largest' });
+    });
+
     it('navigates to an insight screen', () => {
       const insight = { identity: 'demo-tool', kind: 'insight', module: 'demo' } as const;
 
@@ -100,6 +109,24 @@ describe('navigation', () => {
       expect(screenToShow({ category: 'demo.caches', kind: 'category' }, ['demo.caches'])).toEqual({
         category: 'demo.caches',
         kind: 'category',
+      });
+    });
+
+    it('a settings screen keeps its page, its Ignored tab and its focus', () => {
+      const navigation = createNavigation();
+
+      navigation.navigate({
+        focus: 'demo.count',
+        kind: 'settings',
+        page: { kind: 'module', module: 'demo' },
+        tab: 'items',
+      });
+
+      expect(screenToShow(navigation.getScreen(), null)).toStrictEqual({
+        focus: 'demo.count',
+        kind: 'settings',
+        page: { kind: 'module', module: 'demo' },
+        tab: 'items',
       });
     });
 

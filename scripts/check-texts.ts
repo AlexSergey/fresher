@@ -7,7 +7,16 @@ import { join } from 'node:path';
 export type Dictionary = Readonly<Record<string, string>>;
 
 export type RuleId =
-  'banned' | 'category-parts' | 'delete' | 'description' | 'exclamation' | 'form' | 'length' | 'sentence' | 'trash';
+  | 'banned'
+  | 'category-parts'
+  | 'delete'
+  | 'description'
+  | 'exclamation'
+  | 'form'
+  | 'length'
+  | 'name-words'
+  | 'sentence'
+  | 'trash';
 
 export type Violation = {
   readonly file: string;
@@ -22,6 +31,7 @@ export const LIMITS: Readonly<Record<string, number>> = {
   description: 200,
   'if-removed': 240,
   label: 48,
+  line: 50,
   'made-by': 160,
   name: 48,
   other: 240,
@@ -60,16 +70,18 @@ export const EXEMPT: ReadonlyMap<string, string> = new Map<string, string>([
   ['ui.confirm.left-out', 'a heading over a list of items, not a sentence'],
   ['ui.finding-list.failed.title', 'a heading of the error state, not a sentence'],
   ['ui.scan-hero.failed', 'a heading of the error state, not a sentence'],
-  ['ui.scan-progress.module.failed', 'a one-word status of a module chip'],
   ['ui.screen.category.comes-back', 'the label of a part of the category screen, not a category text'],
   ['ui.screen.category.if-removed', 'the label of a part of the category screen, not a category text'],
-  ['ui.screen.category.made-by', 'the label of a part of the category screen, not a category text'],
   ['ui.screen.category.what', 'the label of a part of the category screen, not a category text'],
   ['ui.screen.scan.left-out.title', 'a heading of a section, not a sentence'],
 ]);
 
 const PLURAL_SEGMENTS: ReadonlySet<string> = new Set(['one', 'other']);
 const PART_SEGMENTS: readonly string[] = ['what', 'made-by', 'if-removed', 'comes-back'];
+// Every text of a category: its parts, its name and the line under its name on its tile.
+const CATEGORY_SEGMENTS: readonly string[] = ['name', 'line', ...PART_SEGMENTS];
+// The most words in a category's name.
+export const NAME_WORDS = 4;
 const DELETE_SEGMENTS: ReadonlySet<string> = new Set(['delete', 'deleted', 'deleting', 'permanent']);
 const SENTENCE_END = /[.…:]$/;
 
@@ -145,7 +157,7 @@ const checkStructure = ({ dictionary, key, kind }: Context): Finding[] => {
     found.push({ message: 'has no description', rule: 'description' });
   }
   if (!key.startsWith('ui.') && PART_SEGMENTS.includes(kind)) {
-    const missing = [...PART_SEGMENTS, 'name'].filter((part) => !has(dictionary, `${prefix}.${part}`));
+    const missing = CATEGORY_SEGMENTS.filter((part) => !has(dictionary, `${prefix}.${part}`));
 
     if (missing.length > 0) {
       found.push({ message: `its category lacks: ${missing.join(', ')}`, rule: 'category-parts' });
@@ -155,11 +167,14 @@ const checkStructure = ({ dictionary, key, kind }: Context): Finding[] => {
   return found;
 };
 
-const checkForm = ({ segments, text }: Context): Finding[] => {
+const checkForm = ({ kind, segments, text }: Context): Finding[] => {
   const found: Finding[] = [];
 
   if (text.includes('  ') || text !== text.trim()) {
     found.push({ message: 'has a double space or a space at an end', rule: 'form' });
+  }
+  if (kind === 'line' && text.endsWith('.')) {
+    found.push({ message: 'is a line and ends with a full stop', rule: 'form' });
   }
   if (segments.some((s) => SENTENCE_KINDS.includes(s)) && !SENTENCE_END.test(text)) {
     found.push({ message: 'does not end with ".", "…" or ":"', rule: 'sentence' });
@@ -168,12 +183,25 @@ const checkForm = ({ segments, text }: Context): Finding[] => {
   return found;
 };
 
+// A category's name (a key whose prefix has the category's texts); a `ui.` name labels a screen.
+const checkNameWords = ({ dictionary, key, kind, text }: Context): Finding[] => {
+  if (kind !== 'name' || key.startsWith('ui.') || !has(dictionary, `${prefixOf(key)}.what`)) {
+    return [];
+  }
+  const words = text.trim().split(/\s+/).length;
+
+  return words > NAME_WORDS
+    ? [{ message: `is ${words} words, over the ${NAME_WORDS} of a category name`, rule: 'name-words' }]
+    : [];
+};
+
 const CHECKS: readonly ((context: Context) => Finding[])[] = [
   checkWording,
   checkLength,
   checkBanned,
   checkStructure,
   checkForm,
+  checkNameWords,
 ];
 
 export const checkDictionary = (file: string, dictionary: Dictionary, exempt = EXEMPT): Violation[] =>

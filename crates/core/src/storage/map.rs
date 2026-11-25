@@ -3,6 +3,7 @@
 use serde::Serialize;
 use ts_rs::TS;
 
+use super::summary::{SummaryPart, summarize};
 use crate::{ByteSize, Capability, MountKind, NodeId, Sizes, StateId, Text, TextArg, TextKey};
 
 /// The answer of `get_storage_map`: one map per volume that holds a scan root, the home's volume first.
@@ -33,6 +34,8 @@ pub struct VolumeMap {
     kind: MountKind,
     capacity: ByteSize,
     parts: Vec<MapPart>,
+    /// What the disk card draws; the parts stay for the by-meaning view and the place view.
+    summary: Vec<SummaryPart>,
     purgeable: Option<ByteSize>,
     roots: Vec<NodeId>,
     /// The roots that are walked places, each with its name: shown by that name, not by its folder's.
@@ -82,7 +85,8 @@ impl VolumeMap {
         if sum != capacity {
             return Err(StorageMapError::PartsDoNotAddUp { capacity, sum });
         }
-        Ok(Self { name, kind, capacity, parts, purgeable, roots, places: Vec::new(), disk_changed })
+        let summary = summarize(&parts);
+        Ok(Self { name, kind, capacity, parts, summary, purgeable, roots, places: Vec::new(), disk_changed })
     }
 
     pub fn name(&self) -> &str {
@@ -101,6 +105,12 @@ impl VolumeMap {
     /// The parts, in the order of [`PartKind`].
     pub fn parts(&self) -> &[MapPart] {
         &self.parts
+    }
+
+    /// What the disk card draws; the parts stay for the by-meaning view and the place view. Five parts, in the order
+    /// of [`SummaryKind::ALL`](crate::SummaryKind::ALL).
+    pub fn summary(&self) -> &[SummaryPart] {
+        &self.summary
     }
 
     /// What macOS can free on its own when space runs low: shown with Free, not a part.
@@ -368,7 +378,8 @@ pub(crate) mod tests {
                 name: Text::new(TextKey::from_valid("core.place.shared-temp.name".into())),
             }]);
             let map = StorageMap { phase: MapPhase::Complete { state: StateId::new(2) }, volumes: vec![volume] };
-            let sizes = json!({ "logical": 10, "allocated": 10, "reclaimable": 10, "completeness": "complete" });
+            let sizes_of = |bytes: u64| json!({ "logical": bytes, "allocated": bytes, "reclaimable": bytes, "completeness": "complete" });
+            let sizes = sizes_of(10);
 
             assert_eq!(
                 serde_json::to_value(map).unwrap(),
@@ -388,6 +399,13 @@ pub(crate) mod tests {
                             { "kind": { "kind": "other-volume", "name": "Backup" }, "sizes": sizes },
                             { "kind": { "kind": "disk-own" }, "sizes": sizes },
                             { "kind": { "kind": "free" }, "sizes": sizes },
+                        ],
+                        "summary": [
+                            { "kind": "can-be-freed", "sizes": sizes },
+                            { "kind": "files-and-apps", "sizes": sizes_of(40) },
+                            { "kind": "mac-os", "sizes": sizes },
+                            { "kind": "system-space", "sizes": sizes_of(20) },
+                            { "kind": "free", "sizes": sizes },
                         ],
                         "purgeable": 5,
                         "roots": [{ "state": 2, "index": 0 }],

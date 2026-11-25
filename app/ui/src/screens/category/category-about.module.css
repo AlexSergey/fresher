@@ -1,0 +1,38 @@
+/* The three answers of a category's details: three blocks in a row. */
+@layer components {
+  .answers {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .answer {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-3-5);
+    border: 1px solid var(--border-divider);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-raised);
+    gap: var(--space-1-5);
+  }
+
+  .title {
+    margin: 0;
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    font-weight: 400;
+    line-height: var(--type-footnote-line);
+  }
+
+  .text,
+  .madeBy {
+    margin: 0;
+    font-size: var(--type-body-size);
+    line-height: 1.45;
+  }
+
+  .madeBy {
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+  }
+}

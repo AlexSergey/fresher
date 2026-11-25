@@ -232,7 +232,7 @@ mod home {
         };
         let mut registry = Registry::new().unwrap();
         registry.register(Box::new(TempModule::new(folder))).unwrap();
-        let engine = Engine::with_cleanup(registry, ports, cleanup).unwrap();
+        let engine = Engine::with_cleanup(registry, ports, cleanup, fresher_core::HighLevel::Offered).unwrap();
         engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
         (engine, cleaner)
     }

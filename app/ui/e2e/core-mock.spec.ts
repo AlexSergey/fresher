@@ -2,6 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 import type {
   AgreementView,
+  AppInfo,
   CleanupPlanView,
   CleanupsPage,
   Event,
@@ -28,7 +29,7 @@ import { largestAnswerOf, pickAnswerOf, placeAnswerOf } from './support/largest-
 const SCAN = largeScan({ categories: 3, count: 1000 });
 
 const answers = {
-  appInfo: { build: { kind: 'release' }, version: '0.0.1' },
+  appInfo: { build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.0.1' },
   getAccessStatus: GRANTED,
   getDictionary: SCAN.dictionary,
   getModules: [],
@@ -287,6 +288,29 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('the app info offers High by default', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+
+    const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
+
+    expect(info.high).toBe('offered');
+  });
+
+  test('the app info answers the script’s high', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.demo, high: 'withheld' });
+    await page.goto('/');
+
+    const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
+
+    expect(info).toStrictEqual({
+      build: { kind: 'release' },
+      high: 'withheld',
+      home: '/Users/someone',
+      version: '0.0.1',
+    });
+  });
+
   test('the agreement is accepted by default, with the five lines and no changes text', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
@@ -378,7 +402,17 @@ test.describe('positive cases', () => {
     const streaming = await getOverview(page);
 
     expect(streaming.found.allocated).toBeLessThan(SCAN.overview.found.allocated);
-    await expect.poll(() => getOverview(page)).toEqual(SCAN.overview);
+    // The mock dates the last scan by the page's clock (two minutes ago); everything else is the script's.
+    await expect
+      .poll(async () => {
+        const { lastScan, ...rest } = await getOverview(page);
+
+        return { ...rest, lastScan: lastScan === null ? null : { ...lastScan, finished: 0 } };
+      })
+      .toEqual({
+        ...SCAN.overview,
+        lastScan: SCAN.overview.lastScan === null ? null : { ...SCAN.overview.lastScan, finished: 0 },
+      });
   });
 
   test('the Files list keeps the rows under the kind, the place and the unchanged filters, largest first', () => {

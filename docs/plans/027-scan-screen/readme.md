@@ -3,6 +3,9 @@
 **Status:** 🔨 in progress · **Version:** 0.1.0 · **Date:** 2026-11-20 · **Modules:** app/ui, app/tauri, core, sandbox,
 e2e, docs
 
+> Plan [042](../042-plain-interface/readme.md) rebuilt this screen: the hero, the danger zones and the cards became
+> the disk card, the scanning card, the groups and the tiles; the category details and the menus were redrawn.
+
 Drafted on 2026-11-20 as one file from the user's feedback of the first session of runs by hand
 ([`../../manual-testing/2026-11-20-feedback.md`](../../manual-testing/2026-11-20-feedback.md), items 1 to 18), and
 approved by the user the same day with its eight agent's calls, which became decisions. The detailed design, the

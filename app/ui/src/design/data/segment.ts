@@ -15,7 +15,17 @@ export type Segment = {
 // (goal, section 6): your folders, macOS, swap and sleep, another volume, the disk's own space; `free` is an outline
 // with no fill, `unknown` hatched.
 export type Tone =
-  'disk-own' | 'free' | 'mac-os' | 'other-volume' | 'swap-and-sleep' | 'unknown' | 'your-folders' | Level;
+  | 'can-be-freed'
+  | 'disk-own'
+  | 'files-and-apps'
+  | 'free'
+  | 'mac-os'
+  | 'other-volume'
+  | 'swap-and-sleep'
+  | 'system-space'
+  | 'unknown'
+  | 'your-folders'
+  | Level;
 
 // A chart's accessible name: the caller's name for the whole, then every drawn segment with its size.
 export const chartLabel = (name: string, segments: readonly Segment[]): string => {

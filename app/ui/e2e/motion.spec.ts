@@ -4,28 +4,19 @@ import { mockCore, SCRIPTS } from './core-mock';
 import { scanButton } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
-// The system's "Reduce motion" (Playwright's emulation, motion not forced off) in the real engines: a scan stands
-// still and a screen change only fades; with full motion the scan's loops run and a new screen rises.
+// The system's "Reduce motion" (Playwright's emulation, motion not forced off) in the real engines: the scanning
+// card's fill jumps and a screen change only fades; with full motion the fill glides and a new screen rises.
 
 type Arrival = { readonly opacity: number; readonly rise: number };
 
-type Loops = { readonly running: number; readonly sweep: number };
-
 type Watched = { __arrival__?: Arrival };
 
-// The endless animations of the page that run, and those of the scan's sweep (running or not).
-const loops = (page: Page): Promise<Loops> =>
-  page.evaluate(() => {
-    const endless = document
-      .getAnimations()
-      .filter((animation) => animation.effect?.getComputedTiming().iterations === Infinity);
-    const sweep = document.querySelector('[data-sweep]');
-
-    return {
-      running: endless.filter((animation) => animation.playState === 'running').length,
-      sweep: sweep === null ? 0 : sweep.getAnimations({ subtree: true }).length,
-    };
-  });
+// How long the scanning card's fill takes to move to a new value: 0 when it jumps.
+const fillGlide = (page: Page): Promise<number> =>
+  page
+    .locator('[role="progressbar"] path[stroke-dasharray]')
+    .last()
+    .evaluate((fill) => Number.parseFloat(getComputedStyle(fill).transitionDuration));
 
 // Catches the next screen's arrival at its first frame: the animation is paused at 0 and the screen's opacity and
 // rise (its vertical offset, in pixels) read there.
@@ -64,8 +55,7 @@ const scanning = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.live);
   await page.goto('/');
   await scanButton(page).click();
-  await expect(page.getByRole('group', { name: 'Parts of the scan' })).toContainText('scanning');
-  await expect(page.locator('[data-sweep]')).toBeAttached();
+  await expect(page.getByRole('progressbar', { name: /^Scanning, \d+ percent$/u })).toBeVisible();
 };
 
 const changeScreen = async (page: Page): Promise<Arrival> => {
@@ -86,14 +76,10 @@ test.afterEach(async ({ page }) => {
 test.describe('negative cases', () => {
   test.use({ reducedMotion: 'reduce' });
 
-  test('a scan under reduced motion has no rotating sweep and no breathing', async ({ page }) => {
+  test("a scan under reduced motion jumps the card's fill to its value", async ({ page }) => {
     await scanning(page);
 
-    const { running, sweep } = await loops(page);
-    // The comet is drawn, standing still.
-    expect(sweep).toBeGreaterThan(0);
-    expect(running).toBe(0);
-    await expect(page.locator('[data-breathing]')).toHaveCount(0);
+    expect(await fillGlide(page)).toBe(0);
   });
 
   test('a screen change under reduced motion only fades', async ({ page }) => {
@@ -106,13 +92,10 @@ test.describe('negative cases', () => {
 test.describe('positive cases', () => {
   test.use({ reducedMotion: 'no-preference' });
 
-  test('a scan under full motion runs the sweep and breathes', async ({ page }) => {
+  test("a scan under full motion glides the card's fill to its value", async ({ page }) => {
     await scanning(page);
 
-    const { running, sweep } = await loops(page);
-    expect(sweep).toBeGreaterThan(0);
-    expect(running).toBeGreaterThanOrEqual(2);
-    await expect(page.locator('[data-breathing]')).toHaveCount(1);
+    expect(await fillGlide(page)).toBeGreaterThan(0);
   });
 
   test('a screen change under full motion fades and rises', async ({ page }) => {

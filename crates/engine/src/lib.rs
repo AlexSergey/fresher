@@ -19,6 +19,7 @@ mod coverage;
 mod disk;
 mod engine;
 mod error;
+mod estimate;
 #[cfg(test)]
 mod facts_tests;
 mod ignore;
@@ -42,6 +43,7 @@ mod storage;
 #[cfg(test)]
 mod testing;
 mod throttle;
+mod withheld;
 
 pub use apps::OWN_BUNDLE_ID;
 pub use bus::EventBus;

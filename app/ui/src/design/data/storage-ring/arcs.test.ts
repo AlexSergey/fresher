@@ -117,5 +117,12 @@ describe('arcsOf', () => {
 
       expect(drawnSweeps + 2 * GAP + freeSlot).toBeCloseTo(360, 9);
     });
+
+    it('takes the gap and the least arc of the shape it is given', () => {
+      const arcs = arcsOf([segment('a', 50), segment('b', 0.01)], 100, { gap: 4, minSweep: 6 });
+
+      expect(arcs.map(({ sweep }) => sweep)).toStrictEqual([176, 6]);
+      expect(arcs[1]?.start).toBe(180);
+    });
   });
 });

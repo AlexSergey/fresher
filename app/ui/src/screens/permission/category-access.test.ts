@@ -53,7 +53,7 @@ describe('categoryAccess', () => {
             readyCategory('demo.caches', 'safe'),
             {
               availability: { kind: 'unavailable', missing: [DOCKER] },
-              descriptor: { danger: 'low', id: 'demo.downloads', needs: [] },
+              descriptor: { danger: 'low', icon: 'download', id: 'demo.downloads', needs: [] },
             },
           ],
         },

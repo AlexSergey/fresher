@@ -1,6 +1,6 @@
 import { createContext, use, useSyncExternalStore } from 'react';
 
-import type { AppId, CategoryId, CleanupId, ModuleId } from '../ipc/bindings.generated';
+import type { AppId, CategoryId, CleanupId, HighLevel, ModuleId, SettingKey } from '../ipc/bindings.generated';
 
 // The tabs of Settings' Ignored section.
 export type IgnoredTab = 'groups' | 'items' | 'modules';
@@ -15,18 +15,24 @@ export type Navigation = {
 // details, opened from its card on Scan; Scan's `from` is the category whose details the user comes back from, so the
 // focus returns to that card (`fromInsight`: the same for an insight, `module/identity`). `cleanups` is the history of cleanups, `cleanup` one of them, `largest`
 // the largest files and folders, `apps` the installed apps and `app` one of them.
-// Settings may be opened on a tab of its Ignored section.
+// Settings opens on a page (General without one); `tab` opens its Ignored page on that tab; `focus` is the setting
+// whose control takes the focus.
 export type Screen =
   | { readonly app: AppId; readonly kind: 'app' }
   | { readonly category: CategoryId; readonly kind: 'category' }
   | { readonly cleanup: CleanupId; readonly kind: 'cleanup' }
+  | { readonly focus?: SettingKey; readonly kind: 'settings'; readonly page?: SettingsPage; readonly tab?: IgnoredTab }
   | { readonly from?: CategoryId; readonly fromInsight?: string; readonly kind: 'scan' }
   | { readonly identity: string; readonly kind: 'insight'; readonly module: ModuleId }
   | { readonly kind: 'apps' }
   | { readonly kind: 'cleanups' }
   | { readonly kind: 'largest' }
-  | { readonly kind: 'review' }
-  | { readonly kind: 'settings'; readonly tab?: IgnoredTab };
+  | { readonly kind: 'review' };
+
+// A page of Settings: one of the core's, or a module's.
+export type SettingsPage =
+  | { readonly kind: 'about' | 'general' | 'ignored' | 'permissions' | 'scan' }
+  | { readonly kind: 'module'; readonly module: ModuleId };
 
 const START: Screen = { kind: 'scan' };
 
@@ -60,12 +66,18 @@ export const createNavigation = (): Navigation => {
 export type InsightRef = { readonly identity: string; readonly module: ModuleId };
 
 // The screen to show: the details of a category no module the core lists has (`categories`, every listed module's,
-// `null` while they are not known yet) and an insight the last scan did not describe (`insights`) fall back to Scan.
+// `null` while they are not known yet), an insight the last scan did not describe (`insights`) and Largest unless the
+// core offers High (`high`, `null` while it is not known yet) fall back to Scan.
 export const screenToShow = (
   screen: Screen,
   categories: null | readonly CategoryId[],
   insights: readonly InsightRef[] = [],
+  high: HighLevel | null = null,
 ): Screen => {
+  if (screen.kind === 'largest') {
+    return high === 'offered' ? screen : START;
+  }
+
   if (screen.kind === 'category') {
     return categories !== null && !categories.includes(screen.category) ? START : screen;
   }
@@ -93,8 +105,12 @@ export const useNavigation = (): Navigation => {
 
 // The current screen, among the categories of the modules the core lists and the insights of the last scan; the
 // component renders again when it changes.
-export const useScreen = (categories: null | readonly CategoryId[], insights: readonly InsightRef[] = []): Screen => {
+export const useScreen = (
+  categories: null | readonly CategoryId[],
+  insights: readonly InsightRef[] = [],
+  high: HighLevel | null = null,
+): Screen => {
   const navigation = useNavigation();
 
-  return screenToShow(useSyncExternalStore(navigation.subscribe, navigation.getScreen), categories, insights);
+  return screenToShow(useSyncExternalStore(navigation.subscribe, navigation.getScreen), categories, insights, high);
 };

@@ -17,9 +17,10 @@ mod name;
 mod places;
 
 use fresher_core::{
-    BundleId, CategoryDescriptor, CategoryId, DaySetting, DescriptorError, EntryKind, FindingSink, IdError, Interest,
-    InterestError, LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,
-    ModuleGroup, ModuleId, NewFinding, Removal, SettingError, Subject, Text, TextArg, TextKey, TextKeyError, Timestamp,
+    BundleId, CategoryDescriptor, CategoryIcon, CategoryId, DaySetting, DescriptorError, EntryKind, FindingSink,
+    IdError, Interest, InterestError, LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext,
+    ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Removal, SettingError, Subject, Text, TextArg,
+    TextKey, TextKeyError, Timestamp,
 };
 
 use crate::categories::CATEGORIES;
@@ -90,7 +91,11 @@ impl AppLeftoversModule {
         let id = ModuleId::new("app-leftovers")?;
         let categories = CATEGORIES
             .into_iter()
-            .map(|(category, danger)| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, category)?, danger)))
+            .map(|(category, danger)| {
+                Ok::<_, IdError>(
+                    CategoryDescriptor::new(CategoryId::new(id, category)?, danger).with_icon(icon(category)),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let everything = categories.iter().map(CategoryDescriptor::id).collect();
         let keep_settings = categories.iter().map(CategoryDescriptor::id).filter(|id| id.as_str() == CACHES).collect();
@@ -267,6 +272,15 @@ impl Module for AppLeftoversModule {
             }
         }
         Ok(())
+    }
+}
+
+/// The icon of each category; one it does not list is generic, which the module contract refuses.
+fn icon(category: &str) -> CategoryIcon {
+    match category {
+        "app-leftovers.caches" => CategoryIcon::Cache,
+        "app-leftovers.settings" | "app-leftovers.data" => CategoryIcon::App,
+        _ => CategoryIcon::Generic,
     }
 }
 

@@ -144,9 +144,7 @@ describe('AppsScreen', () => {
     it("shows the core's notice", async () => {
       await show({ getApps: () => ({ ...APPS_VIEW, notice: { args: {}, key: 'core.apps.other-names' } }) });
 
-      expect(
-        await screen.findByText('Files an app keeps under another name than its id are not listed.'),
-      ).toBeInTheDocument();
+      expect(await screen.findByText('Files an app keeps under another name are not listed.')).toBeInTheDocument();
     });
   });
 });

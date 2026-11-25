@@ -223,7 +223,7 @@ mod negative {
 }
 
 mod positive {
-    use fresher_core::{ByteSize, MapPhase, MeaningGroup, MountKind, NeighbourRole, PartKind};
+    use fresher_core::{ByteSize, MapPhase, MeaningGroup, MountKind, NeighbourRole, PartKind, SummaryKind};
 
     use super::{GIB, KIB, complete, data, input, neighbour, remainder, root, size_of, total, volume_map};
     use crate::storage::meaning::append_volume_parts;
@@ -272,6 +272,25 @@ mod positive {
 
         assert!(matches!(kinds.first(), Some(PartKind::Remainder { outside_scan: true, .. })));
         assert_eq!(kinds[1..], [PartKind::MacOs, PartKind::SwapAndSleep, PartKind::DiskOwn, PartKind::Free]);
+    }
+
+    #[test]
+    fn a_complete_map_carries_its_summary() {
+        let map = volume_map(input(Some(data(1000, 400, 500)), vec![root("/Users/me", 300, 100)], complete())).unwrap();
+
+        let summary: Vec<(SummaryKind, u64)> =
+            map.summary().iter().map(|part| (part.kind, part.sizes.allocated.bytes())).collect();
+
+        assert_eq!(
+            summary,
+            [
+                (SummaryKind::CanBeFreed, 100),
+                (SummaryKind::FilesAndApps, 300),
+                (SummaryKind::MacOs, 0),
+                (SummaryKind::SystemSpace, 100),
+                (SummaryKind::Free, 500),
+            ]
+        );
     }
 
     #[test]

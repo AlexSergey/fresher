@@ -3,6 +3,9 @@
 **Status:** 🔨 in progress · **Version:** 0.1.0 · **Date:** 2026-11-22 ·
 **Modules:** core, scanner, engine, testing, sandbox, e2e, app, app/ui, docs
 
+> While High is withheld (plan [042](../042-plain-interface/readme.md)), Largest leaves the sidebar and the core
+> refuses its pick; the code and its tests stay for when High comes back.
+
 Written as a draft on 2026-11-22; designed and approved the same day by the user's delegation (build autonomously, the
 recommended decisions and the agent's calls taken). The design, with its facts and agent's calls:
 [`00-design.md`](./00-design.md).

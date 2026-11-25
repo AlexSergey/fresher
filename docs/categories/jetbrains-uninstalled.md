@@ -1,4 +1,4 @@
-# Data of JetBrains IDEs no longer installed
+# Removed JetBrains IDE data
 
 **Danger level:** Medium · **Rule:** none (the module's code, `modules/jetbrains`) · **Since:** 0.1.0
 

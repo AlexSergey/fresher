@@ -9,11 +9,12 @@
 Files and folders you picked yourself on the Largest screen. Made by you, or the apps you use; made by no module: the
 user picks each item on the Largest screen.
 
-The category's five texts (`crates/core/locales/en.json`):
+The category's six texts (`crates/core/locales/en.json`):
 
 | Text          | Key                         | Wording                                                                                        |
 | ------------- | --------------------------- | ---------------------------------------------------------------------------------------------- |
 | Name          | `core.own-file.name`        | Your own files                                                                                 |
+| Line          | `core.own-file.line`        | A file you picked yourself                                                                     |
 | What it is    | `core.own-file.what`        | Files and folders you picked yourself on the Largest screen.                                   |
 | Made by       | `core.own-file.made-by`     | You, or the apps you use.                                                                      |
 | If removed    | `core.own-file.if-removed`  | They go to the Trash. Fresher cannot tell what they hold or whether you still need them.       |

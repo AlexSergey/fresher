@@ -37,9 +37,6 @@ export const IgnoredGroup = ({ headingId, modules, opensOn, readOnly, view }: Ig
 
   return (
     <section aria-labelledby={headingId} className={styles.group}>
-      <h2 className={styles.heading} id={headingId}>
-        {t('ui.screen.settings.group.ignored')}
-      </h2>
       <p className={styles.groupText}>{t('ui.screen.settings.ignored.text')}</p>
       <Tabs
         label={t('ui.screen.settings.group.ignored')}

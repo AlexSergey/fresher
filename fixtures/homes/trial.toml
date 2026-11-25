@@ -2,17 +2,17 @@
 # folder to empty and keep.
 
 [[file]]
-path = "sandbox/fresher-trial-cache/blob.bin"
+path = "sandbox/Sample app cache/blob.bin"
 size = 1048576
 modified = 1762000000
 
 [[file]]
-path = "sandbox/fresher-trial-cache/nested/blob.bin"
+path = "sandbox/Sample app cache/nested/blob.bin"
 size = 2048
 modified = 1762000000
 
 [[file]]
-path = "sandbox/fresher-trial-kept/entry.bin"
+path = "sandbox/Old sample downloads/entry.bin"
 size = 8192
 modified = 1762000000
 

@@ -6,8 +6,8 @@
 
 ## What it is
 
-Libraries Gradle downloaded and files it prepared for builds of Java, Kotlin and Android projects. Made by Gradle, the
-build tool of Java, Kotlin and Android projects, and the IDEs that run it.
+Libraries Gradle downloaded and files it prepared for Java, Kotlin and Android builds. Made by Gradle, the build tool of
+Java, Kotlin and Android projects.
 
 ## Where it lives
 
@@ -19,8 +19,8 @@ folder is not claimed.
 
 ## What happens if you remove it
 
-They go to the Trash. Your projects and Gradle's settings stay. Yes. The next build downloads and prepares them again,
-so it takes longer and needs the network.
+Nothing is lost. Your projects and Gradle's settings stay. Yes, with the next build, which takes longer and needs the
+network.
 
 ## How the app decides
 

@@ -1,0 +1,123 @@
+/*
+ * Review's summary card: the size and what it is on one line with "put back" at its end, a bar split by group (each
+ * part in its level's colour, 3 px apart) and a chip per group.
+ */
+@layer components {
+  .summary {
+    display: flex;
+    flex-direction: column;
+    padding: 20px var(--space-6);
+    border: 1px solid var(--tile-border);
+    border-radius: 18px;
+    background: var(--surface-card);
+    gap: 14px;
+  }
+
+  .top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .figures {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .size > [data-numeric][data-size] {
+    color: var(--text-primary);
+    font-size: calc(30rem / 13);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+
+  .goes {
+    color: var(--text-secondary);
+    font-size: calc(14rem / 13);
+  }
+
+  .putBack {
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    white-space: nowrap;
+  }
+
+  .bar {
+    display: flex;
+    overflow: hidden;
+    height: 8px;
+    border-radius: 4px;
+    gap: 3px;
+  }
+
+  .segment {
+    flex-basis: 0;
+    background-color: var(--segment-fg);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: var(--space-2);
+    background-color: var(--chip-bg);
+    color: var(--text-legend);
+    font-size: var(--type-footnote-size);
+    gap: var(--space-2);
+    line-height: var(--type-footnote-line);
+  }
+
+  .swatch {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 2px;
+    background-color: var(--segment-fg);
+  }
+
+  .chipSize > [data-numeric][data-size] {
+    color: var(--text-primary);
+    font-size: inherit;
+    font-weight: 700;
+    line-height: inherit;
+  }
+
+  .notChecked {
+    color: var(--level-medium-fg);
+  }
+
+  .chip[data-level='safe'],
+  .segment[data-level='safe'] {
+    --segment-fg: var(--level-safe-fg);
+    --chip-bg: var(--level-safe-chip);
+  }
+
+  .chip[data-level='low'],
+  .segment[data-level='low'] {
+    --segment-fg: var(--level-low-fg);
+    --chip-bg: var(--level-low-chip);
+  }
+
+  .chip[data-level='medium'],
+  .segment[data-level='medium'] {
+    --segment-fg: var(--level-medium-fg);
+    --chip-bg: var(--level-medium-chip);
+  }
+
+  .chip[data-level='high'],
+  .segment[data-level='high'] {
+    --segment-fg: var(--level-high-fg);
+    --chip-bg: var(--level-high-chip);
+  }
+}

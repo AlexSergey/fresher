@@ -3,6 +3,9 @@
 **Status:** 🔨 awaiting the user's walk · **Version:** 0.2.0 · **Date:** 2026-11-23 ·
 **Modules:** core, engine, testing, sandbox, e2e, app, app/tauri, app/ui, scripts, repo, docs
 
+> Plan [042](../042-plain-interface/readme.md) replaced Review's two parts, the danger zone and Scan's question before
+> a Select all; the agreement, the High tick (unused while High is withheld) and the text check stay.
+
 Written as a one-file draft on 2026-11-22 and turned into plans and steps the same day from a read of the code on
 `main` (33d51a6c). Approved by the user's delegation of 2026-11-22: build autonomously, take the recommended decisions
 and the agent's calls, write down what the user must look at. The design, with its agent's calls:

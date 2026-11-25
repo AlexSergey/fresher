@@ -7,7 +7,7 @@
 path = "home/project"
 
 [[file]]
-path = "home/project/fresher-trial-cache/blob.bin"
+path = "home/project/Sample app cache/blob.bin"
 size = 12582912
 fill = "data"
 age = "400d"

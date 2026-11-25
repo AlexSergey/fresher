@@ -1,0 +1,34 @@
+@layer components {
+  .badge {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--level-safe-icon-bg);
+    color: var(--level-safe-fg);
+  }
+
+  .badge[data-size='small'] {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .badge[data-level='low'] {
+    background: var(--level-low-icon-bg);
+    color: var(--level-low-fg);
+  }
+
+  .badge[data-level='medium'] {
+    background: var(--level-medium-icon-bg);
+    color: var(--level-medium-fg);
+  }
+
+  .badge[data-level='high'] {
+    background: var(--level-high-icon-bg);
+    color: var(--level-high-fg);
+  }
+}

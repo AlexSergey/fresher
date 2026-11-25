@@ -6,7 +6,8 @@
 
 ## What it is
 
-Language, image and speech models that programs downloaded from Hugging Face, one folder per model. Made by programs that use Hugging Face's libraries (Python scripts, notebooks, local AI apps).
+AI models for text, images or speech that programs downloaded from Hugging Face, one folder per model. Made by programs
+that use Hugging Face, such as Python scripts and local AI apps.
 
 ## Where it lives
 
@@ -16,7 +17,8 @@ The tool's sign: the folder holds both `blobs` and `snapshots`, the two parts Hu
 
 ## What happens if you remove it
 
-The model's folder goes to the Trash. A program that needs the model downloads it again; until then, folders that link to its files see them missing. Yes, by download the next time a program asks for it, which needs the network and can take long for a big model. A gated or private model also needs your Hugging Face login.
+A program that needs the model downloads it again; until then, links to its files stop working. Yes, by download when a
+program asks for it, which can take long; a private model also needs your Hugging Face login.
 
 ## How the app decides
 

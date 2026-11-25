@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, InstallRecords, InstalledApps, KnownFolders, ModuleId, OpenFiles,
-    Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
+    AccessProbe, Build, Clock, CommandRunner, HighLevel, InstallRecords, InstalledApps, KnownFolders, ModuleId,
+    OpenFiles, Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
@@ -57,6 +57,8 @@ pub struct SandboxMode {
     trash: SandboxTrash,
     /// The one module registered, for an autotest of its case file; `None` (the app's) registers every module.
     only: Option<ModuleId>,
+    /// Whether its engine offers High findings: withheld, as in the app, unless the autotest offers it.
+    high: HighLevel,
 }
 
 /// Why sandbox mode does not start: the app then stops instead of running anywhere else.
@@ -97,7 +99,7 @@ impl SandboxEngineError {
 impl SandboxMode {
     /// The sandbox at `path`, its cleanups going to `trash`.
     pub fn new(path: impl Into<PathBuf>, trash: SandboxTrash) -> Self {
-        Self { path: path.into(), trash, only: None }
+        Self { path: path.into(), trash, only: None, high: HighLevel::Withheld }
     }
 
     /// The same mode with only `module` registered, as the autotest of a case file naming it runs; no module when the
@@ -105,6 +107,13 @@ impl SandboxMode {
     #[must_use]
     pub fn only(self, module: ModuleId) -> Self {
         Self { only: Some(module), ..self }
+    }
+
+    /// The same mode with High findings offered. For the sandbox autotest only, which runs a case file's High
+    /// positives; the app's sandbox mode withholds High, as the app does.
+    #[must_use]
+    pub fn offering_high(self) -> Self {
+        Self { high: HighLevel::Offered, ..self }
     }
 
     /// The mode the environment asks for, read through `var`: `FRESHER_SANDBOX` (an absolute path) and
@@ -124,7 +133,7 @@ impl SandboxMode {
         if !path.is_absolute() {
             return Err(SandboxRefusal::NotAbsolute { path });
         }
-        Ok(Some(Self { path, trash, only: None }))
+        Ok(Some(Self { path, trash, only: None, high: HighLevel::Withheld }))
     }
 
     /// The sandbox folder as it was named.
@@ -296,6 +305,7 @@ pub(crate) fn compose(
         only: mode.only,
         apps,
         installs: ports.installs,
+        high: mode.high,
     })?;
     Ok((engine, sandbox))
 }

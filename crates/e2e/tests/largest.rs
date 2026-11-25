@@ -24,8 +24,8 @@ mod flow;
 #[cfg(test)]
 mod paths {
     /// The trial cache the `trial` module claims, and the file in it.
-    pub(crate) const CLAIMED: &str = "home/project/fresher-trial-cache";
-    pub(crate) const CLAIMED_FILE: &str = "home/project/fresher-trial-cache/blob.bin";
+    pub(crate) const CLAIMED: &str = "home/project/Sample app cache";
+    pub(crate) const CLAIMED_FILE: &str = "home/project/Sample app cache/blob.bin";
     pub(crate) const LIBRARY_FILE: &str = "home/Library/Application Support/Big/data.bin";
     pub(crate) const TRASH_FILE: &str = "home/.Trash/old.dmg";
     pub(crate) const HIDDEN_FILE: &str = "home/.android/avd/disk.img";
@@ -289,7 +289,7 @@ mod negative {
         assert!(flow.findings().iter().any(|(_, path)| path == CLAIMED), "the trial module claims it");
         assert_not_listed(&flow, "home/project");
         let project = flow.place(Some("home/project")).unwrap();
-        assert_eq!(row(&project, "fresher-trial-cache"), (Offer::Withheld(Withheld::Explained), false));
+        assert_eq!(row(&project, "Sample app cache"), (Offer::Withheld(Withheld::Explained), false));
         assert_not_pickable(&flow, CLAIMED);
         let state = flow.engine.disk_state().unwrap().unwrap();
         assert_eq!(state.find(&flow.path(CLAIMED_FILE)), None, "a claimed folder is one node: nothing inside to pick");

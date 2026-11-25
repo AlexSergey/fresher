@@ -171,7 +171,7 @@ No database: the app keeps its own state in small plain files, with nothing to i
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,
   `ignored`, `permissions`, or `module` for every module's) and its **effect** (`now`, or `next-scan`: a change marks
-  the last scan, and the UI offers "Rescan to apply"; the app never rescans on its own). The kinds are `switch`,
+  the last scan, and the UI offers "Scan again to apply it"; the app never rescans on its own). The kinds are `switch`,
   `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder), `ids` (of
   categories, modules or groups, checked by what they hold: `IdOf`) and `paths` (the ignore lists). `reset_settings` puts every setting but the ignore lists back to its default in one save.
 - **The ignore list** (`core.ignore.modules`, `core.ignore.groups`, `core.ignore.categories`, `core.ignore.paths`):
@@ -189,6 +189,17 @@ No database: the app keeps its own state in small plain files, with nothing to i
   `core.agreement.accepted-at`), written only by `Engine::accept_agreement`; every prepare and every confirm checks it
   (`BlockedReason::Agreement`, after the settings file and before the journal; [`removal.md`](./removal.md), "Fail
   closed").
+- **The High switch** (plan 042; `HighLevel::{Offered, Withheld}`, `crates/core/src/danger.rs`): a required argument
+  of `Engine::new` and `Engine::with_cleanup`, set by the app (`app/tauri/src/compose.rs`, `sandbox.rs`): `Withheld`
+  in every build of the first release, development and sandbox mode included; tests and the sandbox autotest pass
+  `Offered` (a case file with `high = "withheld"` runs as the app does). `Withheld` (`crates/engine/src/withheld.rs`)
+  leaves out of every answer a finding whose own level or category is High: pages, `finding`, totals, the found size,
+  `explained_under`, "Can be freed" on the map, a module's categories and choices (an empty choice dropped), its
+  left-outs, insight parts at High, an app page's footprint items of a High kind and an Apps row's parts of a High
+  kind; and it refuses with `CommandError::HighWithheld` every prepare holding a High item (first in
+  `rehearse_and_keep`, before the agreement and settings checks), `pick_own_item` and `prepare_uninstall(_,
+  Everything)`. `AppInfo.high` reports it to the UI. The rule:
+  [`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md), "High is withheld in the first release".
 - **Atomic writes**: a temporary file in the same folder, `fsync`, then a rename.
 - **The version policy**: every file the app writes carries `format` and `version`. What holds the user's decisions or
   history (settings, the cleanup journal, history points) is migrated forward one version at a time; what can be
@@ -298,8 +309,8 @@ No database: the app keeps its own state in small plain files, with nothing to i
 ## The storage map
 
 Plan [012](../plans/012-storage-map/readme.md): where the space of a volume went, in parts that add up to its
-capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartKind`, `RemainderReason`, `MeaningGroup`,
-`PlaceView`, `DiskSpace`); the engine builds them; the UI draws them and decides nothing.
+capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartKind`, `SummaryPart`, `RemainderReason`,
+`MeaningGroup`, `PlaceView`, `DiskSpace`); the engine builds them; the UI draws them and decides nothing.
 
 - **The parts**, in this order, each with a core-given name, description and danger tone: Explained (the findings of
   the modules; the only part offered for cleaning), Your folders (scanned, claimed by no module), Not scanned yet
@@ -307,6 +318,12 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
   memory volume, the user's other volumes by their own names, the disk's own space (capacity minus free minus every
   mounted volume's used space), and Free. `VolumeMap::new` is the only way to build a map and refuses parts that do
   not add up to the capacity or come out of order.
+- **The summary** (`VolumeMap.summary`, `SummaryKind`, plan 042): what the disk card draws, the parts merged in the
+  core into five, always in this order, each with a core-given name and one-sentence description
+  (`core.storage.summary.<kind>.*`): Can be freed (Explained), Your files and apps (Your folders, Not scanned yet, the
+  remainder, the other volumes), macOS (the system's volumes), System space (the virtual memory volume and the disk's
+  own space) and Free. The UI draws only the summary; the detailed parts stay in the core for the by-meaning and
+  place queries.
 - **The remainder always says why**: its reasons are folders the scan could not read (with the permission that would
   show them), local snapshots and the file system's bookkeeping, and files that changed while the scan ran. It is
   "Outside the scanned folders" when the roots do not cover the volume. A part with no reason is not drawn; there is
@@ -383,6 +400,8 @@ categories), the engine builds them (`crates/engine/src/apps/`), the UI renders 
   as radios, the notice, Uninstall...); the sidebar lists Scan, Largest, Apps, Review, Cleanups and Settings. The
   cleanup state carries an `origin` (`selection` or `uninstall`): a finished uninstall keeps the Scan selection, and a
   refusal of the confirmation shows on Review for either origin.
+- **While High is withheld** (plan 042): an app's page offers only "Keep my settings" and lists no file of a High
+  kind, an Apps row shows no part of a High kind nor counts its bytes, and an uninstall of everything is refused.
 
 ## The largest files
 
@@ -410,6 +429,8 @@ the user can choose one. The core judges, the UI renders.
 - **The commands** are `get_largest`, `get_largest_place` and `pick_own_item` (`app/tauri/src/largest_commands.rs`).
 - **UI**: the screen `screens/largest/` (`Screen` `largest`; Files and Folders as tabs, the filters, a selection bar) and
   the component `product/own-item-row/`; the sidebar lists Scan, Largest, Apps (plan 036), Review, Cleanups and Settings.
+- **Hidden while High is withheld** (plan 042): a pick is High, so the sidebar leaves Largest out and the core refuses
+  `pick_own_item` (`HighWithheld`). The two queries are still answered; nothing in the UI asks them.
 
 ## Problems and reasons
 
@@ -533,26 +554,45 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   category and `Overview.found`), the settings, the access status, the dictionary, the last failure. A batch of
   findings only marks the overview stale; `state/refresh.ts` asks `get_overview` at most 4 times a second during a
   scan and once more at its end; progress reaches React at most 10 times a second.
-- **The storage map** (`state/storage.ts`, `state/navigation.ts`): the store keeps the core's `StorageMap`, asked with
-  the overview and again when a scan starts or ends; the by-meaning groups of the home volume are asked of the core for the
-  ring's split by level only (the place pages and their cache are gone). **Scan** (`screens/scan/`) opens on the hero
-  (`product/scan-hero/`): a ring of the home volume made of the map's parts, the cleanable part split by danger level,
-  Free as the gap, and a legend whose "i" shows the core's descriptions; hovering the ring or the legend highlights
-  the other. Under it the cards are grouped in danger zones from Safe to High (`product/danger-zone/`), each with the
-  core's meaning of the level and a "Select all"; a card has Details and a settings menu (Ignore category, Ignore
-  module), and every level has its icon, and Medium and High use alert icons. "Found, but left out" lists the categories that only have
-  left-out lines. The selection bar (`product/selection-bar/`) shows on Scan and on a category's details. Other
-  volumes keep their map block (`product/storage-map/`), drawn in the core's order.
+- **The storage map** (`state/connect.ts`, `state/reduce.ts`): the store keeps the core's `StorageMap`, asked with the
+  overview and again when a scan starts or ends; the UI draws only each volume's five-part summary
+  (`VolumeMap.summary`). The detailed parts stay in the core for its by-meaning and place queries; no screen asks
+  for them now.
+- **Scan** (`screens/scan/`, plan 042): a toolbar ("Scan", when the last scan finished as "2 minutes ago",
+  formatted by `i18n/relative-time.ts` from the core's time and an injected wall clock, `state/wall-clock.ts`; Scan
+  again, or Stop while scanning), then **the disk card** (`product/disk-card/`): the ring of the home volume made of
+  the summary's four used parts with Free as the track, "<size> can be freed" in its centre (Scan before the first
+  scan), the disk's name and "<free> free of <capacity>", and a two-column legend with an "i" per part holding the
+  core's description; hovering a legend row or its arc highlights the other; a part too small to see gets a minimum
+  arc. Other volumes are compact disk cards under it. **While scanning** the disk card gives way to the scanning card
+  (`product/scanning-card/`): the swoosh (`design/data/swoosh-progress/`) fills to `ScanProgress.expected`, the core's
+  estimate of what the scan walks (`screens/scan/progress.ts`: bytes against it, clamped and held at 99 % until the
+  scan ends, the share of modules finished without an estimate), with the percent, "Looking at <module>" and the size
+  found so far; the tiles found so far show without controls, with one placeholder. Then **the separator** "What you
+  can remove" (`design/layout/section-separator/`) and **the groups** (`screens/scan/scan-groups.tsx`), one per
+  level, its heading the core's `core.danger.<level>.zone` and `.meaning` with the group's icon; Safe and Usually
+  safe have a "Select all" (its description in a tooltip), Look before removing has none. **Tiles**
+  (`product/category-tile/` on `design/layout/tile/`, two columns in `product/category-grid/`): the category's icon
+  badge (`product/category-icon/`, the core's `CategoryIcon` mapped to one `lucide-react` shape), its name and its
+  `.line`, a checkbox, the size and count, Details and the `⋯` menu; the border tinted by the group. "Found, but left
+  out" and "Shown, never removed" (insights) follow the groups. The selection bar (`product/selection-bar/`) floats
+  at the bottom on Scan and on a category's details; it counts what goes and, with nothing going, the categories to
+  check in Review.
 - **Lists are paged**: `state/findings.ts` keeps at most 10 pages of 100 findings per app, least recently used
   dropped; `useFindings(view)` gives a virtualised list its total and the rows it shows. A category's details ask the core
   for `FindingsQuery.order: largest`. The pages start again on an ignore change (`CoreState.ignoreChanges`, bumped by
   a `core.ignore.*` setting change) as on a cleanup's removal, so an ignored row leaves at once and a restore brings
   it back.
-- **Selection** (`state/selection.ts`): findings, and whole categories minus the findings ticked off in them; the
-  action `choose { categories, within }` drops the module's own selection and selects the categories of a module
-  choice that hold a finding ("Remove everything", "Keep settings"), touching nothing outside the module; emptied
-  when a scan starts; nothing is pre-selected; a zone's Select all ticks that zone only, and Review with its confirmation stays the gate. Its total is a preview summed with
-  the core's rule; the confirmation shows only the core's cleanup plan (plan 008).
+- **Selection** (`state/selection.ts`): findings, and whole categories minus the findings ticked off in them, and
+  `toCheck`: the "Look before removing" categories (a `BY_HAND` level, Medium or High) the user brought to Review,
+  none of whose findings goes until the user ticks it there or on its details, or ticks the Review tile's
+  all-checkbox (`tick-all`); a `BY_HAND` category is never selected whole for the user, nor is one whose level the
+  overview does not tell. The action `choose { categories, within }` drops the module's own selection and selects
+  the categories of a module choice that hold a finding ("Remove everything", "Keep settings"), a `BY_HAND` one
+  only to check, touching nothing outside the module; emptied when a scan starts; nothing is pre-selected; a group's
+  Select all (Safe and Usually safe only) ticks that group only, and Review with its confirmation stays the gate. The
+  core receives only what goes. Its total is a preview summed with the core's rule; the confirmation shows only the
+  core's cleanup plan (plan 008).
 - **Cleanup** (`state/cleanup.ts`): `idle`, `preparing`, `confirming { plan }`, `running`, `finished { report }`,
   `refused { refusal }`, from the review screen's button to the result; the commands are sent from
   `state/cleanup-actions.ts`, which is also where the agreement is met: before a prepare it asks the core
@@ -560,16 +600,24 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   accepted; one acceptance per click, then the prepare goes on. The sheet is not the guard, the engine is. The
   confirmation sends back exactly the plan's own summary (`confirmationOf`) and, for a High plan, the tick
   `highRiskUnderstood` of the dialog (cleared at every opening); a finished cleanup empties the selection, and `findings-removed` drops the finding pages and marks the overview stale.
-- **The cleanup's screens** (plan [008/07](../plans/008-safe-removal/07-interface/readme.md)): the review screen's
-  safe part and danger zone (Medium and High, apart by a border; nothing in it pre-selected), and its
-  panel (`screens/review/cleanup-panel.tsx`) asks the core for a plan and shows it in the confirmation
-  (`product/confirm-dialog/`: Cancel first, the permanent choice off and red when ticked, what will not be removed and
-  why); then the progress with Stop (`product/cleanup-progress/`) and the result (`product/result-summary/`, the
-  space measured beside the estimate). The Cleanups screen (`screens/cleanups/`) lists the history from the journal;
-  one cleanup shows each item with its outcome and puts back one item or all still in the Trash. Every text of an
-  outcome or a reason comes from the core.
+- **The cleanup's screens** (plan [008/07](../plans/008-safe-removal/07-interface/readme.md), rebuilt by plan 042):
+  Review (`screens/review/`) opens on **the summary card** (`review-summary.tsx`: the size that goes to the Trash and
+  its item count, "You can put them back from Cleanups", a bar split by group and a chip per group; the Look chip says
+  how many items are not checked yet), the separator "What goes", then **one tile per category**
+  (`review-tile.tsx`, grouped by `review-groups.ts`, by level then size): the all-checkbox (the only sender of
+  `tick-all`), its icon, name and line (Look: "tick each one you have checked"), a pill "<n> of <m> checked" (green
+  when all, amber when not; "<n> picked" for single picks), its size, and every item with its own checkbox, name and
+  short path (`product/paths/short-path.ts`: `shortPath(path, AppInfo.home)` shows `~` for the home at a component
+  boundary; the full path stays in the tooltip and the accessible name). A Look category brought from Scan comes
+  with nothing ticked (`Selection.toCheck`). **The bar** (`review-bar.tsx`, "Ready to remove"): count, size, Clear,
+  Move to the Trash, inactive while nothing is ticked. Its panel (`screens/review/cleanup-panel.tsx`) asks the core
+  for a plan and shows it in the confirmation (`product/confirm-dialog/`: Cancel first, the permanent choice off and
+  red when ticked, the High tick for a High plan, what will not be removed and why); then the progress with Stop
+  (`product/cleanup-progress/`) and the result (`product/result-summary/`, the space measured beside the estimate).
+  The Cleanups screen (`screens/cleanups/`) lists the history from the journal; one cleanup shows each item with its
+  outcome and puts back one item or all still in the Trash. Every text of an outcome or a reason comes from the core.
 - **The Trash line** (plan 037; `product/trash-line/`, fed by `screens/scan/use-trash.ts`): under the scan screen's
-  ring, one line per `TrashLine` of `get_trash`, "Waiting in the Trash: 23 GB, 20 GB of it from cleanups here", the
+  disk card, one line per `TrashLine` of `get_trash`, "Waiting in the Trash: 23 GB, 20 GB of it from cleanups here", the
   date the app's share leaves by itself when the core gives one, and **Open Trash**, the only action (never one that
   empties; a test fails on any button named so). The view is asked again on mount, after a scan, after a finished
   cleanup and when the window gains focus; a failed call hides the line and shows nothing. The result of a cleanup
@@ -579,28 +627,50 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   and quit** stops after the item in flight. The Dock's Quit cannot be held
   ([`../known-issues/app-quit-during-cleanup.md`](../known-issues/app-quit-during-cleanup.md)).
 - **Described, not cleaned** (plan 032; `screens/scan/described-only.tsx`, `product/insight-card/`,
-  `screens/insight/`): under the danger zones, a section of one card per insight of the last scan (the core's title,
-  summary and figures; no checkbox, nothing selectable, not counted in the zones, the selection bar or the ring). A
+  `screens/insight/`): under the groups, a section of one card per insight of the last scan (the core's title,
+  summary and figures; no checkbox, nothing selectable, not counted in the groups, the selection bar or the ring). A
   card has Details, which opens the insight screen (`Screen.insight`, a module and an identity): the figures, one block
   per part with its detail, effect, danger level as wording and its command with **Copy** (the web view's clipboard;
   the text stays selectable as the fallback, and a failed copy says so), and the notes. Every sentence is the core's;
   the UI owns only the section's heading and sentence, Details, Back, Copy, Copied and Could-not-copy. The screen
   returns to Scan when the insight is no longer in the last scan.
-- **Modules by group**: Settings lists modules under their group (`product/module-groups.ts`, texts
-  `core.group.<group>.name`); the sidebar lists no module. A module is ignored from a card's settings menu and
-  restored in Settings → Ignored.
-- **A category's details** (`screens/category/`): the category's findings (each with a path has a settings menu,
-  "Ignore this item"; a tool's object has none, and Review's rows have none), its left-out lines, and the choices of its
-  module ("Remove everything", "Keep settings"); the level heading reads "Danger level". It replaced the module pages.
-- **Settings → Ignored** (`screens/settings/ignored-group.tsx`) has three tabs, "Ignored groups", "Ignored
-  modules" and "Ignored items" (plan 005's categories and paths), each with its count; the tabs are the design
-  system's `Tabs` (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). Scan's "N ignored"
-  link opens the first tab that has an entry (`Screen.settings.tab`).
+- **A category's details** (`screens/category/`, plan 042): Back to Scan; the name, the group (a dot and its name),
+  size and count; three answers side by side (What it is, with who makes it under it; If you remove it; Comes back?);
+  each left-out line as an "i" bar (`product/left-out-lines/`); the module's choices ("Remove everything", "Keep
+  settings"); the items (`FindingRow` variant `details`: the name first, the path small under it, no level badge),
+  with "Select all" for Safe and Usually safe only. It replaced the module pages.
+- **One menu on every row and tile** (`design/primitives/menu/`, `screens/use-row-menu.ts`): Show in Finder and
+  Ignore this item (rows with a path), a separator, Ignore all <category>; the pointed item
+  fills with the accent colour; an item carries only its label, no hint, and no menu turns a module off (Settings
+  does). A tool's object has only the category item. The same menu is on the details' rows,
+  Review's rows and Scan's tiles.
+- **Settings** (`screens/settings/`, plan 042): a second sidebar (`settings-sidebar.tsx`): the search, then General,
+  Scan, Ignored, Permissions, About, then "What it looks for", the module groups as a tree that opens and closes
+  (`product/module-groups.ts`, texts `core.group.<group>.name`; a group holding the current page stays open), each
+  module a page (`settings-page.tsx`: its group, its name, its description, its settings, its on/off switch last).
+  Fresher's own data sits on General. **The search** (`settings-search.ts`, `settings-search-view.tsx`) matches
+  labels, descriptions (with the current value) and section names; results list "Group › Module", the setting's name
+  and its description with the match marked; the tree dims sections without a match and counts matches; Enter in the
+  field or a click opens the page with the setting focused (`Screen.settings.focus`, `focus-setting.ts`); Esc clears.
+  A whole-number setting is a slider (`design/primitives/slider/`) from its minimum to its maximum, sent on release,
+  with a number field beside it; the core's refusals stay. The app's sidebar lists no module; a module is ignored
+  from a menu and restored in Settings → Ignored.
+- **Settings → Ignored** (`screens/settings/ignored-group.tsx`) has three tabs, "Sections", "Not looked for" and
+  "Items" (plan 005's categories and paths), each with its count; the tabs are the design system's `Tabs`
+  (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). Scan's "N ignored" link opens the first tab
+  that has an entry (`Screen.settings.tab`).
+- **The High switch in the UI**: `AppInfo.high` says whether the core offers High; while it is `withheld` the sidebar
+  leaves out Largest (`screens/frame-sidebar.tsx`; also hidden until the app info is known). Everything else that
+  High would show (the groups, Review's tiles, an app page's choices) comes from the core, which leaves it out.
+- **The design pieces** of plan 042: the mockups' colours as tokens (`design/tokens/`), the primary button's sheen and
+  the menu's accent hover, the section separator, the tile, the category icon badge, the disk card, the swoosh, the
+  slider, and the logo beside "Fresher" in the sidebar (`design/brand/logo-mark.tsx`).
 - **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`scan`, `category` with its category,
-  `largest`, `review`, `cleanups`, `cleanup` with its cleanup, `insight` with its module and identity, `settings` with an optional tab); no router. `screenToShow` returns
-  to Scan when a shown category is no longer among the categories the core lists. The sidebar has Scan, Largest, Review,
-  Cleanups and Settings and scrolls in a short window. When the focused element leaves the screen, the focus goes to the
-  screen's heading (`screens/keep-focus.ts`).
+  `largest`, `review`, `cleanups`, `cleanup` with its cleanup, `insight` with its module and identity, `settings` with
+  its page, an optional tab and an optional setting to focus); no router. `screenToShow` returns to Scan when a shown
+  category is no longer among the categories the core lists. The sidebar has Scan, Largest (only while High is
+  offered), Apps, Review, Cleanups and Settings and scrolls in a short window. When the focused element leaves the
+  screen, the focus goes to the screen's heading (`screens/keep-focus.ts`).
 
 ### The demo player
 

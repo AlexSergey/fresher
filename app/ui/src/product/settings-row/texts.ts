@@ -50,3 +50,15 @@ export const optionText = (key: string, option: string): string => {
 // A setting's own texts, found by convention: `<key>.label` and `<key>.description`.
 export const settingText = (key: string, part: 'description' | 'label'): string =>
   tText({ args: {}, key: `${key}.${part}` });
+
+// The unit written after a number's field and in its slider's name; a number without one has none.
+export const unitText = (unit: null | Unit): string | undefined => {
+  switch (unit) {
+    case 'bytes':
+      return t('ui.settings-row.unit.bytes');
+    case 'days':
+      return t('ui.settings-row.unit.days');
+    case null:
+      return undefined;
+  }
+};

@@ -1,6 +1,6 @@
 import { stories as storiesOf } from '../../gallery/story';
 import { DEMO_LEFT_OUT } from '../../test/demo-scan';
-import { withTexts } from '../scan-hero/story-data';
+import { withTexts } from '../../test/story-data';
 import { LeftOutLines } from './left-out-lines';
 
 export const stories = storiesOf('LeftOutLines', {

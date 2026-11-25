@@ -18,6 +18,10 @@
     overflow: visible;
   }
 
+  .ring[data-glow='off'] .glow {
+    display: none;
+  }
+
   .glow {
     filter: blur(10px);
     opacity: 0.45;
@@ -25,7 +29,7 @@
 
   .track {
     fill: none;
-    stroke: var(--border-subtle);
+    stroke: var(--ring-track, var(--border-subtle));
     stroke-width: var(--ring-stroke);
   }
 
@@ -69,6 +73,18 @@
 
   .arc[data-tone='high'] {
     stroke: var(--level-high-fg);
+  }
+
+  .arc[data-tone='can-be-freed'] {
+    stroke: var(--part-can-be-freed);
+  }
+
+  .arc[data-tone='files-and-apps'] {
+    stroke: var(--part-files-and-apps);
+  }
+
+  .arc[data-tone='system-space'] {
+    stroke: var(--part-system-space);
   }
 
   .arc[data-tone='your-folders'] {

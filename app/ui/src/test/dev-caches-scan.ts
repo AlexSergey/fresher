@@ -274,6 +274,6 @@ export const DEV_CACHES_DICTIONARY: Dictionary = {
   ...FINDING_DICTIONARY,
   ...devCachesTexts,
   'core.group.development.description':
-    'Tools for building software: IDEs, package managers, containers and project folders.',
+    'Tools for writing software: code editors, package managers, containers and projects.',
   'core.ignore.groups.description': 'Hides everything the modules of this group find and never cleans it.',
 };

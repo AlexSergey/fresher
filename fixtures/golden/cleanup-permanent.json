@@ -9,7 +9,7 @@
         "outcome": {
           "kind": "deleted"
         },
-        "path": "~/home/sandbox/fresher-trial-cache",
+        "path": "~/home/sandbox/Sample app cache",
         "putBack": null,
         "sizes": {
           "allocated": 0,
@@ -29,7 +29,7 @@
           "moved": 2,
           "skipped": 0
         },
-        "path": "~/home/sandbox/fresher-trial-kept",
+        "path": "~/home/sandbox/Old sample downloads",
         "putBack": null,
         "sizes": {
           "allocated": 0,
@@ -101,14 +101,14 @@
       "done": 3,
       "items": [
         {
-          "finding": 5,
+          "finding": 4,
           "index": 0,
           "outcome": {
             "kind": "deleted"
           }
         },
         {
-          "finding": 6,
+          "finding": 3,
           "index": 1,
           "outcome": {
             "kind": "emptied",
@@ -117,7 +117,7 @@
           }
         },
         {
-          "finding": 3,
+          "finding": 5,
           "index": 2,
           "outcome": {
             "kind": "deleted"
@@ -128,10 +128,10 @@
     },
     {
       "findings": [
-        5,
-        6,
+        4,
         3,
-        4
+        5,
+        6
       ],
       "scan": 1,
       "type": "findings-removed"
@@ -182,9 +182,9 @@
           "category": "trial.caches",
           "danger": "safe",
           "index": 0,
-          "key": "~/home/sandbox/fresher-trial-cache",
+          "key": "~/home/sandbox/Sample app cache",
           "more": [],
-          "path": "~/home/sandbox/fresher-trial-cache",
+          "path": "~/home/sandbox/Sample app cache",
           "reason": {
             "args": {},
             "key": "trial.rule.cache.reason"
@@ -201,9 +201,9 @@
           "category": "trial.kept",
           "danger": "low",
           "index": 1,
-          "key": "~/home/sandbox/fresher-trial-kept",
+          "key": "~/home/sandbox/Old sample downloads",
           "more": [],
-          "path": "~/home/sandbox/fresher-trial-kept",
+          "path": "~/home/sandbox/Old sample downloads",
           "reason": {
             "args": {},
             "key": "trial.rule.kept.reason"
@@ -302,12 +302,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/not-a-sandbox/fresher-trial-cache"
+        "path": "home/not-a-sandbox/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 4096,
-        "path": "home/not-a-sandbox/fresher-trial-cache/blob.bin"
+        "path": "home/not-a-sandbox/Sample app cache/blob.bin"
       },
       {
         "kind": "dir",
@@ -332,12 +332,12 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/protected/fresher-trial-cache"
+        "path": "home/protected/Sample app cache"
       },
       {
         "kind": "file",
         "logical_size": 4096,
-        "path": "home/protected/fresher-trial-cache/blob.bin"
+        "path": "home/protected/Sample app cache/blob.bin"
       },
       {
         "kind": "dir",
@@ -352,7 +352,7 @@
       {
         "kind": "dir",
         "logical_size": 0,
-        "path": "home/sandbox/fresher-trial-kept"
+        "path": "home/sandbox/Old sample downloads"
       },
       {
         "kind": "file",

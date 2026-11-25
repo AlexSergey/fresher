@@ -17,8 +17,8 @@ mod tests {
         CapabilityState, CapabilityText, CategoryText, CommandError, Completeness, DangerLevel, Ended, FootprintKind,
         ItemKind, KeptReason, KnownFolder, LastUse, Manager, MapPart, ModuleGroup, ModuleOutcome, MountKind,
         NotOffered, NotScanned, PartKind, Place, PlaceName, RemainderReason, Removability, SandboxTrashAt, ScanOutcome,
-        SettingGroup, SettingsSchema, SkipCode, SkipReason, Text, TextArg, TextKey, ToolId, TrashState, Unchanged,
-        UninstallChoice, VolumeMap, Withheld,
+        SettingGroup, SettingsSchema, SkipCode, SkipReason, SummaryKind, Text, TextArg, TextKey, ToolId, TrashState,
+        Unchanged, UninstallChoice, VolumeMap, Withheld,
     };
 
     use crate::cleanup::outcome_sample;
@@ -44,18 +44,17 @@ mod tests {
         serde_json::to_value(value).unwrap().as_str().unwrap().to_owned()
     }
 
-    /// The danger levels' names, meanings and zones, and the names and meanings of Review's two parts.
+    /// The danger levels' names, meanings and zones.
     fn danger_keys() -> Vec<TextKey> {
         let key = |key: String| TextKey::new(key).unwrap();
-        let levels = DangerLevel::ALL.into_iter().flat_map(|level| {
-            let level = kebab_name(level);
-            ["name", "meaning", "zone"].map(|text| key(format!("core.danger.{level}.{text}")))
-        });
-        let parts = ["safe", "danger"]
-            .into_iter()
-            .flat_map(|part| ["name", "meaning"].map(|text| key(format!("core.danger.part.{part}.{text}"))));
 
-        levels.chain(parts).collect()
+        DangerLevel::ALL
+            .into_iter()
+            .flat_map(|level| {
+                let level = kebab_name(level);
+                ["name", "meaning", "zone"].map(|text| key(format!("core.danger.{level}.{text}")))
+            })
+            .collect()
     }
 
     /// Every key the core can emit, built from the enums, the error codes and the core's settings.
@@ -197,7 +196,7 @@ mod tests {
         summaries.into_iter().chain(reasons).chain(installed_by).chain([crate::uninstall_title("Editor")]).collect()
     }
 
-    /// The own-file category's five texts, the title of a picked item and the two reasons.
+    /// The own-file category's six texts, the title of a picked item and the two reasons.
     fn own_file_keys() -> Vec<TextKey> {
         let category = crate::own_file();
         let texts = CategoryText::ALL.map(|text| category.text_key(text));
@@ -216,14 +215,16 @@ mod tests {
         crate::own_file_title("Movie.mov")
     }
 
-    /// The storage map's keys: every part's name and description, the remainder's names, its reasons, the named
-    /// places, the volume kinds, the volume's notes and why a folder of the place view was not scanned.
+    /// The storage map's keys: every part's and summary part's name and description, the remainder's names, its
+    /// reasons, the named places, the volume kinds, the volume's notes and why a folder of the place view was not
+    /// scanned.
     fn storage_keys() -> Vec<TextKey> {
         let remainders = [true, false].map(|outside_scan| PartKind::Remainder { outside_scan, reasons: vec![] });
         let parts = crate::storage::every_kind()
             .into_iter()
             .chain(remainders)
             .flat_map(|kind| [kind.name_key(), kind.description_key()]);
+        let summary = SummaryKind::ALL.into_iter().flat_map(|kind| [kind.name_key(), kind.description_key()]);
         let reasons = crate::storage::every_reason().into_iter().map(RemainderReason::text_key);
         let trash = [PlaceName::Trash.name_key(), PlaceName::Trash.description_key()].into_iter().flatten();
         let kinds = [MountKind::Internal, MountKind::External, MountKind::Network].map(MountKind::text_key);
@@ -233,7 +234,15 @@ mod tests {
             .into_iter()
             .filter(|folder| folder.is_walked_place())
             .map(|folder| Place { folder, path: std::path::PathBuf::new() }.name_key());
-        parts.chain(reasons).chain(trash).chain(kinds).chain(notes).chain(not_scanned).chain(walked).collect()
+        parts
+            .chain(summary)
+            .chain(reasons)
+            .chain(trash)
+            .chain(kinds)
+            .chain(notes)
+            .chain(not_scanned)
+            .chain(walked)
+            .collect()
     }
 
     fn volume_notes() -> VolumeMap {
@@ -507,17 +516,15 @@ mod tests {
                 .map(|level| texts.get(&format!("core.danger.{}.zone", super::kebab_name(level))))
                 .collect();
 
-            assert_eq!(zones, [Some("Safe to remove"), Some("Low risk"), Some("Medium risk"), Some("High risk")]);
-        }
-
-        #[test]
-        fn names_both_parts_of_review() {
-            let texts = core_dictionary().unwrap();
-
-            let names: Vec<_> =
-                ["safe", "danger"].map(|part| texts.get(&format!("core.danger.part.{part}.name"))).into();
-
-            assert_eq!(names, [Some("Safe to remove"), Some("Danger zone")]);
+            assert_eq!(
+                zones,
+                [
+                    Some("Safe to remove"),
+                    Some("Usually safe"),
+                    Some("Look before removing"),
+                    Some("Only if you are sure")
+                ]
+            );
         }
     }
 }

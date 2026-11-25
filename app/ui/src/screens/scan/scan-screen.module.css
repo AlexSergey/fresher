@@ -1,14 +1,27 @@
-/* The overview: its title in the toolbar, then the hero, the notices and the cards on the content column. */
+/* Scan: its title and when it was scanned in the toolbar, then the disk card, the notices and the groups on the column. */
 @layer components {
   .title {
     font: inherit;
+  }
+
+  .when {
+    margin-right: var(--space-1);
+    color: var(--text-tertiary);
+    font-size: var(--type-footnote-size);
+    white-space: nowrap;
   }
 
   .content {
     display: flex;
     flex-direction: column;
     padding: var(--space-2) var(--content-inset, var(--size-gutter)) calc(var(--space-12) * 2);
-    gap: var(--space-6);
+    gap: 18px;
+  }
+
+  .start {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-8) 0;
   }
 
   .ignored {
@@ -27,11 +40,5 @@
     margin: 0 auto;
     color: var(--text-secondary);
     text-align: center;
-  }
-
-  .askText {
-    display: grid;
-    color: var(--text-secondary);
-    gap: var(--space-3);
   }
 }

@@ -1,45 +1,10 @@
 {
   "findings": [
     {
-      "category": "trial.caches",
-      "danger": "safe",
-      "key": {
-        "identity": "sandbox/fresher-trial-cache",
-        "module": "trial"
-      },
-      "reason": {
-        "args": {},
-        "key": "trial.rule.cache.reason"
-      },
-      "removal": {
-        "kind": "move-to-trash",
-        "value": "sandbox/fresher-trial-cache"
-      },
-      "sizes": {
-        "allocated": 0,
-        "completeness": "complete",
-        "logical": 1050624,
-        "reclaimable": 0
-      },
-      "subject": {
-        "kind": "path",
-        "value": "sandbox/fresher-trial-cache"
-      },
-      "title": {
-        "args": {
-          "name": {
-            "kind": "text",
-            "value": "fresher-trial-cache"
-          }
-        },
-        "key": "trial.rule.cache.title"
-      }
-    },
-    {
       "category": "trial.kept",
       "danger": "low",
       "key": {
-        "identity": "sandbox/fresher-trial-kept",
+        "identity": "sandbox/Old sample downloads",
         "module": "trial"
       },
       "reason": {
@@ -48,7 +13,7 @@
       },
       "removal": {
         "kind": "empty-folder",
-        "value": "sandbox/fresher-trial-kept"
+        "value": "sandbox/Old sample downloads"
       },
       "sizes": {
         "allocated": 0,
@@ -58,16 +23,51 @@
       },
       "subject": {
         "kind": "path",
-        "value": "sandbox/fresher-trial-kept"
+        "value": "sandbox/Old sample downloads"
       },
       "title": {
         "args": {
           "name": {
             "kind": "text",
-            "value": "fresher-trial-kept"
+            "value": "Old sample downloads"
           }
         },
         "key": "trial.rule.kept.title"
+      }
+    },
+    {
+      "category": "trial.caches",
+      "danger": "safe",
+      "key": {
+        "identity": "sandbox/Sample app cache",
+        "module": "trial"
+      },
+      "reason": {
+        "args": {},
+        "key": "trial.rule.cache.reason"
+      },
+      "removal": {
+        "kind": "move-to-trash",
+        "value": "sandbox/Sample app cache"
+      },
+      "sizes": {
+        "allocated": 0,
+        "completeness": "complete",
+        "logical": 1050624,
+        "reclaimable": 0
+      },
+      "subject": {
+        "kind": "path",
+        "value": "sandbox/Sample app cache"
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "Sample app cache"
+          }
+        },
+        "key": "trial.rule.cache.title"
       }
     },
     {

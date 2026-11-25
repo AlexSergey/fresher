@@ -16,10 +16,15 @@ use tauri::{AppHandle, Runtime, State};
 use crate::events::EventForwarder;
 use crate::shell;
 
-/// The version of the app and the kind of build it is.
+/// The version of the app, the kind of build it is, whether its engine offers High findings and its home folder.
 #[tauri::command]
-pub(crate) fn app_info(build: State<'_, Build>) -> AppInfo {
-    AppInfo { version: env!("CARGO_PKG_VERSION").to_owned(), build: build.inner().clone() }
+pub(crate) fn app_info(build: State<'_, Build>, engine: State<'_, Engine>) -> AppInfo {
+    AppInfo {
+        version: env!("CARGO_PKG_VERSION").to_owned(),
+        build: build.inner().clone(),
+        high: engine.high_level(),
+        home: engine.home_folder(),
+    }
 }
 
 /// Forwards every event of the engine to `channel` from now on, in place of the channel of an earlier subscribe.
@@ -322,7 +327,7 @@ mod tests {
             let error = confirm_cleanup(shell.engine(), serde_json::from_value(echo).unwrap());
 
             assert_eq!(error, Err(Refusal::from(CommandError::PlanMismatch)));
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
             assert!(!shell.trash().exists());
             assert_eq!(get_cleanups(shell.engine(), first_page()).total, 0);
         }
@@ -338,7 +343,7 @@ mod tests {
             let error = confirm_cleanup(shell.engine(), echo(&view));
 
             assert_eq!(error, Err(Refusal::from(CommandError::PlanGone)));
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
         }
 
         #[test]
@@ -372,7 +377,7 @@ mod tests {
 
             until_finished(&events, is_cleanup_finished);
             assert_eq!(view.summary.count, 2);
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
             assert_eq!(listing(tree.root()), before);
             assert!(!shell.trash().exists());
             let detail = get_cleanup(shell.engine(), cleanup).unwrap();
@@ -412,7 +417,7 @@ mod tests {
 
             until_finished(&events, is_cleanup_finished);
             assert_eq!(view.summary.count, 2);
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
             assert_eq!(listing(tree.root()), before);
             assert!(!shell.trash().exists());
             let items = get_cleanup(shell.engine(), cleanup).unwrap().items;
@@ -422,9 +427,8 @@ mod tests {
                     assert_eq!(moved, 0, "{item:?}");
                 }
             }
-            let cache = items
-                .iter()
-                .find(|item| item.path.as_deref() == Some(&tree.root().join("sandbox/fresher-trial-cache")));
+            let cache =
+                items.iter().find(|item| item.path.as_deref() == Some(&tree.root().join("sandbox/Sample app cache")));
             assert!(matches!(cache.map(|item| item.outcome), Some(RecordedOutcome::Failed { .. })), "{items:?}");
         }
 
@@ -466,7 +470,7 @@ mod tests {
             assert_eq!(error, Refusal::from(CommandError::CleaningBlocked { reason }));
             assert_eq!(reason.text().key().as_str(), "core.cleanup.blocked.agreement");
             assert!(get_dictionary(shell.engine(), "en").unwrap().get("core.cleanup.blocked.agreement").is_some());
-            assert!(tree.root().join("sandbox/fresher-trial-cache/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/blob.bin").exists());
             assert!(!shell.trash().exists());
         }
 
@@ -587,7 +591,7 @@ mod tests {
             until_finished(&events, crate::testing::is_cleanup_finished);
             assert!(accepted.is_accepted());
             assert_eq!(get_agreement(shell.engine()), Ok(accepted));
-            assert!(!tree.root().join("sandbox/fresher-trial-cache").exists());
+            assert!(!tree.root().join("sandbox/Sample app cache").exists());
             assert_eq!(std::fs::read_dir(shell.trash()).unwrap().count(), 1);
             assert_eq!(get_cleanups(shell.engine(), first_page()).cleanups[0].cleanup, cleanup);
         }
@@ -615,9 +619,9 @@ mod tests {
             assert!(types.ends_with(&["cleanup-started", "cleanup-items", "findings-removed", "cleanup-finished"]));
             assert_eq!(events.last().map(|event| event["report"]["counts"]["moved"].as_u64()), Some(Some(1)));
             assert_eq!((view.summary.count, view.left_out.len()), (1, 0));
-            assert!(!tree.root().join("sandbox/fresher-trial-cache").exists());
+            assert!(!tree.root().join("sandbox/Sample app cache").exists());
             assert!(tree.root().join("sandbox/keep-me.txt").exists());
-            assert!(tree.root().join("sandbox/fresher-trial-kept/entry.bin").exists());
+            assert!(tree.root().join("sandbox/Old sample downloads/entry.bin").exists());
             assert_eq!(std::fs::read_dir(shell.trash()).unwrap().count(), 1);
             let page = get_cleanups(shell.engine(), first_page());
             assert_eq!((page.total, page.cleanups[0].cleanup, page.cleanups[0].in_trash), (1, cleanup, 1));
@@ -628,7 +632,7 @@ mod tests {
                 put_back(shell.engine(), serde_json::from_value(json!({ "cleanup": cleanup, "items": null })).unwrap());
 
             assert_eq!(back.unwrap().items[0].outcome, PutBackOutcome::PutBack);
-            assert!(tree.root().join("sandbox/fresher-trial-cache/nested/blob.bin").exists());
+            assert!(tree.root().join("sandbox/Sample app cache/nested/blob.bin").exists());
             assert_eq!(get_cleanups(shell.engine(), first_page()).cleanups[0].in_trash, 0);
         }
 
@@ -656,10 +660,22 @@ mod tests {
             };
             shell.app.manage(build.clone());
 
-            let info = app_info(shell.app.state::<Build>());
+            let info = app_info(shell.app.state::<Build>(), shell.engine());
 
             assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
             assert_eq!(info.build, build);
+            assert_eq!(info.high, fresher_core::HighLevel::Offered);
+        }
+
+        #[test]
+        fn app_info_reports_the_home_the_engine_was_given() {
+            let tree = trial_home(false);
+            let shell = Shell::cleaning(tree.root());
+            shell.app.manage(Build::Development);
+
+            let info = app_info(shell.app.state::<Build>(), shell.engine());
+
+            assert_eq!(info.home.as_deref(), Some(tree.root()));
         }
 
         #[test]

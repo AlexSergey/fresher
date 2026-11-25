@@ -1,10 +1,11 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
-import { scanButton } from './support/cards';
+import { scanButton, scanFinished } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
-// The scan screen's hero: the ring and its legend after a scan of the demo's home volume.
+// The scan screen's disk card: the ring and its legend after a scan of the demo's home volume; and the scanning card
+// while a scan runs.
 
 test.beforeEach(async ({ page }) => {
   await failOnCspViolation(page);
@@ -18,7 +19,7 @@ const scan = async (page: Page): Promise<void> => {
   await mockCore(page, SCRIPTS.demo);
   await page.goto('/');
   await scanButton(page).click();
-  await expect(page.getByRole('list', { name: 'Parts of the disk' })).toBeVisible();
+  await scanFinished(page);
 };
 
 // Puts the pointer on the ring's band, `degrees` clockwise from the top.
@@ -56,19 +57,21 @@ test.describe('negative cases', () => {
     await expect(page.getByText(/^The system itself/u)).toBeHidden();
   });
 
-  test('before a scan the hero has no legend', async ({ page }) => {
+  test('before a scan the disk card holds Scan and does not say what can be freed', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
+    const disk = page.getByRole('region', { name: 'Your disk' });
 
-    await expect(page.getByText('Space on Macintosh HD, internal disk')).toBeVisible();
-    await expect(legend(page)).toHaveCount(0);
+    await expect(disk.getByRole('button', { name: 'Scan' })).toBeVisible();
+    await expect(rowOf(page, 'Can be freed')).toContainText('Not scanned yet');
+    await expect(disk.getByText('can be freed', { exact: true })).toHaveCount(0);
   });
 });
 
 test.describe('positive cases', () => {
   test('hovering a ring segment highlights its legend row, and the reverse', async ({ page }) => {
     await scan(page);
-    const row = rowOf(page, 'Your folders');
+    const row = rowOf(page, 'Your files and apps');
 
     await expect(row).not.toHaveAttribute('data-highlighted');
 
@@ -82,26 +85,45 @@ test.describe('positive cases', () => {
 
     await rowOf(page, 'macOS').hover();
 
-    await expect(page.locator('[data-ring="arcs"] [data-tone="safe"]')).toHaveAttribute('data-dimmed', '');
+    await expect(page.locator('[data-ring="arcs"] [data-tone="can-be-freed"]')).toHaveAttribute('data-dimmed', '');
     await expect(page.locator('[data-ring="arcs"] [data-tone="mac-os"]')).not.toHaveAttribute('data-dimmed');
   });
 
   test('focusing the i of a row highlights it, for the keyboard', async ({ page }) => {
     await scan(page);
 
-    await rowOf(page, 'Low risk').getByRole('button', { name: 'What is Low risk?' }).focus();
+    await rowOf(page, 'Can be freed').getByRole('button', { name: 'What is Can be freed?' }).focus();
 
-    await expect(rowOf(page, 'Low risk')).toHaveAttribute('data-highlighted', '');
-    await expect(page.locator('[data-ring="arcs"] [data-tone="safe"]')).toHaveAttribute('data-dimmed', '');
+    await expect(rowOf(page, 'Can be freed')).toHaveAttribute('data-highlighted', '');
+    await expect(page.locator('[data-ring="arcs"] [data-tone="files-and-apps"]')).toHaveAttribute('data-dimmed', '');
   });
 
-  test("the i of the remainder lists the core's reasons", async ({ page }) => {
+  test("the i of System space says what it is in the core's words", async ({ page }) => {
     await scan(page);
-    const row = rowOf(page, 'Outside the scanned folders');
+    const row = rowOf(page, 'System space');
 
-    await row.getByRole('button', { name: 'What is Outside the scanned folders?' }).click();
+    await row.getByRole('button', { name: 'What is System space?' }).click();
 
-    await expect(row.getByRole('list')).toContainText('Folders Fresher could not read.');
-    await expect(row.getByRole('list')).toContainText("Local snapshots and the file system's own records");
+    await expect(row).toContainText('Memory macOS keeps on disk');
+  });
+
+  test("the scanning card reads its percent from the scan's bytes and estimate, and Stop ends the scan", async ({
+    page,
+  }) => {
+    await mockCore(page, SCRIPTS.live);
+    await page.goto('/');
+    await scanButton(page).click();
+    const card = page.getByRole('region', { name: 'Scanning' });
+
+    // The live script has walked 2.25 GB of an estimated 3 GB.
+    await expect(card.getByRole('progressbar', { name: 'Scanning, 75 percent' })).toBeVisible();
+    await expect(card.getByText('75%')).toBeVisible();
+    await expect(card.getByText('found so far')).toBeVisible();
+    await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Stop' }).click();
+
+    await expect(card).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
   });
 });

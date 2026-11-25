@@ -91,7 +91,6 @@ export const stories = storiesOf('FindingList', {
       failure={null}
       menuOf={() => [
         {
-          description: 'Hides it from the results and never removes it. You can restore it in Settings.',
           key: 'ignore-item',
           label: 'Ignore this item',
           onSelect: ignore,

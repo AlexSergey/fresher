@@ -2,15 +2,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Settings } from '../../icons/icons';
-import { Menu, type MenuItem } from './menu';
+import { Menu, type MenuItem, SEPARATOR } from './menu';
 
 // eslint-disable-next-line testing-library/no-node-access -- the focused element has no role to query by
 const focusedElement = (): Element | null => document.activeElement;
 
 const setup = (onSelect: () => void = vi.fn()): HTMLElement => {
   const items: readonly MenuItem[] = [
-    { description: 'Hides it and never removes it.', key: 'a', label: 'Ignore this category', onSelect },
+    { key: 'a', label: 'Ignore this category', onSelect },
     { key: 'b', label: 'Ignore Caches', onSelect },
+    SEPARATOR,
     { key: 'c', label: 'Ignore all', onSelect },
   ];
 
@@ -26,6 +27,30 @@ const setup = (onSelect: () => void = vi.fn()): HTMLElement => {
 
 describe('Menu', () => {
   describe('negative cases', () => {
+    it('the arrow keys skip a separator', () => {
+      setup();
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Caches' }));
+      const menu = screen.getByRole('menu');
+
+      fireEvent.keyDown(menu, { key: 'ArrowDown' });
+      fireEvent.keyDown(menu, { key: 'ArrowDown' });
+      expect(screen.getByRole('menuitem', { name: 'Ignore all' })).toHaveFocus();
+      fireEvent.keyDown(menu, { key: 'ArrowUp' });
+
+      expect(screen.getByRole('menuitem', { name: 'Ignore Caches' })).toHaveFocus();
+    });
+
+    it('a separator is not an action: choosing it does nothing', () => {
+      const onSelect = vi.fn();
+      setup(onSelect);
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Caches' }));
+
+      fireEvent.click(screen.getByRole('separator'));
+
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
     it('is closed until the trigger is used', () => {
       const trigger = setup();
 
@@ -97,6 +122,40 @@ describe('Menu', () => {
   });
 
   describe('positive cases', () => {
+    it('the pointed item is the active one, and the only one marked', () => {
+      setup();
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Caches' }));
+      const [, second] = screen.getAllByRole('menuitem') as [HTMLElement, HTMLElement, HTMLElement];
+
+      fireEvent.pointerEnter(second);
+
+      expect(screen.getAllByRole('menuitem').filter((item) => item.hasAttribute('data-active'))).toEqual([second]);
+    });
+
+    it('pointing at another item moves the mark to it and shows no hint', () => {
+      setup();
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Caches' }));
+      const [first, , third] = screen.getAllByRole('menuitem') as [HTMLElement, HTMLElement, HTMLElement];
+
+      fireEvent.pointerEnter(third);
+
+      expect(third).toHaveAttribute('data-active');
+      expect(first).not.toHaveAttribute('data-active');
+      expect(screen.queryByRole('tooltip')).toBeNull();
+    });
+
+    it('lists its items in order with its separators', () => {
+      setup();
+      fireEvent.click(screen.getByRole('button', { name: 'Options for Caches' }));
+
+      // eslint-disable-next-line testing-library/no-node-access -- the order of items and separators is the point
+      const roles = [...screen.getByRole('menu').querySelectorAll('[role="menuitem"], [role="separator"]')].map(
+        (child) => child.getAttribute('role'),
+      );
+
+      expect(roles).toEqual(['menuitem', 'menuitem', 'separator', 'menuitem']);
+    });
+
     it('opens on Enter, Space and ArrowDown on the first item, on ArrowUp on the last', () => {
       const trigger = setup();
 
@@ -160,15 +219,12 @@ describe('Menu', () => {
       expect(onSelect).toHaveBeenCalledTimes(2);
     });
 
-    it('names each item by its label and describes it by its description', () => {
+    it('names each item by its label', () => {
       setup();
       fireEvent.click(screen.getByRole('button', { name: 'Options for Caches' }));
 
       expect(screen.getByRole('menuitem', { name: 'Ignore Caches' })).toBeInTheDocument();
-      expect(screen.getByRole('menuitem', { name: 'Ignore this category' })).toHaveAccessibleDescription(
-        'Hides it and never removes it.',
-      );
-      expect(screen.getByRole('menuitem', { name: 'Ignore Caches' })).not.toHaveAccessibleDescription();
+      expect(screen.getByRole('menuitem', { name: 'Ignore this category' })).toBeInTheDocument();
     });
 
     it('ties the trigger to the menu with aria-controls and aria-expanded', () => {

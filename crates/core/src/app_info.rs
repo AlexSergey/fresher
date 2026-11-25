@@ -1,17 +1,23 @@
-//! What the app says about itself: its version and which kind of build it is.
+//! What the app says about itself: its version, which kind of build it is, whether it offers High findings and the
+//! home folder it works on.
 
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{Text, TextArg, TextKey};
+use crate::{HighLevel, Text, TextArg, TextKey};
 
 /// The app's answer to "which build is this".
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 pub struct AppInfo {
     pub version: String,
     pub build: Build,
+    /// Whether its engine offers High findings: withheld in this release.
+    pub high: HighLevel,
+    /// The home folder its engine works on (a sandbox's own home in sandbox mode), for showing a path as `~/…`;
+    /// `None` when it is not known.
+    pub home: Option<PathBuf>,
 }
 
 /// The kind of build. Only a development build can run in a sandbox; a release build never reports one.
@@ -90,6 +96,7 @@ mod tests {
     mod positive {
         use std::path::Path;
 
+        use crate::HighLevel;
         use crate::app_info::{AppInfo, Build, SandboxTrashAt, Simulated};
 
         #[test]
@@ -99,11 +106,16 @@ mod tests {
                 simulated: vec![Simulated::Running, Simulated::Access],
                 trash: SandboxTrashAt::System.text(),
             };
-            let info = AppInfo { version: "0.1.0".into(), build };
+            let info = AppInfo {
+                version: "0.1.0".into(),
+                build,
+                high: HighLevel::Withheld,
+                home: Some("/tmp/box/home".into()),
+            };
             let json = serde_json::to_string(&info).unwrap();
             assert_eq!(
                 json,
-                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"],"trash":{"key":"core.build.trash.system","args":{}}}}"#
+                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"],"trash":{"key":"core.build.trash.system","args":{}}},"high":"withheld","home":"/tmp/box/home"}"#
             );
         }
 

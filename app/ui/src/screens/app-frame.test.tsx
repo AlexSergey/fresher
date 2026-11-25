@@ -9,13 +9,14 @@ import { createNavigation, type Navigation } from '../state/navigation';
 import { type CoreStore, createCoreStore } from '../state/store';
 import { recordAnimations, setMotion } from '../test/animation';
 import { BUSY, DEMO_DICTIONARY, DEMO_MODULES, DEMO_OVERVIEW, GRANTED, IDLE } from '../test/demo-scan';
-import { BUILD_DICTIONARY, sandboxBuild } from '../test/sandbox-build';
+import { BUILD_DICTIONARY, SANDBOX_HOME, sandboxBuild } from '../test/sandbox-build';
 import { AppFrame } from './app-frame';
 import { AppProviders } from './app-providers';
 
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
     ...sampleAgreementAnswers,
+    appInfo: () => ({ build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.1.0' }),
     getAccessStatus: () => GRANTED,
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
@@ -54,7 +55,16 @@ afterEach(async () => {
   await setMotion(null);
 });
 
-const QUIT = 'A cleanup is running. Stop after the current item and quit?';
+// The demo totals and a "Look before removing" category of 4 findings.
+const WITH_PHOTOS = {
+  ...DEMO_OVERVIEW,
+  totals: [
+    ...DEMO_OVERVIEW.totals,
+    { category: 'demo.photos', count: 4, highestDanger: 'medium' as const, sizes: DEMO_OVERVIEW.found },
+  ],
+};
+
+const QUIT = 'Stop the cleanup and quit?';
 
 const askToQuit = async (): Promise<HTMLElement> => {
   act(() => {
@@ -83,10 +93,31 @@ describe('AppFrame', () => {
     });
 
     it('a release build has no banner', async () => {
-      core({ appInfo: () => ({ build: { kind: 'release' }, version: '0.1.0' }) });
+      core({
+        appInfo: () => ({ build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.1.0' }),
+      });
       await renderFrame();
 
       expect(screen.queryByRole('note')).toBeNull();
+    });
+
+    it('the sidebar has no Largest while High is withheld', async () => {
+      core({
+        appInfo: () => ({ build: { kind: 'release' }, high: 'withheld', home: '/Users/someone', version: '0.1.0' }),
+      });
+
+      await renderFrame();
+      await screen.findByRole('button', { name: 'Apps' });
+
+      expect(navItems()).toStrictEqual(['Scan', 'Apps', 'Review', 'Cleanups', 'Settings']);
+    });
+
+    it('the sidebar has no Largest before the app info arrives', async () => {
+      core({ appInfo: () => new Promise(() => {}) });
+
+      await renderFrame();
+
+      expect(navItems()).toStrictEqual(['Scan', 'Apps', 'Review', 'Cleanups', 'Settings']);
     });
 
     it('a category screen renders nothing while the modules are unknown', async () => {
@@ -131,6 +162,7 @@ describe('AppFrame', () => {
       core({ getOverview: () => DEMO_OVERVIEW });
 
       await renderFrame();
+      await screen.findByRole('button', { name: 'Largest' });
 
       expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Apps', 'Review', 'Cleanups', 'Settings']);
       expect(screen.queryByRole('button', { name: /^Demo module/u })).toBeNull();
@@ -144,6 +176,19 @@ describe('AppFrame', () => {
       expect(screen.getByRole('button', { name: 'Review' })).toBeInTheDocument();
     });
 
+    it('the review badge counts only what goes, not a category to check beside it', async () => {
+      core();
+      const { store } = await renderFrame();
+
+      act(() => {
+        store.dispatch({ overview: WITH_PHOTOS, type: 'overview-loaded' });
+        store.dispatch({ category: 'demo.photos', type: 'toggle-category' });
+        store.dispatch({ category: 'demo.caches', type: 'toggle-category' });
+      });
+
+      expect(screen.getByRole('button', { name: 'Review 2 items selected' })).toBeInTheDocument();
+    });
+
     it('an unreachable core shows the error state, not a blank window', async () => {
       mockCore({ ...sampleAgreementAnswers });
 
@@ -153,8 +198,8 @@ describe('AppFrame', () => {
         </AppProviders>,
       );
 
-      expect(await screen.findByText('The app could not reach its core. Restart the app.')).toBeInTheDocument();
-      expect(screen.getByText('The core is not answering')).toBeInTheDocument();
+      expect(await screen.findByText('Fresher stopped answering. Quit it and open it again.')).toBeInTheDocument();
+      expect(screen.getByText('Fresher is not answering')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     });
 
@@ -166,7 +211,7 @@ describe('AppFrame', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
       expect(screen.queryByRole('heading', { name: 'Scan' })).toBeNull();
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('General');
       expect(animations).toHaveLength(0);
     });
 
@@ -208,15 +253,29 @@ describe('AppFrame', () => {
       core({ getOverview: () => DEMO_OVERVIEW });
 
       await renderFrame();
+      await screen.findByRole('button', { name: 'Largest' });
 
       expect(navItems()).toStrictEqual(['Scan', 'Largest', 'Apps', 'Review', 'Cleanups', 'Settings']);
       expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toBeInTheDocument();
+    });
+
+    it('the sidebar shows the logo beside the name', async () => {
+      core();
+
+      await renderFrame();
+
+      const name = screen.getByText('Fresher');
+
+      // eslint-disable-next-line testing-library/no-node-access -- the mark has no role
+      expect(name.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     });
 
     it('a sandbox build shows the sandbox banner above the window', async () => {
       core({
         appInfo: () => ({
           build: sandboxBuild(['running']),
+          high: 'offered',
+          home: SANDBOX_HOME,
           version: '0.1.0',
         }),
         getDictionary: () => ({ ...DEMO_DICTIONARY, ...BUILD_DICTIONARY }),
@@ -255,6 +314,18 @@ describe('AppFrame', () => {
       expect(screen.getByRole('button', { name: 'Review 2 items selected' })).toBeInTheDocument();
     });
 
+    it('with nothing going, the review badge counts the categories to check', async () => {
+      core();
+      const { store } = await renderFrame();
+
+      act(() => {
+        store.dispatch({ overview: WITH_PHOTOS, type: 'overview-loaded' });
+        store.dispatch({ category: 'demo.photos', type: 'toggle-category' });
+      });
+
+      expect(screen.getByRole('button', { name: 'Review 1 to check in Review' })).toBeInTheDocument();
+    });
+
     it('choosing a nav item shows its screen and moves the focus to its heading', async () => {
       core();
       const { navigation } = await renderFrame();
@@ -272,7 +343,7 @@ describe('AppFrame', () => {
       core();
       const { navigation } = await renderFrame();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Largest' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Largest' }));
 
       const heading = screen.getByRole('heading', { level: 1 });
       expect(heading).toHaveTextContent('Largest files and folders');

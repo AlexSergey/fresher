@@ -43,8 +43,8 @@ pub(crate) use home_engine::Extras;
 use home_engine::{Parts, engine_with, no_installs, unknown_access};
 
 /// The two trial caches the module claims, each next to a sandbox marker.
-pub(crate) const CACHE_A: &str = "home/work-a/fresher-trial-cache";
-pub(crate) const CACHE_B: &str = "home/work-b/fresher-trial-cache";
+pub(crate) const CACHE_A: &str = "home/work-a/Sample app cache";
+pub(crate) const CACHE_B: &str = "home/work-b/Sample app cache";
 /// The file the user put in the home's Trash before any scan.
 pub(crate) const USERS_FILE: &str = "home/.Trash/old-notes.txt";
 /// The file no one claims.

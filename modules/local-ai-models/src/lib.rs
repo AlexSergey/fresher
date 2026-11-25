@@ -19,8 +19,9 @@ mod report;
 mod stores;
 
 use fresher_core::{
-    CategoryDescriptor, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError, Locales, Match,
-    Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, SmallFile, TextKeyError,
+    CategoryDescriptor, CategoryIcon, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError,
+    Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, SmallFile,
+    TextKeyError,
 };
 
 use crate::categories::CATEGORIES;
@@ -72,7 +73,11 @@ impl LocalAiModelsModule {
         let id = ModuleId::new("local-ai-models")?;
         let categories = CATEGORIES
             .into_iter()
-            .map(|(category, danger)| Ok::<_, IdError>(CategoryDescriptor::new(CategoryId::new(id, category)?, danger)))
+            .map(|(category, danger)| {
+                Ok::<_, IdError>(
+                    CategoryDescriptor::new(CategoryId::new(id, category)?, danger).with_icon(CategoryIcon::Model),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let report = Report::new(categories.clone())?;
         let locales = Locales { en: include_str!("../locales/en.json") };

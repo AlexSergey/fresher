@@ -21,9 +21,9 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    Artifact, CategoryDescriptor, CategoryId, Claim, DaySetting, DescriptorError, FindingSink, IdError, Interest,
-    InterestError, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
-    Pattern, Project, ProjectKind, SettingError, Sizes, TextKeyError, Timestamp,
+    Artifact, CategoryDescriptor, CategoryIcon, CategoryId, Claim, DaySetting, DescriptorError, FindingSink, IdError,
+    Interest, InterestError, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
+    ModuleId, Pattern, Project, ProjectKind, SettingError, Sizes, TextKeyError, Timestamp,
 };
 
 use crate::categories::Category;
@@ -81,7 +81,8 @@ impl StaleProjectsModule {
     pub fn new() -> Result<Self, StaleProjectsError> {
         let id = ModuleId::new("stale-projects")?;
         let categories = Categories::new(|category| {
-            Ok(CategoryDescriptor::new(CategoryId::new(id, category.id())?, category.danger()))
+            Ok(CategoryDescriptor::new(CategoryId::new(id, category.id())?, category.danger())
+                .with_icon(CategoryIcon::Project))
         })?;
         let report = Report::new(categories)?;
         let (categories, problems) = (report.categories(), report.problems());

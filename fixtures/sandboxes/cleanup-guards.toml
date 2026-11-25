@@ -12,7 +12,7 @@ kind = "negative"
 [[case.marker]]
 path = "home/linked"
 [[case.symlink]]
-path = "home/linked/fresher-trial-cache"
+path = "home/linked/Sample app cache"
 target = "/"
 [[case.symlink]]
 path = "home/linked/elsewhere"
@@ -33,7 +33,7 @@ kind = "negative"
 [[case.marker]]
 path = "home/Documents/work"
 [[case.file]]
-path = "home/Documents/work/fresher-trial-cache/blob.bin"
+path = "home/Documents/work/Sample app cache/blob.bin"
 size = 8192
 
 [[case]]
@@ -42,14 +42,14 @@ kind = "positive"
 [[case.marker]]
 path = "home/hard-linked"
 [[case.file]]
-path = "home/hard-linked/fresher-trial-cache/blob.bin"
+path = "home/hard-linked/Sample app cache/blob.bin"
 size = 8192
 fill = "data"
 [[case.hardlink]]
-path = "home/hard-linked/fresher-trial-cache/keep.bin"
+path = "home/hard-linked/Sample app cache/keep.bin"
 target = "home/shared/keep.bin"
 [case.expect]
-item = "home/hard-linked/fresher-trial-cache"
+item = "home/hard-linked/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
@@ -61,11 +61,11 @@ kind = "positive"
 [[case.marker]]
 path = "home/Library/Caches"
 [[case.file]]
-path = "home/Library/Caches/fresher-trial-cache/blob.bin"
+path = "home/Library/Caches/Sample app cache/blob.bin"
 size = 8192
 fill = "data"
 [case.expect]
-item = "home/Library/Caches/fresher-trial-cache"
+item = "home/Library/Caches/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "in-trash"
@@ -77,10 +77,10 @@ kind = "positive"
 [[case.marker]]
 path = "home/.Trash/old"
 [[case.file]]
-path = "home/.Trash/old/fresher-trial-cache/blob.bin"
+path = "home/.Trash/old/Sample app cache/blob.bin"
 size = 8192
 [case.expect]
-item = "home/.Trash/old/fresher-trial-cache"
+item = "home/.Trash/old/Sample app cache"
 category = "trial.caches"
 danger = "safe"
 after-cleanup = "skipped"

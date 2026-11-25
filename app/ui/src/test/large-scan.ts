@@ -125,6 +125,7 @@ export const largeScan = ({
       'core.danger.high.name': 'High',
       'core.danger.medium.name': 'Medium',
       ...Object.fromEntries(ids.map((id, at) => [`${id}.name`, `Example group ${at + 1}`])),
+      ...Object.fromEntries(ids.map((id) => [`${id}.line`, 'A made-up group of findings'])),
     },
     events: [
       { modules: ['demo'], scan: 1, type: 'scan-started' },

@@ -6,8 +6,8 @@
 
 ## What it is
 
-Copies of web pages, scripts and pictures your browsers keep so sites open faster, kept for each browser profile. Made
-by the browsers themselves; each item names its browser, its profile and the cache folder.
+Copies of web pages and pictures your browsers keep so sites open faster. Made by your browsers; each item names its
+browser and profile.
 
 ## Where it lives
 
@@ -25,9 +25,8 @@ counted in the browser's line of the storage map.
 ## What happens if you remove it
 
 What is inside the folder goes to the Trash and the folder stays. Your history, bookmarks, passwords, cookies and open
-tabs are kept elsewhere and stay: they sit beside the caches, and the module never touches a name its row does not
-list. Yes, the browser fills it again as you browse. Sites may open a little slower the first time, and pictures and
-videos download again. That is why the level is Low, not Safe.
+tabs are kept elsewhere and stay: they sit beside the caches, and the module never touches a name its row does not list.
+Yes, as you browse; sites may open a little slower the first time. That is why the level is Low, not Safe.
 
 ## How the app decides
 
