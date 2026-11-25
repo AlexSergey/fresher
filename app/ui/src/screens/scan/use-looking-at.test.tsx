@@ -73,6 +73,16 @@ describe('useLookingAt', () => {
   });
 
   describe('positive cases', () => {
+    it('a turn lasts 2.5 s, short enough to be seen in a scan of a few seconds', () => {
+      const { advance, view } = mount({ finished: [], scanning: true });
+
+      advance(2499);
+      const before = view.result.current;
+      advance(1);
+
+      expect([before, view.result.current]).toStrictEqual(['jetbrains', 'logs']);
+    });
+
     it('the modules still running take turns in the core order and wrap around', () => {
       const { advance, view } = mount({ finished: [], scanning: true });
       const seen = [view.result.current];

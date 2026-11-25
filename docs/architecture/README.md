@@ -580,8 +580,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   (`product/scanning-card/`): the swoosh (`design/data/swoosh-progress/`) fills to `ScanProgress.expected`, the core's
   estimate of what the scan walks (`screens/scan/progress.ts`: bytes against it, clamped and held at 99 % until the
   scan ends, the share of modules finished without an estimate), with the percent, "Looking at <module>" (the modules
-  still running take turns every 6 s on the injected clock, `screens/scan/use-looking-at.ts`, a new name fading in
-  and its colour brightening and settling again and again, with full motion only) and the size found so far; nothing below it looks finished: the tiles wait for the scan's
+  still running take turns every 2.5 s on the injected clock, `screens/scan/use-looking-at.ts`, a new name fading in
+  and its colour breathing between the tertiary and the primary text colour every 1.2 s, with full motion only) and the size found so far; nothing below it looks finished: the tiles wait for the scan's
   end. Once it has ended (completed, partial or stopped), **the separator** "What you can remove"
   (`design/layout/section-separator/`) and **the groups** (`screens/scan/scan-groups.tsx`), one per level, its
   heading the core's `core.danger.<level>.zone` and `.meaning` with the group's icon; Safe and Usually safe have a

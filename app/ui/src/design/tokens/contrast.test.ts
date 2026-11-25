@@ -164,6 +164,8 @@ const DESIGN_PAIRS: readonly Pair[] = [
   { bar: TEXT, fg: '--text-legend', on: '--gray-900' },
   { bar: TEXT, fg: '--tile-line-medium', on: '--amber-950' },
   { bar: TEXT, fg: '--text-tertiary', on: '--gray-875' },
+  // The scanning card's "Looking at" line at the dimmest frame of its shimmer, on the card's lightest stop.
+  { bar: TEXT, fg: '--text-tertiary', on: '--night-800' },
 ];
 
 const FIXTURE = tokensOf(`

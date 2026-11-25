@@ -6,7 +6,7 @@ import { useWallClock } from '../../state/wall-clock';
 import { lookingAt, stillRunning } from './progress';
 
 // How long one module stays on the "Looking at" line while others run too.
-export const TURN_MS = 6000;
+export const TURN_MS = 2500;
 
 // The module the "Looking at" line names while a scan runs: the modules still running take turns, one more every
 // `TURN_MS` on the injected clock, in the core's order; with one left it stays, and with none (or no scan) there is no

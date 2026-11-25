@@ -1,10 +1,13 @@
 /*
  * The scanning card: the swoosh fills the card, the volume's name, the percent and what the scan looks at stand
- * top-left, what it found so far bottom-right. A new "Looking at" line fades in, and its colour keeps rising to the
- * primary text colour and settling back while `--loop-state` runs, only with full motion: never dimmer than at rest.
+ * top-left, what it found so far bottom-right. A new "Looking at" line fades in, and its colour keeps breathing
+ * between the tertiary and the primary text colour while `--loop-state` runs, only with full motion: legible at its
+ * dimmest frame too (the contrast test's pair).
  */
 @layer components {
   .card {
+    --looking-loop: 1200ms;
+
     position: relative;
     height: 226px;
     border: 1px solid var(--tile-border);
@@ -68,14 +71,14 @@
   }
 
   .looking[data-shimmer] {
-    animation: looking-shimmer var(--duration-sweep) var(--ease-standard) infinite alternate;
+    animation: looking-shimmer var(--looking-loop) var(--ease-standard) infinite alternate;
     animation-play-state: var(--loop-state);
   }
 
   .looking[data-fade][data-shimmer] {
     animation:
       looking-in var(--duration-slow) var(--ease-enter),
-      looking-shimmer var(--duration-sweep) var(--ease-standard) infinite alternate;
+      looking-shimmer var(--looking-loop) var(--ease-standard) infinite alternate;
     animation-play-state: running, var(--loop-state);
   }
 
@@ -87,7 +90,7 @@
 
   @keyframes looking-shimmer {
     from {
-      color: var(--text-legend);
+      color: var(--text-tertiary);
     }
 
     to {
