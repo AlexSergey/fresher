@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppsQuery, AppsView, Refusal } from '../../ipc/bindings.generated';
+import type { AppsQuery, AppsView, Coverage, Overview, Refusal } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
 
 import { mockCore, pushEvents, refuse, sampleAgreementAnswers } from '../../ipc/mock';
@@ -15,11 +15,33 @@ import {
   DEMO_OVERVIEW,
   DEMO_SETTINGS,
   IDLE,
+  LIMITED_COVERAGE,
 } from '../../test/demo-scan';
 import { AppProviders } from '../app-providers';
 import { AppsScreen } from './apps-screen';
 
-const DICTIONARY = { ...APPS_DICTIONARY, ...ACCESS_DICTIONARY, 'core.error.no-scan': 'Scan first.' };
+const DICTIONARY = {
+  ...APPS_DICTIONARY,
+  ...ACCESS_DICTIONARY,
+  'core.access.other-apps-data.missing': 'The data other apps keep for themselves was not looked at.',
+  'core.access.other-apps-data.name': "Other apps' data",
+  'core.error.no-scan': 'Scan first.',
+};
+
+// The last scan of the demo overview, with `coverage`.
+const coveredBy = (coverage: Coverage): Overview => ({
+  ...DEMO_OVERVIEW,
+  lastScan: { ...(DEMO_OVERVIEW.lastScan as NonNullable<Overview['lastScan']>), coverage },
+});
+
+// A scan that entered none of the user's guarded folders: they hold no app's files.
+const FOLDERS_LEFT_OUT: Coverage = {
+  notEntered: (['desktop', 'documents', 'downloads'] as const).map((value) => ({
+    access: 'not-asked' as const,
+    capability: { kind: 'folder' as const, value },
+  })),
+  unreadable: [],
+};
 
 const REFUSAL = { error: { code: 'no-scan' }, text: { args: {}, key: 'core.error.no-scan' } } as unknown as Refusal;
 
@@ -109,6 +131,22 @@ describe('AppsScreen', () => {
       expect(screen.queryByText(/^Measuring your apps/u)).toBeNull();
     });
 
+    it('the folders of your files left out of the scan show no notice on Apps', async () => {
+      await show({}, coveredBy(FOLDERS_LEFT_OUT));
+      await screen.findByRole('list', { name: 'Apps, largest first' });
+
+      expect(screen.queryByText('Some folders were not scanned')).toBeNull();
+      expect(screen.queryByText('Desktop folder')).toBeNull();
+      expect(screen.queryByText('Your Desktop was not looked at.')).toBeNull();
+    });
+
+    it('a permission granted since the scan shows no notice', async () => {
+      await show({}, coveredBy(LIMITED_COVERAGE));
+      await screen.findByRole('list', { name: 'Apps, largest first' });
+
+      expect(screen.queryByText('Full Disk Access')).toBeNull();
+    });
+
     it('asks to scan first before any scan and does not ask the core', async () => {
       const getApps = vi.fn();
       await show({ getApps }, IDLE);
@@ -179,6 +217,39 @@ describe('AppsScreen', () => {
         'aria-valuenow',
         '25',
       );
+    });
+
+    it("a scan without other apps' data says so in one notice, and nothing of the folders", async () => {
+      await show(
+        { getAccessStatus: () => accessStatus([[{ kind: 'other-apps-data' }, 'not-asked']]) },
+        coveredBy({
+          notEntered: [
+            ...FOLDERS_LEFT_OUT.notEntered,
+            { access: 'not-asked', capability: { kind: 'other-apps-data' } },
+          ],
+          unreadable: [],
+        }),
+      );
+      await screen.findByRole('list', { name: 'Apps, largest first' });
+
+      expect(screen.getByText("Other apps' data")).toBeInTheDocument();
+      expect(screen.getByText('The data other apps keep for themselves was not looked at.')).toBeInTheDocument();
+      expect(screen.queryByText('Your Desktop was not looked at.')).toBeNull();
+      expect(screen.queryByText('Some folders were not scanned')).toBeNull();
+    });
+
+    it('a scan without Full Disk Access says so in one notice', async () => {
+      await show(
+        { getAccessStatus: () => accessStatus([[{ kind: 'all-files' }, 'denied']]) },
+        coveredBy(LIMITED_COVERAGE),
+      );
+      await screen.findByRole('list', { name: 'Apps, largest first' });
+
+      expect(screen.getByText('Full Disk Access')).toBeInTheDocument();
+      expect(
+        screen.getByText('Some folders could not be read because Fresher does not have Full Disk Access.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Open System Settings' })).toBeNull();
     });
 
     it("shows the core's notice", async () => {

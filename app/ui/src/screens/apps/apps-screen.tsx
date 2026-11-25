@@ -11,9 +11,9 @@ import { t, tText } from '../../i18n';
 import { AppRow } from '../../product/app-row/app-row';
 import { useNavigation } from '../../state/navigation';
 import { useCore } from '../../state/store';
-import { CoverageNotices } from '../permission/coverage-notices';
 import { ScanProgressCard } from '../scan/scan-progress-card';
 import { useScanActions } from '../use-scan-actions';
+import { AppsAccess } from './apps-access';
 import { AppsMeasuring } from './apps-measuring';
 import styles from './apps-screen.module.css';
 import { useApps } from './use-apps';
@@ -66,7 +66,7 @@ export const AppsScreen = (): JSX.Element => {
       <Toolbar />
       <PageHeader title={t('ui.screen.apps.title')} />
       <div className={styles.content}>
-        <CoverageNotices />
+        <AppsAccess />
         {known && !scanned && !scanning ? (
           <div className={styles.state}>
             <p>{t('ui.screen.apps.no-scan')}</p>

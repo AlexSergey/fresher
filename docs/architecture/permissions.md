@@ -26,7 +26,9 @@ All of it is in `fresher-core` (`access.rs`, `removability.rs`) and knows nothin
   (cancelled, the walk or a module stopped early, its state not kept, a panic), whatever its coverage; `Failed`. The
   Scan screen says "The scan was stopped" only for `Stopped`, and shows an incomplete coverage under its own heading,
   "Some folders were not scanned": a notice per capability, then a line for the folders no capability opens. A stopped
-  scan that also missed folders shows both.
+  scan that also missed folders shows both. The Apps screen shows none of that block: only one short notice per
+  capability that leaves an app's footprint incomplete (Full Disk Access, other apps' data), with the core's `missing`
+  sentence, while it is not granted (`screens/apps/apps-access.tsx`); App Management stays on an app's page.
 - **Removability** is a fact of every finding, worked out by the core from what the walk read about the entry (its
   owner, whether the app may write to its folder, its flags): `Removable`, `NeedsAdministrator`, `Locked` or
   `ProtectedBySystem`. A module cannot set it. An item that is not `Removable` is shown with its size and a reason,

@@ -873,6 +873,8 @@ du -sh /Applications/<app>.app   # three apps, against their sizes in the list
 
 - [ ] Scan from Apps (a fresh start, before any scan): the scanning card shows with its percent and "Looking at";
       then "Measuring your apps · n of m" counts up with its bar until the list shows.
+- [ ] With Desktop, Documents or Downloads not allowed, Apps shows no "Some folders were not scanned" (Scan does);
+      without Full Disk Access or other apps' data, Apps shows one short notice for each.
 - [ ] No Apple app is listed; an App Store (root-owned) app is shown "needs an administrator" with Show in Finder and
       is not offered; a Homebrew app shows the manager's sentence and command and is not offered.
 - [ ] The sizes of three apps match `du -sh` (sizes on disk).
