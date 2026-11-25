@@ -4,8 +4,10 @@ import { dirname, join } from 'node:path';
 
 // The crate dependency guard (docs/quality.md, "Whole repository"): every edge between workspace crates must be in the
 // table of docs/plans/002-base-architecture/00-design.md, "Crates", mirrored in docs/architecture/README.md; and every
-// crate root but fresher-macos's forbids unsafe code (plan 004/03/01); and no module's source names `std::process` or
-// `std::env` (plan 007/04/02).
+// crate root but fresher-macos's forbids unsafe code (plan 004/03/01); no module's source names `std::process` or
+// `std::env`, reaches them another way (an alias of `std`, `extern crate`, `include!`, `#[path]`), depends on a
+// third-party crate outside its short list, or has a build script (plan 007/04/02, plan 041); and no code of `crates/`
+// or `modules/` starts an external program by its bare name, which the system would look up in `PATH` (plan 041).
 
 export type DependencyKind = 'build' | 'dev' | 'normal';
 
@@ -68,6 +70,8 @@ const TABLE: ReadonlyMap<string, Allowed> = new Map<string, Allowed>([
 ]);
 
 const MODULE_ALLOWED: Allowed = ['fresher-core', 'fresher-rules'];
+// The third-party crates a module may use outside its tests: none of them starts a process or reads the environment.
+const MODULE_THIRD_PARTY: ReadonlySet<string> = new Set(['serde', 'serde_json', 'thiserror', 'toml', 'tracing']);
 
 const isModule = (name: string): boolean => name.startsWith(MODULE_PREFIX);
 
@@ -101,13 +105,54 @@ const checkPackage = (pkg: MetadataPackage, workspace: ReadonlySet<string>): Vio
     }));
 };
 
+const checkModuleExtras = (pkg: MetadataPackage, workspace: ReadonlySet<string>): Violation[] => {
+  if (!isModule(pkg.name)) {
+    return [];
+  }
+  const thirdParty = pkg.dependencies
+    .filter((dependency) => dependency.kind !== 'dev' && !workspace.has(dependency.name))
+    .filter((dependency) => !MODULE_THIRD_PARTY.has(dependency.name))
+    .map((dependency) => ({
+      crate: pkg.name,
+      reason: `a module depends on no third-party crate outside its list (${dependency.name}, scripts/check-crate-deps.ts)`,
+    }));
+  const buildScripts = pkg.targets
+    .filter((target) => target.kind.includes('custom-build'))
+    .map((target) => ({ crate: pkg.name, reason: `a module has no build script (${target.path})` }));
+
+  return [...thirdParty, ...buildScripts];
+};
+
 export const findViolations = (metadata: Metadata): Violation[] => {
   const workspace = new Set(metadata.packages.map((pkg) => pkg.name));
 
-  return metadata.packages.flatMap((pkg) => checkPackage(pkg, workspace));
+  return metadata.packages.flatMap((pkg) => [...checkPackage(pkg, workspace), ...checkModuleExtras(pkg, workspace)]);
 };
 
-const forbidsUnsafe = (source: string): boolean => source.split('\n').some((line) => line.trim() === FORBID_UNSAFE);
+// The inner attributes that open a crate root, comments left out: they come before any item, so a string or a
+// commented-out line is never taken for one.
+const leadingInnerAttributes = (source: string): string[] => {
+  const attributes: string[] = [];
+  let rest = withoutComments(source).trimStart();
+
+  while (rest.startsWith('#![')) {
+    let depth = 0;
+    let end = 2;
+
+    for (; end < rest.length; end += 1) {
+      depth += rest[end] === '[' ? 1 : rest[end] === ']' ? -1 : 0;
+      if (depth === 0) {
+        break;
+      }
+    }
+    attributes.push(rest.slice(0, end + 1).replace(/\s+/g, ''));
+    rest = rest.slice(end + 1).trimStart();
+  }
+
+  return attributes;
+};
+
+const forbidsUnsafe = (source: string): boolean => leadingInnerAttributes(source).includes(FORBID_UNSAFE);
 
 export const findUnsafeViolations = (metadata: Metadata, readSource: (path: string) => string): Violation[] =>
   metadata.packages
@@ -144,10 +189,23 @@ const stdGroups = (source: string): string[] => {
   return groups;
 };
 
+// Other ways to reach `std::process` or `std::env`, or code from outside the module's `src`: an alias of `std`
+// (`use std as s;`, `extern crate std as s;`, `use std::{self as s}`), any `extern crate`, `include!` and `#[path]`.
+const FORBIDDEN_WAYS: readonly RegExp[] = [
+  /\bstd\s+as\b/,
+  /\bextern\s+crate\b/,
+  /\binclude\s*!/,
+  /#\s*(?:!\s*)?\[\s*path\b/,
+];
+
 const namesForbidden = (source: string): boolean => {
   const code = withoutComments(source);
 
-  return FORBIDDEN_PATH.test(code) || stdGroups(code).some((group) => FORBIDDEN_NAME.test(group));
+  return (
+    FORBIDDEN_PATH.test(code) ||
+    FORBIDDEN_WAYS.some((way) => way.test(code)) ||
+    stdGroups(code).some((group) => FORBIDDEN_NAME.test(group) || /\bself\s+as\b/.test(group))
+  );
 };
 
 // `sourcesOf` lists a module's `src` folder: every `.rs` file, as its path and its text.
@@ -167,8 +225,75 @@ export const findModuleViolations = (
       ]
         .flatMap((folder) => sourcesOf(folder))
         .filter((file) => namesForbidden(file.text))
-        .map((file) => ({ crate: pkg.name, reason: `${file.path} names std::process or std::env` })),
+        .map((file) => ({
+          crate: pkg.name,
+          reason: `${file.path} names std::process or std::env, or reaches them or other code another way`,
+        })),
     );
+
+// The program of `Command::new(...)` or of the command port's `.run(...)`: a string, or a constant of the same file.
+const PROGRAM_CALL = /(?:\bCommand::new|\.run)\(\s*(?:"([^"]*)"|([A-Z][A-Z0-9_]*))\s*[,)]/g;
+const STR_CONSTANT = /\bconst\s+([A-Z][A-Z0-9_]*)\s*:\s*&\s*(?:'static\s+)?str\s*=\s*"([^"]*)"/g;
+const TEST_MODULE = /#\[cfg\(test\)\]\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+\w+\s*\{/g;
+
+// The code without its `#[cfg(test)] mod … { … }` blocks: tests may run a program by name.
+const withoutTestModules = (code: string): string => {
+  let kept = '';
+  let from = 0;
+
+  for (const match of code.matchAll(TEST_MODULE)) {
+    if (match.index < from) {
+      continue;
+    }
+    let depth = 1;
+    let end = match.index + match[0].length;
+
+    while (depth > 0 && end < code.length) {
+      depth += code[end] === '{' ? 1 : code[end] === '}' ? -1 : 0;
+      end += 1;
+    }
+    kept += code.slice(from, match.index);
+    from = end;
+  }
+
+  return kept + code.slice(from);
+};
+
+const isTestFile = (path: string): boolean => /(?:^|\/)tests(?:\.rs$|\/)/.test(path);
+
+// The programs a source starts by their bare name.
+export const bareProgramsOf = (source: string): string[] => {
+  const code = withoutTestModules(withoutComments(source));
+  const constants = new Map([...code.matchAll(STR_CONSTANT)].map((match) => [match[1] ?? '', match[2] ?? '']));
+
+  return [...code.matchAll(PROGRAM_CALL)]
+    .map((match) => match[1] ?? constants.get(match[2] ?? ''))
+    .filter((program): program is string => program !== undefined && !program.startsWith('/'));
+};
+
+const isCoreOrModule = (path: string): boolean => /(?:^|\/)(?:crates|modules)\/[^/]+\/src\//.test(path);
+
+export const findBareProgramViolations = (
+  metadata: Metadata,
+  sourcesOf: (srcFolder: string) => readonly SourceFile[],
+): Violation[] =>
+  metadata.packages.flatMap((pkg) =>
+    [
+      ...new Set(
+        pkg.targets
+          .filter((target) => target.kind.some((kind) => ROOT_KINDS.has(kind)) && isCoreOrModule(target.path))
+          .map((target) => dirname(target.path)),
+      ),
+    ]
+      .flatMap((folder) => sourcesOf(folder))
+      .filter((file) => !isTestFile(file.path))
+      .flatMap((file) =>
+        bareProgramsOf(file.text).map((program) => ({
+          crate: pkg.name,
+          reason: `${file.path} starts \`${program}\` by its bare name, looked up in PATH: give its absolute path`,
+        })),
+      ),
+  );
 
 const rustFiles = (folder: string): SourceFile[] =>
   readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
@@ -203,6 +328,7 @@ if (import.meta.main) {
     ...findViolations(metadata),
     ...findUnsafeViolations(metadata, (path) => readFileSync(path, 'utf8')),
     ...findModuleViolations(metadata, rustFiles),
+    ...findBareProgramViolations(metadata, rustFiles),
   ];
 
   for (const violation of violations) {

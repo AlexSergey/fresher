@@ -1,6 +1,6 @@
 # The system's Trash call takes a path
 
-**Status:** open · **Updated:** 2026-11-16
+**Status:** open · **Updated:** 2026-11-25
 
 ## Symptom
 
@@ -19,8 +19,9 @@ call removes it by its identity.
 - Plan 008/01 measured the Trash window: a parent swapped for a link makes the call move the item behind it, and some
   such calls return no landed path. The post-check asks the kept handle where the verified item is now (`F_GETPATH`,
   exact in 2 000 of 2 000 racing calls; plan 008, call 37): an item moved in its place is reported as `Failed`
-  ("Another item was moved to the Trash in its place"), and the reported landed path is journalled so it can be put
-  back (`crates/cleaner/src/remove/trash.rs`).
+  ("Another item was moved to the Trash in its place") (`crates/cleaner/src/remove/trash.rs`). The item it moved
+  instead is not journalled (security audit 2026-11-25): its original place is unknown, and journalling it under the
+  verified item's path made put back bring it there. Finder's own Put Back restores it to where it came from.
 - The permanent delete acts beneath held folders since plan 008/04's hardening
   ([`cleaner-act-by-path.md`](./cleaner-act-by-path.md)): each entry is checked against its listing right before
   `unlinkat`, so a replacement can only be an entry of the same verified folder, on the same volume, never behind a

@@ -6,6 +6,10 @@ use std::sync::{Mutex, PoisonError};
 
 use fresher_core::{CancelToken, CommandOutput, CommandRunError, CommandRunner};
 
+/// In a stated argument, the place of the canonical sandbox folder: a call that names a path of the sandbox (the
+/// Docker read's socket) is stated as `unix://{sandbox}/home/...`.
+pub(crate) const SANDBOX_TOKEN: &str = "{sandbox}";
+
 /// The longest output a stated tool may give, in bytes.
 pub(crate) const MAX_TOOL_OUTPUT: usize = 64 * 1024;
 
@@ -83,10 +87,18 @@ pub struct WorldCommands {
 }
 
 impl WorldCommands {
-    /// The runner of `tools`, their programs below `sandbox` (the canonical sandbox folder).
+    /// The runner of `tools`, their programs below `sandbox` (the canonical sandbox folder), each
+    /// [`SANDBOX_TOKEN`] of their arguments that folder.
     pub(crate) fn new(sandbox: &Path, tools: &[StatedTool]) -> Self {
-        let tools =
-            tools.iter().map(|tool| StatedTool { program: sandbox.join(&tool.program), ..tool.clone() }).collect();
+        let folder = sandbox.to_string_lossy();
+        let tools = tools
+            .iter()
+            .map(|tool| StatedTool {
+                program: sandbox.join(&tool.program),
+                args: tool.args.iter().map(|arg| arg.replace(SANDBOX_TOKEN, &folder)).collect(),
+                ..tool.clone()
+            })
+            .collect();
         Self { tools, unanswered: Mutex::new(Vec::new()) }
     }
 

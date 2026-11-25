@@ -14,6 +14,7 @@ mod apps;
 mod bundle;
 mod bundle_facts;
 mod clock;
+mod code_check;
 mod finder_settings;
 mod guarded_root;
 mod installs;

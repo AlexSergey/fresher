@@ -7,6 +7,7 @@ mod operation;
 mod pending;
 mod plan;
 mod trash;
+mod trash_folders;
 #[cfg(test)]
 mod trash_tests;
 mod view;

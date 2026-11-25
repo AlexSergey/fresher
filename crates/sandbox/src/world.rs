@@ -773,8 +773,20 @@ mod tests {
         format!("[[case.tool]]\nprogram = \"{DOCKER}\"\nargs = [{args}]\nstatus = {status}\nstdout = \"{stdout}\"\n")
     }
 
-    const DF: &str = "\"--context\", \"orbstack\", \"system\", \"df\", \"--format\", \"json\"";
-    const DF_ARGS: [&str; 6] = ["--context", "orbstack", "system", "df", "--format", "json"];
+    /// The Docker read as a case states it: its socket below the sandbox, through the sandbox token.
+    const DF: &str = "\"--host\", \"unix://{sandbox}/home/.orbstack/run/docker.sock\", \"--config\", \
+                      \"/private/var/empty\", \"system\", \"df\", \"--format\", \"json\"";
+    /// The same read as the module makes it in the sandbox at `/box`.
+    const DF_ARGS: [&str; 8] = [
+        "--host",
+        "unix:///box/home/.orbstack/run/docker.sock",
+        "--config",
+        "/private/var/empty",
+        "system",
+        "df",
+        "--format",
+        "json",
+    ];
 
     fn user(folder: &Path) -> u32 {
         use std::os::unix::fs::MetadataExt as _;
@@ -869,8 +881,8 @@ mod tests {
                 commands.unanswered(),
                 [
                     format!("{program} --context orbstack image prune"),
-                    format!("{program} --context orbstack system df --format"),
-                    format!("/{DOCKER} --context orbstack system df --format json"),
+                    format!("{program} {}", DF_ARGS[..5].join(" ")),
+                    format!("/{DOCKER} {}", DF_ARGS.join(" ")),
                 ]
             );
         }
@@ -1222,6 +1234,18 @@ mod tests {
             assert_eq!(df, Ok(CommandOutput { status: 0, stdout: "{}".into(), stderr: String::new() }));
             assert_eq!(info, Ok(CommandOutput { status: 3, stdout: "no".into(), stderr: String::new() }));
             assert_eq!(commands.unanswered(), Vec::<String>::new());
+        }
+
+        #[test]
+        fn a_stated_argument_names_the_sandbox_folder_through_its_token() {
+            let world = World::of(&[case_file("a", &tool(DF, 0, "{}"))], super::now()).unwrap();
+            let commands = world.commands(Path::new("/box"));
+            let program = format!("/box/{DOCKER}");
+
+            let df = commands.run(&program, &DF_ARGS, &CancelToken::new());
+
+            assert_eq!(df, Ok(CommandOutput { status: 0, stdout: "{}".into(), stderr: String::new() }));
+            assert!(world.text().unwrap().contains("unix://{sandbox}/home/.orbstack/run/docker.sock"));
         }
 
         #[test]

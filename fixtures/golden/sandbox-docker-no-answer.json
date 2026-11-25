@@ -84,7 +84,7 @@
             }
           },
           {
-            "allocated": 67110708,
+            "allocated": 67110841,
             "part": {
               "kind": "remainder",
               "outsideScan": true,
@@ -111,7 +111,7 @@
             }
           },
           {
-            "allocated": 738195660,
+            "allocated": 738195527,
             "part": {
               "kind": "disk-own"
             }
@@ -239,10 +239,10 @@
       },
       {
         "kind": "file",
-        "logical_size": 1003,
+        "logical_size": 1136,
         "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 1844
+    "totalLogicalSize": 1977
   }
 }

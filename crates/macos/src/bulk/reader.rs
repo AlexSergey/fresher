@@ -19,6 +19,11 @@ use crate::ffi::bulk;
 const BUFFER_SIZE: usize = 64 * 1024;
 /// How many times a call interrupted by a signal is tried again.
 const RETRIES: usize = 3;
+/// The most names a path longer than `PATH_MAX` may have. Such a path is opened one name at a time from `/`, so each
+/// folder costs one open per name: without a bound, a hostile tree (a deep archive with long names, a leftover in the
+/// temporary folder) makes the walk quadratic in its depth and stalls the scan. A deeper folder is unreadable (`Failed`):
+/// the scan goes on, partial, with that subtree left out.
+const MAX_NAMES: usize = 64;
 const FOLDER_FLAGS: libc::c_int = libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
 
 const LIST: libc::attrlist = libc::attrlist {
@@ -53,16 +58,37 @@ thread_local! {
 #[derive(Clone, Copy, Debug)]
 pub struct MacFolderReader {
     buffer_size: usize,
+    max_names: usize,
 }
 
 impl MacFolderReader {
     pub const fn new() -> Self {
-        Self { buffer_size: BUFFER_SIZE }
+        Self { buffer_size: BUFFER_SIZE, max_names: MAX_NAMES }
     }
 
     #[cfg(test)]
     const fn with_buffer_size(buffer_size: usize) -> Self {
-        Self { buffer_size }
+        Self { buffer_size, max_names: MAX_NAMES }
+    }
+
+    #[cfg(test)]
+    const fn with_max_names(max_names: usize) -> Self {
+        Self { buffer_size: BUFFER_SIZE, max_names }
+    }
+
+    /// Opens the folder at `path` without following a link. A path past `PATH_MAX` is opened one name at a time, when
+    /// it has at most `max_names` names.
+    fn open_folder(&self, path: &Path) -> Result<File, ReadError> {
+        let opened = OpenOptions::new().read(true).custom_flags(FOLDER_FLAGS).open(path);
+        let opened = match opened {
+            Err(error) if error.raw_os_error() == Some(libc::ENAMETOOLONG) => open_in_steps(path, self.max_names),
+            opened => opened,
+        };
+        opened.map_err(|error| match error.raw_os_error() {
+            // Something that is not a folder stands at the path (a link, a file), or the path itself is gone.
+            Some(libc::ENOTDIR) if fs::symlink_metadata(path).is_ok() => ReadError::Replaced,
+            _ => read_error(&error),
+        })
     }
 }
 
@@ -74,11 +100,11 @@ impl Default for MacFolderReader {
 
 impl FolderReader for MacFolderReader {
     fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
-        identity(&open_folder(path)?)
+        identity(&self.open_folder(path)?)
     }
 
     fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
-        let metadata = open_folder(path)?.metadata().map_err(|error| read_error(&error))?;
+        let metadata = self.open_folder(path)?.metadata().map_err(|error| read_error(&error))?;
         Ok(access_of(&metadata))
     }
 
@@ -86,7 +112,7 @@ impl FolderReader for MacFolderReader {
     /// `Replaced`; a folder removed while it was read is `Vanished`.
     fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {
         out.clear();
-        let folder = open_folder(path)?;
+        let folder = self.open_folder(path)?;
         if identity(&folder)? != expected {
             return Err(ReadError::Replaced);
         }
@@ -105,7 +131,7 @@ impl FolderReader for MacFolderReader {
             return Err(ReadError::Failed);
         }
         let name = CString::new(name).map_err(|_| ReadError::Failed)?;
-        let folder = open_folder(folder)?;
+        let folder = self.open_folder(folder)?;
         let file = bulk::open_at(folder.as_fd(), &name, libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_NONBLOCK)
             .map_err(|error| read_error(&error))?;
         let file = File::from(file);
@@ -182,24 +208,15 @@ fn identity(folder: &File) -> Result<FolderIdentity, ReadError> {
     Ok(FolderIdentity { device: metadata.dev(), file_id: metadata.ino() })
 }
 
-/// Opens the folder at `path` without following a link. A path past `PATH_MAX` is opened one name at a time.
-fn open_folder(path: &Path) -> Result<File, ReadError> {
-    let opened = OpenOptions::new().read(true).custom_flags(FOLDER_FLAGS).open(path);
-    let opened = match opened {
-        Err(error) if error.raw_os_error() == Some(libc::ENAMETOOLONG) => open_in_steps(path),
-        opened => opened,
-    };
-    opened.map_err(|error| match error.raw_os_error() {
-        // Something that is not a folder stands at the path (a link, a file), or the path itself is gone.
-        Some(libc::ENOTDIR) if fs::symlink_metadata(path).is_ok() => ReadError::Replaced,
-        _ => read_error(&error),
-    })
-}
-
-fn open_in_steps(path: &Path) -> io::Result<File> {
+/// Opens the folder at `path` one name at a time from `/`, each through no link; a path of more than `max_names`
+/// names is refused at once (`ENAMETOOLONG`), before any open.
+fn open_in_steps(path: &Path, max_names: usize) -> io::Result<File> {
     let mut components = path.components();
     if components.next() != Some(Component::RootDir) {
         return Err(io::Error::from(io::ErrorKind::InvalidInput));
+    }
+    if components.clone().count() > max_names {
+        return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG));
     }
     let mut folder = OpenOptions::new().read(true).custom_flags(FOLDER_FLAGS).open("/")?;
     for component in components {
@@ -207,6 +224,8 @@ fn open_in_steps(path: &Path) -> io::Result<File> {
             return Err(io::Error::from(io::ErrorKind::InvalidInput));
         };
         let name = CString::new(name.as_bytes()).map_err(|_| io::Error::from(io::ErrorKind::InvalidInput))?;
+        #[cfg(test)]
+        tests::STEPS.with(|steps| steps.set(steps.get() + 1));
         folder = File::from(bulk::open_at(folder.as_fd(), &name, libc::O_RDONLY | FOLDER_FLAGS)?);
     }
     Ok(folder)
@@ -214,12 +233,18 @@ fn open_in_steps(path: &Path) -> io::Result<File> {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
     use std::collections::BTreeMap;
     use std::path::Path;
 
     use fresher_core::{FolderListing, FolderReader, RawEntry, ReadError};
 
     use super::MacFolderReader;
+
+    thread_local! {
+        /// How many names `open_in_steps` opened on this thread.
+        pub(super) static STEPS: Cell<usize> = const { Cell::new(0) };
+    }
 
     /// Runs `chflags` with `flags` on `path`.
     pub(super) fn chflags(flags: &str, path: &Path) {
@@ -233,6 +258,32 @@ mod tests {
         Ok(out.iter().map(|(name, entry)| (name.to_vec(), *entry)).collect())
     }
 
+    /// Makes `depth` nested folders of a 255-byte name under `root`, from the deepest up, so no path the system is
+    /// given is long: each is made beside the chain, and the chain moved into it. Answers the path of each level, the
+    /// shallowest first; from the fourth level on each is longer than `PATH_MAX`.
+    pub(super) fn deep_chain(root: &Path, depth: usize) -> Vec<std::path::PathBuf> {
+        let name = "d".repeat(255);
+        std::fs::create_dir(root.join("0")).unwrap();
+        for level in 1..depth {
+            std::fs::create_dir(root.join(level.to_string())).unwrap();
+            std::fs::rename(root.join((level - 1).to_string()), root.join(level.to_string()).join(&name)).unwrap();
+        }
+        std::fs::rename(root.join((depth - 1).to_string()), root.join(&name)).unwrap();
+        (1..=depth).map(|level| (0..level).fold(root.to_path_buf(), |path, _| path.join(&name))).collect()
+    }
+
+    /// The names of the absolute path `path`, `/` left out.
+    pub(super) fn names(path: &Path) -> usize {
+        path.components().count() - 1
+    }
+
+    /// How many names `open_in_steps` opens on this thread while `call` runs.
+    pub(super) fn steps_of<T>(call: impl FnOnce() -> T) -> (T, usize) {
+        let before = STEPS.with(Cell::get);
+        let answer = call();
+        (answer, STEPS.with(Cell::get) - before)
+    }
+
     mod negative {
         use std::fs;
         use std::os::unix::fs::{PermissionsExt as _, symlink};
@@ -242,6 +293,22 @@ mod tests {
         use fresher_core::{EntryKind, FolderListing, FolderReader, ReadError};
 
         use crate::MacFolderReader;
+
+        #[test]
+        fn a_folder_past_path_max_deeper_than_the_bound_is_unreadable_and_opens_nothing() {
+            let temp = tempfile::tempdir().unwrap();
+            let root = fs::canonicalize(temp.path()).unwrap();
+            let bound = super::names(&root) + 6;
+            let levels = super::deep_chain(&root, 10);
+            let reader = MacFolderReader::with_max_names(bound);
+
+            for path in levels.iter().filter(|path| super::names(path) > bound) {
+                let (answer, steps) = super::steps_of(|| super::listing(reader, path));
+
+                assert_eq!(answer, Err(ReadError::Failed));
+                assert_eq!(steps, 0, "a folder past the bound costs no open");
+            }
+        }
 
         #[test]
         fn a_folder_replaced_by_a_link_is_refused() {
@@ -387,6 +454,25 @@ mod tests {
 
         use super::listing;
         use crate::MacFolderReader;
+
+        #[test]
+        fn a_folder_past_path_max_within_the_bound_is_read_at_a_cost_bounded_by_its_names() {
+            let temp = tempfile::tempdir().unwrap();
+            let root = fs::canonicalize(temp.path()).unwrap();
+            let bound = super::names(&root) + 6;
+            let levels = super::deep_chain(&root, 6);
+            let reader = MacFolderReader::with_max_names(bound);
+
+            let mut stepped = 0;
+            for (level, path) in (1..).zip(&levels) {
+                let (listed, steps) = super::steps_of(|| listing(reader, path).unwrap());
+
+                assert_eq!(listed.len(), usize::from(level < levels.len()), "level {level}");
+                assert!(steps <= 2 * bound, "level {level}: {steps} opens for one folder read twice");
+                stepped += usize::from(steps > 0);
+            }
+            assert!(stepped >= 2, "the deepest levels are past PATH_MAX and opened in steps");
+        }
 
         fn many_files(folder: &Path, count: usize) {
             fs::create_dir(folder).unwrap();

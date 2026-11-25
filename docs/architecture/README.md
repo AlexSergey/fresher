@@ -116,7 +116,9 @@ Rules of the layout:
   run; the app subscribes it to the engine before the last scan is restored and wraps the generated invoke handler, so
   every action the UI sends and every event but the scan's progress go to an append-only `.events.jsonl`, and a
   snapshot `.json` is rewritten after each scan and cleanup. The core, the engine and the modules know nothing of it.
-- External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes.
+- External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes. Each
+  is named by its absolute path: the real runner (`ProcessCommandRunner`) refuses a bare name as not installed and
+  never looks one up in `PATH`, which another program of the user can set.
 - **The system's facts** (plan [009](../plans/009-system-knowledge/readme.md)): the engine's `Ports.system`
   (`SystemPorts`: known folders, installed apps, running apps, install records, small files) becomes one lazy `SystemFacts` per scan, handed to
   every module as `cx.system()`; the engine adds its own interests for the projects (`ProjectFinder::interests()`, in
@@ -144,7 +146,7 @@ Rules of the layout:
 | `Cleaner`        | `fresher-cleaner`'s `DiskCleaner`                                                                               | `FakeCleaner` (records the executed plan)                   |
 | `CleanupJournal` | `fresher-store`'s `FileCleanupJournal`                                                                          | `MemoryCleanupJournal`                                      |
 | `DiskWalk`       | `fresher-scanner`'s `Scanner`, with the macOS reader in the app; `subtrees` answers what the last walk saw below a folder (sizes, newest folder time) before the commit | `NaiveWalk` on a fixture tree                               |
-| `FolderReader`   | `fresher-macos`'s `MacFolderReader` (bulk read); `fresher-scanner`'s portable `StdReader`; in sandbox mode `MacFolderReader` through `FactsLens` | `StdReader` on a fixture tree, through `FactsLens` for its stated facts |
+| `FolderReader`   | `fresher-macos`'s `MacFolderReader` (bulk read; a folder past `PATH_MAX` is opened one name at a time from `/`, only up to 64 names: a deeper one is unreadable, so a hostile deep tree cannot make the walk quadratic); `fresher-scanner`'s portable `StdReader`; in sandbox mode `MacFolderReader` through `FactsLens` | `StdReader` on a fixture tree, through `FactsLens` for its stated facts |
 | `SmallFiles`     | `fresher-core`'s `ReaderFiles` over the scanner's reader, as the app composes it (in sandbox mode over its stated lens); behind `SystemFacts::small_file`: a regular text file of at most 4 KiB, never a link | `DiskFiles` (the standard library, on a fixture tree), `NoFiles` (every read `Unreadable`) |
 | `ChangeJournal`  | `fresher-macos`'s `MacChangeJournal` (FSEvents)                                                                 | `FakeChangeJournal` (a script)                              |
 | `Volumes`        | `fresher-macos`'s `MacVolumes`: `identify`, `available` (what a cleanup measures), `space` (the map's volume)   | `FakeVolumes` (`with_space`, `answering_available`)         |
@@ -152,7 +154,7 @@ Rules of the layout:
 | `DiskState`      | `fresher-scanner`'s `TreeState`, returned by `DiskWalk::commit`                                                 | `FixedDiskState` (a tree from paths and sizes)              |
 | `SettingsStore`  | `fresher-store` (`FileSettingsStore`)                                                                           | in memory, in the engine's tests                            |
 | `AccessProbe`    | `fresher-system`'s `MacAccess` (`fresher-macos::privacy`: the guarded places, checks that never prompt, its own tries remembered); in sandbox mode the app's `UnknownAccess` | `FakeAccess` (any state, guarded places, tries)             |
-| `SystemUi`       | `fresher-system`'s `MacSystemUi` (`/usr/bin/open` with a settings pane's address, `-R` and a path, or `open_folder`: a folder's absolute path, which Finder opens) | `FakeSystemUi` (records every call)                         |
+| `SystemUi`       | `fresher-system`'s `MacSystemUi` (`/usr/bin/open` with a settings pane's address, `-R` and a path, or `open_folder`: `-a Finder` and a folder's absolute path, refused unless `lstat` shows a folder reached through no link, never opened, so nothing at it is launched) | `FakeSystemUi` (records every call)                         |
 | `FinderSettings` | `fresher-system`'s `MacFinderSettings` (`defaults read com.apple.finder FXRemoveOldTrashItems` through the `CommandRunner`: `1` is After30Days, `0` or a missing key Never, anything else Unknown; it never writes a setting) | `FakeFinderSettings` (a fixed answer)                       |
 
 The stand-ins until a later plan are listed in [`../hacks/`](../hacks/README.md).
@@ -163,10 +165,16 @@ No database: the app keeps its own state in small plain files, with nothing to i
 
 - **The data folder** is `~/Library/Application Support/io.github.alexsergey.fresher/` — never inside a scanned root. The app
   passes it to `fresher-store` (`DataFolder::open`); the store never looks it up itself.
+  **One instance:** the shell holds an advisory lock (`flock`) on the data folder itself while it runs
+  (`app/tauri/src/instance.rs`), so a second process of the same identifier does not start; nothing is written for it
+  and the system drops it when the process ends. Opening the bundled app again is handled by macOS, which activates
+  the running copy (the shell brings its window forward on the reopen). The folder is private to the user, so no other
+  account can hold the lock; a relaunch releases it before the new copy starts.
   A development build (`npm run dev`) runs with `app/tauri/tauri.dev.conf.json`: the identifier
   `io.github.alexsergey.fresher.dev`, so its data folder, single-instance lock and permission grants are separate; a
   debug build with the release identifier refuses to start, and so does a build without debug assertions with the
-  development identifier (it would really remove and record nothing).
+  development identifier (it would really remove and record nothing) or with its page not embedded (a plain
+  `cargo build --release` or `tauri dev --release` loads it from the `devUrl`, whose port anything may serve).
 - **`settings.json`**: `{ "format": "settings", "version": 1, "values": { "<key>": <value>, … } }`. Values are checked
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,
@@ -701,3 +709,6 @@ demo mode.
   permissions, for the drag region: `core:window:allow-start-dragging` and `core:window:allow-internal-toggle-maximize`
   (a double click zooms, as in every Mac window). A test in `app/tauri/tests/` fails on any other `core:` or plugin
   permission.
+- The window never leaves the app's page: a navigation guard (`app/tauri/src/navigation.rs`, a plugin over every
+  webview) cancels any address but `tauri://localhost`, and the dev server's origin in Tauri's dev mode. The CSP adds
+  `form-action 'none'`, `base-uri 'none'` and `frame-ancestors 'none'`, which `default-src` does not cover.

@@ -805,7 +805,8 @@ impl Fixture {
             journal: self.journal,
             volumes: self.volumes,
             finder: self.finder,
-            trashes: Vec::new(),
+            // Where the fake cleaner lands what it moves.
+            trashes: vec![PathBuf::from("/fake-trash")],
         };
         Engine::with_cleanup(registry, ports, cleanup, self.high).unwrap()
     }

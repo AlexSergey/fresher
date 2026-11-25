@@ -71,6 +71,7 @@ fn moved(size: u64, folder: &str, name: &str) -> Item {
 fn record(journal: &MemoryCleanupJournal, began: u64, ended: Option<u64>, method: Method, items: &[Item]) -> CleanupId {
     let original = |index: u32| PathBuf::from(format!("/home/item-{index}"));
     let tool = |item: &Item| item.outcome == RecordedOutcome::ToolDone;
+    let emptied = |item: &Item| matches!(item.outcome, RecordedOutcome::Emptied { .. });
     let journal_items = (0_u32..)
         .zip(items)
         .map(|(index, item)| JournalItem {
@@ -78,7 +79,13 @@ fn record(journal: &MemoryCleanupJournal, began: u64, ended: Option<u64>, method
             path: (!tool(item)).then(|| original(index)),
             identity: Some(ItemIdentity::new(1, u64::from(index) + 1, EntryKind::Folder)),
             more: Vec::new(),
-            action: if tool(item) { ActionKind::Tool } else { ActionKind::Remove },
+            action: if tool(item) {
+                ActionKind::Tool
+            } else if emptied(item) {
+                ActionKind::Empty
+            } else {
+                ActionKind::Remove
+            },
             category: "alpha.caches".into(),
             key: format!("item-{index}"),
             reason: text("test.finding.reason"),
@@ -93,7 +100,7 @@ fn record(journal: &MemoryCleanupJournal, began: u64, ended: Option<u64>, method
         let trashed = (0_u64..)
             .zip(&item.landed)
             .map(|(entry, landed)| TrashedItem {
-                original: original(index).join(entry.to_string()),
+                original: if emptied(item) { original(index).join(entry.to_string()) } else { original(index) },
                 landed: landed.clone(),
                 identity: ItemIdentity::new(1, 100 + entry, EntryKind::File),
             })

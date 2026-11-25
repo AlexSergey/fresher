@@ -30,10 +30,23 @@ pub(crate) fn desktop() -> InstalledApp {
     installed_app("com.docker.docker", "Docker", "4.0").unwrap()
 }
 
-/// The only call the module may make to `app`'s `OrbStack`, as `FakeCommandRunner` keys it; built from the app's path.
-pub(crate) fn orbstack_read() -> String {
+/// The only call the module may make to `app`'s `OrbStack` in the home at `home`, as `FakeCommandRunner` keys it:
+/// built from the app's path and the home's socket, with the system's empty folder as its config.
+pub(crate) fn orbstack_read(home: &Path) -> String {
     let program = orbstack().path.join("Contents/MacOS/xbin/docker");
-    format!("{} --context orbstack system df --format json", program.display())
+    let socket = home.join(".orbstack/run/docker.sock");
+    format!(
+        "{} --host unix://{} --config /private/var/empty system df --format json",
+        program.display(),
+        socket.display()
+    )
+}
+
+/// How `OrbStack`'s read answers, if it is asked.
+#[derive(Clone)]
+pub(crate) enum Reply {
+    Says(String),
+    Exits(i32),
 }
 
 /// The design's answer: something unused in every kind but the stopped containers.
@@ -61,7 +74,8 @@ pub(crate) const ANSWER_MANY: &str = r#"{"Active":"0","Reclaimable":"1GB (100%)"
 pub(crate) struct Setup {
     pub(crate) apps: FakeInstalledApps,
     pub(crate) running: FakeRunningApps,
-    pub(crate) commands: FakeCommandRunner,
+    /// The answer of `OrbStack`'s read; `None`: no command is answered.
+    pub(crate) reply: Option<Reply>,
     pub(crate) restored: bool,
     pub(crate) avoid: Vec<PathBuf>,
 }
@@ -72,15 +86,25 @@ impl Setup {
         Self {
             apps: FakeInstalledApps::new(Vec::new()),
             running: FakeRunningApps::default(),
-            commands: FakeCommandRunner::default(),
+            reply: None,
             restored: false,
             avoid: Vec::new(),
         }
     }
 
-    /// `app` installed.
+    /// `app` installed, the CLI of the runtime it is, if any, signed by that runtime's developer.
     pub(crate) fn installed(app: InstalledApp) -> Self {
-        Self { apps: FakeInstalledApps::new(vec![app]), ..Self::none() }
+        let cli = match app.bundle_id.as_str() {
+            "com.docker.docker" => Some(("Contents/Resources/bin/docker", "9BNSXJN65R")),
+            "dev.kdrag0n.MacVirt" => Some(("Contents/MacOS/xbin/docker", "HUAQ24HBR6")),
+            _ => None,
+        };
+        let signed = cli.map(|(cli, team)| (app.path.join(cli), fresher_core::TeamId::new(team).unwrap()));
+        let mut apps = FakeInstalledApps::new(vec![app]);
+        if let Some((cli, team)) = signed {
+            apps = apps.signing(cli, team);
+        }
+        Self { apps, ..Self::none() }
     }
 
     /// `app` installed and open.
@@ -92,11 +116,11 @@ impl Setup {
 
     /// `OrbStack` installed and open, its read answered with `stdout`.
     pub(crate) fn orbstack_says(stdout: &str) -> Self {
-        Self { commands: FakeCommandRunner::default().answering(&orbstack_read(), stdout), ..Self::open(orbstack()) }
+        Self { reply: Some(Reply::Says(stdout.to_owned())), ..Self::open(orbstack()) }
     }
 
-    pub(crate) fn commands(self, commands: FakeCommandRunner) -> Self {
-        Self { commands, ..self }
+    pub(crate) fn reply(self, reply: Reply) -> Self {
+        Self { reply: Some(reply), ..self }
     }
 
     pub(crate) fn restored(self) -> Self {
@@ -112,25 +136,32 @@ impl Setup {
     }
 }
 
-/// What a scan did: the module's run and every command it ran, in order.
+/// What a scan did: the module's run and every command it ran, in order, and the only read it may make.
 pub(crate) struct Scan {
     pub(crate) run: ModuleRun,
     pub(crate) calls: Vec<String>,
+    pub(crate) read: String,
 }
 
 /// The home `name` scanned with `setup`, the clock at `FIXTURE_NOW`.
 pub(crate) fn scan(name: &str, setup: Setup) -> Scan {
     let tree = home(name);
+    let read = orbstack_read(tree.root());
+    let commands = match setup.reply {
+        None => FakeCommandRunner::default(),
+        Some(Reply::Says(stdout)) => FakeCommandRunner::default().answering(&read, &stdout),
+        Some(Reply::Exits(status)) => FakeCommandRunner::default().exiting(&read, status),
+    };
     let ports = Ports {
         apps: Arc::new(setup.apps),
         running: Arc::new(setup.running),
-        commands: setup.commands,
+        commands,
         restored: setup.restored,
         avoid: setup.avoid,
         ..Ports::at(FIXTURE_NOW)
     };
     let run = run_module(&DockerModule::new().unwrap(), &tree, &ports).unwrap();
-    Scan { run, calls: ports.commands.calls() }
+    Scan { run, calls: ports.commands.calls(), read }
 }
 
 /// The silent home with nothing installed.
@@ -175,7 +206,7 @@ pub(crate) fn answered() -> Scan {
 
 /// The answered home, `OrbStack` open and exiting with status 1.
 pub(crate) fn no_answer() -> Scan {
-    scan("docker-answered", Setup::open(orbstack()).commands(FakeCommandRunner::default().exiting(&orbstack_read(), 1)))
+    scan("docker-answered", Setup::open(orbstack()).reply(Reply::Exits(1)))
 }
 
 /// The answered home, `OrbStack` open and saying `garbage`.

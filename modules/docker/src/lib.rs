@@ -4,8 +4,11 @@
 //! while the runtime runs, what is inside it and the Docker command that would free each part. It removes nothing and
 //! offers nothing: no finding, no left-out item, no command of its own to run for the user.
 //!
-//! It never starts a runtime. The only program it runs is the runtime's own CLI, `--context <context> system df
-//! --format json`, and only while the runtime's app runs and its socket is present; never in a restored scan.
+//! It never starts a runtime. The only program it runs is the runtime's own CLI, `--host unix://<socket> --config
+//! <empty folder> system df --format json`, and only while the runtime's app runs and its socket is present, and only
+//! when the CLI carries the valid signature of the runtime's developer; never in a restored scan. The read names the
+//! socket the walk saw and a config folder nobody but the system can write, so no context, credential helper, hook
+//! or plugin folder of the user's (any of which may name a remote engine or a program) is ever followed.
 
 #![forbid(unsafe_code)]
 
@@ -27,8 +30,12 @@ use crate::gathered::{Gathered, Seen, Spotted};
 pub use crate::runtimes::RuntimesError;
 use crate::runtimes::{Runtime, Runtimes};
 
-/// The arguments of the only call the module makes, after `--context <context>`.
+/// The arguments of the only call the module makes, after `--host unix://<socket> --config <EMPTY_CONFIG>`.
 const READ: [&str; 4] = ["system", "df", "--format", "json"];
+
+/// The CLI's config folder for the read: a folder of the system's that is always empty and that only the system may
+/// write, so the user's own config (contexts, credential helpers, hooks, plugins) is never read.
+const EMPTY_CONFIG: &str = "/private/var/empty";
 
 /// Why the `docker` module could not be built (a bug in its own constants or table).
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
@@ -113,9 +120,9 @@ impl Module for DockerModule {
             let state = match decide(app, is_running, seen.socket(index), disk, cx.is_restored()) {
                 Verdict::Silent => continue,
                 Verdict::Describe(state) => state,
-                Verdict::Ask => match app {
-                    Ok(Some(app)) => ask(row, app, cx)?,
-                    Ok(None) | Err(NoSystem) => continue,
+                Verdict::Ask => match apps {
+                    Ok(apps) if app.is_ok_and(|app| app.is_some()) => ask(row, apps, cx)?,
+                    Ok(_) | Err(NoSystem) => continue,
                 },
             };
             // A card that cannot be built is a bug in the module's own table, which its tests catch: it is skipped.
@@ -139,12 +146,22 @@ fn disk(seen: &Seen, index: usize, cx: &ModuleContext<'_>) -> Disk {
     }
 }
 
-/// Asks the runtime of `row`, whose app is `app`, what it keeps: its own CLI inside the app bundle, with exactly
-/// `--context <context> system df --format json`. A program path that is not UTF-8 is no answer.
-fn ask(row: &Runtime, app: &InstalledApp, cx: &ModuleContext<'_>) -> Result<State, ModuleError> {
-    let program = app.path.join(&row.cli);
+/// Asks the runtime of `row` what it keeps: its own CLI inside an app bundle with the runtime's id, with exactly
+/// `--host unix://<socket> --config <EMPTY_CONFIG> system df --format json`, the socket at the row's own place (the
+/// one the walk saw). Any bundle may claim the id, so the CLI runs only from the first such bundle whose CLI carries
+/// the valid signature of the runtime's developer (`row.team`); none is no answer, and nothing runs. A socket's
+/// folder the system does not know, or a program or socket path that is not UTF-8, is no answer either.
+fn ask(row: &Runtime, apps: &[InstalledApp], cx: &ModuleContext<'_>) -> Result<State, ModuleError> {
+    let mut candidates = apps.iter().filter(|app| app.bundle_id == row.app).map(|app| app.path.join(&row.cli));
+    let Some(program) = candidates.find(|program| cx.system().signed_by(program, &row.team, cx.cancel())) else {
+        return Ok(State::NoAnswer);
+    };
     let Some(program) = program.to_str() else { return Ok(State::NoAnswer) };
-    let args: Vec<&str> = ["--context", row.context.as_str()].into_iter().chain(READ).collect();
+    let Some(folder) = cx.system().locate(row.socket.folder) else { return Ok(State::NoAnswer) };
+    let Some(socket) = folder.join(&row.socket.path).to_str().map(|socket| format!("unix://{socket}")) else {
+        return Ok(State::NoAnswer);
+    };
+    let args: Vec<&str> = ["--host", socket.as_str(), "--config", EMPTY_CONFIG].into_iter().chain(READ).collect();
     answered(cx.commands().run(program, &args, cx.cancel())).map_err(|_| ModuleError::Cancelled)
 }
 

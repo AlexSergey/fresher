@@ -104,8 +104,9 @@ pub struct CommandOutput {
 
 /// Runs external programs, injected so that tests use a fake instead of the real Docker CLI.
 pub trait CommandRunner: Send + Sync {
-    /// Runs `program` with exactly `args`, never through a shell. Once `cancel` is set the program is stopped and the
-    /// run answers `Cancelled`; a token set before the call runs nothing.
+    /// Runs `program`, named by its absolute path (the real runner never looks a bare name up in `PATH`), with exactly
+    /// `args`, never through a shell. Once `cancel` is set the program is stopped and the run answers `Cancelled`; a
+    /// token set before the call runs nothing.
     fn run(&self, program: &str, args: &[&str], cancel: &CancelToken) -> Result<CommandOutput, CommandRunError>;
 }
 

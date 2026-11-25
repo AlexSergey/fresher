@@ -13,12 +13,15 @@ const TRASH_FOLDERS: [&str; 2] = [".Trash", ".Trashes"];
 /// Moves the verified item to the Trash with its held handle, then checks where it went (the design's call 37):
 ///
 /// - `Moved` to the reported landed path when that path holds the verified identity;
-/// - else `Moved` to where the held handle's item is now (`at`), when that lies in a Trash folder and holds it;
-/// - else, when `at` names a place, the item is not in the Trash and the call moved something else: `Failed`, with
-///   the reported path, if any, journalled so it can be put back;
+/// - else `Moved` to where the held handle's item is now (`at`), when that is not its original place, lies in a Trash
+///   folder and holds it;
+/// - else, when `at` names a place, the item is not in the Trash and the call moved something else: `Failed`;
 /// - else (`at` is empty: the system could not say where the handle's item is) the original place decides: holding
 ///   the verified item still, it is `Failed` as above; empty or holding something else, the item left it and is
 ///   `Moved`, but where to is unknown, so nothing is journalled for put back.
+///
+/// What the call moved instead of the verified item is never journalled: where it came from is unknown, and put back
+/// would move it to the verified item's place. Finder's own Put Back knows its place.
 ///
 /// A volume without a Trash skips the item: never a permanent delete instead.
 pub(crate) fn to_trash(verified: Verified, _act: Act<'_>, trash: &dyn Trash) -> Removed {
@@ -42,19 +45,14 @@ pub(crate) fn to_trash(verified: Verified, _act: Act<'_>, trash: &dyn Trash) -> 
         return moved(reported);
     }
     let located = !landed.at.as_os_str().is_empty();
-    if located && in_trash_folder(&landed.at) && identity_at(&landed.at) == Some(identity) {
+    let left = landed.at != placed.physical && landed.at != placed.lexical;
+    if located && left && in_trash_folder(&landed.at) && identity_at(&landed.at) == Some(identity) {
         return moved(&landed.at);
     }
     if !located && identity_at(&placed.physical) != Some(identity) {
         return Removed::ended(ItemOutcome::Moved);
     }
-    let elsewhere = landed.reported.as_deref().and_then(|reported| Some(trashed(reported, identity_at(reported)?)));
-    Removed {
-        outcome: ItemOutcome::Failed { reason: Failure::LandedElsewhere.text() },
-        trashed: elsewhere.into_iter().collect(),
-        status: None,
-        went: None,
-    }
+    Removed::ended(ItemOutcome::Failed { reason: Failure::LandedElsewhere.text() })
 }
 
 fn refused(error: &TrashError) -> ItemOutcome {
@@ -129,7 +127,6 @@ mod tests {
         use fresher_testing::FakeTrash;
 
         use super::{DecoyTrash, Unlocated};
-        use crate::remove::identity_at;
         use crate::remove::trash::to_trash;
         use crate::test_support::{Setup, confirmed, verified};
 
@@ -175,20 +172,30 @@ mod tests {
         }
 
         #[test]
-        fn a_landed_item_that_is_not_the_verified_one_fails_and_is_journalled() {
+        fn a_landed_item_that_is_not_the_verified_one_fails_and_is_not_journalled() {
             let setup = setup();
             let plan = confirmed(&setup, &[], Method::Trash);
-            let decoy = identity_at(&setup.at("home/decoy.bin")).unwrap();
             let trash = DecoyTrash { decoy: setup.at("home/decoy.bin"), dir: setup.at(".Trash") };
 
             let removed = to_trash(verified(&setup, "home/a.bin"), plan.act(), &trash);
 
             assert_eq!(removed.outcome, ItemOutcome::Failed { reason: Failure::LandedElsewhere.text() });
-            assert_eq!(removed.trashed.len(), 1);
-            assert_eq!(removed.trashed[0].landed, setup.at(".Trash/decoy"));
-            assert_eq!(removed.trashed[0].identity, decoy);
-            assert_eq!(removed.trashed[0].original, setup.at("home/a.bin"));
+            assert_eq!(removed.trashed, Vec::new(), "never journalled to come back at the verified item's place");
+            assert!(setup.at(".Trash/decoy").exists());
             assert!(setup.at("home/a.bin").exists());
+        }
+
+        #[test]
+        fn an_item_that_never_left_a_folder_named_like_a_trash_is_not_moved() {
+            let setup =
+                Setup::new("[[file]]\npath = \"home/app/.Trash/a.bin\"\n\n[[file]]\npath = \"home/decoy.bin\"\n");
+            let plan = confirmed(&setup, &[], Method::Trash);
+            let trash = DecoyTrash { decoy: setup.at("home/decoy.bin"), dir: setup.at(".Trash") };
+
+            let removed = to_trash(verified(&setup, "home/app/.Trash/a.bin"), plan.act(), &trash);
+
+            assert_eq!(removed.outcome, ItemOutcome::Failed { reason: Failure::LandedElsewhere.text() });
+            assert!(setup.at("home/app/.Trash/a.bin").exists());
         }
 
         #[test]

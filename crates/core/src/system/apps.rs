@@ -85,6 +85,14 @@ pub trait InstalledApps: Send + Sync {
         let _ = path;
         false
     }
+
+    /// Whether the program at `file` carries a valid code signature of the developer `team`, under a certificate
+    /// Apple issued: what a module checks before it runs a program from inside an app bundle, since anyone can write a
+    /// bundle with any bundle id. The default answers `false`: a port that cannot check a signature lets nothing run.
+    fn signed_by(&self, file: &Path, team: &TeamId, cancel: &CancelToken) -> bool {
+        let _ = (file, team, cancel);
+        false
+    }
 }
 
 #[cfg(test)]

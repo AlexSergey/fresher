@@ -7,8 +7,8 @@ import { type Command, run, spawnReal, UsageError } from './sandbox-dev.ts';
 // `npm run dev` (plan 026/02/03): starts the development build with the development run record on:
 // `FRESHER_DEV_RUNS`, `FRESHER_BUILD_COMMIT`, `FRESHER_BUILD_DIRTY`. The app checks the folder (app/tauri/src/dev_runs/).
 // It takes no argument: `npm run dev -- --release` would build an app that really removes and records nothing. The bare
-// `npm run tauri` script still forwards anything, but such a build runs with the development identifier and refuses to
-// start (app/tauri/src/identity.rs).
+// `npm run tauri` script still forwards anything, but a build without debug assertions refuses to start when it runs
+// with the development identifier or loads its page from the dev server (app/tauri/src/identity.rs).
 
 export type BuildFacts = { readonly commit: string; readonly dirty: boolean };
 

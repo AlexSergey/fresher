@@ -221,6 +221,8 @@ impl Shell {
         // The test's home lies in the user's temporary folder: the real Mac's list carves it out, as the app's does.
         let finder = Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown));
         let mut cleanup = cleanup(&home, user_temp().as_deref(), &data, cleaner, volumes, finder, reach).unwrap();
+        // The fake Trash is one of the user's Trash folders: put back trusts only an item that landed in one.
+        cleanup.trashes = vec![folder.path().join("trash")];
         if held {
             cleanup = CleanupPorts { cleaner: Arc::new(HeldCleaner(cleanup.cleaner)), ..cleanup };
         }

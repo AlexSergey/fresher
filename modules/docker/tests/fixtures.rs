@@ -100,18 +100,20 @@ mod negative {
 mod positive {
     use fresher_core::DangerLevel;
 
-    use crate::support::{answered, fixtures, left, orbstack_read, unseen};
+    use crate::support::{answered, fixtures, left, unseen};
 
     fn label(figure: &fresher_core::Figure) -> &str {
         figure.label.key().as_str()
     }
 
     #[test]
-    fn an_open_runtime_is_asked_once_with_its_context() {
+    fn an_open_runtime_is_asked_once_through_its_socket_with_no_config_of_the_user() {
         let scan = answered();
 
-        assert_eq!(scan.calls, [orbstack_read()]);
-        assert!(orbstack_read().contains("/OrbStack.app/Contents/MacOS/xbin/docker --context orbstack system df"));
+        assert_eq!(scan.calls, std::slice::from_ref(&scan.read));
+        assert!(scan.read.contains("/OrbStack.app/Contents/MacOS/xbin/docker --host unix:///"));
+        assert!(scan.read.ends_with("/.orbstack/run/docker.sock --config /private/var/empty system df --format json"));
+        assert!(!scan.read.contains("--context"));
         assert_eq!(scan.run.insights.len(), 1);
         assert_eq!(scan.run.insights[0].summary().key().as_str(), "docker.summary.answered");
     }

@@ -1,7 +1,9 @@
-//! How the app lives: one instance, and it ends when its window closes. No tray, no thread survives the window.
+//! How the app lives: one instance (`crate::instance`), and it ends when its window closes. No tray, no thread
+//! survives the window.
 //! While a cleanup runs, closing the window or quitting from the app menu (⌘Q) asks first. When the window gains
 //! focus the system's permissions are checked again, off the event loop's thread.
 
+use crate::instance::InstanceLock;
 use crate::start_failure::holds_exit;
 use fresher_core::{CommandError, EngineStatus, Operation};
 use fresher_engine::Engine;
@@ -39,12 +41,8 @@ pub(crate) fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
     }
 }
 
-/// A second launch of the app: the open window comes forward, and the second process exits (the plugin ends it).
-pub(crate) fn on_second_launch<R: Runtime>(app: &AppHandle<R>) {
-    if cfg!(debug_assertions) {
-        // `npm run dev` and `npm run dev:sandbox` share the development identifier: the running window keeps its mode.
-        tracing::warn!("a second launch went to the running development window, which keeps its own sandbox mode");
-    }
+/// The app was opened again (macOS activates the running copy, no second process): the open window comes forward.
+pub(crate) fn on_reopen<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
         // A window that cannot be brought forward stays where it is; there is nothing else to do.
         let _ = window.unminimize();
@@ -69,6 +67,8 @@ pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &RunEvent) {
         // A failed start leaves no window, but the app lives until its message is dismissed.
         RunEvent::ExitRequested { api, code, .. } if holds_exit(app, *code) => api.prevent_exit(),
         RunEvent::ExitRequested { .. } | RunEvent::Exit => on_exit(app),
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => on_reopen(app),
         _ => {}
     }
 }
@@ -94,6 +94,10 @@ pub(crate) fn relaunch<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandErro
         return Err(CommandError::Busy { running: Operation::Clean });
     }
     on_exit(app);
+    // The new copy starts before this one ends: it must find the lock free.
+    if let Some(lock) = app.try_state::<InstanceLock>() {
+        lock.release();
+    }
     app.restart()
 }
 
@@ -136,7 +140,7 @@ mod tests {
 
         use tauri::menu::{MenuEvent, MenuId};
 
-        use crate::shell::{MAIN_WINDOW, holds_close, on_exit, on_focus, on_menu_event, on_second_launch, relaunch};
+        use crate::shell::{MAIN_WINDOW, holds_close, on_exit, on_focus, on_menu_event, on_reopen, relaunch};
         use crate::testing::{Shell, caches, echo, is_cleanup_finished, scan, trial_home, until_finished};
 
         #[test]
@@ -155,11 +159,11 @@ mod tests {
         }
 
         #[test]
-        fn exit_and_a_second_launch_without_an_engine_or_a_window_do_nothing() {
+        fn exit_and_a_reopen_without_an_engine_or_a_window_do_nothing() {
             let app = tauri::test::mock_app();
 
             on_exit(app.handle());
-            on_second_launch(app.handle());
+            on_reopen(app.handle());
 
             assert!(on_focus(app.handle(), MAIN_WINDOW).is_none());
             assert!(!holds_close(app.handle()));
@@ -237,7 +241,7 @@ mod tests {
         use tauri::menu::{MenuEvent, MenuId};
 
         use crate::shell::{
-            MAIN_WINDOW, QUIT_ITEM, holds_close, on_focus, on_menu_event, on_second_launch, quit_after_cleanup,
+            MAIN_WINDOW, QUIT_ITEM, holds_close, on_focus, on_menu_event, on_reopen, quit_after_cleanup,
         };
         use crate::testing::{Shell, caches, echo, is_cleanup_finished, scan, trial_home, until_finished};
 
@@ -301,13 +305,13 @@ mod tests {
         }
 
         #[test]
-        fn a_second_launch_reaches_the_main_window() {
+        fn a_reopen_reaches_the_main_window() {
             // The mock runtime does not track focus or visibility; this proves the window is found and every call
             // on it is accepted. The real focus is checked by hand (the plan's conclusions).
             let shell = Shell::new();
             WebviewWindowBuilder::new(&shell.app, MAIN_WINDOW, WebviewUrl::default()).build().unwrap();
 
-            on_second_launch(shell.app.handle());
+            on_reopen(shell.app.handle());
 
             assert!(shell.app.get_webview_window(MAIN_WINDOW).is_some());
         }

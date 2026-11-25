@@ -58,10 +58,10 @@ pub fn reveal_args(path: &Path) -> [&OsStr; 2] {
     [OsStr::new("-R"), path.as_os_str()]
 }
 
-/// The arguments of [`OPEN`] that open the folder `path` in Finder: the path alone, kept as one `OsStr`, never
-/// formatted.
-pub fn open_folder_args(path: &Path) -> [&OsStr; 1] {
-    [path.as_os_str()]
+/// The arguments of [`OPEN`] that open the folder `path` in Finder: `-a Finder` and the path, kept as one `OsStr`,
+/// never formatted. Finder only shows what it is given: an app or a program at the path is never launched.
+pub fn open_folder_args(path: &Path) -> [&OsStr; 3] {
+    [OsStr::new("-a"), OsStr::new("Finder"), path.as_os_str()]
 }
 
 #[cfg(test)]
@@ -88,7 +88,7 @@ mod tests {
 
             let args = open_folder_args(path);
 
-            assert_eq!(args, [path.as_os_str()]);
+            assert_eq!(args, [OsStr::new("-a"), OsStr::new("Finder"), path.as_os_str()]);
         }
 
         #[test]

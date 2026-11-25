@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 
 use crate::{
     BundleId, CancelToken, InstallRecords, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
-    Project, Receipt, RunningApps, RunningSet, SystemError, SystemVersion,
+    Project, Receipt, RunningApps, RunningSet, SystemError, SystemVersion, TeamId,
 };
 
 use super::small_file::{SMALL_FILE_LIMIT, SmallFile, SmallFiles, judge};
@@ -86,6 +86,12 @@ impl SystemFacts {
             return Err(error.clone());
         }
         self.ports.apps.find(ids, cancel)
+    }
+
+    /// Whether the program at `file` is signed by the developer `team` (`InstalledApps::signed_by`), asked anew at
+    /// every call: a module asks it right before it runs the program.
+    pub fn signed_by(&self, file: &Path, team: &TeamId, cancel: &CancelToken) -> bool {
+        self.ports.apps.signed_by(file, team, cancel)
     }
 
     fn installed(&self) -> Result<&InstalledList, SystemError> {

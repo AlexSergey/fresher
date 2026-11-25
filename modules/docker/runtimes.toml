@@ -3,8 +3,9 @@
 # id       the row's name in kebab case; also the identity of the card the module describes
 # name     the runtime's own product name; the card's title (`docker.title`)
 # app      the runtime's bundle id: whether it is installed and running is asked by it
+# team     the team id of the runtime's developer: the CLI runs only when it carries that developer's valid signature
 # cli      the runtime's own Docker CLI, relative to its app bundle (plain folder names)
-# context  the Docker context the runtime creates; every command, read or shown, names it
+# context  the Docker context the runtime creates; every command shown names it (the read names the socket)
 # socket   where the runtime's engine socket is, a known folder and a plain relative path
 # disk     where the runtime's disk file is, a known folder and a plain relative path
 # maximum  `shown` when the disk file's length is the size limit the user set, `hidden` when it is not
@@ -13,6 +14,7 @@
 id = "docker-desktop"
 name = "Docker Desktop"
 app = "com.docker.docker"
+team = "9BNSXJN65R"
 cli = "Contents/Resources/bin/docker"
 context = "desktop-linux"
 socket = { folder = "home", path = ".docker/run/docker.sock" }
@@ -23,6 +25,7 @@ maximum = "shown"
 id = "orbstack"
 name = "OrbStack"
 app = "dev.kdrag0n.MacVirt"
+team = "HUAQ24HBR6"
 cli = "Contents/MacOS/xbin/docker"
 context = "orbstack"
 socket = { folder = "home", path = ".orbstack/run/docker.sock" }

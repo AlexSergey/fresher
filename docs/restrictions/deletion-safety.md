@@ -16,6 +16,12 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `crates/cleaner/tests/types.rs` (each crate's `tests/compile_fail/`); the property test
   `any_changed_field_of_the_echo_refuses` (`confirm.rs`); the core e2e `crates/e2e/tests/cleanup.rs` (a wrong count,
   an old plan: nothing moved, nothing journalled).
+- **What the types do not prove: that a person clicked.** Every field of the echo is in `prepare_cleanup`'s own
+  answer, and the method and the High tick are free choices, so the types enforce "only the plan prepared, once, as
+  it was shown", not "the user confirmed it". Code running in the webview could prepare and confirm by itself. The
+  gate for the user's intent is the page's integrity: only the bundled page runs in the window (no remote content,
+  the content security policy in `app/tauri/tauri.conf.json`), and the window may call only the commands its
+  capability grants (`app/tauri/capabilities/default.json`). A build that serves another page (a development server) breaks this gate.
 - **An item may be several paths** (a model of a local AI tool: its list and the layers only it uses): the user
   confirms the item, not its files one by one; the confirmation lists the other paths on demand ("and N more files
   that go with it"), the item count, size and highest danger are the item's, and every path of it is checked before the
@@ -84,6 +90,16 @@ The app deletes files from a real person's disk. These rules hold in every versi
   `every_part_goes_to_the_trash_the_subject_first` and `the_permanent_way_deletes_each_part_through_the_deletion_point`
   (`remove/together.rs`), `a_together_item_comes_back_parts_first_and_the_subject_last` and
   `a_together_item_whose_layer_cannot_come_back_keeps_its_subject_in_the_trash` (`history.rs`).
+- **Put back moves only what a cleanup moved to a Trash, back to the place the history shows.** The journal is a
+  plain file any program of the user can write, so its entries are not trusted: an entry counts as in the Trash only
+  when it landed right inside one of the user's Trash folders (the home's, one the composition names, a volume's
+  `.Trashes/<uid>` at that volume's root; a plain absolute path, no `.` nor `..`) and its original place is the
+  item's own as the history row shows it (its path or one of its parts; for an emptying, a path inside the folder it
+  emptied). Any other entry is `Gone`: never put back, never shown in the Trash, never revealed. Enforced by
+  `Located::of` (`crates/engine/src/cleanup/history.rs`) with `TrashFolders` (`trash_folders.rs`), which the Trash
+  view uses too. Tests: `a_written_entry_that_landed_in_no_trash_is_neither_in_the_trash_nor_put_back_nor_shown`,
+  `a_written_entry_whose_original_is_not_the_place_shown_is_not_put_back`,
+  `a_written_emptying_entry_outside_the_folder_emptied_is_not_put_back` (`history.rs`), `trash_folders.rs`.
 
 ## A High plan needs its own tick
 

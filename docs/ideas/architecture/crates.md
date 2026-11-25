@@ -23,7 +23,7 @@ Candidate dependencies, checked against [`../../restrictions/dependencies.md`](.
 | `rustc-hash`, `file-id`             | MIT / Apache-2.0 | fast hash sets, file identity                 |                                                                          |
 | `sysinfo` 0.40                      | MIT              | running processes (items in use)              |                                                                          |
 | `ts-rs` 12.0.1                      | MIT              | TypeScript types from the Rust types          | taken by plan 002 (pinned `=12.0.1`)                                     |
-| `tauri-plugin-single-instance`      | MIT / Apache-2.0 | one instance of the app                       | taken by plan 002 (pinned `=2.5.5`)                                      |
+| `tauri-plugin-single-instance`      | MIT / Apache-2.0 | one instance of the app                       | taken by plan 002, removed by plan 041: a lock on the data folder        |
 
 Every new crate still goes through `cargo deny check` and cargo-machete, and gets its row in the licence notices
 (`npm run notices:generate`, plan [013](../../plans/013-release/readme.md)).

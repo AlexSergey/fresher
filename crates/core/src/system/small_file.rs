@@ -1,5 +1,6 @@
 //! Reading one small text file a module's matches showed: a version pin, a pointer file. Read-only, never follows a
-//! link, and the bytes are never logged.
+//! link as the file's own name (a link among its folder's names is a known issue:
+//! `docs/known-issues/core-small-file-folder-through-a-link.md`), and the bytes are never logged.
 
 use std::fmt;
 use std::path::Path;

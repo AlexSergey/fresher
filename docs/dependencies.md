@@ -26,7 +26,6 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `serde_json`                   | 1.0.154 | MIT OR Apache-2.0         | app, cleaner, core, e2e, engine, module-app-caches (tests), module-app-leftovers, module-demo, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-logs (tests), module-stale-projects, module-temp, module-unused-toolchains (tests), module-xcode (tests), store, testing |
 | `tauri`                        | 2.12.5  | Apache-2.0 OR MIT         | app                                                                                 |
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
-| `tauri-plugin-single-instance` | 2.5.5   | Apache-2.0 OR MIT         | app                                                                                 |
 | `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, sandbox, scanner, store, system, testing                  |
 | `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, cleaner, core, engine, macos, module-app-caches, module-app-leftovers, module-demo, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-logs, module-stale-projects, module-temp, module-trial, module-unused-toolchains, module-xcode, rules, sandbox, scanner, store, system, testing |
 | `toml`                         | 1.2.1   | MIT OR Apache-2.0         | module-app-caches, module-app-leftovers, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-stale-projects, module-unused-toolchains, module-xcode, rules, sandbox, testing |
@@ -162,7 +161,7 @@ Installed once per machine ([`quality.md`](./quality.md), "Setting up a machine"
 | `cargo-nextest`  | 0.9.149  | Apache-2.0 OR MIT | the Rust test runner                                  |
 | `cargo-llvm-cov` | 0.9.1    | Apache-2.0 OR MIT | Rust coverage                                         |
 | `gitleaks`       | 8.30.1   | MIT               | secrets in staged changes                             |
-| `typos-cli`      | 1.52.2   | Apache-2.0 OR MIT | spelling                                              |
+| `typos-cli`      | 1.51.1   | Apache-2.0 OR MIT | spelling                                              |
 | `taplo`          | 0.10.0   | MIT               | TOML formatting                                       |
 | `actionlint`     | 1.7.12   | MIT               | GitHub Actions workflows                              |
 | `ffmpeg`         | 7.1.1    | GPL-2.0-or-later  | `npm run demo:record` only; never shipped             |

@@ -7,8 +7,9 @@ use std::os::unix::fs::MetadataExt as _;
 
 use fresher_core::{CleanupContext, PutBackOutcome, SkipReason, TrashError, TrashState, TrashedItem};
 
+use crate::beneath::path_of;
 use crate::guard::identity;
-use crate::paths::{LastLink, check_protection, open_failure, open_no_link};
+use crate::paths::{LastLink, Placed, check_protection, open_failure, open_no_link};
 use crate::pipeline::Cleaning;
 
 /// Where each item is: `InTrash` when its landed path (looked at without following a link at its end) holds its
@@ -26,7 +27,8 @@ fn state(item: &TrashedItem) -> TrashState {
 }
 
 /// Moves one item back: it must still be in the Trash; its original path must be inside a current root, in reach,
-/// not protected nor ignored, and its folder must open through no link on the root's volume; then the `Trash` port
+/// not protected nor ignored, and its folder must open through no link on the root's volume and pass the protection
+/// again as the disk spells it; then the `Trash` port
 /// moves it, never replacing anything. Afterwards the original path must hold the item. A reach that does not act
 /// (the dry run) refuses every item (`DryRun`) before any other check or port is called.
 pub(crate) fn put_back(cleaning: &Cleaning<'_>, item: &TrashedItem, cx: &CleanupContext<'_>) -> PutBackOutcome {
@@ -51,15 +53,28 @@ pub(crate) fn put_back(cleaning: &Cleaning<'_>, item: &TrashedItem, cx: &Cleanup
     if let Err(reason) = check_protection(&placed, &[cleaning.system, cx.protection]) {
         return refused(reason);
     }
-    let Some(parent) = placed.physical.parent() else {
+    let (Some(parent), Some(name)) = (placed.physical.parent(), placed.physical.file_name()) else {
         return refused(SkipReason::CheckFailed);
     };
-    match open_no_link(parent, LastLink::Refuse).and_then(|folder| folder.metadata()) {
-        Ok(folder) if !folder.is_dir() => return PutBackOutcome::NoParent,
-        Ok(folder) if folder.dev() != placed.device => return refused(SkipReason::OtherVolume),
-        Ok(_) => {}
+    let folder = match open_no_link(parent, LastLink::Refuse) {
+        Ok(folder) => folder,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return PutBackOutcome::NoParent,
         Err(error) => return refused(open_failure(&error)),
+    };
+    match folder.metadata() {
+        Ok(metadata) if !metadata.is_dir() => return PutBackOutcome::NoParent,
+        Ok(metadata) if metadata.dev() != placed.device => return refused(SkipReason::OtherVolume),
+        Ok(_) => {}
+        Err(_) => return refused(SkipReason::CheckFailed),
+    }
+    // The journal's path may spell a folder in another case or normal form than the disk does, which the protection,
+    // comparing names as written, would not see: it is checked on the disk's own spelling of the folder too.
+    let on_disk = match path_of(&folder) {
+        Ok(path) => Placed { physical: path.join(name), ..placed.clone() },
+        Err(_) => return refused(SkipReason::CheckFailed),
+    };
+    if let Err(reason) = check_protection(&on_disk, &[cleaning.system, cx.protection]) {
+        return refused(reason);
     }
     match cleaning.ports.trash.put_back(&item.landed, &placed.physical) {
         Ok(()) => match fs::symlink_metadata(&placed.physical) {
@@ -87,6 +102,8 @@ mod tests {
             path = "home/cache/b.bin"
             [[dir]]
             path = "elsewhere"
+            [[dir]]
+            path = "home/keep"
             "#;
 
     fn rig() -> Rig {
@@ -108,7 +125,9 @@ mod tests {
         use std::fs;
         use std::os::unix::fs::symlink;
 
-        use fresher_core::{Cleaner as _, CleanupContext, Protection, PutBackOutcome, SkipCode, TrashState};
+        use fresher_core::{
+            Cleaner as _, CleanupContext, Protection, PutBackOutcome, SkipCode, TrashState, TrashedItem,
+        };
 
         use super::{file, rig};
 
@@ -219,6 +238,25 @@ mod tests {
             assert_eq!(rig.cleaner.locate(std::slice::from_ref(&trashed)), [TrashState::InTrash]);
             assert!(landed.exists());
             assert!(!original.exists());
+        }
+
+        #[test]
+        fn put_back_into_a_protected_folder_spelt_in_another_case_is_refused() {
+            let mut rig = rig();
+            let item = file(&rig);
+            if !rig.at("HOME/KEEP").exists() {
+                return;
+            }
+            let keep = fs::canonicalize(rig.at("home/keep")).unwrap();
+            rig.setup.protection = Protection::new(vec![keep], vec![], vec![]).unwrap();
+            let written = TrashedItem { original: rig.at("home/KEEP/a.bin"), ..item.clone() };
+
+            assert_eq!(
+                rig.cleaner.put_back(&written, &rig.cx()),
+                PutBackOutcome::Refused { reason: SkipCode::Protected }
+            );
+            assert!(!rig.at("home/keep/a.bin").exists());
+            assert_eq!(rig.cleaner.locate(&[item]), [TrashState::InTrash]);
         }
 
         #[test]

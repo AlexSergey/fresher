@@ -21,7 +21,7 @@ mod flows {
     use fresher_core::{DangerLevel, Event, FindingOrder, FindingsQuery, Insight, ModuleOutcome, ScanKind};
     use serde_json::{Value, json};
 
-    use crate::flow::{DISK, Home, NPM, SOCKET, Setup, finished, outcome, read};
+    use crate::flow::{DISK, Home, NPM, SOCKET, Setup, finished, outcome};
 
     /// The design's four parts, in order: the label's key, the danger level and the command shown.
     pub(crate) const PARTS: [(&str, DangerLevel, Option<&str>); 4] = [
@@ -84,7 +84,7 @@ mod flows {
         home.flow.clean(&view);
         assert!(!home.flow.path(NPM.1).exists() || fs::read_dir(home.flow.path(NPM.1)).unwrap().next().is_none());
         assert_eq!([state(&home, SOCKET), state(&home, DISK)], before, "OrbStack's files are untouched");
-        assert_eq!(home.commands.calls(), [read()], "the cleanup runs nothing");
+        assert_eq!(home.commands.calls(), std::slice::from_ref(&home.read), "the cleanup runs nothing");
     }
 
     pub(crate) fn closed_runtime_is_not_asked() {
@@ -155,16 +155,17 @@ mod negative {
 mod positive {
     use fresher_core::{DangerLevel, ModuleOutcome, ShownCommand};
 
-    use crate::flow::{Setup, finished, read};
+    use crate::flow::{Setup, finished};
     use crate::flows::{PARTS, scanned, summaries};
 
     #[test]
-    fn the_only_call_is_the_read_with_the_runtime_s_context() {
+    fn the_only_call_is_the_read_through_the_runtime_s_socket() {
         let (home, _) = scanned(Setup::answered());
 
-        assert_eq!(home.commands.calls(), [read()]);
+        assert_eq!(home.commands.calls(), std::slice::from_ref(&home.read));
+        assert!(home.read.contains("/OrbStack.app/Contents/MacOS/xbin/docker --host unix:///"));
         assert!(
-            read().ends_with("/OrbStack.app/Contents/MacOS/xbin/docker --context orbstack system df --format json")
+            home.read.ends_with("/home/.orbstack/run/docker.sock --config /private/var/empty system df --format json")
         );
     }
 

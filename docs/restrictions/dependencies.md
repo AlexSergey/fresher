@@ -44,6 +44,16 @@ The rules every dependency follows. The list of the dependencies themselves, wit
 - **Why:** a minor update can break a build with no code change.
 - **Enforced by:** `.npmrc`, the hooks' and CI's commands (plan 001).
 
+## Locked sources
+
+- **Rule:** every package of `package-lock.json` is resolved from `https://registry.npmjs.org/` with a `sha512`
+  integrity, or is a workspace of the root; every crate of `Cargo.lock` comes from crates.io with a checksum, or is a
+  workspace crate. The lock files' diffs are shown in review (`.gitattributes` does not hide them).
+- **Why:** `npm ci` installs from the `resolved` address it is given and trusts the `integrity` next to it, so an
+  edited lock file could ship any code in the app's page; a reviewer must see the change.
+- **Enforced by:** `scripts/check-locks.ts` (`npm run check:locks`, in the pre-push hook and CI); cargo-deny
+  `[sources]` (unknown registries and git sources denied) for `Cargo.lock` as well (plan 041).
+
 ## Few dependencies
 
 - **Rule:** a new dependency is added only when it saves real work; a crate with a large tree for a small task is

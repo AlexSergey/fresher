@@ -360,10 +360,10 @@
       },
       {
         "kind": "file",
-        "logical_size": 1429,
+        "logical_size": 1499,
         "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 9663678316
+    "totalLogicalSize": 9663678386
   }
 }

@@ -73,6 +73,8 @@ pub struct FakeInstalledApps {
     strays: Vec<PathBuf>,
     calls: AtomicUsize,
     bundle_calls: AtomicUsize,
+    /// The programs signed by a developer, each with its team.
+    signed: Vec<(PathBuf, TeamId)>,
 }
 
 impl FakeInstalledApps {
@@ -91,7 +93,15 @@ impl FakeInstalledApps {
             strays: Vec::new(),
             calls: AtomicUsize::new(0),
             bundle_calls: AtomicUsize::new(0),
+            signed: Vec::new(),
         }
+    }
+
+    /// The same apps, and the program at `file` signed by `team`: every other program is signed by no one.
+    #[must_use]
+    pub fn signing(mut self, file: impl Into<PathBuf>, team: TeamId) -> Self {
+        self.signed.push((file.into(), team));
+        self
     }
 
     /// The same apps, and `facts` answered for the bundle at `path`; any other bundle's facts are an error.
@@ -193,6 +203,10 @@ impl InstalledApps for FakeInstalledApps {
     /// A bundle is on disk as listed when its facts are stated and it is no stray.
     fn is_as_listed(&self, path: &Path) -> bool {
         self.bundles.get(path).is_some_and(Result::is_ok) && !self.strays.iter().any(|stray| stray == path)
+    }
+
+    fn signed_by(&self, file: &Path, team: &TeamId, _cancel: &CancelToken) -> bool {
+        self.signed.iter().any(|(signed, by)| signed == file && by == team)
     }
 }
 

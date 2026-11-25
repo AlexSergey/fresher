@@ -13,10 +13,10 @@ use crate::guard::identity;
 use crate::paths::open_failure;
 
 #[cfg(target_os = "macos")]
-pub(crate) use fresher_macos::beneath::{identity_at, open_folder, open_folder_at, read_folder, remove_at};
+pub(crate) use fresher_macos::beneath::{identity_at, open_folder, open_folder_at, path_of, read_folder, remove_at};
 
 #[cfg(not(target_os = "macos"))]
-pub(crate) use elsewhere::{identity_at, open_folder, open_folder_at, read_folder, remove_at};
+pub(crate) use elsewhere::{identity_at, open_folder, open_folder_at, path_of, read_folder, remove_at};
 
 /// One entry of a held folder as it was listed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,7 +68,7 @@ mod elsewhere {
     use std::fs::File;
     use std::io;
     use std::os::fd::BorrowedFd;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     use fresher_core::{EntryKind, FolderListing, ItemIdentity, ReadError};
 
@@ -85,6 +85,10 @@ mod elsewhere {
     }
 
     pub(crate) fn identity_at(_folder: &File, _name: &OsStr) -> io::Result<ItemIdentity> {
+        unsupported()
+    }
+
+    pub(crate) fn path_of(_file: &File) -> io::Result<PathBuf> {
         unsupported()
     }
 

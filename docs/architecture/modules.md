@@ -378,8 +378,14 @@ known folder (the socket, then the disk file). A pure decision (`decide.rs`) pic
 file is there and the app is not installed, said only after a complete installed-apps listing), `restored` (a restored
 scan asks nothing), `unknown`, `stopped` (the app is closed, or open and the socket not seen), `no-answer`,
 `unreadable` and `answered`. Only when the installed app is running, the walk saw its socket as an `Other` entry and the
-scan is not restored does the module run the runtime's own CLI, exactly `<app>/<cli> --context <context> system df
---format json`, through the command runner (output capped at 64 KiB, never started when the app is closed). The
+scan is not restored does the module run the runtime's own CLI, exactly `<app>/<cli> --host unix://<socket> --config
+/private/var/empty system df --format json` (the socket at the row's place, the one the walk saw; a config folder only
+the system can write, so the user's contexts, credential helpers, hooks and plugin folder are never read), through the
+command runner (output capped at 64 KiB, never started when the app is closed). Any bundle
+may claim the runtime's bundle id, so the CLI runs only from the first bundle with that id whose CLI carries the valid
+signature of the runtime's developer (the row's `team`, checked by `InstalledApps::signed_by`: the system's
+`/usr/bin/codesign --verify` against an Apple-anchored requirement on that team); with none, the card says
+`no-answer` and nothing runs. The
 answer's four lines (`Images`, `Containers`, `Local Volumes`, `Build Cache`) become the four parts, each with its
 danger level as wording, its unused size, a sentence on what running it costs and, when something is unused, its
 command shown with `--context` (`builder prune --all`, `image prune --all`, `container prune`, `volume prune`; a

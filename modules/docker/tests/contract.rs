@@ -10,7 +10,7 @@ mod positive {
     use fresher_module_docker::DockerModule;
     use fresher_testing::{Catalogue, assert_module_contract, assert_texts_used, check_removals_matched};
 
-    use crate::support::{every_scan, orbstack_read};
+    use crate::support::every_scan;
 
     #[test]
     fn the_docker_module_passes_the_contract() {
@@ -30,7 +30,7 @@ mod positive {
     #[test]
     fn the_only_program_run_is_the_runtime_s_read() {
         for scan in every_scan() {
-            assert!(scan.calls.iter().all(|call| *call == orbstack_read()), "{:?}", scan.calls);
+            assert!(scan.calls.iter().all(|call| *call == scan.read), "{:?}", scan.calls);
         }
     }
 

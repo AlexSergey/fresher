@@ -37,7 +37,7 @@ calls taken while building them are in each plan's `00-design.md`.
   system's Trash instead of `sandbox/<name>/home/.Trash`. It cleans for real inside the sandbox and is recorded too
   (`..._sandbox-<name>.json`).
 - Both commands share one identifier and the app is single-instance: **quit the running window before starting
-  another**, or the new launch is handed to the old window and keeps its mode (the banner shows which).
+  another**, or the new launch does not start and says Fresher is already running.
 - `sandbox/<name>/EXPECTED.md` is the checklist of a sandbox: one box per case, negatives first. Walk it in order:
   nothing of a negative may be offered; every left-out line reads as written; each positive is offered at its stated
   danger. The folder is gitignored, so ticking boxes in it costs nothing. Details:

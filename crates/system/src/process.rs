@@ -1,7 +1,8 @@
-//! The real `CommandRunner`: runs a program with a fixed argument list, never through a shell, and kills it when it
-//! runs past its time or the caller's cancel token is set.
+//! The real `CommandRunner`: runs a program by its absolute path with a fixed argument list, never through a shell nor
+//! a lookup in `PATH`, and kills it when it runs past its time or the caller's cancel token is set.
 
 use std::io::{self, Read};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
@@ -13,6 +14,9 @@ pub const COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// How often a running program is checked.
 const POLL: Duration = Duration::from_millis(10);
+
+/// The most bytes kept of each of a program's two streams; a program that writes more fails, its output dropped.
+const OUTPUT_LIMIT: u64 = 16 * 1024 * 1024;
 
 /// Runs external programs with `std::process`.
 #[derive(Debug)]
@@ -31,6 +35,11 @@ impl CommandRunner for ProcessCommandRunner {
     fn run(&self, program: &str, args: &[&str], cancel: &CancelToken) -> Result<CommandOutput, CommandRunError> {
         if cancel.is_cancelled() {
             return Err(CommandRunError::Cancelled { program: program.into() });
+        }
+        // A bare name would be looked up in `PATH`, which another program of the user can set: a program is run only
+        // by its absolute path, and anything else is not installed as far as the app knows.
+        if !Path::new(program).is_absolute() {
+            return Err(CommandRunError::NotInstalled { program: program.into() });
         }
         let failed = |reason: String| CommandRunError::Failed { program: program.into(), reason };
         let mut child = Command::new(program)
@@ -66,12 +75,11 @@ impl CommandRunner for ProcessCommandRunner {
                 }
             }
         };
-        Ok(CommandOutput {
-            // A program ended by a signal has no exit code.
-            status: status.code().unwrap_or(-1),
-            stdout: collect(stdout),
-            stderr: collect(stderr),
-        })
+        let (Some(stdout), Some(stderr)) = (collect(stdout), collect(stderr)) else {
+            return Err(failed(format!("it wrote more than {} MiB", OUTPUT_LIMIT / (1024 * 1024))));
+        };
+        // A program ended by a signal has no exit code.
+        Ok(CommandOutput { status: status.code().unwrap_or(-1), stdout, stderr })
     }
 }
 
@@ -81,23 +89,30 @@ fn kill(child: &mut Child) {
     let _ = child.wait();
 }
 
-/// Reads a pipe to its end on a thread of its own.
-fn drain(pipe: Option<impl Read + Send + 'static>) -> Option<JoinHandle<Vec<u8>>> {
-    let mut pipe = pipe?;
+/// Reads a pipe to its end on a thread of its own, keeping at most [`OUTPUT_LIMIT`] bytes; the rest is read and
+/// dropped, so the program never blocks on a full pipe. `None` when the program wrote more than the limit.
+fn drain(pipe: Option<impl Read + Send + 'static>) -> Option<JoinHandle<Option<Vec<u8>>>> {
+    let pipe = pipe?;
     thread::Builder::new()
         .name("fresher-command-output".into())
         .spawn(move || {
             let mut bytes = Vec::new();
+            let mut limited = pipe.take(OUTPUT_LIMIT);
             // What was read before a read error is kept; the exit status tells whether the program succeeded.
-            let _ = pipe.read_to_end(&mut bytes);
-            bytes
+            let _ = limited.read_to_end(&mut bytes);
+            let more = io::copy(&mut limited.into_inner(), &mut io::sink()).unwrap_or(0);
+            (more == 0).then_some(bytes)
         })
         .ok()
 }
 
-fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> String {
-    let bytes = reader.and_then(|reader| reader.join().ok()).unwrap_or_default();
-    String::from_utf8_lossy(&bytes).into_owned()
+/// The text a stream's reader kept; `None` when the program wrote more than [`OUTPUT_LIMIT`].
+fn collect(reader: Option<JoinHandle<Option<Vec<u8>>>>) -> Option<String> {
+    let bytes = match reader.map(JoinHandle::join) {
+        Some(Ok(bytes)) => bytes?,
+        Some(Err(_)) | None => Vec::new(),
+    };
+    Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 #[cfg(test)]
@@ -108,10 +123,29 @@ mod tests {
 
         use fresher_core::{CancelToken, CommandRunError, CommandRunner};
 
-        use crate::process::{COMMAND_TIMEOUT, ProcessCommandRunner};
+        use crate::process::{COMMAND_TIMEOUT, OUTPUT_LIMIT, ProcessCommandRunner};
 
         fn runner() -> ProcessCommandRunner {
             ProcessCommandRunner::new(COMMAND_TIMEOUT)
+        }
+
+        #[test]
+        fn a_program_named_without_its_absolute_path_is_never_looked_up() {
+            for program in ["sh", "bin/sh", "./sh", ""] {
+                let error = runner().run(program, &["-c", "exit 0"], &CancelToken::new());
+
+                assert_eq!(error, Err(CommandRunError::NotInstalled { program: program.into() }), "{program}");
+            }
+        }
+
+        #[test]
+        fn a_program_that_writes_more_than_the_limit_fails() {
+            let count = format!("count={}", OUTPUT_LIMIT / (1024 * 1024) + 1);
+
+            let error = runner().run("/bin/dd", &["if=/dev/zero", "bs=1048576", &count], &CancelToken::new());
+
+            let reason = format!("it wrote more than {} MiB", OUTPUT_LIMIT / (1024 * 1024));
+            assert_eq!(error, Err(CommandRunError::Failed { program: "/bin/dd".into(), reason }));
         }
 
         #[test]

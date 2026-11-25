@@ -53,16 +53,28 @@ impl SystemUi for MacSystemUi {
         self.open(&args)
     }
 
-    /// Refuses a path that is not absolute before anything runs: `open` would resolve it against its own folder.
+    /// Refuses a path that is not absolute before anything runs (`open` would resolve it against its own folder), and
+    /// one that is not a folder reached through no link in any of its names: a Trash folder replaced by a link to an
+    /// app, or by a program, is never handed to `open`. Finder is named, so it only shows the folder. The names are
+    /// checked with `lstat`, never opened: the Trash is a protected folder that the app may not read (no Full Disk
+    /// Access), while Finder may.
     fn open_folder(&self, path: &Path) -> Result<(), SystemUiError> {
         if !path.is_absolute() {
             return Err(SystemUiError::Failed { reason: "the path is not absolute".into() });
         }
-        let [path] = open_folder_args(path);
-        let path =
-            path.to_str().ok_or_else(|| SystemUiError::Failed { reason: "the path is not valid UTF-8".into() })?;
-        self.open(&[path])
+        if !is_folder_through_no_link(path) {
+            return Err(SystemUiError::Failed { reason: "the path is not a folder reached through no link".into() });
+        }
+        let not_text = || SystemUiError::Failed { reason: "the path is not valid UTF-8".into() };
+        let [app_flag, finder, path] = open_folder_args(path);
+        let args = [app_flag.to_str().ok_or_else(not_text)?, finder.to_str().ok_or_else(not_text)?];
+        self.open(&[args[0], args[1], path.to_str().ok_or_else(not_text)?])
     }
+}
+
+/// Whether `path` and each of its ancestors is a folder and not a link, by `lstat` alone (no read permission needed).
+fn is_folder_through_no_link(path: &Path) -> bool {
+    path.ancestors().all(|name| std::fs::symlink_metadata(name).is_ok_and(|status| status.is_dir()))
 }
 
 #[cfg(test)]
@@ -134,6 +146,25 @@ mod tests {
         }
 
         #[test]
+        fn a_folder_replaced_by_a_link_or_a_program_is_not_opened_and_nothing_runs() {
+            let temp = tempfile::tempdir().unwrap();
+            let root = std::fs::canonicalize(temp.path()).unwrap();
+            std::fs::create_dir(root.join("App.app")).unwrap();
+            std::os::unix::fs::symlink(root.join("App.app"), root.join(".Trash")).unwrap();
+            std::fs::write(root.join("program"), b"#!/bin/sh\n").unwrap();
+            std::fs::create_dir(root.join("real")).unwrap();
+            std::os::unix::fs::symlink(root.join("real"), root.join("linked")).unwrap();
+            let runner = Arc::new(FakeCommandRunner::default());
+
+            for path in [root.join(".Trash"), root.join("program"), root.join("linked/inner"), root.join("missing")] {
+                let result = ui(&runner).open_folder(&path);
+
+                assert!(matches!(result, Err(SystemUiError::Failed { .. })), "{path:?}: {result:?}");
+            }
+            assert_eq!(runner.calls(), Vec::<String>::new());
+        }
+
+        #[test]
         fn a_folder_path_that_is_not_utf8_is_not_opened() {
             let runner = Arc::new(FakeCommandRunner::default());
             let path = Path::new(OsStr::from_bytes(b"/tmp/not-\xFF-text"));
@@ -146,12 +177,15 @@ mod tests {
 
         #[test]
         fn a_failing_open_of_a_folder_is_a_system_ui_error() {
-            let exiting = Arc::new(FakeCommandRunner::default().exiting("/usr/bin/open /tmp/x", 1));
+            let temp = tempfile::tempdir().unwrap();
+            let folder = std::fs::canonicalize(temp.path()).unwrap();
+            let call = format!("/usr/bin/open -a Finder {}", folder.display());
+            let exiting = Arc::new(FakeCommandRunner::default().exiting(&call, 1));
             let error = CommandRunError::Failed { program: "/usr/bin/open".into(), reason: "no".into() };
-            let failing = Arc::new(FakeCommandRunner::default().failing("/usr/bin/open /tmp/x", error));
+            let failing = Arc::new(FakeCommandRunner::default().failing(&call, error));
 
-            let exited = ui(&exiting).open_folder(Path::new("/tmp/x"));
-            let failed = ui(&failing).open_folder(Path::new("/tmp/x"));
+            let exited = ui(&exiting).open_folder(&folder);
+            let failed = ui(&failing).open_folder(&folder);
 
             assert!(matches!(exited, Err(SystemUiError::Failed { .. })), "{exited:?}");
             assert!(matches!(failed, Err(SystemUiError::Failed { .. })), "{failed:?}");
@@ -211,11 +245,33 @@ mod tests {
         }
 
         #[test]
-        fn open_folder_runs_open_with_the_path_alone() {
-            let runner = Arc::new(FakeCommandRunner::default().answering("/usr/bin/open /tmp/x", ""));
+        fn a_folder_the_app_may_not_read_is_still_opened_with_finder() {
+            use std::os::unix::fs::PermissionsExt as _;
 
-            assert_eq!(ui(&runner).open_folder(Path::new("/tmp/x")), Ok(()));
-            assert_eq!(runner.calls(), ["/usr/bin/open /tmp/x"]);
+            let temp = tempfile::tempdir().unwrap();
+            let folder = std::fs::canonicalize(temp.path()).unwrap().join(".Trash");
+            std::fs::create_dir(&folder).unwrap();
+            std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o000)).unwrap();
+            let call = format!("/usr/bin/open -a Finder {}", folder.display());
+            let runner = Arc::new(FakeCommandRunner::default().answering(&call, ""));
+
+            let result = ui(&runner).open_folder(&folder);
+
+            std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o700)).unwrap();
+            assert_eq!(result, Ok(()));
+            assert_eq!(runner.calls(), [call]);
+        }
+
+        #[test]
+        fn open_folder_runs_open_with_finder_and_the_path() {
+            let temp = tempfile::tempdir().unwrap();
+            let folder = std::fs::canonicalize(temp.path()).unwrap().join("a b");
+            std::fs::create_dir(&folder).unwrap();
+            let call = format!("/usr/bin/open -a Finder {}", folder.display());
+            let runner = Arc::new(FakeCommandRunner::default().answering(&call, ""));
+
+            assert_eq!(ui(&runner).open_folder(&folder), Ok(()));
+            assert_eq!(runner.calls(), [call]);
         }
     }
 }

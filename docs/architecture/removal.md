@@ -137,10 +137,11 @@ reachable from outside the crate (`remove/`).
 
 - **To the Trash** (`remove/trash.rs`): the `Trash` port with the physical path and the held handle. The item is
   `Moved` to the reported landed path when that path holds the verified identity, else to where the handle's item is
-  now when that lies in a Trash folder; when the handle's place is unknown, an item that left its place is `Moved`
-  with nothing to put back; otherwise the call moved something else: `Failed` ("Another item was moved to the Trash in
-  its place"), and the reported path is journalled so it can be put back. A volume without a Trash skips the item:
-  never a permanent delete instead.
+  now when that is not its original place and lies in a Trash folder; when the handle's place is unknown, an item
+  that left its place is `Moved` with nothing to put back; otherwise the call moved something else: `Failed`
+  ("Another item was moved to the Trash in its place"). What it moved instead is never journalled: where it came from
+  is unknown, and put back would bring it to the verified item's place (Finder's own Put Back knows its place). A
+  volume without a Trash skips the item: never a permanent delete instead.
 - **Emptied** (`remove/empty.rs`): the folder is verified and its place, opened through no link, must still hold it;
   its entries are listed from its held handle, each goes on its own and is checked against its listed identity: to
   the Trash after it is opened beneath the folder through no link (checks 5 to 7), or deleted beneath the held handle
@@ -193,6 +194,13 @@ reachable from outside the crate (`remove/`).
   delete.
 
 ## Put back
+
+The engine trusts a journal entry only when it landed right inside one of the user's Trash folders and its original
+place is the item's own as the history shows it; any other entry is `Gone` before the cleaner is asked
+(`Located::of`, `TrashFolders`; [deletion safety](../restrictions/deletion-safety.md), "Trash first"). The journal is
+a plain file, so a forged entry can name neither a file outside the Trash nor a place other than the one shown. The
+home's Trash is compared as the disk spells it: the app resolves a home reached through a link once at its start
+(`compose::disk_home`), as the system's Trash reports where an item landed.
 
 `locate` looks at each landed path without following a link: `InTrash` (its device, file id and kind), `Replaced`,
 `Gone`. `put_back` needs `InTrash`, then the original path must pass checks 1 to 4 today and its folder must open

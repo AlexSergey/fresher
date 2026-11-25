@@ -16,7 +16,16 @@ path = "home/.docker/run/docker.sock"
 kind = "socket"
 [[case.tool]]
 program = "Applications/Docker.app/Contents/Resources/bin/docker"
-args = ["--context", "desktop-linux", "system", "df", "--format", "json"]
+args = [
+  "--host",
+  "unix://{sandbox}/home/.docker/run/docker.sock",
+  "--config",
+  "/private/var/empty",
+  "system",
+  "df",
+  "--format",
+  "json",
+]
 status = 1
 stdout = ""
 [[case.insight]]
@@ -38,7 +47,16 @@ path = "home/.orbstack/run/docker.sock"
 kind = "socket"
 [[case.tool]]
 program = "Applications/OrbStack.app/Contents/MacOS/xbin/docker"
-args = ["--context", "orbstack", "system", "df", "--format", "json"]
+args = [
+  "--host",
+  "unix://{sandbox}/home/.orbstack/run/docker.sock",
+  "--config",
+  "/private/var/empty",
+  "system",
+  "df",
+  "--format",
+  "json",
+]
 stdout = "Images 3 2 3GB\n"
 [[case.insight]]
 identity = "orbstack"

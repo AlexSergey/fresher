@@ -4,7 +4,7 @@
 use fresher_core::{Act, CancelToken, Failure, ItemOutcome, PartlyWay, SkipReason, TrashedItem};
 
 use crate::guard::Verified;
-use crate::remove::{Removed, Way, delete, to_trash};
+use crate::remove::{Removed, Way, delete, identity_at, to_trash};
 
 /// Acts on the verified parts in order, each with its own `Verified`: to the Trash, or deleted at the single deletion
 /// point. The cancel token is read before each part. Every part gone: `Moved` (or `Deleted`) with what each left in
@@ -20,14 +20,17 @@ pub(crate) fn together(verified: Vec<Verified>, act: Act<'_>, way: Way<'_>, canc
     let mut trashed = Vec::new();
     for part in verified {
         if cancel.is_cancelled() {
-            return stopped(Removed::ended(ItemOutcome::NotReached), done, of, way, trashed);
+            return stopped(Removed::ended(ItemOutcome::NotReached), false, done, of, way, trashed);
         }
+        let (place, identity) = (part.placed().physical.clone(), part.identity());
         let removed = match way {
             Way::Trash(trash) => to_trash(part, act, trash),
             Way::Permanent(consent) => delete(part, act, consent),
         };
         if !matches!(removed.outcome, ItemOutcome::Moved | ItemOutcome::Deleted) {
-            return stopped(removed, done, of, way, trashed);
+            let elsewhere = ItemOutcome::Failed { reason: Failure::LandedElsewhere.text() };
+            let left = removed.outcome == elsewhere && identity_at(&place) != Some(identity);
+            return stopped(removed, left, done, of, way, trashed);
         }
         trashed.extend(removed.trashed);
         done = done.saturating_add(1);
@@ -40,10 +43,9 @@ pub(crate) fn together(verified: Vec<Verified>, act: Act<'_>, way: Way<'_>, canc
 }
 
 /// The end of an item whose part `done` (counting from 0) did not go, as `removed` says: its own end when no part went
-/// before it, else only part of the item went. A part whose removal left its place all the same (it landed elsewhere,
-/// with an entry to put it back from) counts among the parts that went, in `went` and in the text alike.
-fn stopped(removed: Removed, done: u32, of: u32, way: Way<'_>, mut trashed: Vec<TrashedItem>) -> Removed {
-    let left = !removed.trashed.is_empty();
+/// before it, else only part of the item went. A part that `left` its place all the same (the Trash call moved it
+/// elsewhere than a Trash) counts among the parts that went, in `went` and in the text alike.
+fn stopped(removed: Removed, left: bool, done: u32, of: u32, way: Way<'_>, mut trashed: Vec<TrashedItem>) -> Removed {
     let went = if left { done.saturating_add(1) } else { done };
     if done == 0 {
         return Removed { went: left.then_some(went), ..removed };
@@ -268,7 +270,7 @@ mod tests {
             );
             assert_eq!(removed.went, Some(2), "the part left its place");
             let originals: Vec<_> = removed.trashed.iter().map(|item| item.original.clone()).collect();
-            assert_eq!(originals, [setup.at(PARTS[0]), setup.at(PARTS[1])]);
+            assert_eq!(originals, [setup.at(PARTS[0])], "what the call reported instead is not journalled");
             assert!(setup.at(PARTS[2]).exists());
         }
     }

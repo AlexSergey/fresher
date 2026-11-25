@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use fresher_core::{BundleId, Claim, Interest, InterestError, KnownFolder, Pattern, TextKey};
+use fresher_core::{BundleId, Claim, Interest, InterestError, KnownFolder, Pattern, TeamId, TextKey};
 use serde::Deserialize;
 
 /// The table shipped with the module.
@@ -26,6 +26,8 @@ pub enum RuntimesError {
     BadName { id: String },
     #[error("the row `{id}` names `{app}`, which is not a bundle id")]
     BadApp { id: String, app: String },
+    #[error("the row `{id}` names the team `{team}`, which is not a developer's team id")]
+    BadTeam { id: String, team: String },
     #[error("the row `{id}` names the CLI `{cli}`, which is not plain folder names relative to the app")]
     BadCli { id: String, cli: String },
     #[error("the row `{id}` names the context `{context}`, which is not lowercase letters, digits and `-`")]
@@ -59,6 +61,8 @@ pub(crate) struct Runtime {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) app: BundleId,
+    /// The developer whose signature the CLI must carry before it is run: any bundle may claim the bundle id.
+    pub(crate) team: TeamId,
     /// The runtime's own Docker CLI, relative to its app bundle.
     pub(crate) cli: PathBuf,
     pub(crate) context: String,
@@ -144,6 +148,9 @@ fn check_row(raw: RawRow) -> Result<Runtime, RuntimesError> {
     let Ok(app) = BundleId::new(raw.app.as_str()) else {
         return Err(RuntimesError::BadApp { id, app: raw.app });
     };
+    let Ok(team) = TeamId::new(raw.team.as_str()) else {
+        return Err(RuntimesError::BadTeam { id, team: raw.team });
+    };
     if !plain_names(&raw.cli) {
         return Err(RuntimesError::BadCli { id, cli: raw.cli });
     }
@@ -153,7 +160,7 @@ fn check_row(raw: RawRow) -> Result<Runtime, RuntimesError> {
     }
     let socket = check_place(&id, raw.socket)?;
     let disk = check_place(&id, raw.disk)?;
-    Ok(Runtime { id, name, app, cli: PathBuf::from(raw.cli), context, socket, disk, maximum: raw.maximum })
+    Ok(Runtime { id, name, app, team, cli: PathBuf::from(raw.cli), context, socket, disk, maximum: raw.maximum })
 }
 
 fn check_place(id: &str, raw: RawPlace) -> Result<Place, RuntimesError> {
@@ -181,6 +188,7 @@ struct RawRow {
     id: String,
     name: String,
     app: String,
+    team: String,
     cli: String,
     context: String,
     socket: RawPlace,

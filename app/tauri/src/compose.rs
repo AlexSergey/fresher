@@ -129,14 +129,16 @@ pub(crate) struct Start {
 
 /// The app's start: in a development build whose environment (read through `var`) names a sandbox in
 /// `FRESHER_SANDBOX`, the sandbox's engine, data folder and home (`data_folder` is then only protected); otherwise
-/// the engine of [`engine`] on `data_folder` and `home`. In a development build whose environment names a folder in
-/// `FRESHER_DEV_RUNS`, the run's record begins there. A release build reads no variable.
+/// the engine of [`engine`] on `data_folder` and `home` as the disk spells it ([`disk_home`]). In a development build
+/// whose environment names a folder in `FRESHER_DEV_RUNS`, the run's record begins there. A release build reads no
+/// variable.
 pub(crate) fn start(
     data_folder: PathBuf,
     home: PathBuf,
     #[cfg_attr(not(debug_assertions), expect(unused_variables, reason = "a release build has no sandbox mode"))]
     var: impl Fn(&str) -> Option<OsString>,
 ) -> Result<Start, ComposeError> {
+    let home = disk_home(home);
     // A bad record folder stops the start before any engine is made.
     #[cfg(debug_assertions)]
     let launch = crate::dev_runs::Launch::from_env(&var)?;
@@ -186,6 +188,14 @@ fn begin_run(
     let macos = macos_version(Path::new("/")).map(|version| format!("{}.{}", version.major, version.minor));
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     Ok(crate::dev_runs::run::Run::begin(launch, build, home, macos, clock, engine)?)
+}
+
+/// The home folder as the disk spells it: a home reached through a link (`/Users/<name>` linked to another volume) is
+/// resolved once, so the known folders, the scan roots, the protection and the Trash all use the spelling the system
+/// gives back for a held item (`F_GETPATH`), and put back finds every entry in the home's Trash. A home that cannot
+/// be resolved is kept as given.
+pub(crate) fn disk_home(home: PathBuf) -> PathBuf {
+    std::fs::canonicalize(&home).unwrap_or(home)
 }
 
 /// The kind of this build: a release build is never a development one.
@@ -718,6 +728,21 @@ mod tests {
         use std::path::{Path, PathBuf};
 
         use crate::compose::{MACOS_POLICY, bundle_of, checked_user_temp, engine, engine_with, user_temp};
+
+        #[test]
+        fn a_home_reached_through_a_link_is_spelled_as_the_disk_spells_it() {
+            let temp = tempfile::tempdir().unwrap();
+            let real = std::fs::canonicalize(temp.path()).unwrap().join("Data/me");
+            std::fs::create_dir_all(real.join(".Trash")).unwrap();
+            std::os::unix::fs::symlink(&real, temp.path().join("me")).unwrap();
+            let data = tempfile::tempdir().unwrap();
+
+            let start = crate::compose::start(data.path().into(), temp.path().join("me"), |_| None).unwrap();
+
+            assert_eq!(crate::compose::disk_home(temp.path().join("me")), real);
+            assert_eq!(start.home, real);
+            assert_eq!(crate::compose::disk_home(temp.path().join("missing")), temp.path().join("missing"));
+        }
 
         #[test]
         fn the_systems_small_files_read_a_file_of_the_home_through_the_lens() {

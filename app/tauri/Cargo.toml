@@ -43,7 +43,6 @@ fresher-system = { path = "../../crates/system" }
 fresher-testing = { path = "../../crates/testing" }
 tauri = { version = "=2.12.5", features = ["macos-private-api"] }
 tauri-plugin-dialog = "=2.8.4"
-tauri-plugin-single-instance = "=2.5.5"
 # The next three serve the development run record (`src/dev_runs/`), debug builds only.
 serde.workspace = true
 serde_json.workspace = true

@@ -50,6 +50,13 @@ deny = [
   { crate = "ureq", reason = "no network access (docs/restrictions/privacy.md)" },
   { crate = "isahc", reason = "no network access (docs/restrictions/privacy.md)" },
   { crate = "curl", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "h2", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "attohttpc", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "tungstenite", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "native-tls", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "rustls", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "openssl", reason = "no network access (docs/restrictions/privacy.md)" },
+  { crate = "socket2", reason = "no network access (docs/restrictions/privacy.md)" },
 ]
 
 [sources]

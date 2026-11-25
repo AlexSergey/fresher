@@ -281,6 +281,18 @@ mod negative {
     }
 
     #[test]
+    fn many_keys_sharing_one_large_string_are_malformed_before_they_are_decoded() {
+        let mut writer = Writer::default();
+        let shared = writer.ascii(&"A".repeat(20_000));
+        let pairs = (0..300).map(|key| (writer.ascii(&format!("k{key:03}")), shared)).collect();
+        let top = writer.add(Object::Dict(pairs));
+        let bytes = writer.finish(top);
+
+        assert!(bytes.len() < 32 * 1024, "{}", bytes.len());
+        assert_eq!(read_strings(&bytes), Err(PlistError::Malformed("the strings decode to far more than the data")));
+    }
+
+    #[test]
     fn a_length_that_is_not_an_integer_is_malformed() {
         let mut writer = Writer::default();
         let key = writer.ascii("key");
@@ -398,6 +410,21 @@ mod negative {
 
 mod positive {
     use super::*;
+
+    #[test]
+    fn keys_sharing_one_value_each_read_it() {
+        let mut writer = Writer::default();
+        let shared = writer.ascii("Example");
+        let pairs = ["CFBundleName", "CFBundleDisplayName", "CFBundleExecutable"]
+            .iter()
+            .map(|key| (writer.ascii(key), shared))
+            .collect();
+        let top = writer.add(Object::Dict(pairs));
+
+        let expected =
+            map(&[("CFBundleDisplayName", "Example"), ("CFBundleExecutable", "Example"), ("CFBundleName", "Example")]);
+        assert_eq!(read_strings(&writer.finish(top)), Ok(expected));
+    }
 
     #[test]
     fn reads_an_xml_dictionary_of_strings() {

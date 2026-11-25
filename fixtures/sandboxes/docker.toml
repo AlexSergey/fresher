@@ -36,7 +36,16 @@ size = 8589934592
 written = 4194304
 [[case.tool]]
 program = "Applications/OrbStack.app/Contents/MacOS/xbin/docker"
-args = ["--context", "orbstack", "system", "df", "--format", "json"]
+args = [
+  "--host",
+  "unix://{sandbox}/home/.orbstack/run/docker.sock",
+  "--config",
+  "/private/var/empty",
+  "system",
+  "df",
+  "--format",
+  "json",
+]
 stdout = """
 {"Active":"2","Reclaimable":"1.071GB (35%)","Size":"3.034GB","TotalCount":"7","Type":"Images"}
 {"Active":"1","Reclaimable":"0B (0%)","Size":"1.09kB","TotalCount":"1","Type":"Containers"}

@@ -16,6 +16,7 @@ All documentation of the repository lives here.
 | [`architecture/`](./architecture/README.md) | crates, layers, data flow, the snapshot database                     |
 | [`categories/`](./categories/README.md)     | the cleanup categories and their danger levels                       |
 | [`restrictions/`](./restrictions/README.md) | hard constraints, with the reason and where each is enforced         |
+| [`security/`](./security/README.md)         | the threat model, the security audits and how to report a problem    |
 | [`plans/`](./plans/README.md)               | what is being implemented now                                        |
 | [`deferred/`](./deferred/README.md)         | agreed work postponed for later — check it when starting a new stage |
 | [`known-issues/`](./known-issues/README.md) | defects we live with for now, with what was tried                    |

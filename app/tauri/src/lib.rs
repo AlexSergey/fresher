@@ -15,7 +15,9 @@ mod dev_runs;
 mod dry_run;
 mod events;
 mod identity;
+mod instance;
 mod largest_commands;
+mod navigation;
 #[cfg(debug_assertions)]
 mod sandbox;
 mod settings_commands;
@@ -33,12 +35,13 @@ pub use sandbox::{
     SandboxEngineError, SandboxMode, SandboxPorts, SandboxRefusal, SandboxTrash, access_of, sandbox_engine,
 };
 
-/// Builds and runs the app until its window is closed; a second launch brings that window forward instead.
+/// Builds and runs the app until its window is closed; opening it again brings that window forward instead, and a
+/// second process does not start (`instance`).
 pub fn run() -> Result<(), tauri::Error> {
     let handler = handler();
     let app = tauri::Builder::default()
-        // First, so a second launch exits before it sets anything up.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| shell::on_second_launch(app)))
+        // The window never leaves the app's own page.
+        .plugin(navigation::guard())
         // The folder picker, called from Rust only: the web view is granted none of its commands.
         .plugin(tauri_plugin_dialog::init())
         .menu(shell::menu)
@@ -116,8 +119,12 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
 
 /// Everything the app does at start; any error ends the app after the native message.
 fn start(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    identity::check(&app.config().identifier, cfg!(debug_assertions))?;
+    identity::check(&app.config().identifier, cfg!(debug_assertions), identity::Page::of_this_build())?;
     let data = app.path().app_data_dir()?;
+    // Before anything else is read or written: a second process stops here. The folder is the identifier's, also in
+    // sandbox mode, so a sandbox launch and a development one never run side by side.
+    let identity_folder = fresher_store::DataFolder::open(&data)?;
+    app.manage(instance::InstanceLock::take(identity_folder.path())?);
     // The app's one home lookup: everything else gets the home injected.
     #[expect(clippy::disallowed_methods, reason = "the home folder is looked up once, in the app's setup")]
     let home = app.path().home_dir()?;

@@ -24,10 +24,23 @@ const ORBSTACK_SOCKET: usize = 2;
 const ORBSTACK_DISK: usize = 3;
 
 /// The only call the module may make for each runtime, as `FakeCommandRunner` keys it.
-const ORBSTACK_READ: &str =
-    "/Applications/OrbStack.app/Contents/MacOS/xbin/docker --context orbstack system df --format json";
-const DESKTOP_READ: &str =
-    "/Applications/Docker.app/Contents/Resources/bin/docker --context desktop-linux system df --format json";
+/// It names the socket the walk saw and the system's empty folder as its config, never the user's context or config.
+const ORBSTACK_READ: &str = "/Applications/OrbStack.app/Contents/MacOS/xbin/docker \
+    --host unix:///home/.orbstack/run/docker.sock --config /private/var/empty system df --format json";
+const DESKTOP_READ: &str = "/Applications/Docker.app/Contents/Resources/bin/docker \
+    --host unix:///home/.docker/run/docker.sock --config /private/var/empty system df --format json";
+
+/// The runtimes' own CLIs in their real bundles, and the teams that sign them (the shipped table's).
+const ORBSTACK_CLI: &str = "/Applications/OrbStack.app/Contents/MacOS/xbin/docker";
+const DESKTOP_CLI: &str = "/Applications/Docker.app/Contents/Resources/bin/docker";
+const ORBSTACK_TEAM: &str = "HUAQ24HBR6";
+const DESKTOP_TEAM: &str = "9BNSXJN65R";
+
+/// `installed`, with the runtimes' CLIs in their real bundles signed by their developers.
+fn signed(installed: FakeInstalledApps) -> FakeInstalledApps {
+    let team = |id: &str| fresher_core::TeamId::new(id).unwrap();
+    installed.signing(ORBSTACK_CLI, team(ORBSTACK_TEAM)).signing(DESKTOP_CLI, team(DESKTOP_TEAM))
+}
 
 /// An answer with something unused in every kind but the stopped containers.
 const ANSWER: &str = r#"{"Active":"2","Reclaimable":"1.071GB (35%)","Size":"3.034GB","TotalCount":"7","Type":"Images"}
@@ -152,7 +165,13 @@ impl Scan {
         Self::with(FakeInstalledApps::new(installed), FakeRunningApps::new(running))
     }
 
+    /// A scan of `installed`, the runtimes' CLIs in their real bundles signed by their developers.
     fn with(installed: FakeInstalledApps, running: FakeRunningApps) -> Self {
+        Self::answering(signed(installed), running, FakeCommandRunner::default())
+    }
+
+    /// A scan of `installed` exactly as given: no program is signed unless it says so.
+    fn unsigned(installed: FakeInstalledApps, running: FakeRunningApps) -> Self {
         Self::answering(installed, running, FakeCommandRunner::default())
     }
 
@@ -266,10 +285,57 @@ mod negative {
     use fresher_testing::{FakeCommandRunner, FakeInstalledApps, FakeRunningApps};
 
     use super::{
-        ANSWER, CancelledRead, DESKTOP_DISK, DESKTOP_DISK_PLACE, DOCKER_DESKTOP, ORBSTACK, ORBSTACK_DISK,
-        ORBSTACK_READ, ORBSTACK_SOCKET, Recorded, Scan, desktop, desktop_disk, desktop_socket, disk_sizes, entry,
-        notes, orbstack, orbstack_disk, orbstack_socket, running,
+        ANSWER, CancelledRead, DESKTOP_DISK, DESKTOP_DISK_PLACE, DESKTOP_TEAM, DOCKER_DESKTOP, ORBSTACK, ORBSTACK_CLI,
+        ORBSTACK_DISK, ORBSTACK_READ, ORBSTACK_SOCKET, Recorded, Scan, desktop, desktop_disk, desktop_socket,
+        disk_sizes, entry, notes, orbstack, orbstack_disk, orbstack_socket, running,
     };
+
+    /// A bundle claiming `OrbStack`'s id at `path`: any program can write one.
+    fn look_alike(path: &str) -> InstalledApp {
+        InstalledApp { path: path.into(), ..orbstack() }
+    }
+
+    #[test]
+    fn a_runtime_whose_cli_is_signed_by_no_one_is_never_run() {
+        let scan =
+            Scan::unsigned(FakeInstalledApps::new(vec![orbstack()]), FakeRunningApps::new(vec![running(ORBSTACK)]))
+                .commands(FakeCommandRunner::default().answering(ORBSTACK_READ, ANSWER));
+
+        assert_eq!(scan.run(&[orbstack_socket()]).summaries(), ["docker.summary.no-answer"]);
+        assert_eq!(scan.commands.calls(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_runtime_whose_cli_another_developer_signed_is_never_run() {
+        let other = fresher_core::TeamId::new(DESKTOP_TEAM).unwrap();
+        let installed = FakeInstalledApps::new(vec![orbstack()]).signing(ORBSTACK_CLI, other);
+        let scan = Scan::unsigned(installed, FakeRunningApps::new(vec![running(ORBSTACK)]))
+            .commands(FakeCommandRunner::default().answering(ORBSTACK_READ, ANSWER));
+
+        assert_eq!(scan.run(&[orbstack_socket()]).summaries(), ["docker.summary.no-answer"]);
+        assert_eq!(scan.commands.calls(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_look_alike_bundle_listed_first_is_never_run_and_the_signed_one_is_asked() {
+        let installed =
+            vec![look_alike("/Applications/.OrbStack.app"), look_alike("/Applications/A/OrbStack.app"), orbstack()];
+        let scan = Scan::with(FakeInstalledApps::new(installed), FakeRunningApps::new(vec![running(ORBSTACK)]))
+            .commands(FakeCommandRunner::default().answering(ORBSTACK_READ, ANSWER));
+
+        assert_eq!(scan.run(&[orbstack_socket()]).summaries().len(), 1);
+        assert_eq!(scan.commands.calls(), [ORBSTACK_READ]);
+    }
+
+    #[test]
+    fn only_look_alike_bundles_are_never_run() {
+        let installed =
+            vec![look_alike("/Applications/.OrbStack.app"), look_alike("/Users/me/Applications/OrbStack.app")];
+        let scan = Scan::with(FakeInstalledApps::new(installed), FakeRunningApps::new(vec![running(ORBSTACK)]));
+
+        assert_eq!(scan.run(&[orbstack_socket()]).summaries(), ["docker.summary.no-answer"]);
+        assert_eq!(scan.commands.calls(), Vec::<String>::new());
+    }
 
     #[test]
     fn no_runtime_installed_runs_nothing_and_says_nothing() {
@@ -509,10 +575,21 @@ mod positive {
 
         scan.run(&[orbstack_socket()]);
 
-        assert_eq!(
-            scan.commands.calls(),
-            ["/Applications/OrbStack.app/Contents/MacOS/xbin/docker --context orbstack system df --format json"]
-        );
+        assert_eq!(scan.commands.calls(), [ORBSTACK_READ]);
+    }
+
+    #[test]
+    fn the_read_names_the_seen_socket_and_an_empty_config_never_a_context() {
+        let scan = Scan::new(vec![orbstack()], vec![running(ORBSTACK)])
+            .commands(FakeCommandRunner::default().answering(ORBSTACK_READ, ANSWER));
+
+        scan.run(&[orbstack_socket()]);
+
+        let calls = scan.commands.calls();
+        assert_eq!(calls.len(), 1);
+        assert!(!calls[0].contains("--context"), "{calls:?}");
+        assert!(calls[0].contains(" --host unix:///home/.orbstack/run/docker.sock "), "{calls:?}");
+        assert!(calls[0].contains(" --config /private/var/empty "), "{calls:?}");
     }
 
     #[test]

@@ -4,12 +4,13 @@
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    BlockedReason, ByteSize, CleanupDetail, CleanupId, CleanupItemView, CleanupJournal, CleanupSummary, CleanupsPage,
-    CleanupsQuery, CommandError, JournalItem, JournalState, PutBackItem, PutBackOutcome, PutBackRecord, PutBackReport,
-    RecordedCleanup, RecordedOutcome, Sizes, SkipCode, Timestamp, TrashState, TrashedItem,
+    ActionKind, BlockedReason, ByteSize, CleanupDetail, CleanupId, CleanupItemView, CleanupJournal, CleanupSummary,
+    CleanupsPage, CleanupsQuery, CommandError, JournalItem, JournalState, PutBackItem, PutBackOutcome, PutBackRecord,
+    PutBackReport, RecordedCleanup, RecordedOutcome, Sizes, SkipCode, Timestamp, TrashState, TrashedItem,
 };
 
 use crate::cleanup::context::{Context, Scope};
+use crate::cleanup::trash_folders::TrashFolders;
 use crate::engine::{CleanupPorts, Shared};
 use crate::error::{EngineError, lock};
 
@@ -38,10 +39,11 @@ pub(crate) fn page(shared: &Shared, offset: u32, limit: u32) -> CleanupsPage {
     };
     page.total = read.total;
     let mut waiting = 0_u64;
+    let mut trash = TrashFolders::of(shared, ports);
     for summary in read.cleanups {
         match ports.journal.cleanup(summary.cleanup) {
             Ok(Some(recorded)) => {
-                let located = Located::of(ports, &recorded);
+                let located = Located::of(ports, &recorded, &mut trash);
                 waiting = waiting.saturating_add(located.waiting());
                 page.cleanups.push(CleanupSummary { in_trash: located.in_trash(), ..summary });
             }
@@ -55,7 +57,7 @@ pub(crate) fn page(shared: &Shared, offset: u32, limit: u32) -> CleanupsPage {
 /// One cleanup with every item: its outcome, where it is now, how putting it back last ended.
 pub(crate) fn detail(shared: &Shared, id: CleanupId) -> Result<CleanupDetail, CommandError> {
     let (ports, recorded) = recorded(shared, id)?;
-    let located = Located::of(ports, &recorded);
+    let located = Located::of(ports, &recorded, &mut TrashFolders::of(shared, ports));
     let items = recorded
         .begin
         .items
@@ -86,7 +88,7 @@ pub(crate) fn put_back(shared: &Shared, id: CleanupId, items: Option<&[u32]>) ->
     if ports.journal.state() != JournalState::Ready {
         return Err(CommandError::CleaningBlocked { reason: BlockedReason::Journal });
     }
-    let located = Located::of(ports, &recorded);
+    let located = Located::of(ports, &recorded, &mut TrashFolders::of(shared, ports));
     let indexes: Vec<u32> = match items {
         Some(items) => {
             if !items.iter().all(|&index| has_item(&recorded, index)) {
@@ -126,7 +128,7 @@ pub(crate) fn reveal(shared: &Shared, id: CleanupId, index: u32) -> Result<(), C
     if !has_item(&recorded, index) {
         return Err(CommandError::UnknownCleanupItem);
     }
-    let located = Located::of(ports, &recorded);
+    let located = Located::of(ports, &recorded, &mut TrashFolders::of(shared, ports));
     let landed = located.in_trash_entries(index).next().ok_or(CommandError::NotInTrash)?;
     shared.ports.system_ui.reveal(&landed.landed).map_err(|error| EngineError::SystemUi(error).into())
 }
@@ -153,7 +155,10 @@ fn last_put_back(recorded: &RecordedCleanup, index: u32) -> Option<PutBackOutcom
 }
 
 /// Where each item of one cleanup moved to the Trash and not put back is now, entry by entry (an emptied folder has
-/// one entry per item that went).
+/// one entry per item that went). The journal is a file any program of the user can write, so an entry counts as in
+/// the Trash only when it landed right inside one of the user's Trash folders and its original place is the item's
+/// own, as the history shows it: its path or one of its parts, or a path inside the folder an emptying emptied. Any
+/// other entry is `Gone`: nothing is put back from it nor shown in the Trash.
 pub(crate) struct Located {
     /// Per item index with entries in the Trash: each entry and its state.
     items: Vec<(u32, Vec<(TrashedItem, TrashState)>)>,
@@ -164,7 +169,7 @@ pub(crate) struct Located {
 }
 
 impl Located {
-    pub(crate) fn of(ports: &CleanupPorts, recorded: &RecordedCleanup) -> Self {
+    pub(crate) fn of(ports: &CleanupPorts, recorded: &RecordedCleanup, trash: &mut TrashFolders) -> Self {
         let put_back = |index: u32| {
             recorded.put_backs.iter().any(|record| record.index == index && record.outcome == PutBackOutcome::PutBack)
         };
@@ -179,10 +184,27 @@ impl Located {
             let states = ports.cleaner.locate(&record.trashed);
             let entries =
                 record.trashed.iter().cloned().zip(states.into_iter().chain(std::iter::repeat(TrashState::Gone)));
+            let entries = entries.map(|(entry, state)| {
+                let trusted = trash.holds(&*ports.volumes, &entry.landed) && Self::original_of(item, &entry.original);
+                let state = if trusted { state } else { TrashState::Gone };
+                (entry, state)
+            });
             items.push((item.index, entries.collect()));
         }
         let sizes = recorded.begin.items.iter().map(|item| (item.index, item.sizes)).collect();
         Self { items, returned, sizes }
+    }
+
+    /// Whether `original` is a place of `item`: for an emptying, a path inside the folder it emptied (which stays);
+    /// for any other item, its path or one of its parts.
+    fn original_of(item: &JournalItem, original: &Path) -> bool {
+        let path = item.path.as_deref();
+        match item.action {
+            ActionKind::Empty => path.is_some_and(|path| original.starts_with(path) && original != path),
+            ActionKind::Remove | ActionKind::Tool => {
+                path == Some(original) || item.more.iter().any(|part| part.path == original)
+            }
+        }
     }
 
     fn entries(&self, index: u32) -> Option<&[(TrashedItem, TrashState)]> {
@@ -336,7 +358,10 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
-    use fresher_core::{CleanupId, DangerLevel, Event};
+    use fresher_core::{
+        ActionKind, BeginRecord, CleanupId, CleanupJournal as _, DangerLevel, EndRecord, Ended, EntryKind, Event,
+        ItemIdentity, ItemRecord, JournalItem, Method, RecordedOutcome, Timestamp, TrashedItem,
+    };
     use fresher_testing::{FakeCleaner, MemoryCleanupJournal};
 
     use crate::Engine;
@@ -400,6 +425,52 @@ mod tests {
         PathBuf::from(format!("/fake-trash/0-{part}"))
     }
 
+    /// The place of the item a hand-written journal entry shows: `/home/Library/Caches/one`.
+    const SHOWN: &str = "/home/Library/Caches/one";
+
+    /// An engine whose journal holds one cleanup written by hand, as any program of the user can write the journal's
+    /// file: one item at [`SHOWN`] done by `action`, whose entry says it landed at `landed` from `original`; the
+    /// cleanup's id and the cleaner.
+    fn written(action: ActionKind, landed: &str, original: &str) -> (Engine, CleanupId, Arc<FakeCleaner>) {
+        let cleaner = Arc::new(FakeCleaner::default());
+        let fixture = fixture().cleaner(Arc::clone(&cleaner));
+        let journal = Arc::clone(&fixture.journal);
+        let engine = scanned(fixture);
+        let item = JournalItem {
+            index: 0,
+            path: Some(PathBuf::from(SHOWN)),
+            identity: Some(ItemIdentity::new(1, 1, EntryKind::Folder)),
+            more: Vec::new(),
+            action,
+            category: "alpha.caches".into(),
+            key: "one".into(),
+            reason: crate::testing::text("test.finding.reason"),
+            danger: DangerLevel::Safe,
+            sizes: bytes(2),
+        };
+        let at = Timestamp::from_secs(1);
+        let begin = BeginRecord {
+            at,
+            method: Method::Trash,
+            roots: vec![PathBuf::from("/home")],
+            space: vec![],
+            items: vec![item],
+        };
+        let id = journal.begin(&begin).unwrap();
+        let trashed = vec![TrashedItem {
+            original: PathBuf::from(original),
+            landed: PathBuf::from(landed),
+            identity: ItemIdentity::new(1, 7, EntryKind::File),
+        }];
+        let outcome = match action {
+            ActionKind::Empty => RecordedOutcome::Emptied { moved: 1, skipped: 0 },
+            ActionKind::Remove | ActionKind::Tool => RecordedOutcome::Moved,
+        };
+        journal.item(&ItemRecord { cleanup: id, index: 0, outcome, trashed, went: None }).unwrap();
+        journal.end(&EndRecord { cleanup: id, at, ended: Ended::Completed, space: vec![] }).unwrap();
+        (engine, id, cleaner)
+    }
+
     mod negative {
         use std::path::PathBuf;
         use std::sync::Arc;
@@ -411,9 +482,52 @@ mod tests {
         };
         use fresher_testing::{FakeCleaner, FakeSystemUi, MemoryCleanupJournal};
 
-        use super::{MODEL, cleaned, cleaned_model, landed, with};
+        use super::{MODEL, SHOWN, cleaned, cleaned_model, landed, with, written};
         use crate::cleanup::testing::{echo, fixture, scanned, select};
         use crate::testing::{HeldCleaner, ScriptedWalk, engine, wait_for_finish};
+
+        #[test]
+        fn a_written_entry_that_landed_in_no_trash_is_neither_in_the_trash_nor_put_back_nor_shown() {
+            let (engine, id, cleaner) = written(ActionKind::Remove, "/home/Documents/secret", SHOWN);
+
+            let detail = engine.cleanup(id).unwrap();
+            let report = engine.put_back(id, Some(&[0])).unwrap();
+
+            assert_eq!(detail.items[0].trash, Some(TrashState::Gone));
+            assert_eq!(detail.summary.in_trash, 0);
+            assert_eq!(report.items[0].outcome, PutBackOutcome::Gone);
+            assert_eq!(engine.put_back(id, None).unwrap().items, []);
+            assert_eq!(engine.reveal_in_trash(id, 0), Err(CommandError::NotInTrash));
+            assert_eq!(cleaner.put_backs_tried(), Vec::<PathBuf>::new());
+        }
+
+        #[test]
+        fn a_written_entry_whose_original_is_not_the_place_shown_is_not_put_back() {
+            for original in ["/home/Documents/stolen", "/home/Library/Caches/one/inside", "/home/Library/Caches"] {
+                let (engine, id, cleaner) = written(ActionKind::Remove, "/fake-trash/7", original);
+
+                let report = engine.put_back(id, Some(&[0])).unwrap();
+
+                assert_eq!(report.items[0].outcome, PutBackOutcome::Gone, "{original}");
+                assert_eq!(engine.cleanup(id).unwrap().items[0].trash, Some(TrashState::Gone), "{original}");
+                assert_eq!(engine.reveal_in_trash(id, 0), Err(CommandError::NotInTrash), "{original}");
+                assert_eq!(cleaner.put_backs_tried(), Vec::<PathBuf>::new(), "{original}");
+            }
+        }
+
+        #[test]
+        fn a_written_emptying_entry_outside_the_folder_emptied_is_not_put_back() {
+            for original in [SHOWN, "/home/Library/Caches/oneself/a", "/home/Library/a"] {
+                let (engine, id, cleaner) = written(ActionKind::Empty, "/fake-trash/7", original);
+
+                assert_eq!(
+                    engine.put_back(id, Some(&[0])).unwrap().items[0].outcome,
+                    PutBackOutcome::Gone,
+                    "{original}"
+                );
+                assert_eq!(cleaner.put_backs_tried(), Vec::<PathBuf>::new(), "{original}");
+            }
+        }
 
         #[test]
         fn put_back_while_cleaning_is_busy() {
@@ -706,8 +820,25 @@ mod tests {
         };
         use fresher_testing::{FakeCleaner, SystemUiCall};
 
-        use super::{MODEL, clean, cleaned, cleaned_model, landed, with};
+        use super::{MODEL, SHOWN, clean, cleaned, cleaned_model, landed, with, written};
         use crate::cleanup::testing::fixture;
+
+        #[test]
+        fn a_written_entry_in_a_trash_from_the_place_shown_is_put_back() {
+            let (engine, id, cleaner) = written(fresher_core::ActionKind::Remove, "/fake-trash/7", SHOWN);
+
+            assert_eq!(engine.put_back(id, Some(&[0])).unwrap().items[0].outcome, PutBackOutcome::PutBack);
+            assert_eq!(cleaner.put_backs_tried(), [PathBuf::from("/fake-trash/7")]);
+        }
+
+        #[test]
+        fn a_written_emptying_entry_inside_the_folder_emptied_is_put_back() {
+            let inside = format!("{SHOWN}/a");
+            let (engine, id, cleaner) = written(fresher_core::ActionKind::Empty, "/fake-trash/7", &inside);
+
+            assert_eq!(engine.put_back(id, Some(&[0])).unwrap().items[0].outcome, PutBackOutcome::PutBack);
+            assert_eq!(cleaner.put_backs_tried(), [PathBuf::from("/fake-trash/7")]);
+        }
 
         #[test]
         fn a_together_item_comes_back_parts_first_and_the_subject_last() {

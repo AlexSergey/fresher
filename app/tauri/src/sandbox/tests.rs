@@ -912,7 +912,8 @@ mod positive {
 
         let start = crate::compose::start(world.real_data(), world.real_home(), env(&[])).unwrap();
 
-        assert_eq!((start.data_folder, start.home), (world.real_data(), world.real_home()));
+        let home = fs::canonicalize(world.real_home()).unwrap();
+        assert_eq!((start.data_folder, start.home), (world.real_data(), home), "the home as the disk spells it");
         assert_eq!(start.build, fresher_core::Build::Development);
     }
 

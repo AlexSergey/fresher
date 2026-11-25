@@ -9,12 +9,12 @@ use std::sync::Arc;
 
 use fresher_core::{
     BundleFacts, BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, KnownFolder, KnownFolders,
-    SystemError, Timestamp,
+    SystemError, TeamId, Timestamp,
 };
 
-use crate::BundleReader;
 use crate::bundle::{bundle_team, helpers, is_as_listed, is_bundle, read_bundle};
 use crate::spotlight::SpotlightSearch;
+use crate::{BundleReader, COMMAND_TIMEOUT, ProcessCommandRunner};
 
 /// The known folders apps are installed in.
 const APPS_FOLDERS: [KnownFolder; 3] =
@@ -121,6 +121,12 @@ impl InstalledApps for MacInstalledApps {
             found.look_in_toolbox(toolbox);
         }
         Ok(found.into_list())
+    }
+
+    /// Asks the system's `codesign` whether `file` is signed by `team`, by its absolute path and with its own runner
+    /// (the listing runs no program of its own otherwise).
+    fn signed_by(&self, file: &Path, team: &TeamId, cancel: &CancelToken) -> bool {
+        crate::code_check::signed_by(&ProcessCommandRunner::new(COMMAND_TIMEOUT), file, team, cancel)
     }
 
     /// Asks Spotlight once per id (the id is checked reverse-DNS, so it cannot break out of the quotes); a path it
@@ -535,11 +541,11 @@ mod tests {
             ids.iter().map(|id| BundleId::new(*id).unwrap()).collect()
         }
 
-        const QUERY: &str = "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c";
+        const QUERY: &str = "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c";
 
         #[test]
         fn a_spotlight_that_cannot_be_asked_or_fails_is_an_error() {
-            let refused = CommandRunError::Failed { program: "mdfind".into(), reason: "timed out".into() };
+            let refused = CommandRunError::Failed { program: "/usr/bin/mdfind".into(), reason: "timed out".into() };
             for runner in [
                 FakeCommandRunner::default(),
                 FakeCommandRunner::default().failing(QUERY, refused),
@@ -714,11 +720,11 @@ mod tests {
             let eap = app(drive.path(), "DataGrip EAP", "com.jetbrains.datagrip-EAP");
             let runner = fresher_testing::FakeCommandRunner::default()
                 .answering(
-                    "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
+                    "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
                     &format!("{}\0", release.display()),
                 )
                 .answering(
-                    "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip-EAP'c",
+                    "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip-EAP'c",
                     &format!("{}\0{}\0", eap.display(), release.display()),
                 );
             let apps =
@@ -738,7 +744,7 @@ mod tests {
             let drive = tempfile::tempdir().unwrap();
             let odd = app(&drive.path().join("two\nlines"), "DataGrip", "com.jetbrains.datagrip");
             let runner = fresher_testing::FakeCommandRunner::default().answering(
-                "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
+                "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c",
                 &format!("{}\0", odd.display()),
             );
             let apps =
@@ -781,7 +787,7 @@ mod tests {
 
         #[test]
         fn finding_no_longer_asks_spotlight_for_the_finder() {
-            let query = "mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c";
+            let query = "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.jetbrains.datagrip'c";
             let runner = fresher_testing::FakeCommandRunner::default().answering(query, "");
             let (runner, search) = crate::spotlight::tests::search(runner, Ok(Vec::new()));
             let apps = MacInstalledApps::new(Arc::new(FakeKnownFolders::new()), crate::AppSearch::Spotlight(search));

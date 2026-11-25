@@ -98,7 +98,7 @@ mod negative {
     #[test]
     fn the_config_keeps_no_remote_origin_in_the_csp() {
         // The app's own files, inline images, and Tauri's IPC: nothing else may load.
-        let allowed = ["'self'", "data:", "ipc:", "http://ipc.localhost"];
+        let allowed = ["'self'", "'none'", "data:", "ipc:", "http://ipc.localhost"];
         let config = config();
         let csp = config["app"]["security"]["csp"].as_str().unwrap();
 
@@ -110,6 +110,10 @@ mod negative {
             }
         }
         assert!(csp.starts_with("default-src 'self';"), "{csp}");
+        // What `default-src` does not cover: forms, the base address, being framed.
+        for directive in ["form-action 'none'", "base-uri 'none'", "frame-ancestors 'none'"] {
+            assert!(csp.split(';').any(|part| part.trim() == directive), "{directive}");
+        }
     }
 
     #[test]
@@ -181,6 +185,18 @@ mod positive {
         assert_eq!(windows.len(), 1);
         assert_eq!(windows[0]["label"], "main");
         assert_eq!(windows[0]["incognito"], true);
+    }
+
+    #[test]
+    fn the_bundle_is_signed_ad_hoc_with_the_hardened_runtime_and_no_entitlements() {
+        // docs/restrictions/privacy.md, "No foreign code under the app's access"; scripts/check-bundle.ts checks the
+        // built bundle itself.
+        let config = config();
+        let macos = &config["bundle"]["macOS"];
+
+        assert_eq!(macos["signingIdentity"], "-");
+        assert_eq!(macos["hardenedRuntime"], true);
+        assert!(macos.get("entitlements").is_none_or(serde_json::Value::is_null));
     }
 
     #[test]

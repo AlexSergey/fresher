@@ -202,7 +202,8 @@ fn started(tree: FixtureTree, setup: Setup, data: Arc<tempfile::TempDir>) -> Hom
         journal,
         volumes: Arc::new(volumes),
         finder: Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown)),
-        trashes: Vec::new(),
+        // The fake Trash's folder: only what lands in a Trash folder is put back.
+        trashes: vec![fixture.join("trash")],
     };
     let mut registry = Registry::new().unwrap();
     registry.register(Box::new(TrialModule::new().unwrap())).unwrap();

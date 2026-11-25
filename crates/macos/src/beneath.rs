@@ -8,7 +8,7 @@ use std::fs::{File, OpenOptions};
 use std::io;
 use std::os::fd::AsFd as _;
 use std::os::unix::fs::OpenOptionsExt as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use fresher_core::{EntryKind, FolderListing, ItemIdentity, ReadError};
 
@@ -43,6 +43,12 @@ pub fn identity_at(folder: &File, name: &OsStr) -> io::Result<ItemIdentity> {
         _ => EntryKind::Other,
     };
     Ok(ItemIdentity::new(device_id(status.st_dev), status.st_ino, kind))
+}
+
+/// The path of the held item `file` as its volume spells it now (`F_GETPATH`): each name as the disk holds it, in
+/// its case and normal form, whatever spelling opened it.
+pub fn path_of(file: &File) -> io::Result<PathBuf> {
+    crate::ffi::trash::path_of(file.as_fd())
 }
 
 /// Every entry of the held folder `folder`, with its attributes, into `out` (cleared first), with the bulk read the

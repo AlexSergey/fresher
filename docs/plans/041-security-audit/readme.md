@@ -1,11 +1,11 @@
 # 041 — The security audit
 
-**Status:** 📝 draft · **Version:** 0.1.0 · **Date:** 2026-11-22 ·
+**Status:** 🔨 in progress (built; awaiting the user's look) · **Version:** 0.1.0 · **Date:** 2026-11-25 ·
 **Modules:** every crate and module, app/tauri, app/ui, scripts, repo, docs
 
-A one-file draft: the design in short, with the recommended decisions taken as agent's calls. Plans, steps and
-`00-design.md` are written when the draft is approved. **Taken up after every feature of the first release is
-implemented** (the user, 2026-11-22); until then it only collects what to look at.
+Written as a one-file draft and built from it at the user's request (2026-11-25, "run the audit"), without separate
+plans and steps: the report [`docs/security/audit-2026-11-25.md`](../../security/audit-2026-11-25.md) holds the
+detail.
 
 ## Intent
 
@@ -120,6 +120,9 @@ before the release) — it costs nothing but time, and names the project in publ
 
 1. **The audit waits for the features** (the user, 2026-11-22): this draft is returned to after everything planned for
    the first release is implemented.
+2. **Run the audit now** (the user, 2026-11-25): "run the audit"; built from this draft directly.
+3. **Release 0.1.0 unsigned** (the user, 2026-11-25): no Apple Developer ID and no notarization; the bundle is signed
+   ad hoc with the hardened runtime and no entitlements.
 
 ## Agent's calls (to check)
 
@@ -131,4 +134,19 @@ before the release) — it costs nothing but time, and names the project in publ
 
 ## Conclusions
 
-Not written yet.
+- **Run as designed, in one session:** four fresh attackers (removal, scan and parsing, shell and privacy, supply
+  chain), an independent checker, fixers, and a fresh fix reader. The attack sandboxes and fuzzing of the design were
+  not made; the proofs became tests in each crate's own suite instead.
+- **Found:** 27 findings plus one from the fix reader: high 6, medium 6, low 15, info 1, no critical. 24 are fixed,
+  REMOVAL-5 is documented, SCAN-6, SCAN-7 and part of SUPPLY-8 are known issues; residuals of REMOVAL-1, REMOVAL-2
+  and SCAN-1 are known issues too. No critical or high finding is open; the SCAN-1 residual (a race in a bundle the
+  attacker plants) is accepted for 0.1.0.
+- **The common cause** of the high findings: code running under Fresher's Full Disk Access (a planted bundle, `PATH`,
+  an injected library, the Docker CLI's own configuration). `privacy.md` now names it as a threat.
+- **The fix reader mattered:** it caught two regressions of the fixes (Open Trash without Full Disk Access; every
+  journal entry `Gone` under a home reached through a link) and a new high finding (NEW-1).
+- **The release bundle** built with `npm run build` passes its check (strict verify, hardened runtime, no
+  entitlements, no network imports, no home path). It was not launched; the user's hand checks are listed in the
+  report.
+- **Agent's calls 1, 2, 4 held; 3** (critical and high block the release) held with the SCAN-1 residual accepted as
+  a known issue; **5** (the last pass on the release build) is the user's hand check.

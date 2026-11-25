@@ -15,8 +15,7 @@ they only read the repository's own glob patterns.
 
 ## What was tried
 
-Nothing yet: the CI gate is `npm audit --omit=dev --audit-level=high`, which passes. prod-forge lives with the same
-advisories (its `docs/open-issues/moderate-audit-advisories.md`).
+Nothing yet: the CI gate is `npm audit --omit=dev --audit-level=high`, which passes.
 
 ## Options left
 

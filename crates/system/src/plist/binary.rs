@@ -13,6 +13,9 @@ const ASCII_STRING: u8 = 0x5;
 const UTF16_STRING: u8 = 0x6;
 /// The length nibble that says the length follows as an integer object.
 const LENGTH_FOLLOWS: u8 = 0xF;
+/// The most bytes of string the keys and values of one dictionary may decode to, together. Many keys may refer to one
+/// shared string object, so without a bound a 1 MiB file could decode to gigabytes; a real property list is far below.
+const MAX_DECODED: usize = 4 * super::MAX_PLIST;
 
 pub(super) fn read_strings(bytes: &[u8]) -> Result<BTreeMap<String, String>, PlistError> {
     let document = Document::parse(bytes)?;
@@ -29,11 +32,12 @@ pub(super) fn read_strings(bytes: &[u8]) -> Result<BTreeMap<String, String>, Pli
     document.objects(refs, refs_len).map_err(|_| malformed("the dictionary is larger than the data"))?;
 
     let mut map = BTreeMap::new();
+    let mut budget = MAX_DECODED;
     for index in 0..count {
         let key_ref = document.object_ref(refs, index)?;
-        let Some(key) = document.string(key_ref)? else { continue };
+        let Some(key) = document.string(key_ref, &mut budget)? else { continue };
         let value_ref = document.object_ref(refs, count.saturating_add(index))?;
-        if let Some(value) = document.string(value_ref)? {
+        if let Some(value) = document.string(value_ref, &mut budget)? {
             map.insert(key, value);
         }
     }
@@ -135,8 +139,9 @@ impl<'a> Document<'a> {
         Ok((length, start.saturating_add(size)))
     }
 
-    /// The text of a string object; `None` for any other kind, or for a string that cannot be decoded.
-    fn string(&self, object: usize) -> Result<Option<String>, PlistError> {
+    /// The text of a string object; `None` for any other kind, or for a string that cannot be decoded. Its bytes are
+    /// taken from `budget` before it is decoded; a string past what is left fails the read.
+    fn string(&self, object: usize, budget: &mut usize) -> Result<Option<String>, PlistError> {
         let offset = self.object_offset(object)?;
         let marker = self.object_byte(offset)?;
         let kind = marker >> 4;
@@ -144,11 +149,13 @@ impl<'a> Document<'a> {
             return Ok(None);
         }
         let (length, start) = self.length(marker, offset.saturating_add(1))?;
+        let len = if kind == ASCII_STRING { Some(length) } else { length.checked_mul(2) };
+        let len = len.ok_or(malformed("a string is larger than the data"))?;
+        *budget = budget.checked_sub(len).ok_or(malformed("the strings decode to far more than the data"))?;
         if kind == ASCII_STRING {
-            let ascii = self.objects(start, length)?;
+            let ascii = self.objects(start, len)?;
             return Ok(ascii.is_ascii().then(|| ascii.iter().copied().map(char::from).collect()));
         }
-        let len = length.checked_mul(2).ok_or(malformed("a string is larger than the data"))?;
         let units: Vec<u16> =
             self.objects(start, len)?.as_chunks::<2>().0.iter().copied().map(u16::from_be_bytes).collect();
         Ok(String::from_utf16(&units).ok())

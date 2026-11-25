@@ -21,6 +21,7 @@ mod home_scan;
 #[path = "../support/report.rs"]
 mod report;
 
+use std::path::Path;
 use std::sync::Arc;
 
 use fresher_core::{Event, Insight, InstalledApp, ModuleId, ModuleOutcome};
@@ -55,33 +56,57 @@ pub(crate) fn orbstack() -> InstalledApp {
     installed_app("dev.kdrag0n.MacVirt", "OrbStack", "2.2.5").unwrap()
 }
 
-/// The only call the module may make, as `FakeCommandRunner` keys it: `OrbStack`'s own CLI inside its bundle.
-pub(crate) fn read() -> String {
+/// The only call the module may make in the sandbox whose home is `home`, as `FakeCommandRunner` keys it: `OrbStack`'s
+/// own CLI inside its bundle, through the home's socket, with the system's empty folder as its config.
+pub(crate) fn read(home: &Path) -> String {
     let program = orbstack().path.join("Contents/MacOS/xbin/docker");
-    format!("{} --context orbstack system df --format json", program.display())
+    let socket = home.join(".orbstack/run/docker.sock");
+    format!(
+        "{} --host unix://{} --config /private/var/empty system df --format json",
+        program.display(),
+        socket.display()
+    )
+}
+
+/// How the read answers, if it is made.
+enum Reply {
+    Nothing,
+    Says(&'static str),
+    Cancelled,
 }
 
 /// The world an engine runs in besides the files.
 pub(crate) struct Setup {
     pub(crate) running: FakeRunningApps,
-    pub(crate) commands: FakeCommandRunner,
+    reply: Reply,
 }
 
 impl Setup {
     /// `OrbStack` open, its read answered with the design's answer.
     pub(crate) fn answered() -> Self {
-        Self { running: open(), commands: FakeCommandRunner::default().answering(&read(), ANSWER) }
+        Self { running: open(), reply: Reply::Says(ANSWER) }
     }
 
     /// `OrbStack` closed, no command answered.
     pub(crate) fn closed() -> Self {
-        Self { running: FakeRunningApps::default(), commands: FakeCommandRunner::default() }
+        Self { running: FakeRunningApps::default(), reply: Reply::Nothing }
     }
 
     /// `OrbStack` open, its read stopped by a cancel.
     pub(crate) fn cancelled() -> Self {
-        let cancelled = fresher_core::CommandRunError::Cancelled { program: "docker".into() };
-        Self { running: open(), commands: FakeCommandRunner::default().failing(&read(), cancelled) }
+        Self { running: open(), reply: Reply::Cancelled }
+    }
+
+    /// The runner of this setup in the sandbox whose home is `home`.
+    fn commands(&self, home: &Path) -> FakeCommandRunner {
+        match self.reply {
+            Reply::Nothing => FakeCommandRunner::default(),
+            Reply::Says(stdout) => FakeCommandRunner::default().answering(&read(home), stdout),
+            Reply::Cancelled => {
+                let cancelled = fresher_core::CommandRunError::Cancelled { program: "docker".into() };
+                FakeCommandRunner::default().failing(&read(home), cancelled)
+            }
+        }
     }
 }
 
@@ -93,6 +118,8 @@ fn open() -> FakeRunningApps {
 pub(crate) struct Home {
     pub(crate) flow: Flow,
     pub(crate) commands: Arc<FakeCommandRunner>,
+    /// The only call the module may make in this sandbox.
+    pub(crate) read: String,
 }
 
 impl Home {
@@ -100,16 +127,17 @@ impl Home {
     pub(crate) fn with(setup: Setup) -> Self {
         let tree = FixtureTree::from_toml(&fixtures().join("homes").join("docker-flow.toml")).unwrap();
         let mut flow = Flow::open(tree, |_| parts(FakeRunningApps::default()));
-        let commands = Arc::new(setup.commands);
+        let commands = Arc::new(setup.commands(&flow.sandbox.home()));
+        let read = read(&flow.sandbox.home());
         // `Flow::open` builds the engine of the defaults; the flow's own takes its place before anything runs.
         flow.engine =
             engine_with(&flow.sandbox, &flow.stated, &flow.open_files, parts(setup.running), extras(&commands));
-        Self { flow, commands }
+        Self { flow, commands, read }
     }
 
     /// A new engine on the same files in `setup`: the app started again. Its runner takes the old one's place.
     pub(crate) fn restart(&mut self, setup: Setup) {
-        self.commands = Arc::new(setup.commands);
+        self.commands = Arc::new(setup.commands(&self.flow.sandbox.home()));
         let parts = parts(setup.running);
         self.flow.engine =
             engine_with(&self.flow.sandbox, &self.flow.stated, &self.flow.open_files, parts, extras(&self.commands));
@@ -153,7 +181,11 @@ fn parts(running: FakeRunningApps) -> Parts {
         modules: vec![Box::new(DevCachesModule::new().unwrap()), Box::new(DockerModule::new().unwrap())],
         clock: Arc::new(FakeClock::at(FIXTURE_NOW)),
         journal: FakeChangeJournal::default(),
-        installed: FakeInstalledApps::new(vec![orbstack()]),
+        // OrbStack's own CLI carries OrbStack's signature: the module runs no other.
+        installed: FakeInstalledApps::new(vec![orbstack()]).signing(
+            orbstack().path.join("Contents/MacOS/xbin/docker"),
+            fresher_core::TeamId::new("HUAQ24HBR6").unwrap(),
+        ),
         running,
         access: unknown_access(),
         installs: no_installs(),

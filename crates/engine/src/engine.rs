@@ -60,8 +60,8 @@ pub struct CleanupPorts {
     pub volumes: Arc<dyn Volumes>,
     /// Finder's 30-day setting, for the Trash line's date.
     pub finder: Arc<dyn FinderSettings>,
-    /// Trash folders the Trash view counts besides the home's and the volumes' own: in sandbox mode with the system's
-    /// Trash, the Mac's own home Trash. Empty everywhere else.
+    /// Trash folders the Trash view counts and put back trusts besides the home's and the volumes' own: in sandbox
+    /// mode with the system's Trash, the Mac's own home Trash. Empty everywhere else.
     pub trashes: Vec<PathBuf>,
 }
 

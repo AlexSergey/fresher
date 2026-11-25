@@ -8,6 +8,7 @@ fn row_with(id: &str, change: Option<(&str, &str)>) -> String {
         ("id", format!("id = \"{id}\"")),
         ("name", "name = \"Runtime\"".to_string()),
         ("app", "app = \"com.example.Runtime\"".to_string()),
+        ("team", "team = \"ABCDE12345\"".to_string()),
         ("cli", "cli = \"Contents/bin/docker\"".to_string()),
         ("context", "context = \"runtime\"".to_string()),
         ("socket", format!("socket = {{ folder = \"home\", path = \".{id}/run/docker.sock\" }}")),
@@ -31,6 +32,15 @@ fn refused(text: &str) -> RuntimesError {
 
 mod negative {
     use super::{RuntimesError, refused, row_with};
+
+    #[test]
+    fn a_row_whose_team_is_not_a_team_id_is_refused() {
+        for team in ["", "abcde12345", "ABCDE1234", "ABCDE-2345"] {
+            let text = row_with("a", Some(("team", &format!("team = \"{team}\""))));
+
+            assert_eq!(refused(&text), RuntimesError::BadTeam { id: "a".into(), team: team.into() }, "{team}");
+        }
+    }
 
     #[test]
     fn a_table_that_is_not_toml_or_has_an_unknown_field_is_refused() {

@@ -261,7 +261,8 @@ fn engine(fixture: &Path, data: &Path, apps: Apps) -> Engine {
         journal: Arc::new(FileCleanupJournal::open(&folder)),
         volumes,
         finder: Arc::new(fresher_testing::FakeFinderSettings::new(fresher_core::AutoEmpty::Unknown)),
-        trashes: Vec::new(),
+        // The fake Trash's folder: only what lands in a Trash folder is put back.
+        trashes: vec![fixture.join("trash")],
     };
     let mut registry = Registry::new().unwrap();
     registry.register(Box::new(JetBrainsModule::new().unwrap())).unwrap();

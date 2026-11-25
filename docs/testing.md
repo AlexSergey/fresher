@@ -235,7 +235,9 @@ cleanups of a hundred items through the real journal.
   since moves the offer from one toolchain to another).
   `tests/docker.rs` runs the `docker` module (plan 032) with `dev-caches` over `fixtures/homes/docker-flow.toml` (an
   OrbStack socket and disk file, Docker Desktop's stale socket, npm's cache) on the real scanner and cleaner, with a
-  scripted runtime and a recording fake command runner: an open runtime with its socket runs the one read,
+  scripted runtime and a recording fake command runner: an open runtime with its socket, its CLI signed by its
+  developer (the fake apps state the signature; in sandbox mode a program inside a listed bundle passes as signed,
+  since nothing is ever run there), runs the one read,
   `<bundle>/<cli> --context <context> system df --format json`, and its insight reaches `ModuleFinished.insights`; a
   closed runtime, a missing socket, a stale socket of a runtime not installed, a restored scan and a runtime that
   answers nothing readable run nothing or describe no numbers; no finding, no total and no plan item is Docker's, and a
@@ -908,7 +910,9 @@ declares no module would read "never offered", and every shipped file declares o
 the `trial` module), and one more under a case with a `[case.map]`.
 
 A case may state what an external tool answers (plan 032): `[[case.tool]]` with `program` (a path relative to the
-sandbox, plain components, e.g. `Applications/OrbStack.app/Contents/MacOS/xbin/docker`), `args` (the exact arguments),
+sandbox, plain components, e.g. `Applications/OrbStack.app/Contents/MacOS/xbin/docker`), `args` (the exact arguments;
+`{sandbox}` in one stands for the canonical sandbox folder, as in the Docker read's
+`unix://{sandbox}/home/.orbstack/run/docker.sock`),
 `status` (the exit status, 0 by default) and `stdout` (inline, at most 64 KiB). `world.toml` writes them as `[[tool]]`
 only when stated, and sandbox mode and the autotest answer those calls from it and nothing else: **sandbox mode runs
 no program of the Mac but `/usr/bin/open`**, with or without stated tools, so a call no case states is answered as a tool
@@ -1008,9 +1012,11 @@ and the Trash are the sandbox's, and the cleaner reaches only inside it; the wal
 `world.toml`'s `[[entry]]` lines instead of the disk's. `--real-trash` moves items into the system's
 Trash instead of the sandbox's `home/.Trash`. A banner names the sandbox. A development build always runs as
 `io.github.alexsergey.fresher.dev` (`npm run dev` adds `app/tauri/tauri.dev.conf.json`; a debug build with the release
-identifier refuses to start, and so does a build without debug assertions with the development one), so its data and
-permission grants are apart from the release's. `npm run dev:sandbox` and `npm run dev` share that identifier, so single-instance hands a sandbox launch to a development window that is already
-running: that window keeps its own mode (its banner, or the lack of one, shows which) and the log warns; quit it first.
+identifier refuses to start, and so does a build without debug assertions with the development one or with its page
+served by a development server), so its data and
+permission grants are apart from the release's. `npm run dev:sandbox` and `npm run dev` share that identifier, so a launch while a development window is already
+running does not start (the data folder is locked, `app/tauri/src/instance.rs`): its message says so; quit the other
+window first.
 Before a plan that adds or changes a module or a category is done, its finish runs `npm run dev:sandbox -- <feature>`
 and walks `EXPECTED.md` by hand.
 
@@ -1094,7 +1100,7 @@ sheet; a demo world never states an acceptance, and no production hook accepts f
 for a moment.
 
 **Commands** (`scripts/demo-record.ts`; both need `cargo`, `node` and **no other development window running**:
-single-instance hands the launch to it):
+the app is single-instance and a second launch does not start):
 
 - `npm run demo:check -- <scenario|all>` plays without capturing. It needs no permission. Run it before a release and
   whenever a scenario or a screen it touches changes. It prints `played in N s` and fails naming the step.
@@ -1118,9 +1124,10 @@ dev:sandbox`): `.events.jsonl` (append-only) and `.json` (the snapshot, rewritte
 cleanup). The shape is in [`plans/026-dev-run-record/00-design.md`](./plans/026-dev-run-record/00-design.md), section
 2.5. A record is never overwritten (a collision gets `-2`, `-3`, ...). Only debug builds have it; a bare
 `tauri dev` and every test write nothing. `npm run dev` takes no argument; the bare `npm run tauri` script still
-forwards anything, but a build without debug assertions (`tauri dev --release`, or debug assertions turned off) that
-runs with the development identifier refuses to start, just as a debug build with the release identifier does
-(`app/tauri/src/identity.rs`). A development build on the real Mac makes every cleanup
+forwards anything, but a build without debug assertions (`tauri dev --release`, `cargo build --release`, or debug
+assertions turned off) refuses to start when it runs with the development identifier or when its page is not embedded
+(Tauri's dev mode loads it from `devUrl`; only `npm run build` embeds it), just as a debug build with the release
+identifier does (`app/tauri/src/identity.rs`). A development build on the real Mac makes every cleanup
 a dry run ([`architecture/removal.md`](./architecture/removal.md)).
 
 `npm run dev-runs:check -- <record.json>` (`scripts/dev-runs-check.ts`) checks every finding and every cleanup item of a

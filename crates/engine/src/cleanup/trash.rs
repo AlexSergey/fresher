@@ -5,17 +5,16 @@ use std::path::{Path, PathBuf};
 
 use fresher_core::{
     AutoEmpty, ByteSize, CleanupsQuery, CommandError, DiskState, KnownFolder, RecordedCleanup, Sizes, Timestamp,
-    TrashLine, TrashView, Volumes,
+    TrashLine, TrashView,
 };
 
 use crate::cleanup::history::Located;
+use crate::cleanup::trash_folders::TrashFolders;
 use crate::engine::{CleanupPorts, Shared};
 use crate::error::{EngineError, lock_anyway};
 
 /// How long Finder keeps an item in the Trash with its 30-day setting on, in seconds.
 const FINDER_KEEPS_FOR: u64 = 30 * 24 * 60 * 60;
-/// The folder at a volume's root that holds each user's Trash of that volume, by user id.
-const VOLUME_TRASHES: &str = ".Trashes";
 
 /// Each Trash that holds something, the home's first, from the last scan's measure and the journal's items found in
 /// the Trash again now; its folders replace those `open` opens.
@@ -23,7 +22,7 @@ pub(crate) fn view(shared: &Shared) -> TrashView {
     let state = lock_anyway(&shared.results).state();
     let home = shared.ports.system.known_folders.locate(KnownFolder::Trash);
     let trashes = shared.cleanup.as_ref().map(|ports| ports.trashes.clone()).unwrap_or_default();
-    let mut tally = Tally { home: home.clone(), trashes, ..Tally::default() };
+    let mut tally = Tally { trash: TrashFolders::new(home.clone(), trashes), folders: Vec::new() };
     if let Some(home) = &home {
         tally.folder(home);
     }
@@ -73,15 +72,9 @@ fn auto_empty_now(shared: &Shared, folders: &[Folder]) -> Option<Timestamp> {
 }
 
 /// The Trash folders found so far, with what cleanups put in each.
-#[derive(Default)]
 struct Tally {
-    /// The home's Trash, as the known folders spell it.
-    home: Option<PathBuf>,
-    /// The other Trash folders the composition names.
-    trashes: Vec<PathBuf>,
+    trash: TrashFolders,
     folders: Vec<Folder>,
-    /// The folders asked about, and whether each is a Trash.
-    checked: Vec<(PathBuf, bool)>,
 }
 
 struct Folder {
@@ -140,33 +133,12 @@ impl Tally {
         }
     }
 
-    /// Whether `folder` is a Trash: the home's, one the composition names, or a volume's `.Trashes/<uid>` at the root
-    /// of that volume. An entry elsewhere (a move the system reported outside any Trash) is no Trash's.
-    fn is_trash(&mut self, volumes: &dyn Volumes, folder: &Path) -> bool {
-        if self.home.as_deref() == Some(folder) || self.trashes.iter().any(|trash| trash == folder) {
-            return true;
-        }
-        if let Some(&(_, known)) = self.checked.iter().find(|(path, _)| path == folder) {
-            return known;
-        }
-        let uid = folder.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.parse::<u32>().is_ok());
-        let trash = uid
-            && volumes
-                .space(folder)
-                .is_ok_and(|space| folder.parent() == Some(space.mount_point.join(VOLUME_TRASHES).as_path()));
-        self.checked.push((folder.to_path_buf(), trash));
-        trash
-    }
-
     fn cleanup(&mut self, ports: &CleanupPorts, recorded: &RecordedCleanup, taken: Option<Timestamp>) {
         let went = recorded.end.as_ref().map_or(recorded.begin.at, |end| end.at);
         let since_scan = taken.is_some_and(|taken| recorded.begin.at >= taken);
-        let located = Located::of(ports, recorded);
+        let located = Located::of(ports, recorded, &mut self.trash);
         for (_, sizes, entry) in located.waiting_items() {
             let Some(path) = entry.landed.parent() else { continue };
-            if !self.is_trash(&*ports.volumes, path) {
-                continue;
-            }
             let folder = self.folder(path);
             folder.share = sum(folder.share, sizes);
             if since_scan {

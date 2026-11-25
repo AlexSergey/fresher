@@ -12,11 +12,11 @@ use fresher_macos::MountedVolume;
 /// How long `mdutil -s` may take for one volume before the volume counts as not indexed.
 pub const INDEX_CHECK_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Spotlight's command line, run without a shell.
-const MDFIND: &str = "mdfind";
+/// Spotlight's command line, run by its absolute path (never looked up in `PATH`) and without a shell.
+const MDFIND: &str = "/usr/bin/mdfind";
 
-/// Spotlight's index status command, run without a shell.
-const MDUTIL: &str = "mdutil";
+/// Spotlight's index status command, run by its absolute path (never looked up in `PATH`) and without a shell.
+const MDUTIL: &str = "/usr/bin/mdutil";
 
 /// The bundle id of the Finder, which Spotlight knows on every Mac whose index is on.
 const FINDER: &str = "com.apple.finder";
@@ -142,7 +142,7 @@ pub(crate) mod tests {
 
     use super::{Mounts, SpotlightSearch};
 
-    const FINDER: &str = "mdfind -0 kMDItemCFBundleIdentifier == 'com.apple.finder'c";
+    const FINDER: &str = "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.apple.finder'c";
     pub(crate) const HOME: &str = "/Users/someone";
     const DATA: &str = "/System/Volumes/Data";
     const ENABLED: &str = "/:\n\tIndexing enabled. \n";
@@ -173,8 +173,8 @@ pub(crate) mod tests {
     pub(crate) fn indexed() -> FakeCommandRunner {
         FakeCommandRunner::default()
             .answering(FINDER, "/System/Library/CoreServices/Finder.app\0")
-            .answering("mdutil -s /", ENABLED)
-            .answering(&format!("mdutil -s {DATA}"), ENABLED)
+            .answering("/usr/bin/mdutil -s /", ENABLED)
+            .answering(&format!("/usr/bin/mdutil -s {DATA}"), ENABLED)
     }
 
     pub(crate) fn search(
@@ -248,7 +248,7 @@ pub(crate) mod tests {
 
         #[test]
         fn a_spotlight_that_cannot_be_asked_or_fails_is_an_error() {
-            let refused = CommandRunError::Failed { program: "mdfind".into(), reason: "timed out".into() };
+            let refused = CommandRunError::Failed { program: "/usr/bin/mdfind".into(), reason: "timed out".into() };
             for runner in [
                 FakeCommandRunner::default(),
                 FakeCommandRunner::default().failing(FINDER, refused),
@@ -295,9 +295,10 @@ pub(crate) mod tests {
 
         #[test]
         fn a_volume_whose_index_is_off_unknown_or_unasked_is_not_indexed() {
-            let work = "mdutil -s /Volumes/Work";
-            let failed = || CommandRunError::Failed { program: "mdutil".into(), reason: "it ran too long".into() };
-            let cancelled = CommandRunError::Cancelled { program: "mdutil".into() };
+            let work = "/usr/bin/mdutil -s /Volumes/Work";
+            let failed =
+                || CommandRunError::Failed { program: "/usr/bin/mdutil".into(), reason: "it ran too long".into() };
+            let cancelled = CommandRunError::Cancelled { program: "/usr/bin/mdutil".into() };
             for runner in [
                 indexed().answering(work, "/Volumes/Work:\n\tIndexing disabled.\n"),
                 indexed().answering(work, "/Volumes/Work:\n\tError: unknown indexing state.\n"),
@@ -316,7 +317,8 @@ pub(crate) mod tests {
         #[test]
         fn a_volume_named_as_the_enabled_status_is_not_indexed_by_its_name() {
             let name = "/Volumes/Indexing enabled.";
-            let runner = indexed().answering(&format!("mdutil -s {name}"), &format!("{name}:\n\tIndexing disabled.\n"));
+            let runner =
+                indexed().answering(&format!("/usr/bin/mdutil -s {name}"), &format!("{name}:\n\tIndexing disabled.\n"));
             let mut volumes = system_volumes();
             volumes.push(volume(name, true, true));
 
@@ -333,12 +335,12 @@ pub(crate) mod tests {
 
         #[test]
         fn a_data_volume_that_is_not_indexed_is_asked_though_not_browsable() {
-            let runner = indexed().answering(&format!("mdutil -s {DATA}"), "Indexing disabled.\n");
+            let runner = indexed().answering(&format!("/usr/bin/mdutil -s {DATA}"), "Indexing disabled.\n");
 
             let (runner, search) = search(runner, Ok(system_volumes()));
 
             assert_eq!(search.search_complete(Path::new(HOME), &CancelToken::new()), error("a volume is not indexed"));
-            assert!(runner.calls().contains(&format!("mdutil -s {DATA}")), "{:?}", runner.calls());
+            assert!(runner.calls().contains(&format!("/usr/bin/mdutil -s {DATA}")), "{:?}", runner.calls());
         }
     }
 
@@ -355,14 +357,20 @@ pub(crate) mod tests {
         fn every_local_volume_indexed_is_a_complete_search() {
             let mut volumes = system_volumes();
             volumes.push(volume("/Volumes/Work", true, true));
-            let runner = indexed().answering("mdutil -s /Volumes/Work", "/Volumes/Work:\n\tIndexing enabled. \n");
+            let runner =
+                indexed().answering("/usr/bin/mdutil -s /Volumes/Work", "/Volumes/Work:\n\tIndexing enabled. \n");
 
             let (runner, search) = search(runner, Ok(volumes));
 
             assert_eq!(search.search_complete(Path::new(HOME), &CancelToken::new()), Ok(()));
             assert_eq!(
                 runner.calls(),
-                [FINDER, "mdutil -s /", &format!("mdutil -s {DATA}"), "mdutil -s /Volumes/Work"]
+                [
+                    FINDER,
+                    "/usr/bin/mdutil -s /",
+                    &format!("/usr/bin/mdutil -s {DATA}"),
+                    "/usr/bin/mdutil -s /Volumes/Work"
+                ]
             );
         }
 
@@ -388,7 +396,7 @@ pub(crate) mod tests {
             let asked = index.0.lock().unwrap().clone();
             let expected: Vec<(String, Vec<String>)> = ["/", DATA, "/Volumes/Work Disk"]
                 .iter()
-                .map(|mount_point| ("mdutil".to_owned(), vec!["-s".to_owned(), (*mount_point).to_owned()]))
+                .map(|mount_point| ("/usr/bin/mdutil".to_owned(), vec!["-s".to_owned(), (*mount_point).to_owned()]))
                 .collect();
             assert_eq!(asked, expected);
         }
@@ -396,7 +404,7 @@ pub(crate) mod tests {
         #[test]
         fn spotlight_paths_are_read_whole_from_its_nul_separated_answer() {
             let runner = indexed().answering(
-                "mdfind -0 kMDItemCFBundleIdentifier == 'com.example.App'c",
+                "/usr/bin/mdfind -0 kMDItemCFBundleIdentifier == 'com.example.App'c",
                 "/Volumes/Work/two\nlines/App.app\0/Applications/App.app\0",
             );
             let (_, search) = search(runner, Ok(system_volumes()));

@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use fresher_core::{BundleFacts, BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, SystemError};
+use fresher_core::{
+    BundleFacts, BundleId, CancelToken, InstalledApp, InstalledApps, InstalledList, SystemError, TeamId,
+};
 
 use crate::{StatedFacts, StatedFlag};
 
@@ -47,6 +49,12 @@ impl InstalledApps for StatedInstalledApps {
 
     fn is_as_listed(&self, path: &Path) -> bool {
         self.inner.is_as_listed(path)
+    }
+
+    /// A program inside a bundle `inner` lists passes as signed by any team: a sandbox's bundles are written unsigned,
+    /// and in sandbox mode no program is ever run (the world's commands answer every call). Anything else is not.
+    fn signed_by(&self, file: &Path, _team: &TeamId, _cancel: &CancelToken) -> bool {
+        self.inner.list().is_ok_and(|list| list.apps.iter().any(|app| file.starts_with(&app.path) && file != app.path))
     }
 
     /// A stated owner is never the user (root or another user); stated flags replace the bundle's own.
@@ -112,6 +120,18 @@ mod tests {
         }
 
         #[test]
+        fn a_program_outside_every_listed_bundle_is_signed_by_no_one() {
+            let inner = FakeInstalledApps::new(vec![app("/box/Applications/Tool.app", 500)]);
+            let apps = StatedInstalledApps::new(Arc::new(inner), StatedFacts::new());
+            let team = fresher_core::TeamId::new("HUAQ24HBR6").unwrap();
+            let cancel = fresher_core::CancelToken::new();
+
+            for file in ["/box/Applications/.Tool.app/bin/tool", "/box/Applications/Tool.app", "/bin/tool"] {
+                assert!(!apps.signed_by(std::path::Path::new(file), &team, &cancel), "{file}");
+            }
+        }
+
+        #[test]
         fn an_app_without_a_stated_change_keeps_its_own() {
             for stated in [stating("Applications/Other.app", 7), StatedFacts::new()] {
                 let inner = FakeInstalledApps::new(vec![app("/box/Applications/Tool.app", 500)]);
@@ -132,6 +152,16 @@ mod tests {
 
         use super::{FakeInstalledApps, app, stating};
         use crate::{Stated, StatedFacts, StatedFlag, StatedInstalledApps, StatedOwner, bundle_facts};
+
+        #[test]
+        fn a_program_inside_a_listed_bundle_passes_as_signed() {
+            let inner = FakeInstalledApps::new(vec![app("/box/Applications/Tool.app", 500)]);
+            let apps = StatedInstalledApps::new(Arc::new(inner), StatedFacts::new());
+            let team = fresher_core::TeamId::new("HUAQ24HBR6").unwrap();
+
+            let file = Path::new("/box/Applications/Tool.app/Contents/bin/tool");
+            assert!(apps.signed_by(file, &team, &CancelToken::new()));
+        }
 
         #[test]
         fn a_stated_owner_date_and_manager_overlay_the_measure() {
