@@ -184,6 +184,29 @@ test.describe('positive cases', () => {
     await expect(page.getByText(/^Measuring your apps/u)).toHaveCount(0);
   });
 
+  test('Scan again on Apps after a scan shows its progress without Stop, then the list again', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.apps, hold: 1 });
+    await page.goto('/');
+    await scanButton(page).click();
+    await releaseScan(page);
+    await scanFinished(page);
+    await page.getByRole('navigation').getByRole('button', { name: 'Apps' }).click();
+    await expect(appsList(page)).toBeVisible();
+    const main = page.getByRole('main');
+
+    await main.getByRole('button', { name: 'Scan again' }).click();
+
+    const card = page.getByRole('region', { name: 'Scanning' });
+    await expect(card).toBeVisible();
+    await expect(main.getByRole('button', { name: 'Scan again' })).toHaveCount(0);
+    await expect(main.getByRole('button', { name: 'Stop' })).toHaveCount(0);
+
+    await releaseScan(page);
+    await expect(card).toHaveCount(0);
+    await expect(appsList(page)).toBeVisible();
+    await expect(main.getByRole('button', { name: 'Scan again' })).toBeVisible();
+  });
+
   test('the filter keeps the unused apps', async ({ page }) => {
     await openApps(page);
     await expect(appsList(page).getByRole('listitem').filter({ hasText: 'takes' })).not.toHaveCount(0);

@@ -42,8 +42,8 @@ apply, in their order. When the first three keep nothing and no installed app ha
 - none of the product's folders, in the three places, changed in the last 30 days: the newest modification time of
   the folders is at least that old. The days are the setting "Offer the data of a removed IDE after"
   (`jetbrains.uninstalled-after-days`, 7 to 3650, 30 by default);
-- the scan walked the disk and read every folder: a scan restored from the last one's cache never offers, its times
-  are old, and neither does a walk that could not read a folder, which may be one of the product's that changed;
+- the scan read every folder: a walk that could not read a folder never offers, since it may be one of the product's
+  that changed;
 - Spotlight knows no app with one of the product's bundle ids anywhere on the Mac (an IDE on another drive or in a
   download folder); before it is asked, once per scan, Spotlight must know the Finder (its index is on) and every
   mounted volume the system shows, and the one that holds the home, must be local and indexed (`mdutil -s`, 10 s
@@ -52,7 +52,7 @@ apply, in their order. When the first three keep nothing and no installed app ha
   keeps its data. If Spotlight is off, or a drive is not indexed, turn it on and scan again."
 
 Otherwise every folder of the product is kept and reported as left out here, with the reason: for now, its data
-changed recently (or the scan is restored, or could not read every folder) or the app could not ask Spotlight about
+changed recently (or the scan could not read every folder) or the app could not ask Spotlight about
 every drive; for good, an unknown JetBrains app is installed or the IDE is installed elsewhere. A folder whose time cannot be read, or is
 in the future, counts as changed recently. The time is the folder's own: an IDE changes it when it starts or quits (its lock files
 and its rotated logs), not when it only writes inside the folder's subfolders.

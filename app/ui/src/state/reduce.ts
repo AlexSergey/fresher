@@ -52,7 +52,7 @@ export type CoreState = {
   // The cleanup from the review screen's button to its result (state/cleanup.ts).
   readonly cleanup: CleanupState;
   // What the result on screen did not see (guarded places, unreadable folders): the followed scan's `scan-coverage`,
-  // or the last scan's coverage of a result restored from the overview. `null` while a scan runs or none is known.
+  // or the last scan's coverage from the overview when the window did not follow it. `null` while a scan runs or none is known.
   readonly coverage: Coverage | null;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
@@ -99,8 +99,7 @@ export type CoreState = {
 
 type ScanEvent = Extract<Event, { readonly scan: ScanId }>;
 
-// `nothing-restored`: a restore that ended without starting, so the last scan is still the one before it.
-type SeenScan = { readonly end: 'finished' | 'nothing-restored' | 'running'; readonly scan: ScanId };
+type SeenScan = { readonly end: 'finished' | 'running'; readonly scan: ScanId };
 
 export const INITIAL_STATE: CoreState = {
   access: null,
@@ -195,9 +194,6 @@ const reduceEvent = (state: CoreState, event: Event): CoreState => {
             ],
           })
         : state;
-    case 'nothing-restored':
-      // The restore an overview said was running ended without a result: the engine is idle, as it was before it.
-      return follows(event.scan) ? markStale({ ...state, status: { state: 'idle' } }) : state;
     case 'quit-requested':
       return state.quitAsked ? state : { ...state, quitAsked: true };
     case 'scan-coverage':
@@ -244,8 +240,6 @@ const endOf = (event: ScanEvent): SeenScan['end'] => {
     case 'scan-progress':
     case 'scan-started':
       return 'running';
-    case 'nothing-restored':
-      return 'nothing-restored';
     case 'scan-finished':
       return 'finished';
   }
@@ -273,13 +267,11 @@ const loadOverview = (state: CoreState, overview: Overview): CoreState => {
     return outdated ? state : { ...state, overview, scan: status.scan, status };
   }
 
-  // A scan the events started is running until its own `scan-finished` arrives; an earlier scan's totals are old. A
-  // restore that restored nothing left the last scan as it was.
+  // A scan the events started is running until its own `scan-finished` arrives; an earlier scan's totals are old.
   const last = overview.lastScan?.scan;
-  const outdated =
-    seen !== null && (seen.end === 'running' || (seen.end === 'finished' && (last === undefined || last < seen.scan)));
+  const outdated = seen !== null && (seen.end === 'running' || last === undefined || last < seen.scan);
 
-  // A restored result has no `scan-coverage` event: its coverage comes with the overview.
+  // A result whose `scan-coverage` event this window did not see (it was reloaded) brings its coverage with the overview.
   return outdated
     ? state
     : { ...state, coverage: state.coverage ?? overview.lastScan?.coverage ?? null, overview, status };
@@ -337,7 +329,6 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
       return { ...state, dictionary: action.dictionary };
     case 'findings-added':
     case 'module-finished':
-    case 'nothing-restored':
     case 'scan-finished':
     case 'scan-progress':
     case 'scan-started': {

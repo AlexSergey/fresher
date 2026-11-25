@@ -738,38 +738,6 @@
     ],
     "leftOut": []
   },
-  "restoredAtLaunch": {
-    "rescan": {
-      "findings": [
-        [
-          "temp.old-files",
-          "private/tmp/old-build.log"
-        ],
-        [
-          "temp.old-files",
-          "private/var/folders/xx/sandbox/T/node-compile-cache"
-        ],
-        [
-          "temp.old-files",
-          "private/var/folders/xx/sandbox/T/tmp.IKKNWYIRnq"
-        ]
-      ],
-      "leftOut": [
-        [
-          "temp.left-out.recent",
-          1
-        ],
-        [
-          "temp.left-out.system",
-          1
-        ]
-      ]
-    },
-    "restored": {
-      "findings": [],
-      "leftOut": []
-    }
-  },
   "storageMap": {
     "explained": 131072,
     "places": [

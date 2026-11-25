@@ -1,11 +1,11 @@
-//! What a walk saw of each anchored interest's place: the same for a full walk, a rescan and a restore of the same
+//! What a walk saw of each anchored interest's place: the same for a full walk and a rescan of the same
 //! tree.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use fresher_core::{Claim, Interest, InterestSet, KnownFolder, ModuleId, Pattern, PlaceSeen, WalkMode};
+use fresher_core::{Claim, Interest, InterestSet, KnownFolder, ModuleId, Pattern, PlaceSeen};
 
 use crate::rescan::testing::{Rig, journal_of};
 use crate::walk::std_reader::StdReader;
@@ -87,20 +87,17 @@ mod positive {
     }
 
     #[test]
-    fn rescans_and_a_restore_of_an_unchanged_tree_see_what_the_full_walk_saw() {
+    fn rescans_of_an_unchanged_tree_see_what_the_full_walk_saw() {
         let rig = Rig::new(HOME, interests());
         let full = places(&rig.scan());
         let caches = rig.path("Library/Caches");
 
         let copied = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
         let read_again = rig.rescan(Arc::new(StdReader::new()), journal_of(&[caches], &[]));
-        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[])));
-        let restored = rig.walk(&scanner, WalkMode::Restore);
 
         assert_eq!(copied.summary.as_ref().unwrap().fallback, None);
         assert_eq!(read_again.summary.as_ref().unwrap().fallback, None);
         assert_eq!(places(&copied), full);
         assert_eq!(places(&read_again), full);
-        assert_eq!(places(&restored), full);
     }
 }

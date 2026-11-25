@@ -1,4 +1,4 @@
-//! Whether a runtime is asked and what its card says: the design's section 3, rows 1 to 7 in their order, on plain
+//! Whether a runtime is asked and what its card says: the design's section 3, rows 1 to 6 in their order, on plain
 //! values. Nothing here runs a program or asks the system but through `running`.
 
 use fresher_core::{CommandOutput, CommandRunError, InstalledApp, Sizes};
@@ -29,8 +29,6 @@ pub(crate) enum Disk {
 pub(crate) enum State {
     /// The app is not installed any more; its disk file is left.
     Left,
-    /// The scan is restored: the runtime is never asked then.
-    Restored,
     /// The running apps could not be listed, so it was not asked.
     Unknown,
     /// Its app is not running, or the walk saw no socket.
@@ -48,7 +46,6 @@ impl State {
     pub(crate) const fn key(&self) -> &'static str {
         match self {
             Self::Left => "docker.summary.left",
-            Self::Restored => "docker.summary.restored",
             Self::Unknown => "docker.summary.unknown",
             Self::Stopped => "docker.summary.stopped",
             Self::NoAnswer => "docker.summary.no-answer",
@@ -74,18 +71,16 @@ pub(crate) enum Verdict {
 /// 1. the installed apps cannot be listed: `Silent`;
 /// 2. its app is not installed and its disk file was not seen: `Silent`;
 /// 3. its app is not installed, its disk file was seen: `Left`;
-/// 4. the scan is restored: `Restored`;
-/// 5. the running apps cannot be listed: `Unknown`;
-/// 6. its app is not running, or the walk saw no socket: `Stopped`;
-/// 7. otherwise: `Ask`.
+/// 4. the running apps cannot be listed: `Unknown`;
+/// 5. its app is not running, or the walk saw no socket: `Stopped`;
+/// 6. otherwise: `Ask`.
 ///
-/// `running` tells whether the app runs, and is called only when row 5 is reached.
+/// `running` tells whether the app runs, and is called only when row 4 is reached.
 pub(crate) fn decide(
     installed: Result<Option<&InstalledApp>, NoSystem>,
     running: impl FnOnce() -> Result<bool, NoSystem>,
     socket_seen: bool,
     disk: Disk,
-    restored: bool,
 ) -> Verdict {
     let Ok(installed) = installed else { return Verdict::Silent };
     if installed.is_none() {
@@ -93,9 +88,6 @@ pub(crate) fn decide(
             Disk::Seen(_) => Verdict::Describe(State::Left),
             Disk::Absent | Disk::Unseen => Verdict::Silent,
         };
-    }
-    if restored {
-        return Verdict::Describe(State::Restored);
     }
     match running() {
         Err(NoSystem) => Verdict::Describe(State::Unknown),

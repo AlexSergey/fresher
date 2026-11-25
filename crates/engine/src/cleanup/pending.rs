@@ -1,5 +1,5 @@
 //! The pending plan: at most one, made by `prepare` and taken by a confirmation. It dies — and a later confirmation is
-//! refused with `PlanGone` — when a scan or a restore starts, a newer plan is prepared, it is discarded, a setting that
+//! refused with `PlanGone` — when a scan starts, a newer plan is prepared, it is discarded, a setting that
 //! changes what is scanned changes, or [`PLAN_LIFETIME`](fresher_core::PLAN_LIFETIME) has passed (the confirmation
 //! checks that).
 

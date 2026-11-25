@@ -38,8 +38,8 @@ The module `stale-projects` offers the artifact folders of projects nothing has 
 3650 days): packages (`node_modules`), build output (`target`, `build`, `.gradle`, `.build`, `.dart_tool`), Python
 environments (`.venv`, `venv`, Medium), and, for any Rust project, the build cache unused for 7 days. The last
 activity is the newest folder time outside the artifact folders and `.git`, or the newest folder time of
-`.git/refs/heads`; git is never run. A monorepo is one group; a project that could not be read in full, and a restored
-scan, offer nothing. Known limits: [a file edited in place](../known-issues/core-project-activity-misses-edits-in-place.md)
+`.git/refs/heads`; git is never run. A monorepo is one group; a project that could not be read in full offers
+nothing. Known limits: [a file edited in place](../known-issues/core-project-activity-misses-edits-in-place.md)
 and [a project cleaned once looks active](../known-issues/core-cleaned-stale-project-looks-active.md).
 
 Decided by the user on 2026-11-19: `dist`, `.next`, `.nuxt`, `.turbo`, `.parcel-cache` and any other framework output

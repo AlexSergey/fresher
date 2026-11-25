@@ -40,7 +40,7 @@
   "jetbrains.left-out.no-system": "Fresher could not list your apps, so it keeps every IDE version. Scan again; if this goes on, restart your Mac.",
   "jetbrains.left-out.unknown-ide": "Another JetBrains app that Fresher does not know is installed and may use this data, so it is kept.",
   "jetbrains.left-out.installed-elsewhere": "This IDE is installed outside your apps folders, so Fresher keeps its data.",
-  "jetbrains.left-out.used-recently": "No installed IDE uses this data, but it changed within the days set in Settings, or comes from a restored or incomplete scan, so it is kept. A scan after those days offers it.",
+  "jetbrains.left-out.used-recently": "No installed IDE uses this data, but it changed within the days set in Settings, or comes from an incomplete scan, so it is kept. A scan after those days offers it.",
   "jetbrains.left-out.vendor-app-open": "Another JetBrains app is open and may use this data. Quit it and scan again to clean older versions.",
   "jetbrains.left-out.apps-unread": "Fresher could not read every app in your apps folders, so it keeps every IDE version.",
   "jetbrains.left-out.spotlight-unread": "Fresher could not search every drive with Spotlight, so this IDE may be installed elsewhere and its data is kept. Turn Spotlight on, then scan again."

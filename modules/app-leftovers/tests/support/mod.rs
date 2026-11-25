@@ -41,22 +41,20 @@ pub(crate) fn elsewhere() -> Vec<InstalledApp> {
 }
 
 /// The system a home is scanned with: the installed apps (and the ones Spotlight finds elsewhere), the running apps,
-/// whether the scan is restored from the cache, the order the matches come in and the folders the walk avoids.
+/// the order the matches come in and the folders the walk avoids.
 pub(crate) struct System {
     pub(crate) apps: FakeInstalledApps,
     pub(crate) running: FakeRunningApps,
-    pub(crate) restored: bool,
     pub(crate) order: MatchOrder,
     pub(crate) avoid: Vec<PathBuf>,
 }
 
 impl System {
-    /// Nothing installed or running, a walked scan of every folder.
+    /// Nothing installed or running, every folder walked.
     pub(crate) fn plain() -> Self {
         Self {
             apps: FakeInstalledApps::default(),
             running: FakeRunningApps::default(),
-            restored: false,
             order: MatchOrder::Walked,
             avoid: Vec::new(),
         }
@@ -76,10 +74,6 @@ impl System {
         Self { running, ..self }
     }
 
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
-    }
-
     pub(crate) fn reversed(self) -> Self {
         Self { order: MatchOrder::Reversed, ..self }
     }
@@ -96,7 +90,6 @@ pub(crate) fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
     let ports = Ports {
         apps: Arc::new(system.apps),
         running: Arc::new(system.running),
-        restored: system.restored,
         order: system.order,
         avoid: system.avoid,
         ..Ports::at(FIXTURE_NOW)

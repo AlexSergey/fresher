@@ -76,18 +76,16 @@ pub(crate) struct Setup {
     pub(crate) running: FakeRunningApps,
     /// The answer of `OrbStack`'s read; `None`: no command is answered.
     pub(crate) reply: Option<Reply>,
-    pub(crate) restored: bool,
     pub(crate) avoid: Vec<PathBuf>,
 }
 
 impl Setup {
-    /// Nothing installed, nothing running, no answer, a walked scan, every place read.
+    /// Nothing installed, nothing running, no answer, every place read.
     pub(crate) fn none() -> Self {
         Self {
             apps: FakeInstalledApps::new(Vec::new()),
             running: FakeRunningApps::default(),
             reply: None,
-            restored: false,
             avoid: Vec::new(),
         }
     }
@@ -123,10 +121,6 @@ impl Setup {
         Self { reply: Some(reply), ..self }
     }
 
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
-    }
-
     pub(crate) fn running(self, running: FakeRunningApps) -> Self {
         Self { running, ..self }
     }
@@ -156,7 +150,6 @@ pub(crate) fn scan(name: &str, setup: Setup) -> Scan {
         apps: Arc::new(setup.apps),
         running: Arc::new(setup.running),
         commands,
-        restored: setup.restored,
         avoid: setup.avoid,
         ..Ports::at(FIXTURE_NOW)
     };
@@ -182,11 +175,6 @@ pub(crate) fn closed() -> Scan {
 /// The home without a socket, `OrbStack` installed and open.
 pub(crate) fn no_socket() -> Scan {
     scan("docker-stopped-no-socket", Setup::open(orbstack()))
-}
-
-/// The stopped home, `OrbStack` installed and open, restored.
-pub(crate) fn restored() -> Scan {
-    scan("docker-stopped", Setup::open(orbstack()).restored())
 }
 
 /// The stopped home, `OrbStack` installed with the running apps failing.
@@ -232,7 +220,6 @@ pub(crate) fn every_scan() -> Vec<Scan> {
         silent_with_desktop(),
         closed(),
         no_socket(),
-        restored(),
         unknown(),
         answered(),
         answered_with(ANSWER_CONTAINER),

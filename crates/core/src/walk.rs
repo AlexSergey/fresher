@@ -26,7 +26,7 @@ pub trait DiskWalk: Send + Sync {
     /// Records the scan's claims and keeps its state; called only after a walk that was not cancelled.
     fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError>;
     /// What the last walk saw below each of `queries`, in their order, from its tree before `commit`: no disk is
-    /// read (a restore answers from the cached tree). `None` for a path that is not a folder of that tree (never
+    /// read. `None` for a path that is not a folder of that tree (never
     /// walked, inside a folder claimed whole, a link, a file) and for every query before any walk.
     fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>>;
 }
@@ -57,12 +57,11 @@ pub struct Subtree {
 pub struct WalkRequest<'a> {
     pub roots: &'a [PathBuf],
     pub interests: &'a InterestSet,
-    /// Places the walk must not open (they would raise a system prompt); each is reported as not scanned. A restore
-    /// ignores it: it shows the cached scan as it was, with the places that scan avoided.
+    /// Places the walk must not open (they would raise a system prompt); each is reported as not scanned.
     pub avoid: &'a [PathBuf],
     /// Known folders outside the scan roots that a module's interest names: each is walked as a root of its own, for
     /// the interests anchored in it only, never entering a folder of another user. Always read from the disk: a rescan
-    /// walks them again in full and a restore emits nothing inside them.
+    /// walks them again in full.
     pub places: &'a [Place],
     pub mode: WalkMode,
 }
@@ -89,8 +88,6 @@ pub enum WalkMode {
     Full,
     /// Only the folders changed since the cached scan when the cache allows it; a full scan otherwise.
     Auto,
-    /// The cache only, no disk: the last state at launch.
-    Restore,
 }
 
 /// A path the scan's findings claim, with the category that owns it.
@@ -140,9 +137,6 @@ pub struct WalkSummary {
     /// What the walk saw of each anchored interest's place (index in the interest set; only interests with one
     /// place): not the walked places of the request.
     pub places: BTreeMap<usize, PlaceSeen>,
-    /// Every place the walk did not open, sorted: the request's, the standing ones and the system's own items. A
-    /// restore gives the cached scan's own list.
-    pub avoided: Vec<PathBuf>,
 }
 
 impl WalkSummary {
@@ -165,7 +159,7 @@ pub enum PlaceSeen {
     Unread,
     /// Not entered on purpose (avoided, another volume, another user's) or outside every scan root.
     NotScanned,
-    /// Not known: during the walk, a restored scan, or an interest without one place.
+    /// Not known: during the walk, or an interest without one place.
     Unknown,
 }
 
@@ -195,9 +189,6 @@ pub enum WalkError {
     Cancelled,
     #[error("scan root {index} could not be read: {kind}")]
     RootUnreadable { index: usize, kind: io::ErrorKind },
-    /// A `Restore` walk found no cache to restore.
-    #[error("there is no cached scan to restore")]
-    NothingToRestore,
     #[error("the scan could not be committed: {kind}")]
     Commit { kind: io::ErrorKind },
 }

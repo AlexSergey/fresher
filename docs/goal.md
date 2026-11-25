@@ -104,7 +104,8 @@ considers necessary").
 - **No background work.** The app runs only while the user has it open: no background checks, no menu-bar helper, no
   launch agent, no login item, no scheduled scans, no reminders or notifications that the app decides on.
 - **Every action starts with the user**: a scan when the user starts it, a cleanup when the user confirms it. Quitting
-  the app stops everything.
+  the app stops everything. Opening the app starts nothing: no scan and no restore of the last result (the user,
+  2026-11-25: "I just don't want anything to happen without the user's participation").
 - **Everything it does is visible**: what is being scanned, what was found and why, what will be removed and how, and
   afterwards what was removed — nothing hidden in a log only.
 

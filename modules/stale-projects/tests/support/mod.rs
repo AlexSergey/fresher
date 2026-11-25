@@ -18,27 +18,21 @@ pub(crate) fn stale_projects() -> StaleProjectsModule {
     StaleProjectsModule::new().unwrap()
 }
 
-/// How a home is scanned: whether the scan is restored from the cache, the order the matches come in and the folder
-/// the walk does not open.
+/// How a home is scanned: the order the matches come in and the folder the walk does not open.
 pub(crate) struct System {
-    restored: bool,
     order: MatchOrder,
     avoid: Vec<PathBuf>,
 }
 
 impl System {
-    /// A walked scan of every folder.
+    /// Every folder walked, the matches in the walk's order.
     pub(crate) fn plain() -> Self {
-        Self { restored: false, order: MatchOrder::Walked, avoid: Vec::new() }
+        Self { order: MatchOrder::Walked, avoid: Vec::new() }
     }
 
     /// The kept home's system: `Code/hidden-part/private` is not opened.
     pub(crate) fn kept() -> Self {
         Self::plain().avoiding("Code/hidden-part/private")
-    }
-
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
     }
 
     pub(crate) fn reversed(self) -> Self {
@@ -54,13 +48,7 @@ impl System {
 /// The home `name` scanned with `system`, the clock at `FIXTURE_NOW` and `settings` stored.
 pub(crate) fn scan_with(name: &str, system: System, settings: StoredSettings) -> (FixtureTree, ModuleRun) {
     let tree = FixtureTree::from_toml(&fixtures().join("homes").join(format!("{name}.toml"))).unwrap();
-    let ports = Ports {
-        settings,
-        restored: system.restored,
-        order: system.order,
-        avoid: system.avoid,
-        ..Ports::at(FIXTURE_NOW)
-    };
+    let ports = Ports { settings, order: system.order, avoid: system.avoid, ..Ports::at(FIXTURE_NOW) };
     let run = run_module(&stale_projects(), &tree, &ports).unwrap();
     (tree, run)
 }
@@ -75,14 +63,9 @@ pub(crate) fn not_claimed() -> (FixtureTree, ModuleRun) {
     scan("stale-projects-not-claimed", System::plain())
 }
 
-/// One project per reason to keep it, scanned with `system`.
-pub(crate) fn kept_with(system: System) -> (FixtureTree, ModuleRun) {
-    scan("stale-projects-kept", system)
-}
-
-/// The kept home with its own system.
+/// One project per reason to keep it, scanned with its own system.
 pub(crate) fn kept() -> (FixtureTree, ModuleRun) {
-    kept_with(System::kept())
+    scan("stale-projects-kept", System::kept())
 }
 
 /// Every category offered, scanned with `system`.

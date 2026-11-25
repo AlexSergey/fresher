@@ -263,25 +263,10 @@ mod flows {
         assert_eq!(because(&kept, "jetbrains.left-out.installed-elsewhere"), [(UNINSTALLED, 3)]);
         json!({ "findings": flow.findings(), "leftOut": kept })
     }
-
-    /// A restored scan reads no folder, so it knows no folder's age: it never offers a removed IDE's data.
-    pub(crate) fn restored_scan() -> Value {
-        let mut flow = removed_home(FakeInstalledApps::default());
-        flow.scan();
-        assert_eq!(flow.findings(), removed());
-
-        flow.restart(Apps::installed(vec![]));
-        let events = flow.restore();
-
-        assert_eq!(flow.findings(), []);
-        let kept = left_out(&events);
-        assert_eq!(because(&kept, "jetbrains.left-out.used-recently"), [(UNINSTALLED, 3)]);
-        json!({ "findings": flow.findings(), "leftOut": kept })
-    }
 }
 
 mod negative {
-    use crate::flows::{failing_system, installed_elsewhere, open_ide, restored_scan};
+    use crate::flows::{failing_system, installed_elsewhere, open_ide};
 
     #[test]
     fn apps_that_cannot_be_listed_leave_every_folder_out_and_the_scan_complete() {
@@ -297,17 +282,12 @@ mod negative {
     fn a_removed_ide_spotlight_finds_elsewhere_keeps_its_data() {
         installed_elsewhere();
     }
-
-    #[test]
-    fn a_restored_scan_never_offers_a_removed_ides_data() {
-        restored_scan();
-    }
 }
 
 mod positive {
     use crate::flows::{
-        clean_and_put_back, failing_system, ignoring, installed_elsewhere, open_ide, quit_and_rescan, restored_scan,
-        storage_map, update_between_scans,
+        clean_and_put_back, failing_system, ignoring, installed_elsewhere, open_ide, quit_and_rescan, storage_map,
+        update_between_scans,
     };
     use crate::support::check_golden;
 
@@ -350,7 +330,6 @@ mod positive {
             "ignoring": ignoring(),
             "storageMap": storage_map(),
             "installedElsewhere": installed_elsewhere(),
-            "restoredScan": restored_scan(),
         });
 
         check_golden("jetbrains-flow", &report);

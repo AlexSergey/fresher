@@ -69,15 +69,6 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
-  test('a restore with nothing to restore leaves Scan on the disk card, not a scanning card', async ({ page }) => {
-    await mockCore(page, { ...SCRIPTS.demo, quietRestore: true });
-    await page.goto('/');
-    const disk = page.getByRole('region', { name: 'Your disk' });
-
-    await expect(disk.getByRole('button', { name: 'Scan' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
-  });
-
   test('hovering a ring segment highlights its legend row, and the reverse', async ({ page }) => {
     await scan(page);
     const row = rowOf(page, 'Your files and apps');

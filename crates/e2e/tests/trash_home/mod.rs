@@ -15,7 +15,7 @@ mod home;
 mod home_cleanup;
 #[path = "../support/home_engine.rs"]
 mod home_engine;
-#[expect(dead_code, reason = "the flows of other modules restore and read the findings")]
+#[expect(dead_code, reason = "the flows of other modules read the findings")]
 #[path = "../support/home_scan.rs"]
 mod home_scan;
 #[expect(dead_code, reason = "the flows of other modules sort and unnumber their reports")]

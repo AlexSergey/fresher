@@ -26,9 +26,7 @@ mod flows {
     use std::fs;
     use std::path::PathBuf;
 
-    use fresher_core::{
-        CleanupSelection, DangerLevel, Event, ItemOutcome, MeaningGroup, PutBackOutcome, ScanKind, SkipReason,
-    };
+    use fresher_core::{CleanupSelection, DangerLevel, ItemOutcome, MeaningGroup, PutBackOutcome, SkipReason};
     use fresher_testing::{FakeRunningApps, TreeReport, running_app};
     use serde_json::{Value, json};
 
@@ -92,13 +90,6 @@ mod flows {
 
     fn editor_open() -> FakeRunningApps {
         FakeRunningApps::new(vec![running_app("Editor", &[EDITOR_ID]).unwrap()])
-    }
-
-    fn scan_kind(events: &[Event]) -> Option<&ScanKind> {
-        events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        })
     }
 
     /// The bytes of every file under the fake Trash, sorted: what went there, whatever the numbering of its names.
@@ -249,41 +240,6 @@ mod flows {
         assert_eq!(fs::read_dir(flow.sandbox.trash()).unwrap().count(), 0);
     }
 
-    /// Flow 6: a new engine on the same files restores the last scan at launch and offers the same folders (the
-    /// scan cache holds their matches), with nothing left out.
-    pub(crate) fn a_restored_scan_offers_the_same_caches() {
-        let mut flow = Flow::new();
-        flow.scan();
-        let offered: Vec<_> = of_module(&flow, "app-caches");
-        assert_eq!(offered, found(&OURS));
-        flow.restart(Setup::default());
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(of_module(&flow, "app-caches"), offered);
-        assert_eq!(left_out(&restored), []);
-    }
-
-    /// Flow 6b: a restart with the app open since judges the cached matches again: the folders are left out
-    /// `app-open`, and a scan after the app quits offers them.
-    pub(crate) fn a_restored_scan_judges_the_open_app_again() {
-        let mut flow = Flow::new();
-        flow.scan();
-        let offered: Vec<_> = of_module(&flow, "app-caches");
-        flow.restart(Setup { running: editor_open().then(Vec::new()), ..Setup::default() });
-
-        let restored = flow.restore();
-
-        assert_eq!(of_module(&flow, "app-caches"), []);
-        assert_eq!(left_out(&restored), [("library-caches".to_owned(), "app-open".to_owned(), 2)]);
-
-        let events = flow.scan();
-
-        assert_eq!(of_module(&flow, "app-caches"), offered);
-        assert_eq!(left_out(&events), []);
-    }
-
     /// Flow 7: the storage map counts both folders in the installed app's line, in the module's category.
     pub(crate) fn the_map_counts_both_folders_in_the_apps_line() {
         let flow = Flow::new();
@@ -310,8 +266,8 @@ mod flows {
 
 mod negative {
     use crate::flows::{
-        a_restored_scan_judges_the_open_app_again, an_entry_held_open_skips_the_item_in_use,
-        an_open_apps_cache_is_left_out_until_it_quits, no_folder_is_offered_by_two_modules,
+        an_entry_held_open_skips_the_item_in_use, an_open_apps_cache_is_left_out_until_it_quits,
+        no_folder_is_offered_by_two_modules,
     };
 
     #[test]
@@ -328,17 +284,12 @@ mod negative {
     fn an_entry_held_open_skips_the_item_and_moves_nothing_of_it() {
         an_entry_held_open_skips_the_item_in_use();
     }
-
-    #[test]
-    fn a_restart_with_the_app_open_leaves_its_caches_out_until_a_scan_after_it_quits() {
-        a_restored_scan_judges_the_open_app_again();
-    }
 }
 
 mod positive {
     use crate::flows::{
-        a_restored_scan_offers_the_same_caches, put_back_restores_every_entry_beside_what_the_app_wrote,
-        scan_confirm_empty_and_put_back, the_map_counts_both_folders_in_the_apps_line,
+        put_back_restores_every_entry_beside_what_the_app_wrote, scan_confirm_empty_and_put_back,
+        the_map_counts_both_folders_in_the_apps_line,
     };
     use crate::support::check_golden;
 
@@ -350,11 +301,6 @@ mod positive {
     #[test]
     fn put_back_restores_every_entry_byte_for_byte_beside_a_file_the_app_wrote() {
         put_back_restores_every_entry_beside_what_the_app_wrote();
-    }
-
-    #[test]
-    fn a_restored_scan_offers_the_same_caches_with_nothing_left_out() {
-        a_restored_scan_offers_the_same_caches();
     }
 
     #[test]

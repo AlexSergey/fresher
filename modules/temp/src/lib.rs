@@ -33,7 +33,6 @@ struct LeftOutKeys {
     special: TextKey,
     lock: TextKey,
     recent: TextKey,
-    scan_again: TextKey,
     no_system: TextKey,
 }
 
@@ -46,7 +45,6 @@ impl LeftOutKeys {
             special: TextKey::new("temp.left-out.special")?,
             lock: TextKey::new("temp.left-out.lock")?,
             recent: TextKey::new("temp.left-out.recent")?,
-            scan_again: TextKey::new("temp.left-out.scan-again")?,
             no_system: TextKey::new("temp.left-out.no-system")?,
         })
     }
@@ -59,7 +57,6 @@ impl LeftOutKeys {
             Reason::Special => &self.special,
             Reason::Lock => &self.lock,
             Reason::Recent => &self.recent,
-            Reason::ScanAgain => &self.scan_again,
             Reason::NoSystem => &self.no_system,
         }
     }
@@ -176,7 +173,6 @@ impl Module for TempModule {
         };
         let system = cx.system();
         let scan = Scan {
-            restored: cx.is_restored(),
             now: Timestamp::from_system_time(cx.clock().now()),
             days: OLDER_THAN.days(cx.settings()),
             running: system.running_apps().map_err(|_| NoSystem),

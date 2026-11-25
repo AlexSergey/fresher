@@ -33,26 +33,20 @@ pub(crate) fn xcode_open() -> FakeRunningApps {
     FakeRunningApps::new(vec![running_app("Xcode", &["com.apple.dt.Xcode"]).unwrap()])
 }
 
-/// The system a home is scanned with: the open apps, whether the scan is restored from the cache, and the order the
-/// matches come in.
+/// The system a home is scanned with: the open apps and the order the matches come in.
 pub(crate) struct System {
     pub(crate) running: FakeRunningApps,
-    pub(crate) restored: bool,
     pub(crate) order: MatchOrder,
 }
 
 impl System {
-    /// Nothing open, a walked scan.
+    /// Nothing open, the matches in the walk's order.
     pub(crate) fn plain() -> Self {
-        Self { running: FakeRunningApps::default(), restored: false, order: MatchOrder::Walked }
+        Self { running: FakeRunningApps::default(), order: MatchOrder::Walked }
     }
 
     pub(crate) fn running(self, running: FakeRunningApps) -> Self {
         Self { running, ..self }
-    }
-
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
     }
 
     pub(crate) fn reversed(self) -> Self {
@@ -63,12 +57,7 @@ impl System {
 /// The home `name` scanned with `system`, the clock at `FIXTURE_NOW`.
 pub(crate) fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
     let tree = home(name);
-    let ports = Ports {
-        running: Arc::new(system.running),
-        restored: system.restored,
-        order: system.order,
-        ..Ports::at(FIXTURE_NOW)
-    };
+    let ports = Ports { running: Arc::new(system.running), order: system.order, ..Ports::at(FIXTURE_NOW) };
     let run = run_module(&dev_caches(), &tree, &ports).unwrap();
     (tree, run)
 }

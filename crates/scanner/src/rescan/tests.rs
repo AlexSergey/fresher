@@ -46,13 +46,13 @@ fn node(cached: &Cached, path: &Path) -> NodeIndex {
 mod negative {
     use std::sync::Arc;
 
-    use fresher_core::{FullScanReason, JournalGap, ScanCache, ScopeKey, Timestamp, VolumeId};
+    use fresher_core::{FullScanReason, JournalGap, NotScanned, ScanCache, ScopeKey, Timestamp, VolumeId};
     use fresher_testing::FakeChangeJournal;
 
     use super::{gather, rig, twenty_folders};
     use crate::matcher::testing::{interest, set_of};
     use crate::rescan::change_set::{ChangeSet, Gather, MAX_POSITION_AGE_SECS, RESCAN_LIMIT_PERCENT};
-    use crate::rescan::load::{Cached, Use};
+    use crate::rescan::load::Cached;
     use crate::rescan::testing::{Rig, TAKEN, journal_gap, journal_of};
     use crate::walk::std_reader::StdReader;
 
@@ -60,7 +60,7 @@ mod negative {
     fn no_cache_means_a_full_scan() {
         let rig = Rig::new(&twenty_folders(), set_of(&[]));
 
-        assert_eq!(Cached::load(&*rig.cache, &rig.scope(), Use::Rescan).err(), Some(FullScanReason::NoCache));
+        assert_eq!(Cached::load(&*rig.cache, &rig.scope()).err(), Some(FullScanReason::NoCache));
     }
 
     #[test]
@@ -69,7 +69,7 @@ mod negative {
         let scope = rig.scope();
         rig.cache.save(scope.key, b"not a body").unwrap();
 
-        assert_eq!(Cached::load(&*rig.cache, &scope, Use::Rescan).err(), Some(FullScanReason::BrokenCache));
+        assert_eq!(Cached::load(&*rig.cache, &scope).err(), Some(FullScanReason::BrokenCache));
     }
 
     #[test]
@@ -78,7 +78,7 @@ mod negative {
         rig.interests =
             set_of(&[interest(fresher_core::Pattern::Extension("log".into()), fresher_core::Claim::Item, &[])]);
 
-        let error = Cached::load(&*rig.cache, &rig.scope(), Use::Rescan).err();
+        let error = Cached::load(&*rig.cache, &rig.scope()).err();
 
         assert_eq!(error, Some(FullScanReason::OtherFingerprint));
     }
@@ -91,7 +91,7 @@ mod negative {
         let scope = rig.scope();
         rig.cache.save(scope.key, &body).unwrap();
 
-        assert_eq!(Cached::load(&*rig.cache, &scope, Use::Rescan).err(), Some(FullScanReason::OtherRoots));
+        assert_eq!(Cached::load(&*rig.cache, &scope).err(), Some(FullScanReason::OtherRoots));
     }
 
     #[test]
@@ -99,7 +99,7 @@ mod negative {
         let mut rig = rig();
         rig.avoid = vec![rig.path("d")];
 
-        let error = Cached::load(&*rig.cache, &rig.scope(), Use::Rescan).err();
+        let error = Cached::load(&*rig.cache, &rig.scope()).err();
 
         assert_eq!(error, Some(FullScanReason::OtherAvoidList));
     }
@@ -116,7 +116,7 @@ mod negative {
         let summary = rescanned.summary.unwrap();
         assert_eq!(summary.fallback, Some(FullScanReason::OtherAvoidList));
         assert_eq!(summary.kind, fresher_core::ScanKind::Full);
-        assert!(!summary.avoided.contains(&rig.path("d")));
+        assert_eq!(summary.not_scanned.get(&NotScanned::Avoided), None);
     }
 
     #[test]
@@ -125,7 +125,7 @@ mod negative {
         let mut scope = rig.scope();
         scope.roots[0].volume = VolumeId::new(2);
 
-        assert_eq!(Cached::load(&*rig.cache, &scope, Use::Rescan).err(), Some(FullScanReason::OtherVolume));
+        assert_eq!(Cached::load(&*rig.cache, &scope).err(), Some(FullScanReason::OtherVolume));
     }
 
     #[test]
@@ -134,10 +134,9 @@ mod negative {
         let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(FakeChangeJournal::default()));
         rig.walk(&scanner, fresher_core::WalkMode::Full);
 
-        let error = Cached::load(&*rig.cache, &rig.scope(), Use::Rescan).err();
+        let error = Cached::load(&*rig.cache, &rig.scope()).err();
 
         assert_eq!(error, Some(FullScanReason::JournalGap(JournalGap::NoJournal)));
-        assert!(Cached::load(&*rig.cache, &rig.scope(), Use::Restore).is_ok());
     }
 
     #[test]
@@ -190,7 +189,7 @@ mod negative {
         let mut scope = rig.scope();
         scope.roots[0].identity.file_id += 1;
 
-        let error = Cached::load(&*rig.cache, &scope, Use::Rescan).err();
+        let error = Cached::load(&*rig.cache, &scope).err();
 
         assert_eq!(error, Some(FullScanReason::JournalGap(JournalGap::RootChanged)));
     }
@@ -219,15 +218,14 @@ mod negative {
         let mut scope = rig.scope();
         scope.key = ScopeKey::new(scope.key.get() ^ 1);
 
-        assert_eq!(Cached::load(&*rig.cache, &scope, Use::Rescan).err(), Some(FullScanReason::NoCache));
+        assert_eq!(Cached::load(&*rig.cache, &scope).err(), Some(FullScanReason::NoCache));
     }
 }
 
 mod positive {
     use std::sync::Arc;
 
-    use fresher_core::{NotScanned, WalkMode};
-    use fresher_testing::FakeChangeJournal;
+    use fresher_core::WalkMode;
 
     use super::{gather, node, rig, twenty_folders};
     use crate::codec::decode::decode;
@@ -237,7 +235,6 @@ mod positive {
     use crate::rescan::testing::{CallLog, LoggingJournal, LoggingReader, Refusing, Rig, journal_of};
     use crate::tree::node::Flag;
     use crate::tree::testing::canonical;
-    use crate::walk::counting::CountingReader;
     use crate::walk::std_reader::StdReader;
     use crate::walk::tests::scan;
 
@@ -332,29 +329,6 @@ mod positive {
         assert_eq!(calls.first(), Some(&"position"));
         assert_eq!(calls.iter().filter(|&&call| call == "position").count(), 1);
         assert!(calls.len() > 20);
-    }
-
-    #[test]
-    fn a_restore_with_another_avoid_list_shows_the_cached_scan_as_it_was() {
-        let mut rig = Rig::new(&twenty_folders(), set_of(&[]));
-        rig.avoid = vec![rig.path("d")];
-        let full = rig.scan();
-        rig.avoid = Vec::new();
-        let reader = Arc::new(CountingReader::new(StdReader::new()));
-        let scanner = rig.scanner(Arc::clone(&reader) as _, Arc::new(FakeChangeJournal::default()));
-
-        let restored = rig.walk(&scanner, WalkMode::Restore);
-
-        let (restored_summary, scanned_summary) = (restored.summary.unwrap(), full.summary.unwrap());
-        assert!(reader.reads().is_empty());
-        assert!(restored_summary.avoided.contains(&rig.path("d")));
-        assert_eq!(restored_summary.avoided, scanned_summary.avoided);
-        assert_eq!(restored_summary.not_scanned.get(&NotScanned::Avoided), Some(&1));
-        assert_eq!(
-            (&restored_summary.unreadable, &restored_summary.not_scanned),
-            (&scanned_summary.unreadable, &scanned_summary.not_scanned)
-        );
-        assert_eq!(restored.matches, full.matches);
     }
 
     #[test]

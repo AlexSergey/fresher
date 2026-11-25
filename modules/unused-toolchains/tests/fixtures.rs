@@ -145,14 +145,6 @@ mod positive {
         }
     }
 
-    #[test]
-    fn a_scan_restored_from_the_cache_offers_the_same() {
-        let (_tree, walked) = offered();
-        let (_tree, restored) = scan_as("unused-toolchains-offered", Variant { restored: true, ..Variant::DEFAULT });
-
-        assert_eq!(restored.golden().unwrap(), walked.golden().unwrap());
-    }
-
     /// The report of every home, by home.
     #[test]
     fn the_golden_report_matches() {

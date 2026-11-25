@@ -6,9 +6,9 @@
 //!
 //! It never starts a runtime. The only program it runs is the runtime's own CLI, `--host unix://<socket> --config
 //! <empty folder> system df --format json`, and only while the runtime's app runs and its socket is present, and only
-//! when the CLI carries the valid signature of the runtime's developer; never in a restored scan. The read names the
-//! socket the walk saw and a config folder nobody but the system can write, so no context, credential helper, hook
-//! or plugin folder of the user's (any of which may name a remote engine or a program) is ever followed.
+//! when the CLI carries the valid signature of the runtime's developer. The read names the socket the walk saw and a
+//! config folder nobody but the system can write, so no context, credential helper, hook or plugin folder of the
+//! user's (any of which may name a remote engine or a program) is ever followed.
 
 #![forbid(unsafe_code)]
 
@@ -117,7 +117,7 @@ impl Module for DockerModule {
                 set.map(|set| set.apps().iter().any(|running| running.bundle_ids.contains(&row.app)))
             };
             let disk = disk(&seen, index, cx);
-            let state = match decide(app, is_running, seen.socket(index), disk, cx.is_restored()) {
+            let state = match decide(app, is_running, seen.socket(index), disk) {
                 Verdict::Silent => continue,
                 Verdict::Describe(state) => state,
                 Verdict::Ask => match apps {
@@ -135,7 +135,7 @@ impl Module for DockerModule {
 }
 
 /// What the walk saw of the disk file of row `index`: seen when matched; otherwise unseen when its place could not be
-/// read or was not entered, absent when it was read or is absent (or not known, in a restored scan).
+/// read or was not entered, absent when it was read, is absent or is not known.
 fn disk(seen: &Seen, index: usize, cx: &ModuleContext<'_>) -> Disk {
     if let Some(sizes) = seen.disk(index) {
         return Disk::Seen(sizes);

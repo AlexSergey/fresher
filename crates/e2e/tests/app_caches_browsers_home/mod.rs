@@ -18,7 +18,6 @@ mod home_engine;
 #[path = "../support/home_rescan.rs"]
 mod home_rescan;
 #[path = "../support/home_scan.rs"]
-#[expect(dead_code, reason = "the flows of other modules restore")]
 mod home_scan;
 #[path = "../support/report.rs"]
 mod report;

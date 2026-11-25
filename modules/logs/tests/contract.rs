@@ -8,14 +8,12 @@ use fresher_testing::{FixtureTree, ModuleRun};
 
 use crate::support::{System, kept, not_claimed, offered, scan};
 
-/// The trees and runs of every home with its default system, of the offered home restored from the cache and with a
-/// longer setting.
+/// The trees and runs of every home with its default system, and of the offered home with a longer setting.
 fn every_scan() -> Vec<(FixtureTree, ModuleRun)> {
     vec![
         not_claimed(),
         kept(),
         offered(),
-        scan("logs-offered", System::plain().restored()),
         scan("logs-offered", System::plain().stored(r#"{"logs.older-than-days": 14}"#)),
     ]
 }
@@ -31,7 +29,7 @@ mod negative {
 
     #[test]
     fn what_only_passes_is_never_kept_for_good() {
-        assert_eq!(left_out_kinds(&logs()).for_now, ["scan-again", "locked", "recent"]);
+        assert_eq!(left_out_kinds(&logs()).for_now, ["locked", "recent"]);
     }
 }
 
@@ -67,7 +65,7 @@ mod positive {
         let given: BTreeSet<&str> =
             runs.iter().flat_map(|run| &run.left_out).map(|item| item.reason.as_str()).collect();
         assert_eq!(given, declared);
-        assert_eq!(declared.len(), 5);
+        assert_eq!(declared.len(), 4);
     }
 
     #[test]

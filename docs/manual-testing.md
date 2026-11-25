@@ -97,8 +97,8 @@ them in this order because the first ones teach the screens used by the rest.
 - [ ] **Plan 011, problems and reasons** ([011/03/01](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)).
   1. `npm run dev` (the demo module): scan; the demo category shows "1 item left out (150 MB): The app that made it is
      open. Quit the app, then scan again." with its item under it: "Example: com.example.notes", its path and 150 MB.
-  2. Quit and start again: the restored scan shows no left-out line until the next scan (expected: left-outs are
-     event-only).
+  2. Quit and start again: the Scan screen opens with its Scan button and no result; nothing is read until you press
+     it (rules, 10).
   3. `FRESHER_SANDBOX=relative npm run dev`: a dialog with a plain sentence and the sandbox's refusal under it; no main
      window flashes; Cmd-Q waits for the dialog; after dismissing, the app exits with code 1 (`echo $?` when started
      from the terminal); nothing was written.
@@ -121,7 +121,8 @@ them in this order because the first ones teach the screens used by the rest.
       including the map's lines (the ring and its legend; the legend's "i" explains each part).
 - [ ] Ignore and restore a category: its bytes move to "Your files and apps" and back, the total unchanged, no rescan.
 - [ ] During a scan: "Can be freed" grows as findings arrive; it plus "Your files and apps" stays the used space;
-      at the end the full map replaces it in one move. Quit and reopen: the restored map shows at once.
+      at the end the full map replaces it in one move. Quit and reopen: no map and no result until you press Scan; the
+      scan then reads only what changed (a rescan).
 
 ### 1.3 JetBrains ([016/04/02](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md))
 
@@ -523,7 +524,7 @@ diskutil apfs list | head -60
 - [ ] The ring's legend: the cleanable part split into the four danger levels with the sizes of the cards in the zones
       below, Free as the gap, the system parts; the "i" of each row reads right, and hovering a segment and its row
       highlights both. (The by-meaning rows and the view by place are gone from the UI since plan 027.)
-- [ ] The `Shares::of` time and heap on your home, restored from the app's cache. Reference: the generated LARGE tree
+- [ ] The `Shares::of` time and heap on your home, after a rescan. Reference: the generated LARGE tree
       gave 3.9 ms and 625 226 bytes; budget 50 ms and 5 MB. Where the number is shown (a debug log line) is in the
       step; record time and bytes.
 - [ ] A root at a volume's mount point (an external drive, or a disk image mounted by hand with
@@ -830,8 +831,7 @@ du -sh ~/Library/"Group Containers"/HUAQ24HBR6.dev.orbstack/data/data.img
 - [ ] With the runtime closed: its card shows the disk file's figures only, and no `docker` program was started by the
       scan (Activity Monitor).
 - [ ] With the runtime open but its engine stopped: no numbers, no error.
-- [ ] A restored scan (quit and start the app): the card shows nothing until a scan (known gap) and no runtime is
-      asked.
+- [ ] Quit and start the app: no card and no runtime asked until you press Scan.
 - [ ] The facts to verify, corrected in `runtimes.toml`, the texts and the category docs where they differ: see the
       plan's list in [`deferred/user-review-2026-11-22.md`](./deferred/user-review-2026-11-22.md), "Plan 032".
 
@@ -1054,8 +1054,8 @@ git worktree remove --force NO_COMMIT/bench-base
 - [ ] **Plan 021** ([021/04/02](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)): `main` against `c2bdd44`; the new `subtrees` group's time (earlier: `subtrees/projects/small`
       11.6 µs on a busy Mac) and `scan/full` unchanged within 5 %.
 - [ ] For every bench group, compare medians (criterion prints `change:`): within rule 4's 5 %? Write the table of
-      groups (`matcher/entry`, `scan/full` at 1 and 12 threads, `scan/restore`, the state bench's tree heap) with the
-      load average beside it. A bar that fails is not raised quietly: stop and tell the agent.
+      groups (`matcher/entry`, `scan/full` at 1 and 12 threads, `scan/rescan-unchanged`, the state bench's tree heap)
+      with the load average beside it. A bar that fails is not raised quietly: stop and tell the agent.
 
 ## 5. Release-blocking deferred runs (due before the first release)
 

@@ -157,7 +157,6 @@ struct Scan {
     commands: Arc<FakeCommandRunner>,
     runner: Box<dyn CommandRunner>,
     places: Vec<PlaceSeen>,
-    restored: bool,
 }
 
 impl Scan {
@@ -183,7 +182,6 @@ impl Scan {
             runner: Box::new(Shared(Arc::clone(&commands))),
             commands,
             places: vec![PlaceSeen::Read; 4],
-            restored: false,
         }
     }
 
@@ -200,10 +198,6 @@ impl Scan {
     fn place(mut self, interest: usize, seen: PlaceSeen) -> Self {
         self.places[interest] = seen;
         self
-    }
-
-    fn restored(self) -> Self {
-        Self { restored: true, ..self }
     }
 
     fn run(&self, matches: &[Match]) -> Recorded {
@@ -245,7 +239,7 @@ impl Scan {
             .resolve(&StoredSettings::default())
             .module(module.descriptor().id());
         let cx = ModuleContext::new(&clock, self.runner.as_ref(), &system, &settings, cancel);
-        call(if self.restored { cx.restored() } else { cx })
+        call(cx)
     }
 }
 
@@ -384,26 +378,12 @@ mod negative {
     }
 
     #[test]
-    fn a_restored_scan_runs_nothing() {
-        let scan = Scan::new(vec![orbstack()], vec![running(ORBSTACK)])
-            .commands(FakeCommandRunner::default().answering(ORBSTACK_READ, ANSWER))
-            .restored();
-
-        let recorded = scan.run(&[orbstack_socket(), orbstack_disk()]);
-
-        assert_eq!(recorded.summaries(), ["docker.summary.restored"]);
-        assert_eq!(scan.commands.calls(), Vec::<String>::new());
-        assert_eq!(scan.running.calls(), 0);
-    }
-
-    #[test]
     fn nothing_is_ever_pushed_as_a_finding() {
         let scans = [
             Scan::new(vec![orbstack()], vec![running(ORBSTACK)])
                 .commands(FakeCommandRunner::default().answering(ORBSTACK_READ, ANSWER)),
             Scan::new(vec![orbstack()], vec![running(ORBSTACK)]),
             Scan::new(vec![desktop(), orbstack()], Vec::new()),
-            Scan::new(vec![orbstack()], vec![running(ORBSTACK)]).restored(),
             Scan::new(Vec::new(), Vec::new()),
         ];
         for scan in &scans {
@@ -712,15 +692,8 @@ mod positive {
     #[test]
     fn the_shipped_table_builds_every_state_without_an_error() {
         let usage = parse(ANSWER).unwrap();
-        let states = [
-            State::Left,
-            State::Restored,
-            State::Unknown,
-            State::Stopped,
-            State::NoAnswer,
-            State::Unreadable,
-            State::Answered(usage),
-        ];
+        let states =
+            [State::Left, State::Unknown, State::Stopped, State::NoAnswer, State::Unreadable, State::Answered(usage)];
         let disks =
             [Disk::Seen(Sizes::complete(ByteSize::new(u64::MAX), ByteSize::new(u64::MAX))), Disk::Absent, Disk::Unseen];
         for row in Runtimes::shipped().unwrap().rows() {

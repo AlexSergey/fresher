@@ -6,8 +6,7 @@
 
 An "Advanced" corner of settings: the app's version, the permissions, the last scan's statistics, the recent problems
 (a module's failure, a cleanup's failed items with their details), and the entry to the
-[bug report](./bug-report-file.md). Also the left-outs of a restored scan: plan 011 sends them with the module's end
-only, so a scan restored from the cache shows none.
+[bug report](./bug-report-file.md).
 
 ## Why
 

@@ -180,14 +180,9 @@ mod negative {
 }
 
 mod positive {
-    use std::sync::Arc;
-
-    use fresher_core::{Claim, Completeness, DiskWalk, Interest, InterestSet, ModuleId, Pattern, WalkMode};
-    use fresher_testing::FakeChangeJournal;
+    use fresher_core::Completeness;
 
     use super::*;
-    use crate::rescan::testing::{AT, Rig, VOLUME};
-    use crate::walk::std_reader::StdReader;
 
     #[test]
     fn the_newest_time_is_the_newest_folder_below_it() {
@@ -256,40 +251,5 @@ mod positive {
 
         let newest: Vec<_> = answers.iter().map(|found| found.map(|found| found.newest)).collect();
         assert_eq!(newest, vec![Some(at(200)), None, Some(at(950))]);
-    }
-
-    #[test]
-    fn a_restore_answers_from_the_cached_tree() {
-        let toml = "[[file]]\npath = \"p/src/main.rs\"\n[[file]]\npath = \"p/node_modules/pkg/index.js\"\nsize = 9\n\
-                    [[dir]]\npath = \"p/src\"\nmodified = 1700000200\n\
-                    [[dir]]\npath = \"p/node_modules/pkg\"\nmodified = 1700000900\n\
-                    [[dir]]\npath = \"p/node_modules\"\nmodified = 1700000800\n[[dir]]\npath = \"p\"\nmodified = 1700000100\n";
-        let interest = Interest::new(Pattern::FolderName("node_modules".into()), Claim::Whole, vec![]).unwrap();
-        let mut interests = InterestSet::new();
-        interests.add(ModuleId::new("demo").unwrap(), &[interest]);
-        let rig = Rig::new(toml, interests);
-        let queries = [
-            query(rig.path("p").to_str().unwrap(), &[rig.path("p/node_modules").to_str().unwrap()]),
-            query(rig.path("p").to_str().unwrap(), &[]),
-            query(rig.path("p/node_modules/pkg").to_str().unwrap(), &[]),
-        ];
-        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(FakeChangeJournal::default().at(VOLUME, AT)));
-        scanner
-            .walk(&rig.request(WalkMode::Full), &fresher_core::CancelToken::new(), &mut |_| {}, &mut |_| {})
-            .unwrap();
-        let walked = scanner.subtrees(&queries);
-        scanner.commit(&[]).unwrap();
-
-        let again = rig.scanner(Arc::new(StdReader::new()), Arc::new(FakeChangeJournal::default()));
-        again
-            .walk(&rig.request(WalkMode::Restore), &fresher_core::CancelToken::new(), &mut |_| {}, &mut |_| {})
-            .unwrap();
-        let restored = again.subtrees(&queries);
-
-        assert_eq!(restored, walked);
-        assert_eq!(restored[0].unwrap().newest, at(1_700_000_200));
-        assert_eq!(restored[1].unwrap().newest, at(1_700_000_800), "claimed whole: its own time, not its inside's");
-        assert_eq!(restored[2], None);
-        assert_eq!(restored[1].unwrap().sizes.logical, ByteSize::new(9));
     }
 }

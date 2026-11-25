@@ -31,51 +31,43 @@ mod negative {
     #[test]
     fn nothing_is_said_when_the_installed_apps_cannot_be_listed() {
         for disk in [seen(), Disk::Absent, Disk::Unseen] {
-            assert_eq!(decide(Err(NoSystem), never_asked, true, disk, false), Verdict::Silent);
+            assert_eq!(decide(Err(NoSystem), never_asked, true, disk), Verdict::Silent);
         }
     }
 
     #[test]
     fn nothing_is_said_when_the_app_and_its_disk_are_absent() {
-        assert_eq!(decide(Ok(None), never_asked, true, Disk::Absent, false), Verdict::Silent);
-        assert_eq!(decide(Ok(None), never_asked, true, Disk::Unseen, false), Verdict::Silent);
-    }
-
-    #[test]
-    fn a_restored_scan_never_asks() {
-        let app = app();
-
-        assert_eq!(decide(Ok(Some(&app)), never_asked, true, seen(), true), Verdict::Describe(State::Restored));
-        assert_eq!(decide(Ok(Some(&app)), never_asked, true, Disk::Absent, true), Verdict::Describe(State::Restored));
+        assert_eq!(decide(Ok(None), never_asked, true, Disk::Absent), Verdict::Silent);
+        assert_eq!(decide(Ok(None), never_asked, true, Disk::Unseen), Verdict::Silent);
     }
 
     #[test]
     fn it_never_asks_when_the_running_apps_cannot_be_listed() {
         let app = app();
 
-        assert_eq!(decide(Ok(Some(&app)), || Err(NoSystem), true, seen(), false), Verdict::Describe(State::Unknown));
+        assert_eq!(decide(Ok(Some(&app)), || Err(NoSystem), true, seen()), Verdict::Describe(State::Unknown));
     }
 
     #[test]
     fn a_closed_app_is_never_asked() {
         let app = app();
 
-        assert_eq!(decide(Ok(Some(&app)), || Ok(false), true, seen(), false), Verdict::Describe(State::Stopped));
+        assert_eq!(decide(Ok(Some(&app)), || Ok(false), true, seen()), Verdict::Describe(State::Stopped));
     }
 
     #[test]
     fn an_open_app_without_its_socket_is_never_asked() {
         let app = app();
 
-        assert_eq!(decide(Ok(Some(&app)), || Ok(true), false, seen(), false), Verdict::Describe(State::Stopped));
+        assert_eq!(decide(Ok(Some(&app)), || Ok(true), false, seen()), Verdict::Describe(State::Stopped));
     }
 
     #[test]
     fn a_stale_socket_alone_is_never_asked() {
         let app = app();
 
-        assert_eq!(decide(Ok(Some(&app)), || Ok(false), true, Disk::Absent, false), Verdict::Describe(State::Stopped));
-        assert_eq!(decide(Ok(None), never_asked, true, Disk::Absent, false), Verdict::Silent);
+        assert_eq!(decide(Ok(Some(&app)), || Ok(false), true, Disk::Absent), Verdict::Describe(State::Stopped));
+        assert_eq!(decide(Ok(None), never_asked, true, Disk::Absent), Verdict::Silent);
     }
 
     #[test]
@@ -120,16 +112,16 @@ mod positive {
 
     #[test]
     fn a_left_disk_file_is_described_as_left() {
-        assert_eq!(decide(Ok(None), never_asked, false, seen(), false), Verdict::Describe(State::Left));
-        assert_eq!(decide(Ok(None), never_asked, true, seen(), true), Verdict::Describe(State::Left));
+        assert_eq!(decide(Ok(None), never_asked, false, seen()), Verdict::Describe(State::Left));
+        assert_eq!(decide(Ok(None), never_asked, true, seen()), Verdict::Describe(State::Left));
     }
 
     #[test]
     fn an_open_app_with_its_socket_is_asked() {
         let app = app();
 
-        assert_eq!(decide(Ok(Some(&app)), || Ok(true), true, seen(), false), Verdict::Ask);
-        assert_eq!(decide(Ok(Some(&app)), || Ok(true), true, Disk::Unseen, false), Verdict::Ask);
+        assert_eq!(decide(Ok(Some(&app)), || Ok(true), true, seen()), Verdict::Ask);
+        assert_eq!(decide(Ok(Some(&app)), || Ok(true), true, Disk::Unseen), Verdict::Ask);
     }
 
     #[test]
@@ -140,24 +132,16 @@ mod positive {
     #[test]
     fn every_state_has_its_summary_key() {
         let usage = parse(ANSWER).unwrap();
-        let keys: Vec<&str> = [
-            State::Left,
-            State::Restored,
-            State::Unknown,
-            State::Stopped,
-            State::NoAnswer,
-            State::Unreadable,
-            State::Answered(usage),
-        ]
-        .iter()
-        .map(State::key)
-        .collect();
+        let keys: Vec<&str> =
+            [State::Left, State::Unknown, State::Stopped, State::NoAnswer, State::Unreadable, State::Answered(usage)]
+                .iter()
+                .map(State::key)
+                .collect();
 
         assert_eq!(
             keys,
             [
                 "docker.summary.left",
-                "docker.summary.restored",
                 "docker.summary.unknown",
                 "docker.summary.stopped",
                 "docker.summary.no-answer",
@@ -177,23 +161,22 @@ mod positive {
 
     proptest! {
         #[test]
-        fn a_row_stopped_before_row_5_never_asks_the_running_apps(
+        fn a_row_stopped_before_row_4_never_asks_the_running_apps(
             listed in any::<bool>(),
             installed in any::<bool>(),
             socket in any::<bool>(),
             on_disk in 0_u8..3,
-            restored in any::<bool>(),
             running in any::<bool>(),
         ) {
             let app = app();
             let apps = if listed { Ok(installed.then_some(&app)) } else { Err(NoSystem) };
             let asked = Cell::new(0);
 
-            let verdict = decide(apps, || { asked.set(asked.get() + 1); Ok(running) }, socket, disk(on_disk), restored);
+            let verdict = decide(apps, || { asked.set(asked.get() + 1); Ok(running) }, socket, disk(on_disk));
 
-            let before_row_5 = !listed || !installed || restored;
-            prop_assert_eq!(asked.get(), usize::from(!before_row_5));
-            if before_row_5 {
+            let before_row_4 = !listed || !installed;
+            prop_assert_eq!(asked.get(), usize::from(!before_row_4));
+            if before_row_4 {
                 prop_assert_ne!(verdict, Verdict::Ask);
             }
         }

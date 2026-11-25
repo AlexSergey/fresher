@@ -113,7 +113,7 @@ Rules of the layout:
   app. Neither exists in a release build; the core is not involved.
 - **The development run record** (plan [026](../plans/026-dev-run-record/readme.md), debug builds only,
   `app/tauri/src/dev_runs/`): when `FRESHER_DEV_RUNS` names a folder (set by `npm run dev`), the composition begins a
-  run; the app subscribes it to the engine before the last scan is restored and wraps the generated invoke handler, so
+  run; the app subscribes it to the engine before the window loads and wraps the generated invoke handler, so
   every action the UI sends and every event but the scan's progress go to an append-only `.events.jsonl`, and a
   snapshot `.json` is rewritten after each scan and cleanup. The core, the engine and the modules know nothing of it.
 - External programs (the Docker CLI, `tmutil`) are called through the `CommandRunner` port, so tests use fakes. Each
@@ -233,20 +233,17 @@ Everything)`. `AppInfo.high` reports it to the UI. The rule:
   would pass the cap (measured compressed, as the store writes it) has its smallest subtrees with no hit, claim or
   unreadable folder collapsed into their folder (totals and counts only) until it fits; one that does not fit even
   then is not saved.
-- **Rescan and restore** (the scanner's `rescan`): every committed scan is saved to the cache with each root's journal
+- **Rescan** (the scanner's `rescan`): every committed scan is saved to the cache with each root's journal
   position, taken before the walk read anything. A scan the user starts (`WalkMode::Auto`) loads the cache, checks it
   is of the same roots, volumes, avoid list and interests, asks the change journal what changed since (`ChangeJournal`,
   FSEvents), reads again only those folders with their parents and the unreadable ones, copies the rest of the tree,
   then reads a sample of the copied folders: one difference, a gap in the journal, a position older than two weeks or
-  too many changes, and the scan is full (`WalkSummary::fallback` says why). At launch the engine restores the last
-  state (`WalkMode::Restore`): the cache only, no folder read, the modules with interests run over its matches; with
-  nothing to restore the engine goes idle and sends only `NothingRestored`, so a UI that saw it running knows. A
-  restore shows the cached scan as it was: it takes the cache's own avoid list (`WalkSummary::avoided`), and its
-  coverage names the guarded places that scan did not enter, whatever today's access says; only a rescan refuses a
-  cache of another avoid list (`OtherAvoidList`), since reading only the changes would then be wrong. The
-  places walked outside the roots are never served from the cache: a rescan walks each again in full, whatever the
-  journal says (it reports no read, and a status change through a hard link elsewhere moves no event in the folder),
-  and a restore emits nothing inside one.
+  too many changes, and the scan is full (`WalkSummary::fallback` says why). A cache of another avoid list is refused
+  (`OtherAvoidList`), since reading only the changes would then be wrong. The cache never shows a result by itself: at
+  launch the engine starts nothing (no scan, no restore of the last result; rule 10), and the first scan the user
+  starts after a restart is a rescan of the cache the last one saved. The places walked outside the roots are never
+  served from the cache: a rescan walks each again in full, whatever the journal says (it reports no read, and a
+  status change through a hard link elsewhere moves no event in the folder).
 - **Places outside the scan roots** (`WalkRequest.places`, the engine's `places.rs`): the user's temporary folder and
   `/private/tmp` (`KnownFolder::is_walked_place`), when a registered module's interest is anchored in one, enabled or
   not, it lies outside the home, and no scan root holds it or lies in it, are walked as roots of their own after the
@@ -499,9 +496,8 @@ not the module's own is dropped and logged once as a warning, and the contract r
 an undeclared reason is counted (for now) and logged once. A left-out of a category in the scan's ignore list, or of an
 ignored module or a module of an ignored group, is not counted, and a category's details drop a left-out-only category
 once it, its module or its group is ignored. The paths stay on the Mac like a finding's (rule 6); the dev-run record
-carries them as it carries findings. Left-outs are event-only: they are not in the scan cache, and the restore at start
-runs before the UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports
-none yet.
+carries them as it carries findings. Left-outs are event-only: they are not in the scan cache; the app starts with no
+result, so they come with the scan the user starts. The rules engine reports none yet.
 
 The UI shows only the for-now counts on the Scan screen ("Found, but left out": a tile per category with no card, each
 line with its items by name, short path from `~`, full path in the tooltip, and size, then "And N more items"); a
@@ -514,9 +510,7 @@ A module may also describe space it does not offer (`out.describe(Insight)`, pla
 them per module and sends them with `ModuleFinished.insights`, whatever the outcome, dropping a repeated identity of one
 module with a warning. An insight is text and numbers: never a finding, never in a total, the storage map, the scan
 cache or the journal, and nothing in it can be selected; the UI keeps the last scan's insights per module from the
-event, and a restore at launch describes again (the module runs over the restored matches), but its events come before
-the UI subscribes, so a UI that connects after a restore shows none until the next scan (known gap). The shown commands
-are text; no code path of the app runs one.
+event. The shown commands are text; no code path of the app runs one.
 
 ### A failed start
 

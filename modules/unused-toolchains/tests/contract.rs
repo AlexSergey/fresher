@@ -8,8 +8,7 @@ use fresher_testing::{MatchOrder, ModuleRun};
 
 use crate::support::{Variant, kept, kept_unknown, not_claimed, offered, scan_as, switched_off};
 
-/// The run of every home, of the offered home with the Node switch off, restored from the
-/// cache and handed in reverse.
+/// The run of every home, and of the offered home handed in reverse.
 fn every_run() -> Vec<ModuleRun> {
     let offered_as = |variant| scan_as("unused-toolchains-offered", variant).1;
     vec![
@@ -18,7 +17,6 @@ fn every_run() -> Vec<ModuleRun> {
         kept_unknown().1,
         offered().1,
         switched_off().1,
-        offered_as(Variant { restored: true, ..Variant::DEFAULT }),
         offered_as(Variant { order: MatchOrder::Reversed, ..Variant::DEFAULT }),
     ]
 }

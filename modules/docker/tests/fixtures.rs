@@ -10,7 +10,7 @@ mod support;
 mod negative {
     use fresher_core::{ModuleOutcome, NewFinding};
 
-    use crate::support::{Scan, closed, every_scan, no_socket, restored, silent, silent_with_desktop, unknown};
+    use crate::support::{Scan, closed, every_scan, no_socket, silent, silent_with_desktop, unknown};
 
     /// The identity and the summary's key of each insight of `scan`, in order.
     fn summaries(scan: &Scan) -> Vec<(&str, &str)> {
@@ -63,17 +63,6 @@ mod negative {
             [("docker-desktop", "docker.summary.left"), ("orbstack", "docker.summary.stopped")]
         );
         assert_eq!(scan.run.insights[1].figures(), []);
-        assert_eq!(scan.calls, Vec::<String>::new());
-    }
-
-    #[test]
-    fn a_restored_scan_runs_nothing() {
-        let scan = restored();
-
-        assert_eq!(
-            summaries(&scan),
-            [("docker-desktop", "docker.summary.left"), ("orbstack", "docker.summary.restored")]
-        );
         assert_eq!(scan.calls, Vec::<String>::new());
     }
 

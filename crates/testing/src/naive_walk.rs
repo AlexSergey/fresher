@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use fresher_core::{
     ByteSize, CACHEDIR_SIGNATURE, CACHEDIR_TAG, CancelToken, Claim, ClaimedPath, Completeness, DiskState, DiskWalk,
     EntryKind, Inside, Interest, KnownFolder, KnownFolders, MarkerCheck, Match, NodeKind, NotScanned, Pattern, Sizes,
-    StateId, Subtree, SubtreeQuery, Timestamp, Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    StateId, Subtree, SubtreeQuery, Timestamp, Unreadable, WalkError, WalkProgress, WalkRequest, WalkSummary,
     is_bundle_id_shaped, is_valid_cachedir_tag,
 };
 
@@ -25,7 +25,7 @@ const NOT_READ: Sizes = Sizes { completeness: Completeness::Partial, ..Sizes::ZE
 /// cannot see clones). Entries are visited in name order, so its matches come in a stable order. The real scanner is
 /// tested against it: the same fixture gives the same matches.
 ///
-/// `Full` and `Auto` both walk the disk (always a full scan); there is no cache, so `Restore` has nothing to restore.
+/// `Full` and `Auto` both walk the disk (always a full scan): there is no cache.
 /// `commit` returns a [`FixedDiskState`] of the folders of the last walk, with their sizes; files are not kept.
 /// The request's places are walked after the roots (one inside a root, or holding one, is not walked; one that cannot
 /// be read is not scanned): only anchored interests match there and a folder of another user is not entered.
@@ -132,9 +132,6 @@ impl DiskWalk for NaiveWalk {
         on_match: &mut dyn FnMut(Match),
         on_progress: &mut dyn FnMut(WalkProgress),
     ) -> Result<WalkSummary, WalkError> {
-        if request.mode == WalkMode::Restore {
-            return Err(WalkError::NothingToRestore);
-        }
         let temporary_items = self.folders.locate(KnownFolder::UserTemp).map(|temp| temp.join("TemporaryItems"));
         let mut walker = Walker {
             folders: &self.folders,
@@ -872,18 +869,6 @@ mod tests {
 
             assert_eq!(matches[0].sizes.logical.bytes(), 3);
             assert_eq!(matches[0].sizes.completeness, Completeness::Partial);
-        }
-
-        #[test]
-        fn the_reference_walk_has_nothing_to_restore() {
-            let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a\"\n").unwrap();
-            let roots = [tree.root().to_path_buf()];
-            let set = InterestSet::new();
-            let restore = WalkRequest { mode: WalkMode::Restore, ..request(&roots, &set) };
-
-            let error = NaiveWalk::new(tree.root()).walk(&restore, &CancelToken::new(), &mut |_| {}, &mut |_| {});
-
-            assert_eq!(error, Err(WalkError::NothingToRestore));
         }
 
         #[test]

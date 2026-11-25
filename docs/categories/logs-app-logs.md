@@ -31,12 +31,11 @@ entry, the first answer that applies:
 | 1  | a folder or a link                                                                                          | not claimed                                    |
 | 2  | the first name below `Logs` is `JetBrains` or a folder shaped as a bundle id                                | not claimed                                    |
 | 3  | the name ends with `.plist`, `.db`, `.sqlite`, `.sqlite-wal`, `.sqlite-shm`, `.lock` or `.pid`             | not claimed                                    |
-| 4  | the scan is shown from the last scan                                                                        | left out: scan again to check its age          |
-| 5  | a socket, a pipe or a device                                                                                | kept for good: a program uses it to talk to another |
-| 6  | not yours, locked by the system, or restricted                                                              | kept for good: it belongs to the system             |
-| 7  | locked by you (Finder's Get Info)                                                                           | left out: locked                               |
-| 8  | the newest modification or status change is unknown, in the future, or not more than the setting's days ago | left out: changed recently                     |
-| 9  | otherwise                                                                                                   | **offered**                                    |
+| 4  | a socket, a pipe or a device                                                                                | kept for good: a program uses it to talk to another |
+| 5  | not yours, locked by the system, or restricted                                                              | kept for good: it belongs to the system             |
+| 6  | locked by you (Finder's Get Info)                                                                           | left out: locked                               |
+| 7  | the newest modification or status change is unknown, in the future, or not more than the setting's days ago | left out: changed recently                     |
+| 8  | otherwise                                                                                                   | **offered**                                    |
 
 The setting is `logs.older-than-days`: 7 to 90 days, 7 by default. "More than N days" is exact. The access time is
 never read: reading a log does not keep it.

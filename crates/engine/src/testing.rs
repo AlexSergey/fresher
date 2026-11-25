@@ -295,8 +295,6 @@ pub(crate) struct ScriptedWalk {
     unreadable_by: BTreeMap<Unreadable, u64>,
     places: BTreeMap<usize, PlaceSeen>,
     kind: ScanKind,
-    /// The avoid list a restore reports as its cached scan's.
-    cached_avoid: Vec<PathBuf>,
     error: Option<WalkError>,
     commit_error: Option<WalkError>,
     panics: bool,
@@ -410,12 +408,6 @@ impl ScriptedWalk {
     /// The walk reports that it read the disk as `kind`.
     pub(crate) const fn kind(mut self, kind: ScanKind) -> Self {
         self.kind = kind;
-        self
-    }
-
-    /// A restore reports `paths` as the places its cached scan avoided; any other walk reports the request's.
-    pub(crate) fn cached_avoid(mut self, paths: &[&str]) -> Self {
-        self.cached_avoid = paths.iter().map(PathBuf::from).collect();
         self
     }
 
@@ -536,9 +528,7 @@ impl DiskWalk for ScriptedWalk {
         unreadable.extend(&self.unreadable_by);
         let entries = u64::try_from(self.folders.len()).unwrap();
         let places = self.places.clone();
-        let avoided =
-            if request.mode == WalkMode::Restore { self.cached_avoid.clone() } else { request.avoid.to_vec() };
-        Ok(WalkSummary { entries, unreadable, kind: self.kind, places, avoided, ..WalkSummary::default() })
+        Ok(WalkSummary { entries, unreadable, kind: self.kind, places, ..WalkSummary::default() })
     }
 
     fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {

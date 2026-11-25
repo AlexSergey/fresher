@@ -119,11 +119,9 @@ mod negative {
     use std::os::unix::fs::PermissionsExt as _;
     use std::sync::Arc;
 
-    use fresher_core::{Completeness, EntryKind, FullScanReason, NotScanned, Sizes, Unreadable, WalkMode};
-    use fresher_testing::FakeChangeJournal;
+    use fresher_core::{Completeness, EntryKind, FullScanReason, NotScanned, Sizes, Unreadable};
 
     use super::{Disowning, matched, rescan, rig};
-    use crate::walk::std_reader::StdReader;
 
     #[test]
     fn a_place_inside_a_scan_root_is_not_walked_twice() {
@@ -231,31 +229,6 @@ mod negative {
         assert!(summary.is_complete());
         assert_eq!(summary.not_scanned.get(&NotScanned::Unreadable(Unreadable::NoPermission)), Some(&1));
         assert_eq!(matched(&rig, &walked.matches), ["T/kept.txt", "home/notes.txt"]);
-    }
-
-    #[test]
-    fn a_restore_whose_place_went_missing_still_restores_the_scan_roots() {
-        let rig = rig();
-        rig.scan();
-        rig.remove(&rig.path("T"));
-
-        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(FakeChangeJournal::default()));
-        let restored = rig.walk(&scanner, WalkMode::Restore);
-
-        assert!(restored.summary.is_ok());
-        assert_eq!(matched(&rig, &restored.matches), ["home/notes.txt"]);
-    }
-
-    #[test]
-    fn a_restore_offers_nothing_inside_a_place() {
-        let rig = rig();
-        rig.scan();
-
-        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(FakeChangeJournal::default()));
-        let restored = rig.walk(&scanner, WalkMode::Restore);
-
-        assert!(restored.summary.is_ok());
-        assert_eq!(matched(&rig, &restored.matches), ["home/notes.txt"]);
     }
 }
 

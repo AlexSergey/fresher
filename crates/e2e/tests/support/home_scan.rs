@@ -13,13 +13,6 @@ impl Flow {
         self.walk(ScanMode::Full)
     }
 
-    /// Shows the last scan again without reading the disk, and gives the events up to the end.
-    pub(crate) fn restore(&self) -> Vec<Event> {
-        let events = self.engine.subscribe();
-        self.engine.restore().unwrap();
-        until(&events, |event| matches!(event, Event::ScanFinished { .. }))
-    }
-
     /// Scans in `mode` and gives the events up to the end.
     pub(crate) fn walk(&self, mode: ScanMode) -> Vec<Event> {
         let events = self.engine.subscribe();

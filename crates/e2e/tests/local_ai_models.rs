@@ -22,7 +22,7 @@ mod flow;
 mod flows {
     use std::fs;
 
-    use fresher_core::{DangerLevel, Event, ItemOutcome, PutBackOutcome, ScanKind, SkipReason};
+    use fresher_core::{DangerLevel, ItemOutcome, PutBackOutcome, SkipReason};
     use fresher_testing::TreeReport;
     use serde_json::{Value, json};
 
@@ -51,13 +51,6 @@ mod flows {
 
     fn tree(flow: &Flow) -> Value {
         serde_json::to_value(TreeReport::of(&flow.path("home")).unwrap()).unwrap()
-    }
-
-    fn scan_kind(events: &[Event]) -> Option<&ScanKind> {
-        events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        })
     }
 
     /// A Space and the project's link are never offered, nor are they part of a model.
@@ -177,20 +170,6 @@ mod flows {
         let expected = [(DATASET.0, 5100), (MODEL.0, 3040), (LM_STUDIO.0, 8192)];
         assert_eq!(totals, expected.map(|(category, bytes)| (category.to_owned(), bytes)));
     }
-
-    /// A new engine on the same data folder restores the last scan: the same models as the walk.
-    pub(crate) fn a_restored_scan_offers_the_same_models() {
-        let mut flow = Flow::new();
-        flow.scan();
-        let found = flow.findings();
-        flow.restart();
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(flow.findings(), found);
-        assert_eq!(found, offered(&OFFERED));
-    }
 }
 
 mod negative {
@@ -227,10 +206,5 @@ mod positive {
             "local-ai-models-flow",
             &flows::a_confirmed_cleanup_moves_the_model_folder_with_its_links_to_the_trash(),
         );
-    }
-
-    #[test]
-    fn a_restored_scan_offers_the_same_models() {
-        flows::a_restored_scan_offers_the_same_models();
     }
 }

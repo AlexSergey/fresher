@@ -37,8 +37,6 @@ pub struct Ports {
     pub known_folders: Option<FakeKnownFolders>,
     /// `None`: the fixture tree's files read from the disk ([`DiskFiles`]).
     pub files: Option<Arc<dyn SmallFiles>>,
-    /// The scan is restored from the cache (`ModuleContext::is_restored`); a walked one by default.
-    pub restored: bool,
     /// The order the module receives the matches in: the walk's by default.
     pub order: MatchOrder,
     /// The folders the walk does not open, relative to the fixture tree's root: a place among them is not scanned.
@@ -74,7 +72,6 @@ impl Ports {
             installs: Arc::default(),
             known_folders: None,
             files: None,
-            restored: false,
             order: MatchOrder::Walked,
             avoid: Vec::new(),
         }
@@ -120,7 +117,6 @@ pub fn run_module(module: &dyn Module, tree: &FixtureTree, ports: &Ports) -> Res
         files: ports.files.clone().unwrap_or_else(|| Arc::new(DiskFiles)),
     });
     let cx = ModuleContext::new(&ports.clock, &ports.commands, &system, &settings, &ports.cancel);
-    let cx = if ports.restored { cx.restored() } else { cx };
     let mut interests = InterestSet::new();
     interests.add(id, module.interests());
     interests.add(ModuleId::system(), &ProjectFinder::interests());

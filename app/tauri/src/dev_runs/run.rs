@@ -199,10 +199,8 @@ impl Run {
                 self.cleanup_finished(*cleanup, engine);
                 return self.snapshot(engine);
             }
-            // Settings and access are read again from the engine at every snapshot; a restore with nothing to
-            // restore never started a scan, so the record has nothing to fold it into.
+            // Settings and access are read again from the engine at every snapshot.
             Event::ScanProgress { .. }
-            | Event::NothingRestored { .. }
             | Event::SettingChanged { .. }
             | Event::AccessChanged { .. }
             | Event::CleanupItems { .. }

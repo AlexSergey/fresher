@@ -2,7 +2,7 @@
 //! a derived data project, the real scanner (its reader seen through the facts lens), the `dev-caches` module, the
 //! real settings file, scan cache and journal, and the real `DiskCleaner` reaching only inside the sandbox, with a fake
 //! Trash. Xcode is installed; the open apps, the files held open and the change journal's answers are fakes a flow
-//! sets. The eight flows of the design's section 6, "Core e2e"; flow 1's report is the golden file.
+//! sets. The flows of the design's section 6, "Core e2e"; flow 1's report is the golden file.
 //!
 //! `UPDATE_GOLDEN=1 cargo nextest run -p fresher-e2e --test dev_caches` rewrites `fixtures/golden/dev-caches-flow.json`;
 //! the diff is reviewed.
@@ -25,8 +25,8 @@ mod flows {
     use std::path::{Path, PathBuf};
 
     use fresher_core::{
-        Completeness, DangerLevel, Event, IgnoreTarget, IgnoredEntry, ItemOutcome, MeaningGroup, ModuleGroup, PartKind,
-        PutBackOutcome, ScanKind, SkipReason,
+        Completeness, DangerLevel, IgnoreTarget, IgnoredEntry, ItemOutcome, MeaningGroup, ModuleGroup, PartKind,
+        PutBackOutcome, SkipReason,
     };
     use fresher_testing::TreeReport;
     use serde_json::{Value, json};
@@ -80,13 +80,6 @@ mod flows {
 
     fn total_bytes(flow: &Flow, relative: &str) -> u64 {
         contents(&flow.path(relative)).values().map(|bytes| bytes.len() as u64).sum()
-    }
-
-    fn scan_kind(events: &[Event]) -> Option<&ScanKind> {
-        events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        })
     }
 
     /// A folder made unreadable (mode 000) until the guard is dropped, whatever the flow's outcome.
@@ -262,22 +255,6 @@ mod flows {
         assert!(fs::read_dir(&inner).is_ok(), "the folder's mode is given back");
     }
 
-    /// Flow 6: a new engine on the same data folder restores the last scan at launch: the same findings as the walk,
-    /// the signs taken from the cache.
-    pub(crate) fn a_restored_scan_offers_the_same() {
-        let mut flow = Flow::new();
-        let walked = flow.scan();
-        let found = flow.findings();
-        flow.restart(Setup::default());
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(flow.findings(), found);
-        assert_eq!(found, offered(&OFFERED));
-        assert_eq!(left_out(&restored), left_out(&walked));
-    }
-
     /// Flow 7: npm's category ignored leaves npm's finding out of every total while the others stay; the module
     /// ignored leaves nothing; restoring brings each back.
     pub(crate) fn ignoring_a_category_then_the_module() {
@@ -369,17 +346,12 @@ mod negative {
 }
 
 mod positive {
-    use crate::flows::{a_restored_scan_offers_the_same, scan_confirm_trash_and_put_back, the_map_explains_the_caches};
+    use crate::flows::{scan_confirm_trash_and_put_back, the_map_explains_the_caches};
     use crate::support::check_golden;
 
     #[test]
     fn the_caches_go_to_the_trash_and_come_back_byte_for_byte() {
         check_golden("dev-caches-flow", &scan_confirm_trash_and_put_back());
-    }
-
-    #[test]
-    fn a_restored_scan_offers_the_same_as_the_walk() {
-        a_restored_scan_offers_the_same();
     }
 
     #[test]

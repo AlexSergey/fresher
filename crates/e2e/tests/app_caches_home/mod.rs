@@ -4,12 +4,12 @@
 //! journal in the sandbox's data folder; the real `DiskCleaner` reaching only inside the sandbox folder, as sandbox
 //! mode composes it, with a fake Trash at `home/.Trash` (the shared flow home of `support/home*.rs`).
 //! `com.example.Editor` and `WebStorm` 2025.3 are installed; the clock, the installed and open apps and the folders
-//! the change journal names at each rescan are what a flow sets. `restart` builds a new engine on the same files, as
-//! when the app starts again.
+//! the change journal names at each rescan are what a flow sets.
 
 #[path = "../support/events.rs"]
 mod events;
 #[path = "../support/home.rs"]
+#[expect(dead_code, reason = "the shared flow home keeps what the flows of other modules restart")]
 mod home;
 #[path = "../support/home_cleanup.rs"]
 mod home_cleanup;
@@ -85,12 +85,6 @@ impl Flow {
     pub(crate) fn with(setup: Setup) -> Self {
         let tree = FixtureTree::from_toml(&fixtures().join("homes").join("app-caches-flow.toml")).unwrap();
         Self::open(tree, |sandbox| parts(sandbox, setup))
-    }
-
-    /// A new engine on the same files in `setup`: the app started again.
-    pub(crate) fn restart(&mut self, setup: Setup) {
-        let parts = parts(&self.sandbox, setup);
-        self.restart_with(parts);
     }
 }
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { App } from './app';
@@ -19,6 +19,29 @@ describe('App', () => {
 
       expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
       expect(screen.getByRole('navigation', { name: 'Screens' })).toBeInTheDocument();
+    });
+
+    it('starts no scan when it opens: Scan waits for the press and no result shows', async () => {
+      let started = 0;
+      mockCore({
+        getAccessStatus: () => GRANTED,
+        getDictionary: () => DEMO_DICTIONARY,
+        getModules: () => DEMO_MODULES,
+        getOverview: () => IDLE,
+        startScan: () => {
+          started += 1;
+
+          return 1;
+        },
+        ...sampleStorageAnswers,
+      });
+
+      render(<App store={createCoreStore()} />);
+
+      const disk = await screen.findByRole('region', { name: 'Your disk' });
+      expect(within(disk).getByRole('button', { name: 'Scan' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
+      expect(started).toBe(0);
     });
   });
 

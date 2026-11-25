@@ -38,7 +38,7 @@ is claimed only when its name, without the row's suffix, is a bundle id (`com.ex
 | 5  | the list of installed apps is partial                                                                   | left out: cannot be sure the app is gone |
 | 6  | the running apps cannot be listed                                                                       | left out: Fresher cannot tell           |
 | 7  | a running app has the id or a related one                                                               | left out: the app is open               |
-| 8  | a restored scan, a place not read in full, or a leftover folder read in part                            | left out: scan again                    |
+| 8  | a place not read in full, or a leftover folder read in part                                             | left out: scan again                    |
 | 9  | a leftover changed within the days set in Settings (default 30), or its time is unknown                 | left out: used recently                 |
 | 10 | Spotlight cannot see every app (it is off, or a drive is not indexed)                                   | left out: Spotlight unread              |
 | 11 | Spotlight finds an app with the id                                                                      | kept for good: installed elsewhere           |

@@ -88,12 +88,11 @@ struct Scan {
     running: FakeRunningApps,
     /// The settings file's values, as JSON.
     stored: &'static str,
-    restored: bool,
 }
 
 impl Scan {
     fn new() -> Self {
-        Self { installed: Vec::new(), running: FakeRunningApps::default(), stored: "{}", restored: false }
+        Self { installed: Vec::new(), running: FakeRunningApps::default(), stored: "{}" }
     }
 
     /// Hands `matches` to a new module in their order, then calls `finish`.
@@ -109,7 +108,6 @@ impl Scan {
         let (clock, commands, cancel) = (FakeClock::at(NOW), FakeCommandRunner::default(), CancelToken::new());
         let settings = settings(&module, self.stored);
         let cx = ModuleContext::new(&clock, &commands, &system, &settings, &cancel).complete_walk();
-        let cx = if self.restored { cx.restored() } else { cx };
         let mut out = Recorded::default();
         for found in matches {
             module.on_match(found, &cx, &mut out).unwrap();
@@ -141,16 +139,6 @@ mod negative {
         let matches = [file(2, "/home/private/var/folders/xx/fixture/T/old.tmp", 30), file(0, "/", 30)];
 
         assert_eq!(Scan::new().run(&matches), Recorded::default());
-    }
-
-    #[test]
-    fn a_restored_scan_offers_nothing() {
-        let scan = Scan { restored: true, ..Scan::new() };
-
-        let recorded = scan.run(&[user("old.tmp", 30), user("app.lock", 30)]);
-
-        assert_eq!(recorded.findings, []);
-        assert_eq!(recorded.left_out(), [(CATEGORY, "temp.left-out.scan-again", 100); 2]);
     }
 
     #[test]
@@ -267,7 +255,7 @@ mod positive {
 
         assert_eq!(descriptor.group(), ModuleGroup::System);
         assert_eq!(descriptor.categories().len(), 1);
-        assert_eq!(descriptor.problems().len(), 8);
+        assert_eq!(descriptor.problems().len(), 7);
     }
 
     #[test]

@@ -714,6 +714,19 @@ mod tests {
             assert_eq!(std::fs::read_dir(records.path()).unwrap().count(), 0);
         }
 
+        /// Nothing happens without the user (the user, 2026-11-25): the start reads no disk, so the engine it gives is
+        /// idle and knows no last scan.
+        #[test]
+        fn the_start_begins_no_operation() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), |_| None).unwrap();
+
+            let overview = start.engine.overview().unwrap();
+            assert_eq!(overview.status, fresher_core::EngineStatus::Idle);
+            assert_eq!(overview.last_scan, None);
+        }
+
         #[test]
         fn the_app_starts_when_access_times_cannot_be_left_alone() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());

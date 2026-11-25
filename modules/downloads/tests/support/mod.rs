@@ -52,25 +52,23 @@ pub(crate) fn receipt(package: &str, days: u64) -> Receipt {
     Receipt { package_file: package.into(), installed: Timestamp::from_secs(days_ago(days)) }
 }
 
-/// The system a home is scanned with: the installed and the running apps, the receipts and the macOS version, whether
-/// the scan is restored from the cache, the order the matches come in and the folders the walk avoids.
+/// The system a home is scanned with: the installed and the running apps, the receipts and the macOS version, the
+/// order the matches come in and the folders the walk avoids.
 pub(crate) struct System {
     pub(crate) apps: FakeInstalledApps,
     pub(crate) running: FakeRunningApps,
     pub(crate) installs: FakeInstallRecords,
-    pub(crate) restored: bool,
     pub(crate) order: MatchOrder,
     pub(crate) avoid: Vec<PathBuf>,
 }
 
 impl System {
-    /// Nothing installed or running, macOS 15.4, a walked scan of every folder.
+    /// Nothing installed or running, macOS 15.4, every folder walked.
     pub(crate) fn plain() -> Self {
         Self {
             apps: FakeInstalledApps::default(),
             running: FakeRunningApps::default(),
             installs: FakeInstallRecords::default().with_version(15, 4),
-            restored: false,
             order: MatchOrder::Walked,
             avoid: Vec::new(),
         }
@@ -113,10 +111,6 @@ impl System {
         Self { installs, ..self }
     }
 
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
-    }
-
     pub(crate) fn reversed(self) -> Self {
         Self { order: MatchOrder::Reversed, ..self }
     }
@@ -135,7 +129,6 @@ pub(crate) fn scan_with(name: &str, system: System, settings: StoredSettings) ->
         apps: Arc::new(system.apps),
         running: Arc::new(system.running),
         installs: Arc::new(system.installs),
-        restored: system.restored,
         order: system.order,
         avoid: system.avoid,
         ..Ports::at(FIXTURE_NOW)

@@ -256,7 +256,7 @@ fn spread(folders: &[PathBuf], count: usize) -> Vec<PathBuf> {
     folders.iter().step_by(step).take(count).cloned().collect()
 }
 
-/// One rescan or restore of the bench tree; panics when it scanned in full.
+/// One rescan of the bench tree; panics when it scanned in full.
 fn rescan_once(scanner: &Scanner, request: &WalkRequest<'_>) -> usize {
     let mut matches = 0;
     let summary = scanner
@@ -268,8 +268,7 @@ fn rescan_once(scanner: &Scanner, request: &WalkRequest<'_>) -> usize {
     matches
 }
 
-/// The restore of the committed state (the cache decoded, the matches emitted, no folder read), and the rescan of the
-/// bench tree with the macOS reader and a scripted journal: nothing changed, an ordinary day (1 000 changed folders,
+/// The rescan of the bench tree with the macOS reader and a scripted journal: nothing changed, an ordinary day (1 000 changed folders,
 /// 01/02), and a growing share of changed folders against a full scan, for `RESCAN_LIMIT_PERCENT`.
 fn rescan(criterion: &mut Criterion) {
     let tree = bench_tree();
@@ -287,8 +286,6 @@ fn rescan(criterion: &mut Criterion) {
     let name = tree.spec().name;
     let mut group = criterion.benchmark_group("scan");
     group.sample_size(10);
-    let restore = WalkRequest { mode: WalkMode::Restore, ..full };
-    group.bench_function(format!("restore/{name}"), |bencher| bencher.iter(|| rescan_once(&scanner, &restore)));
     journal.set(Vec::new());
     group.bench_function(format!("rescan-unchanged/{name}"), |bencher| bencher.iter(|| rescan_once(&scanner, &auto)));
     journal.set(spread(&folders, 1_000));

@@ -1624,16 +1624,6 @@
       ]
     ]
   },
-  "restoredScan": {
-    "findings": [],
-    "leftOut": [
-      [
-        "jetbrains.uninstalled",
-        "jetbrains.left-out.used-recently",
-        3
-      ]
-    ]
-  },
   "storageMap": {
     "webstormLine": [
       [

@@ -25,7 +25,6 @@ the file's newest change time. A `.dmg` or `.pkg` is proven by its name: the nam
 one installed app that is not Apple's (by its name or the last part of its id), followed only by versions, plain numbers
 and the words of the table (`installer`, `arm64`, ...); `Firefox 133.0.dmg` is named, `notes-backup.dmg` and
 `Firefox (1).dmg` are not. Then, in order: no receipt and the apps cannot be listed, left out; the name names no app or
-two, not claimed; the list of apps is partial, left out; a restored scan, left out; the app changed before the
-installer, or is older than the version in the name, or cannot be compared, left out; otherwise **offered**, as soon as
+two, not claimed; the list of apps is partial, left out; the app changed before the installer, or is older than the version in the name, or cannot be compared, left out; otherwise **offered**, as soon as
 it is proven. A file that is not offered is never offered as a big download. Nothing in Downloads is read unless you
 turn on its switch in Settings or grant Full Disk Access. The files go to the Trash.

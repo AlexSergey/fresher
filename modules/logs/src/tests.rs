@@ -76,16 +76,15 @@ fn file(below: &str, days: u64) -> Match {
     }
 }
 
-/// The settings and the cache one run of the module scans with.
+/// The settings one run of the module scans with.
 struct Run {
     /// The settings file's values, as JSON.
     stored: &'static str,
-    restored: bool,
 }
 
 impl Run {
     const fn new() -> Self {
-        Self { stored: "{}", restored: false }
+        Self { stored: "{}" }
     }
 
     /// Hands `matches` to a new module in their order, then calls `finish`. No app is installed or running: the
@@ -102,7 +101,6 @@ impl Run {
         let (clock, commands, cancel) = (FakeClock::at(NOW), FakeCommandRunner::default(), CancelToken::new());
         let settings = settings(&module, self.stored);
         let cx = ModuleContext::new(&clock, &commands, &system, &settings, &cancel).complete_walk();
-        let cx = if self.restored { cx.restored() } else { cx };
         let mut out = Recorded::default();
         for found in matches {
             module.on_match(found, &cx, &mut out).unwrap();
@@ -167,23 +165,6 @@ mod negative {
                 (CRASH_REPORTS, "logs.left-out.locked", 100),
                 (APP_LOGS, "logs.left-out.recent", 100),
             ]
-        );
-    }
-
-    #[test]
-    fn a_restored_scan_reports_only_left_outs() {
-        let restored = Run { restored: true, ..Run::new() };
-
-        let recorded = restored.run(&[
-            file("old log.txt", 30),
-            file("DiagnosticReports/App.ips", 30),
-            file("Vendor/app.lock", 30),
-        ]);
-
-        assert_eq!(recorded.findings, []);
-        assert_eq!(
-            recorded.left_out(),
-            [(APP_LOGS, "logs.left-out.scan-again", 100), (CRASH_REPORTS, "logs.left-out.scan-again", 100)]
         );
     }
 
@@ -291,7 +272,7 @@ mod positive {
         let matches = [file("Vendor/ten-days.log", 10)];
 
         let default = Run::new().run(&matches);
-        let longer = Run { stored: r#"{"logs.older-than-days": 14}"#, ..Run::new() }.run(&matches);
+        let longer = Run { stored: r#"{"logs.older-than-days": 14}"# }.run(&matches);
 
         assert_eq!(default.offered(), [(APP_LOGS, "app-logs/Vendor/ten-days.log")]);
         assert_eq!(longer.findings, []);
@@ -333,20 +314,14 @@ mod positive {
     }
 
     #[test]
-    fn the_problems_are_the_five_left_out_reasons_in_order() {
+    fn the_problems_are_the_four_left_out_reasons_in_order() {
         let module = logs();
 
         let problems: Vec<&str> = module.descriptor().problems().iter().map(TextKey::as_str).collect();
 
         assert_eq!(
             problems,
-            [
-                "logs.left-out.scan-again",
-                "logs.left-out.special",
-                "logs.left-out.not-yours",
-                "logs.left-out.locked",
-                "logs.left-out.recent",
-            ]
+            ["logs.left-out.special", "logs.left-out.not-yours", "logs.left-out.locked", "logs.left-out.recent"]
         );
     }
 

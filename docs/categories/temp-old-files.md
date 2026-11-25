@@ -31,16 +31,15 @@ the first answer that applies:
 
 | #  | Situation                                                                                                    | Result                                         |
 | -- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| 1  | the scan is shown from the last scan                                                                         | left out: scan again to check its age          |
-| 2  | the name is a lock or a system marker (`.X*-lock`, `.X11-unix`, `.ICE-unix`, `.font-unix`, `.XIM-unix`, `quota.user`, `quota.group`, `.vfs_rsrc_streams_*`, `.AddressBookLocks`, `.LINKS`, `*.lock`, `*.pid`, `LCK..*`, `.#*`), or a folder holds an entry named `*.lock`, `*.pid`, `LCK..*` or `.#*` anywhere inside | kept for good: a lock |
-| 3  | the item, or something inside it, is a socket, a pipe or a device                                            | kept for good: a program uses it to talk to another |
-| 4  | not yours, locked by the system, restricted, holds something inside that is not yours or locked, or named `com.apple.…` | kept for good: it belongs to the system |
-| 5  | locked by you (Finder's Get Info)                                                                            | left out: locked                               |
-| 6  | the open apps cannot be listed                                                                               | left out: Fresher cannot list open apps        |
-| 7  | named after an app that is open: its bundle id as the whole name or followed by a dot, also with one leading dot stripped (`.com.example.App.XXXXXX`) | left out: the app is open |
-| 8  | a folder whose inside could not be read in full                                                              | not claimed                                    |
-| 9  | the newest change anywhere inside is unknown, in the future, or not more than the setting's days ago, or a file inside was read within those days | left out: changed or read recently |
-| 10 | otherwise                                                                                                    | **offered**                                    |
+| 1  | the name is a lock or a system marker (`.X*-lock`, `.X11-unix`, `.ICE-unix`, `.font-unix`, `.XIM-unix`, `quota.user`, `quota.group`, `.vfs_rsrc_streams_*`, `.AddressBookLocks`, `.LINKS`, `*.lock`, `*.pid`, `LCK..*`, `.#*`), or a folder holds an entry named `*.lock`, `*.pid`, `LCK..*` or `.#*` anywhere inside | kept for good: a lock |
+| 2  | the item, or something inside it, is a socket, a pipe or a device                                            | kept for good: a program uses it to talk to another |
+| 3  | not yours, locked by the system, restricted, holds something inside that is not yours or locked, or named `com.apple.…` | kept for good: it belongs to the system |
+| 4  | locked by you (Finder's Get Info)                                                                            | left out: locked                               |
+| 5  | the open apps cannot be listed                                                                               | left out: Fresher cannot list open apps        |
+| 6  | named after an app that is open: its bundle id as the whole name or followed by a dot, also with one leading dot stripped (`.com.example.App.XXXXXX`) | left out: the app is open |
+| 7  | a folder whose inside could not be read in full                                                              | not claimed                                    |
+| 8  | the newest change anywhere inside is unknown, in the future, or not more than the setting's days ago, or a file inside was read within those days | left out: changed or read recently |
+| 9  | otherwise                                                                                                    | **offered**                                    |
 
 "More than N days" is exact: seven days is kept, seven days and one second is offered. The age is the newest
 modification or status change of the item and of everything inside it; an access time only keeps, never offers. A
@@ -48,8 +47,7 @@ link is offered as itself; the Trash gets the link, never its target. System and
 out with their reason and never offered.
 
 Names are read as bytes, never as text, and case is ignored: a name that is not valid UTF-8 is matched like any other,
-and a wider match only keeps more. Row 1 is a second guard: a restored scan reads nothing inside the two places, so
-none of their items reaches the module; a scan of your own offers them again.
+and a wider match only keeps more.
 
 Places it never touches: `/private/var/tmp`, the system's other folders in `/private/var/folders` (`C/`, `0/`, `X/`
 and other users' folders), `T/TemporaryItems`, `~/Library/Autosave Information` (unsaved documents) and everything

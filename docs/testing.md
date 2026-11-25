@@ -43,8 +43,8 @@ The core e2e prove the harness (`smoke.rs`: a fixture home is built and read bac
 real settings file, the events and the overview against `fixtures/golden/demo.json`; the settings survive a restart; a
 settings file from a newer version is never overwritten), and since plan 004 scan → classify → cache: `scan.rs` (the
 engine with the real scanner on fixture homes, `fixtures/golden/scan.json`), `rescan.rs` (a scan, a scripted change, a
-rescan that reads only the changed folders and the check's sample, a restore in a new engine that reads no folder,
-`fixtures/golden/rescan.json`), `footprint.rs` (below), and since plan 008 select → plan → confirm → clean:
+rescan that reads only the changed folders and the check's sample, a new engine on the same data folder whose first
+scan is a rescan of the cache the last one left, `fixtures/golden/rescan.json`), `footprint.rs` (below), and since plan 008 select → plan → confirm → clean:
 `cleanup.rs` (the engine with the reference walk, the `trial` module and the real `DiskCleaner` in the sandbox on
 `fixtures/homes/cleanup.toml`, the real journal; the whole path with history and put back, a cancel, an item replaced,
 a permanent cleanup, and the refusals; `fixtures/golden/cleanup-*.json`), and since plan 039 `agreement.rs` (on the
@@ -91,8 +91,7 @@ cleanups of a hundred items through the real journal.
     `FixtureTree` settles every file it writes, `LargeTree` every tag.
   - `run_module(&module, &tree, &Ports::at(seconds))` — one module run as the engine would, on the fixture tree as the
     home folder: walk, matches, `finish` → `ModuleRun { findings, outcome }`; `ModuleRun::golden()` is its stable JSON
-    report, paths relative to the fixture root. `Ports { restored: true, .. }` runs it as a scan restored from the
-    cache; `Ports { order: MatchOrder::Reversed, .. }` hands it the matches last first, so a test can check that its
+    report, paths relative to the fixture root. `Ports { order: MatchOrder::Reversed, .. }` hands it the matches last first, so a test can check that its
     answers do not depend on the walk's order; `Ports { avoid: vec!["Library/Logs".into()], .. }` (paths relative to
     the fixture root) leaves those folders unopened, so a place among them reaches `finish` as `PlaceSeen::NotScanned`.
   - `assert_module_contract(&module, &Catalogue)` — the descriptor is valid, every category names an icon (not
@@ -152,8 +151,7 @@ cleanups of a hundred items through the real journal.
   `fixtures/homes/stale-projects-flow.toml`, every folder dated (an undated one counts as changed now), the module asking
   the real scanner's tree after the walk: an active project and one with a recent commit keep their packages
   (`recent`), the first scan's report is the golden `fixtures/golden/stale-projects-flow.json`, scan, confirm with
-  Medium, Trash and put back byte for byte, a change in a stale project kept by a rescan, the setting moving the days, a
-  restore at launch that offers nothing (`scan-again`), the storage map and the browse view opening `target`,
+  Medium, Trash and put back byte for byte, a change in a stale project kept by a rescan, the setting moving the days, the storage map and the browse view opening `target`,
   `incremental` and `build` folders, ignoring the build output, and the known risk that a cleaned stale project looks
   active on the next scan. `tests/app_leftovers.rs` runs the `app-leftovers` module's flows beside the other modules the app registers (the other
   modules' caches under `Library/Caches` still theirs), with scripted installed and open apps, Spotlight's answers, the
@@ -161,7 +159,7 @@ cleanups of a hundred items through the real journal.
   `tests/app_caches.rs` runs the `app-caches` module's flows beside the other modules of `Library/Caches` (`jetbrains`,
   `dev-caches`, `app-leftovers`) over `fixtures/homes/app-caches-flow.toml` with a scripted open app: no folder is
   offered by both `app-caches` and `app-leftovers`, an open app's folders wait (`app-open`) until a rescan after it
-  quits, a restored scan judges the open apps again, a file held open skips its folder in use with nothing of it moved,
+  quits, a file held open skips its folder in use with nothing of it moved,
   a cleanup empties each folder and keeps it with its entries in the Trash, put back returns them beside a file the app
   wrote since, and the storage map counts both folders in the app's line (`fixtures/golden/app-caches-flow.json`).
   `tests/xcode.rs` runs the `xcode` module's flows beside `dev-caches`, the other module of `Library/Developer`, over
@@ -170,12 +168,12 @@ cleanups of a hundred items through the real journal.
   rescan after it quits, a file held open inside the simulators' caches skips that item in use while the rest go, a
   cleanup moves the device support folders and the archive to the Trash and empties the previews and the simulators'
   caches, keeping the folders, put back returns the archive byte for byte and the emptied caches beside a file written
-  since, a restored scan offers the same with Xcode closed and leaves everything out with it open, and the storage map
+  since, and the storage map
   counts every finding of both modules in Xcode's line (`fixtures/golden/xcode-flow.json`).
   `tests/logs.rs` runs the `logs` module's flows beside the other modules of `Library/Logs` (`jetbrains`,
   `app-leftovers`) over `fixtures/homes/logs-flow.toml`: no path is offered by two modules (the removed app's and the
   older IDE's log folders are theirs, a state file no one's), a fresh log stays through a cleanup of everything, a log
-  held open is skipped in use, a restored scan leaves every log out `scan-again` until a scan, fourteen days in the
+  held open is skipped in use, fourteen days in the
   settings file keep a ten-day-old log, a cleanup moves the old files to the Trash and keeps their folders, and put
   back returns them byte for byte (`fixtures/golden/logs-flow.json`, the first scan's report).
   `tests/app_caches_browsers.rs` runs the same module's browser and web-engine rows beside the same modules over
@@ -200,8 +198,8 @@ cleanups of a hundred items through the real journal.
   the findings, the map's explained part), a package with a file held open is skipped in use with nothing of it moved,
   the Files list ranks the home's items by allocated size with their kinds (a package one row, an archive beside its
   folder pointed out), the Folders view opens through the home, a picked file and a picked folder go through the
-  confirmed plan at High to the Trash and leave the list, put back returns a file byte for byte, a restored scan lists
-  the same rows and a rescan after put back lists the file again (`fixtures/golden/largest-flow.json`, the first scan's
+  confirmed plan at High to the Trash and leave the list, put back returns a file byte for byte, a rescan after a restart
+  lists the same rows and a rescan after put back lists the file again (`fixtures/golden/largest-flow.json`, the first scan's
   Files page and the home's Folders page).
   `tests/uninstall.rs` runs the uninstall's flows (plan 036) over `fixtures/homes/uninstall-flow.toml` with the real
   scanner, cleaner, journal and the real joined protection (the sandbox's apps folder opened for whole bundles by the
@@ -216,14 +214,12 @@ cleanups of a hundred items through the real journal.
   (a model whose snapshot names are links into its blobs, a dataset, an LM Studio model, a Space and a project holding
   a link into the model's blobs): a Space and the project's link are never offered, a model with a blob held open is
   skipped in use, the project's link stays a link after the cleanup, the sizes of each category, scan, confirm with
-  Medium, Trash and put back byte for byte (`fixtures/golden/local-ai-models-flow.json`), and a restore at launch that
-  offers the same models.
+  Medium, Trash and put back byte for byte (`fixtures/golden/local-ai-models-flow.json`).
   `tests/local_ai_models_ollama.rs` runs the same module over `fixtures/homes/local-ai-models-ollama-flow.toml` (an
   Ollama store: two tags of one model, a model of its own, and a base model with one made from it sharing two layers):
   a model goes together, its manifests and unshared layers as one item, or nothing of it moves (a layer held open or
   mapped, a layer replaced after the plan); a shared layer and the sharer's manifest stay; the journal holds every
-  part, put back brings the subject last, byte for byte (`fixtures/golden/local-ai-models-ollama-flow.json`); a restore
-  reads the manifests again.
+  part, put back brings the subject last, byte for byte (`fixtures/golden/local-ai-models-ollama-flow.json`).
   `tests/unused_toolchains.rs` runs the `unused-toolchains` module's flows alone over
   `fixtures/homes/unused-toolchains-flow.toml` (rustup's default, a moving channel, an old toolchain, a dated nightly and
   one a project's `rust-toolchain.toml` names; nvm's default, the newest Node version and an old one; no stored
@@ -231,15 +227,14 @@ cleanups of a hundred items through the real journal.
   toolchain and nvm's default and newest are never offered, a `.nvmrc` written between two scans keeps its version on
   the rescan, a version with its `bin/node` held open is skipped in use, the sizes of each category, scan, confirm with
   Medium, Trash and put back byte for byte, `settings.toml` and the pins untouched
-  (`fixtures/golden/unused-toolchains-flow.json`), and a restore at launch that reads the pins again (a pin changed
-  since moves the offer from one toolchain to another).
+  (`fixtures/golden/unused-toolchains-flow.json`).
   `tests/docker.rs` runs the `docker` module (plan 032) with `dev-caches` over `fixtures/homes/docker-flow.toml` (an
   OrbStack socket and disk file, Docker Desktop's stale socket, npm's cache) on the real scanner and cleaner, with a
   scripted runtime and a recording fake command runner: an open runtime with its socket, its CLI signed by its
   developer (the fake apps state the signature; in sandbox mode a program inside a listed bundle passes as signed,
   since nothing is ever run there), runs the one read,
   `<bundle>/<cli> --context <context> system df --format json`, and its insight reaches `ModuleFinished.insights`; a
-  closed runtime, a missing socket, a stale socket of a runtime not installed, a restored scan and a runtime that
+  closed runtime, a missing socket, a stale socket of a runtime not installed and a runtime that
   answers nothing readable run nothing or describe no numbers; no finding, no total and no plan item is Docker's, and a
   cleanup of every finding leaves the socket and the disk file as they were (kind, length, blocks); every shown command
   has `--context` and no force. Its home lives in `tests/docker_home/mod.rs`, and `Extras.commands` of
@@ -385,7 +380,7 @@ cleanups of a hundred items through the real journal.
 The scan's timings and peak memory are measured by criterion benches run by hand, never in a hook (the UI's frame budget
 is `perf.spec.ts`, above): `npm run bench` (`cargo bench -p fresher-scanner --bench scan`, a release build). The benches
 live in `crates/scanner/benches/scan.rs`, grouped as `matcher/*`, `scan/*` (the full scan by thread count, the rescan
-with nothing changed and after 1 000 changed folders, the restore: the cache decoded and the matches emitted), `cache/*`
+with nothing changed and after 1 000 changed folders), `cache/*`
 (encode, decode, fit to the cap) and `state/*` (largest files, search by name); after each group the bench prints the
 process's peak memory (`fresher_macos::peak_memory`, bytes). They are run only by a plan that changes the walk itself
 (the scanner, the engine's scan path, the cache), not by a plan that adds a module or a category (the user's decision

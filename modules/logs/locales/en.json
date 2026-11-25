@@ -19,7 +19,6 @@
   "logs.reason.top": "In your Logs folder, unchanged for {days} days.",
   "logs.reason.folder": "In {folder} in your Logs folder, unchanged for {days} days.",
   "logs.reason.report": "A crash or diagnostic report, unchanged for {days} days.",
-  "logs.left-out.scan-again": "Shown from the last scan. Scan again to check how old it is.",
   "logs.left-out.special": "A program uses it to talk to another program, so it is kept.",
   "logs.left-out.not-yours": "It belongs to the system or another user; removing it needs an administrator.",
   "logs.left-out.locked": "It is locked. To let Fresher remove it, unlock it in Finder's Get Info.",

@@ -31,22 +31,17 @@ pub(crate) fn lm_studio_open() -> FakeRunningApps {
     FakeRunningApps::new(vec![running_app("LM Studio", &["ai.elementlabs.lmstudio"]).unwrap()])
 }
 
-/// The home `name` scanned with `running` open, the clock at `FIXTURE_NOW`.
-pub(crate) fn scan_with(
-    name: &str,
-    running: FakeRunningApps,
-    restored: bool,
-    order: MatchOrder,
-) -> (FixtureTree, ModuleRun) {
+/// The home `name` scanned with `running` open, the matches in `order`, the clock at `FIXTURE_NOW`.
+pub(crate) fn scan_with(name: &str, running: FakeRunningApps, order: MatchOrder) -> (FixtureTree, ModuleRun) {
     let tree = home(name);
-    let ports = Ports { running: Arc::new(running), restored, order, ..Ports::at(FIXTURE_NOW) };
+    let ports = Ports { running: Arc::new(running), order, ..Ports::at(FIXTURE_NOW) };
     let run = run_module(&local_ai_models(), &tree, &ports).unwrap();
     (tree, run)
 }
 
 /// The home `name` scanned with nothing open, walked.
 pub(crate) fn scan(name: &str) -> (FixtureTree, ModuleRun) {
-    scan_with(name, FakeRunningApps::default(), false, MatchOrder::Walked)
+    scan_with(name, FakeRunningApps::default(), MatchOrder::Walked)
 }
 
 /// Folders that are no model of a store.
@@ -56,7 +51,7 @@ pub(crate) fn not_claimed() -> (FixtureTree, ModuleRun) {
 
 /// Models kept, scanned with `running` open.
 pub(crate) fn kept_with(running: FakeRunningApps) -> (FixtureTree, ModuleRun) {
-    scan_with("local-ai-models-kept", running, false, MatchOrder::Walked)
+    scan_with("local-ai-models-kept", running, MatchOrder::Walked)
 }
 
 /// The kept models with LM Studio open.

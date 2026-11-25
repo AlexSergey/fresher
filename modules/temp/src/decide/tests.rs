@@ -46,9 +46,9 @@ fn running() -> RunningSet {
     RunningSet::new(vec![running_app("Editor", &["com.example.Editor"]).unwrap()])
 }
 
-/// Decides `item` now, with the default days, the running set `running` and a fresh scan.
+/// Decides `item` now, with the default days and the running set `running`.
 fn verdict(item: &Item<'_>, running: &RunningSet) -> Verdict {
-    decide(item, &Scan { restored: false, now: Timestamp::from_secs(NOW), days: DAYS, running: Ok(running) })
+    decide(item, &Scan { now: Timestamp::from_secs(NOW), days: DAYS, running: Ok(running) })
 }
 
 fn kept(item: &Item<'_>) -> Verdict {
@@ -62,18 +62,8 @@ fn left_out(reason: Reason) -> Verdict {
 mod negative {
     use fresher_core::{EntryFacts, EntryKind, RunningSet, Timestamp};
 
-    use super::{DAY, N, NOW, ago, file, folder, kept, left_out, running, with_inside};
+    use super::{DAY, N, NOW, ago, file, folder, kept, left_out, with_inside};
     use crate::decide::{Item, NoSystem, Reason, Scan, Verdict, decide};
-
-    #[test]
-    fn a_restored_scan_keeps_everything_even_what_would_be_offered() {
-        let set = running();
-        for item in [file("old.tmp"), folder("build"), file("app.lock"), file("com.apple.x")] {
-            let scan = Scan { restored: true, now: Timestamp::from_secs(NOW), days: 7, running: Ok(&set) };
-
-            assert_eq!(decide(&item, &scan), left_out(Reason::ScanAgain), "{:?}", item.name);
-        }
-    }
 
     #[test]
     fn a_lock_name_is_kept() {
@@ -115,7 +105,7 @@ mod negative {
 
     #[test]
     fn a_failed_running_list_keeps_everything() {
-        let scan = Scan { restored: false, now: Timestamp::from_secs(NOW), days: 7, running: Err(NoSystem) };
+        let scan = Scan { now: Timestamp::from_secs(NOW), days: 7, running: Err(NoSystem) };
 
         assert_eq!(decide(&file("old.tmp"), &scan), left_out(Reason::NoSystem));
         assert_eq!(decide(&folder("build"), &scan), left_out(Reason::NoSystem));
@@ -204,7 +194,7 @@ mod negative {
     fn a_higher_setting_keeps_what_the_default_offers() {
         let set = RunningSet::default();
         let item = Item { modified: ago(10 * DAY), changed: ago(10 * DAY), accessed: None, ..file("ten-days") };
-        let scan = Scan { restored: false, now: Timestamp::from_secs(NOW), days: 14, running: Ok(&set) };
+        let scan = Scan { now: Timestamp::from_secs(NOW), days: 14, running: Ok(&set) };
 
         assert_eq!(decide(&item, &scan), left_out(Reason::Recent));
     }
@@ -232,19 +222,6 @@ mod negative {
         let item = with_inside(folder("build"), |inside| inside.lock_named = true);
 
         assert_eq!(kept(&item), left_out(Reason::Lock));
-    }
-
-    #[test]
-    fn a_restore_comes_before_every_other_row() {
-        let scan = Scan { restored: true, now: Timestamp::from_secs(NOW), days: 7, running: Err(NoSystem) };
-        let worst = Item {
-            kind: EntryKind::Other,
-            facts: EntryFacts { owned_by_user: false, user_immutable: true, ..EntryFacts::default() },
-            modified: None,
-            ..file("com.apple.x.lock")
-        };
-
-        assert_eq!(decide(&worst, &scan), left_out(Reason::ScanAgain));
     }
 
     #[test]
@@ -286,7 +263,7 @@ mod negative {
         ] {
             assert_eq!(kept(&item), left_out(reason), "{:?}", item.name);
         }
-        let scan = Scan { restored: false, now: Timestamp::from_secs(NOW), days: 7, running: Err(NoSystem) };
+        let scan = Scan { now: Timestamp::from_secs(NOW), days: 7, running: Err(NoSystem) };
         assert_eq!(decide(&fresh(file("x")), &scan), left_out(Reason::NoSystem));
         let incomplete = with_inside(fresh(folder("x")), |inside| inside.complete = false);
         assert_eq!(kept(&incomplete), Verdict::NotClaimed);
@@ -369,7 +346,7 @@ mod property {
 
     fn offered(item: &Item<'_>, now: u64, days: u32) -> bool {
         let set = RunningSet::default();
-        let scan = Scan { restored: false, now: Timestamp::from_secs(now), days, running: Ok(&set) };
+        let scan = Scan { now: Timestamp::from_secs(now), days, running: Ok(&set) };
         matches!(decide(item, &scan), Verdict::Offered { .. })
     }
 

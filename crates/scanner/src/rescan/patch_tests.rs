@@ -275,7 +275,7 @@ mod positive {
 
     use fresher_core::{MarkerCheck, ScanCache, WalkMode};
 
-    use super::{Mode, assert_rescanned, facts_at, held_at, held_home, home, names, paths};
+    use super::{Mode, assert_rescanned, held_at, held_home, home, names, paths};
     use crate::codec::decode::decode;
     use crate::codec::fit::fully_collapsed;
     use crate::rescan::testing::{assert_same, journal_of};
@@ -340,22 +340,6 @@ mod positive {
         let tree = rescan.tree.as_ref().unwrap();
         assert!(tree.lookup(&rig.path("docs/old/deeper")).is_some());
         assert_same(&rescan, &rig.full());
-    }
-
-    #[test]
-    fn a_restore_gives_every_match_the_facts_of_the_scan() {
-        let rig = home();
-        let _mode = Mode::set(rig.path("Library/Caches"), 0o555);
-        let scanned = rig.scan();
-
-        let restored =
-            rig.walk(&rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[]))), WalkMode::Restore);
-
-        assert_eq!(restored.matches, scanned.matches);
-        let whole = restored.matches.iter().find(|found| found.path == rig.path("app/node_modules")).unwrap();
-        assert!(whole.inside.is_some_and(|inside| inside.complete && inside.newest_change.is_some()));
-        assert!(!facts_at(&restored.matches, &rig.path("Library/Caches/com.y")).parent_writable);
-        assert_eq!(facts_at(&restored.matches, &rig.path("app/package.json")), fresher_core::EntryFacts::REMOVABLE);
     }
 
     #[test]
@@ -440,18 +424,15 @@ mod positive {
     }
 
     #[test]
-    fn a_folder_copied_from_the_cache_keeps_what_it_holds_and_a_restore_hands_it_back() {
+    fn a_folder_copied_from_the_cache_keeps_what_it_holds() {
         let rig = held_home();
         let scanned = rig.scan();
         std::fs::write(rig.path("docs/new.txt"), b"new").unwrap();
 
         let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["docs"]), &[]));
-        let restored =
-            rig.walk(&rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[]))), WalkMode::Restore);
 
         assert_eq!(rescan.matches, scanned.matches);
-        assert_eq!(restored.matches, scanned.matches);
-        let held = held_at(&rig, &restored.matches, ".cargo/registry");
+        let held = held_at(&rig, &rescan.matches, ".cargo/registry");
         assert_eq!(held, (names(&["CACHEDIR.TAG"]), Some(MarkerCheck::Valid)));
         assert_rescanned(&rescan);
         assert_same(&rescan, &rig.full());

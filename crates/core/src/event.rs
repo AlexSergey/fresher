@@ -5,7 +5,7 @@ use ts_rs::TS;
 
 use crate::{
     AccessStatus, ByteSize, Capability, CleanupId, CleanupReport, Coverage, Finding, FindingId, Insight, ItemReport,
-    LeftOutCount, Method, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey, Timestamp,
+    LeftOutCount, Method, ModuleId, ScanId, SettingKey, SettingValue, Text, TextKey,
 };
 
 /// Something that happened; a discriminated union on `type` in TypeScript.
@@ -48,11 +48,6 @@ pub enum Event {
         scan: ScanId,
         outcome: ScanOutcome,
         kind: ScanKind,
-    },
-    /// A restore found nothing to restore: it never started, published nothing else, and the engine went idle as it
-    /// was before it (the last scan unchanged). The one event a restore without a `ScanStarted` sends.
-    NothingRestored {
-        scan: ScanId,
     },
     SettingChanged {
         key: SettingKey,
@@ -105,8 +100,6 @@ pub enum ScanKind {
         #[serde(rename = "changedFolders")]
         changed_folders: u32,
     },
-    /// Nothing was read: the last scan, taken at `taken`, was restored from the cache.
-    Restored { taken: Timestamp },
 }
 
 /// How one module's part of a scan ended.
@@ -160,9 +153,7 @@ mod tests {
         use serde_json::json;
         use ts_rs::{Config, TS};
 
-        use crate::{
-            ByteSize, Event, ModuleId, ModuleOutcome, ScanId, ScanKind, ScanOutcome, Text, TextKey, Timestamp,
-        };
+        use crate::{ByteSize, Event, ModuleId, ModuleOutcome, ScanId, ScanKind, ScanOutcome, Text, TextKey};
 
         #[test]
         fn events_serialize_with_a_type_tag() {
@@ -278,13 +269,11 @@ mod tests {
                 outcome: ScanOutcome::Completed,
                 kind: ScanKind::Rescan { changed_folders: 12 },
             };
-            let restored = ScanKind::Restored { taken: Timestamp::from_secs(100) };
 
             assert_eq!(
                 serde_json::to_value(rescan).unwrap()["kind"],
                 json!({ "kind": "rescan", "changedFolders": 12 })
             );
-            assert_eq!(serde_json::to_value(restored).unwrap(), json!({ "kind": "restored", "taken": 100 }));
         }
 
         #[test]
@@ -309,13 +298,6 @@ mod tests {
         }
 
         #[test]
-        fn nothing_restored_names_its_scan() {
-            let ended = Event::NothingRestored { scan: ScanId::new(5) };
-
-            assert_eq!(serde_json::to_value(ended).unwrap(), json!({ "type": "nothing-restored", "scan": 5 }));
-        }
-
-        #[test]
         fn exports_the_event_union_to_typescript() {
             let declaration = Event::decl(&Config::new());
 
@@ -326,7 +308,6 @@ mod tests {
                 "findings-added",
                 "module-finished",
                 "scan-finished",
-                "nothing-restored",
                 "setting-changed",
                 "access-changed",
                 "cleanup-started",

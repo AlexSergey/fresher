@@ -203,10 +203,9 @@ impl JetBrainsModule {
         })
     }
 
-    /// Offers or keeps every folder of the product `product` that is not installed: kept in a restored scan (only a
-    /// walk reads the folders' times), after a walk that could not read every folder (an unseen one may have changed),
-    /// when one changed within the setting's days, or when Spotlight knows an app of the product elsewhere or cannot
-    /// tell; offered otherwise.
+    /// Offers or keeps every folder of the product `product` that is not installed: kept after a walk that could not
+    /// read every folder (an unseen one may have changed), when one changed within the setting's days, or when
+    /// Spotlight knows an app of the product elsewhere or cannot tell; offered otherwise.
     fn decide_uninstalled(
         &self,
         product: &str,
@@ -218,10 +217,10 @@ impl JetBrainsModule {
         let Some(product) = self.products.by_folder(product) else { return };
         let now = Timestamp::from_system_time(cx.clock().now());
         let days = UNINSTALLED_AFTER.days(cx.settings());
-        let age = if cx.is_restored() || !cx.is_walk_complete() {
-            Age::Recent
-        } else {
+        let age = if cx.is_walk_complete() {
             age(folders.iter().map(|folder| folder.modified), now, days)
+        } else {
+            Age::Recent
         };
         let kept = match age {
             Age::Recent => Some(Reason::UsedRecently),

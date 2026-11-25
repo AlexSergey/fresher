@@ -207,14 +207,6 @@ impl Engine {
         self.start(walk)
     }
 
-    /// Shows the last scan again without reading the disk, as an operation like a scan (refused while one runs): the
-    /// walk restores its cached state and the enabled modules that declare interests run over its matches; the
-    /// modules without interests (they ask an external tool) do not run. With nothing to restore it ends quietly: only
-    /// `NothingRestored`, and the engine stays as it was.
-    pub fn restore(&self) -> Result<ScanId, CommandError> {
-        self.start(WalkMode::Restore)
-    }
-
     fn start(&self, mode: WalkMode) -> Result<ScanId, CommandError> {
         let mut machine = lock(&self.shared.machine)?;
         let scan = machine.next_scan()?;
@@ -540,14 +532,12 @@ impl Engine {
 }
 
 impl Engine {
-    /// What the next scan runs in `mode`: the enabled modules, and for a restore only those with interests. The
-    /// results stay as they are: the scan's thread empties them when it starts.
+    /// What the next scan runs in `mode`: the enabled modules. The results stay as they are: the scan's thread empties
+    /// them when it starts.
     fn plan(&self, mode: WalkMode) -> Result<ScanPlan, EngineError> {
         let settings = lock(&self.shared.settings)?;
-        let modules = self.shared.registry.registered().iter().filter(|module| {
-            settings.is_enabled(module.descriptor().id())
-                && (mode != WalkMode::Restore || !module.interests().is_empty())
-        });
+        let modules =
+            self.shared.registry.registered().iter().filter(|module| settings.is_enabled(module.descriptor().id()));
         let modules = modules
             .map(|module| Planned { module: Arc::clone(module), settings: settings.module(module.descriptor().id()) })
             .collect();
@@ -597,61 +587,6 @@ mod tests {
 
             engine.cancel_scan().unwrap();
             wait_for_finish(&events);
-        }
-
-        #[test]
-        fn a_restore_during_a_scan_is_refused() {
-            let (walk, _gate) = ScriptedWalk::held();
-            let engine = engine(walk);
-            let events = engine.subscribe();
-            engine.start_scan(crate::ScanMode::Auto).unwrap();
-
-            assert_eq!(engine.restore(), Err(CommandError::Busy { running: Operation::Scan }));
-
-            engine.cancel_scan().unwrap();
-            wait_for_finish(&events);
-        }
-
-        #[test]
-        fn a_restore_runs_no_module_without_interests() {
-            use std::sync::Arc;
-            use std::sync::atomic::{AtomicUsize, Ordering};
-
-            let finished = Arc::new(AtomicUsize::new(0));
-            let counted = Arc::clone(&finished);
-            let tool = TestModule::builder("tool").category("tool.images", DangerLevel::Low).on_finish(move |_, _| {
-                counted.fetch_add(1, Ordering::Relaxed);
-                Ok(())
-            });
-            let alpha = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
-            let walk = ScriptedWalk::new()
-                .folder("Caches", "/home/Caches", bytes(1))
-                .kind(ScanKind::Restored { taken: fresher_core::Timestamp::from_secs(7) });
-            let engine = Fixture::new(walk).module(tool).module(alpha).engine();
-            let events = engine.subscribe();
-
-            let scan = engine.restore().unwrap();
-
-            let seen = wait_for_finish(&events);
-            assert_eq!(finished.load(Ordering::Relaxed), 0);
-            let alpha = fresher_core::ModuleId::new("alpha").unwrap();
-            assert_eq!(seen.first(), Some(&Event::ScanStarted { scan, modules: vec![alpha] }));
-        }
-
-        #[test]
-        fn nothing_to_restore_ends_idle_without_a_last_scan_and_says_so() {
-            let walk = ScriptedWalk::new().failing(fresher_core::WalkError::NothingToRestore);
-            let modes = walk.modes();
-            let engine = engine(walk);
-            let events = engine.subscribe();
-
-            let scan = engine.restore().unwrap();
-
-            assert_eq!(events.recv_timeout(Duration::from_secs(10)), Ok(Event::NothingRestored { scan }));
-            assert_eq!(engine.status(), Ok(EngineStatus::Idle));
-            assert_eq!(events.try_iter().count(), 0);
-            assert_eq!(engine.overview().unwrap().last_scan, None);
-            assert_eq!(*modes.lock().unwrap(), [fresher_core::WalkMode::Restore]);
         }
 
         #[test]
@@ -779,37 +714,6 @@ mod tests {
         }
 
         #[test]
-        fn a_module_knows_a_restore_from_a_walk() {
-            use std::sync::{Arc, Mutex};
-
-            use fresher_core::{DangerLevel, Timestamp};
-
-            use crate::testing::{Fixture, TestModule, bytes};
-
-            let seen = Arc::new(Mutex::new(Vec::new()));
-            let record = Arc::clone(&seen);
-            let module = TestModule::builder("alpha")
-                .category("alpha.caches", DangerLevel::Safe)
-                .folder("Caches")
-                .on_finish(move |cx, _| {
-                    record.lock().unwrap().push(cx.is_restored());
-                    Ok(())
-                });
-            let walk = ScriptedWalk::new()
-                .folder("Caches", "/home/Caches", bytes(5))
-                .kind(ScanKind::Restored { taken: Timestamp::from_secs(7) });
-            let engine = Fixture::new(walk).module(module).engine();
-            let events = engine.subscribe();
-
-            engine.restore().unwrap();
-            wait_for_finish(&events);
-            engine.start_scan(crate::ScanMode::Full).unwrap();
-            wait_for_finish(&events);
-
-            assert_eq!(*seen.lock().unwrap(), [true, false]);
-        }
-
-        #[test]
         fn a_module_knows_in_finish_whether_the_walk_read_every_folder() {
             use std::sync::{Arc, Mutex};
 
@@ -838,32 +742,6 @@ mod tests {
 
                 assert_eq!(*seen.lock().unwrap(), expected);
             }
-        }
-
-        #[test]
-        fn a_restore_shows_the_last_findings_with_their_date() {
-            use fresher_core::{DangerLevel, Timestamp, WalkMode};
-
-            use crate::testing::{Fixture, TestModule, bytes};
-
-            let taken = Timestamp::from_secs(1_763_000_000);
-            let module = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
-            let walk =
-                ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(5)).kind(ScanKind::Restored { taken });
-            let (modes, commits) = (walk.modes(), walk.commits());
-            let engine = Fixture::new(walk).module(module).engine();
-            let events = engine.subscribe();
-
-            let scan = engine.restore().unwrap();
-
-            let finished = wait_for_finish(&events);
-            let kind = ScanKind::Restored { taken };
-            assert_eq!(finished.last(), Some(&Event::ScanFinished { scan, outcome: ScanOutcome::Completed, kind }));
-            let overview = engine.overview().unwrap();
-            assert_eq!(overview.last_scan.map(|last| last.kind), Some(kind));
-            assert_eq!(overview.totals[0].sizes.logical.bytes(), 5);
-            assert_eq!(*modes.lock().unwrap(), [WalkMode::Restore]);
-            assert_eq!(commits.lock().unwrap().len(), 1);
         }
 
         #[test]

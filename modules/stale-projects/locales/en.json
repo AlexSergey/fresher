@@ -32,7 +32,6 @@
   "stale-projects.reason.build-output": "Nothing in this project has changed since {date}. Running {command} in it builds this again, which takes a while.",
   "stale-projects.reason.python-environments": "Nothing in this project has changed since {date}. {command} and an install of the project's packages make it again; packages you added by hand and listed nowhere are lost.",
   "stale-projects.reason.rust-build-cache": "Only Cargo reads this, to build faster, and no build has used it for {days} days. The next {command} makes what it needs again.",
-  "stale-projects.left-out.scan-again": "These come from the last scan, and the projects may have changed since. Scan again to check.",
   "stale-projects.left-out.unread": "Fresher could not read every folder of this project, so it cannot tell when it last changed. It is kept.",
   "stale-projects.left-out.recent": "It or its project changed within the days set in Settings, so it is kept. A scan after those days offers it.",
   "stale-projects.left-out.cache-recent": "A build used it within the last 7 days, so it is kept."

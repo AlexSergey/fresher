@@ -4,8 +4,8 @@
 //! beside them under `Library/Caches`; the real scanner (its reader seen through the facts lens),
 //! the modules the app registers, the real settings file, scan cache and journal, and the real `DiskCleaner` reaching
 //! only inside the sandbox, with a fake Trash. The clock, the installed and open apps, Spotlight's answers and the
-//! change journal's answers are fakes a flow sets. The eleven flows of the design's section 6, "Core e2e"; flow 1's
-//! report is the golden file.
+//! change journal's answers are fakes a flow sets. The flows of the design's section 6, "Core e2e"; flow 1's report
+//! is the golden file.
 //!
 //! `UPDATE_GOLDEN=1 cargo nextest run -p fresher-e2e --test app_leftovers` rewrites
 //! `fixtures/golden/app-leftovers-flow.json`; the diff is reviewed.
@@ -31,8 +31,7 @@ mod flows {
     use std::time::Duration;
 
     use fresher_core::{
-        DangerLevel, Event, IgnoreTarget, IgnoredEntry, ItemOutcome, MeaningGroup, ModuleGroup, PutBackOutcome,
-        ScanKind,
+        DangerLevel, IgnoreTarget, IgnoredEntry, ItemOutcome, MeaningGroup, ModuleGroup, PutBackOutcome,
     };
     use fresher_testing::{FIXTURE_NOW, FakeClock, FakeInstalledApps, FakeRunningApps, TreeReport, running_app};
     use serde_json::{Value, json};
@@ -130,13 +129,6 @@ mod flows {
 
     fn tree(flow: &Flow) -> Value {
         serde_json::to_value(TreeReport::of(&flow.path("home")).unwrap()).unwrap()
-    }
-
-    fn scan_kind(events: &[Event]) -> Option<&ScanKind> {
-        events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        })
     }
 
     /// The categories of the overview's totals, sorted.
@@ -361,26 +353,6 @@ mod flows {
         assert!(CONTAINERS.iter().all(|path| flow.path(path).is_dir()), "the containers stay");
     }
 
-    /// Flow 9: a new engine on the same data folder restores the last scan at launch: every proven id is left out
-    /// `scan-again`; a scan then offers them.
-    pub(crate) fn a_restored_scan_keeps_everything() {
-        let mut flow = Flow::new();
-        flow.scan();
-        assert_eq!(flow.findings(), everything());
-        flow.restart(Setup::default());
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(ours(&flow), []);
-        assert_eq!(left_out(&restored), kept("scan-again", (3, 1, 5)));
-
-        let events = flow.scan();
-
-        assert_eq!(flow.findings(), everything());
-        assert_eq!(left_out(&events), []);
-    }
-
     /// Flow 10: the storage map counts the removed app's offered leftovers in a line named by its id, not installed.
     pub(crate) fn the_map_names_a_removed_app_by_its_id() {
         let flow = Flow::new();
@@ -482,7 +454,7 @@ mod access {
 
 mod negative {
     use crate::flows::{
-        a_place_not_read_keeps_every_app, a_restored_scan_keeps_everything, an_app_installed_again_keeps_its_files,
+        a_place_not_read_keeps_every_app, an_app_installed_again_keeps_its_files,
         an_app_open_from_a_disk_image_keeps_its_files, containers_are_not_opened_until_asked,
         files_changed_lately_wait_for_the_days, ignoring_the_data_keeps_the_rest,
         spotlight_keeps_what_it_finds_or_cannot_see,
@@ -516,11 +488,6 @@ mod negative {
     #[test]
     fn with_containers_avoided_a_container_only_id_is_not_claimed() {
         containers_are_not_opened_until_asked();
-    }
-
-    #[test]
-    fn a_restored_scan_leaves_every_id_out_and_a_scan_offers_them() {
-        a_restored_scan_keeps_everything();
     }
 
     #[test]

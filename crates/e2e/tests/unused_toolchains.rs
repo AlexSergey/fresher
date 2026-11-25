@@ -33,7 +33,6 @@ mod flows {
 
     const NODE: (&str, &str) = ("unused-toolchains.node", "home/.nvm/versions/node/v14.21.3");
     const OLD_RUST: (&str, &str) = ("unused-toolchains.rust", "home/.rustup/toolchains/1.60.0-aarch64-apple-darwin");
-    const PINNED_RUST: (&str, &str) = ("unused-toolchains.rust", "home/.rustup/toolchains/1.79.0-aarch64-apple-darwin");
     const NIGHTLY: (&str, &str) =
         ("unused-toolchains.rust", "home/.rustup/toolchains/nightly-2023-06-01-aarch64-apple-darwin");
     /// The three versions of the flow home, in the order `Flow::findings` sorts them.
@@ -198,22 +197,6 @@ mod flows {
         let expected = [(NODE.0, 4000), (OLD_RUST.0, 3000)];
         assert_eq!(totals, expected.map(|(category, bytes)| (category.to_owned(), bytes)));
     }
-
-    /// A new engine on the same data folder restores the last scan, reading the pins again: a pin changed since
-    /// moves from one toolchain to another.
-    pub(crate) fn a_restored_scan_reads_the_pins_again() {
-        let mut flow = Flow::new();
-        flow.scan();
-        let found = flow.findings();
-        assert_eq!(found, offered(&OFFERED));
-        flow.restart();
-        fs::write(flow.path(PROJECT).join("rust-toolchain.toml"), "[toolchain]\nchannel = \"1.60\"\n").unwrap();
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(flow.findings(), offered(&[NODE, PINNED_RUST, NIGHTLY]), "the pin was read again at launch");
-    }
 }
 
 mod negative {
@@ -247,10 +230,5 @@ mod positive {
     #[test]
     fn a_confirmed_cleanup_moves_the_toolchain_folder_to_the_trash() {
         check_golden("unused-toolchains-flow", &flows::a_confirmed_cleanup_moves_the_toolchain_folder_to_the_trash());
-    }
-
-    #[test]
-    fn a_restored_scan_reads_the_pins_again() {
-        flows::a_restored_scan_reads_the_pins_again();
     }
 }

@@ -116,12 +116,11 @@ fn every_folder(projects: &[Project]) -> Vec<Match> {
     projects.iter().flat_map(|project| project.artifacts.iter().chain(&project.caches)).map(matched).collect()
 }
 
-/// One scan: the projects the walk found (`None`: not known yet), the stored days, restored or not.
+/// One scan: the projects the walk found (`None`: not known yet) and the stored days.
 #[derive(Default)]
 struct Scan {
     projects: Option<Vec<Project>>,
     days: Option<u32>,
-    restored: bool,
 }
 
 impl Scan {
@@ -157,10 +156,7 @@ impl Scan {
             .unwrap()
             .resolve(&StoredSettings { values })
             .module(module.descriptor().id());
-        let context = || {
-            let cx = ModuleContext::new(&clock, &commands, &system, &settings, cancel).complete_walk();
-            if self.restored { cx.restored() } else { cx }
-        };
+        let context = || ModuleContext::new(&clock, &commands, &system, &settings, cancel).complete_walk();
         let mut out = Recorded::default();
         for found in matches {
             module.on_match(found, &context(), &mut out).unwrap();
@@ -255,18 +251,6 @@ mod negative {
 
         assert_eq!(recorded.identities(), ["build-output/Code/old-tool/target"]);
         assert_eq!(recorded.left_out, []);
-    }
-
-    #[test]
-    fn a_restored_scan_offers_nothing() {
-        let projects = home();
-        let scan = Scan { restored: true, ..Scan::of(projects.clone()) };
-
-        let recorded = scan.run(&every_folder(&projects));
-
-        assert_eq!(recorded.findings, []);
-        assert!(recorded.left_out().iter().all(|(_, reason, _)| *reason == "stale-projects.left-out.scan-again"));
-        assert_eq!(recorded.left_out.len(), 8);
     }
 
     #[test]

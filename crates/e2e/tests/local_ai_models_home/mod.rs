@@ -7,6 +7,7 @@
 #[path = "../support/events.rs"]
 mod events;
 #[path = "../support/home.rs"]
+#[expect(dead_code, reason = "the shared flow home keeps what the flows of other modules restart")]
 mod home;
 #[path = "../support/home_cleanup.rs"]
 mod home_cleanup;
@@ -37,12 +38,6 @@ impl Flow {
     pub(crate) fn new() -> Self {
         let tree = FixtureTree::from_toml(&fixtures().join("homes").join("local-ai-models-flow.toml")).unwrap();
         Self::open(tree, parts)
-    }
-
-    /// A new engine on the same files: the app started again.
-    pub(crate) fn restart(&mut self) {
-        let parts = parts(&self.sandbox);
-        self.restart_with(parts);
     }
 }
 

@@ -1,4 +1,4 @@
-//! The volumes that hold the scan roots, with their facts: read at a scan's start, at its commit (the restore's too),
+//! The volumes that hold the scan roots, with their facts: read at a scan's start, at its commit,
 //! and before the first scan for the map with no scan, never per query.
 
 use std::path::{Component, Path, PathBuf};

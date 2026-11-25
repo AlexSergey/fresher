@@ -52,7 +52,7 @@ const Listed = ({ view }: { readonly view: AppsView }): JSX.Element => {
 
 // "What can go?": the installed apps, largest first, as the core lists and describes them. The filter "Not used for"
 // is the core's: it applies it and answers the list. While a scan runs its card shows; then how far the measure of
-// the apps got, until the list comes.
+// the apps got, until the list comes. Once a scan exists, and while none runs, the toolbar holds Scan again.
 export const AppsScreen = (): JSX.Element => {
   const { scan } = useScanActions();
   const [filter, setFilter] = useState<Filter>('any');
@@ -63,7 +63,15 @@ export const AppsScreen = (): JSX.Element => {
 
   return (
     <>
-      <Toolbar />
+      <Toolbar
+        actions={
+          scanned && !scanning ? (
+            <Button onClick={scan} variant="secondary">
+              {t('ui.screen.scan.scan-again')}
+            </Button>
+          ) : undefined
+        }
+      />
       <PageHeader title={t('ui.screen.apps.title')} />
       <div className={styles.content}>
         <AppsAccess />

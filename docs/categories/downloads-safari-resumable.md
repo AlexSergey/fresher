@@ -20,8 +20,8 @@ It goes to the Trash, and the download cannot be resumed: you start it again fro
 
 ## How the app decides
 
-The module `downloads`. The same four rows as unfinished downloads, with Safari's ids and the newest change inside the
-folder: a restored scan, an unreadable list of running apps, Safari open, or a change within the days, are left out.
+The module `downloads`. The same three rows as unfinished downloads, with Safari's ids and the newest change inside the
+folder: an unreadable list of running apps, Safari open, or a change within the days, are left out.
 Then a folder not read in full, left out (scan again); one holding a socket, pipe or device, left out; one with a file
 that is not yours or is locked, left out (needs an administrator); otherwise **offered**. A `.download` folder without
 `Info.plist` is not claimed. Nothing in Downloads is read unless you turn on its switch in Settings or grant Full Disk

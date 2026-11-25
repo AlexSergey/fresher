@@ -21,7 +21,7 @@ again.
 
 ## How the app decides
 
-The module `downloads`. A restored scan or a folder not read in full is left out (scan again); a macOS version that
+The module `downloads`. A folder not read in full is left out (scan again); a macOS version that
 cannot be read, left out; the running macOS older than the installer's version, kept for good (it is for a newer macOS);
 a socket, pipe or device inside, or something not yours or locked, kept for good; otherwise **offered**. A name not in the
 table is not claimed. `Install macOS ….app` in `/Applications` is never looked at. Nothing in Downloads is read unless

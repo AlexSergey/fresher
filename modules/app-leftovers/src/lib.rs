@@ -250,7 +250,6 @@ impl Module for AppLeftoversModule {
             installed: system.installed_apps().map_err(|_| NoSystem),
             complete: system.installed_apps_complete().is_ok(),
             running: system.running_apps().map_err(|_| NoSystem),
-            restored: cx.is_restored(),
             places_complete: self.places_complete(cx),
             now: Timestamp::from_system_time(cx.clock().now()),
             days,

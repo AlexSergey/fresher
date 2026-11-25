@@ -1,8 +1,6 @@
 //! Emitting the matches of a tree without reading the disk: every hit, in pre-order, as the `Match` a full scan sends
 //! for it.
 
-use std::path::PathBuf;
-
 use fresher_core::{ByteSize, Completeness, EntryKind, Inside, InterestSet, Match, Sizes};
 
 use crate::matcher::Matcher;
@@ -13,24 +11,11 @@ use crate::tree::node::{Flag, NodeIndex, Sums, masked};
 /// Calls `on_match` for every hit of `tree` (frozen): a folder's hit with no size, a whole claim with its subtree's
 /// files (partial when something in it was not read), a kept file's hit with its sizes, a link's with none. A whole
 /// claim on a folder that is not opaque is not reported, as a full scan does not report it. A whole claim carries the
-/// folder's inside as the walk recorded it (an incomplete one if none was). Nothing is emitted under a root of
-/// `skipped`. Returns the count.
-pub(crate) fn emit(
-    tree: &Tree,
-    matcher: &Matcher,
-    interests: &InterestSet,
-    skipped: &[PathBuf],
-    on_match: &mut dyn FnMut(Match),
-) -> u64 {
+/// folder's inside as the walk recorded it (an incomplete one if none was). Returns the count.
+pub(crate) fn emit(tree: &Tree, matcher: &Matcher, interests: &InterestSet, on_match: &mut dyn FnMut(Match)) -> u64 {
     let frozen = Frozen::new(tree);
     let mut count = 0;
-    let mut stack: Vec<NodeIndex> = tree
-        .roots()
-        .iter()
-        .rev()
-        .filter(|root| tree.path(root.node).is_none_or(|path| !skipped.contains(&path)))
-        .map(|root| root.node)
-        .collect();
+    let mut stack: Vec<NodeIndex> = tree.roots().iter().rev().map(|root| root.node).collect();
     let mut children = Vec::new();
     while let Some(index) = stack.pop() {
         let Some(node) = tree.node(index) else { continue };

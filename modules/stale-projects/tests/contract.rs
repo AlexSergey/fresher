@@ -6,19 +6,11 @@ mod support;
 
 use fresher_testing::ModuleRun;
 
-use crate::support::{System, kept, kept_with, not_claimed, offered, offered_with};
+use crate::support::{System, kept, not_claimed, offered, offered_with};
 
-/// The run of every home, of the kept home and of the offered home restored, and of the offered home handed in
-/// reverse.
+/// The run of every home, and of the offered home handed in reverse.
 fn every_run() -> Vec<ModuleRun> {
-    let runs = [
-        not_claimed(),
-        kept(),
-        kept_with(System::kept().restored()),
-        offered(),
-        offered_with(System::plain().restored()),
-        offered_with(System::plain().reversed()),
-    ];
+    let runs = [not_claimed(), kept(), offered(), offered_with(System::plain().reversed())];
     runs.into_iter().map(|(_, run)| run).collect()
 }
 
@@ -29,7 +21,7 @@ mod negative {
 
     #[test]
     fn what_only_passes_is_never_kept_for_good() {
-        assert_eq!(left_out_kinds(&stale_projects()).for_now, ["scan-again", "unread", "recent", "cache-recent"]);
+        assert_eq!(left_out_kinds(&stale_projects()).for_now, ["unread", "recent", "cache-recent"]);
     }
 }
 

@@ -41,7 +41,7 @@ leftOut: Array<LeftOutCount>,
 /**
  * What the module described and does not offer, in the order it gave it.
  */
-insights: Array<Insight>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "nothing-restored", scan: ScanId, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" } | { "type": "apps-measuring", done: number, total: number, };
+insights: Array<Insight>, } | { "type": "scan-coverage", scan: ScanId, coverage: Coverage, } | { "type": "scan-finished", scan: ScanId, outcome: ScanOutcome, kind: ScanKind, } | { "type": "setting-changed", key: SettingKey, value: SettingValue, } | { "type": "access-changed", status: AccessStatus, } | { "type": "cleanup-started", cleanup: CleanupId, method: Method, total: number, } | { "type": "cleanup-items", cleanup: CleanupId, done: number, items: Array<ItemReport>, } | { "type": "cleanup-finished", cleanup: CleanupId, report: CleanupReport, } | { "type": "findings-removed", scan: ScanId, findings: Array<FindingId>, } | { "type": "quit-requested" } | { "type": "apps-measuring", done: number, total: number, };
 
 /**
  * A refused command as the UI receives it: the error, and the text to show for it, built by `CommandError::text()`.
@@ -317,7 +317,7 @@ export type LeftOutKind = "kept" | "for-now";
 
 /**
  * Space a module describes and never offers (`FindingSink::describe`): never selectable, never counted in a total,
- * never stored or cached. It travels only in the module's `ModuleFinished`; a restored scan describes again.
+ * never stored or cached. It travels only in the module's `ModuleFinished`; every scan describes again.
  */
 export type Insight = { identity: string, title: Text, summary: Text, figures: Array<Figure>, parts: Array<InsightPart>, notes: Array<Text>, };
 
@@ -346,7 +346,7 @@ export type ScanOutcome = { "kind": "completed" } | { "kind": "partial" } | { "k
 /**
  * How a scan read the disk.
  */
-export type ScanKind = { "kind": "full" } | { "kind": "rescan", changedFolders: number, } | { "kind": "restored", taken: Timestamp, };
+export type ScanKind = { "kind": "full" } | { "kind": "rescan", changedFolders: number, };
 
 /**
  * The danger level of a category or a finding, from `Safe` (comes back by itself) to `High` (the user's own data).

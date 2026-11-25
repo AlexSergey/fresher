@@ -59,3 +59,9 @@ the app registers without one fails the sandbox autotest. Details: [`testing.md`
 MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0, Unlicense, CC0-1.0. Anything else is asked about
 before it is added. Development tools that never ship in the app may be under any open-source licence. Details:
 [`restrictions/dependencies.md`](./restrictions/dependencies.md).
+
+## 10. Nothing happens without the user
+
+The app starts nothing on its own: opening it runs no scan, restores no last result and starts no background work.
+Every read of the disk begins with the user's press (Scan, Scan again, Check again); the scan cache only makes such a
+scan faster, it never shows a result by itself (the user, 2026-11-25). Details: [`goal.md`](./goal.md), section 8.

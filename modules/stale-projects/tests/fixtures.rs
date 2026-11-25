@@ -37,7 +37,7 @@ fn identities(run: &ModuleRun) -> Vec<&str> {
 mod negative {
     use fresher_core::{ModuleOutcome, NewFinding};
 
-    use crate::support::{System, kept, kept_with, not_claimed, offered_with};
+    use crate::support::{kept, not_claimed};
     use crate::{BUILD_OUTPUT, CACHE, DEPENDENCIES, PYTHON, left_out};
 
     #[test]
@@ -64,31 +64,6 @@ mod negative {
                 (CACHE, "cache-recent", 1, 512),
             ]
         );
-    }
-
-    #[test]
-    fn a_restored_run_keeps_everything_to_scan_again() {
-        let (_tree, run) = kept_with(System::kept().restored());
-
-        assert_eq!(run.findings, Vec::<NewFinding>::new());
-        assert_eq!(
-            left_out(&run),
-            [
-                (BUILD_OUTPUT, "scan-again", 1, 512),
-                (DEPENDENCIES, "scan-again", 5, 2560),
-                (PYTHON, "scan-again", 1, 512),
-                (CACHE, "scan-again", 1, 512)
-            ]
-        );
-    }
-
-    #[test]
-    fn a_restored_run_of_the_offered_home_offers_nothing() {
-        let (_tree, run) = offered_with(System::plain().restored());
-
-        assert_eq!(run.findings, Vec::<NewFinding>::new());
-        assert_eq!(run.left_out.len(), 17);
-        assert!(run.left_out.iter().all(|item| item.reason.as_str() == "stale-projects.left-out.scan-again"));
     }
 }
 

@@ -116,14 +116,6 @@ mod negative {
     }
 
     #[test]
-    fn a_scan_restored_from_the_cache_offers_nothing() {
-        let (_tree, run) = scan("temp-old", System::plain().restored());
-
-        assert_eq!(run.findings, Vec::<NewFinding>::new());
-        assert_eq!(left_out(&run), kept("temp.left-out.scan-again", OLD.len()));
-    }
-
-    #[test]
     fn a_setting_of_14_days_keeps_the_ten_day_old_item() {
         let (_tree, run) = scan("temp-old", System::plain().stored(r#"{"temp.older-than-days": 14}"#));
 

@@ -409,7 +409,7 @@ mod tests {
                 scan: ScanId::new(3),
                 finished: Timestamp::from_secs(200),
                 outcome: ScanOutcome::Completed,
-                kind: ScanKind::Restored { taken: Timestamp::from_secs(100) },
+                kind: ScanKind::Rescan { changed_folders: 4 },
                 coverage: Coverage::default(),
                 changed_since: None,
                 settings_changed: false,
@@ -423,7 +423,7 @@ mod tests {
                     "scan": 3,
                     "finished": 200,
                     "outcome": { "kind": "completed" },
-                    "kind": { "kind": "restored", "taken": 100 },
+                    "kind": { "kind": "rescan", "changedFolders": 4 },
                     "coverage": { "notEntered": [], "unreadable": [] },
                     "settingsChanged": false,
                 })

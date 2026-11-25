@@ -131,18 +131,14 @@ impl Scan {
         Self { running: Arc::new(running), commands: FakeCommandRunner::default() }
     }
 
+    /// Hands `matches` to a new module in their order, then calls `finish`.
     fn run(&self, matches: &[Match]) -> Recorded {
-        self.run_as(matches, false)
-    }
-
-    /// Hands `matches` to a new module in their order, then calls `finish`; every context restored when `restored`.
-    fn run_as(&self, matches: &[Match], restored: bool) -> Recorded {
         let (module, cancel) = (XcodeModule::new().unwrap(), CancelToken::new());
         let mut out = Recorded::default();
         for found in matches {
-            self.with_context(&module, &cancel, restored, |cx| module.on_match(found, &cx, &mut out).unwrap());
+            self.with_context(&module, &cancel, |cx| module.on_match(found, &cx, &mut out).unwrap());
         }
-        self.with_context(&module, &cancel, restored, |cx| module.finish(&cx.complete_walk(), &mut out).unwrap());
+        self.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out).unwrap());
         out
     }
 
@@ -150,7 +146,6 @@ impl Scan {
         &self,
         module: &XcodeModule,
         cancel: &CancelToken,
-        restored: bool,
         call: impl FnOnce(ModuleContext<'_>) -> T,
     ) -> T {
         let system = SystemFacts::new(&SystemPorts {
@@ -165,8 +160,7 @@ impl Scan {
             .unwrap()
             .resolve(&StoredSettings::default())
             .module(module.descriptor().id());
-        let cx = ModuleContext::new(&clock, &self.commands, &system, &settings, cancel);
-        call(if restored { cx.restored() } else { cx })
+        call(ModuleContext::new(&clock, &self.commands, &system, &settings, cancel))
     }
 }
 
@@ -301,11 +295,11 @@ mod negative {
         let (scan, module, cancel) = (Scan::new(), XcodeModule::new().unwrap(), CancelToken::new());
         let mut out = Recorded::default();
         for found in mixed() {
-            scan.with_context(&module, &cancel, false, |cx| module.on_match(&found, &cx, &mut out).unwrap());
+            scan.with_context(&module, &cancel, |cx| module.on_match(&found, &cx, &mut out).unwrap());
         }
 
         cancel.cancel();
-        let finished = scan.with_context(&module, &cancel, false, |cx| module.finish(&cx.complete_walk(), &mut out));
+        let finished = scan.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out));
 
         assert_eq!(finished, Err(ModuleError::Cancelled));
         assert_eq!(out, Recorded::default());
@@ -317,10 +311,10 @@ mod negative {
         let (scan, module, cancel) = (Scan::new(), XcodeModule::new().unwrap(), CancelToken::new());
         let mut out = CancelsAtFirstFinding { cancel: cancel.clone(), recorded: Recorded::default() };
         for found in mixed() {
-            scan.with_context(&module, &cancel, false, |cx| module.on_match(&found, &cx, &mut out).unwrap());
+            scan.with_context(&module, &cancel, |cx| module.on_match(&found, &cx, &mut out).unwrap());
         }
 
-        let finished = scan.with_context(&module, &cancel, false, |cx| module.finish(&cx.complete_walk(), &mut out));
+        let finished = scan.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out));
 
         assert_eq!(finished, Err(ModuleError::Cancelled));
         assert_eq!(out.recorded.identities(), ["simulator-caches"]);
@@ -508,10 +502,9 @@ mod positive {
 }
 
 mod property {
-    use fresher_testing::FakeRunningApps;
     use proptest::prelude::*;
 
-    use super::{Scan, mixed, running};
+    use super::{Scan, mixed};
 
     /// Some of `mixed()`, in any order.
     fn any_matches() -> impl Strategy<Value = Vec<fresher_core::Match>> {
@@ -519,13 +512,6 @@ mod property {
     }
 
     proptest! {
-        #[test]
-        fn a_restored_context_decides_the_same(matches in any_matches()) {
-            let scan = Scan::running(FakeRunningApps::new(vec![running("Mail", &["com.example.Mail"])]));
-
-            prop_assert_eq!(scan.run_as(&matches, true), scan.run_as(&matches, false));
-        }
-
         #[test]
         fn the_verdict_does_not_depend_on_the_order_of_matches(matches in any_matches()) {
             let scan = Scan::new();

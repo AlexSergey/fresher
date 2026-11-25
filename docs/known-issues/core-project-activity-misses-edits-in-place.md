@@ -29,5 +29,5 @@ folders its tools make again are offered (Low, Medium for an environment), nothi
 confirmation for that exact set, and it goes to the Trash.
 
 - Count the newest time of the files the walk does keep (the big ones), tying the answer to the fold threshold.
-- Read the project's few top-level files' times after the walk (a new port, and a restored scan cannot make that read).
+- Read the project's few top-level files' times after the walk (a new port).
 - A per-folder switch in the settings to keep a project, which the ignore list ([idea](../ideas/ignore-list.md)) would give.

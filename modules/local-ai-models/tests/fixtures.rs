@@ -241,19 +241,10 @@ mod positive {
     fn the_answers_do_not_depend_on_the_order_of_the_matches() {
         for name in ["local-ai-models-not-claimed", "local-ai-models-kept", "local-ai-models-offered"] {
             let (_tree, walked) = scan(name);
-            let (_tree, reversed) = scan_with(name, FakeRunningApps::default(), false, MatchOrder::Reversed);
+            let (_tree, reversed) = scan_with(name, FakeRunningApps::default(), MatchOrder::Reversed);
 
             assert_eq!(walked.golden().unwrap(), reversed.golden().unwrap(), "{name}");
         }
-    }
-
-    #[test]
-    fn a_scan_restored_from_the_cache_offers_the_same() {
-        let (_tree, walked) = offered();
-        let (_tree, restored) =
-            scan_with("local-ai-models-offered", FakeRunningApps::default(), true, MatchOrder::Walked);
-
-        assert_eq!(restored.golden().unwrap(), walked.golden().unwrap());
     }
 
     /// An Ollama finding: its identity, its title, its reason and the other model it names, its parts in the home.
@@ -344,15 +335,13 @@ mod positive {
     }
 
     #[test]
-    fn the_ollama_answers_do_not_depend_on_the_order_of_the_matches_or_the_cache() {
+    fn the_ollama_answers_do_not_depend_on_the_order_of_the_matches() {
         for name in OLLAMA_HOMES {
             let home = format!("local-ai-models-ollama-{name}");
             let (_tree, walked) = ollama(name);
-            let (_tree, reversed) = scan_with(&home, FakeRunningApps::default(), false, MatchOrder::Reversed);
-            let (_tree, restored) = scan_with(&home, FakeRunningApps::default(), true, MatchOrder::Walked);
+            let (_tree, reversed) = scan_with(&home, FakeRunningApps::default(), MatchOrder::Reversed);
 
             assert_eq!(walked.golden().unwrap(), reversed.golden().unwrap(), "{name}");
-            assert_eq!(walked.golden().unwrap(), restored.golden().unwrap(), "{name}");
         }
     }
 

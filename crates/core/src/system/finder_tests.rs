@@ -35,11 +35,11 @@ impl DiskWalk for Answers {
         _on_match: &mut dyn FnMut(Match),
         _on_progress: &mut dyn FnMut(WalkProgress),
     ) -> Result<WalkSummary, WalkError> {
-        Err(WalkError::NothingToRestore)
+        Err(WalkError::Cancelled)
     }
 
     fn commit(&self, _claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {
-        Err(WalkError::NothingToRestore)
+        Err(WalkError::Cancelled)
     }
 
     fn subtrees(&self, queries: &[SubtreeQuery]) -> Vec<Option<Subtree>> {

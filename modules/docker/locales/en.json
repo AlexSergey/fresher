@@ -6,7 +6,6 @@
   "docker.runtime.orbstack.gives-back": "OrbStack gives the space freed inside it back to your Mac by itself.",
   "docker.summary.answered": "{runtime} uses {inside} inside its disk file; {unused} of it is unused.",
   "docker.summary.stopped": "{runtime} is not running, so Fresher cannot see what is inside. Start it and scan again; Fresher never starts it.",
-  "docker.summary.restored": "These numbers are from your last scan. Scan again to see what is inside {runtime}.",
   "docker.summary.unknown": "Fresher could not tell whether {runtime} is running, so it did not ask it.",
   "docker.summary.no-answer": "{runtime} did not answer. Scan again once it has fully started.",
   "docker.summary.unreadable": "{runtime} answered in a way Fresher cannot read, so it shows no numbers rather than guess.",

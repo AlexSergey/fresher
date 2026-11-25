@@ -20,8 +20,6 @@ pub(crate) struct Item {
 /// What the scan knows besides the item.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Scan {
-    /// The scan is restored from the cache: its times are as old as the cached scan.
-    pub(crate) restored: bool,
     pub(crate) now: Timestamp,
     /// The setting's days.
     pub(crate) days: u32,
@@ -30,7 +28,6 @@ pub(crate) struct Scan {
 /// Why a file is left out (design, section 8).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Reason {
-    ScanAgain,
     Special,
     NotYours,
     Locked,
@@ -39,12 +36,11 @@ pub(crate) enum Reason {
 
 impl Reason {
     /// Every reason, in the order the module declares them.
-    pub(crate) const ALL: [Self; 5] = [Self::ScanAgain, Self::Special, Self::NotYours, Self::Locked, Self::Recent];
+    pub(crate) const ALL: [Self; 4] = [Self::Special, Self::NotYours, Self::Locked, Self::Recent];
 
     /// The reason's text key.
     pub(crate) const fn key(self) -> &'static str {
         match self {
-            Self::ScanAgain => "logs.left-out.scan-again",
             Self::Special => "logs.left-out.special",
             Self::NotYours => "logs.left-out.not-yours",
             Self::Locked => "logs.left-out.locked",
@@ -52,12 +48,12 @@ impl Reason {
         }
     }
 
-    /// Whether the file is kept for what it is (a socket, not the user's) or for what goes on now (a restored scan, a
-    /// recent change, a lock the user can lift).
+    /// Whether the file is kept for what it is (a socket, not the user's) or for what goes on now (a recent change, a
+    /// lock the user can lift).
     pub(crate) const fn kind(self) -> LeftOutKind {
         match self {
             Self::Special | Self::NotYours => LeftOutKind::Kept,
-            Self::ScanAgain | Self::Locked | Self::Recent => LeftOutKind::ForNow,
+            Self::Locked | Self::Recent => LeftOutKind::ForNow,
         }
     }
 }
@@ -76,21 +72,17 @@ pub(crate) enum Verdict {
 /// The first row that applies to `item`:
 ///
 /// 1. a folder or a link: not claimed;
-/// 3. a state or lock name: not claimed;
-/// 4. the scan is restored: `ScanAgain`;
-/// 5. a socket, a pipe or a device: `Special`;
-/// 6. not the user's, the system's immutable flag, or restricted: `NotYours`;
-/// 7. the user's lock: `Locked`;
-/// 8. the newest of the modification and the status change unknown, in the future or not more than the days ago:
+/// 2. a state or lock name: not claimed;
+/// 3. a socket, a pipe or a device: `Special`;
+/// 4. not the user's, the system's immutable flag, or restricted: `NotYours`;
+/// 5. the user's lock: `Locked`;
+/// 6. the newest of the modification and the status change unknown, in the future or not more than the days ago:
 ///    `Recent`;
-/// 9. offered.
+/// 7. offered.
 pub(crate) fn decide(item: &Item, scan: &Scan) -> Verdict {
     let facts = item.facts;
     if matches!(item.kind, EntryKind::Folder | EntryKind::Symlink) || item.state_or_lock {
         return Verdict::NotClaimed;
-    }
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
     }
     if item.kind == EntryKind::Other {
         return Verdict::LeftOut(Reason::Special);

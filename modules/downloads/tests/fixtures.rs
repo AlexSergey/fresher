@@ -132,19 +132,12 @@ mod negative {
     }
 
     #[test]
-    fn a_restored_run_keeps_everything_to_scan_again() {
-        let (_tree, run) = kept_with(System::kept().restored());
+    fn a_macos_installer_not_read_in_full_is_kept_to_scan_again() {
+        let (_tree, run) = offered_with(System::offered().avoiding("Downloads/Install macOS Sonoma.app/Contents"));
 
-        assert_eq!(run.findings, Vec::<NewFinding>::new());
         assert_eq!(
-            left_out(&run),
-            [
-                (INSTALLERS, "scan-again", 2),
-                (LARGE, "scan-again", 1),
-                (MACOS, "scan-again", 1),
-                (SAFARI, "scan-again", 2),
-                (UNFINISHED, "scan-again", 2),
-            ]
+            left_out(&run).iter().filter(|(category, ..)| *category == MACOS).collect::<Vec<_>>(),
+            [&(MACOS, "scan-again", 1)]
         );
     }
 

@@ -136,24 +136,14 @@ mod negative {
 
     /// The open app is kept for that first; every other id is kept to scan again, the ones changed lately included.
     #[test]
-    fn a_restored_scan_or_an_unseen_place_keeps_by_precedence_every_id_to_scan_again() {
-        for (how, system) in
-            [("restored", System::kept().restored()), ("logs avoided", System::kept().avoiding("Library/Logs"))]
-        {
-            let (_tree, run) = kept_with(system);
+    fn an_unseen_place_keeps_by_precedence_every_id_to_scan_again() {
+        let (_tree, run) = kept_with(System::kept().avoiding("Library/Logs"));
 
-            assert_eq!(run.findings, Vec::<NewFinding>::new(), "{how}");
-            assert_eq!(
-                left_out(&run),
-                [
-                    (CACHES, "running", 2),
-                    (CACHES, "scan-again", 7),
-                    (DATA, "scan-again", 1),
-                    (SETTINGS, "scan-again", 1)
-                ],
-                "{how}"
-            );
-        }
+        assert_eq!(run.findings, Vec::<NewFinding>::new());
+        assert_eq!(
+            left_out(&run),
+            [(CACHES, "running", 2), (CACHES, "scan-again", 7), (DATA, "scan-again", 1), (SETTINGS, "scan-again", 1)]
+        );
     }
 }
 

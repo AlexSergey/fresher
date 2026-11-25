@@ -30,13 +30,13 @@ fn aged(secs: u64) -> Item {
     Item { modified: ago(secs), changed: ago(secs), ..file() }
 }
 
-fn scan(restored: bool, days: u32) -> Scan {
-    Scan { restored, now: Timestamp::from_secs(NOW), days }
+fn scan(days: u32) -> Scan {
+    Scan { now: Timestamp::from_secs(NOW), days }
 }
 
-/// Decides `item` now, with the default days and a fresh scan.
+/// Decides `item` now, with the default days.
 fn verdict(item: &Item) -> Verdict {
-    decide(item, &scan(false, DAYS))
+    decide(item, &scan(DAYS))
 }
 
 fn left_out(reason: Reason) -> Verdict {
@@ -52,7 +52,7 @@ fn facts(change: impl FnOnce(&mut EntryFacts)) -> EntryFacts {
 mod negative {
     use fresher_core::{EntryKind, Timestamp};
 
-    use super::{DAY, DAYS, N, NOW, aged, facts, file, left_out, scan, verdict};
+    use super::{DAY, N, NOW, aged, facts, file, left_out, scan, verdict};
     use crate::decide::{Item, Reason, Verdict, decide};
 
     #[test]
@@ -68,14 +68,6 @@ mod negative {
     #[test]
     fn a_state_or_lock_file_is_not_claimed() {
         assert_eq!(verdict(&Item { state_or_lock: true, ..file() }), Verdict::NotClaimed);
-    }
-
-    #[test]
-    fn a_restored_scan_keeps_everything_even_what_would_be_offered() {
-        let locked = facts(|facts| facts.user_immutable = true);
-        for item in [file(), aged(60), Item { kind: EntryKind::Other, ..file() }, Item { facts: locked, ..file() }] {
-            assert_eq!(decide(&item, &scan(true, DAYS)), left_out(Reason::ScanAgain), "{item:?}");
-        }
     }
 
     #[test]
@@ -137,25 +129,12 @@ mod negative {
         let item = aged(10 * DAY);
 
         assert!(matches!(verdict(&item), Verdict::Offered { .. }));
-        assert_eq!(decide(&item, &scan(false, 14)), left_out(Reason::Recent));
+        assert_eq!(decide(&item, &scan(14)), left_out(Reason::Recent));
     }
 
     #[test]
-    fn the_structural_rows_come_before_restored() {
-        for item in [
-            Item { kind: EntryKind::Folder, ..file() },
-            Item { kind: EntryKind::Symlink, ..file() },
-            Item { kind: EntryKind::Other, state_or_lock: true, ..file() },
-        ] {
-            assert_eq!(decide(&item, &scan(true, DAYS)), Verdict::NotClaimed, "{item:?}");
-        }
-    }
-
-    #[test]
-    fn restored_comes_before_special() {
-        let socket = Item { kind: EntryKind::Other, ..file() };
-
-        assert_eq!(decide(&socket, &scan(true, DAYS)), left_out(Reason::ScanAgain));
+    fn a_state_or_lock_name_comes_before_special() {
+        assert_eq!(verdict(&Item { kind: EntryKind::Other, state_or_lock: true, ..file() }), Verdict::NotClaimed);
     }
 
     #[test]
@@ -191,7 +170,6 @@ mod negative {
         ] {
             assert_eq!(verdict(&fresh(item)), expected, "{item:?}");
         }
-        assert_eq!(decide(&fresh(file()), &scan(true, DAYS)), left_out(Reason::ScanAgain));
     }
 }
 
@@ -216,13 +194,7 @@ mod positive {
 
         assert_eq!(
             keys,
-            [
-                "logs.left-out.scan-again",
-                "logs.left-out.special",
-                "logs.left-out.not-yours",
-                "logs.left-out.locked",
-                "logs.left-out.recent",
-            ]
+            ["logs.left-out.special", "logs.left-out.not-yours", "logs.left-out.locked", "logs.left-out.recent"]
         );
     }
 }
@@ -243,7 +215,7 @@ mod property {
             modified in time(), changed in time(), now in 0..4_000_000_000_u64, days in 7..=90_u32,
         ) {
             let item = Item { kind: EntryKind::File, facts: EntryFacts::REMOVABLE, modified, changed, state_or_lock: false };
-            let scan = Scan { restored: false, now: Timestamp::from_secs(now), days };
+            let scan = Scan { now: Timestamp::from_secs(now), days };
 
             if let Verdict::Offered { age_days } = decide(&item, &scan) {
                 let (modified, changed) = (modified.unwrap().secs(), changed.unwrap().secs());

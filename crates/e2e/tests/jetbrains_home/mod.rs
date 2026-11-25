@@ -97,13 +97,6 @@ impl Flow {
         until(&events, |event| matches!(event, Event::ScanFinished { .. }))
     }
 
-    /// Shows the last scan again without reading the disk, and gives the events up to the end.
-    pub(crate) fn restore(&self) -> Vec<Event> {
-        let events = self.engine.subscribe();
-        self.engine.restore().unwrap();
-        until(&events, |event| matches!(event, Event::ScanFinished { .. }))
-    }
-
     /// The path of `relative` in the fixture tree.
     pub(crate) fn path(&self, relative: &str) -> PathBuf {
         self.fixture.join(relative)

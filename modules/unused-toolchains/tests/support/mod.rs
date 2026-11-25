@@ -27,12 +27,11 @@ pub(crate) fn home(name: &str) -> FixtureTree {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Variant {
     pub(crate) node_versions: bool,
-    pub(crate) restored: bool,
     pub(crate) order: MatchOrder,
 }
 
 impl Variant {
-    pub(crate) const DEFAULT: Self = Self { node_versions: true, restored: false, order: MatchOrder::Walked };
+    pub(crate) const DEFAULT: Self = Self { node_versions: true, order: MatchOrder::Walked };
 }
 
 /// The home `name` scanned as `variant` says, the clock at `FIXTURE_NOW`.
@@ -40,7 +39,6 @@ pub(crate) fn scan_as(name: &str, variant: Variant) -> (FixtureTree, ModuleRun) 
     let tree = home(name);
     let mut ports = Ports::at(FIXTURE_NOW);
     ports.settings.values.insert("unused-toolchains.node-versions".into(), variant.node_versions.into());
-    ports.restored = variant.restored;
     ports.order = variant.order;
     let run = run_module(&unused_toolchains(), &tree, &ports).unwrap();
     (tree, run)

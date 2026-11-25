@@ -70,9 +70,9 @@ Only `fresher-macos` and the adapters on top of it know what macOS guards. A mod
   answer is remembered. With Full Disk Access granted they are `Granted` without being touched. Once macOS refused
   one, the notice and the Permissions row offer "Open System Settings" at its pane.
 - A module whose category needs a guarded folder runs in the scan that first tries the folder: the engine learns the
-  answer of every try (`AccessChanged` when it changed a state) before it decides which modules can run. A restore
-  tries nothing and learns nothing; its coverage is the cached scan's: the guarded places on that scan's avoid list,
-  each with its capability's state now.
+  answer of every try (`AccessChanged` when it changed a state) before it decides which modules can run. Nothing is
+  tried at launch: the app starts no scan and restores no last result (rules, 10), so the first try is in the scan
+  the user starts.
 - The walk is given the places it must not enter as its avoid list, built from the capability state as the switches
   allow it (`coverage::as_opted` in the engine, the same view that decides the modules' availability and the
   modules listed for the UI): with Full Disk Access every guarded place may be entered; without it a place whose

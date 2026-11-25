@@ -23,27 +23,21 @@ pub(crate) fn home(name: &str) -> FixtureTree {
     FixtureTree::from_toml(&fixtures().join("homes").join(format!("{name}.toml"))).unwrap()
 }
 
-/// The system a home is scanned with: the stored settings (as JSON), whether the scan is restored from the cache, and
-/// the order the matches come in.
+/// The system a home is scanned with: the stored settings (as JSON) and the order the matches come in.
 #[derive(Clone, Copy)]
 pub(crate) struct System {
     pub(crate) stored: &'static str,
-    pub(crate) restored: bool,
     pub(crate) order: MatchOrder,
 }
 
 impl System {
-    /// Every setting at its default, a walked scan.
+    /// Every setting at its default, the matches in the walk's order.
     pub(crate) fn plain() -> Self {
-        Self { stored: "{}", restored: false, order: MatchOrder::Walked }
+        Self { stored: "{}", order: MatchOrder::Walked }
     }
 
     pub(crate) fn stored(self, stored: &'static str) -> Self {
         Self { stored, ..self }
-    }
-
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
     }
 }
 
@@ -51,7 +45,7 @@ impl System {
 pub(crate) fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
     let tree = home(name);
     let settings: StoredSettings = serde_json::from_str(system.stored).unwrap();
-    let ports = Ports { settings, restored: system.restored, order: system.order, ..Ports::at(FIXTURE_NOW) };
+    let ports = Ports { settings, order: system.order, ..Ports::at(FIXTURE_NOW) };
     let run = run_module(&logs(), &tree, &ports).unwrap();
     (tree, run)
 }

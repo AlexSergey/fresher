@@ -38,26 +38,19 @@ pub(crate) fn editor() -> RunningApp {
     running_app("Editor", &["com.example.Editor"]).unwrap()
 }
 
-/// The system a home is scanned with: the installed and the open apps, the stored settings (as JSON), whether the
-/// scan is restored from the cache, and the order the matches come in.
+/// The system a home is scanned with: the installed and the open apps, the stored settings (as JSON) and the
+/// order the matches come in.
 pub(crate) struct System {
     pub(crate) installed: Vec<InstalledApp>,
     pub(crate) running: FakeRunningApps,
     pub(crate) stored: &'static str,
-    pub(crate) restored: bool,
     pub(crate) order: MatchOrder,
 }
 
 impl System {
     /// `com.example.Viewer` installed, nothing open, every setting at its default, a walked scan.
     pub(crate) fn plain() -> Self {
-        Self {
-            installed: vec![viewer()],
-            running: FakeRunningApps::default(),
-            stored: "{}",
-            restored: false,
-            order: MatchOrder::Walked,
-        }
+        Self { installed: vec![viewer()], running: FakeRunningApps::default(), stored: "{}", order: MatchOrder::Walked }
     }
 
     pub(crate) fn running(self, running: FakeRunningApps) -> Self {
@@ -66,10 +59,6 @@ impl System {
 
     pub(crate) fn stored(self, stored: &'static str) -> Self {
         Self { stored, ..self }
-    }
-
-    pub(crate) fn restored(self) -> Self {
-        Self { restored: true, ..self }
     }
 }
 
@@ -81,7 +70,6 @@ pub(crate) fn scan(name: &str, system: System) -> (FixtureTree, ModuleRun) {
         settings,
         apps: Arc::new(FakeInstalledApps::new(system.installed)),
         running: Arc::new(system.running),
-        restored: system.restored,
         order: system.order,
         ..Ports::at(FIXTURE_NOW)
     };

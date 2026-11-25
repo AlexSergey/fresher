@@ -59,12 +59,11 @@ fn gone() -> Vec<Leftover> {
 }
 
 /// What the system says, and what Spotlight answers; by default nothing installed or running, every list read in
-/// full, every place seen, a walked scan, 30 days, and Spotlight finds nothing.
+/// full, every place seen, 30 days, and Spotlight finds nothing.
 struct World {
     installed: Result<Vec<InstalledApp>, NoSystem>,
     complete: bool,
     running: Result<RunningSet, NoSystem>,
-    restored: bool,
     places_complete: bool,
     days: u32,
     search: Search,
@@ -76,7 +75,6 @@ impl Default for World {
             installed: Ok(Vec::new()),
             complete: true,
             running: Ok(RunningSet::default()),
-            restored: false,
             places_complete: true,
             days: 30,
             search: Search::NotFound,
@@ -101,7 +99,6 @@ impl World {
             installed: self.installed.as_deref().map_err(|&error| error),
             complete: self.complete,
             running: self.running.as_ref().map_err(|&error| error),
-            restored: self.restored,
             places_complete: self.places_complete,
             now: Timestamp::from_secs(NOW),
             days: self.days,
@@ -264,13 +261,6 @@ mod negative {
     }
 
     #[test]
-    fn a_restored_scan_keeps_everything() {
-        let world = World { restored: true, ..World::default() };
-
-        assert_eq!(world.verdict(), IdVerdict::LeftOut(Reason::ScanAgain));
-    }
-
-    #[test]
     fn a_place_not_seen_in_full_keeps_everything() {
         let world = World { places_complete: false, ..World::default() };
 
@@ -364,7 +354,7 @@ mod negative {
 
         #[test]
         fn running_holds_over_the_scan() {
-            let world = World { restored: true, places_complete: false, ..World::running(&[GONE]) };
+            let world = World { places_complete: false, ..World::running(&[GONE]) };
 
             assert_eq!(world.verdict(), IdVerdict::LeftOut(Reason::Running));
         }
@@ -394,7 +384,6 @@ mod negative {
                 World { complete: false, ..World::default() },
                 World { running: Err(NoSystem), ..World::default() },
                 World::running(&[GONE]),
-                World { restored: true, ..World::default() },
                 World { places_complete: false, ..World::default() },
                 World { days: 365, ..World::default() },
             ];

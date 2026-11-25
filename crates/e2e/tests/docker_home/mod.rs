@@ -3,7 +3,7 @@
 //! real settings file, scan cache and journal in the sandbox's data folder; the real `DiskCleaner` reaching only inside
 //! the sandbox folder, with a fake Trash at `home/.Trash` (the shared flow home of `support/home*.rs`). `OrbStack` is
 //! installed; whether it is open and what the command runner answers are what a flow sets, and the flow keeps the
-//! runner to read every call made. `restart` builds a new engine on the same files, as when the app starts again.
+//! runner to read every call made.
 
 #[path = "../support/events.rs"]
 mod events;
@@ -133,14 +133,6 @@ impl Home {
         flow.engine =
             engine_with(&flow.sandbox, &flow.stated, &flow.open_files, parts(setup.running), extras(&commands));
         Self { flow, commands, read }
-    }
-
-    /// A new engine on the same files in `setup`: the app started again. Its runner takes the old one's place.
-    pub(crate) fn restart(&mut self, setup: Setup) {
-        self.commands = Arc::new(setup.commands(&self.flow.sandbox.home()));
-        let parts = parts(setup.running);
-        self.flow.engine =
-            engine_with(&self.flow.sandbox, &self.flow.stated, &self.flow.open_files, parts, extras(&self.commands));
     }
 }
 

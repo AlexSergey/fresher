@@ -1,7 +1,7 @@
 //! The temp module end to end: a fixture sandbox whose two temporary places lie beside its home (outside the scan
 //! root), the real scanner (its reader seen through the facts lens), the `temp` module, the real settings file, scan
-//! cache and journal, and the real `DiskCleaner` reaching only inside the sandbox, with a fake Trash. The nine flows
-//! of the design's section 9, "Core e2e"; each is a function that asserts and gives its report, and the reports of
+//! cache and journal, and the real `DiskCleaner` reaching only inside the sandbox, with a fake Trash. The flows of the
+//! design's section 9, "Core e2e"; each is a function that asserts and gives its report, and the reports of
 //! the flows whose times are the fixture's are the golden file (flows 2 and 3 make their entries now, on the real
 //! disk).
 //!
@@ -30,8 +30,8 @@ mod flows {
     use std::time::{Duration, SystemTime};
 
     use fresher_core::{
-        CommandError, DangerLevel, Event, HiddenBy, IgnoreTarget, IgnoredEntry, ItemOutcome, ModuleGroup, PartKind,
-        PutBackOutcome, ScanKind, SettingUpdate, SettingValue, SkipCode, SkipReason,
+        CommandError, DangerLevel, HiddenBy, IgnoreTarget, IgnoredEntry, ItemOutcome, ModuleGroup, PartKind,
+        PutBackOutcome, SettingUpdate, SettingValue, SkipCode, SkipReason,
     };
     use fresher_testing::{FIXTURE_NOW, TreeReport, make_pipe};
     use serde_json::{Value, json};
@@ -241,30 +241,6 @@ mod flows {
         json!({ "outcomes": outcomes })
     }
 
-    /// Flow 5: a restore at launch reads no folder, so it knows no item's times: it emits nothing inside a place
-    /// (design, decision 21), so nothing is offered or left out there, while the map still shows the places; a rescan
-    /// offers again.
-    pub(crate) fn restored_at_launch() -> Value {
-        let mut flow = Flow::new(Home::Flow);
-        flow.scan();
-        flow.restart(Setup::at(FIXTURE_NOW));
-
-        let restored = flow.restore();
-
-        assert!(matches!(restored.last(), Some(Event::ScanFinished { kind: ScanKind::Restored { .. }, .. })));
-        assert_eq!(flow.findings(), []);
-        assert_eq!(left_out(&restored), []);
-        let map = flow.engine.storage_map().unwrap();
-        assert_eq!(map.volumes[0].places().len(), 2);
-        let explained = map.volumes[0].parts().iter().find(|part| part.kind == PartKind::Explained);
-        assert!(explained.is_none_or(|part| part.sizes.logical.bytes() == 0), "{explained:?}");
-        let first = json!({ "findings": flow.findings(), "leftOut": left_out(&restored) });
-        let events = flow.scan();
-        assert_eq!(flow.findings(), offered(&OLD));
-        assert_eq!(left_out(&events), reasons(&[("recent", 1), ("system", 1)]));
-        json!({ "restored": first, "rescan": { "findings": flow.findings(), "leftOut": left_out(&events) } })
-    }
-
     /// Flow 6, first half: fewer days than seven is refused; the value stays seven.
     pub(crate) fn fewer_days_refused() -> Value {
         let flow = Flow::new(Home::Flow);
@@ -371,7 +347,7 @@ mod flows {
 mod negative {
     use crate::flows::{
         changed_before_the_act, fewer_days_refused, ignoring, place_no_longer_walked,
-        real_sockets_and_pipes_within_timeout, real_times_kept, restored_at_launch,
+        real_sockets_and_pipes_within_timeout, real_times_kept,
     };
 
     #[test]
@@ -387,11 +363,6 @@ mod negative {
     #[test]
     fn a_file_rewritten_after_the_plan_is_skipped_and_the_rest_goes() {
         changed_before_the_act();
-    }
-
-    #[test]
-    fn a_restore_at_launch_offers_nothing_and_a_rescan_offers_again() {
-        restored_at_launch();
     }
 
     #[test]
@@ -414,7 +385,7 @@ mod positive {
     use crate::flows::{
         changed_before_the_act, clean_and_put_back, fewer_days_refused, ignoring, more_days_keep_more,
         place_no_longer_walked, place_walked_again, real_sockets_and_pipes_within_timeout, real_times_kept,
-        real_times_later, restored_at_launch, storage_map,
+        real_times_later, storage_map,
     };
     use crate::support::check_golden;
 
@@ -457,7 +428,6 @@ mod positive {
             "realTimesLater": real_times_later(kept, changed),
             "realSocketsAndPipes": real_sockets_and_pipes_within_timeout(),
             "changedBeforeTheAct": changed_before_the_act(),
-            "restoredAtLaunch": restored_at_launch(),
             "fewerDaysRefused": fewer_days_refused(),
             "moreDaysKeepMore": more_days_keep_more(),
             "ignoring": ignoring(),

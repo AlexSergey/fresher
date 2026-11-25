@@ -9,7 +9,7 @@ use fresher_testing::{FakeRunningApps, ModuleRun};
 use crate::support::{System, caches, kept, kept_with, not_folders, scan, similar_names, unsigned};
 
 /// The run of every home with its default system, of the kept home with the open apps failing, and of the caches
-/// restored from the cache and handed in reverse.
+/// handed in reverse.
 fn every_run() -> Vec<ModuleRun> {
     let runs = [
         similar_names(),
@@ -18,7 +18,6 @@ fn every_run() -> Vec<ModuleRun> {
         kept(),
         kept_with(FakeRunningApps::failing("no process list")),
         caches(),
-        scan("dev-caches-caches", System::plain().restored()),
         scan("dev-caches-caches", System::plain().reversed()),
     ];
     runs.into_iter().map(|(_, run)| run).collect()

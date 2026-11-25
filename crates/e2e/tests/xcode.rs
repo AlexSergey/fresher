@@ -25,9 +25,7 @@ mod flows {
     use std::fs;
     use std::path::PathBuf;
 
-    use fresher_core::{
-        DangerLevel, Event, ItemOutcome, MeaningGroup, PutBackOutcome, RunningApp, ScanKind, SkipReason,
-    };
+    use fresher_core::{DangerLevel, ItemOutcome, MeaningGroup, PutBackOutcome, RunningApp, SkipReason};
     use serde_json::json;
 
     use crate::flow::{Flow, Setup, XCODE, left_out, select, simulator_open, xcode_open};
@@ -96,13 +94,6 @@ mod flows {
                 .collect();
         counts.sort();
         counts
-    }
-
-    fn scan_kind(events: &[Event]) -> Option<&ScanKind> {
-        events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        })
     }
 
     fn contents_of(flow: &Flow, paths: &[&str]) -> Vec<BTreeMap<PathBuf, Vec<u8>>> {
@@ -284,30 +275,6 @@ mod flows {
         assert_eq!(fs::read_dir(flow.sandbox.trash()).unwrap().count(), 0);
     }
 
-    /// A new engine on the same files restores the last scan: with Xcode closed it offers the same; restarted with
-    /// Xcode open, it leaves the six folders out `app-open`.
-    pub(crate) fn a_restored_scan_judges_the_open_apps_again() {
-        let mut flow = Flow::new();
-        flow.scan();
-        let offered = of_module(&flow, "xcode");
-        assert_eq!(offered, found(&OURS));
-        flow.restart(Setup::default());
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(of_module(&flow, "xcode"), offered);
-        assert_eq!(left_out(&restored, "xcode"), []);
-
-        flow.restart(Setup { running: vec![xcode_open()], changed: Vec::new() });
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(of_module(&flow, "xcode"), []);
-        assert_eq!(left_out(&restored, "xcode"), all_left_out_open());
-    }
-
     /// The storage map counts every finding of both modules in Xcode's line, by category; the report is the golden.
     pub(crate) fn the_storage_map_counts_every_finding_in_xcodes_line() {
         let flow = Flow::new();
@@ -368,7 +335,7 @@ mod negative {
 
 mod positive {
     use crate::flows::{
-        a_cleanup_moves_and_empties, a_restored_scan_judges_the_open_apps_again, put_back_restores_the_archive,
+        a_cleanup_moves_and_empties, put_back_restores_the_archive,
         put_back_restores_the_emptied_caches_beside_a_new_file, the_storage_map_counts_every_finding_in_xcodes_line,
     };
 
@@ -385,11 +352,6 @@ mod positive {
     #[test]
     fn put_back_restores_the_emptied_caches_beside_a_file_written_since() {
         put_back_restores_the_emptied_caches_beside_a_new_file();
-    }
-
-    #[test]
-    fn a_restored_scan_offers_the_same_while_xcode_is_closed_and_leaves_out_while_it_is_open() {
-        a_restored_scan_judges_the_open_apps_again();
     }
 
     #[test]

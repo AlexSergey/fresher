@@ -335,24 +335,6 @@ mod negative {
         assert_eq!(summary.unreadable.get(&fresher_core::Unreadable::Failed), Some(&1));
         assert_eq!(summary.entries, 3, "gone, kept and kept/g");
     }
-
-    #[test]
-    fn a_restore_has_nothing_to_restore_yet() {
-        let tree = FixtureTree::from_toml_str("[[file]]\npath = \"a\"\n").unwrap();
-        let scanner = super::scanner(Arc::new(StdReader::new()), tree.root(), 1);
-        let (roots, set) = ([tree.root().to_path_buf()], set_of(&[]));
-        let request = fresher_core::WalkRequest {
-            roots: &roots,
-            interests: &set,
-            avoid: &[],
-            places: &[],
-            mode: fresher_core::WalkMode::Restore,
-        };
-
-        let result = fresher_core::DiskWalk::walk(&scanner, &request, &CancelToken::new(), &mut |_| {}, &mut |_| {});
-
-        assert_eq!(result, Err(WalkError::NothingToRestore));
-    }
 }
 
 mod positive {

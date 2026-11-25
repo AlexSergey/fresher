@@ -22,8 +22,8 @@ They go to the Trash; to get the file, download it again. It comes back only if 
 
 ## How the app decides
 
-The module `downloads` (code with data tables). Per file, the first answer that applies: a restored scan, left out
-(scan again); the running apps cannot be listed, left out; a browser of the row is running, left out (the download may
+The module `downloads` (code with data tables). Per file, the first answer that applies: the running apps cannot be
+listed, left out; a browser of the row is running, left out (the download may
 still finish); the newest of the file's change times is unknown, in the future or within the days set in Settings
 (default 30, at least 7), left out (changed lately); otherwise **offered**. The empty file of the final name beside an
 offered `.part` is offered with it; one that is not empty is yours and is never claimed, and when the folder was not

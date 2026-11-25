@@ -31,8 +31,6 @@ pub(crate) struct NoSystem;
 /// What the scan knows besides the item.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Scan<'a> {
-    /// The scan is restored from the cache: its times are as old as the cached scan.
-    pub(crate) restored: bool,
     pub(crate) now: Timestamp,
     /// The setting's days.
     pub(crate) days: u32,
@@ -42,7 +40,6 @@ pub(crate) struct Scan<'a> {
 /// Why an item is kept (design, section 8).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Reason {
-    ScanAgain,
     Lock,
     Special,
     System,
@@ -54,23 +51,15 @@ pub(crate) enum Reason {
 
 impl Reason {
     /// Every reason, in the order the module declares their keys.
-    pub(crate) const ALL: [Self; 8] = [
-        Self::System,
-        Self::Locked,
-        Self::AppOpen,
-        Self::Special,
-        Self::Lock,
-        Self::Recent,
-        Self::ScanAgain,
-        Self::NoSystem,
-    ];
+    pub(crate) const ALL: [Self; 7] =
+        [Self::System, Self::Locked, Self::AppOpen, Self::Special, Self::Lock, Self::Recent, Self::NoSystem];
 
     /// Whether the item is kept for what it is (the system's, a socket, a lock) or for what goes on now (an open app,
-    /// a recent change, a restored scan, a lock the user can lift).
+    /// a recent change, a lock the user can lift, the running apps not listed).
     pub(crate) const fn kind(self) -> LeftOutKind {
         match self {
             Self::System | Self::Special | Self::Lock => LeftOutKind::Kept,
-            Self::Locked | Self::AppOpen | Self::Recent | Self::ScanAgain | Self::NoSystem => LeftOutKind::ForNow,
+            Self::Locked | Self::AppOpen | Self::Recent | Self::NoSystem => LeftOutKind::ForNow,
         }
     }
 }
@@ -88,24 +77,20 @@ pub(crate) enum Verdict {
 
 /// The first row that applies to `item`:
 ///
-/// 1. the scan is restored: `ScanAgain`;
-/// 2. a lock or marker name, or a folder holding a lock file's name: `Lock`;
-/// 3. a socket, a pipe or a device, or a folder holding one: `Special`;
-/// 4. not the user's, a system flag, restricted, a folder holding such an entry, or the system's name: `System`;
-/// 5. the user's lock: `Locked`;
-/// 6. the running apps cannot be listed: `NoSystem`;
-/// 7. named after a running app, with or without one leading dot, compared as bytes: `AppOpen`;
-/// 8. a folder whose inside was not read in full: not claimed;
-/// 9. the newest change unknown, in the future or not more than the days ago, or a file read within the days:
+/// 1. a lock or marker name, or a folder holding a lock file's name: `Lock`;
+/// 2. a socket, a pipe or a device, or a folder holding one: `Special`;
+/// 3. not the user's, a system flag, restricted, a folder holding such an entry, or the system's name: `System`;
+/// 4. the user's lock: `Locked`;
+/// 5. the running apps cannot be listed: `NoSystem`;
+/// 6. named after a running app, with or without one leading dot, compared as bytes: `AppOpen`;
+/// 7. a folder whose inside was not read in full: not claimed;
+/// 8. the newest change unknown, in the future or not more than the days ago, or a file read within the days:
 ///    `Recent`;
-/// 10. offered.
+/// 9. offered.
 pub(crate) fn decide(item: &Item<'_>, scan: &Scan<'_>) -> Verdict {
     let inside = item.inside.as_ref();
     let folder = item.kind == EntryKind::Folder;
     let facts = item.facts;
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
-    }
     if is_lock(item.name) || (folder && inside.is_some_and(|inside| inside.lock_named)) {
         return Verdict::LeftOut(Reason::Lock);
     }

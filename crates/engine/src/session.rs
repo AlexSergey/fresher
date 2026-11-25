@@ -34,7 +34,7 @@ pub(crate) struct ScanPlan {
     /// The guarded places the user opted into, by capability.
     pub(crate) opt_ins: Vec<Capability>,
     pub(crate) modules: Vec<Planned>,
-    /// How the walk reads the disk; `Restore` reads nothing.
+    /// How the walk reads the disk.
     pub(crate) mode: WalkMode,
     /// The ignore lists: a left-out of an ignored category is not counted.
     pub(crate) ignored: Ignored,
@@ -54,7 +54,7 @@ pub(crate) struct Planned {
 /// ends `Stopped`; one that got through but did not see every folder ends `Partial`.
 ///
 /// The projects every module's `finish` sees carry what the walk saw of them: the walk is asked once after it ends
-/// (or after the restore) and before the commit; a walk that did not end is asked nothing.
+/// and before the commit; a walk that did not end is asked nothing.
 ///
 /// The events, in order: `ScanStarted`; `AccessChanged` when a tool's state changed; `AccessChanged` when a try
 /// changed a state; the `ModuleFinished` of each module not run for what it lacks; then the walk's progress and
@@ -64,13 +64,9 @@ pub(crate) struct Planned {
 /// A module that panics is caught and counts as failed; any other panic still ends the scan `Stopped` (see
 /// [`Output`]'s `Drop`), so the engine never stays `Scanning`. A cancelled or stopped walk is not committed: the
 /// engine keeps the state it had.
-///
-/// A restore first collects the walk's matches (from memory, no disk): only then does it start, so a restore with
-/// nothing to restore publishes only `NothingRestored` (the engine idle again first) and leaves the engine as it was.
 pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &ScanPlan) {
     let ids: Vec<ModuleId> = plan.modules.iter().map(|planned| planned.module.descriptor().id()).collect();
     let interests = all_interests(shared);
-    let Ok(restored) = restore(shared, scan, plan, &interests, cancel) else { return };
     // The previous scan's findings are forgotten only now that this scan runs.
     let (first_id, expected) = begin(shared, plan);
     shared.bus.publish(&Event::ScanStarted { scan, modules: ids.clone() });
@@ -78,20 +74,15 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     let (clock, commands) = (&*shared.ports.clock, &*shared.ports.commands);
     // One scan's facts of the system, shared by every module and gathered only when one asks.
     let system = SystemFacts::new(&shared.ports.system);
-    let is_restore = restored.is_some();
     let contexts: Vec<ModuleContext<'_>> = plan
         .modules
         .iter()
-        .map(|planned| {
-            let cx = ModuleContext::new(clock, commands, &system, &planned.settings, cancel);
-            if is_restore { cx.restored() } else { cx }
-        })
+        .map(|planned| ModuleContext::new(clock, commands, &system, &planned.settings, cancel))
         .collect();
     let mut outcomes: Vec<Option<ModuleOutcome>> = vec![None; plan.modules.len()];
     let mut output = Output::new(shared, scan, first_id, plan);
 
-    let cached_avoid = restored.as_ref().map(|(_, summary)| summary.avoided.as_slice());
-    let (entry, unavailable) = decide_access(shared, plan, cached_avoid, cancel);
+    let (entry, unavailable) = decide_access(shared, plan, cancel);
     for (index, missing) in unavailable.into_iter().enumerate() {
         if let Some(missing) = missing {
             outcomes[index] = Some(output.module_finished(index, ids[index], ModuleOutcome::Unavailable { missing }));
@@ -128,14 +119,9 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
                 publish_progress(due);
             }
         };
-        if let Some((matches, summary)) = restored {
-            matches.into_iter().for_each(&mut on_match);
-            Ok(summary)
-        } else {
-            let (roots, avoid, places) = (&plan.roots, &entry.avoid, &plan.places);
-            let request = WalkRequest { roots, interests: &interests, avoid, places, mode: plan.mode };
-            shared.ports.walk.walk(&request, cancel, &mut on_match, &mut on_progress)
-        }
+        let (roots, avoid, places) = (&plan.roots, &entry.avoid, &plan.places);
+        let request = WalkRequest { roots, interests: &interests, avoid, places, mode: plan.mode };
+        shared.ports.walk.walk(&request, cancel, &mut on_match, &mut on_progress)
     };
     throttle.take().into_iter().for_each(&publish_progress);
     let ended = walked.is_ok().then_some(&*shared.ports.walk);
@@ -239,16 +225,15 @@ fn finish_modules(
 
 /// The tool checks, the guarded places (the engine learns what their tries answered), then what each module lacks:
 /// the places to avoid and the modules not run. An `AccessChanged` for the tools, then one for the places, each only
-/// when a state changed. `cached_avoid` is the restored scan's avoid list; `None` for a walk.
+/// when a state changed.
 fn decide_access(
     shared: &Shared,
     plan: &ScanPlan,
-    cached_avoid: Option<&[PathBuf]>,
     cancel: &CancelToken,
 ) -> (coverage::Entry, Vec<Option<Vec<Capability>>>) {
     check_tools(shared, plan, cancel);
     let access = coverage::as_opted(&shared.access.status(), &plan.opt_ins);
-    let entry = decide_places(shared, plan, &access, cached_avoid);
+    let entry = coverage::before_walk(&*shared.ports.access, &access, &plan.roots, &plan.opt_ins);
     if shared.access.learn(&entry.tried) {
         shared.bus.publish(&Event::AccessChanged { status: shared.access.status() });
     }
@@ -271,21 +256,6 @@ fn decide_modules(shared: &Shared, plan: &ScanPlan) -> Vec<Option<Vec<Capability
     plan.modules.iter().map(|planned| unavailable(&*planned.module, &access)).collect()
 }
 
-/// The guarded places decided before the walk; a restore reads no disk, so it tries none and keeps those its cached
-/// scan avoided.
-fn decide_places(
-    shared: &Shared,
-    plan: &ScanPlan,
-    access: &AccessStatus,
-    cached_avoid: Option<&[PathBuf]>,
-) -> coverage::Entry {
-    let probe = &*shared.ports.access;
-    match cached_avoid {
-        Some(avoided) => coverage::before_restore(probe, access, &plan.roots, avoided),
-        None => coverage::before_walk(probe, access, &plan.roots, &plan.opt_ins),
-    }
-}
-
 /// Every module completed; a module not run for what it lacks says so itself, so it does not stop the scan.
 fn every_module_completed(outcomes: &[Option<ModuleOutcome>]) -> bool {
     outcomes.iter().all(|outcome| matches!(outcome, Some(ModuleOutcome::Completed | ModuleOutcome::Unavailable { .. })))
@@ -299,33 +269,6 @@ fn summary_of(walked: Result<WalkSummary, WalkError>) -> Option<WalkSummary> {
         Err(error) => {
             tracing::warn!(%error, "the walk stopped early");
             None
-        }
-    }
-}
-
-/// The matches and the summary of a `Restore` walk, collected before the scan starts; `None` for any other walk. A
-/// restore with nothing to restore ends here, quietly: the engine goes idle, then `NothingRestored` tells whoever saw
-/// it running that it ended.
-fn restore(
-    shared: &Shared,
-    scan: ScanId,
-    plan: &ScanPlan,
-    interests: &InterestSet,
-    cancel: &CancelToken,
-) -> Result<Option<(Vec<Match>, WalkSummary)>, WalkError> {
-    if plan.mode != WalkMode::Restore {
-        return Ok(None);
-    }
-    let request =
-        WalkRequest { roots: &plan.roots, interests, avoid: &[], places: &plan.places, mode: WalkMode::Restore };
-    let mut matches = Vec::new();
-    match shared.ports.walk.walk(&request, cancel, &mut |found| matches.push(found), &mut |_| {}) {
-        Ok(summary) => Ok(Some((matches, summary))),
-        Err(error) => {
-            tracing::info!(%error, "nothing was restored");
-            lock_anyway(&shared.machine).finish(scan);
-            shared.bus.publish(&Event::NothingRestored { scan });
-            Err(error)
         }
     }
 }
@@ -612,33 +555,6 @@ mod tests {
             Fixture, MemorySettings, ScriptedWalk, TestModule, bytes, category, finding, panic_now, scan, text,
             wait_for_finish,
         };
-
-        #[test]
-        fn a_restored_scan_tells_a_module_nothing_of_its_places() {
-            use std::sync::{Arc, Mutex};
-
-            use fresher_core::{PlaceSeen, ScanKind, Timestamp};
-
-            let seen = Arc::new(Mutex::new(Vec::new()));
-            let record = Arc::clone(&seen);
-            let module = TestModule::builder("alpha")
-                .category("alpha.caches", DangerLevel::Safe)
-                .folder("Caches")
-                .on_finish(move |cx, _| {
-                    record.lock().unwrap().push(cx.place_seen(0));
-                    Ok(())
-                });
-            let walk = ScriptedWalk::new()
-                .seeing(0, PlaceSeen::Read)
-                .kind(ScanKind::Restored { taken: Timestamp::from_secs(7) });
-            let engine = Fixture::new(walk).module(module).engine();
-            let events = engine.subscribe();
-
-            engine.restore().unwrap();
-            wait_for_finish(&events);
-
-            assert_eq!(*seen.lock().unwrap(), [PlaceSeen::Unknown]);
-        }
 
         fn alpha() -> ModuleId {
             ModuleId::new("alpha").unwrap()

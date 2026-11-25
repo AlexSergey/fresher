@@ -76,21 +76,13 @@ struct Scan {
     running: Vec<RunningApp>,
     /// The settings file's values, as JSON.
     stored: &'static str,
-    /// Whether the scan is restored from the cache.
-    restored: bool,
     /// Whether the walk read every folder.
     walk_complete: bool,
 }
 
 impl Scan {
     fn new(installed: Vec<InstalledApp>, running: Vec<RunningApp>) -> Self {
-        Self {
-            installed: Arc::new(FakeInstalledApps::new(installed)),
-            running,
-            stored: "{}",
-            restored: false,
-            walk_complete: true,
-        }
+        Self { installed: Arc::new(FakeInstalledApps::new(installed)), running, stored: "{}", walk_complete: true }
     }
 
     /// Hands `matches` to `module` in their order with `cancel`, the scan's token, without `finish`.
@@ -127,7 +119,7 @@ impl Scan {
         let settings = settings(module, self.stored);
         let cx = ModuleContext::new(&clock, &commands, &system, &settings, cancel);
         let cx = if self.walk_complete { cx.complete_walk() } else { cx };
-        call(&if self.restored { cx.restored() } else { cx });
+        call(&cx);
     }
 }
 
@@ -295,16 +287,6 @@ mod negative {
             assert_eq!(recorded.findings, [], "{days:?}");
             assert_eq!(recorded.left_out(), [("jetbrains.uninstalled", "jetbrains.left-out.used-recently", 100); 3]);
         }
-    }
-
-    #[test]
-    fn a_restored_scan_never_offers_a_removed_ides_data() {
-        let scan = Scan { restored: true, ..Scan::new(vec![], vec![]) };
-
-        let recorded = scan.run(&datagrip([Some(400); 3]));
-
-        assert_eq!(recorded.findings, []);
-        assert_eq!(recorded.left_out(), [("jetbrains.uninstalled", "jetbrains.left-out.used-recently", 100); 3]);
     }
 
     #[test]

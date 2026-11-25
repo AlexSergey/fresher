@@ -21,13 +21,11 @@ mod flow;
 mod flows {
     use std::fs;
 
-    use fresher_core::{
-        DangerLevel, Event, FindingOrder, FindingsQuery, ItemOutcome, PutBackOutcome, ScanKind, SkipReason, Subject,
-    };
+    use fresher_core::{DangerLevel, FindingOrder, FindingsQuery, ItemOutcome, PutBackOutcome, SkipReason, Subject};
     use fresher_testing::TreeReport;
     use serde_json::{Value, json};
 
-    use crate::flow::{Flow, left_out, select};
+    use crate::flow::{Flow, select};
     use crate::tree::contents;
 
     const CATEGORY: &str = "local-ai-models.ollama";
@@ -71,13 +69,6 @@ mod flows {
 
     fn tree(flow: &Flow) -> Value {
         serde_json::to_value(TreeReport::of(&flow.path("home")).unwrap()).unwrap()
-    }
-
-    fn scan_kind(events: &[Event]) -> Option<&ScanKind> {
-        events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        })
     }
 
     /// The bytes of every path of `paths`, by path.
@@ -289,32 +280,6 @@ mod flows {
         let expected: Vec<_> = before.into_iter().filter(|(_, path)| path != MISTRAL).collect();
         assert_eq!(flow.findings(), expected);
     }
-
-    /// A new engine on the same data folder restores the last scan: the same models as the walk. The module reads the
-    /// manifests again on a restore, so a manifest gone between the restart and the restore is seen: the store is left
-    /// out and nothing of it is offered.
-    pub(crate) fn a_restored_scan_offers_the_same_models() {
-        let mut flow = Flow::new();
-        flow.scan();
-        let found = flow.findings();
-        flow.restart();
-
-        let restored = flow.restore();
-
-        assert!(matches!(scan_kind(&restored), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&restored));
-        assert_eq!(flow.findings(), found);
-        assert_eq!(found, offered());
-        assert_eq!(left_out(&restored), []);
-        flow.restart();
-        fs::rename(flow.path(MISTRAL), flow.path("home/mistral-moved-away")).unwrap();
-
-        let changed = flow.restore();
-
-        assert!(matches!(scan_kind(&changed), Some(ScanKind::Restored { .. })), "{:?}", scan_kind(&changed));
-        assert_eq!(flow.findings(), []);
-        let keys: Vec<_> = left_out(&changed).into_iter().map(|(_, key, _)| key).collect();
-        assert_eq!(keys, ["local-ai-models.left-out.ollama-unreadable"]);
-    }
 }
 
 mod negative {
@@ -361,10 +326,5 @@ mod positive {
     #[test]
     fn ollama_lists_nothing_of_a_removed_model() {
         flows::ollama_lists_nothing_of_a_removed_model();
-    }
-
-    #[test]
-    fn a_restored_scan_offers_the_same_models() {
-        flows::a_restored_scan_offers_the_same_models();
     }
 }

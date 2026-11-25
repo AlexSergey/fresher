@@ -45,7 +45,6 @@ impl Categories {
 /// The keys of the left-out reasons, one per `Reason`.
 #[derive(Debug)]
 struct LeftOutKeys {
-    scan_again: TextKey,
     unread: TextKey,
     recent: TextKey,
     cache_recent: TextKey,
@@ -54,17 +53,11 @@ struct LeftOutKeys {
 impl LeftOutKeys {
     fn new() -> Result<Self, TextKeyError> {
         let key = |reason: Reason| TextKey::new(reason.key());
-        Ok(Self {
-            scan_again: key(Reason::ScanAgain)?,
-            unread: key(Reason::Unread)?,
-            recent: key(Reason::Recent)?,
-            cache_recent: key(Reason::CacheRecent)?,
-        })
+        Ok(Self { unread: key(Reason::Unread)?, recent: key(Reason::Recent)?, cache_recent: key(Reason::CacheRecent)? })
     }
 
     fn get(&self, reason: Reason) -> &TextKey {
         match reason {
-            Reason::ScanAgain => &self.scan_again,
             Reason::Unread => &self.unread,
             Reason::Recent => &self.recent,
             Reason::CacheRecent => &self.cache_recent,
@@ -180,7 +173,7 @@ impl Report {
             None => text.with("days", TextArg::Count(u64::from(CACHE_UNUSED_DAYS))),
             Some(Staleness::Stale { since }) => text.with("date", TextArg::Date(since)),
             // Unreachable: an artifact is offered only for a stale group; nothing is offered without a reason.
-            Some(Staleness::Restored | Staleness::Active | Staleness::Unread) => return None,
+            Some(Staleness::Active | Staleness::Unread) => return None,
         };
         Some(text.with("command", TextArg::Text(item.command.to_owned())))
     }

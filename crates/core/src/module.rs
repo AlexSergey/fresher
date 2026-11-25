@@ -341,7 +341,6 @@ pub struct ModuleContext<'a> {
     system: &'a SystemFacts,
     settings: &'a ModuleSettings,
     cancel: &'a CancelToken,
-    restored: bool,
     walk_complete: bool,
     /// What the walk saw of the place of each of the module's interests, by its index; empty until `finish`.
     places: &'a [PlaceSeen],
@@ -355,19 +354,7 @@ impl<'a> ModuleContext<'a> {
         settings: &'a ModuleSettings,
         cancel: &'a CancelToken,
     ) -> Self {
-        Self { clock, commands, system, settings, cancel, restored: false, walk_complete: false, places: &[] }
-    }
-
-    /// The same context for a restored scan: its matches come from the last scan's cache, not from the disk, so their
-    /// times are as old as that scan.
-    #[must_use]
-    pub const fn restored(self) -> Self {
-        Self { restored: true, ..self }
-    }
-
-    /// Whether the scan is restored from the cache rather than walked: a module that judges by age must not then.
-    pub const fn is_restored(&self) -> bool {
-        self.restored
+        Self { clock, commands, system, settings, cancel, walk_complete: false, places: &[] }
     }
 
     /// The same context for `finish` after a walk that read every folder.
@@ -390,13 +377,10 @@ impl<'a> ModuleContext<'a> {
         Self { places, ..self }
     }
 
-    /// What the walk saw of the place of the module's interest `interest`: `Unknown` during the walk, in a restored
-    /// scan, and for an interest without one place. A module that decides from every match of a place checks this
+    /// What the walk saw of the place of the module's interest `interest`: `Unknown` during the walk and for an
+    /// interest without one place. A module that decides from every match of a place checks this
     /// rather than [`Self::is_walk_complete`], which any folder the walk could not read makes `false`.
     pub fn place_seen(&self, interest: usize) -> PlaceSeen {
-        if self.restored {
-            return PlaceSeen::Unknown;
-        }
         self.places.get(interest).copied().unwrap_or(PlaceSeen::Unknown)
     }
 
@@ -430,7 +414,6 @@ impl std::fmt::Debug for ModuleContext<'_> {
             .debug_struct("ModuleContext")
             .field("settings", self.settings)
             .field("cancel", self.cancel)
-            .field("restored", &self.restored)
             .field("walk_complete", &self.walk_complete)
             .field("places", &self.places.len())
             .finish_non_exhaustive()
@@ -795,7 +778,7 @@ mod tests {
         }
 
         #[test]
-        fn a_place_seen_is_unknown_without_the_places_out_of_range_and_when_restored() {
+        fn a_place_seen_is_unknown_without_the_places_and_out_of_range() {
             let cancel = CancelToken::new();
             let settings = crate::ModuleSettings::empty(demo());
             let system = crate::system::nothing_known();
@@ -804,7 +787,6 @@ mod tests {
 
             assert_eq!(cx.place_seen(0), crate::PlaceSeen::Unknown);
             assert_eq!(cx.with_places(&places).place_seen(1), crate::PlaceSeen::Unknown);
-            assert_eq!(cx.with_places(&places).restored().place_seen(0), crate::PlaceSeen::Unknown);
         }
 
         #[test]
@@ -842,8 +824,6 @@ mod tests {
             assert_eq!(module.descriptor().locales().en, "{}");
             assert_eq!(module.descriptor().settings(), []);
             assert_eq!(cx.settings().module(), demo());
-            assert!(!cx.is_restored());
-            assert!(cx.restored().is_restored());
             assert!(!cx.is_walk_complete());
             assert!(cx.complete_walk().is_walk_complete());
         }

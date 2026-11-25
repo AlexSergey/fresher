@@ -3,8 +3,8 @@
 //! `DiskCleaner` reaching only inside the sandbox folder, with a fake Trash. Proven here: what the Files list and the
 //! Folders view never offer (a claimed folder, the Library, the Trash, a hidden folder, an app bundle, a link, a
 //! package's inner file, a file below the minimum, a standard folder), that a pick never shows on Scan, that a pick
-//! goes through the confirmed plan at High to the Trash and comes back by put back, and that a restored scan and a
-//! rescan list the same. The first scan's Files page and the home's Folders page are the golden file.
+//! goes through the confirmed plan at High to the Trash and comes back by put back, and that a rescan, after a restart
+//! or after a put back, lists the same. The first scan's Files page and the home's Folders page are the golden file.
 //!
 //! `UPDATE_GOLDEN=1 cargo nextest run -p fresher-e2e --test largest` rewrites `fixtures/golden/largest-flow.json`; the
 //! diff is reviewed.
@@ -250,12 +250,13 @@ mod flows {
         assert!(!flow.listed().iter().any(|path| path == crate::paths::OLD_FILE));
     }
 
-    pub(crate) fn a_restored_scan_lists_the_same_rows() {
+    /// A new engine on the same data folder: its first scan is a rescan of the cache the last scan left.
+    pub(crate) fn a_rescan_after_a_restart_lists_the_same_rows() {
         let mut flow = scanned();
         let before = rows(&flow, &flow.largest());
         flow.restart();
 
-        flow.restore();
+        flow.rescan();
 
         assert_eq!(rows(&flow, &flow.largest()), before);
     }
@@ -440,8 +441,8 @@ mod positive {
     }
 
     #[test]
-    fn a_restored_scan_lists_the_same_rows() {
-        flows::a_restored_scan_lists_the_same_rows();
+    fn a_rescan_after_a_restart_lists_the_same_rows() {
+        flows::a_rescan_after_a_restart_lists_the_same_rows();
     }
 
     #[test]

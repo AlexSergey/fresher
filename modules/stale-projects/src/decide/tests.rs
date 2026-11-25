@@ -12,9 +12,9 @@ fn ago(days: u64) -> Timestamp {
     Timestamp::from_secs(NOW - days * DAY)
 }
 
-/// A scan now, with the default 365 days, not restored.
+/// A scan now, with the default 365 days.
 fn scan() -> Scan {
-    Scan { now: Timestamp::from_secs(NOW), days: 365, restored: false }
+    Scan { now: Timestamp::from_secs(NOW), days: 365 }
 }
 
 /// A folder of 100 bytes, read in full, last changed as `last_change` says.
@@ -31,19 +31,7 @@ mod negative {
     use fresher_core::{Completeness, LastChange, Sizes, Timestamp};
 
     use super::{NOW, ago, folder, partial, scan};
-    use crate::decide::{Reason, Scan, Staleness, Verdict, artifact, cache, group_activity, staleness};
-
-    #[test]
-    fn a_restored_scan_keeps_everything_to_scan_again() {
-        let restored = Scan { restored: true, ..scan() };
-        let old = LastChange::Known(ago(800));
-
-        let group = staleness(old, &restored);
-
-        assert_eq!(group, Staleness::Restored);
-        assert_eq!(artifact(&folder(old), true, group, &restored), Verdict::LeftOut(Reason::ScanAgain));
-        assert_eq!(cache(&folder(old), true, &restored), Verdict::LeftOut(Reason::ScanAgain));
-    }
+    use crate::decide::{Reason, Staleness, Verdict, artifact, cache, group_activity, staleness};
 
     #[test]
     fn a_project_changed_within_the_days_is_active() {
@@ -124,18 +112,14 @@ mod negative {
 
     #[test]
     fn an_artifact_the_module_did_not_match_is_not_claimed() {
-        for group in [Staleness::Restored, Staleness::Active, Staleness::Unread, Staleness::Stale { since: ago(800) }] {
+        for group in [Staleness::Active, Staleness::Unread, Staleness::Stale { since: ago(800) }] {
             assert_eq!(artifact(&folder(LastChange::Known(ago(800))), false, group, &scan()), Verdict::NotClaimed);
         }
     }
 
     #[test]
     fn a_cache_the_module_did_not_match_is_not_claimed() {
-        let restored = Scan { restored: true, ..scan() };
-
-        for scan in [scan(), restored] {
-            assert_eq!(cache(&folder(LastChange::Known(ago(800))), false, &scan), Verdict::NotClaimed);
-        }
+        assert_eq!(cache(&folder(LastChange::Known(ago(800))), false, &scan()), Verdict::NotClaimed);
     }
 
     #[test]
@@ -308,16 +292,6 @@ mod positive {
                 if !offered(cache(&folder(last_change), true, &scan())) {
                     prop_assert!(!offered(cache(&folder(moved(last_change, later)), true, &scan())));
                 }
-            }
-
-            #[test]
-            fn a_restored_scan_never_offers(
-                group in activity(), last_change in activity(), days in 30..3650u32,
-            ) {
-                let restored = Scan { days, restored: true, ..scan() };
-
-                prop_assert!(!offered(artifact(&folder(last_change), true, staleness(group, &restored), &restored)));
-                prop_assert!(!offered(cache(&folder(last_change), true, &restored)));
             }
         }
     }

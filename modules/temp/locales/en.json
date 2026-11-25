@@ -18,6 +18,5 @@
   "temp.left-out.special": "A running program uses it to talk to another program, so it is kept.",
   "temp.left-out.lock": "A program uses it to mark something as in use, so it is kept.",
   "temp.left-out.recent": "Changed or read recently; an app may still be using it. Your Mac clears these on its own when it can.",
-  "temp.left-out.scan-again": "Shown from the last scan. Scan again to check how old it is.",
   "temp.left-out.no-system": "Fresher could not list your open apps, so it keeps everything. Scan again."
 }

@@ -14,7 +14,7 @@ pub const MAX_INSIGHT_PARTS: usize = 8;
 pub const MAX_NOTES: usize = 4;
 
 /// Space a module describes and never offers (`FindingSink::describe`): never selectable, never counted in a total,
-/// never stored or cached. It travels only in the module's `ModuleFinished`; a restored scan describes again.
+/// never stored or cached. It travels only in the module's `ModuleFinished`; every scan describes again.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Insight {

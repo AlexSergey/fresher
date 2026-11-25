@@ -13,14 +13,11 @@ pub(crate) struct Scan {
     pub(crate) now: Timestamp,
     /// The setting `stale-projects.unused-for-days`.
     pub(crate) days: u32,
-    pub(crate) restored: bool,
 }
 
 /// What a project group is, by its last activity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Staleness {
-    /// The scan was restored: its facts can be older than the disk.
-    Restored,
     /// Something changed within the days, or in the future.
     Active,
     /// A folder could not be read, or nothing dates it: it cannot be proven stale.
@@ -32,19 +29,17 @@ pub(crate) enum Staleness {
 /// Why an artifact or a cache is kept (design, section 3.5), in the order the module declares them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Reason {
-    ScanAgain,
     Unread,
     Recent,
     CacheRecent,
 }
 
 impl Reason {
-    pub(crate) const ALL: [Self; 4] = [Self::ScanAgain, Self::Unread, Self::Recent, Self::CacheRecent];
+    pub(crate) const ALL: [Self; 3] = [Self::Unread, Self::Recent, Self::CacheRecent];
 
     /// The reason's text key.
     pub(crate) const fn key(self) -> &'static str {
         match self {
-            Self::ScanAgain => "stale-projects.left-out.scan-again",
             Self::Unread => "stale-projects.left-out.unread",
             Self::Recent => "stale-projects.left-out.recent",
             Self::CacheRecent => "stale-projects.left-out.cache-recent",
@@ -87,14 +82,10 @@ pub(crate) fn group_activity(members: impl IntoIterator<Item = LastChange>) -> L
 
 /// The group table, on the group's last activity:
 ///
-/// 1. a restored scan: `Restored`;
-/// 2. `Known(t)` or `AtLeast(t)`, `t` within the days or in the future: `Active`;
-/// 3. `AtLeast(t)` with `t` before the days, or `Unknown`: `Unread`;
-/// 4. `Known(t)`, `t` before the days: `Stale` since `t`.
+/// 1. `Known(t)` or `AtLeast(t)`, `t` within the days or in the future: `Active`;
+/// 2. `AtLeast(t)` with `t` before the days, or `Unknown`: `Unread`;
+/// 3. `Known(t)`, `t` before the days: `Stale` since `t`.
 pub(crate) fn staleness(activity: LastChange, scan: &Scan) -> Staleness {
-    if scan.restored {
-        return Staleness::Restored;
-    }
     match activity {
         LastChange::Known(time) | LastChange::AtLeast(time) if is_within(time, scan.days, scan.now) => {
             Staleness::Active
@@ -107,19 +98,17 @@ pub(crate) fn staleness(activity: LastChange, scan: &Scan) -> Staleness {
 /// The artifact table, for an artifact of a group:
 ///
 /// 1. not matched by the module: not claimed;
-/// 2. the group restored: `ScanAgain`;
-/// 3. the group active: `Recent`;
-/// 4. the group unread: `Unread`;
-/// 5. the group stale, the artifact's own last change within the days or in the future (`Known` or `AtLeast`):
+/// 2. the group active: `Recent`;
+/// 3. the group unread: `Unread`;
+/// 4. the group stale, the artifact's own last change within the days or in the future (`Known` or `AtLeast`):
 ///    `Recent` (a package installed last week into an old project's environment);
-/// 6. the group stale, the artifact's own last change not `Known`, or its sizes not complete: `Unread`;
-/// 7. the group stale: offered.
+/// 5. the group stale, the artifact's own last change not `Known`, or its sizes not complete: `Unread`;
+/// 6. the group stale: offered.
 pub(crate) fn artifact(artifact: &Artifact, matched: bool, staleness: Staleness, scan: &Scan) -> Verdict {
     if !matched {
         return Verdict::NotClaimed;
     }
     match staleness {
-        Staleness::Restored => Verdict::LeftOut(Reason::ScanAgain),
         Staleness::Active => Verdict::LeftOut(Reason::Recent),
         Staleness::Unread => Verdict::LeftOut(Reason::Unread),
         Staleness::Stale { .. } => match artifact.last_change {
@@ -135,16 +124,12 @@ pub(crate) fn artifact(artifact: &Artifact, matched: bool, staleness: Staleness,
 /// The cache table, for a cache of a Rust project whose `target` is not offered, whatever the group's age:
 ///
 /// 1. not matched by the module: not claimed;
-/// 2. a restored scan: `ScanAgain`;
-/// 3. its last change within `CACHE_UNUSED_DAYS` or in the future (`Known` or `AtLeast`): `CacheRecent`;
-/// 4. `Unknown`, `AtLeast(t)` before those days, or its sizes not complete: `Unread`;
-/// 5. offered.
+/// 2. its last change within `CACHE_UNUSED_DAYS` or in the future (`Known` or `AtLeast`): `CacheRecent`;
+/// 3. `Unknown`, `AtLeast(t)` before those days, or its sizes not complete: `Unread`;
+/// 4. offered.
 pub(crate) fn cache(cache: &Artifact, matched: bool, scan: &Scan) -> Verdict {
     if !matched {
         return Verdict::NotClaimed;
-    }
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
     }
     match cache.last_change {
         LastChange::Known(time) | LastChange::AtLeast(time) if is_within(time, CACHE_UNUSED_DAYS, scan.now) => {

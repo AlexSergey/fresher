@@ -23,7 +23,6 @@ pub(crate) struct Scan {
     pub(crate) now: Timestamp,
     /// The setting `downloads.older-than-days`.
     pub(crate) days: u32,
-    pub(crate) restored: bool,
     /// The walk saw Downloads in full: what is not gathered is not there.
     pub(crate) place_complete: bool,
 }
@@ -143,14 +142,11 @@ pub(crate) enum AppsState<'a> {
 
 /// The unfinished-download table: a file ending with a file row's suffix.
 ///
-/// 1. a restored scan: `ScanAgain`; 2. the running apps cannot be listed: `NoSystem`; 3. an app of the row is
-///    running: `BrowserOpen`; 4. its newest change unknown, in the future or within the days: `Recent`; 5. offered.
+/// 1. the running apps cannot be listed: `NoSystem`; 2. an app of the row is running: `BrowserOpen`; 3. its newest
+///    change unknown, in the future or within the days: `Recent`; 4. offered.
 pub(crate) fn unfinished(file: &Entry, row: &Row, running: Result<&[RunningApp], ()>, scan: &Scan) -> Verdict {
     if file.kind != Form::File {
         return Verdict::NotClaimed;
-    }
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
     }
     let Ok(running) = running else { return Verdict::LeftOut(Reason::NoSystem) };
     if is_open(row, running) {
@@ -166,20 +162,16 @@ pub(crate) fn unfinished(file: &Entry, row: &Row, running: Result<&[RunningApp],
 /// bytes, in a place seen in full.
 pub(crate) fn placeholder(part_offered: bool, sibling: Option<&Entry>, scan: &Scan) -> bool {
     part_offered
-        && !scan.restored
         && scan.place_complete
         && sibling.is_some_and(|sibling| sibling.kind == Form::File && sibling.sizes.logical == ByteSize::ZERO)
 }
 
 /// The resumable-download table, for a bundle ending with the bundle row's suffix: not claimed without `Info.plist`;
-/// rows 1 to 4 of the unfinished table with the newest change inside it; then not read in full: `ScanAgain`; a
+/// rows 1 to 3 of the unfinished table with the newest change inside it; then not read in full: `ScanAgain`; a
 /// special entry inside: `Special`; an entry not the user's: `NotYours`; otherwise offered.
 pub(crate) fn resumable(bundle: &Entry, row: &Row, running: Result<&[RunningApp], ()>, scan: &Scan) -> Verdict {
     if bundle.kind != Form::Bundle || !bundle.holds(INFO_PLIST) {
         return Verdict::NotClaimed;
-    }
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
     }
     let Ok(running) = running else { return Verdict::LeftOut(Reason::NoSystem) };
     if is_open(row, running) {
@@ -195,18 +187,17 @@ pub(crate) fn resumable(bundle: &Entry, row: &Row, running: Result<&[RunningApp]
 }
 
 /// The macOS-installer table, for a bundle named in `macos.toml` that installs `version`: not claimed without
-/// `Contents`; 1. a restored scan or not read in full: `ScanAgain`; 2. the running macOS unknown: `NoSystem`; 3. it
+/// `Contents`; 1. not read in full: `ScanAgain`; 2. the running macOS unknown: `NoSystem`; 3. it
 /// is older than `version`: `NewerMacos`; 4. `Special` / `NotYours`; 5. offered.
 pub(crate) fn macos_installer(
     bundle: &Entry,
     version: SystemVersion,
     running_os: Result<SystemVersion, ()>,
-    scan: &Scan,
 ) -> Verdict {
     if bundle.kind != Form::Bundle || !bundle.holds(CONTENTS) {
         return Verdict::NotClaimed;
     }
-    if scan.restored || !bundle.inside.is_some_and(|inside| inside.complete) {
+    if !bundle.inside.is_some_and(|inside| inside.complete) {
         return Verdict::LeftOut(Reason::ScanAgain);
     }
     let Ok(running) = running_os else { return Verdict::LeftOut(Reason::NoSystem) };
@@ -252,16 +243,14 @@ pub(crate) fn receipt_proof(file: &Entry, receipts: &[Receipt]) -> Option<Timest
 /// 1. no receipt, and the installed apps cannot be listed: `NoSystem`;
 /// 2. no receipt, and the name names no installed app or two: not claimed;
 /// 3. no receipt, and the list of installed apps is partial: `AppsUnread`;
-/// 4. a restored scan: `ScanAgain`;
-/// 5. by name, the app's change unknown or before the installer's newest change, or the installer's version newer
+/// 4. by name, the app's change unknown or before the installer's newest change, or the installer's version newer
 ///    than the app's or not comparable with it: `NotOlder`;
-/// 6. offered.
-pub(crate) fn installer(file: &Entry, proof: Proof, apps: AppsState<'_>, scan: &Scan) -> Verdict {
+/// 5. offered.
+pub(crate) fn installer(file: &Entry, proof: Proof, apps: AppsState<'_>) -> Verdict {
     if file.kind != Form::File {
         return Verdict::NotClaimed;
     }
     let named = match proof {
-        Proof::Receipt { .. } if scan.restored => return Verdict::LeftOut(Reason::ScanAgain),
         Proof::Receipt { installed } => {
             return Verdict::Offered { reason: OfferReason::InstallerReceipt { installed } };
         }
@@ -272,9 +261,6 @@ pub(crate) fn installer(file: &Entry, proof: Proof, apps: AppsState<'_>, scan: &
     }
     let Named::One { app, version } = named else { return Verdict::NotClaimed };
     let AppsState::Complete(apps) = apps else { return Verdict::LeftOut(Reason::AppsUnread) };
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
-    }
     let Some(app) = apps.get(app) else { return Verdict::NotClaimed };
     let installed_after = app.changed.zip(file.newest_change()).is_some_and(|(changed, time)| changed >= time);
     let as_new = match version {
@@ -290,14 +276,11 @@ pub(crate) fn installer(file: &Entry, proof: Proof, apps: AppsState<'_>, scan: &
 }
 
 /// The large-untouched table, for a file no rule above claimed: not claimed when it is not a regular file, is a
-/// `.dmg` or `.pkg`, or is under 1 GB; 1. a restored scan: `ScanAgain`; 2. its newest change unknown, in the future
-/// or within the days: `Recent`; 3. offered.
+/// `.dmg` or `.pkg`, or is under 1 GB; 1. its newest change unknown, in the future or within the days: `Recent`;
+/// 2. offered.
 pub(crate) fn large(file: &Entry, scan: &Scan) -> Verdict {
     if file.kind != Form::File || package_of(&file.name).is_some() || file.sizes.logical.bytes() < LARGE {
         return Verdict::NotClaimed;
-    }
-    if scan.restored {
-        return Verdict::LeftOut(Reason::ScanAgain);
     }
     let newest = file.newest_change();
     match newest.filter(|_| is_old(newest, scan)) {

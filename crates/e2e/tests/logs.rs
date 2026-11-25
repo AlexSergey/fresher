@@ -25,9 +25,7 @@ mod flows {
     use std::fs;
     use std::path::PathBuf;
 
-    use fresher_core::{
-        DangerLevel, Event, FindingOrder, FindingsQuery, ItemOutcome, PutBackOutcome, ScanKind, SkipReason,
-    };
+    use fresher_core::{DangerLevel, Event, FindingOrder, FindingsQuery, ItemOutcome, PutBackOutcome, SkipReason};
     use serde_json::{Value, json};
 
     use crate::flow::{APP_LOGS, CRASH_REPORTS, Flow, left_out, select_logs};
@@ -214,32 +212,6 @@ mod flows {
         assert_eq!(contents(&flow.sandbox.trash()).len(), moved.len());
     }
 
-    /// Flow 4: a restart restores the scan: every match of the module is left out `scan-again`, nothing of it is
-    /// offered; a scan offers them again.
-    pub(crate) fn a_restored_scan_leaves_every_log_out() {
-        let mut flow = Flow::new();
-        flow.scan();
-        flow.restart();
-
-        let restored = flow.restore();
-
-        let kind = restored.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        });
-        assert!(matches!(kind, Some(ScanKind::Restored { .. })), "{kind:?}");
-        assert_eq!(of_module(&flow, "logs"), []);
-        assert_eq!(
-            left_out(&restored, "logs"),
-            [keep(APP_LOGS, "scan-again", 4), keep(CRASH_REPORTS, "scan-again", 1)]
-        );
-
-        let events = flow.scan();
-
-        assert_eq!(of_module(&flow, "logs"), ours());
-        assert_eq!(left_out(&events, "logs"), [keep(APP_LOGS, "recent", 1)]);
-    }
-
     /// Flow 5: fourteen days in the settings file keep the log ten days old as recent; at the default it is offered.
     pub(crate) fn a_longer_setting_keeps_the_ten_day_old_log() {
         let flow = Flow::new();
@@ -327,11 +299,6 @@ mod negative {
     #[test]
     fn a_log_held_open_is_skipped_and_moves_nothing() {
         flows::a_log_held_open_is_skipped();
-    }
-
-    #[test]
-    fn a_restored_scan_leaves_every_log_out_until_a_rescan() {
-        flows::a_restored_scan_leaves_every_log_out();
     }
 
     #[test]

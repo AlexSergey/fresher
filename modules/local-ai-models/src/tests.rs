@@ -174,18 +174,14 @@ impl Scan {
         Self { running: Arc::new(FakeRunningApps::default()), files: Arc::new(files) }
     }
 
+    /// Hands `matches` to a new module in their order, then calls `finish`.
     fn run(&self, matches: &[Match]) -> Recorded {
-        self.run_as(matches, false)
-    }
-
-    /// Hands `matches` to a new module in their order, then calls `finish`; every context restored when `restored`.
-    fn run_as(&self, matches: &[Match], restored: bool) -> Recorded {
         let (module, cancel) = (LocalAiModelsModule::new().unwrap(), CancelToken::new());
         let mut out = Recorded::default();
         for found in matches {
-            self.with_context(&module, &cancel, restored, |cx| module.on_match(found, &cx, &mut out).unwrap());
+            self.with_context(&module, &cancel, |cx| module.on_match(found, &cx, &mut out).unwrap());
         }
-        self.with_context(&module, &cancel, restored, |cx| module.finish(&cx.complete_walk(), &mut out).unwrap());
+        self.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out).unwrap());
         out
     }
 
@@ -193,7 +189,6 @@ impl Scan {
         &self,
         module: &LocalAiModelsModule,
         cancel: &CancelToken,
-        restored: bool,
         call: impl FnOnce(ModuleContext<'_>) -> T,
     ) -> T {
         let system = SystemFacts::new(&SystemPorts {
@@ -208,8 +203,7 @@ impl Scan {
             .unwrap()
             .resolve(&StoredSettings::default())
             .module(module.descriptor().id());
-        let cx = ModuleContext::new(&clock, &commands, &system, &settings, cancel);
-        call(if restored { cx.restored() } else { cx })
+        call(ModuleContext::new(&clock, &commands, &system, &settings, cancel))
     }
 }
 
@@ -271,11 +265,11 @@ mod negative {
         let (scan, module, cancel) = (Scan::new(), LocalAiModelsModule::new().unwrap(), CancelToken::new());
         let mut out = Recorded::default();
         for found in mixed() {
-            scan.with_context(&module, &cancel, false, |cx| module.on_match(&found, &cx, &mut out).unwrap());
+            scan.with_context(&module, &cancel, |cx| module.on_match(&found, &cx, &mut out).unwrap());
         }
 
         cancel.cancel();
-        let finished = scan.with_context(&module, &cancel, false, |cx| module.finish(&cx.complete_walk(), &mut out));
+        let finished = scan.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out));
 
         assert_eq!(finished, Err(ModuleError::Cancelled));
         assert_eq!(out, Recorded::default());
@@ -286,10 +280,10 @@ mod negative {
         let (scan, module, cancel) = (Scan::new(), LocalAiModelsModule::new().unwrap(), CancelToken::new());
         let mut out = CancelsAtFirstFinding { cancel: cancel.clone(), recorded: Recorded::default() };
         for found in mixed() {
-            scan.with_context(&module, &cancel, false, |cx| module.on_match(&found, &cx, &mut out).unwrap());
+            scan.with_context(&module, &cancel, |cx| module.on_match(&found, &cx, &mut out).unwrap());
         }
 
-        let finished = scan.with_context(&module, &cancel, false, |cx| module.finish(&cx.complete_walk(), &mut out));
+        let finished = scan.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out));
 
         assert_eq!(finished, Err(ModuleError::Cancelled));
         assert_eq!(out.recorded.identities(), ["hugging-face/datasets--squad"]);
@@ -343,9 +337,8 @@ mod positive {
         ByteSize, DangerLevel, Module as _, ModuleGroup, Removal, Subject, TextArg, TextKey, Timestamp,
     };
     use fresher_testing::FakeRunningApps;
-    use proptest::prelude::*;
 
-    use super::{ACCESSED, LM_STUDIO, Scan, lm_model, lm_old_model, mixed, path, repo, running};
+    use super::{ACCESSED, Scan, lm_model, lm_old_model, mixed, path, repo, running};
     use crate::LocalAiModelsModule;
 
     fn module() -> LocalAiModelsModule {
@@ -468,21 +461,6 @@ mod positive {
         assert_eq!(finding.removal(), &Removal::MoveToTrash(folder));
         assert_eq!(finding.sizes().logical.bytes(), 2000);
         assert_eq!(finding.sizes().allocated.bytes(), 2000 + 4096);
-    }
-
-    proptest! {
-        #[test]
-        fn a_restored_context_decides_the_same(
-            picked in proptest::sample::subsequence((0..mixed().len()).collect::<Vec<_>>(), 0..=mixed().len()),
-            lm_studio_open: bool,
-        ) {
-            let apps = if lm_studio_open { vec![running(LM_STUDIO)] } else { Vec::new() };
-            let scan = Scan::running(FakeRunningApps::new(apps));
-            let all = mixed();
-            let matches: Vec<_> = picked.iter().filter_map(|at| all.get(*at).cloned()).collect();
-
-            prop_assert_eq!(scan.run_as(&matches, true), scan.run_as(&matches, false));
-        }
     }
 }
 

@@ -316,9 +316,9 @@ mod negative {
         let (module, cancel) = (LocalAiModelsModule::new().unwrap(), CancelToken::new());
         let mut out = CancelsAtFirstFinding { cancel: cancel.clone(), recorded: Recorded::default() };
         for found in matches {
-            scan.with_context(&module, &cancel, false, |cx| module.on_match(found, &cx, &mut out).unwrap());
+            scan.with_context(&module, &cancel, |cx| module.on_match(found, &cx, &mut out).unwrap());
         }
-        let finished = scan.with_context(&module, &cancel, false, |cx| module.finish(&cx.complete_walk(), &mut out));
+        let finished = scan.with_context(&module, &cancel, |cx| module.finish(&cx.complete_walk(), &mut out));
         (finished, out.recorded)
     }
 
@@ -450,15 +450,13 @@ mod positive {
     }
 
     #[test]
-    fn a_restored_or_reversed_scan_decides_the_same() {
+    fn a_reversed_scan_decides_the_same() {
         let store = mixed();
         let walked = store.run();
 
-        let restored = store.scan().run_as(&store.matches, true);
         let mut reversed = store.matches.clone();
         reversed.reverse();
 
-        assert_eq!(restored, walked);
         assert_eq!(store.scan().run(&reversed), walked);
     }
 }

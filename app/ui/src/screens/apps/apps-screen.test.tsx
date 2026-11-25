@@ -154,9 +154,40 @@ describe('AppsScreen', () => {
       expect(await screen.findByText('Scan first to see your apps.')).toBeInTheDocument();
       expect(getApps).not.toHaveBeenCalled();
     });
+
+    it('before any scan shows its Scan button and no Scan again', async () => {
+      await show({}, IDLE);
+
+      expect(await screen.findByRole('button', { name: 'Scan' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
+    });
+
+    it('while a scan runs shows neither Scan again nor Stop', async () => {
+      await show();
+      await screen.findByRole('button', { name: 'Scan again' });
+
+      act(() => {
+        pushEvents({ modules: [], scan: 2, type: 'scan-started' });
+      });
+
+      expect(await screen.findByRole('region', { name: 'Scanning' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
+    });
   });
 
   describe('positive cases', () => {
+    it('after a scan Scan again starts a scan', async () => {
+      const startScan = vi.fn(() => 2);
+      await show({ startScan });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Scan again' }));
+
+      await waitFor(() => {
+        expect(startScan).toHaveBeenCalledOnce();
+      });
+    });
+
     it("lists the apps in the core's order", async () => {
       await show();
       const list = await screen.findByRole('list', { name: 'Apps, largest first' });

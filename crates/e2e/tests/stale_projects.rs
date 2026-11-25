@@ -281,23 +281,6 @@ mod flows {
         assert_eq!(kept(&events, "dependencies", "recent"), Some((2, 12288)));
     }
 
-    /// Flow 7: after a scan, a restore (`ScanKind::Restored`) offers nothing: the facts can be older than the disk,
-    /// so every item is left out `scan-again`.
-    pub(crate) fn a_restore_at_launch_offers_nothing() {
-        let flow = Flow::new();
-        flow.scan();
-        assert_eq!(ours(&flow), everything());
-
-        let events = flow.restore();
-
-        assert!(matches!(scan_kind(&events), Some(ScanKind::Restored { .. })));
-        assert_eq!(ours(&flow), []);
-        let reasons: Vec<String> = left_out(&events).into_iter().map(|(_, reason, ..)| reason).collect();
-        assert!(!reasons.is_empty() && reasons.iter().all(|reason| reason == "scan-again"), "{reasons:?}");
-        let items: u32 = left_out(&events).iter().map(|(.., items, _)| items).sum();
-        assert!(items >= 6, "every item the scan offered is kept: {:?}", left_out(&events));
-    }
-
     /// Flow 8: an offered `node_modules` is in the explained part; `tool/src` is among the user's folders; the browse
     /// view opens `tool/`, `tool/target/debug/incremental`, `daily/target/` and `Documents/build`, listing their
     /// children: nothing of the module is claimed whole.
@@ -426,11 +409,6 @@ mod negative {
     #[test]
     fn a_change_in_a_stale_project_keeps_it() {
         flows::a_change_in_a_stale_project_keeps_it();
-    }
-
-    #[test]
-    fn a_restore_at_launch_offers_nothing() {
-        flows::a_restore_at_launch_offers_nothing();
     }
 
     #[test]

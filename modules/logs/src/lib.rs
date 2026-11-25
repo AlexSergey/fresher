@@ -165,11 +165,7 @@ impl Module for LogsModule {
             changed: matched.changed,
             state_or_lock: is_state_or_lock(name),
         };
-        let scan = Scan {
-            restored: cx.is_restored(),
-            now: Timestamp::from_system_time(cx.clock().now()),
-            days: OLDER_THAN.days(cx.settings()),
-        };
+        let scan = Scan { now: Timestamp::from_system_time(cx.clock().now()), days: OLDER_THAN.days(cx.settings()) };
         let category = match located.place {
             Place::AppLogs => &self.app_logs,
             Place::CrashReports => &self.crash_reports,

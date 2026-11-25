@@ -8,8 +8,8 @@ use fresher_testing::{FakeInstallRecords, FakeInstalledApps, FakeRunningApps, Mo
 
 use crate::support::{System, kept, kept_apps, kept_with, not_claimed, offered, offered_with};
 
-/// The run of every home with its own system, of the kept home with each port failing and restored, and of the
-/// offered home handed in reverse and with Downloads avoided.
+/// The run of every home with its own system, of the kept home with each port failing, and of the
+/// offered home handed in reverse, with Downloads avoided and with a macOS installer not read in full.
 fn every_run() -> Vec<ModuleRun> {
     let runs = [
         not_claimed(),
@@ -18,10 +18,10 @@ fn every_run() -> Vec<ModuleRun> {
         kept_with(System::kept().apps(FakeInstalledApps::partial(kept_apps(), &["/Applications/Broken.app"]))),
         kept_with(System::kept().apps(FakeInstalledApps::failing("no app list"))),
         kept_with(System::kept().installs(FakeInstallRecords::default().failing_version("no version"))),
-        kept_with(System::kept().restored()),
         offered(),
         offered_with(System::offered().reversed()),
         offered_with(System::offered().avoiding("Downloads")),
+        offered_with(System::offered().avoiding("Downloads/Install macOS Sonoma.app/Contents")),
     ];
     runs.into_iter().map(|(_, run)| run).collect()
 }

@@ -38,8 +38,8 @@ pub(crate) enum Reason {
     AppsUnread,
     /// The product is not in the apps folders, and Spotlight cannot tell whether an app of it is elsewhere.
     SpotlightUnread,
-    /// The product is not installed, but one of its folders changed within the setting's days, the scan is restored
-    /// from the cache, which tells no age, or the walk could not read every folder, so one unseen may have changed.
+    /// The product is not installed, but one of its folders changed within the setting's days, or the walk could not
+    /// read every folder, so one unseen may have changed.
     UsedRecently,
     /// The product is not installed, but an app of the vendor the table does not know is: it may use the folders.
     UnknownIde,

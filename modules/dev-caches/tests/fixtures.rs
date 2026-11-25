@@ -198,14 +198,6 @@ mod positive {
         }
     }
 
-    #[test]
-    fn a_scan_restored_from_the_cache_offers_the_same() {
-        let (_tree, walked) = caches();
-        let (_tree, restored) = scan("dev-caches-caches", System::plain().restored());
-
-        assert_eq!(restored.golden().unwrap(), walked.golden().unwrap());
-    }
-
     /// The report of every home with its default system (the kept home with Xcode open), by home.
     #[test]
     fn the_report_matches_the_golden_file() {

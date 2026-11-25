@@ -449,16 +449,16 @@ mod positive {
 
     proptest! {
         #[test]
-        fn a_restored_scan_decides_the_same(
+        fn the_order_of_the_matches_decides_nothing(
             shuffled in Just(World::mixed().candidates).prop_shuffle(),
             missing in 0usize..9,
         ) {
-            // The same matches in another order, as a restored scan hands them, with one layer gone or none.
+            // The same matches in another order, with one layer gone or none.
             let gone = in_store(&format!("blobs/{}", digest(u8::try_from(missing).unwrap()).blob_name()));
             let walked = World::mixed().without(&gone);
-            let restored = World { candidates: shuffled, ..World::mixed() }.without(&gone);
+            let shuffled = World { candidates: shuffled, ..World::mixed() }.without(&gone);
 
-            prop_assert_eq!(restored.decide(), walked.decide());
+            prop_assert_eq!(shuffled.decide(), walked.decide());
         }
     }
 }

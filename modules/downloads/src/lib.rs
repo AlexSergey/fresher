@@ -124,7 +124,7 @@ impl DownloadsModule {
                 return (Category::MacosInstallers, Verdict::NotClaimed);
             };
             let running_os = system.facts.system_version().map_err(|_| ());
-            return (Category::MacosInstallers, decide::macos_installer(entry, version, running_os, scan));
+            return (Category::MacosInstallers, decide::macos_installer(entry, version, running_os));
         }
         if let Some(row) = suffixes.row_of(&entry.name, Form::File) {
             return (Category::Unfinished, decide::unfinished(entry, row, system.running(), scan));
@@ -137,11 +137,11 @@ impl DownloadsModule {
             };
             // A receipt proves the package without the installed apps, which are then not asked.
             let verdict = if let Some(installed) = receipt {
-                decide::installer(entry, Proof::Receipt { installed }, AppsState::Unlisted, scan)
+                decide::installer(entry, Proof::Receipt { installed }, AppsState::Unlisted)
             } else {
                 let (apps, listed) = system.apps();
                 let named = name::names_app(stem, listed, &self.tables.words);
-                decide::installer(entry, Proof::Name(named), apps, scan)
+                decide::installer(entry, Proof::Name(named), apps)
             };
             return (Category::Installers, verdict);
         }
@@ -250,7 +250,6 @@ impl Module for DownloadsModule {
         let scan = Scan {
             now: Timestamp::from_system_time(cx.clock().now()),
             days: OLDER_THAN.days(cx.settings()),
-            restored: cx.is_restored(),
             place_complete: cx.place_seen(FILES).is_complete(),
         };
         let system = Asked::new(cx.system());

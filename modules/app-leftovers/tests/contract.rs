@@ -10,8 +10,8 @@ use crate::support::{
     System, apple, elsewhere, installed, kept, kept_with, leftovers, leftovers_with, not_ids, proof_absent, unproven,
 };
 
-/// The run of every home with its default system, of the kept home with each port failing, restored and with its
-/// logs avoided, and of the leftovers handed in reverse and with the containers avoided.
+/// The run of every home with its default system, of the kept home with each port failing and with its logs
+/// avoided, and of the leftovers handed in reverse and with the containers avoided.
 fn every_run() -> Vec<ModuleRun> {
     let spotlight_off = FakeInstalledApps::default().with_elsewhere(elsewhere()).failing_search("index off");
     let runs = [
@@ -25,7 +25,6 @@ fn every_run() -> Vec<ModuleRun> {
         kept_with(System::kept().apps(FakeInstalledApps::partial(Vec::new(), &["/Applications/Broken.app"]))),
         kept_with(System::kept().apps(FakeInstalledApps::failing("no app list"))),
         kept_with(System::kept().apps(spotlight_off)),
-        kept_with(System::kept().restored()),
         kept_with(System::kept().avoiding("Library/Logs")),
         leftovers(),
         leftovers_with(System::plain().reversed()),

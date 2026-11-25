@@ -7,6 +7,7 @@
 #[path = "../support/events.rs"]
 mod events;
 #[path = "../support/home.rs"]
+#[expect(dead_code, reason = "the shared flow home keeps what the flows of other modules restart")]
 mod home;
 #[path = "../support/home_cleanup.rs"]
 mod home_cleanup;
@@ -46,12 +47,6 @@ impl Flow {
         let switch = json!({ "key": "unused-toolchains.node-versions", "value": { "kind": "switch", "value": true } });
         flow.engine.update_setting(serde_json::from_value(switch).unwrap()).unwrap();
         flow
-    }
-
-    /// A new engine on the same files: the app started again.
-    pub(crate) fn restart(&mut self) {
-        let parts = parts(&self.sandbox, &[]);
-        self.restart_with(parts);
     }
 }
 

@@ -7,6 +7,7 @@
 #[path = "../support/events.rs"]
 mod events;
 #[path = "../support/home.rs"]
+#[expect(dead_code, reason = "the shared flow home keeps what the flows of other modules restart")]
 mod home;
 #[path = "../support/home_cleanup.rs"]
 mod home_cleanup;
@@ -22,7 +23,7 @@ mod report;
 
 use std::sync::Arc;
 
-use fresher_core::{CleanupSelection, Event, LeftOutCount, ModuleId};
+use fresher_core::CleanupSelection;
 use fresher_module_local_ai_models::LocalAiModelsModule;
 use fresher_sandbox::Sandbox;
 use fresher_testing::{FIXTURE_NOW, FakeClock, FakeInstalledApps, FakeRunningApps, FixtureTree};
@@ -38,12 +39,6 @@ impl Flow {
         let tree = FixtureTree::from_toml(&fixtures().join("homes").join("local-ai-models-ollama-flow.toml")).unwrap();
         Self::open(tree, parts)
     }
-
-    /// A new engine on the same files: the app started again.
-    pub(crate) fn restart(&mut self) {
-        let parts = parts(&self.sandbox);
-        self.restart_with(parts);
-    }
 }
 
 /// The selection of `categories`, whole.
@@ -51,25 +46,6 @@ pub(crate) fn select(categories: &[&str]) -> CleanupSelection {
     let categories: Vec<Value> =
         categories.iter().map(|category| json!({ "category": category, "except": [] })).collect();
     serde_json::from_value(json!({ "findings": [], "categories": categories })).unwrap()
-}
-
-/// What the `local-ai-models` module left out in the events' `ModuleFinished`, as category, reason key and item
-/// count, sorted.
-pub(crate) fn left_out(events: &[Event]) -> Vec<(String, String, u32)> {
-    let module = ModuleId::new("local-ai-models").unwrap();
-    let mut counts: Vec<(String, String, u32)> = events
-        .iter()
-        .filter_map(|event| match event {
-            Event::ModuleFinished { module: finished, left_out, .. } if *finished == module => Some(left_out),
-            _ => None,
-        })
-        .flatten()
-        .map(|count: &LeftOutCount| {
-            (count.category.as_str().to_owned(), count.reason.key().as_str().to_owned(), count.items)
-        })
-        .collect();
-    counts.sort();
-    counts
 }
 
 /// The engine's parts on `sandbox`: the module alone, nothing open, the clock at `FIXTURE_NOW`, two threads.

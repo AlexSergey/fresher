@@ -53,8 +53,8 @@ small `thiserror` error of its own: no panicking path.
 - **An insight** (`Insight`, plan 032) is what a module describes and never offers: an identity (kebab-case, unique in
   the module), a title, a summary, up to 4 figures, up to 8 parts (a label, a size, a detail, an effect, a danger level
   as wording and an optional `ShownCommand`: a tool, its arguments and the line to copy) and up to 4 notes. It is never a
-  finding, never counted in a total or the map, never stored in the scan cache and never in the journal; a restored scan
-  describes again (the module runs over the restored matches). It travels only in `Event::ModuleFinished.insights`.
+  finding, never counted in a total or the map, never stored in the scan cache and never in the journal; every scan
+  describes again. It travels only in `Event::ModuleFinished.insights`.
   `FindingSink::describe` is a no-op by default (the `Vec<NewFinding>` sink drops it, like a left-out; `run_module` records it); the engine drops a repeated
   identity of one module with a warning. A shown command never forces (no `-f`, `--force`, `--force=…`, `f` among short
   flags) and its parts need no quoting; the app never runs one.
@@ -90,19 +90,17 @@ small `thiserror` error of its own: no panicking path.
 - The ports a module may use come in `ModuleContext`: the clock, the command runner (an external tool, with a fixed
   argument list; pass `cx.cancel()`, so a cancelled scan stops the tool), the system's facts (`cx.system()`, below),
   its settings, the cancel token. A long `finish` checks `cx.cancel()` and returns `ModuleError::Cancelled`.
-  `cx.is_restored()` says the scan is restored from the last one's cache, not walked: a module that judges by the
-  entries' times must not then (plan 016). In `finish`, `cx.is_walk_complete()` says the walk read every folder
-  (`false` during the walk, and after a walk that could not read a folder or stopped early): a module that decides
-  from every match together must not offer when a folder it did not see may change the answer (plan 016).
+  In `finish`, `cx.is_walk_complete()` says the walk read every folder (`false` during the walk, and after a walk that
+  could not read a folder or stopped early): a module that decides from every match together must not offer when a
+  folder it did not see may change the answer (plan 016).
   `cx.place_seen(interest)` says, in `finish`, what the walk saw of the folder that interest of the module matches in
   (its place: `Library/Caches` for `Library/Caches/*`; only an `Under` pattern with no `*` before its last segment
   has one): `Read` (listed in full; what is inside a match is the match's), `Absent` (its parent read, no such folder),
   `Unread` (it, a folder on the way, or an entry of its listing not read; it or a folder on the way claimed whole counts),
-  `NotScanned` (avoided, another volume, another user's, outside every root) or `Unknown` (during the walk, in a
-  restored scan, an interest without one place). `PlaceSeen::is_complete()` is `Read` or `Absent`. A module that
-  decides from every match of its own places checks them, not `is_walk_complete()`, which any unreadable folder of
-  the scan makes `false` (on every Mac without Full Disk Access); one that decides from the whole walk keeps
-  `is_walk_complete()` (plan 019).
+  `NotScanned` (avoided, another volume, another user's, outside every root) or `Unknown` (during the walk, an interest
+  without one place). `PlaceSeen::is_complete()` is `Read` or `Absent`. A module that decides from every match of its
+  own places checks them, not `is_walk_complete()`, which any unreadable folder of the scan makes `false` (on every Mac
+  without Full Disk Access); one that decides from the whole walk keeps `is_walk_complete()` (plan 019).
 - **A module never writes an OS path** (the user's decision of 2026-11-15): a place is a known folder and a relative
   path, `Pattern::Under(KnownFolder::AppCaches, "JetBrains/*")` (in rules, `under = { folder = "app-caches", path =
   "JetBrains/*" }`); `KnownFolder::Home` is the home folder itself. The walk resolves the folder through the
@@ -127,8 +125,8 @@ small `thiserror` error of its own: no panicking path.
 - Two known folders lie outside the home: `UserTemp` (the user's own temporary folder,
   `/private/var/folders/<xx>/<hash>/T`) and `SharedTemp` (`/private/tmp`). While a registered module's interest is
   anchored in one, and no scan root holds it, the walk reads it as a place: a root of its own after the scan roots,
-  walked in full on every scan, where only the interests anchored in it match. A restore emits nothing inside a place
-  ([`README.md`](./README.md), "Places outside the scan roots").
+  walked in full on every scan, where only the interests anchored in it match ([`README.md`](./README.md), "Places
+  outside the scan roots").
 
 ## The system's facts (`cx.system()`)
 
@@ -199,12 +197,11 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
 - Three sizes in `sizes`: `logical` (what Finder shows), `allocated` (what the entry takes on disk) and `reclaimable`
   (the part of `allocated` shared with no clone or other hard link: what removing it frees), with their
   completeness. For a `Claim::Whole` folder they cover everything inside it.
-- **Matches come in no fixed order**: the walk is parallel, and a rescan or a restore at launch hands the same matches
-  in another order. `finish` must not depend on it (sort, or keep the newest by value).
+- **Matches come in no fixed order**: the walk is parallel, and a rescan hands the same matches in another order.
+  `finish` must not depend on it (sort, or keep the newest by value).
 - The walk matches the interests of every registered module, enabled or not, so turning a module off never changes
   what the walk reads or the cache; the engine drops a disabled module's matches before they reach it.
-- A rescan runs every module over all the matches again, not over the changes; a restore at launch runs the modules
-  with interests over the cached matches (a module with none waits for the user's scan).
+- A rescan runs every module over all the matches again, not over the changes.
 
 ## Rules or code
 
@@ -296,10 +293,9 @@ claim. The table (`artifacts.toml`: a folder, the project's kind, a category, th
 checked against the core's artifacts when the module is built. `finish` groups a monorepo's projects under the
 outermost one (the group's last activity is the newest of its members'), then decides each group and each Rust cache
 in a pure function (`decide.rs`): the days setting (`DaySetting`, 365 by default), the last activity (`Known`, `AtLeast`
-or `Unknown`: only a `Known` one older than the days offers), whether every size was read in full, and whether the scan
-is a restored one (nothing is offered, `scan-again`). Source, the project folder, `.git` and framework output are not in
-the table and are never offered; a cache is offered by its own age (7 days), not its project's. Every project it
-recognizes and does not offer is a `left_out` with its reason.
+or `Unknown`: only a `Known` one older than the days offers), and whether every size was read in full. Source, the
+project folder, `.git` and framework output are not in the table and are never offered; a cache is offered by its own
+age (7 days), not its project's. Every project it recognizes and does not offer is a `left_out` with its reason.
 
 **`local-ai-models` is code with a data table, and the example of a module that offers one finding per model**: each
 store is a row of `stores.toml` (the place under the home with `*` for each name, the shape of a model's folder name,
@@ -378,13 +374,13 @@ numbers. A table, `runtimes.toml`, has one row per runtime that has an app (Dock
 id, the CLI inside its bundle, its context, its socket place under the home and its disk file's place, and whether the
 file's length is a limit worth showing (`shown`) or not (`hidden`). Each row gives two `Claim::Item` interests under a
 known folder (the socket, then the disk file). A pure decision (`decide.rs`) picks a state per row: `left` (the disk
-file is there and the app is not installed, said only after a complete installed-apps listing), `restored` (a restored
-scan asks nothing), `unknown`, `stopped` (the app is closed, or open and the socket not seen), `no-answer`,
-`unreadable` and `answered`. Only when the installed app is running, the walk saw its socket as an `Other` entry and the
-scan is not restored does the module run the runtime's own CLI, exactly `<app>/<cli> --host unix://<socket> --config
-/private/var/empty system df --format json` (the socket at the row's place, the one the walk saw; a config folder only
-the system can write, so the user's contexts, credential helpers, hooks and plugin folder are never read), through the
-command runner (output capped at 64 KiB, never started when the app is closed). Any bundle
+file is there and the app is not installed, said only after a complete installed-apps listing), `unknown`, `stopped`
+(the app is closed, or open and the socket not seen), `no-answer`, `unreadable` and `answered`. Only when the installed
+app is running and the walk saw its socket as an `Other` entry does the module run the runtime's own CLI, exactly
+`<app>/<cli> --host unix://<socket> --config /private/var/empty system df --format json` (the socket at the row's place,
+the one the walk saw; a config folder only the system can write, so the user's contexts, credential helpers, hooks and
+plugin folder are never read), through the command runner (output capped at 64 KiB, never started when the app is
+closed). Any bundle
 may claim the runtime's bundle id, so the CLI runs only from the first bundle with that id whose CLI carries the valid
 signature of the runtime's developer (the row's `team`, checked by `InstalledApps::signed_by`: the system's
 `/usr/bin/codesign --verify` against an Apple-anchored requirement on that team); with none, the card says

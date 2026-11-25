@@ -9,18 +9,16 @@ use fresher_testing::{FakeRunningApps, MatchOrder, ModuleRun};
 use crate::support::{OLLAMA_HOMES, kept, kept_with, not_claimed, offered, ollama, scan_with};
 
 /// The run of every home with its default system, of the kept home with the open apps failing, of the offered homes
-/// restored from the cache and handed in reverse, and of every Ollama home.
+/// handed in reverse, and of every Ollama home.
 fn every_run() -> Vec<ModuleRun> {
-    let again = |home, restored, order| scan_with(home, FakeRunningApps::default(), restored, order).1;
+    let reversed = |home| scan_with(home, FakeRunningApps::default(), MatchOrder::Reversed).1;
     let mut runs = vec![
         not_claimed().1,
         kept().1,
         kept_with(FakeRunningApps::failing("no process list")).1,
         offered().1,
-        again("local-ai-models-offered", true, MatchOrder::Walked),
-        again("local-ai-models-offered", false, MatchOrder::Reversed),
-        again("local-ai-models-ollama-offered", true, MatchOrder::Walked),
-        again("local-ai-models-ollama-offered", false, MatchOrder::Reversed),
+        reversed("local-ai-models-offered"),
+        reversed("local-ai-models-ollama-offered"),
     ];
     runs.extend(OLLAMA_HOMES.map(|name| ollama(name).1));
     runs

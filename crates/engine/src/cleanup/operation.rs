@@ -530,7 +530,6 @@ mod tests {
 
             assert_eq!(engine.status(), Ok(EngineStatus::Cleaning { cleanup }));
             assert_eq!(engine.start_scan(crate::ScanMode::Auto).map(|_| ()), busy);
-            assert_eq!(engine.restore().map(|_| ()), busy);
             assert_eq!(engine.prepare_cleanup(&select(&[1], &[])).map(|_| ()), busy);
             assert_eq!(engine.confirm_cleanup(&echo).map(|_| ()), busy);
             assert_eq!(engine.cancel_scan(), Err(CommandError::NotRunning));

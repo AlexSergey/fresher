@@ -46,6 +46,6 @@ first answer that applies:
 Never offered: a name that is not an id (`Notes`, `JetBrains`), anything of Apple's (`com.apple.`), Fresher's own, a
 removed app's cache (that is [`app-leftovers`](./app-leftovers-caches.md)' own, so no folder is offered twice), a vendor
 prefix or a sibling id of an app, a link, and the containers of sandboxed apps, which are not read. Times are not read:
-a cache is offered whatever its age, and a scan restored at launch judges the apps open now again. The folder is
-emptied into the Trash, never removed, and the app runs no command.
+a cache is offered whatever its age, and every scan judges the apps open now again. The folder is emptied into the
+Trash, never removed, and the app runs no command.
 An item a process holds open when you confirm is skipped.

@@ -231,11 +231,7 @@ impl Module for StaleProjectsModule {
         let Some(places) = Places::of(cx.system()) else { return Ok(()) };
         let Some(projects) = cx.system().projects() else { return Ok(()) };
         let roots: BTreeSet<&Path> = projects.iter().map(|project| project.root.as_path()).collect();
-        let scan = Scan {
-            now: Timestamp::from_system_time(cx.clock().now()),
-            days: UNUSED_FOR.days(cx.settings()),
-            restored: cx.is_restored(),
-        };
+        let scan = Scan { now: Timestamp::from_system_time(cx.clock().now()), days: UNUSED_FOR.days(cx.settings()) };
         for group in place::groups(projects, &places) {
             if cx.cancel().is_cancelled() {
                 return Err(ModuleError::Cancelled);

@@ -17,7 +17,7 @@ use fresher_core::{
 };
 
 use crate::rescan::change_set::{ChangeSet, Gather};
-use crate::rescan::load::{Cached, Use};
+use crate::rescan::load::Cached;
 use crate::tree::arena::Tree;
 use crate::walk::Walk;
 
@@ -79,7 +79,7 @@ pub(crate) fn rescan(
     on_match: &mut dyn FnMut(Match),
     on_progress: &mut dyn FnMut(WalkProgress),
 ) -> Result<(Tree, WalkSummary), Stop> {
-    let cached = Cached::load(sources.cache, scope, Use::Rescan).map_err(Stop::Full)?;
+    let cached = Cached::load(sources.cache, scope).map_err(Stop::Full)?;
     let gather = Gather {
         journal: sources.journal,
         now: sources.now,
@@ -98,7 +98,7 @@ pub(crate) fn rescan(
     let changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
     let patched = patch::patch(&cached.tree, &set, walk, cancel, on_progress)?;
     check::check(&patched.tree, &patched.unchanged, walk, sources.seed, cancel)?;
-    emit::emit(&patched.tree, walk.matcher, walk.interests, &[], on_match);
+    emit::emit(&patched.tree, walk.matcher, walk.interests, on_match);
     let summary = summary::summarize(&patched.tree, ScanKind::Rescan { changed_folders: changed });
     Ok((patched.tree, summary))
 }

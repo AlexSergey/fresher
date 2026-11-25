@@ -12,7 +12,7 @@ use fresher_testing::{FakeChangeJournal, FakeClock, FixtureTree, MemoryScanCache
 
 use crate::codec::testing::snapshot;
 use crate::rescan::Scope;
-use crate::rescan::load::{Cached, Use};
+use crate::rescan::load::Cached;
 use crate::scanner::{AnchorResolver, Scanner, ScannerOptions, home_anchor};
 use crate::tree::arena::Tree;
 use crate::walk::roots::tests::one_volume;
@@ -145,7 +145,7 @@ impl Rig {
 
     /// The cached tree, loaded for a rescan.
     pub(crate) fn cached(&self) -> Cached {
-        Cached::load(&*self.cache, &self.scope(), Use::Rescan).unwrap()
+        Cached::load(&*self.cache, &self.scope()).unwrap()
     }
 }
 

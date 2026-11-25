@@ -18,7 +18,6 @@ fn every_run() -> Vec<ModuleRun> {
         running(),
         old(),
         scan("temp-old", System::plain().running(FakeRunningApps::failing("no process list"))),
-        scan("temp-old", System::plain().restored()),
         scan("temp-old", System::plain().stored(r#"{"temp.older-than-days": 14}"#)),
     ];
     runs.into_iter().map(|(_, run)| run).collect()
@@ -31,7 +30,7 @@ mod negative {
 
     #[test]
     fn what_only_passes_is_never_kept_for_good() {
-        assert_eq!(left_out_kinds(&temp()).for_now, ["locked", "app-open", "recent", "scan-again", "no-system"]);
+        assert_eq!(left_out_kinds(&temp()).for_now, ["locked", "app-open", "recent", "no-system"]);
     }
 }
 
@@ -67,7 +66,7 @@ mod positive {
         let given: BTreeSet<&str> =
             runs.iter().flat_map(|run| &run.left_out).map(|item| item.reason.as_str()).collect();
         assert_eq!(given, declared);
-        assert_eq!(declared.len(), 8);
+        assert_eq!(declared.len(), 7);
     }
 
     #[test]

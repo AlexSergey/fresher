@@ -109,7 +109,6 @@ pub(crate) struct Facts<'a> {
     /// The list of installed apps was read in full.
     pub(crate) complete: bool,
     pub(crate) running: Result<&'a RunningSet, NoSystem>,
-    pub(crate) restored: bool,
     /// Every place of the rows that is not optional was seen in full.
     pub(crate) places_complete: bool,
     pub(crate) now: Timestamp,
@@ -125,7 +124,7 @@ pub(crate) struct Facts<'a> {
 /// 5. the list of installed apps is partial: `AppsUnread`;
 /// 6. the running apps cannot be listed: `NoSystem`;
 /// 7. a running app's id is related to the id: `Running`;
-/// 8. a restored scan, a place not seen in full, or a folder not read in full: `ScanAgain`;
+/// 8. a place not seen in full, or a folder not read in full: `ScanAgain`;
 /// 9. a leftover changed within the days, at an unknown time or in the future: `UsedRecently`;
 /// 10. Spotlight cannot tell: `SpotlightUnread`;
 /// 11. Spotlight finds the app: `InstalledElsewhere`;
@@ -157,7 +156,7 @@ pub(crate) fn decide_id(
     if running.apps().iter().any(|app| app.bundle_ids.iter().any(|open| related(open, id))) {
         return IdVerdict::LeftOut(Reason::Running);
     }
-    if facts.restored || !facts.places_complete || leftovers.iter().any(|leftover| !is_read(leftover)) {
+    if !facts.places_complete || leftovers.iter().any(|leftover| !is_read(leftover)) {
         return IdVerdict::LeftOut(Reason::ScanAgain);
     }
     if !leftovers.iter().all(|leftover| is_old(leftover, facts.now, facts.days)) {

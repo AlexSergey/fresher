@@ -22,7 +22,6 @@ mod home_engine;
 #[expect(dead_code, reason = "the uninstall flows scan in full; only the rescans' journal serves them")]
 mod home_rescan;
 #[path = "../support/home_scan.rs"]
-#[expect(dead_code, reason = "the flows of other modules restore")]
 mod home_scan;
 #[path = "../support/report.rs"]
 mod report;

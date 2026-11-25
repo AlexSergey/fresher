@@ -75,16 +75,6 @@ impl Roots {
         Self::with_identities(roots, places, volumes, |path| Ok((reader.identify(path)?, reader.access(path)?)))
     }
 
-    /// The roots as `prepare` makes them, without asking the reader anything: a root's identity is its volume's
-    /// device and no file id, its access nothing known. What a restore needs, which must not touch the disk beyond
-    /// the roots' metadata.
-    pub(crate) fn locate(roots: &[PathBuf], places: &[PathBuf], volumes: &dyn Volumes) -> Result<Self, WalkError> {
-        Self::with_identities(roots, places, volumes, |path| {
-            let identity = volumes.identify(path).map(|volume| FolderIdentity { device: volume.device, file_id: 0 })?;
-            Ok((identity, EntryAccess::default()))
-        })
-    }
-
     fn with_identities(
         roots: &[PathBuf],
         places: &[PathBuf],
@@ -158,8 +148,7 @@ impl Roots {
     }
 
     /// A stable hash of the canonical scan roots and their volume ids, whatever their order: what a cache is of. The
-    /// places are not in it: a cache whose places changed is found and refused (`OtherRoots`), and a restore whose
-    /// place went missing still finds it.
+    /// places are not in it: a cache whose places changed is found and refused (`OtherRoots`).
     pub(crate) fn scope_key(&self) -> ScopeKey {
         let mut parts: Vec<(&[u8], u128)> = self
             .kept

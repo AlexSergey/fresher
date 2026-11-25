@@ -252,13 +252,13 @@ The app deletes files from a real person's disk. These rules hold in every versi
   - (plan [017](../plans/017-temp-files/readme.md), decision 6) a top-level item of the user's own temporary folder
     (`$TMPDIR`) or the user's own item in `/private/tmp` is claimed by the place's contract whatever its name — macOS
     itself removes anything there after three days — and offered only after every row of the `temp` module's
-    decision: not restored, no lock name, no socket or pipe, the user's and unflagged, not locked, the open apps
+    decision: no lock name, no socket or pipe, the user's and unflagged, not locked, the open apps
     listed and none named by it, read in full, and unchanged for more than the setting's days
     ([`../categories/temp-old-files.md`](../categories/temp-old-files.md));
   - (plan [033](../plans/033-logs/readme.md), agent's call 1) a regular file under the user's `~/Library/Logs`, up to
     six names deep, is claimed by the place's contract whatever its name — it is the place macOS gives apps for their
     logs — and offered, to the Trash, only after every row of the `logs` module's decision: not another module's
-    place (`JetBrains/`, a bundle-id-shaped top folder), not a state or lock name, not restored, no socket, pipe or
+    place (`JetBrains/`, a bundle-id-shaped top folder), not a state or lock name, no socket, pipe or
     device, the user's and unflagged, not locked, and unchanged for more than the setting's days
     ([`../categories/logs-app-logs.md`](../categories/logs-app-logs.md),
     [`../categories/logs-crash-reports.md`](../categories/logs-crash-reports.md)). No folder is claimed.

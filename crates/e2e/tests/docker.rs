@@ -3,7 +3,7 @@
 //! the modules the app registers for them, the real settings file, scan cache and journal, and the real `DiskCleaner`
 //! reaching only inside the sandbox, with a fake Trash. `OrbStack` is installed; whether it is open and what its CLI
 //! answers are fakes a flow sets. Docker is described, never cleaned: nothing of it is offered, counted or cleaned, and
-//! the only program run is the read, never in a restored scan or with the runtime closed.
+//! the only program run is the read, never with the runtime closed.
 
 #[cfg(test)]
 #[expect(dead_code, reason = "the docker flows write no golden file")]
@@ -18,7 +18,7 @@ mod flows {
     use std::fs;
     use std::os::unix::fs::MetadataExt as _;
 
-    use fresher_core::{DangerLevel, Event, FindingOrder, FindingsQuery, Insight, ModuleOutcome, ScanKind};
+    use fresher_core::{DangerLevel, Event, FindingOrder, FindingsQuery, Insight, ModuleOutcome};
     use serde_json::{Value, json};
 
     use crate::flow::{DISK, Home, NPM, SOCKET, Setup, finished, outcome};
@@ -95,22 +95,6 @@ mod flows {
         assert_eq!(summaries(&insights), ["docker.summary.stopped"]);
     }
 
-    pub(crate) fn restored_scan_is_not_asked() {
-        let (mut home, _) = scanned(Setup::answered());
-        home.restart(Setup::answered());
-
-        let events = home.flow.restore();
-
-        let kind = events.iter().find_map(|event| match event {
-            Event::ScanFinished { kind, .. } => Some(kind),
-            _ => None,
-        });
-        assert!(matches!(kind, Some(ScanKind::Restored { .. })), "{kind:?}");
-        let (_, insights) = finished(&events);
-        assert_eq!(summaries(&insights), ["docker.summary.restored"]);
-        assert_eq!(home.commands.calls(), Vec::<String>::new());
-    }
-
     pub(crate) fn cancelled_read_cancels_the_module() {
         let (home, events) = scanned(Setup::cancelled());
 
@@ -123,7 +107,7 @@ mod flows {
 mod negative {
     use crate::flows::{
         a_cleanup_of_everything_leaves_docker_untouched, cancelled_read_cancels_the_module,
-        closed_runtime_is_not_asked, nothing_of_docker_s_is_found_or_counted, restored_scan_is_not_asked,
+        closed_runtime_is_not_asked, nothing_of_docker_s_is_found_or_counted,
     };
 
     #[test]
@@ -139,11 +123,6 @@ mod negative {
     #[test]
     fn a_closed_runtime_runs_nothing() {
         closed_runtime_is_not_asked();
-    }
-
-    #[test]
-    fn a_restored_scan_runs_nothing() {
-        restored_scan_is_not_asked();
     }
 
     #[test]

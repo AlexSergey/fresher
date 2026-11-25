@@ -151,18 +151,14 @@ fn start(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     #[cfg(debug_assertions)]
     app.manage(demo);
-    // The record subscribes before the restore, so the restored scan is recorded.
     #[cfg(debug_assertions)]
     let recorded = run.map(|run| {
         let events = engine.subscribe();
         app.manage(dev_runs::DevRuns::new(run));
         events
     });
-    // The last result shows at once: the cached state is restored without reading the disk; the UI learns
-    // of it through the usual events and the overview.
-    if let Err(error) = engine.restore() {
-        tracing::warn!(?error, "the last scan was not restored");
-    }
+    // Nothing runs at start: no scan and no restore of the last result. Every read of the disk begins with the user's
+    // press (the user, 2026-11-25).
     app.manage(engine);
     #[cfg(debug_assertions)]
     if let Some(events) = recorded {

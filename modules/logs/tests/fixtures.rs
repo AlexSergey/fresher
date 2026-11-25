@@ -67,15 +67,6 @@ mod negative {
         assert_eq!(left_out(&run), expected);
     }
 
-    /// Nine files are the module's: the eight offered and the fresh one.
-    #[test]
-    fn a_restored_scan_of_the_offered_home_only_leaves_out() {
-        let (_tree, run) = scan("logs-offered", System::plain().restored());
-
-        assert_eq!(run.findings, Vec::<NewFinding>::new());
-        assert_eq!(left_out(&run), times("logs.left-out.scan-again", OFFERED.len() + 1));
-    }
-
     #[test]
     fn a_longer_setting_keeps_the_ten_day_old_log() {
         let (_tree, run) = scan("logs-offered", System::plain().stored(r#"{"logs.older-than-days": 14}"#));
@@ -88,9 +79,8 @@ mod negative {
 
     #[test]
     fn no_folder_is_ever_offered() {
-        let restored = scan("logs-offered", System::plain().restored());
         let longer = scan("logs-offered", System::plain().stored(r#"{"logs.older-than-days": 14}"#));
-        let runs = [not_claimed(), kept(), offered(), restored, longer];
+        let runs = [not_claimed(), kept(), offered(), longer];
 
         for (_tree, run) in &runs {
             for finding in &run.findings {
