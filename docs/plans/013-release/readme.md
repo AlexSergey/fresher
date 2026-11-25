@@ -116,7 +116,8 @@ Built on 2026-11-25 on `feat/013-release-workflow`; awaiting the user's look, th
 - **The package** (02): the universal app (21.9 MiB, `x86_64 arm64`, ad hoc with the hardened runtime) and its image
   (9.6 MiB) built on the developer's Mac in under five minutes of compiling; `check:bundle -- --release` passed on
   both.
-- **The release workflow** (04): `release.yml`, actionlint clean; the release checklist in `workflow.md`. Not run
+- **The release workflow** (04): `release.yml`, actionlint clean; the release checklist, now in `docs/release.md` with the release strategy (the user, 2026-11-25: "describe the release
+  strategy in a separate document; CLAUDE.md says every release follows it"). Not run
   yet: only a pushed tag (or a dry run by hand) shows the runner's build, the attestation and the draft.
 - **The release notes** (04): `docs/releases/0.1.0.md`, with the agreement's five lines and the first-launch steps
   (Open Anyway; the quarantine attribute is never mentioned).

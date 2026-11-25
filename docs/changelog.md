@@ -2,7 +2,7 @@
 
 What changed in each release of Fresher, for the people who use it, newest first. Versions follow semantic
 versioning; until 1.0.0 a minor version may change how the app behaves. How a release is cut:
-[`workflow.md`](./workflow.md), "Releases". The notes of each release: [`releases/`](./releases/).
+[`release.md`](./release.md). The notes of each release: [`releases/`](./releases/).
 
 ## [Unreleased]
 

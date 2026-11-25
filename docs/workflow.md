@@ -38,38 +38,8 @@ How work is done in this repository: branches, merges, agents, cleanup. The user
 
 ## Releases
 
-A release is cut by the user from `main` (plan [013](./plans/013-release/readme.md)). A pushed tag `vX.Y.Z` starts
-`.github/workflows/release.yml`, which builds the universal disk image, writes `SHA256SUMS`, attests the build
-provenance and makes a **draft** release; a person checks the draft and publishes it. Versions follow semantic
-versioning; 1.0.0 comes only after real testing (the user's decision of 2026-11-25).
-
-1. **Version.** On `main`, `npm run release:version -- X.Y.Z` writes the version into every place and refreshes the
-   lock files (nothing to do when the version already is X.Y.Z, as for 0.1.0).
-2. **Changelog.** In [`changelog.md`](./changelog.md), the entries of "Unreleased" become `## [X.Y.Z] - YYYY-MM-DD`
-   with the day of the tag, written for the people who use the app; the links at the bottom get the new version.
-3. **Release notes.** `docs/releases/X.Y.Z.md`, the text of the GitHub release: what it is, the supported Macs,
-   install, first launch, Full Disk Access, how to check the download, no warranty, where to report, the changelog.
-   The workflow appends the version's changelog section to them under "What's new in X.Y.Z"
-   (`node scripts/release-version.ts notes X.Y.Z` prints the whole text).
-   `.github/SECURITY.md` names the supported versions.
-4. **Check and commit.** `npm run check:version -- X.Y.Z` passes; the change is one commit on `main`
-   (`chore(repo): release X.Y.Z`) through the hooks.
-5. **Dry run (optional).** Actions → Release → "Run workflow" on `main` builds the same files without a release and
-   keeps them as the `release` artifact for 14 days.
-6. **Push and wait.** `git push origin main`; CI passes on that commit (a tag is never the first build of its tree).
-7. **Tag.** `git tag -a vX.Y.Z -m "Fresher X.Y.Z"` on that commit, then `git push origin vX.Y.Z`. The workflow
-   refuses a tag that is not on `main` or that differs from the version in any place.
-8. **Check the draft.** On the Releases page: the image `Fresher_X.Y.Z_universal.dmg`, `SHA256SUMS` and the notes are
-   there; download the image, run `shasum -a 256 -c SHA256SUMS` and `gh attestation verify <image> --repo
-   AlexSergey/fresher`; install it as the notes say and open it on the oldest supported macOS (13) and the newest,
-   on Apple silicon and on Intel where a Mac is at hand: the first launch, About's version, a scan. From the second
-   release on, open the new version over the data folder of the previous one (its settings, ignore list and cleanups
-   are kept).
-9. **Publish** the draft. Then the README's release items of
-   [`deferred/readme-at-release.md`](./deferred/readme-at-release.md) are due.
-
-A broken draft is deleted with its tag (`git push --delete origin vX.Y.Z`), fixed on `main` and tagged again. A
-published release is never replaced: the fix is the next patch version.
+A release follows [`release.md`](./release.md): the strategy, the versions, what a release holds, signing, the
+changelog and the steps to cut one.
 
 ## Agents
 

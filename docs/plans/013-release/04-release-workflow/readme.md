@@ -21,7 +21,7 @@ Written and approved in chat on 2026-11-25 ("the release CI — go", "the releas
     `docs/releases/<version>.md` as its text, followed by the version's changelog section under "What's new in
     <version>" (the user, 2026-11-25: "in most repositories the version's changelog goes into the release; let's do
     the same"). A person publishes it (agent's call 4).
-- **The release checklist**, [`docs/workflow.md`](../../../workflow.md), "Releases": version, changelog, notes, check,
+- **The release checklist**, [`docs/release.md`](../../../release.md): version, changelog, notes, check,
   dry run, push, tag, check the draft (checksums, attestation, the oldest and newest macOS, Intel), publish; a broken
   draft is deleted with its tag; from the second release on, the new version opens the previous one's data folder
   (the migration check of the design; 0.1.0 has no earlier release).

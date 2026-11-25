@@ -1,4 +1,4 @@
-# A release from a pushed version tag (docs/workflow.md, "Releases"; plan 013/04): the universal app in a disk image,
+# A release from a pushed version tag (docs/release.md; plan 013/04): the universal app in a disk image,
 # its checksums and its build provenance, attached to a draft release that a person publishes. Run by hand, it is a
 # dry run of the same build: the files are kept as an artifact and no release is made.
 name: Release

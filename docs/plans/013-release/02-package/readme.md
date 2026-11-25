@@ -44,5 +44,5 @@ profile on the developer's Mac, with a warm registry) and the image: `Fresher.ap
 passed on it; pointed at a missing folder it named every missing part.
 
 Not checked yet: the app opened from the image on another Mac, on Intel, and on macOS 13 — the release checklist's
-step 8 ([`../../../workflow.md`](../../../workflow.md), "Releases"). The image itself is not signed: an ad hoc
+step 8 ([`../../../release.md`](../../../release.md)). The image itself is not signed: an ad hoc
 signature on it would prove nothing, and Gatekeeper checks the app.

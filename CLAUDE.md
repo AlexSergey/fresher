@@ -9,6 +9,8 @@ explicitly confirms. Read [`docs/goal.md`](./docs/goal.md) for the goal.
 Before planning or implementing anything, read:
 
 - [`docs/workflow.md`](./docs/workflow.md) — how work is done: branches, merges, subagents, cleanup.
+- [`docs/release.md`](./docs/release.md) — how a release is made: versions, what it holds, signing, the changelog and
+  the steps. **Every release follows it.**
 
 - **[`docs/rules.md`](./docs/rules.md) — the project rules. Every plan and change is checked against them before it is
   built.** A plan or change that breaks them is not built.

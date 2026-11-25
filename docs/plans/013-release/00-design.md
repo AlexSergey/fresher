@@ -26,7 +26,7 @@ The user's task, goals and non-goals: [`readme.md`](./readme.md). This page hold
   app (agent's call 9 of the readme).
 - **The release workflow (plan 04)**: a tag starts a CI job that builds with locked dependencies and no caches,
   attests the image's build provenance and attaches the image and checksums to a draft release whose text is the
-  release notes; a person publishes it after the checklist ([`../../workflow.md`](../../workflow.md), "Releases").
+  release notes; a person publishes it after the checklist ([`../../release.md`](../../release.md)).
   Migrations are checked per release on the data folder written by the previous version, from the second release
   on.
 

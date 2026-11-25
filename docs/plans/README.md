@@ -45,8 +45,7 @@ number; their order is set when they are approved.
 **Versions.** The version was reset to 0.1.0 on 2026-11-16 and stays there while the app is built: plans do not bump
 it (the user's decision: nobody has tested the app or looked for its bugs yet). The versions in the plans done before
 then (0.0.1 to 0.5.5) are kept as history; the "Version" of a plan not yet done is not a target any more. The first
-release is 0.1.0, for testers (the user, 2026-11-25); how a release is cut: [`../workflow.md`](../workflow.md),
-"Releases" (plan [013](./013-release/readme.md)).
+release is 0.1.0, for testers (the user, 2026-11-25); how a release is cut: [`../release.md`](../release.md) (plan [013](./013-release/readme.md)).
 
 | #   | Global plan                                                          | Status         | Version | Modules                                           |
 | --- | -------------------------------------------------------------------- | -------------- | ------- | ------------------------------------------------- |
