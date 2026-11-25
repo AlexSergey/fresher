@@ -72,7 +72,7 @@ export const LeftOutLines = ({ bar = false, counts, home = null }: LeftOutLinesP
   counts.length === 0 ? null : (
     <ul aria-label={t('ui.left-out-lines.label')} className={styles.lines} data-bar={bar ? true : undefined}>
       {ordered(counts).map((count) => (
-        <li className={styles.line} data-kind={count.kind} key={count.reason.key}>
+        <li className={styles.line} data-kind={count.kind} key={`${count.kind}:${count.reason.key}`}>
           <span className={styles.summary}>
             {bar && count.kind === 'for-now' ? <Icon className={styles.icon ?? ''} icon={Info} /> : null}
             <span>{summaryOf(count)} </span>

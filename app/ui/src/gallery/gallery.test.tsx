@@ -81,6 +81,7 @@ describe('Gallery', () => {
 
         unmount();
       }
-    });
+      // Every story in one test: well under a second alone, but several seconds under coverage on a busy machine.
+    }, 30_000);
   });
 });

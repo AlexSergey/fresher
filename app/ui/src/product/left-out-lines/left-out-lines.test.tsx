@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setCoreDictionary } from '../../i18n';
 import { DEMO_DICTIONARY, DEMO_LEFT_OUT } from '../../test/demo-scan';
@@ -54,6 +54,18 @@ describe('LeftOutLines', () => {
   });
 
   describe('positive cases', () => {
+    it('shows a reason both kept for good and held back for now on two lines', () => {
+      const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const kept = keptCount('demo.caches', 'demo.left-out.open', 3, sized(2 * MB));
+      render(<LeftOutLines counts={[kept, DEMO_LEFT_OUT]} />);
+
+      expect(screen.getByText(/^3 items kept \(2 MB\)/u)).toBeInTheDocument();
+      expect(screen.getByText(/^1 item left out \(157\.3 MB\)/u)).toBeInTheDocument();
+      // React warns of two lines with one key.
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
     it('shows one line per reason with its count and size, the ones kept for good last', () => {
       render(<LeftOutLines counts={[KEPT, DEMO_LEFT_OUT]} />);
 
