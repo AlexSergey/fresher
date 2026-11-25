@@ -123,6 +123,9 @@ before the release) — it costs nothing but time, and names the project in publ
 2. **Run the audit now** (the user, 2026-11-25): "run the audit"; built from this draft directly.
 3. **Release 0.1.0 unsigned** (the user, 2026-11-25): no Apple Developer ID and no notarization; the bundle is signed
    ad hoc with the hardened runtime and no entitlements.
+4. **The SCAN-1 residual is accepted for 0.1.0** (the user, 2026-11-25): a look-alike Docker bundle that swaps the
+   signed CLI between its check and its run stays a known issue
+   ([`app-docker-cli-checked-then-run.md`](../../known-issues/app-docker-cli-checked-then-run.md)).
 
 ## Agent's calls (to check)
 

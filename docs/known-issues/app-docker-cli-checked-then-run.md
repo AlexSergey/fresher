@@ -28,6 +28,8 @@ Kept for 0.1.0 because it needs a same-user program that already runs and plants
 running and its socket present, and a won race; the read's command is fixed (`--host`, `--config` of an empty
 system folder), so the genuine CLI itself is not steered.
 
+**Accepted for 0.1.0 by the user, 2026-11-25.**
+
 ## Options left
 
 - Read the engine's socket directly (`GET /system/df` over the local socket, parsed by the module): no program runs
