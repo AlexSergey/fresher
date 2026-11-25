@@ -69,3 +69,11 @@ gh repo edit AlexSergey/fresher --description "A free, open-source macOS disk cl
 
 - by hand: upload `assets/social-preview.png` in Settings -> General -> Social preview; enable Settings -> Security
   -> Private vulnerability reporting (needed by `SECURITY.md`'s link).
+
+**Applied on 2026-11-25.** At the user's request the description and 18 topics were set with `gh repo edit`
+(description: "Free, open-source macOS disk cleaner made for developers' Macs. Explains every gigabyte in plain
+English with a danger level, never sends your data anywhere, and removes nothing you have not confirmed."; topics:
+`macos`, `macos-app`, `mac-cleaner`, `disk-cleaner`, `disk-cleanup`, `disk-space`, `free-up-space`, `storage`,
+`cleaner`, `cleanup`, `cache-cleaner`, `developer-tools`, `xcode`, `uninstaller`, `privacy`, `rust`, `tauri`,
+`open-source`), and the user uploaded the social preview image by hand. Private vulnerability reporting was turned on through
+the API (`gh api -X PUT repos/AlexSergey/fresher/private-vulnerability-reporting`): the settings page answered 500.
