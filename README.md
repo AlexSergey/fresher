@@ -25,6 +25,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/AlexSergey/fresher/releases/latest"><img alt="Download Fresher for macOS" src="https://img.shields.io/badge/Download_for_macOS-5465eb?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
+</p>
+
+<p align="center">
   <img src="assets/demo/cleanup.gif" width="800" alt="Fresher scans a Mac, moves Xcode build data to the Trash after a confirmation and shows how much space it freed">
 </p>
 
