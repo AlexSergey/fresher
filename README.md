@@ -24,8 +24,9 @@
   <a href="#help-it-get-better">Help it get better</a>
 </p>
 
-<!--video: assets/demo/overview.gif, width 800, alt "Fresher scans a Mac and sorts the space it can free by danger
-level, with Xcode build data as the largest safe category"-->
+<p align="center">
+  <img src="assets/demo/cleanup.gif" width="800" alt="Fresher scans a Mac, moves Xcode build data to the Trash after a confirmation and shows how much space it freed">
+</p>
 
 > ⭐ **If Fresher gave you back some space, a [star](https://github.com/AlexSergey/fresher/stargazers) helps other
 > people find it.** It takes one click.
@@ -153,9 +154,6 @@ need. It can also remove an app you choose, after showing you what goes with it.
 <!-- what-it-finds:end -->
 
 The first release does not offer the kinds marked High: only what comes back, or what you can check by eye.
-
-<!--video: assets/demo/cleanup.gif, folded under "See a cleanup, from the scan to the space it freed", width 800,
-alt "Fresher moves Xcode build data to the Trash after a confirmation and shows how much space it freed"-->
 
 ## What it does not do
 

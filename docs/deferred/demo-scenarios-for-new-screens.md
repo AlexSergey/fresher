@@ -6,7 +6,8 @@ the two GIFs again after the user's walk of plan 042
 
 ## What is postponed
 
-Plan 038 ships two scenarios, `overview` and `cleanup`, on the screens of `main` at its start. The screens of the later
+Plan 038 shipped two scenarios, `overview` and `cleanup`, on the screens of `main` at its start (on 2026-11-25 the
+user kept `cleanup` only: "the first is enough"). The screens of the later
 plans (Xcode, Docker's "Described, not cleaned" section and its insight screen, the Trash line, and whatever plans 035
 and 036 add) have none.
 
@@ -20,12 +21,7 @@ When one is wanted:
 
 Nothing else is to be built: the player, the recorder and the checks exist.
 
-**The two GIFs after plan 042** (added 2026-11-24): `assets/demo/overview.gif` and `cleanup.gif` show the screens
-before plan [042](../plans/042-plain-interface/readme.md) rebuilt Scan and Review. The scenarios already follow the new
-screens (`cleanup` clicks "Move to the Trash"; the sandbox's demo trace test passes), but they were not played or
-recorded here: recording needs the app's window on the user's screen and the terminal's screen recording permission.
-After the user's walk of 042 (manual testing 1.24): `npm run demo:check -- all`, then `npm run demo:record -- all`,
-and look at each GIF before committing it.
+**The GIF after plan 042** was recorded by the user on 2026-11-25 (`assets/demo/cleanup.gif`, the README's hero).
 
 ## Why
 

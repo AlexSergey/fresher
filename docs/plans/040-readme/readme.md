@@ -161,7 +161,8 @@ links for contributors), licence. The generator writes the block as a `<details>
 2. **The star line under the hero GIF**, once, as the user asked. Replaces call 5 (at the end).
 3. **The two GIFs**: `overview` in the hero, `cleanup` folded under "What it finds". Until the user records them
    (`npm run demo:record -- all` needs the terminal's screen recording permission), the README holds a `<!--video: …-->`
-   comment at each place, with the GIF's path and alt text; the user asked for it (2026-11-25).
+   comment at each place, with the GIF's path and alt text; the user asked for it (2026-11-25). The user then kept one
+   scenario, `cleanup`, recorded it on 2026-11-25, and it became the hero; the folded second GIF is gone.
 4. **"Why Fresher" before "What it finds"**: the reader's reasons first, the list on demand; "Why you can trust it"
    became its Private, Safe, Undoable and background bullets, each linking to its restriction.
 5. **The High note by hand**: the first release withholds High ([`../../restrictions/deletion-safety.md`](../../restrictions/deletion-safety.md),

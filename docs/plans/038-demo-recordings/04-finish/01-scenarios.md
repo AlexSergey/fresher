@@ -83,3 +83,6 @@ Deviations:
 where we moved to the Trash and see how much was freed, without going to Cleanups"): the demo world says
 `agreement = "accepted"` in its `[demo]`, so the agreement's sheet never shows in a recording, and the `cleanup`
 scenario ends on the cleanup's result after a 2.5 s pause; the Cleanups and put back steps are gone.
+
+Later the same day the user kept only `cleanup` ("the second scenario can go, the first is enough"): `overview` and
+its GIF were removed, and `cleanup.gif` became the README's hero.
