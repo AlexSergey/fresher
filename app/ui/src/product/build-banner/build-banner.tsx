@@ -33,12 +33,12 @@ const sandboxText = (build: SandboxBuild): string => {
 
 // A thin, quiet strip above the window in a development build: which sandbox it lives in, where its cleanups go (and
 // what of the Mac its world simulates, when the core says so), or that it removes nothing outside one. Nothing in a
-// release build.
+// release build. It is part of the window's title area: it drags the window and its text is not selected.
 export const BuildBanner = ({ build }: BuildBannerProps): JSX.Element | null => {
   switch (build.kind) {
     case 'development':
       return (
-        <p className={styles.banner} role="note">
+        <p className={styles.banner} data-tauri-drag-region role="note">
           {t('ui.build-banner.development')}
         </p>
       );
@@ -46,7 +46,7 @@ export const BuildBanner = ({ build }: BuildBannerProps): JSX.Element | null => 
       return null;
     case 'sandbox':
       return (
-        <p className={styles.banner} role="note">
+        <p className={styles.banner} data-tauri-drag-region role="note">
           {sandboxText(build)}
         </p>
       );

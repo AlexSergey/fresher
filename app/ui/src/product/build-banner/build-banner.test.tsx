@@ -78,5 +78,18 @@ describe('BuildBanner', () => {
         'Development build · nothing can be removed outside a sandbox',
       );
     });
+
+    it('every_banner_drags_the_window', () => {
+      render(
+        <>
+          <BuildBanner build={{ kind: 'development' }} />
+          <BuildBanner build={sandbox([])} />
+        </>,
+      );
+
+      for (const banner of screen.getAllByRole('note')) {
+        expect(banner).toHaveAttribute('data-tauri-drag-region');
+      }
+    });
   });
 });

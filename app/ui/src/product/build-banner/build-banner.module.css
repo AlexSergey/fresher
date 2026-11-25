@@ -16,7 +16,9 @@
     line-height: var(--type-caption-line);
     text-align: center;
     text-overflow: ellipsis;
+    user-select: none;
     white-space: nowrap;
+    -webkit-user-select: none;
   }
 
   /* A demo records the window without the banner of the development build. */
