@@ -181,7 +181,7 @@ its version in a comment ([`quality.md`](./quality.md), "Layer 5"). They run on 
 | `actions/checkout`                | 7.0.1   | MIT               | every job                                                      |
 | `actions/setup-node`              | 7.1.0   | MIT               | Node from `.nvmrc`, the npm cache                              |
 | `Swatinem/rust-cache`             | 2.9.3   | LGPL-3.0          | the cargo cache (off in the release workflow)                  |
-| `taiki-e/install-action`          | 2.90.5  | Apache-2.0 OR MIT | the cargo tools, typos and actionlint, checked by checksum     |
+| `taiki-e/install-action`          | 2.90.5  | Apache-2.0 OR MIT | the cargo tools and typos, checked by checksum                 |
 | `actions/upload-artifact`         | 7.0.2   | MIT               | the coverage and e2e reports; the release's files              |
 | `actions/download-artifact`       | 8.0.2   | MIT               | the release's files, from the build job to the release job     |
 | `actions/attest-build-provenance` | 4.2.2   | MIT               | the release's build provenance (`gh attestation verify`)       |
