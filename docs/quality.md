@@ -156,7 +156,7 @@ checksum (nothing is downloaded and run unverified).
 | ------------ | ------- | ---------------------------------------------------------------------------------------------- |
 | `ci.yml`     | `lint`  | actionlint, `npm run lint`, `npm run check:readme`, `npm run check:notices` (after `cargo fetch --locked`), the crate dependency guard, the lock check, the version check, the text check, knip, cargo-machete, cargo-deny, typos, `npm audit` |
 |              | `test`  | `npm run test:scripts`, `npm run test:cov`; the coverage and JUnit reports kept as an artifact |
-|              | `e2e`   | `npm run test:e2e` with the Playwright browsers; the report kept on failure                    |
+|              | `e2e`   | the UI e2e split by browser into two parallel jobs (gallery + WebKit, Chromium; two workers each; the core e2e in the WebKit job); the report kept on failure or cancel |
 |              | `build` | `npm run build`: the app bundle, signed ad hoc with the hardened runtime, and its check (`npm run check:bundle`) |
 | `codeql.yml` | analyze | CodeQL (`security-extended`) for the workflows, TypeScript and Rust; on pull requests, on `main` and weekly |
 | `advisories.yml` | advisories | `cargo deny check advisories` and `npm audit --omit=dev`, weekly: an advisory published after the last push |

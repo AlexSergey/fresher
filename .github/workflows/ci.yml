@@ -85,10 +85,20 @@ jobs:
             target/**/nextest/ci/junit.xml
           retention-days: 14
 
+  # The UI e2e suite is split by browser into two parallel jobs: on one runner it outgrew 30 minutes (901 tests, the
+  # runner's 3 cores give Playwright one worker).
   e2e:
     needs: test
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: webkit
+            projects: --project gallery --project webkit
+          - browser: chromium
+            projects: --project chromium
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -98,18 +108,27 @@ jobs:
         with:
           tool: cargo-nextest@0.9.149
       - name: Install the Playwright browsers
-        run: npm exec --workspace app/ui -- playwright install webkit chromium
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npm exec --workspace app/ui -- playwright install "$BROWSER"
       # Full keyboard access, as on a developer's Mac: without it WebKit's Tab skips buttons.
       - name: Turn on full keyboard access
         run: defaults write -g AppleKeyboardUIMode -int 3
       # The screenshots are compared on the developer's Mac only (pre-push, docs/testing.md): the runner's macOS draws
       # text a few pixels differently from the one the baselines were taken on.
-      - run: npm run test:e2e:core
-      - run: npm run test:e2e --workspace app/ui -- --ignore-snapshots
-      - if: ${{ failure() }}
+      # The core's e2e suite does not depend on the browser: it runs once, in the WebKit job.
+      - if: ${{ matrix.browser == 'webkit' }}
+        run: npm run test:e2e:core
+      - name: Run the UI e2e tests
+        env:
+          PROJECTS: ${{ matrix.projects }}
+        run: |
+          read -ra projects <<< "$PROJECTS"
+          npm exec --workspace app/ui -- playwright test "${projects[@]}" --workers 2 --ignore-snapshots
+      - if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: |
             playwright-report/
             test-results/
