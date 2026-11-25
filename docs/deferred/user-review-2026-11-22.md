@@ -365,7 +365,7 @@ Plan [039](../plans/039-agreement-and-wording/readme.md), awaiting the user's wa
   blocks scroll with the dialog; `crates/cleaner` changed in two test files only (the echo field).
 - **Known gaps**: "a changed text asks again" has no browser-level test until a second version exists; a sandbox case
   file's `[settings]` can pre-accept the agreement ([deferred](./sandbox-case-settings-agreement.md)); the licence
-  notices of dependencies are still [deferred](./licence-notices.md).
+  notices of dependencies were deferred then (built by plan [013](../plans/013-release/readme.md) on 2026-11-25).
 
 ## 040 — The README
 

@@ -1,5 +1,5 @@
 [files]
-extend-exclude = ["*-lock.json", "Cargo.lock", "fixtures/", ".idea/", "app/tauri/gen/"]
+extend-exclude = ["*-lock.json", "Cargo.lock", "fixtures/", ".idea/", "app/tauri/gen/", "*.generated.json"]
 
 [default]
 # A short commit hash in backticks is not a word: `12541f6`.

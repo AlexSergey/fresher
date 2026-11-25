@@ -61,7 +61,7 @@ an automated release are decided before the first release ([`../deferred/release
 | 010 | [History and watch mode](./010-history/readme.md)                    | 📝 draft       | 0.6.0   | core, store, engine, app/ui                       |
 | 011 | [Problems and reasons](./011-diagnostics/readme.md)                 | 🔨 in progress | 0.1.0   | core, engine, cleaner, testing, modules, app, app/ui |
 | 012 | [The storage map](./012-storage-map/readme.md)                       | 🔨 in progress | 0.1.0   | core, macos, scanner, engine, testing, sandbox, app, app/ui |
-| 013 | [Release and distribution](./013-release/readme.md)                  | 📝 draft       | 1.0.0   | repo, ci, app                                     |
+| 013 | [Release and distribution](./013-release/readme.md)                  | 🔨 in progress | 0.1.0   | repo, ci, scripts, app, app/ui, docs              |
 | 014 | [Onboarding and the first scan](./014-onboarding/readme.md)          | 📝 draft       | 0.5.0   | engine, store, app/ui                             |
 | 015 | [Module groups and ignoring a module](./015-module-groups/readme.md) | 🔨 in progress | 0.1.0 | core, engine, modules, testing, app, app/ui |
 | 016 | [JetBrains IDE leftovers](./016-jetbrains/readme.md) | 🔨 in progress | 0.1.0 | modules, core, sandbox, testing, app, app/ui, docs |

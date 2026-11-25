@@ -1024,6 +1024,16 @@ files and runs Prettier. Three test files: `readme-catalogue.test.ts`, `readme-l
 negative cases first (one per problem kind), then positive ones (a stable table, a clean README). No test reads the
 real `docs/` or `README.md`: they use strings or folders made in the system's temporary directory.
 
+### The licence notices check
+
+`scripts/notices.ts` (`npm run check:notices`, in pre-push and CI's `lint` job; `npm run notices:generate` rewrites the
+file) builds the notices the app shows under Settings → About (`app/ui/src/screens/settings/notices.generated.json`)
+from cargo-about's offline report of the app crate's tree and the UI's npm production packages, and fails when the
+committed file differs, an npm or Rust licence is outside `deny.toml`'s allowlist, a package has no licence file, or
+`about.toml` accepts other licences than `deny.toml` (plan 013/03/01). The pure part is `scripts/notices-build.ts`;
+two test files, `notices-build.test.ts` and `notices.test.ts` (cargo-about's report injected, folders made in the
+system's temporary directory), negative cases first.
+
 ### The text check
 
 `scripts/check-texts.ts` (`npm run check:texts`, in pre-push; [`writing.md`](./writing.md)) reads the core's, the
@@ -1127,6 +1137,7 @@ record against the disk, read-only, and writes `<record>.check.md` beside it (ne
 | `npm run test:ui`              | `vitest run` in `app/ui`                                                              |
 | `npm run test:scripts`         | `node --test scripts/*.test.ts`                                                       |
 | `npm run check:readme`         | the README's generated table, links, images and claims (`scripts/readme.ts`)          |
+| `npm run check:notices`        | the licence notices are up to date and every licence is allowed (`scripts/notices.ts`) |
 | `npm run test:cov`             | Rust and UI tests with coverage and the 90 % floors (reports in `coverage/`)          |
 | `npm run test:e2e`             | `crates/e2e` and the Playwright suite                                                 |
 | `npm run test:e2e:core`        | `cargo nextest run -p fresher-e2e --locked`                                           |

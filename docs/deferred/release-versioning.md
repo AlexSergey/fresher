@@ -10,8 +10,8 @@ there, and how a release is cut, is decided when the first release is prepared.
 
 ## What doing it needs
 
-- Choose the numbering from 0.1.0 on: the first build for testers is a 0.x release; 1.0.0 comes only after real
-  testing.
+- The numbering is chosen (the user, 2026-11-25): the first release is 0.1.0, for testers; 1.0.0 comes only after
+  real testing ([plan 013](../plans/013-release/readme.md), "Decisions").
 - Automate the release: bump the version in every place that holds it (`Cargo.toml` of the workspace, both
   `package.json`, `app/tauri/tauri.conf.json`, the lock files), the changelog from the Conventional Commits, the tag.
   A candidate is `release-it` (a dev tool; its licence is checked as for any dependency in

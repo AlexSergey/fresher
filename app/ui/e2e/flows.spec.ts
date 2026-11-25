@@ -3368,6 +3368,28 @@ test.describe('positive cases', () => {
     await expect(licence).toContainText('Permission is hereby granted');
   });
 
+  test('the open-source licences open from About, bundled into the app', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await openSettings(page);
+    await settingsPage(page, 'About', 'About');
+    await page
+      .getByRole('region', { name: 'About' })
+      .getByRole('button', { name: 'Show the open-source licences' })
+      .click();
+
+    const notices = page.getByRole('dialog', { name: 'Open-source licences' });
+    await expect(notices).toContainText('Source code of the MPL-2.0 parts');
+    await expect(notices).toContainText('https://crates.io/crates/selectors/');
+    // The MIT text of the UI's React packages, folded until its row is opened.
+    const react = notices.locator('details').filter({ hasText: 'react-dom 19' });
+    await expect(react.getByText(/react-dom 19/u)).toBeHidden();
+    await react.locator('summary').click();
+    await expect(react.getByText(/react-dom 19/u)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(notices).toHaveCount(0);
+  });
+
   test('the High tick lets the cleanup go on and is sent with it', async ({ page }) => {
     await reviewDownloads(page);
     await removeButton(page).click();

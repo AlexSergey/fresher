@@ -5,17 +5,21 @@ import { Button } from '../../design/primitives/button/button';
 import { t, tText } from '../../i18n';
 import { AgreementLines } from '../../product/agreement-sheet/agreement-lines';
 import { LicenceDialog } from '../../product/licence-dialog/licence-dialog';
+import { NoticesDialog } from '../../product/notices-dialog/notices-dialog';
 import { isAccepted } from '../../state/agreement';
 import { useCore } from '../../state/store';
 import { useAppInfo } from '../use-app-info';
 import styles from './settings-screen.module.css';
+import { useNotices } from './use-notices';
 
-// The app's version, the agreement and when it was accepted, and the licence. The licences of what it is built from
-// come before the first release. Named by the page's heading.
+// The app's version, the agreement and when it was accepted, the licence, and the licences of the open-source parts
+// it is built from. Named by the page's heading.
 export const AboutGroup = ({ headingId }: { readonly headingId: string }): JSX.Element => {
   const version = useAppInfo()?.version ?? null;
   const agreement = useCore((state) => state.agreement.view);
   const [licence, setLicence] = useState(false);
+  const [noticesOpen, setNoticesOpen] = useState(false);
+  const notices = useNotices(noticesOpen);
 
   return (
     <section aria-labelledby={headingId} className={styles.group}>
@@ -47,6 +51,18 @@ export const AboutGroup = ({ headingId }: { readonly headingId: string }): JSX.E
               {t('ui.agreement.licence')}
             </Button>
           </div>
+          <p className={styles.line}>{t('ui.screen.settings.about.notices')}</p>
+          <div className={styles.line}>
+            <Button
+              onClick={() => {
+                setNoticesOpen(true);
+              }}
+              size="small"
+              variant="secondary"
+            >
+              {t('ui.notices.open')}
+            </Button>
+          </div>
         </div>
       </Surface>
       <LicenceDialog
@@ -54,6 +70,13 @@ export const AboutGroup = ({ headingId }: { readonly headingId: string }): JSX.E
           setLicence(false);
         }}
         open={licence}
+      />
+      <NoticesDialog
+        notices={notices}
+        onClose={() => {
+          setNoticesOpen(false);
+        }}
+        open={noticesOpen}
       />
     </section>
   );

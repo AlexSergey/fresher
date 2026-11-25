@@ -1,0 +1,75 @@
+/* The open-source licences: the MPL parts' source addresses, then one folded row per licence text. */
+@layer components {
+  .content {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .line {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .sources {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .heading {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-strong-weight);
+    line-height: var(--type-body-line);
+  }
+
+  .list {
+    margin: 0;
+    color: var(--text-secondary);
+    padding-inline-start: var(--space-5);
+    user-select: text;
+  }
+
+  .address {
+    font-family: var(--font-mono);
+    font-size: var(--type-footnote-size);
+    overflow-wrap: anywhere;
+  }
+
+  .licences {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .licence > summary {
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: var(--type-body-strong-weight);
+  }
+
+  .count {
+    color: var(--text-secondary);
+    font-weight: var(--type-body-weight);
+  }
+
+  .parts {
+    margin: var(--space-2) 0;
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    user-select: text;
+  }
+
+  .text {
+    padding: var(--space-3);
+    margin: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--type-footnote-size);
+    line-height: var(--type-footnote-line);
+    user-select: text;
+    white-space: pre-wrap;
+  }
+}

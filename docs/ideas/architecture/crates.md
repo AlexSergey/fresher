@@ -26,4 +26,4 @@ Candidate dependencies, checked against [`../../restrictions/dependencies.md`](.
 | `tauri-plugin-single-instance`      | MIT / Apache-2.0 | one instance of the app                       | taken by plan 002 (pinned `=2.5.5`)                                      |
 
 Every new crate still goes through `cargo deny check` and cargo-machete, and gets its row in the licence notices
-([`../../deferred/licence-notices.md`](../../deferred/licence-notices.md)).
+(`npm run notices:generate`, plan [013](../../plans/013-release/readme.md)).

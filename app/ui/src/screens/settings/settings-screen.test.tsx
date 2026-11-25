@@ -478,6 +478,17 @@ describe('SettingsScreen', () => {
 
       expect(screen.getByRole('dialog', { name: 'Licence' })).toBeInTheDocument();
     });
+
+    it('About opens the open-source licences bundled into the app', async () => {
+      core();
+      await renderScreen({ kind: 'about' });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Show the open-source licences' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Open-source licences' });
+      expect(await within(dialog).findByText(/react-dom 19/u)).toBeInTheDocument();
+      expect(within(dialog).getByText(/crates\.io\/crates\/cssparser\//u)).toBeInTheDocument();
+    });
   });
 });
 

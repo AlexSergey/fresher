@@ -126,8 +126,9 @@ Conventional Commits: `type(scope): subject`.
 `.husky/pre-push` runs `npm run pre-push`:
 
 1. `npm run lint` — `cargo fmt --check`, Clippy, `tsc`, ESLint; then `npm run check:readme` (the README's generated
-   table, links, images and claims; `npm run readme:generate` rewrites the table), `npm run check:crate-deps` and
-   `npm run check:texts`
+   table, links, images and claims; `npm run readme:generate` rewrites the table), `npm run check:notices` (the
+   licence notices the app ships are up to date and every Rust and npm production licence is in `deny.toml`'s
+   allowlist; `npm run notices:generate` rewrites them), `npm run check:crate-deps` and `npm run check:texts`
 2. `npm run knip` and `cargo machete`
 3. `cargo deny check`
 4. `npm run test:scripts` — the repository scripts' tests
@@ -149,7 +150,7 @@ comment.
 
 | Workflow     | Job     | Runs                                                                                           |
 | ------------ | ------- | ---------------------------------------------------------------------------------------------- |
-| `ci.yml`     | `lint`  | actionlint, `npm run lint`, `npm run check:readme`, the crate dependency guard, knip, cargo-machete, cargo-deny, typos, `npm audit` |
+| `ci.yml`     | `lint`  | actionlint, `npm run lint`, `npm run check:readme`, `npm run check:notices` (after `cargo fetch --locked`), the crate dependency guard, knip, cargo-machete, cargo-deny, typos, `npm audit` |
 |              | `test`  | `npm run test:scripts`, `npm run test:cov`; the coverage and JUnit reports kept as an artifact |
 |              | `e2e`   | `npm run test:e2e` with the Playwright browsers; the report kept on failure                    |
 |              | `build` | `npm run build`: the unsigned app bundle                                                       |
@@ -172,6 +173,6 @@ versions used locally; nextest runs with its `ci` profile (`.config/nextest.toml
 
 1. Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`; any `cargo` command then installs the pinned
    toolchain.
-2. Cargo tools: `cargo install --locked cargo-deny cargo-machete cargo-nextest cargo-llvm-cov`
+2. Cargo tools: `cargo install --locked cargo-about cargo-deny cargo-machete cargo-nextest cargo-llvm-cov`
 3. Repository tools: `brew install gitleaks typos-cli taplo actionlint`
 4. Node (version in `.nvmrc`), then `npm install` at the root — it installs the git hooks (`prepare`).

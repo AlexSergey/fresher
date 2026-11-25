@@ -1,0 +1,25 @@
+# cargo-about: the licence notices of the crates the app is built from (`npm run notices:generate`, plan 013/03/01).
+# The same licences as deny.toml's [licenses]; `npm run check:notices` fails when the two differ.
+
+# What the app ships: no dev-dependencies, no crate of the workspace (`publish = false`), macOS only (as deny.toml).
+ignore-dev-dependencies = true
+private = { ignore = true }
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+
+accepted = ["Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "CC0-1.0", "ISC", "MIT", "Unicode-3.0", "Unlicense", "Zlib"]
+
+# MPL-2.0 for the five crates Tauri 2 needs, accepted by the user on 2026-11-15 (docs/restrictions/dependencies.md).
+[cssparser]
+accepted = ["MPL-2.0"]
+
+[cssparser-macros]
+accepted = ["MPL-2.0"]
+
+[dtoa-short]
+accepted = ["MPL-2.0"]
+
+[option-ext]
+accepted = ["MPL-2.0"]
+
+[selectors]
+accepted = ["MPL-2.0"]

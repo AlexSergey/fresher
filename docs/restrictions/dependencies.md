@@ -10,9 +10,9 @@ The rules every dependency follows. The list of the dependencies themselves, wit
   (MPL-2.0, LGPL, …) is asked about before it is added; GPL, AGPL, SSPL, non-commercial and unlicensed code are not
   taken. The whole Rust tree keeps this list, its build and test crates included.
 - **Why:** the app may be distributed; copyleft or unclear licences would bind it.
-- **Enforced by:** `cargo deny check` (`deny.toml` `[licenses]`) for the whole Rust tree; a licence check of npm
-  production dependencies in CI (plan 001; not built yet,
-  [`../known-issues/repo-no-npm-licence-check.md`](../known-issues/repo-no-npm-licence-check.md)).
+- **Enforced by:** `cargo deny check` (`deny.toml` `[licenses]`) for the whole Rust tree; `npm run check:notices`
+  (`scripts/notices.ts`, pre-push and CI) for the npm production dependencies, against the same allowlist, read from
+  `deny.toml` (plan 013/03/01).
 
 ## Any open-source licence for development tools
 
@@ -33,8 +33,9 @@ The rules every dependency follows. The list of the dependencies themselves, wit
   in its licence notices. Any other MPL-2.0 crate is asked about first.
 - **Why:** MPL-2.0 is a file-level copyleft: unmodified, these crates bind only their own files, not our code; the
   obligation is to name them and where their source is. There is no Tauri without them.
-- **Enforced by:** `deny.toml` `[licenses] exceptions` by crate name; the notices are due before the first release
-  ([`../deferred/licence-notices.md`](../deferred/licence-notices.md)).
+- **Enforced by:** `deny.toml` `[licenses] exceptions` by crate name, mirrored in `about.toml`; the licence notices
+  under Settings → About name each with the address of its source, kept up to date by `npm run check:notices` (plan
+  013/03/01).
 
 ## Exact versions, locked builds
 
