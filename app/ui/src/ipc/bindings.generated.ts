@@ -326,7 +326,7 @@ export type ShownCommand = { tool: ToolId, args: Array<string>, line: string, };
 /**
  * How a scan ended.
  */
-export type ScanOutcome = { "kind": "completed" } | { "kind": "partial" } | { "kind": "failed", reason: Text, };
+export type ScanOutcome = { "kind": "completed" } | { "kind": "partial" } | { "kind": "stopped" } | { "kind": "failed", reason: Text, };
 
 /**
  * How a scan read the disk.

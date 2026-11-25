@@ -227,7 +227,7 @@ mod negative {
         reader.open.store(true, Ordering::Release);
 
         let events = until_finished(&events);
-        assert!(matches!(finished(&events), Some(Event::ScanFinished { outcome: ScanOutcome::Partial, .. })));
+        assert!(matches!(finished(&events), Some(Event::ScanFinished { outcome: ScanOutcome::Stopped, .. })));
         let restarted =
             engine_on(&home.root, home.data.path(), Arc::new(Journal::default()), Arc::new(Refusing::default()));
         restore(&restarted);

@@ -150,7 +150,7 @@ mod tests {
             assert_eq!(shell.engine().status(), Ok(EngineStatus::Idle));
             assert_eq!(
                 events.try_iter().last(),
-                Some(Event::ScanFinished { scan, outcome: ScanOutcome::Partial, kind: ScanKind::Full })
+                Some(Event::ScanFinished { scan, outcome: ScanOutcome::Stopped, kind: ScanKind::Full })
             );
         }
 

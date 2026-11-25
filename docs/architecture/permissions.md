@@ -21,6 +21,12 @@ All of it is in `fresher-core` (`access.rs`, `removability.rs`) and knows nothin
   `Limited` (a `SeesMore` need is missing) or `Unavailable` (a required one is missing).
 - **Coverage** is what a finished scan says it did not see: the guarded places it did not enter, with their state, and
   the folders it could not read, grouped by capability (`scan-coverage`). A result is never shown without it.
+- A scan's **outcome** (`ScanOutcome`, in `scan-finished`) keeps apart why a result is incomplete: `Completed`;
+  `Partial` when the scan got through its work but its coverage is incomplete; `Stopped` when it did not get through
+  (cancelled, the walk or a module stopped early, its state not kept, a panic), whatever its coverage; `Failed`. The
+  Scan screen says "The scan was stopped" only for `Stopped`, and shows an incomplete coverage under its own heading,
+  "Some folders were not scanned": a notice per capability, then a line for the folders no capability opens. A stopped
+  scan that also missed folders shows both.
 - **Removability** is a fact of every finding, worked out by the core from what the walk read about the entry (its
   owner, whether the app may write to its folder, its flags): `Removable`, `NeedsAdministrator`, `Locked` or
   `ProtectedBySystem`. A module cannot set it. An item that is not `Removable` is shown with its size and a reason,

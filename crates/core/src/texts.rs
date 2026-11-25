@@ -36,6 +36,7 @@ mod tests {
         match outcome {
             ScanOutcome::Completed => "completed",
             ScanOutcome::Partial => "partial",
+            ScanOutcome::Stopped => "stopped",
             ScanOutcome::Failed { .. } => "failed",
         }
     }
@@ -66,7 +67,7 @@ mod tests {
             .map(|completeness| key(format!("core.completeness.{}", completeness_segment(completeness))));
         let errors = CommandError::CODES.map(|code| key(format!("core.error.{code}")));
         let failed = ScanOutcome::Failed { reason: Text::new(key("core.error.internal".into())) };
-        let outcomes = [ScanOutcome::Completed, ScanOutcome::Partial, failed]
+        let outcomes = [ScanOutcome::Completed, ScanOutcome::Partial, ScanOutcome::Stopped, failed]
             .map(|outcome| key(format!("core.scan.outcome.{}", outcome_segment(&outcome))));
         let panicked = match ModuleOutcome::panicked() {
             ModuleOutcome::Failed { reason } => reason.key().clone(),

@@ -131,8 +131,12 @@ impl ModuleOutcome {
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum ScanOutcome {
     Completed,
-    /// Cancelled, or some folders or modules could not be read: the findings so far are kept.
+    /// It ran to its end but did not see every folder: a guarded place it did not enter, or folders it could not read
+    /// (its `ScanCoverage` says which). The findings are kept.
     Partial,
+    /// It stopped before its end: cancelled, or the walk or a module stopped early, or its state was not kept. The
+    /// findings so far are kept; its coverage may be incomplete as well.
+    Stopped,
     Failed {
         reason: Text,
     },
@@ -194,6 +198,7 @@ mod tests {
                 .unwrap(),
                 json!({ "type": "scan-finished", "scan": 1, "outcome": { "kind": "partial" }, "kind": { "kind": "full" } })
             );
+            assert_eq!(serde_json::to_value(ScanOutcome::Stopped).unwrap(), json!({ "kind": "stopped" }));
         }
 
         #[test]

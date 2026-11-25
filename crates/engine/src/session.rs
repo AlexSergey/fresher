@@ -49,8 +49,9 @@ pub(crate) struct Planned {
 /// Runs `plan` to its end. The tool checks run first, then the guarded places are decided (a place not allowed and
 /// not opted into is never touched; an opted-in one is tried) and the engine learns what the tries answered; only
 /// then is each module's availability decided, so a module needing a place runs in the scan that first tries it. A
-/// module whose every category is unavailable is not run; the totals of a limited category are partial; an
-/// incomplete coverage ends the scan partial.
+/// module whose every category is unavailable is not run; the totals of a limited category are partial. A scan that
+/// did not get through its work (cancelled, the walk or a module stopped early, its state not kept, the ids ran out)
+/// ends `Stopped`; one that got through but did not see every folder ends `Partial`.
 ///
 /// The projects every module's `finish` sees carry what the walk saw of them: the walk is asked once after it ends
 /// (or after the restore) and before the commit; a walk that did not end is asked nothing.
@@ -60,7 +61,7 @@ pub(crate) struct Planned {
 /// findings, the other modules' `ModuleFinished`, `ScanCoverage` and `ScanFinished` (the walk's state committed
 /// before them).
 ///
-/// A module that panics is caught and counts as failed; any other panic still ends the scan `Partial` (see
+/// A module that panics is caught and counts as failed; any other panic still ends the scan `Stopped` (see
 /// [`Output`]'s `Drop`), so the engine never stays `Scanning`. A cancelled or stopped walk is not committed: the
 /// engine keeps the state it had.
 ///
@@ -155,13 +156,14 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
         let claims = resolve_claims(shared);
         summary.is_some() && commit(shared, &claims, &system)
     };
-    let complete = walk_complete
-        && output.coverage.is_complete()
-        && committed
-        && every_module_completed(&outcomes)
-        && !output.exhausted
-        && !cancel.is_cancelled();
-    let outcome = if complete { ScanOutcome::Completed } else { ScanOutcome::Partial };
+    let through = committed && every_module_completed(&outcomes) && !output.exhausted && !cancel.is_cancelled();
+    let outcome = if !through {
+        ScanOutcome::Stopped
+    } else if walk_complete && output.coverage.is_complete() {
+        ScanOutcome::Completed
+    } else {
+        ScanOutcome::Partial
+    };
     output.end(outcome);
 }
 
@@ -276,7 +278,7 @@ fn decide_places(shared: &Shared, plan: &ScanPlan, access: &AccessStatus) -> cov
     }
 }
 
-/// Every module completed; a module not run for what it lacks says so itself, so it does not make the scan partial.
+/// Every module completed; a module not run for what it lacks says so itself, so it does not stop the scan.
 fn every_module_completed(outcomes: &[Option<ModuleOutcome>]) -> bool {
     outcomes.iter().all(|outcome| matches!(outcome, Some(ModuleOutcome::Completed | ModuleOutcome::Unavailable { .. })))
 }
@@ -390,7 +392,7 @@ fn outcome_of(error: ModuleError) -> ModuleOutcome {
 }
 
 /// Where the modules' findings go: numbered, batched, kept in the results and published. It also ends the scan, and
-/// if it is dropped before (a panic outside the modules), its `Drop` ends the scan `Partial`.
+/// if it is dropped before (a panic outside the modules), its `Drop` ends the scan `Stopped`.
 struct Output<'a> {
     shared: &'a Shared,
     scan: ScanId,
@@ -511,7 +513,7 @@ impl Drop for Output<'_> {
     fn drop(&mut self) {
         if !self.ended {
             tracing::error!(scan = self.scan.get(), "the scan stopped on a panic");
-            self.end(ScanOutcome::Partial);
+            self.end(ScanOutcome::Stopped);
         }
     }
 }
@@ -685,7 +687,7 @@ mod tests {
                 vec![(alpha(), ModuleOutcome::Failed { reason }), (beta(), ModuleOutcome::Completed)]
             );
             assert_eq!(ids(&events), [1]);
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
         }
 
         #[test]
@@ -708,7 +710,7 @@ mod tests {
                 vec![(alpha(), ModuleOutcome::panicked()), (beta(), ModuleOutcome::Completed)]
             );
             assert_eq!(ids(&events), [1]);
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
             assert_eq!(engine.status(), Ok(EngineStatus::Idle));
         }
 
@@ -730,19 +732,19 @@ mod tests {
                 vec![(alpha(), ModuleOutcome::panicked()), (beta(), ModuleOutcome::Completed)]
             );
             assert_eq!(ids(&events), [1]);
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
         }
 
         #[test]
-        fn a_panic_outside_the_modules_still_ends_the_scan_partial() {
+        fn a_panic_outside_the_modules_still_ends_the_scan_stopped() {
             let walk = ScriptedWalk::new().panicking();
             let engine = Fixture::new(walk).module(TestModule::builder("alpha")).engine();
 
             let events = scan(&engine);
 
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
             assert_eq!(engine.status(), Ok(EngineStatus::Idle));
-            assert_eq!(engine.overview().unwrap().last_scan.map(|last| last.outcome), Some(ScanOutcome::Partial));
+            assert_eq!(engine.overview().unwrap().last_scan.map(|last| last.outcome), Some(ScanOutcome::Stopped));
             assert!(engine.start_scan(crate::ScanMode::Auto).is_ok());
         }
 
@@ -777,7 +779,7 @@ mod tests {
                 module_outcomes(&events),
                 vec![(alpha(), ModuleOutcome::Failed { reason }), (beta(), ModuleOutcome::Cancelled)]
             );
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
         }
 
         #[test]
@@ -825,7 +827,7 @@ mod tests {
         }
 
         #[test]
-        fn a_cancelled_scan_still_publishes_scan_finished_partial() {
+        fn a_cancelled_scan_still_publishes_scan_finished_stopped() {
             let walk = ScriptedWalk::new().folder("Caches", "/home/Caches", bytes(1));
             let (walk, _gate) = walk.hold();
             let module = TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).folder("Caches");
@@ -837,12 +839,12 @@ mod tests {
 
             let events = wait_for_finish(&events);
             assert_eq!(module_outcomes(&events), vec![(alpha(), ModuleOutcome::Cancelled)]);
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
             assert_eq!(engine.finding(id(1)).unwrap().module(), alpha());
         }
 
         #[test]
-        fn a_walk_that_could_not_read_everything_ends_partial() {
+        fn a_walk_that_could_not_read_everything_ends_partial_and_one_that_failed_ends_stopped() {
             let unreadable = Fixture::new(ScriptedWalk::new().unreadable(3)).engine();
             let root = WalkError::RootUnreadable { index: 0, kind: std::io::ErrorKind::PermissionDenied };
             let stopped = Fixture::new(ScriptedWalk::new().failing(root)).module(TestModule::builder("alpha")).engine();
@@ -851,8 +853,24 @@ mod tests {
             let stopped = scan(&stopped);
 
             assert_eq!(scan_outcome(&unreadable), Some(ScanOutcome::Partial));
-            assert_eq!(scan_outcome(&stopped), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&stopped), Some(ScanOutcome::Stopped));
             assert_eq!(module_outcomes(&stopped), vec![(alpha(), ModuleOutcome::Completed)]);
+        }
+
+        #[test]
+        fn a_scan_that_stopped_and_missed_folders_ends_stopped_with_its_coverage() {
+            let failing = TestModule::builder("alpha")
+                .on_finish(|_, _| Err(ModuleError::Failed { reason: text("alpha.error.broken") }));
+            let engine = Fixture::new(ScriptedWalk::new().unreadable(3)).module(failing).engine();
+
+            let events = scan(&engine);
+
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
+            let coverage = events.iter().find_map(|event| match event {
+                Event::ScanCoverage { coverage, .. } => Some(coverage),
+                _ => None,
+            });
+            assert!(coverage.is_some_and(|coverage| !coverage.is_complete()));
         }
 
         #[test]
@@ -865,7 +883,7 @@ mod tests {
 
             engine.cancel_scan().unwrap();
 
-            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Stopped));
             assert!(commits.lock().unwrap().is_empty());
             assert!(engine.disk_state().unwrap().is_none());
         }
@@ -899,7 +917,7 @@ mod tests {
 
             engine.cancel_scan().unwrap();
 
-            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Stopped));
             assert_eq!(places(), trash);
             assert_eq!(engine.disk_state().unwrap().unwrap().id(), StateId::new(7));
         }
@@ -915,7 +933,7 @@ mod tests {
 
             engine.cancel_scan().unwrap();
 
-            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&wait_for_finish(&events)), Some(ScanOutcome::Stopped));
             assert!(queries.lock().unwrap().is_empty());
         }
 
@@ -932,7 +950,7 @@ mod tests {
         }
 
         #[test]
-        fn a_failed_commit_ends_the_scan_partial() {
+        fn a_failed_commit_ends_the_scan_stopped() {
             let walk = ScriptedWalk::new().failing_commit(WalkError::Commit { kind: std::io::ErrorKind::Other });
             let commits = walk.commits();
             let engine = Fixture::new(walk).engine();
@@ -940,12 +958,12 @@ mod tests {
             let events = scan(&engine);
 
             assert_eq!(commits.lock().unwrap().len(), 1);
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
             assert!(engine.disk_state().unwrap().is_none());
         }
 
         #[test]
-        fn findings_past_the_last_id_are_dropped_and_the_scan_is_partial() {
+        fn findings_past_the_last_id_are_dropped_and_the_scan_is_stopped() {
             let caches = category("alpha.caches", DangerLevel::Safe);
             let module =
                 TestModule::builder("alpha").category("alpha.caches", DangerLevel::Safe).on_finish(move |_, out| {
@@ -959,7 +977,7 @@ mod tests {
             let events = scan(&engine);
 
             assert_eq!(ids(&events), [u32::MAX]);
-            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Partial));
+            assert_eq!(scan_outcome(&events), Some(ScanOutcome::Stopped));
         }
 
         #[test]

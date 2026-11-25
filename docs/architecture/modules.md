@@ -168,7 +168,7 @@ gathered on the first ask and kept for the scan, a rescan gathers it anew, nothi
   of the other tests give `NoFiles` (every file `Unreadable`). The app reads through the scanner's own reader (in
   sandbox mode the sandbox's stated lens over it), with the same no-follow call the walk uses for `CACHEDIR.TAG`.
 - A module that returns an error, or panics, ends `ModuleFinished { Failed }` alone: the engine catches the panic
-  (`catch_unwind`; the release profile unwinds), the other modules finish and the scan ends `Partial`.
+  (`catch_unwind`; the release profile unwinds), the other modules finish and the scan ends `Stopped`.
 
 ## What a module sees of the walk
 

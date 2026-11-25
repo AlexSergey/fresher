@@ -663,7 +663,7 @@ mod tests {
         }
 
         #[test]
-        fn a_cancelled_scan_ends_partial() {
+        fn a_cancelled_scan_ends_stopped() {
             let (walk, _gate) = ScriptedWalk::held();
             let engine = engine(walk);
             let events = engine.subscribe();
@@ -674,7 +674,7 @@ mod tests {
             let finished = wait_for_finish(&events);
             assert_eq!(
                 finished.last(),
-                Some(&Event::ScanFinished { scan, outcome: ScanOutcome::Partial, kind: ScanKind::Full })
+                Some(&Event::ScanFinished { scan, outcome: ScanOutcome::Stopped, kind: ScanKind::Full })
             );
         }
 
@@ -895,7 +895,7 @@ mod tests {
 
             assert_eq!(engine.status(), Ok(EngineStatus::Idle));
             let last = events.try_iter().last();
-            assert_eq!(last, Some(Event::ScanFinished { scan, outcome: ScanOutcome::Partial, kind: ScanKind::Full }));
+            assert_eq!(last, Some(Event::ScanFinished { scan, outcome: ScanOutcome::Stopped, kind: ScanKind::Full }));
         }
 
         #[test]
