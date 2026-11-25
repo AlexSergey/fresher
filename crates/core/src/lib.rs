@@ -106,7 +106,7 @@ pub use largest::{
     OwnRow, PlaceCount, Unchanged, Withheld, archive_stem, is_app_bundle, is_package, kind_of, own_file,
     own_file_reason, own_file_title,
 };
-pub use left_out::{LeftOutCount, LeftOutItem};
+pub use left_out::{LEFT_OUT_SHOWN, LeftOutCount, LeftOutEntry, LeftOutItem, LeftOutKind};
 pub use module::{
     DescriptorError, FindingSink, Locales, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError,
 };

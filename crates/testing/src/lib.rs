@@ -37,8 +37,8 @@ pub use access_time::settle_access_time;
 pub use app_bundle::{AppBundle, installed_by_text, parse_installed_by};
 pub use cleanup_fakes::{ExecutedPlan, FakeCleaner, FakeOpenFiles, MemoryCleanupJournal};
 pub use contract::{
-    Catalogue, ContractProblem, assert_module_contract, assert_texts_used, check_module_contract,
-    check_removals_matched, check_texts_used,
+    Catalogue, ContractProblem, LeftOutKinds, assert_module_contract, assert_texts_used, check_module_contract,
+    check_removals_matched, check_texts_used, left_out_kinds,
 };
 pub use facts_lens::{FactsLens, OTHER_USER, Stated, StatedFacts, StatedFlag, StatedKind, StatedOwner};
 pub use fake_access::{FakeAccess, FakeSystemUi, SystemUiCall};

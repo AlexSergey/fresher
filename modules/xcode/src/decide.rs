@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use fresher_core::{EntryKind, RunningSet};
+use fresher_core::{EntryKind, LeftOutKind, RunningSet};
 
 use crate::gathered::Candidate;
 use crate::name::{ArchiveName, DeviceSupportName, Version, archive, device_support};
@@ -36,6 +36,15 @@ impl Reason {
             Self::NotYours => "xcode.left-out.not-yours",
             Self::NoSystem => "xcode.left-out.no-system",
             Self::AppOpen => "xcode.left-out.app-open",
+        }
+    }
+
+    /// Whether the folder is kept for what it is (a socket inside, not the user's) or for what goes on now (Xcode is
+    /// open, the open apps could not be listed).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::Special | Self::NotYours => LeftOutKind::Kept,
+            Self::NoSystem | Self::AppOpen => LeftOutKind::ForNow,
         }
     }
 }

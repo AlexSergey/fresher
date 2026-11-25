@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use fresher_core::{EntryKind, Inside, RunningSet, Timestamp};
+use fresher_core::{EntryKind, Inside, LeftOutKind, RunningSet, Timestamp};
 
 use crate::gathered::Candidate;
 use crate::name::{self, ModelName};
@@ -39,6 +39,17 @@ impl Reason {
         Self::OllamaDownload,
         Self::OllamaIncomplete,
     ];
+
+    /// Whether the model is kept for what it is (not the user's, a socket inside) or for what goes on now (LM Studio
+    /// is open, a list could not be read, Ollama downloads or misses a file).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::NotYours | Self::Special => LeftOutKind::Kept,
+            Self::AppOpen | Self::NoSystem | Self::OllamaUnreadable | Self::OllamaDownload | Self::OllamaIncomplete => {
+                LeftOutKind::ForNow
+            }
+        }
+    }
 
     /// The key of the reason's sentence.
     pub(crate) const fn key(self) -> &'static str {

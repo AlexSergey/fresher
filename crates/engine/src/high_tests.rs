@@ -324,6 +324,8 @@ mod negative {
             category: id(category),
             reason: TextKey::new("alpha.left-out.open").unwrap(),
             sizes: bytes(size),
+            path: format!("/home/{category}").into(),
+            title: fresher_core::Text::new(TextKey::new("alpha.finding.title").unwrap()),
         };
         let items = [left_out("alpha.data", 5), left_out("alpha.caches", 3)];
         let module = crate::testing::TestModule::builder("alpha")

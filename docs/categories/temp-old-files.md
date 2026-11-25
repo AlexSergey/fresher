@@ -32,9 +32,9 @@ the first answer that applies:
 | #  | Situation                                                                                                    | Result                                         |
 | -- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
 | 1  | the scan is shown from the last scan                                                                         | left out: scan again to check its age          |
-| 2  | the name is a lock or a system marker (`.X*-lock`, `.X11-unix`, `.ICE-unix`, `.font-unix`, `.XIM-unix`, `quota.user`, `quota.group`, `.vfs_rsrc_streams_*`, `.AddressBookLocks`, `.LINKS`, `*.lock`, `*.pid`, `LCK..*`, `.#*`), or a folder holds an entry named `*.lock`, `*.pid`, `LCK..*` or `.#*` anywhere inside | left out: a lock |
-| 3  | the item, or something inside it, is a socket, a pipe or a device                                            | left out: a program uses it to talk to another |
-| 4  | not yours, locked by the system, restricted, holds something inside that is not yours or locked, or named `com.apple.…` | left out: it belongs to the system |
+| 2  | the name is a lock or a system marker (`.X*-lock`, `.X11-unix`, `.ICE-unix`, `.font-unix`, `.XIM-unix`, `quota.user`, `quota.group`, `.vfs_rsrc_streams_*`, `.AddressBookLocks`, `.LINKS`, `*.lock`, `*.pid`, `LCK..*`, `.#*`), or a folder holds an entry named `*.lock`, `*.pid`, `LCK..*` or `.#*` anywhere inside | kept for good: a lock |
+| 3  | the item, or something inside it, is a socket, a pipe or a device                                            | kept for good: a program uses it to talk to another |
+| 4  | not yours, locked by the system, restricted, holds something inside that is not yours or locked, or named `com.apple.…` | kept for good: it belongs to the system |
 | 5  | locked by you (Finder's Get Info)                                                                            | left out: locked                               |
 | 6  | the open apps cannot be listed                                                                               | left out: Fresher cannot list open apps        |
 | 7  | named after an app that is open: its bundle id as the whole name or followed by a dot, also with one leading dot stripped (`.com.example.App.XXXXXX`) | left out: the app is open |

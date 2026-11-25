@@ -14,6 +14,7 @@ import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'js
 import appCachesTexts from '../../../../modules/app-caches/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the installed app caches module as the core streams it: the caches of two closed apps are offered (the
 // folder of Editor, one of its helper's, one of Player's updater, each titled by its app), and the cache of a third
@@ -124,12 +125,13 @@ export const APP_CACHES_MODULES: readonly ModuleInfo[] = [
 
 // The cache of another app, which is open: kept.
 export const APP_CACHES_LEFT_OUT: readonly LeftOutCount[] = [
-  {
-    category: APP_CACHES,
-    items: 1,
-    reason: { args: {}, key: 'app-caches.left-out.app-open' },
-    sizes: sized(90 * MB),
-  },
+  forNowCount(APP_CACHES, 'app-caches.left-out.app-open', sized(90 * MB), [
+    leftOutEntry(
+      { args: { app: text('Mail') }, key: 'app-caches.title.own' },
+      `${CACHES}/com.example.Mail`,
+      sized(90 * MB),
+    ),
+  ]),
 ];
 
 export const APP_CACHES_SCAN: readonly Event[] = [

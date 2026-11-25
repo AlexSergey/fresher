@@ -128,7 +128,7 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
           </section>
         ) : null}
         <CategoryAbout category={category} />
-        <LeftOutLines bar counts={ownLeftOut} />
+        <LeftOutLines bar counts={ownLeftOut} home={home} />
         <ModuleChoices category={category} module={module} totals={totals} />
         {unavailable || (scanning && count === 0) ? null : total === undefined || count === 0 ? (
           ownLeftOut.length > 0 ? (

@@ -32,8 +32,8 @@ entry, the first answer that applies:
 | 2  | the first name below `Logs` is `JetBrains` or a folder shaped as a bundle id                                | not claimed                                    |
 | 3  | the name ends with `.plist`, `.db`, `.sqlite`, `.sqlite-wal`, `.sqlite-shm`, `.lock` or `.pid`             | not claimed                                    |
 | 4  | the scan is shown from the last scan                                                                        | left out: scan again to check its age          |
-| 5  | a socket, a pipe or a device                                                                                | left out: a program uses it to talk to another |
-| 6  | not yours, locked by the system, or restricted                                                              | left out: it belongs to the system             |
+| 5  | a socket, a pipe or a device                                                                                | kept for good: a program uses it to talk to another |
+| 6  | not yours, locked by the system, or restricted                                                              | kept for good: it belongs to the system             |
 | 7  | locked by you (Finder's Get Info)                                                                           | left out: locked                               |
 | 8  | the newest modification or status change is unknown, in the future, or not more than the setting's days ago | left out: changed recently                     |
 | 9  | otherwise                                                                                                   | **offered**                                    |

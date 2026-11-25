@@ -41,8 +41,8 @@ first answer that applies:
 | 4  | no installed app has the row's bundle id                                             | not claimed                                  |
 | 5  | the folder could not be read in full                                                 | not claimed                                  |
 | 6  | nothing in it                                                                        | not claimed                                  |
-| 7  | a socket, a pipe or a device inside                                                  | left out: a running program may be using it  |
-| 8  | not yours, locked by the system, restricted or locked by you, or something inside is | left out: removing it needs an administrator |
+| 7  | a socket, a pipe or a device inside                                                  | kept for good: a running program may be using it  |
+| 8  | not yours, locked by the system, restricted or locked by you, or something inside is | kept for good: removing it needs an administrator |
 | 9  | the running apps cannot be listed                                                    | left out: Fresher cannot tell                |
 | 10 | the app, or a helper of it, is open                                                  | left out: the app is open                    |
 | 11 | otherwise                                                                            | **offered**                                  |

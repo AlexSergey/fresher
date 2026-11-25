@@ -61,7 +61,10 @@ small `thiserror` error of its own: no panicking path.
 - A module's problems are declared: `ModuleDescriptor::with_problems(keys)` lists every key it may report. A failed
   part returns `ModuleError::Failed { reason }` with a declared `Text` (a technical detail goes under `DETAIL_ARG`,
   never named in the sentence). An item the module recognized and does not offer is `out.left_out(LeftOutItem { … })`:
-  a protected or too-new item, an app that is open. It is not for an unreadable folder, a missing permission or a path
+  a protected or too-new item, an app that is open, with its path and its title as its finding would carry it. Each
+  left-out reason is kept for now unless `ModuleDescriptor::with_kept(keys)` declares it kept for good (in use, or
+  never a candidate by its nature: the version you use, a socket, the system's file); the Scan screen shows only the
+  for-now ones, each item by name and path. It is not for an unreadable folder, a missing permission or a path
   no rule knows (the walk and the access status report those, and a rule that cannot tell what a path is does not
   claim it). The `Vec<NewFinding>` sink used by tests drops left-outs.
 - A category that cannot see everything without a permission, or cannot run without a tool, declares it:
@@ -435,7 +438,9 @@ A module ships only when every box is ticked:
 - [ ] Every text is plain English, short and without jargon; every choice says what the user keeps or loses (rule 7
       of [`../rules.md`](../rules.md)).
 - [ ] Every failure and left-out text is declared with `with_problems`, plain, and says what to do next.
-- [ ] An item the module recognized and does not offer is reported with `left_out`, never dropped.
+- [ ] An item the module recognized and does not offer is reported with `left_out`, never dropped, with its path and
+      the title its finding would carry; a reason that keeps it for good (in use, or never a candidate) is declared
+      with `with_kept`, and the module's contract test lists both kinds (`left_out_kinds`).
 - [ ] A module that describes space it does not offer uses `describe`, never a finding.
 - [ ] Every category that cannot see everything without a permission declares it (`with_needs`), and a needed tool has
       its `with_tool_check`.

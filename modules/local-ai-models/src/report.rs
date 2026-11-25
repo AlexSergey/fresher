@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use fresher_core::{
-    CategoryDescriptor, FindingSink, LeftOutItem, NewFinding, Removal, Sizes, Subject, Text, TextArg, TextKey,
-    TextKeyError,
+    CategoryDescriptor, FindingSink, LeftOutItem, LeftOutKind, NewFinding, Removal, Sizes, Subject, Text, TextArg,
+    TextKey, TextKeyError,
 };
 
 use crate::decide::{self, Reason, Verdict};
@@ -60,6 +60,8 @@ impl LeftOutKeys {
 pub(crate) struct Report {
     categories: Vec<CategoryDescriptor>,
     title: TextKey,
+    /// The title of the whole Ollama store, left out as one.
+    store_title: TextKey,
     reason_hugging_face: TextKey,
     reason_lm_studio: TextKey,
     reason_ollama: TextKey,
@@ -74,6 +76,7 @@ impl Report {
         Ok(Self {
             categories,
             title: TextKey::new("local-ai-models.title")?,
+            store_title: TextKey::new("local-ai-models.store-title")?,
             reason_hugging_face: TextKey::new("local-ai-models.reason.hugging-face")?,
             reason_lm_studio: TextKey::new("local-ai-models.reason.lm-studio")?,
             reason_ollama: TextKey::new("local-ai-models.reason.ollama")?,
@@ -88,17 +91,27 @@ impl Report {
         Reason::ALL.into_iter().map(|reason| self.left_out.of(reason).clone()).collect()
     }
 
+    /// The keys of the reasons that keep a model for good.
+    pub(crate) fn kept(&self) -> Vec<TextKey> {
+        let kept = Reason::ALL.into_iter().filter(|reason| reason.kind() == LeftOutKind::Kept);
+        kept.map(|reason| self.left_out.of(reason).clone()).collect()
+    }
+
     /// Reports `verdict` on `candidate`, a folder of `row`'s store: a finding, a left-out in the category of its name,
     /// or nothing.
     pub(crate) fn tell(&self, row: &Store, candidate: &Candidate, verdict: Verdict, out: &mut dyn FindingSink) {
         match verdict {
             Verdict::NotClaimed => {}
             Verdict::LeftOut(reason) => {
-                let category = decide::model(row, &candidate.path).and_then(|(category, _)| self.category(category));
-                if let Some(category) = category {
-                    let reason = self.left_out.of(reason).clone();
-                    out.left_out(LeftOutItem { category: category.id(), reason, sizes: candidate.sizes });
-                }
+                let Some((category, name)) = decide::model(row, &candidate.path) else { return };
+                let Some(category) = self.category(category) else { return };
+                out.left_out(LeftOutItem {
+                    category: category.id(),
+                    reason: self.left_out.of(reason).clone(),
+                    sizes: candidate.sizes,
+                    path: candidate.path.clone(),
+                    title: Text::new(self.title.clone()).with("name", TextArg::Text(name.title)),
+                });
             }
             Verdict::Offered { category, name, seen } => {
                 let Some(category) = self.category(category) else { return };
@@ -120,10 +133,23 @@ impl Report {
         }
     }
 
-    /// Reports that nothing of the Ollama store of `row` is offered, for `reason`, with the store's `sizes`.
-    pub(crate) fn tell_ollama_store(&self, row: &Store, reason: Reason, sizes: Sizes, out: &mut dyn FindingSink) {
+    /// Reports that nothing of the Ollama store of `row` at `path` is offered, for `reason`, with the store's `sizes`.
+    pub(crate) fn tell_ollama_store(
+        &self,
+        row: &Store,
+        path: &Path,
+        reason: Reason,
+        sizes: Sizes,
+        out: &mut dyn FindingSink,
+    ) {
         if let Some(category) = self.ollama_category(row) {
-            out.left_out(LeftOutItem { category: category.id(), reason: self.left_out.of(reason).clone(), sizes });
+            out.left_out(LeftOutItem {
+                category: category.id(),
+                reason: self.left_out.of(reason).clone(),
+                sizes,
+                path: path.to_path_buf(),
+                title: Text::new(self.store_title.clone()),
+            });
         }
     }
 
@@ -137,18 +163,23 @@ impl Report {
         out: &mut dyn FindingSink,
     ) {
         let Some(category) = self.ollama_category(row) else { return };
+        let (Some(first), Some(manifest)) = (model.tags.first(), model.manifests.first()) else { return };
+        let titles: Vec<String> = model.tags.iter().map(OllamaTag::title).collect();
+        let title = Text::new(self.title.clone()).with("name", TextArg::Text(titles.join(", ")));
         let offer = match verdict {
             ModelVerdict::NotClaimed => return,
             ModelVerdict::LeftOut(reason, sizes) => {
-                let reason = self.left_out.of(reason).clone();
-                out.left_out(LeftOutItem { category: category.id(), reason, sizes });
+                out.left_out(LeftOutItem {
+                    category: category.id(),
+                    reason: self.left_out.of(reason).clone(),
+                    sizes,
+                    path: manifest.clone(),
+                    title,
+                });
                 return;
             }
             ModelVerdict::Offered(offer) => offer,
         };
-        let (Some(first), Some(manifest)) = (model.tags.first(), model.manifests.first()) else { return };
-        let titles: Vec<String> = model.tags.iter().map(OllamaTag::title).collect();
-        let title = Text::new(self.title.clone()).with("name", TextArg::Text(titles.join(", ")));
         let reason = self.ollama_reason(first, &offer);
         let subject = Subject::Path(manifest.clone());
         let Offer { parts, freed, .. } = offer;

@@ -35,6 +35,7 @@ import {
   SCAN_STARTED,
 } from '../../test/demo-scan';
 import { FINDING_DICTIONARY } from '../../test/finding-fixtures';
+import { keptCount } from '../../test/left-out';
 import { pageOf } from '../../test/page-of';
 import { sandboxBuild } from '../../test/sandbox-build';
 import { fakeViewport } from '../../test/viewport';
@@ -67,12 +68,12 @@ const DOCKER_STATUS: AccessStatus = {
 };
 
 // The left-out line of the demo's downloads, beside the caches' own.
-const DOWNLOADS_LEFT_OUT: LeftOutCount = {
-  category: 'demo.downloads',
-  items: 2,
-  reason: { args: {}, key: 'demo.left-out.open' },
-  sizes: { allocated: 4_000_000, completeness: 'complete', logical: 4_000_000, reclaimable: 4_000_000 },
-};
+const DOWNLOADS_LEFT_OUT: LeftOutCount = keptCount('demo.downloads', 'demo.left-out.open', 2, {
+  allocated: 4_000_000,
+  completeness: 'complete',
+  logical: 4_000_000,
+  reclaimable: 4_000_000,
+});
 
 const NOTHING_TO_REVEAL: Refusal = {
   error: { code: 'nothing-to-reveal' },
@@ -245,7 +246,22 @@ describe('CategoryScreen', () => {
 
       expect(screen.queryByText('Nothing found here')).toBeNull();
       expect(screen.getByText('Everything found here was left out. The lines above say why.')).toBeVisible();
-      expect(within(leftOutLines() as HTMLElement).getAllByRole('listitem')).toHaveLength(1);
+      expect(leftOutLines()).toHaveTextContent(
+        '2 items kept (4 MB): The app that made it is open. Quit the app, then scan again.',
+      );
+    });
+
+    it('shows a count kept for good as a quiet line with no item and no bar', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderDetails('demo.downloads');
+
+      scanned(store, [DOWNLOADS_LEFT_OUT]);
+
+      const [line] = within(leftOutLines() as HTMLElement).getAllByRole('listitem');
+      expect(line).toHaveAttribute('data-kind', 'kept');
+      // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative: it has no role to query
+      expect(line?.querySelector('svg')).toBeNull();
+      expect(screen.queryByRole('list', { name: 'The items left out' })).toBeNull();
     });
 
     it('an unavailable category says why and offers no checkbox', async () => {
@@ -380,21 +396,32 @@ describe('CategoryScreen', () => {
 
       scanned(store, [DEMO_LEFT_OUT, DOWNLOADS_LEFT_OUT]);
 
-      const lines = within(leftOutLines() as HTMLElement).getAllByRole('listitem');
-      expect(lines).toHaveLength(1);
-      expect(lines[0]).toHaveTextContent('1 item left out (157.3 MB)');
+      expect(leftOutLines()).toHaveTextContent('1 item left out (157.3 MB)');
+      expect(leftOutLines()).not.toHaveTextContent('kept');
     });
 
-    it('shows each left-out line as a bar led by an i icon', async () => {
+    it('shows each line held back for now as a bar led by an i icon', async () => {
       core({ getOverview: () => IDLE });
       const { store } = await renderDetails('demo.caches');
 
       scanned(store, [DEMO_LEFT_OUT]);
 
-      const line = within(leftOutLines() as HTMLElement).getByRole('listitem');
+      const [line] = within(leftOutLines() as HTMLElement).getAllByRole('listitem');
       // eslint-disable-next-line testing-library/no-node-access -- the icon is decorative: it has no role to query
-      expect(line.querySelector('svg')).not.toBeNull();
+      expect(line?.querySelector('svg')).not.toBeNull();
       expect(leftOutLines()).toHaveAttribute('data-bar');
+    });
+
+    it('lists each item held back for now by its name, its path and its size', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderDetails('demo.caches');
+
+      scanned(store, [DEMO_LEFT_OUT]);
+
+      const item = within(screen.getByRole('list', { name: 'The items left out' })).getByRole('listitem');
+      expect(item).toHaveTextContent('Example: com.example.notes');
+      expect(item).toHaveTextContent('/demo/Library/Caches/com.example.notes');
+      expect(item).toHaveTextContent('157.3 MB');
     });
 
     it('Select all selects a Safe category whole', async () => {

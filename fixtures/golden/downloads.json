@@ -4,82 +4,162 @@
     "leftOut": [
       {
         "category": "downloads.installers",
+        "path": "Downloads/Docker.dmg",
         "reason": "downloads.left-out.not-older",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Docker.dmg"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.installers",
+        "path": "Downloads/Firefox 140.0.dmg",
         "reason": "downloads.left-out.not-older",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Firefox 140.0.dmg"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.macos-installers",
+        "path": "Downloads/Install macOS Tahoe.app",
         "reason": "downloads.left-out.newer-macos",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Install macOS Tahoe.app"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.unfinished",
+        "path": "Downloads/a.crdownload",
         "reason": "downloads.left-out.browser-open",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "a.crdownload"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.unfinished",
+        "path": "Downloads/b.opdownload",
         "reason": "downloads.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "b.opdownload"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.safari-resumable",
+        "path": "Downloads/f.download",
         "reason": "downloads.left-out.not-yours",
         "sizes": {
           "allocated": 8192,
           "completeness": "complete",
           "logical": 4608,
           "reclaimable": 8192
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "f.download"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.large-untouched",
+        "path": "Downloads/recent.mov",
         "reason": "downloads.left-out.recent",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 2000000000,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "recent.mov"
+            }
+          },
+          "key": "downloads.title"
         }
       },
       {
         "category": "downloads.safari-resumable",
+        "path": "Downloads/s.download",
         "reason": "downloads.left-out.special",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "s.download"
+            }
+          },
+          "key": "downloads.title"
         }
       }
     ],

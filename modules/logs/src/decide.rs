@@ -2,7 +2,7 @@
 //! their order, on plain values. Row 2 (another module's place) is `names::locate`, checked before. Nothing here reads
 //! the disk or the clock, and the access time is never read: reading a log does not keep it.
 
-use fresher_core::{EntryFacts, EntryKind, Timestamp};
+use fresher_core::{EntryFacts, EntryKind, LeftOutKind, Timestamp};
 
 pub(crate) const DAY: u64 = 24 * 60 * 60;
 
@@ -49,6 +49,15 @@ impl Reason {
             Self::NotYours => "logs.left-out.not-yours",
             Self::Locked => "logs.left-out.locked",
             Self::Recent => "logs.left-out.recent",
+        }
+    }
+
+    /// Whether the file is kept for what it is (a socket, not the user's) or for what goes on now (a restored scan, a
+    /// recent change, a lock the user can lift).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::Special | Self::NotYours => LeftOutKind::Kept,
+            Self::ScanAgain | Self::Locked | Self::Recent => LeftOutKind::ForNow,
         }
     }
 }

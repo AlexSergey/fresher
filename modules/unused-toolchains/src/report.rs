@@ -2,7 +2,8 @@
 //! category with its sizes. The text keys are built once, with the module.
 
 use fresher_core::{
-    CategoryDescriptor, FindingSink, LeftOutItem, NewFinding, Removal, Subject, Text, TextArg, TextKey, TextKeyError,
+    CategoryDescriptor, FindingSink, LeftOutItem, LeftOutKind, NewFinding, Removal, Subject, Text, TextArg, TextKey,
+    TextKeyError,
 };
 
 use crate::decide::{self, Reason, Verdict};
@@ -52,6 +53,12 @@ impl Report {
         self.left_out.iter().map(|(_, key)| key.clone()).collect()
     }
 
+    /// The keys of the reasons that keep a version for good.
+    pub(crate) fn kept(&self) -> Vec<TextKey> {
+        let kept = self.left_out.iter().filter(|(reason, _)| reason.kind() == LeftOutKind::Kept);
+        kept.map(|(_, key)| key.clone()).collect()
+    }
+
     /// Reports `verdict` on `candidate`, a version folder of `row`: a finding, a left-out in the row's category, or
     /// nothing.
     pub(crate) fn tell(&self, row: &Row, candidate: &Candidate, verdict: Verdict, out: &mut dyn FindingSink) {
@@ -61,9 +68,15 @@ impl Report {
         match verdict {
             Verdict::NotClaimed => {}
             Verdict::LeftOut(reason) => {
-                if let Some((_, key)) = self.left_out.iter().find(|(known, _)| *known == reason) {
-                    out.left_out(LeftOutItem { category: category.id(), reason: key.clone(), sizes: candidate.sizes });
-                }
+                let Some((_, key)) = self.left_out.iter().find(|(known, _)| *known == reason) else { return };
+                let name = candidate.path.file_name().map(|name| name.to_string_lossy()).unwrap_or_default();
+                out.left_out(LeftOutItem {
+                    category: category.id(),
+                    reason: key.clone(),
+                    sizes: candidate.sizes,
+                    path: candidate.path.clone(),
+                    title: self.title(row, &name),
+                });
             }
             Verdict::Offered => {
                 let Some(name) = candidate.path.file_name().and_then(|name| name.to_str()) else { return };
@@ -72,7 +85,7 @@ impl Report {
                     Manager::Rustup => (&self.rust, format!("rustup toolchain install {name}")),
                     Manager::Nvm => (&self.node, format!("nvm install {}", name.strip_prefix('v').unwrap_or(name))),
                 };
-                let title = Text::new(texts.title.clone()).with("name", TextArg::Text(name.to_owned()));
+                let title = self.title(row, name);
                 let reason = Text::new(texts.reason.clone())
                     .with("date", TextArg::Date(seen))
                     .with("size", TextArg::Size(candidate.sizes.logical))
@@ -83,5 +96,14 @@ impl Report {
                 out.push(NewFinding::new(category, identity, subject, candidate.sizes, title, reason, removal));
             }
         }
+    }
+
+    /// The title of the version `name` of `row`'s manager, offered or left out.
+    fn title(&self, row: &Row, name: &str) -> Text {
+        let texts = match row.manager {
+            Manager::Rustup => &self.rust,
+            Manager::Nvm => &self.node,
+        };
+        Text::new(texts.title.clone()).with("name", TextArg::Text(name.to_owned()))
     }
 }

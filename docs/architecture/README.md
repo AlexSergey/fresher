@@ -483,15 +483,30 @@ The rules of the shape:
 
 ### Left-outs
 
-A module that recognizes an item and does not offer it reports `out.left_out(LeftOutItem { category, reason, sizes })`
-(the name `LeftOut` is taken by a cleanup plan's view). `LeftOutItem` holds no path and no args. The engine sums them
-per (category, reason) into `LeftOutCount` (saturating, the weakest completeness) in `crates/engine/src/left_outs.rs`
-and sends them with `ModuleFinished.left_out`, sorted by category, then by reason key, for every outcome (completed,
-failed, cancelled, panicked). A left-out whose category is not the module's own is dropped and logged once as a
-warning, and the contract refuses it (`ForeignLeftOutCategory`); an undeclared reason is counted and logged once.
-A left-out of a category in the scan's ignore list, or of an ignored module or a module of an ignored group, is not
-counted, and a category's details drop a left-out-only category once it, its module or its group is ignored. Left-outs are event-only: they are not in the scan cache, and the restore at start runs before the
-UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports none yet.
+A module that recognizes an item and does not offer it reports
+`out.left_out(LeftOutItem { category, reason, sizes, path, title })` (the name `LeftOut` is taken by a cleanup plan's
+view): the item's path and its title as its finding would carry it. Every reason has a kind (`LeftOutKind`), declared
+by the module with `ModuleDescriptor::with_kept`: **kept for good** (`Kept`: in use or never a candidate by its nature,
+such as the version you use, a socket, the system's file) or **for now** (`ForNow`, every other reason: an app is open,
+it changed lately, a list could not be read); the kinds by module are in
+[`../categories/README.md`](../categories/README.md), "Left out: for now, or kept for good". The engine sums the
+left-outs per (category, reason) into `LeftOutCount` (saturating, the weakest completeness) in
+`crates/engine/src/left_outs.rs`, with the reason's kind, and keeps the `LEFT_OUT_SHOWN` (10) largest items of a for-now
+count as `shown` (`LeftOutEntry`: title, path, sizes; the larger first, then by path); a kept count lists none, so the
+event stays bounded by the module's categories and reasons. It sends them with `ModuleFinished.left_out`, sorted by
+category, then by reason key, for every outcome (completed, failed, cancelled, panicked). A left-out whose category is
+not the module's own is dropped and logged once as a warning, and the contract refuses it (`ForeignLeftOutCategory`);
+an undeclared reason is counted (for now) and logged once. A left-out of a category in the scan's ignore list, or of an
+ignored module or a module of an ignored group, is not counted, and a category's details drop a left-out-only category
+once it, its module or its group is ignored. The paths stay on the Mac like a finding's (rule 6); the dev-run record
+carries them as it carries findings. Left-outs are event-only: they are not in the scan cache, and the restore at start
+runs before the UI subscribes, so after a restart no left-out line shows until the next scan. The rules engine reports
+none yet.
+
+The UI shows only the for-now counts on the Scan screen ("Found, but left out": a tile per category with no card, each
+line with its items by name, short path from `~`, full path in the tooltip, and size, then "And N more items"); a
+category's details show the for-now lines as bars with their items and the kept counts as one quiet line each ("3 items
+kept (1.4 GB): This is the version you use."), after them.
 
 ### Insights
 
@@ -661,7 +676,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   returns to Scan when the insight is no longer in the last scan.
 - **A category's details** (`screens/category/`, plan 042): Back to Scan; the name, the group (a dot and its name),
   size and count; three answers side by side (What it is, with who makes it under it; If you remove it; Comes back?);
-  each left-out line as an "i" bar (`product/left-out-lines/`); the module's choices ("Remove everything", "Keep
+  each line held back for now as an "i" bar with its items, each kept for good as one quiet line
+  (`product/left-out-lines/`); the module's choices ("Remove everything", "Keep
   settings"); the items (`FindingRow` variant `details`: the name first, the path small under it, no level badge),
   with "Select all" for Safe and Usually safe only. It replaced the module pages.
 - **One menu on every row and tile** (`design/primitives/menu/`, `screens/use-row-menu.ts`): Show in Finder and

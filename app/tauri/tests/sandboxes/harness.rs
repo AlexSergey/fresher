@@ -193,7 +193,7 @@ pub(crate) fn run(name: &str, text: &str) -> Result<Value, Failure> {
         "trash": { "before": crate::trash::report(&trash_before), "after": crate::trash::report(&trash_after) },
         "treeAfter": tree_report(&after),
     });
-    if let Some(left_out) = crate::left_out::report(&left_out) {
+    if let Some(left_out) = crate::left_out::report(&left_out, &sandbox) {
         report["leftOut"] = left_out;
     }
     if let Some(insights) = crate::insight::report(&file, &insights, &sandbox) {

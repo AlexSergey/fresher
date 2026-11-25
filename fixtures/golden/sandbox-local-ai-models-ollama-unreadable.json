@@ -8,10 +8,26 @@
     {
       "category": "local-ai-models.ollama",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "local-ai-models.left-out.ollama-unreadable"
       },
+      "shown": [
+        {
+          "path": "home/.ollama/models",
+          "sizes": {
+            "allocated": 20480,
+            "completeness": "complete",
+            "logical": 6981,
+            "reclaimable": 20480
+          },
+          "title": {
+            "args": {},
+            "key": "local-ai-models.store-title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 20480,
         "completeness": "complete",

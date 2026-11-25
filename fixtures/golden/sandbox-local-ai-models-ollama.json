@@ -90,10 +90,31 @@
     {
       "category": "local-ai-models.ollama",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "local-ai-models.left-out.ollama-incomplete"
       },
+      "shown": [
+        {
+          "path": "home/.ollama/models/manifests/registry.ollama.ai/library/incomplete/q4",
+          "sizes": {
+            "allocated": 12288,
+            "completeness": "complete",
+            "logical": 2883,
+            "reclaimable": 12288
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "incomplete:q4"
+              }
+            },
+            "key": "local-ai-models.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 12288,
         "completeness": "complete",

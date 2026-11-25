@@ -102,8 +102,8 @@ pub fn assert_module_contract(module: &dyn Module, catalogue: &Catalogue) {
 
 /// Every way the texts of `module` and the findings and insights of `runs` disagree: every key of the dictionary is a
 /// descriptor key (a declared problem included) or appears in a finding (or a failure, or any text of an insight: its
-/// title, summary, figure labels, part labels, details and effects, notes) of the runs; every key a finding or an
-/// insight uses has a text, and it gives every placeholder that text names; an insight's key is in the module's
+/// title, summary, figure labels, part labels, details and effects, notes) of the runs and the titles of their
+/// left-outs; every key a finding, a left-out's title or an insight uses has a text, and it gives every placeholder that text names; an insight's key is in the module's
 /// namespace and two insights of one run never share an identity; every failure and left-out reason of the runs is
 /// a declared problem, and every left-out is in one of the module's categories. A plural text (`<key>.one`,
 /// `<key>.other`) stands for `<key>`.
@@ -116,8 +116,14 @@ pub fn check_texts_used(module: &dyn Module, runs: &[ModuleRun]) -> Vec<Contract
     let left_out_reasons: Vec<Text> =
         runs.iter().flat_map(|run| &run.left_out).map(|item| Text::new(item.reason.clone())).collect();
     let insight_texts: Vec<&Text> = runs.iter().flat_map(|run| &run.insights).flat_map(insight_texts).collect();
-    let texts: Vec<&Text> =
-        runs.iter().flat_map(run_texts).chain(&left_out_reasons).chain(insight_texts.iter().copied()).collect();
+    let left_out_titles = runs.iter().flat_map(|run| &run.left_out).map(|item| &item.title);
+    let texts: Vec<&Text> = runs
+        .iter()
+        .flat_map(run_texts)
+        .chain(&left_out_reasons)
+        .chain(left_out_titles)
+        .chain(insight_texts.iter().copied())
+        .collect();
     let mut used: BTreeSet<String> = descriptor_keys(descriptor).into_iter().collect();
     used.extend(texts.iter().map(|text| text.key().as_str().to_owned()));
     let mut problems: Vec<ContractProblem> = dictionary
@@ -157,6 +163,25 @@ pub fn check_texts_used(module: &dyn Module, runs: &[ModuleRun]) -> Vec<Contract
         }
     }
     problems
+}
+
+/// The left-out reasons `module` declares (its problems named `<module>.left-out.<reason>`), split by their kind, each
+/// part in the declared order: what a module test compares with the reasons it keeps for good and for now.
+#[derive(Debug, PartialEq, Eq)]
+pub struct LeftOutKinds {
+    pub kept: Vec<String>,
+    pub for_now: Vec<String>,
+}
+
+/// The kinds of the left-out reasons of `module`.
+pub fn left_out_kinds(module: &dyn Module) -> LeftOutKinds {
+    let descriptor = module.descriptor();
+    let prefix = format!("{}.left-out.", descriptor.id().as_str());
+    let reasons = descriptor.problems().iter().filter_map(|key| Some((key, key.as_str().strip_prefix(&prefix)?)));
+    let (kept, for_now): (Vec<_>, Vec<_>) =
+        reasons.partition(|(key, _)| descriptor.left_out_kind(key) == fresher_core::LeftOutKind::Kept);
+    let names = |keys: Vec<(&TextKey, &str)>| keys.into_iter().map(|(_, name)| name.to_owned()).collect();
+    LeftOutKinds { kept: names(kept), for_now: names(for_now) }
 }
 
 /// Fails the test with every problem [`check_texts_used`] finds.
@@ -705,7 +730,7 @@ mod tests {
         use crate::run_module::sample::{CacheModule, en_with};
         use crate::{
             Catalogue, assert_module_contract, assert_texts_used, check_module_contract, check_removals_matched,
-            check_texts_used,
+            check_texts_used, left_out_kinds,
         };
 
         #[test]
@@ -785,6 +810,18 @@ mod tests {
 
             assert_module_contract(&module, &Catalogue::DevOnly);
             assert_eq!(check_texts_used(&module, &runs(&module)), []);
+        }
+
+        #[test]
+        fn left_out_reasons_are_split_by_kind_and_failures_left_aside() {
+            let module = CacheModule::with_dictionary(en_with(r#""sample.left-out.open": "Open.""#))
+                .declaring(&["sample.error.failed", "sample.left-out.open", "sample.left-out.current"])
+                .keeping(&["sample.left-out.current"]);
+
+            assert_eq!(
+                left_out_kinds(&module),
+                crate::LeftOutKinds { kept: vec!["current".into()], for_now: vec!["open".into()] }
+            );
         }
 
         #[test]

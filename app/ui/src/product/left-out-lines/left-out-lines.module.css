@@ -1,4 +1,4 @@
-/* The quiet lines under a category: how many items were left out, how big, and why. */
+/* The quiet lines under a category: how many items were left out, how big and why, then each item held back. */
 @layer components {
   .lines {
     display: grid;
@@ -6,34 +6,88 @@
     padding: 0 var(--space-3);
     color: var(--text-secondary);
     font-size: var(--type-footnote-size);
-    gap: var(--space-1);
+    gap: var(--space-2);
     line-height: var(--type-footnote-line);
     list-style: none;
   }
 
   .line {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-1);
+  }
+
+  .summary {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     column-gap: var(--space-1);
   }
 
-  /* A bar (a category's details): each line in its own bar led by a 14 px "i". */
-  .lines[data-bar] {
+  .items {
+    display: grid;
+    min-width: 0;
+    margin: 0;
     padding: 0;
-    gap: var(--space-2);
+    gap: var(--space-1);
+    list-style: none;
   }
 
-  .lines[data-bar] .line {
+  .item {
+    display: flex;
     align-items: center;
+    min-width: 0;
+    gap: var(--space-3);
+  }
+
+  .names {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .title {
+    overflow: hidden;
+    color: var(--text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .size {
+    flex: none;
+    color: var(--text-primary);
+  }
+
+  .more {
+    color: var(--text-tertiary);
+  }
+
+  /* A bar (a category's details): each line held back for now in its own bar led by a 14 px "i"; a line kept for
+     good stays a quiet line below them. */
+  .lines[data-bar] {
+    padding: 0;
+  }
+
+  .lines[data-bar] .line[data-kind='for-now'] {
     padding: 10px var(--space-3-5);
     border: 1px solid var(--border-divider);
     border-radius: var(--radius-md);
     background-color: var(--surface-raised);
     font-size: calc(13rem / 13);
+    gap: var(--space-2);
   }
 
-  .lines[data-bar] .line > :nth-child(1) {
+  .lines[data-bar] .line[data-kind='kept'] {
+    padding: 0 var(--space-3-5);
+    color: var(--text-tertiary);
+  }
+
+  .lines[data-bar] .summary > :nth-child(1) {
     margin-right: 6px;
+  }
+
+  .lines[data-bar] .line[data-kind='kept'] .summary > :nth-child(1) {
+    margin-right: 0;
   }
 
   .icon {

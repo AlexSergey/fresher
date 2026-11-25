@@ -32,8 +32,8 @@ pub enum Event {
         scan: ScanId,
         module: ModuleId,
         outcome: ModuleOutcome,
-        /// What the module recognized and did not offer, counted per category and reason, sorted by category, then by
-        /// reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
+        /// What the module recognized and did not offer, counted per category and reason with the largest items of a
+        /// for-now reason, sorted by category, then by reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
         #[serde(rename = "leftOut")]
         left_out: Vec<LeftOutCount>,
         /// What the module described and does not offer, in the order it gave it.
@@ -216,8 +216,15 @@ mod tests {
         #[test]
         fn module_finished_serializes_its_left_outs() {
             let category = crate::CategoryId::new(ModuleId::new("demo").unwrap(), "demo.caches").unwrap();
-            let mut count = crate::LeftOutCount::new(category, Text::new(TextKey::new("demo.left-out.open").unwrap()));
-            count.add(crate::Sizes::complete(ByteSize::new(1), ByteSize::new(4096)));
+            let reason = TextKey::new("demo.left-out.open").unwrap();
+            let mut count = crate::LeftOutCount::new(category, Text::new(reason.clone()), crate::LeftOutKind::ForNow);
+            count.add(crate::LeftOutItem {
+                category,
+                reason,
+                sizes: crate::Sizes::complete(ByteSize::new(1), ByteSize::new(4096)),
+                path: "/a".into(),
+                title: Text::new(TextKey::new("demo.finding.title").unwrap()),
+            });
             let finished = Event::ModuleFinished {
                 scan: ScanId::new(3),
                 module: ModuleId::new("demo").unwrap(),
@@ -236,8 +243,16 @@ mod tests {
                     "leftOut": [{
                         "category": "demo.caches",
                         "reason": { "key": "demo.left-out.open", "args": {} },
+                        "kind": "for-now",
                         "items": 1,
                         "sizes": { "logical": 1, "allocated": 4096, "reclaimable": 4096, "completeness": "complete" },
+                        "shown": [{
+                            "title": { "key": "demo.finding.title", "args": {} },
+                            "path": "/a",
+                            "sizes": {
+                                "logical": 1, "allocated": 4096, "reclaimable": 4096, "completeness": "complete"
+                            },
+                        }],
                     }],
                     "insights": [],
                 })

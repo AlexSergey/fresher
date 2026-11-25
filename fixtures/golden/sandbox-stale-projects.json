@@ -136,10 +136,79 @@
     {
       "category": "stale-projects.build-output",
       "items": 3,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "stale-projects.left-out.recent"
       },
+      "shown": [
+        {
+          "path": "home/Code/building/target",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "folder": {
+                "kind": "text",
+                "value": "target"
+              },
+              "project": {
+                "kind": "text",
+                "value": "building"
+              }
+            },
+            "key": "stale-projects.title"
+          }
+        },
+        {
+          "path": "home/Code/covered/target",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 0,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "folder": {
+                "kind": "text",
+                "value": "target"
+              },
+              "project": {
+                "kind": "text",
+                "value": "covered"
+              }
+            },
+            "key": "stale-projects.title"
+          }
+        },
+        {
+          "path": "home/Code/daily/target",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 0,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "folder": {
+                "kind": "text",
+                "value": "target"
+              },
+              "project": {
+                "kind": "text",
+                "value": "daily"
+              }
+            },
+            "key": "stale-projects.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -150,10 +219,57 @@
     {
       "category": "stale-projects.dependencies",
       "items": 2,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "stale-projects.left-out.recent"
       },
+      "shown": [
+        {
+          "path": "home/Code/active/node_modules",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "folder": {
+                "kind": "text",
+                "value": "node_modules"
+              },
+              "project": {
+                "kind": "text",
+                "value": "active"
+              }
+            },
+            "key": "stale-projects.title"
+          }
+        },
+        {
+          "path": "home/Code/committed/node_modules",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "folder": {
+                "kind": "text",
+                "value": "node_modules"
+              },
+              "project": {
+                "kind": "text",
+                "value": "committed"
+              }
+            },
+            "key": "stale-projects.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -164,10 +280,35 @@
     {
       "category": "stale-projects.rust-build-cache",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "stale-projects.left-out.cache-recent"
       },
+      "shown": [
+        {
+          "path": "home/Code/building/target/debug/incremental",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "folder": {
+                "kind": "text",
+                "value": "target/debug/incremental"
+              },
+              "project": {
+                "kind": "text",
+                "value": "building"
+              }
+            },
+            "key": "stale-projects.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

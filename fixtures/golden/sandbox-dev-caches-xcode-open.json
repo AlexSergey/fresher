@@ -28,10 +28,31 @@
     {
       "category": "dev-caches.xcode-derived-data",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "dev-caches.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Developer/Xcode/DerivedData/Open-cdefghijklmnopqrstuvwxyzabcd",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 8192,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "project": {
+                "kind": "text",
+                "value": "Open"
+              }
+            },
+            "key": "dev-caches.title.xcode-derived-data"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

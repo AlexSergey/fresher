@@ -40,7 +40,10 @@ calls taken while building them are in each plan's `00-design.md`.
   another**, or the new launch does not start and says Fresher is already running.
 - `sandbox/<name>/EXPECTED.md` is the checklist of a sandbox: one box per case, negatives first. Walk it in order:
   nothing of a negative may be offered; every left-out line reads as written; each positive is offered at its stated
-  danger. The folder is gitignored, so ticking boxes in it costs nothing. Details:
+  danger. A left-out kept for good (the version you use, a socket, the system's file; the kinds are in
+  [`categories/README.md`](./categories/README.md#left-out-for-now-or-kept-for-good)) is never on the Scan screen:
+  look for it on its category's details, as a quiet "N items kept" line. A left-out held back for now lists each item
+  by name, short path (full path in the tooltip) and size, on Scan and on the details. The folder is gitignored, so ticking boxes in it costs nothing. Details:
   [`testing.md`](./testing.md#sandboxes).
 - A sandbox's dates count from its generation (`world.toml` `now`), so a scan may say "made days ago" in a sandbox that
   is older than the run: regenerate with `rm -rf` to avoid it (known issue, see section 6).
@@ -93,7 +96,7 @@ them in this order because the first ones teach the screens used by the rest.
      without a rescan; a cleanup prepared after the ignore does not list the item.
 - [ ] **Plan 011, problems and reasons** ([011/03/01](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)).
   1. `npm run dev` (the demo module): scan; the demo category shows "1 item left out (150 MB): The app that made it is
-     open. Quit the app, then scan again."
+     open. Quit the app, then scan again." with its item under it: "Example: com.example.notes", its path and 150 MB.
   2. Quit and start again: the restored scan shows no left-out line until the next scan (expected: left-outs are
      event-only).
   3. `FRESHER_SANDBOX=relative npm run dev`: a dialog with a plain sentence and the sandbox's refusal under it; no main
@@ -529,8 +532,9 @@ diskutil apfs list | head -60
 
 ### 2.2 JetBrains ([016/04/02](./plans/016-jetbrains/04-finish/02-run-and-conclusions.md))
 
-The agent reads from the record that the version in use is left out ("This is the version you use.") and that an open
-IDE's folders are left out with "The IDE is open..." in the second scan and offered again in the third.
+The agent reads from the record that the version in use is kept for good ("This is the version you use.", kind
+`kept`, no item listed) and that an open IDE's folders are left out for now with "The IDE is open..." (kind `for-now`,
+each folder listed in `shown`) in the second scan and offered again in the third.
 
 ```sh
 ls ~/Library/{Application\ Support,Caches,Logs}/JetBrains

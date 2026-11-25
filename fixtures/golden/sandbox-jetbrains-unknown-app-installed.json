@@ -8,10 +8,12 @@
     {
       "category": "jetbrains.uninstalled",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "jetbrains.left-out.unknown-ide"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

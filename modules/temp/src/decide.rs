@@ -3,7 +3,7 @@
 
 use std::ffi::OsStr;
 
-use fresher_core::{EntryFacts, EntryKind, Inside, RunningSet, Timestamp};
+use fresher_core::{EntryFacts, EntryKind, Inside, LeftOutKind, RunningSet, Timestamp};
 
 use crate::names::{is_lock, is_system, named_after};
 
@@ -50,6 +50,29 @@ pub(crate) enum Reason {
     NoSystem,
     AppOpen,
     Recent,
+}
+
+impl Reason {
+    /// Every reason, in the order the module declares their keys.
+    pub(crate) const ALL: [Self; 8] = [
+        Self::System,
+        Self::Locked,
+        Self::AppOpen,
+        Self::Special,
+        Self::Lock,
+        Self::Recent,
+        Self::ScanAgain,
+        Self::NoSystem,
+    ];
+
+    /// Whether the item is kept for what it is (the system's, a socket, a lock) or for what goes on now (an open app,
+    /// a recent change, a restored scan, a lock the user can lift).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::System | Self::Special | Self::Lock => LeftOutKind::Kept,
+            Self::Locked | Self::AppOpen | Self::Recent | Self::ScanAgain | Self::NoSystem => LeftOutKind::ForNow,
+        }
+    }
 }
 
 /// What becomes of one item.

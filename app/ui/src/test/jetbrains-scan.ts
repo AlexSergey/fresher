@@ -3,6 +3,7 @@ import type {
   Event,
   Finding,
   LeftOutCount,
+  LeftOutEntry,
   MeaningGroup,
   ModuleInfo,
   Overview,
@@ -14,6 +15,7 @@ import type {
 import jetbrainsTexts from '../../../../modules/jetbrains/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, keptCount, leftOutEntry } from './left-out';
 
 // A scan of the JetBrains module as the core streams it: WebStorm 2024.3 left its settings, caches and logs behind
 // (you use 2025.1 now), DataGrip is no longer installed, and the texts are the module's own, read from its locale
@@ -133,17 +135,22 @@ export const JETBRAINS_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-const left = (category: string, key: string, items: number, bytes: number): LeftOutCount => ({
-  category,
-  items,
-  reason: { args: {}, key: `jetbrains.left-out.${key}` },
-  sizes: sized(bytes),
-});
+// A folder of an IDE that is open, titled as its finding would be.
+const openFolder = (product: string, version: string, folder: string, bytes: number): LeftOutEntry =>
+  leftOutEntry(
+    { args: { product: text(product), version: text(version) }, key: 'jetbrains.finding.title' },
+    `${HOME}/${folder}`,
+    sized(bytes),
+  );
 
-// What the module recognised and left out: the version you use (three folders), and two folders of an IDE that is open.
+// What the module recognised and left out: the version you use (three folders, kept for good), and two folders of an
+// IDE that is open.
 export const JETBRAINS_LEFT_OUT: readonly LeftOutCount[] = [
-  left('jetbrains.caches', 'current', 3, 1_400 * MB),
-  left('jetbrains.settings', 'running', 2, 600 * MB),
+  keptCount('jetbrains.caches', 'jetbrains.left-out.current', 3, sized(1_400 * MB)),
+  forNowCount('jetbrains.settings', 'jetbrains.left-out.running', sized(600 * MB), [
+    openFolder('GoLand', '2024.2', 'Application Support/JetBrains/GoLand2024.2', 400 * MB),
+    openFolder('GoLand', '2024.1', 'Application Support/JetBrains/GoLand2024.1', 200 * MB),
+  ]),
 ];
 
 export const JETBRAINS_SCAN: readonly Event[] = [

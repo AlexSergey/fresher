@@ -408,42 +408,67 @@
     "leftOut": [
       {
         "category": "dev-caches.cargo",
+        "path": ".cargo/registry/src",
         "reason": "dev-caches.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 1024,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.cargo-src"
         }
       },
       {
         "category": "dev-caches.gradle",
+        "path": ".gradle/caches",
         "reason": "dev-caches.left-out.not-yours",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 8261,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.gradle"
         }
       },
       {
         "category": "dev-caches.npm",
+        "path": ".npm/_cacache",
         "reason": "dev-caches.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {},
+          "key": "dev-caches.title.npm"
         }
       },
       {
         "category": "dev-caches.xcode-derived-data",
+        "path": "Library/Developer/Xcode/DerivedData/Demo-abcdefghijklmnopqrstuvwxyzab",
         "reason": "dev-caches.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4352,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "project": {
+              "kind": "text",
+              "value": "Demo"
+            }
+          },
+          "key": "dev-caches.title.xcode-derived-data"
         }
       }
     ],

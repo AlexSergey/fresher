@@ -4,82 +4,194 @@
     "leftOut": [
       {
         "category": "stale-projects.dependencies",
+        "path": "Code/active/node_modules",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "active"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.dependencies",
+        "path": "Code/committed/node_modules",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "committed"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.rust-build-cache",
+        "path": "Code/engine/target/debug/incremental",
         "reason": "stale-projects.left-out.cache-recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target/debug/incremental"
+            },
+            "project": {
+              "kind": "text",
+              "value": "engine"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.build-output",
+        "path": "Code/engine/target",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target"
+            },
+            "project": {
+              "kind": "text",
+              "value": "engine"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.dependencies",
+        "path": "Code/hidden-part/node_modules",
         "reason": "stale-projects.left-out.unread",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "hidden-part"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.dependencies",
+        "path": "Code/mono/node_modules",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "mono"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.dependencies",
+        "path": "Code/mono/packages/web/node_modules",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "packages/web/node_modules"
+            },
+            "project": {
+              "kind": "text",
+              "value": "mono"
+            }
+          },
+          "key": "stale-projects.title"
         }
       },
       {
         "category": "stale-projects.python-environments",
+        "path": "Code/pip-old/.venv",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 4096,
           "completeness": "complete",
           "logical": 512,
           "reclaimable": 4096
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": ".venv"
+            },
+            "project": {
+              "kind": "text",
+              "value": "pip-old"
+            }
+          },
+          "key": "stale-projects.title"
         }
       }
     ],
@@ -819,12 +931,26 @@
     "leftOut": [
       {
         "category": "stale-projects.build-output",
+        "path": "Code/fresher/target",
         "reason": "stale-projects.left-out.recent",
         "sizes": {
           "allocated": 8192,
           "completeness": "complete",
           "logical": 8192,
           "reclaimable": 8192
+        },
+        "title": {
+          "args": {
+            "folder": {
+              "kind": "text",
+              "value": "target"
+            },
+            "project": {
+              "kind": "text",
+              "value": "fresher"
+            }
+          },
+          "key": "stale-projects.title"
         }
       }
     ],

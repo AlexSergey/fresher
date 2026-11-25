@@ -1,11 +1,13 @@
-//! What one module left out during a scan, added up per category and reason.
+//! What one module left out during a scan, added up per category and reason, with the largest items of a for-now
+//! reason.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use fresher_core::{CategoryId, LeftOutCount, LeftOutItem, ModuleDescriptor, Text, TextKey};
 
-/// The sums of one module's left-outs, one per (category, reason): bounded by the module's categories and declared
-/// problems, never by how many items it left out.
+/// The sums of one module's left-outs, one per (category, reason), each of the kind the module declares for the
+/// reason: bounded by the module's categories and declared problems, and by `LEFT_OUT_SHOWN` items each, never by how
+/// many items it left out.
 pub(crate) struct LeftOuts<'a> {
     descriptor: &'a ModuleDescriptor,
     counts: BTreeMap<(CategoryId, TextKey), LeftOutCount>,
@@ -39,10 +41,11 @@ impl<'a> LeftOuts<'a> {
             None
         };
         if own {
+            let kind = self.descriptor.left_out_kind(&item.reason);
             self.counts
-                .entry((item.category, item.reason))
-                .or_insert_with_key(|(category, reason)| LeftOutCount::new(*category, Text::new(reason.clone())))
-                .add(item.sizes);
+                .entry((item.category, item.reason.clone()))
+                .or_insert_with_key(|(category, reason)| LeftOutCount::new(*category, Text::new(reason.clone()), kind))
+                .add(item);
         }
         let bug = bug.filter(|bug| self.logged.insert(bug.clone()))?;
         let module = self.descriptor.id().as_str();
@@ -85,7 +88,8 @@ mod tests {
         CategoryId::new(ModuleId::new("alpha").unwrap(), id).unwrap()
     }
 
-    /// Module `alpha` with two categories that declares `alpha.left-out.open`.
+    /// Module `alpha` with two categories that declares `alpha.left-out.open` (for now) and `alpha.left-out.current`
+    /// (kept for good).
     fn descriptor() -> ModuleDescriptor {
         let categories =
             ["alpha.caches", "alpha.logs"].map(|id| CategoryDescriptor::new(category(id), DangerLevel::Safe)).to_vec();
@@ -97,17 +101,25 @@ mod tests {
             Locales { en: "{}" },
         )
         .unwrap()
-        .with_problems(vec![key("alpha.left-out.open")])
+        .with_problems(vec![key("alpha.left-out.open"), key("alpha.left-out.current")])
+        .unwrap()
+        .with_kept(vec![key("alpha.left-out.current")])
         .unwrap()
     }
 
     fn item(category_id: &'static str, reason: &str, bytes: u64) -> LeftOutItem {
         let size = fresher_core::ByteSize::new(bytes);
-        LeftOutItem { category: category(category_id), reason: key(reason), sizes: Sizes::complete(size, size) }
+        LeftOutItem {
+            category: category(category_id),
+            reason: key(reason),
+            sizes: Sizes::complete(size, size),
+            path: format!("/home/{bytes}").into(),
+            title: fresher_core::Text::new(key("alpha.finding.title")),
+        }
     }
 
     mod negative {
-        use fresher_core::{CategoryId, LeftOutItem, ModuleId, Sizes};
+        use fresher_core::{CategoryId, LeftOutItem, LeftOutKind, ModuleId};
 
         use super::{descriptor, item, key};
         use crate::left_outs::{Bug, LeftOuts};
@@ -132,18 +144,27 @@ mod tests {
             let descriptor = descriptor();
             let mut left_outs = LeftOuts::new(&descriptor);
             let foreign = CategoryId::new(ModuleId::new("beta").unwrap(), "beta.caches").unwrap();
-            let size = fresher_core::ByteSize::new(1);
-            let item = LeftOutItem {
-                category: foreign,
-                reason: key("alpha.left-out.open"),
-                sizes: Sizes::complete(size, size),
-            };
+            let item = LeftOutItem { category: foreign, ..item("alpha.caches", "alpha.left-out.open", 1) };
 
             let first = left_outs.add(item.clone());
             let second = left_outs.add(item);
 
             assert_eq!((first, second), (Some(Bug::ForeignCategory(foreign)), None));
             assert_eq!(left_outs.take(), []);
+        }
+
+        #[test]
+        fn a_reason_kept_for_good_shows_no_item() {
+            let descriptor = descriptor();
+            let mut left_outs = LeftOuts::new(&descriptor);
+
+            left_outs.add(item("alpha.caches", "alpha.left-out.current", 1));
+            let counts = left_outs.take();
+
+            assert_eq!(
+                counts.iter().map(|count| (count.kind, count.items, count.shown.len())).collect::<Vec<_>>(),
+                [(LeftOutKind::Kept, 1, 0)]
+            );
         }
 
         #[test]
@@ -159,7 +180,7 @@ mod tests {
     }
 
     mod positive {
-        use fresher_core::ByteSize;
+        use fresher_core::{ByteSize, LeftOutKind};
 
         use super::{descriptor, item};
         use crate::left_outs::LeftOuts;
@@ -185,6 +206,21 @@ mod tests {
                     ("alpha.logs", "alpha.left-out.open", 1, ByteSize::new(1)),
                 ]
             );
+        }
+
+        #[test]
+        fn a_reason_held_back_for_now_shows_its_items_largest_first() {
+            let descriptor = descriptor();
+            let mut left_outs = LeftOuts::new(&descriptor);
+
+            left_outs.add(item("alpha.caches", "alpha.left-out.open", 2));
+            left_outs.add(item("alpha.caches", "alpha.left-out.open", 3));
+            let counts = left_outs.take();
+
+            assert_eq!(counts[0].kind, LeftOutKind::ForNow);
+            let shown: Vec<_> = counts[0].shown.iter().map(|entry| entry.path.to_str().unwrap()).collect();
+            assert_eq!(shown, ["/home/3", "/home/2"]);
+            assert_eq!(counts[0].shown[0].title.key().as_str(), "alpha.finding.title");
         }
     }
 }

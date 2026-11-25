@@ -28,10 +28,31 @@
         {
           "category": "demo.caches",
           "items": 1,
+          "kind": "for-now",
           "reason": {
             "args": {},
             "key": "demo.left-out.open"
           },
+          "shown": [
+            {
+              "path": "/demo/Library/Caches/com.example.notes",
+              "sizes": {
+                "allocated": 157286400,
+                "completeness": "complete",
+                "logical": 157286400,
+                "reclaimable": 157286400
+              },
+              "title": {
+                "args": {
+                  "name": {
+                    "kind": "text",
+                    "value": "com.example.notes"
+                  }
+                },
+                "key": "demo.finding.title"
+              }
+            }
+          ],
           "sizes": {
             "allocated": 157286400,
             "completeness": "complete",

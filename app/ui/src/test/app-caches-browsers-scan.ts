@@ -2,6 +2,7 @@ import type { Dictionary, Event, Finding, LeftOutCount, Overview } from '../ipc/
 
 import { APP_CACHES_DICTIONARY, cacheFinding, sized, text } from './app-caches-scan';
 import { FULL_COVERAGE } from './demo-scan';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the browser and web-engine caches as the core streams it: three cache folders of two Chrome profiles, each
 // titled by its browser, profile and folder, two of Redis Insight's, titled by the app and the folder, and Firefox's
@@ -53,12 +54,16 @@ export const APP_CACHES_BROWSERS_FINDINGS: readonly Finding[] = [
 
 // Firefox's cache, left out: the browser is open.
 export const APP_CACHES_BROWSERS_LEFT_OUT: readonly LeftOutCount[] = [
-  {
-    category: APP_CACHES_BROWSERS,
-    items: 1,
-    reason: { args: {}, key: 'app-caches.left-out.app-open' },
-    sizes: sized(30 * MB),
-  },
+  forNowCount(APP_CACHES_BROWSERS, 'app-caches.left-out.app-open', sized(30 * MB), [
+    leftOutEntry(
+      {
+        args: { app: text('Firefox'), folder: text('cache2'), profile: text('default-release') },
+        key: 'app-caches.title.profile',
+      },
+      '/Users/someone/Library/Caches/Firefox/Profiles/default-release/cache2',
+      sized(30 * MB),
+    ),
+  ]),
 ];
 
 export const APP_CACHES_BROWSERS_SCAN: readonly Event[] = [

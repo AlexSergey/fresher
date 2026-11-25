@@ -50,10 +50,12 @@
     {
       "category": "app-caches.library-caches",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "app-caches.left-out.special"
       },
+      "shown": [],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",

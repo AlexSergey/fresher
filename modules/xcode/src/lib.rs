@@ -79,7 +79,8 @@ impl XcodeModule {
         let report = Report::new(categories.clone())?;
         let locales = Locales { en: include_str!("../locales/en.json") };
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::Development, categories, Vec::new(), locales)?
-            .with_problems(report.problems())?;
+            .with_problems(report.problems())?
+            .with_kept(report.kept())?;
         // A bad table fails here, when the module is built.
         let places = Places::shipped()?;
         let interests = places.interests()?;

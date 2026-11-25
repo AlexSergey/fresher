@@ -118,10 +118,49 @@
     {
       "category": "temp.old-files",
       "items": 2,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "temp.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "private/var/folders/xx/sandbox/T/.com.example.Editor.XXXXXX",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 2048,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": ".com.example.Editor.XXXXXX"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        },
+        {
+          "path": "private/var/folders/xx/sandbox/T/com.example.Editor.tmp",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "com.example.Editor.tmp"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -132,10 +171,12 @@
     {
       "category": "temp.old-files",
       "items": 4,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "temp.left-out.lock"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -146,10 +187,31 @@
     {
       "category": "temp.old-files",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "temp.left-out.locked"
       },
+      "shown": [
+        {
+          "path": "private/var/folders/xx/sandbox/T/kept.txt",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "kept.txt"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -160,10 +222,121 @@
     {
       "category": "temp.old-files",
       "items": 6,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "temp.left-out.recent"
       },
+      "shown": [
+        {
+          "path": "private/var/folders/xx/sandbox/T/build",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 16384,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "build"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        },
+        {
+          "path": "private/var/folders/xx/sandbox/T/fresh.tmp",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "fresh.tmp"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        },
+        {
+          "path": "private/var/folders/xx/sandbox/T/future",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "future"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        },
+        {
+          "path": "private/var/folders/xx/sandbox/T/read.dat",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "read.dat"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        },
+        {
+          "path": "private/var/folders/xx/sandbox/T/six-days",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "six-days"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        },
+        {
+          "path": "private/var/folders/xx/sandbox/T/unpacked",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 67584,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "unpacked"
+              }
+            },
+            "key": "temp.finding.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -174,10 +347,12 @@
     {
       "category": "temp.old-files",
       "items": 3,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "temp.left-out.special"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -188,10 +363,12 @@
     {
       "category": "temp.old-files",
       "items": 5,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "temp.left-out.system"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

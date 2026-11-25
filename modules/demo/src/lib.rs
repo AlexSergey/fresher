@@ -155,7 +155,14 @@ impl DemoModule {
     fn left_out(&self) -> LeftOutItem {
         let bytes = ByteSize::new(LEFT_OUT_BYTES);
         let category = self.descriptor.categories()[CACHES].id();
-        LeftOutItem { category, reason: self.left_out.clone(), sizes: Sizes::complete(bytes, bytes) }
+        let name = "com.example.notes";
+        LeftOutItem {
+            category,
+            reason: self.left_out.clone(),
+            sizes: Sizes::complete(bytes, bytes),
+            path: [DEMO_ROOT, "Library/Caches", name].iter().collect(),
+            title: Text::new(self.title.clone()).with("name", TextArg::Text(name.to_owned())),
+        }
     }
 }
 

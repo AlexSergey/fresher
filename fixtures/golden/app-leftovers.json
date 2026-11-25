@@ -99,92 +99,182 @@
     "leftOut": [
       {
         "category": "app-leftovers.settings",
+        "path": "Library/Preferences/com.example.Elsewhere.plist",
         "reason": "app-leftovers.left-out.installed-elsewhere",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Elsewhere"
+            }
+          },
+          "key": "app-leftovers.title.preferences"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Saved Application State/com.example.Elsewhere.savedState",
         "reason": "app-leftovers.left-out.installed-elsewhere",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Elsewhere"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Caches/com.example.Foreign",
         "reason": "app-leftovers.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Foreign"
+            }
+          },
+          "key": "app-leftovers.title.caches"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Saved Application State/com.example.Linked.savedState",
         "reason": "app-leftovers.left-out.used-recently",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Linked"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Caches/com.example.Recent",
         "reason": "app-leftovers.left-out.used-recently",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Recent"
+            }
+          },
+          "key": "app-leftovers.title.caches"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Saved Application State/com.example.Recent.savedState",
         "reason": "app-leftovers.left-out.used-recently",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Recent"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Caches/com.example.Running",
         "reason": "app-leftovers.left-out.running",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Running"
+            }
+          },
+          "key": "app-leftovers.title.caches"
         }
       },
       {
         "category": "app-leftovers.caches",
+        "path": "Library/Saved Application State/com.example.Running.savedState",
         "reason": "app-leftovers.left-out.running",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Running"
+            }
+          },
+          "key": "app-leftovers.title.saved-state"
         }
       },
       {
         "category": "app-leftovers.data",
+        "path": "Library/Application Support/com.example.Socket",
         "reason": "app-leftovers.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "id": {
+              "kind": "text",
+              "value": "com.example.Socket"
+            }
+          },
+          "key": "app-leftovers.title.support"
         }
       }
     ],

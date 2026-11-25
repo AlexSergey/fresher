@@ -19,13 +19,14 @@ mod support {
         Confirmation, Coverage, DangerLevel, Dictionary, Ended, EngineStatus, Event, Figure, Finding, FindingId,
         FindingKey, FindingOrder, FindingsPage, FindingsQuery, GuardedFolder, HiddenBy, HiddenModule, HighLevel, IdOf,
         IgnoreTarget, IgnoredCount, IgnoredEntry, Insight, InsightPart, ItemOutcome, ItemReport, LastScan, LeftOut,
-        LeftOutCount, Locale, Method, ModuleGroup, ModuleId, ModuleInfo, ModuleOutcome, Need, NeedKind, NodeId,
-        NodeInfo, NodeKind, NodePage, NotEntered, NotScanned, Operation, OutcomeCounts, Overview, OwnData, PlanGroup,
-        PlanId, PlanItemView, PlanSummary, PutBackItem, PutBackOutcome, PutBackReport, PutBackRequest, RecordedOutcome,
-        Refusal, Removability, Removal, ScanId, ScanKind, ScanOutcome, SettingDescriptor, SettingEffect, SettingGroup,
-        SettingKey, SettingKind, SettingProblem, SettingUpdate, SettingValue, SettingsFile, SettingsView, ShownCommand,
-        Simulated, Sizes, SkipCode, SkipReason, StateId, Subject, Text, TextArg, TextKey, Timestamp, ToolCommand,
-        ToolId, TrashLine, TrashState, TrashView, Unit, Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
+        LeftOutCount, LeftOutEntry, LeftOutKind, Locale, Method, ModuleGroup, ModuleId, ModuleInfo, ModuleOutcome,
+        Need, NeedKind, NodeId, NodeInfo, NodeKind, NodePage, NotEntered, NotScanned, Operation, OutcomeCounts,
+        Overview, OwnData, PlanGroup, PlanId, PlanItemView, PlanSummary, PutBackItem, PutBackOutcome, PutBackReport,
+        PutBackRequest, RecordedOutcome, Refusal, Removability, Removal, ScanId, ScanKind, ScanOutcome,
+        SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingUpdate,
+        SettingValue, SettingsFile, SettingsView, ShownCommand, Simulated, Sizes, SkipCode, SkipReason, StateId,
+        Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashLine, TrashState, TrashView, Unit,
+        Unreadable, UnreadableCount, UnreadablePlace, VolumeKind,
     };
     use fresher_core::{
         AppDetail, AppId, AppOffer, AppSummary, AppsQuery, AppsView, ChoiceView, FootprintItem, FootprintKind,
@@ -101,12 +102,9 @@ mod support {
             declaration::<CategoryId>(&config),
             declaration::<ModuleId>(&config),
             declaration::<ScanId>(&config),
-            declaration::<ModuleOutcome>(&config),
-            declaration::<LeftOutCount>(&config),
-            declaration::<Insight>(&config),
-            declaration::<Figure>(&config),
-            declaration::<InsightPart>(&config),
-            declaration::<ShownCommand>(&config),
+        ];
+        declarations.extend(module_declarations(&config));
+        declarations.extend([
             declaration::<ScanOutcome>(&config),
             declaration::<ScanKind>(&config),
             declaration::<DangerLevel>(&config),
@@ -151,13 +149,27 @@ mod support {
             declaration::<ChildOrder>(&config),
             declaration::<NodePage>(&config),
             declaration::<UnreadablePlace>(&config),
-        ];
+        ]);
         declarations.extend(storage_declarations(&config));
         declarations.extend(largest_declarations(&config));
         declarations.extend(cleanup_declarations(&config));
         declarations.extend(apps_declarations(&config));
         declarations.extend(demo_declarations(&config));
         declarations
+    }
+
+    /// What a module tells at its end: its outcome, its left-outs and its insights.
+    fn module_declarations(config: &Config) -> Vec<Declaration> {
+        vec![
+            declaration::<ModuleOutcome>(config),
+            declaration::<LeftOutCount>(config),
+            declaration::<LeftOutEntry>(config),
+            declaration::<LeftOutKind>(config),
+            declaration::<Insight>(config),
+            declaration::<Figure>(config),
+            declaration::<InsightPart>(config),
+            declaration::<ShownCommand>(config),
+        ]
     }
 
     /// The types of the storage map's commands.

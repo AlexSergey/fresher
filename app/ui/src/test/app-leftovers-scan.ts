@@ -14,6 +14,7 @@ import type {
 import appLeftoversTexts from '../../../../modules/app-leftovers/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the removed apps' leftovers module as the core streams it: `com.example.Gone` is no longer installed and
 // left caches, logs, settings, web data and a support folder; another app is open (its files left out as
@@ -121,17 +122,23 @@ export const APP_LEFTOVERS_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-const left = (category: string, key: string, bytes: number): LeftOutCount => ({
-  category,
-  items: 1,
-  reason: { args: {}, key: `app-leftovers.left-out.${key}` },
-  sizes: sized(bytes),
-});
+// One leftover held back, of the app `id`, titled by its row as its finding would be.
+const left = (category: string, key: string, id: string, row: string, folder: string, bytes: number): LeftOutCount =>
+  forNowCount(category, `app-leftovers.left-out.${key}`, sized(bytes), [
+    leftOutEntry({ args: { id: text(id) }, key: `app-leftovers.title.${row}` }, `${HOME}/${folder}`, sized(bytes)),
+  ]);
 
 // One app that is open and one whose files changed within the days: each has no finding of its own.
 export const APP_LEFTOVERS_LEFT_OUT: readonly LeftOutCount[] = [
-  left('app-leftovers.caches', 'running', 220 * MB),
-  left('app-leftovers.settings', 'used-recently', 3 * MB),
+  left('app-leftovers.caches', 'running', 'com.example.Open', 'caches', 'Caches/com.example.Open', 220 * MB),
+  left(
+    'app-leftovers.settings',
+    'used-recently',
+    'com.example.Recent',
+    'preferences',
+    'Preferences/com.example.Recent.plist',
+    3 * MB,
+  ),
 ];
 
 // The events of a scan of `modules` that found `findings`; only this module leaves anything out.

@@ -15,6 +15,7 @@ import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'js
 import tempTexts from '../../../../modules/temp/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, keptCount, leftOutEntry } from './left-out';
 import { DEMO_MAP_COMPLETE } from './storage-map';
 
 // A scan of the temporary files module as the core streams it: old items in the user's temporary folder and in the
@@ -84,19 +85,20 @@ export const TEMP_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-const left = (key: string, items: number, bytes: number): LeftOutCount => ({
-  category: 'temp.old-files',
-  items,
-  reason: { args: {}, key: `temp.left-out.${key}` },
-  sizes: sized(bytes),
-});
+// The ten largest of the recent items, as the engine lists them: 60 MB down to 15 MB.
+const RECENT_SHOWN = Array.from({ length: 10 }, (_, index) =>
+  leftOutEntry(
+    { args: { name: text(`item-${index + 1}`) }, key: 'temp.finding.title' },
+    `${USER_TEMP}/item-${index + 1}`,
+    sized((60 - index * 5) * MB),
+  ),
+);
 
-// What the module recognised and left out: thousands of items changed within the last week, a few that belong to the
-// system, and one pipe.
+// Thousands of recent items (the ten largest listed), a few of the system's and one pipe, both kept for good.
 export const TEMP_LEFT_OUT: readonly LeftOutCount[] = [
-  left('recent', 4_712, 790 * MB),
-  left('system', 3, 12 * MB),
-  left('special', 1, 0),
+  forNowCount('temp.old-files', 'temp.left-out.recent', sized(790 * MB), RECENT_SHOWN, 4_712),
+  keptCount('temp.old-files', 'temp.left-out.system', 3, sized(12 * MB)),
+  keptCount('temp.old-files', 'temp.left-out.special', 1, sized(0)),
 ];
 
 export const TEMP_SCAN: readonly Event[] = [

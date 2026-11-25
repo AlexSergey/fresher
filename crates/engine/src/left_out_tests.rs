@@ -1,14 +1,21 @@
 //! Tests of the left-outs in a scan: added up per category and reason, sent with the module's `ModuleFinished`.
 
-use fresher_core::{CategoryId, Event, LeftOutCount, LeftOutItem, ModuleId, TextKey};
+use fresher_core::{CategoryId, Event, LeftOutCount, LeftOutItem, ModuleId, Text, TextKey};
 
 use crate::testing::bytes;
 
-/// A left-out of `size` bytes of category `category` (of the module its first segment names) for `reason`.
+/// A left-out of `size` bytes of category `category` (of the module its first segment names) for `reason`, at
+/// `/home/Library/Caches/<size>`.
 fn item(category: &'static str, reason: &str, size: u64) -> LeftOutItem {
     let module = category.split_once('.').map_or(category, |(module, _)| module);
     let category = CategoryId::new(ModuleId::new(module).unwrap(), category).unwrap();
-    LeftOutItem { category, reason: TextKey::new(reason).unwrap(), sizes: bytes(size) }
+    LeftOutItem {
+        category,
+        reason: TextKey::new(reason).unwrap(),
+        sizes: bytes(size),
+        path: format!("/home/Library/Caches/{size}").into(),
+        title: Text::new(TextKey::new(format!("{module}.finding.title")).unwrap()),
+    }
 }
 
 /// The left-outs of the `ModuleFinished` of module `module` in `events`.
@@ -209,10 +216,11 @@ mod negative {
     }
 
     #[test]
-    fn left_outs_hold_no_path() {
+    fn a_left_out_kept_for_good_holds_no_path() {
         let module = TestModule::builder("alpha")
             .category("alpha.caches", DangerLevel::Safe)
             .problems(&["alpha.left-out.open"])
+            .kept(&["alpha.left-out.open"])
             .folder("Caches")
             .on_finish(|_, out| {
                 out.left_out(item("alpha.caches", "alpha.left-out.open", 1));
@@ -232,10 +240,34 @@ mod negative {
 }
 
 mod positive {
-    use fresher_core::DangerLevel;
+    use fresher_core::{DangerLevel, LeftOutKind};
 
     use super::{item, left_outs, lines};
     use crate::testing::{Fixture, ScriptedWalk, TestModule, scan};
+
+    #[test]
+    fn a_left_out_held_back_for_now_carries_its_items() {
+        let module = TestModule::builder("alpha")
+            .category("alpha.caches", DangerLevel::Safe)
+            .problems(&["alpha.left-out.open"])
+            .on_finish(|_, out| {
+                out.left_out(item("alpha.caches", "alpha.left-out.open", 1));
+                out.left_out(item("alpha.caches", "alpha.left-out.open", 2));
+                Ok(())
+            });
+        let engine = Fixture::new(ScriptedWalk::new()).module(module).engine();
+
+        let events = scan(&engine);
+
+        let counts = left_outs(&events, "alpha");
+        assert_eq!(counts[0].kind, LeftOutKind::ForNow);
+        let shown: Vec<_> =
+            counts[0].shown.iter().map(|entry| (entry.path.to_str().unwrap(), entry.title.key().as_str())).collect();
+        assert_eq!(
+            shown,
+            [("/home/Library/Caches/2", "alpha.finding.title"), ("/home/Library/Caches/1", "alpha.finding.title")]
+        );
+    }
 
     #[test]
     fn left_outs_of_one_category_and_reason_add_up() {

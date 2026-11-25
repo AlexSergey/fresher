@@ -34,8 +34,8 @@ export type Event = { "type": "scan-started", scan: ScanId, modules: Array<Modul
  */
 expected: ByteSize | null, } | { "type": "findings-added", scan: ScanId, findings: Array<Finding>, } | { "type": "module-finished", scan: ScanId, module: ModuleId, outcome: ModuleOutcome, 
 /**
- * What the module recognized and did not offer, counted per category and reason, sorted by category, then by
- * reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
+ * What the module recognized and did not offer, counted per category and reason with the largest items of a
+ * for-now reason, sorted by category, then by reason key. Not the `leftOut` of a cleanup plan's view: a different type with a different payload.
  */
 leftOut: Array<LeftOutCount>, 
 /**
@@ -298,7 +298,22 @@ export type ModuleOutcome = { "kind": "completed" } | { "kind": "failed", reason
 /**
  * The engine's sum of the left-outs of one category and one reason.
  */
-export type LeftOutCount = { category: CategoryId, reason: Text, items: number, sizes: Sizes, };
+export type LeftOutCount = { category: CategoryId, reason: Text, kind: LeftOutKind, items: number, sizes: Sizes, 
+/**
+ * The largest items of a for-now count, at most `LEFT_OUT_SHOWN`, the largest first, then by path; none of a
+ * kept one. `items` counts the rest too.
+ */
+shown: Array<LeftOutEntry>, };
+
+/**
+ * One item of a for-now count, as the UI lists it: its name, its path and its size.
+ */
+export type LeftOutEntry = { title: Text, path: string, sizes: Sizes, };
+
+/**
+ * Why a module keeps what it left out: for good, or only while something passing holds it back.
+ */
+export type LeftOutKind = "kept" | "for-now";
 
 /**
  * Space a module describes and never offers (`FindingSink::describe`): never selectable, never counted in a total,

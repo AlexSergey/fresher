@@ -17,8 +17,8 @@ mod tools;
 
 use fresher_core::{
     CategoryDescriptor, CategoryIcon, CategoryId, DescriptorError, FindingSink, IdError, Interest, InterestError,
-    LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId,
-    NewFinding, Removal, Subject, Text, TextArg, TextKey, TextKeyError,
+    LeftOutItem, LeftOutKind, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
+    ModuleId, NewFinding, Removal, Subject, Text, TextArg, TextKey, TextKeyError,
 };
 
 use crate::categories::CATEGORIES;
@@ -57,7 +57,13 @@ impl LeftOutKeys {
 
     /// Every key, in the order the module declares them.
     fn all(&self) -> Vec<TextKey> {
-        [&self.not_yours, &self.special, &self.app_open, &self.no_system].into_iter().cloned().collect()
+        Reason::ALL.into_iter().map(|reason| self.of(reason).clone()).collect()
+    }
+
+    /// The keys of the reasons that keep a cache for good.
+    fn kept(&self) -> Vec<TextKey> {
+        let kept = Reason::ALL.into_iter().filter(|reason| reason.kind() == LeftOutKind::Kept);
+        kept.map(|reason| self.of(reason).clone()).collect()
     }
 }
 
@@ -131,7 +137,8 @@ impl DevCachesModule {
         let left_out = LeftOutKeys::new()?;
         let locales = Locales { en: include_str!("../locales/en.json") };
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::Development, categories, Vec::new(), locales)?
-            .with_problems(left_out.all())?;
+            .with_problems(left_out.all())?
+            .with_kept(left_out.kept())?;
         let map = tools.interests()?;
         Ok(Self {
             descriptor,
@@ -148,11 +155,7 @@ impl DevCachesModule {
     /// The finding that offers `candidate`, the folder of `row`.
     fn finding(&self, candidate: &Candidate, row: &Cache, texts: &RowTexts) -> NewFinding {
         let name = candidate.path.file_name().unwrap_or_default();
-        let title = Text::new(texts.title.clone());
-        let title = match row.name.and_then(|_| name::project(name)) {
-            Some(project) => title.with("project", TextArg::Text(project.to_owned())),
-            None => title,
-        };
+        let title = title(candidate, row, texts);
         let reason = match row.comes_back {
             ComesBack::Download => &self.reason_download,
             ComesBack::Build => &self.reason_build,
@@ -223,14 +226,27 @@ impl Module for DevCachesModule {
             };
             match decide(candidate, row, sign, running) {
                 Verdict::NotClaimed => {}
-                Verdict::LeftOut(reason) => {
-                    let reason = self.left_out.of(reason).clone();
-                    out.left_out(LeftOutItem { category: texts.category.id(), reason, sizes: candidate.sizes });
-                }
+                Verdict::LeftOut(reason) => out.left_out(LeftOutItem {
+                    category: texts.category.id(),
+                    reason: self.left_out.of(reason).clone(),
+                    sizes: candidate.sizes,
+                    path: candidate.path.clone(),
+                    title: title(candidate, row, texts),
+                }),
                 Verdict::Offered => out.push(self.finding(candidate, row, texts)),
             }
         }
         Ok(())
+    }
+}
+
+/// The title of `candidate`, a folder of `row`, offered or left out: the project's name for a row that names one.
+fn title(candidate: &Candidate, row: &Cache, texts: &RowTexts) -> Text {
+    let name = candidate.path.file_name().unwrap_or_default();
+    let title = Text::new(texts.title.clone());
+    match row.name.and_then(|_| name::project(name)) {
+        Some(project) => title.with("project", TextArg::Text(project.to_owned())),
+        None => title,
     }
 }
 

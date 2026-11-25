@@ -14,6 +14,7 @@ import aiTexts from '../../../../modules/local-ai-models/locales/en.json' with {
 import { iconOf } from './category-icons';
 import { FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, keptCount, leftOutEntry } from './left-out';
 
 // A scan of the local AI models module as the core streams it: two Hugging Face models and a dataset, an LM Studio
 // model are offered; one more Hugging Face model is left out (its folder is not the user's). The second scan has
@@ -142,20 +143,21 @@ export const LOCAL_AI_MODELS_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-const left = (category: string, key: string, items: number, bytes: number): LeftOutCount => ({
-  category,
-  items,
-  reason: { args: {}, key: `local-ai-models.left-out.${key}` },
-  sizes: sized(bytes),
-});
+// A Hugging Face model whose folder belongs to another user: kept for good.
+const NOT_YOURS = keptCount(HUGGING_FACE_MODELS, 'local-ai-models.left-out.not-yours', 1, sized(300 * MB));
 
-// A Hugging Face model whose folder belongs to another user.
-export const LOCAL_AI_MODELS_LEFT_OUT: readonly LeftOutCount[] = [left(HUGGING_FACE_MODELS, 'not-yours', 1, 300 * MB)];
+export const LOCAL_AI_MODELS_LEFT_OUT: readonly LeftOutCount[] = [NOT_YOURS];
 
-// LM Studio is open: its one model is kept.
+// LM Studio is open: its one model is kept until it quits.
 export const LOCAL_AI_MODELS_LM_STUDIO_OPEN_LEFT_OUT: readonly LeftOutCount[] = [
-  left(HUGGING_FACE_MODELS, 'not-yours', 1, 300 * MB),
-  left(LM_STUDIO, 'app-open', 1, 4_700 * MB),
+  NOT_YOURS,
+  forNowCount(LM_STUDIO, 'local-ai-models.left-out.app-open', sized(4_700 * MB), [
+    leftOutEntry(
+      { args: { name: text('pub/model-a') }, key: 'local-ai-models.title' },
+      `${HOME}/.lmstudio/models/pub/model-a`,
+      sized(4_700 * MB),
+    ),
+  ]),
 ];
 
 const scanOf = (findings: readonly Finding[], leftOut: readonly LeftOutCount[]): readonly Event[] => [

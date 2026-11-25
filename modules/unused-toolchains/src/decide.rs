@@ -1,7 +1,7 @@
 //! Whether a version folder is offered, left out or not claimed: the twelve rows of the design's section 6, in their
 //! order, on plain values. Nothing here reads the disk.
 
-use fresher_core::{EntryKind, Inside, Timestamp};
+use fresher_core::{EntryKind, Inside, LeftOutKind, Timestamp};
 
 use crate::gathered::Candidate;
 use crate::pointers::rustup::{self, ToolchainName};
@@ -31,6 +31,15 @@ impl Reason {
             Self::PartialScan => "unused-toolchains.left-out.partial-scan",
             Self::DefaultUnknown => "unused-toolchains.left-out.default-unknown",
             Self::PinUnknown => "unused-toolchains.left-out.pin-unknown",
+        }
+    }
+
+    /// Whether the version is kept for what it is (a socket inside, not the user's) or for what Fresher could not
+    /// read now.
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::Special | Self::NotYours => LeftOutKind::Kept,
+            Self::PartialScan | Self::DefaultUnknown | Self::PinUnknown => LeftOutKind::ForNow,
         }
     }
 }

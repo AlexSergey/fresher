@@ -82,10 +82,12 @@
     {
       "category": "unused-toolchains.rust",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "unused-toolchains.left-out.special"
       },
+      "shown": [],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",

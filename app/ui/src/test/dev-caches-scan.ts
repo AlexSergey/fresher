@@ -3,6 +3,7 @@ import type {
   Event,
   Finding,
   LeftOutCount,
+  LeftOutEntry,
   MeaningGroup,
   ModuleInfo,
   Overview,
@@ -14,6 +15,7 @@ import type {
 import devCachesTexts from '../../../../modules/dev-caches/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, keptCount, leftOutEntry } from './left-out';
 
 // Scans of the developer caches module as the core streams them. The module's own texts are read from its locale
 // file, so a changed text changes the tests. Shared by the e2e files.
@@ -169,22 +171,28 @@ export const DEV_CACHES_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-const left = (category: string, key: string, items: number, bytes: number): LeftOutCount => ({
-  category,
-  items,
-  reason: { args: {}, key: `dev-caches.left-out.${key}` },
-  sizes: sized(bytes),
-});
+const DERIVED_DATA = `${HOME}/Library/Developer/Xcode/DerivedData`;
 
-// One project that is not the user's (root's files after a command run with sudo).
+// A project's derived data, titled by the project as its finding would be.
+const openProject = (name: string, bytes: number): LeftOutEntry =>
+  leftOutEntry(
+    { args: { project: text(name) }, key: 'dev-caches.title.xcode-derived-data' },
+    `${DERIVED_DATA}/${name}-abcdefghijklmn`,
+    sized(bytes),
+  );
+
+// One project that is not the user's (root's files after a command run with sudo): kept for good.
 export const DEV_CACHES_LEFT_OUT: readonly LeftOutCount[] = [
-  left('dev-caches.xcode-derived-data', 'not-yours', 1, 410 * MB),
+  keptCount('dev-caches.xcode-derived-data', 'dev-caches.left-out.not-yours', 1, sized(410 * MB)),
 ];
 
 // Xcode open: both projects wait for it to quit, and one Gradle folder is not the user's.
 export const DEV_CACHES_XCODE_OPEN_LEFT_OUT: readonly LeftOutCount[] = [
-  left('dev-caches.xcode-derived-data', 'app-open', 2, 4_260 * MB),
-  left('dev-caches.gradle', 'not-yours', 1, 35 * MB),
+  forNowCount('dev-caches.xcode-derived-data', 'dev-caches.left-out.app-open', sized(4_260 * MB), [
+    openProject('Weather', 3_100 * MB),
+    openProject('Notes', 1_160 * MB),
+  ]),
+  keptCount('dev-caches.gradle', 'dev-caches.left-out.not-yours', 1, sized(35 * MB)),
 ];
 
 const scanOf = (findings: readonly Finding[], leftOut: readonly LeftOutCount[]): readonly Event[] => [

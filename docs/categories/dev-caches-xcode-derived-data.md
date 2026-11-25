@@ -34,8 +34,8 @@ applies:
 | 2 | the folder's name does not have the project's shape                                  | not claimed                                  |
 | 3 | the tool's sign is missing (above)                                                   | not claimed                                  |
 | 4 | the folder could not be read in full                                                 | not claimed                                  |
-| 5 | a socket, a pipe or a device inside                                                  | left out: a running program may be using it  |
-| 6 | not yours, locked by the system, restricted or locked by you, or something inside is | left out: removing it needs an administrator |
+| 5 | a socket, a pipe or a device inside                                                  | kept for good: a running program may be using it  |
+| 6 | not yours, locked by the system, restricted or locked by you, or something inside is | kept for good: removing it needs an administrator |
 | 7 | the open apps cannot be listed                                                       | left out: Fresher cannot list open apps      |
 | 8 | Xcode is open                                                                        | left out: its app is open                    |
 | 9 | otherwise                                                                            | **offered**                                  |

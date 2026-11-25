@@ -30,10 +30,65 @@
     {
       "category": "app-caches.browsers",
       "items": 2,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "app-caches.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Caches/Google/Chrome/Default/Cache",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Google Chrome"
+              },
+              "folder": {
+                "kind": "text",
+                "value": "Cache"
+              },
+              "profile": {
+                "kind": "text",
+                "value": "Default"
+              }
+            },
+            "key": "app-caches.title.profile"
+          }
+        },
+        {
+          "path": "home/Library/Caches/Google/Chrome/Default/Code Cache",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Google Chrome"
+              },
+              "folder": {
+                "kind": "text",
+                "value": "Code Cache"
+              },
+              "profile": {
+                "kind": "text",
+                "value": "Default"
+              }
+            },
+            "key": "app-caches.title.profile"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 8192,
         "completeness": "complete",

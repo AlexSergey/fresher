@@ -3,7 +3,7 @@
 
 use std::iter;
 
-use fresher_core::{BundleId, InstalledApp, RunningSet, Timestamp};
+use fresher_core::{BundleId, InstalledApp, LeftOutKind, RunningSet, Timestamp};
 
 use crate::exclude::Exclude;
 use crate::gathered::Leftover;
@@ -55,6 +55,20 @@ impl Reason {
             Self::InstalledElsewhere => "installed-elsewhere",
             Self::Special => "special",
             Self::NotYours => "not-yours",
+        }
+    }
+
+    /// Whether the leftover is kept for what it is (its app is installed elsewhere, a socket, not the user's) or for
+    /// what goes on now (an app runs, it changed lately, a list or a place could not be read).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::InstalledElsewhere | Self::Special | Self::NotYours => LeftOutKind::Kept,
+            Self::NoSystem
+            | Self::AppsUnread
+            | Self::Running
+            | Self::ScanAgain
+            | Self::UsedRecently
+            | Self::SpotlightUnread => LeftOutKind::ForNow,
         }
     }
 }

@@ -98,11 +98,12 @@ impl DownloadsModule {
             Ok(CategoryDescriptor::new(id, category.danger()).with_icon(CategoryIcon::Download).with_needs(needs()))
         })?;
         let report = Report::new(categories)?;
-        let (categories, problems) = (report.categories(), report.problems());
+        let (categories, problems, kept) = (report.categories(), report.problems(), report.kept());
         let locales = Locales { en: include_str!("../locales/en.json") };
         let settings = vec![OLDER_THAN.descriptor(id)?];
-        let descriptor =
-            ModuleDescriptor::new(id, ModuleGroup::Files, categories, settings, locales)?.with_problems(problems)?;
+        let descriptor = ModuleDescriptor::new(id, ModuleGroup::Files, categories, settings, locales)?
+            .with_problems(problems)?
+            .with_kept(kept)?;
         // A bad table fails here, when the module is built.
         let tables =
             Tables { suffixes: Suffixes::shipped()?, words: Words::shipped()?, macos: MacosInstallers::shipped()? };

@@ -45,8 +45,8 @@ For each product, the first answer that applies, for every folder of the product
 | 3 | an app of the vendor (`com.jetbrains.…`) that the products table does not list is running | left out: another JetBrains app is open, for every product |
 | 4 | no installed app has one of the product's bundle ids                                      | the IDE is no longer installed: [`jetbrains.uninstalled`](./jetbrains-uninstalled.md) decides every folder of it |
 | 5 | an installed app of the product has a version that cannot be read                         | left out: the version in use is unknown      |
-| 6 | the folder's version is one an installed app of the product has                           | left out: the version you use                |
-| 7 | the folder's version is newer than the newest installed one                               | left out: a newer version                    |
+| 6 | the folder's version is one an installed app of the product has                           | kept for good: the version you use                |
+| 7 | the folder's version is newer than the newest installed one                               | kept for good: a newer version                    |
 | 8 | the folder's version is older than the newest installed one                               | **offered**                                  |
 
 A release and an early access build installed side by side are both in use. An open IDE keeps every version of its

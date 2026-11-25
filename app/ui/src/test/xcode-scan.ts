@@ -14,6 +14,7 @@ import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'js
 import xcodeTexts from '../../../../modules/xcode/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { keptCount } from './left-out';
 
 // A scan of the xcode module as the core streams it: two iOS device support folders (the newer one carries the
 // "recent" reason), Xcode's previews, the simulators' caches and one archive are offered, each for the app Xcode; one
@@ -146,14 +147,9 @@ export const XCODE_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-// Another device support folder holds a socket a running program may use: kept.
+// Another device support folder holds a socket a running program may use: kept for good.
 export const XCODE_LEFT_OUT: readonly LeftOutCount[] = [
-  {
-    category: DEVICE_SUPPORT,
-    items: 1,
-    reason: { args: {}, key: 'xcode.left-out.special' },
-    sizes: sized(300 * MB),
-  },
+  keptCount(DEVICE_SUPPORT, 'xcode.left-out.special', 1, sized(300 * MB)),
 ];
 
 export const XCODE_SCAN: readonly Event[] = [

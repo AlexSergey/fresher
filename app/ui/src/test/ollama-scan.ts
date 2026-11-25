@@ -1,6 +1,7 @@
 import type { Event, Finding, LeftOutCount, Overview, Sizes, TextArg } from '../ipc/bindings.generated';
 
 import { FULL_COVERAGE } from './demo-scan';
+import { forNowCount, leftOutEntry } from './left-out';
 import { OLLAMA } from './local-ai-models-scan';
 
 // Scans of the local AI models module with Ollama's models as the core streams them: three models are offered, each
@@ -109,12 +110,9 @@ export const OLLAMA_FINDINGS: readonly Finding[] = [
 
 // The store is left out as a whole: a model is being downloaded.
 export const OLLAMA_DOWNLOAD_LEFT_OUT: readonly LeftOutCount[] = [
-  {
-    category: OLLAMA,
-    items: 1,
-    reason: { args: {}, key: 'local-ai-models.left-out.ollama-download' },
-    sizes: sized(6_300 * MB),
-  },
+  forNowCount(OLLAMA, 'local-ai-models.left-out.ollama-download', sized(6_300 * MB), [
+    leftOutEntry({ args: {}, key: 'local-ai-models.store-title' }, STORE, sized(6_300 * MB)),
+  ]),
 ];
 
 const findingsAdded = (findings: readonly Finding[]): Event[] =>

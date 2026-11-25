@@ -13,9 +13,11 @@ import type {
   Overview,
   Refusal,
   SettingsView,
+  Sizes,
 } from '../ipc/bindings.generated';
 
 import { iconOf } from './category-icons';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the demo module as the core streams it, with the texts it needs: shared by the unit and the e2e tests.
 
@@ -103,12 +105,20 @@ export const SCAN_STARTED: Event = { modules: ['demo'], scan: 1, type: 'scan-sta
 export const FIRST_BATCH: Event = { findings: DEMO_FINDINGS.slice(0, 2), scan: 1, type: 'findings-added' };
 
 // The one cache the demo module recognizes and leaves out (its app is open), as the engine counts it.
-export const DEMO_LEFT_OUT: LeftOutCount = {
-  category: 'demo.caches',
-  items: 1,
-  reason: { args: {}, key: 'demo.left-out.open' },
-  sizes: { allocated: 157_286_400, completeness: 'complete', logical: 157_286_400, reclaimable: 157_286_400 },
+const DEMO_LEFT_OUT_SIZES: Sizes = {
+  allocated: 157_286_400,
+  completeness: 'complete',
+  logical: 157_286_400,
+  reclaimable: 157_286_400,
 };
+
+export const DEMO_LEFT_OUT: LeftOutCount = forNowCount('demo.caches', 'demo.left-out.open', DEMO_LEFT_OUT_SIZES, [
+  leftOutEntry(
+    { args: { name: { kind: 'text', value: 'com.example.notes' } }, key: 'demo.finding.title' },
+    '/demo/Library/Caches/com.example.notes',
+    DEMO_LEFT_OUT_SIZES,
+  ),
+]);
 
 export const DEMO_SCAN: readonly Event[] = [
   SCAN_STARTED,
@@ -200,6 +210,8 @@ export const DEMO_DICTIONARY: Dictionary = {
   'core.group.debug.name': 'Debug',
   'core.group.development.name': 'Development',
   'core.ignore.modules.description': 'Fresher stops looking for these and never removes what they find.',
+  'core.left-out.kept.one': '{count} item kept ({size}):',
+  'core.left-out.kept.other': '{count} items kept ({size}):',
   'core.left-out.summary.one': '{count} item left out ({size}):',
   'core.left-out.summary.other': '{count} items left out ({size}):',
   'core.scan.outcome.completed': 'The scan is complete.',

@@ -27,8 +27,8 @@ The module `xcode` (code with a data table, `modules/xcode/places.toml`). For th
 | 3  | the sign (`dyld`) is not inside                                                  | not claimed                                  |
 | 4  | the folder could not be read in full                                                   | not claimed                                  |
 | 5  | nothing in it                                                                          | not claimed                                  |
-| 6  | a socket, a pipe or a device inside                                                    | left out: a running program may be using it  |
-| 7  | not yours, locked by the system, restricted or locked by you, or something inside is   | left out: removing it needs an administrator |
+| 6  | a socket, a pipe or a device inside                                                    | kept for good: a running program may be using it  |
+| 7  | not yours, locked by the system, restricted or locked by you, or something inside is   | kept for good: removing it needs an administrator |
 | 8  | the open apps cannot be listed                                                         | left out: Fresher cannot tell                |
 | 9  | Xcode or the Simulator is open                                                         | left out: the app is open                    |
 | 10 | otherwise                                                                              | **offered**                                  |

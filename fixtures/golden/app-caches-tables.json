@@ -4,42 +4,110 @@
     "leftOut": [
       {
         "category": "app-caches.web-engine",
+        "path": "Library/Application Support/RedisInsight/GPUCache",
         "reason": "app-caches.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Redis Insight"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "GPUCache"
+            }
+          },
+          "key": "app-caches.title.part"
         }
       },
       {
         "category": "app-caches.browsers",
+        "path": "Library/Caches/Chromium/Default/Code Cache",
         "reason": "app-caches.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Chromium"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Code Cache"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "Default"
+            }
+          },
+          "key": "app-caches.title.profile"
         }
       },
       {
         "category": "app-caches.browsers",
+        "path": "Library/Caches/Firefox/Profiles/abcd1234.default-release/cache2",
         "reason": "app-caches.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Firefox"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "cache2"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "abcd1234.default-release"
+            }
+          },
+          "key": "app-caches.title.profile"
         }
       },
       {
         "category": "app-caches.browsers",
+        "path": "Library/Caches/Google/Chrome/Default/Cache",
         "reason": "app-caches.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Google Chrome"
+            },
+            "folder": {
+              "kind": "text",
+              "value": "Cache"
+            },
+            "profile": {
+              "kind": "text",
+              "value": "Default"
+            }
+          },
+          "key": "app-caches.title.profile"
         }
       }
     ],

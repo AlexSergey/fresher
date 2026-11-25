@@ -30,10 +30,31 @@
     {
       "category": "app-caches.library-caches",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "app-caches.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Caches/com.example.Mailer",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {
+              "app": {
+                "kind": "text",
+                "value": "Mailer"
+              }
+            },
+            "key": "app-caches.title.own"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",

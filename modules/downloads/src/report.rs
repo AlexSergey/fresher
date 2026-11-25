@@ -2,8 +2,8 @@
 //! category with its sizes. The text keys are built once, with the module.
 
 use fresher_core::{
-    CategoryDescriptor, FindingSink, IdError, LeftOutItem, NewFinding, Removal, Subject, Text, TextArg, TextKey,
-    TextKeyError,
+    CategoryDescriptor, FindingSink, IdError, LeftOutItem, LeftOutKind, NewFinding, Removal, Subject, Text, TextArg,
+    TextKey, TextKeyError,
 };
 
 use crate::categories::Category;
@@ -133,15 +133,24 @@ impl Report {
         Reason::ALL.into_iter().map(|reason| self.left_out.get(reason).clone()).collect()
     }
 
+    /// The keys of the reasons that keep a file for good.
+    pub(crate) fn kept(&self) -> Vec<TextKey> {
+        let kept = Reason::ALL.into_iter().filter(|reason| reason.kind() == LeftOutKind::Kept);
+        kept.map(|reason| self.left_out.get(reason).clone()).collect()
+    }
+
     /// Reports `entry` of `category` as `verdict` says: nothing when it is not claimed.
     pub(crate) fn tell(&self, entry: &Entry, category: Category, verdict: Verdict, out: &mut dyn FindingSink) {
         let descriptor = self.categories.get(category);
         match verdict {
             Verdict::NotClaimed => {}
-            Verdict::LeftOut(reason) => {
-                let reason = self.left_out.get(reason).clone();
-                out.left_out(LeftOutItem { category: descriptor.id(), reason, sizes: entry.sizes });
-            }
+            Verdict::LeftOut(reason) => out.left_out(LeftOutItem {
+                category: descriptor.id(),
+                reason: self.left_out.get(reason).clone(),
+                sizes: entry.sizes,
+                path: entry.path.clone(),
+                title: self.title(entry),
+            }),
             Verdict::Offered { reason } => {
                 let (text, app) = self.reason(reason);
                 let finding = self.finding(descriptor, category, entry, text);
@@ -160,9 +169,14 @@ impl Report {
         out.push(self.finding(descriptor, Category::Unfinished, placeholder, reason));
     }
 
+    /// The title of `entry`, offered or left out: its name.
+    fn title(&self, entry: &Entry) -> Text {
+        Text::new(self.title.clone()).with("name", TextArg::Text(entry.name.clone()))
+    }
+
     /// The finding that moves `entry` to the Trash, identified as `<category name>/<file name>`.
     fn finding(&self, descriptor: &CategoryDescriptor, category: Category, entry: &Entry, reason: Text) -> NewFinding {
-        let title = Text::new(self.title.clone()).with("name", TextArg::Text(entry.name.clone()));
+        let title = self.title(entry);
         let identity = format!("{}/{}", category.name(), entry.name);
         let (subject, removal) = (Subject::Path(entry.path.clone()), Removal::MoveToTrash(entry.path.clone()));
         NewFinding::new(descriptor, identity, subject, entry.sizes, title, reason, removal)

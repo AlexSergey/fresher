@@ -4,12 +4,14 @@
 use std::path::Path;
 
 use fresher_core::{
-    CategoryDescriptor, FindingSink, LeftOutItem, NewFinding, Removal, Subject, Text, TextArg, TextKey, TextKeyError,
+    CategoryDescriptor, FindingSink, LeftOutItem, LeftOutKind, NewFinding, Removal, Subject, Text, TextArg, TextKey,
+    TextKeyError,
 };
 
 use crate::apps::AppRow;
 use crate::decide::{Reason, Verdict};
 use crate::gathered::Candidate;
+use crate::owner::Owner;
 use crate::places::Row;
 
 /// The keys of the left-out reasons, one per `Reason`.
@@ -71,15 +73,17 @@ impl Report {
         Reason::ALL.into_iter().map(|reason| self.left_out.of(reason).clone()).collect()
     }
 
+    /// The keys of the reasons that keep a cache for good.
+    pub(crate) fn kept(&self) -> Vec<TextKey> {
+        let kept = Reason::ALL.into_iter().filter(|reason| reason.kind() == LeftOutKind::Kept);
+        kept.map(|reason| self.left_out.of(reason).clone()).collect()
+    }
+
     /// Reports `verdict` on `candidate`, a folder of `row`'s place: a finding, a left-out in the row's category, or
     /// nothing.
     pub(crate) fn tell_place(&self, row: &Row, candidate: &Candidate, verdict: Verdict<'_>, out: &mut dyn FindingSink) {
         let Some(category) = self.category(row.category) else { return };
-        let owner = match verdict {
-            Verdict::NotClaimed => return,
-            Verdict::LeftOut(reason) => return self.tell_left_out(category, reason, candidate, out),
-            Verdict::Offered(owner) => owner,
-        };
+        let Some((owner, left_out)) = owner_of(verdict) else { return };
         let Some(folder) = candidate.path.file_name().and_then(|name| name.to_str()) else { return };
         let app = TextArg::Text(owner.app.name.clone());
         let title = if owner.own {
@@ -87,6 +91,9 @@ impl Report {
         } else {
             Text::new(self.title_part.clone()).with("app", app).with("folder", TextArg::Text(folder.to_owned()))
         };
+        if let Some(reason) = left_out {
+            return self.tell_left_out(category, reason, candidate, title, out);
+        }
         let identity = format!("{}/{folder}", row.id);
         let finding = self.finding(category, identity, candidate, title, &owner.app.name);
         out.push(finding.for_app(owner.app.bundle_id.clone()));
@@ -102,11 +109,7 @@ impl Report {
         out: &mut dyn FindingSink,
     ) {
         let Some(category) = self.category(row.category) else { return };
-        let owner = match verdict {
-            Verdict::NotClaimed => return,
-            Verdict::LeftOut(reason) => return self.tell_left_out(category, reason, candidate, out),
-            Verdict::Offered(owner) => owner,
-        };
+        let Some((owner, left_out)) = owner_of(verdict) else { return };
         let utf8 = |path: &Path| path.file_name().and_then(|name| name.to_str()).map(str::to_owned);
         let Some(cache) = utf8(&candidate.path) else { return };
         let app = TextArg::Text(owner.app.name.clone());
@@ -127,6 +130,9 @@ impl Report {
                 (format!("{}/{profile}/{cache}", row.id), title)
             }
         };
+        if let Some(reason) = left_out {
+            return self.tell_left_out(category, reason, candidate, title, out);
+        }
         let finding = self.finding(category, identity, candidate, title, &owner.app.name);
         out.push(finding.for_app(row.bundle_id.clone()));
     }
@@ -136,16 +142,22 @@ impl Report {
         self.categories.iter().find(|known| known.id().as_str() == category)
     }
 
-    /// A left-out line in `category` for `reason`, with the candidate's sizes.
+    /// A left-out in `category` for `reason`: the candidate titled `title`, as its finding would be.
     fn tell_left_out(
         &self,
         category: &CategoryDescriptor,
         reason: Reason,
         candidate: &Candidate,
+        title: Text,
         out: &mut dyn FindingSink,
     ) {
-        let reason = self.left_out.of(reason).clone();
-        out.left_out(LeftOutItem { category: category.id(), reason, sizes: candidate.sizes });
+        out.left_out(LeftOutItem {
+            category: category.id(),
+            reason: self.left_out.of(reason).clone(),
+            sizes: candidate.sizes,
+            path: candidate.path.clone(),
+            title,
+        });
     }
 
     /// A finding in `category` that empties the candidate's folder, with its sizes, `title` and the reason naming
@@ -164,5 +176,14 @@ impl Report {
         let subject = Subject::Path(candidate.path.clone());
         let removal = Removal::EmptyFolder(candidate.path.clone());
         NewFinding::new(category, identity, subject, candidate.sizes, title, reason, removal)
+    }
+}
+
+/// The owner of a claimed candidate and, when it is kept, the reason; `None` when the candidate is not claimed.
+const fn owner_of(verdict: Verdict<'_>) -> Option<(Owner<'_>, Option<Reason>)> {
+    match verdict {
+        Verdict::NotClaimed => None,
+        Verdict::LeftOut(reason, owner) => Some((owner, Some(reason))),
+        Verdict::Offered(owner) => Some((owner, None)),
     }
 }

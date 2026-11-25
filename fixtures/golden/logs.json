@@ -340,12 +340,22 @@
   "leftOut": [
     {
       "category": "logs.app-logs",
+      "path": "Library/Logs/Writer/writer.log",
       "reason": "logs.left-out.recent",
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
         "logical": 4096,
         "reclaimable": 0
+      },
+      "title": {
+        "args": {
+          "name": {
+            "kind": "text",
+            "value": "writer.log"
+          }
+        },
+        "key": "logs.title"
       }
     }
   ],

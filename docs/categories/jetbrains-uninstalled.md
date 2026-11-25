@@ -51,8 +51,8 @@ apply, in their order. When the first three keep nothing and no installed app ha
   everything is kept: "Fresher could not ask Spotlight about every drive, so this IDE may be installed elsewhere. It
   keeps its data. If Spotlight is off, or a drive is not indexed, turn it on and scan again."
 
-Otherwise every folder of the product is kept and reported as left out here, with the reason: its data changed
-recently (or the scan is restored, or could not read every folder), an unknown JetBrains app is installed, the IDE is
-installed elsewhere, or the app could not ask Spotlight about every drive. A folder whose time cannot be read, or is
+Otherwise every folder of the product is kept and reported as left out here, with the reason: for now, its data
+changed recently (or the scan is restored, or could not read every folder) or the app could not ask Spotlight about
+every drive; for good, an unknown JetBrains app is installed or the IDE is installed elsewhere. A folder whose time cannot be read, or is
 in the future, counts as changed recently. The time is the folder's own: an IDE changes it when it starts or quits (its lock files
 and its rotated logs), not when it only writes inside the folder's subfolders.

@@ -28,10 +28,31 @@
     {
       "category": "local-ai-models.lm-studio",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "local-ai-models.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/.lmstudio/models/pub/open-model",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "pub/open-model"
+              }
+            },
+            "key": "local-ai-models.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",

@@ -82,7 +82,8 @@ impl LocalAiModelsModule {
         let report = Report::new(categories.clone())?;
         let locales = Locales { en: include_str!("../locales/en.json") };
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::Development, categories, Vec::new(), locales)?
-            .with_problems(report.problems())?;
+            .with_problems(report.problems())?
+            .with_kept(report.kept())?;
         let stores = Stores::shipped()?;
         let interests = stores.interests()?;
         let slots = stores.slots();
@@ -160,7 +161,7 @@ impl LocalAiModelsModule {
         out: &mut dyn FindingSink,
     ) -> Result<(), ModuleError> {
         if let Some(verdict) = ollama::decide::kept(entries) {
-            self.tell_ollama_store(row, &verdict, out);
+            self.tell_ollama_store(row, entries, &verdict, out);
             return Ok(());
         }
         let mut read = Vec::with_capacity(entries.manifests().len());
@@ -177,7 +178,7 @@ impl LocalAiModelsModule {
         let layout = match ollama::decide::store(entries, read) {
             StoreVerdict::Open(layout) => layout,
             verdict => {
-                self.tell_ollama_store(row, &verdict, out);
+                self.tell_ollama_store(row, entries, &verdict, out);
                 return Ok(());
             }
         };
@@ -191,9 +192,9 @@ impl LocalAiModelsModule {
     }
 
     /// Tells a verdict on the whole Ollama store of `row` that offers nothing: its left-out, or nothing.
-    fn tell_ollama_store(&self, row: &Store, verdict: &StoreVerdict, out: &mut dyn FindingSink) {
-        if let StoreVerdict::LeftOut(reason, sizes) = verdict {
-            self.report.tell_ollama_store(row, *reason, *sizes, out);
+    fn tell_ollama_store(&self, row: &Store, entries: &Entries<'_>, verdict: &StoreVerdict, out: &mut dyn FindingSink) {
+        if let (StoreVerdict::LeftOut(reason, sizes), Some(path)) = (verdict, entries.store_path()) {
+            self.report.tell_ollama_store(row, path, *reason, *sizes, out);
         }
     }
 }

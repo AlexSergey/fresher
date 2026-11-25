@@ -16,6 +16,7 @@ import downloadsTexts from '../../../../modules/downloads/locales/en.json' with 
 import { iconOf } from './category-icons';
 import { accessStatus, FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the downloads and installers module as the core streams it, and a second state of the same module before
 // Downloads is allowed. In the first one an unfinished download and its empty placeholder, a Safari download, a
@@ -161,17 +162,16 @@ export const DOWNLOADS_MODULES: readonly ModuleInfo[] = modulesOf(true);
 // The same before Downloads is allowed: every category needs it and none can be cleaned.
 export const DOWNLOADS_UNAVAILABLE_MODULES: readonly ModuleInfo[] = modulesOf(false);
 
-const left = (category: string, key: string, bytes: number): LeftOutCount => ({
-  category,
-  items: 1,
-  reason: { args: {}, key: `downloads.left-out.${key}` },
-  sizes: sized(bytes),
-});
+// One download held back, titled by its name as its finding would be.
+const left = (category: string, key: string, name: string, bytes: number): LeftOutCount =>
+  forNowCount(category, `downloads.left-out.${key}`, sized(bytes), [
+    leftOutEntry({ args: { name: text(name) }, key: 'downloads.title' }, `${FOLDER}/${name}`, sized(bytes)),
+  ]);
 
 // One download whose browser is open and one big file that changed within the days: no finding of their own.
 export const DOWNLOADS_LEFT_OUT: readonly LeftOutCount[] = [
-  left('downloads.unfinished', 'browser-open', 48 * MB),
-  left('downloads.large-untouched', 'recent', 1_200 * MB),
+  left('downloads.unfinished', 'browser-open', 'season-1.zip.crdownload', 48 * MB),
+  left('downloads.large-untouched', 'recent', 'holiday-video.mov', 1_200 * MB),
 ];
 
 const FINISHED: Event = { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' };

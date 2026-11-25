@@ -7,10 +7,14 @@ import { mockCore, sampleAgreementAnswers, sampleStorageAnswers } from '../../ip
 import { createNavigation, type Navigation } from '../../state/navigation';
 import { type CoreStore, createCoreStore } from '../../state/store';
 import { DEMO_DICTIONARY, DEMO_LEFT_OUT, DEMO_MODULES, DEMO_OVERVIEW, SCAN_STARTED } from '../../test/demo-scan';
+import { keptCount } from '../../test/left-out';
 import { AppProviders } from '../app-providers';
 import { LeftOutOnly } from './left-out-only';
 
 const DOWNLOADS_LEFT_OUT: LeftOutCount = { ...DEMO_LEFT_OUT, category: 'demo.downloads' };
+
+// The same downloads kept for good: the Scan screen never shows them.
+const DOWNLOADS_KEPT: LeftOutCount = keptCount('demo.downloads', 'demo.left-out.open', 1, DEMO_LEFT_OUT.sizes);
 
 // The demo scan with only the caches counted: the downloads were all left out.
 const CACHES_ONLY: Overview = { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) };
@@ -96,6 +100,13 @@ describe('LeftOutOnly', () => {
 
       expect(section()).toBeNull();
     });
+    it('shows nothing for a category whose left-outs are all kept for good', async () => {
+      await renderSection([DEMO_LEFT_OUT, DOWNLOADS_KEPT]);
+
+      expect(section()).toBeNull();
+      expect(screen.queryByText(/kept/u)).toBeNull();
+    });
+
     it('shows no left-out section while a scan runs', async () => {
       const { store } = await renderSection([DOWNLOADS_LEFT_OUT]);
 
@@ -125,6 +136,16 @@ describe('LeftOutOnly', () => {
       expect(rows[0]).toHaveAccessibleName('Example downloads');
       expect(rows[0]).toHaveTextContent('1 item left out (157.3 MB): The app that made it is open.');
       expect(screen.getByText('· The scan found these, but left every item out. Each line says why.')).toBeVisible();
+    });
+
+    it('lists each item held back for now by its name, its path and its size', async () => {
+      await renderSection([DOWNLOADS_LEFT_OUT]);
+
+      const items = within(section() as HTMLElement).getByRole('list', { name: 'The items left out' });
+      const item = within(items).getByRole('listitem');
+      expect(item).toHaveTextContent('Example: com.example.notes');
+      expect(item).toHaveTextContent('/demo/Library/Caches/com.example.notes');
+      expect(item).toHaveTextContent('157.3 MB');
     });
 
     it("Details opens the category's details", async () => {

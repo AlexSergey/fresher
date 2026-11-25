@@ -15,6 +15,7 @@ import toolchainTexts from '../../../../modules/unused-toolchains/locales/en.jso
 import { iconOf } from './category-icons';
 import { accessStatus, FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { keptCount } from './left-out';
 
 // A scan of the unused toolchains module as the core streams it, with the Node switch on: two Rust toolchains and a
 // Node version are offered; another Node version is left out (it belongs to another user). An item is offered or left
@@ -135,14 +136,9 @@ export const UNUSED_TOOLCHAINS_MODULES: readonly ModuleInfo[] = modulesOf(true);
 // The same before Documents is allowed: every category needs it and none can be cleaned.
 export const UNUSED_TOOLCHAINS_NO_DOCUMENTS_MODULES: readonly ModuleInfo[] = modulesOf(false);
 
-// Another Node version that belongs to another user: no finding of its own.
+// Another Node version that belongs to another user: no finding of its own, kept for good.
 export const UNUSED_TOOLCHAINS_LEFT_OUT: readonly LeftOutCount[] = [
-  {
-    category: NODE,
-    items: 1,
-    reason: { args: {}, key: 'unused-toolchains.left-out.not-yours' },
-    sizes: sized(110 * MB),
-  },
+  keptCount(NODE, 'unused-toolchains.left-out.not-yours', 1, sized(110 * MB)),
 ];
 
 const FINISHED: Event = { kind: { kind: 'full' }, outcome: { kind: 'completed' }, scan: 1, type: 'scan-finished' };

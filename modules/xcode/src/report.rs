@@ -5,7 +5,8 @@
 use std::collections::BTreeSet;
 
 use fresher_core::{
-    BundleId, CategoryDescriptor, FindingSink, LeftOutItem, NewFinding, Removal, Subject, Text, TextArg, TextKey,
+    BundleId, CategoryDescriptor, FindingSink, LeftOutItem, LeftOutKind, NewFinding, Removal, Subject, Text, TextArg,
+    TextKey,
 };
 
 use crate::XcodeError;
@@ -96,6 +97,12 @@ impl Report {
         Reason::ALL.into_iter().map(|reason| self.left_out.of(reason).clone()).collect()
     }
 
+    /// The keys of the reasons that keep a folder for good.
+    pub(crate) fn kept(&self) -> Vec<TextKey> {
+        let kept = Reason::ALL.into_iter().filter(|reason| reason.kind() == LeftOutKind::Kept);
+        kept.map(|reason| self.left_out.of(reason).clone()).collect()
+    }
+
     /// Reports `verdict` on `candidate`, a folder of `row`'s place: a finding, a left-out in the row's category, or
     /// nothing. A device support folder whose platform and version are in `recent` has the recent reason.
     pub(crate) fn tell(
@@ -110,19 +117,45 @@ impl Report {
         let Some(category) = self.categories.iter().find(|category| category.id().as_str() == row.category) else {
             return;
         };
-        let named = match verdict {
+        let (named, left_out) = match verdict {
             Verdict::NotClaimed => return,
-            Verdict::LeftOut(reason, _) => {
-                let reason = self.left_out.of(*reason).clone();
-                out.left_out(LeftOutItem { category: category.id(), reason, sizes: candidate.sizes });
-                return;
-            }
-            Verdict::Offered(named) => named,
+            Verdict::LeftOut(reason, named) => (named, Some(*reason)),
+            Verdict::Offered(named) => (named, None),
         };
         // A candidate is a child of a place, so its path has a name; a name that is not UTF-8 was not read as a shape.
         let Some(folder) = candidate.path.file_name().and_then(|name| name.to_str()) else { return };
+        let Some((identity, title, reason)) = self.texts(row, folder, named, candidate, recent) else { return };
+        if let Some(left_out) = left_out {
+            out.left_out(LeftOutItem {
+                category: category.id(),
+                reason: self.left_out.of(left_out).clone(),
+                sizes: candidate.sizes,
+                path: candidate.path.clone(),
+                title,
+            });
+            return;
+        }
+        let path = candidate.path.clone();
+        let removal = match row.removal {
+            RowRemoval::Trash => Removal::MoveToTrash(path.clone()),
+            RowRemoval::EmptyFolder => Removal::EmptyFolder(path.clone()),
+        };
+        let finding = NewFinding::new(category, identity, Subject::Path(path), candidate.sizes, title, reason, removal);
+        out.push(finding.for_app(self.xcode.clone()));
+    }
+
+    /// The identity, the title and the reason of `folder`, a candidate of `row` whose name read as `named`; `None` for
+    /// a fixed row of a category with no fixed place.
+    fn texts(
+        &self,
+        row: &Row,
+        folder: &str,
+        named: &Named,
+        candidate: &Candidate,
+        recent: &BTreeSet<(String, Version)>,
+    ) -> Option<(String, Text, Text)> {
         let size = TextArg::Size(candidate.sizes.logical);
-        let (identity, title, reason) = match named {
+        let texts = match named {
             Named::DeviceSupport(name) => {
                 // A device support row always has a platform: `Places::parse` requires it for that shape.
                 let platform = row.platform.clone().unwrap_or_default();
@@ -145,7 +178,7 @@ impl Report {
                     PREVIEWS => &self.previews,
                     SIMULATOR_CACHES => &self.simulator_caches,
                     // A fixed row is of one of these two categories: the module has no other fixed place.
-                    _ => return,
+                    _ => return None,
                 };
                 let reason = Text::new(texts.reason.clone()).with("size", size);
                 (row.id.clone(), Text::new(texts.title.clone()), reason)
@@ -158,12 +191,6 @@ impl Report {
                 (format!("{}/{}/{folder}", row.id, name.date), title, reason)
             }
         };
-        let path = candidate.path.clone();
-        let removal = match row.removal {
-            RowRemoval::Trash => Removal::MoveToTrash(path.clone()),
-            RowRemoval::EmptyFolder => Removal::EmptyFolder(path.clone()),
-        };
-        let finding = NewFinding::new(category, identity, Subject::Path(path), candidate.sizes, title, reason, removal);
-        out.push(finding.for_app(self.xcode.clone()));
+        Some(texts)
     }
 }

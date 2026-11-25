@@ -104,10 +104,12 @@
     {
       "category": "xcode.device-support",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "xcode.left-out.special"
       },
+      "shown": [],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",

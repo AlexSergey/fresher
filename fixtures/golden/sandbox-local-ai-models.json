@@ -118,10 +118,12 @@
     {
       "category": "local-ai-models.hugging-face-models",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "local-ai-models.left-out.special"
       },
+      "shown": [],
       "sizes": {
         "allocated": 8192,
         "completeness": "complete",

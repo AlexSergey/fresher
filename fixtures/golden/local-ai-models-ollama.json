@@ -4,12 +4,17 @@
     "leftOut": [
       {
         "category": "local-ai-models.ollama",
+        "path": ".ollama/models",
         "reason": "local-ai-models.left-out.ollama-unreadable",
         "sizes": {
           "allocated": 12288,
           "completeness": "complete",
           "logical": 3894,
           "reclaimable": 12288
+        },
+        "title": {
+          "args": {},
+          "key": "local-ai-models.store-title"
         }
       }
     ],
@@ -22,12 +27,17 @@
     "leftOut": [
       {
         "category": "local-ai-models.ollama",
+        "path": ".ollama/models",
         "reason": "local-ai-models.left-out.ollama-download",
         "sizes": {
           "allocated": 16384,
           "completeness": "complete",
           "logical": 5394,
           "reclaimable": 16384
+        },
+        "title": {
+          "args": {},
+          "key": "local-ai-models.store-title"
         }
       }
     ],
@@ -40,12 +50,17 @@
     "leftOut": [
       {
         "category": "local-ai-models.ollama",
+        "path": ".ollama/models",
         "reason": "local-ai-models.left-out.ollama-unreadable",
         "sizes": {
           "allocated": 20480,
           "completeness": "complete",
           "logical": 7991,
           "reclaimable": 20480
+        },
+        "title": {
+          "args": {},
+          "key": "local-ai-models.store-title"
         }
       }
     ],
@@ -402,12 +417,22 @@
     "leftOut": [
       {
         "category": "local-ai-models.ollama",
+        "path": ".ollama/models/manifests/registry.ollama.ai/library/broken/1",
         "reason": "local-ai-models.left-out.ollama-incomplete",
         "sizes": {
           "allocated": 12288,
           "completeness": "complete",
           "logical": 3123,
           "reclaimable": 12288
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "broken:1"
+            }
+          },
+          "key": "local-ai-models.title"
         }
       }
     ],
@@ -420,12 +445,17 @@
     "leftOut": [
       {
         "category": "local-ai-models.ollama",
+        "path": ".ollama/models",
         "reason": "local-ai-models.left-out.ollama-unreadable",
         "sizes": {
           "allocated": 16384,
           "completeness": "complete",
           "logical": 3902,
           "reclaimable": 16384
+        },
+        "title": {
+          "args": {},
+          "key": "local-ai-models.store-title"
         }
       }
     ],

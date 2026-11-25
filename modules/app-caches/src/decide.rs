@@ -1,7 +1,7 @@
 //! Whether a folder of `Caches` is offered as an installed app's cache, kept or not claimed: the rows of the design's
 //! section 4, in their order, on plain values. Nothing here reads the disk or asks the system but through `running`.
 
-use fresher_core::{BundleId, EntryKind, InstalledApp, RunningSet};
+use fresher_core::{BundleId, EntryKind, InstalledApp, LeftOutKind, RunningSet};
 
 use crate::exclude::Exclude;
 use crate::gathered::Candidate;
@@ -32,6 +32,15 @@ impl Reason {
             Self::AppOpen => "app-caches.left-out.app-open",
         }
     }
+
+    /// Whether the cache is kept for what it is (a socket inside, not the user's) or for what goes on now (its app is
+    /// open, the open apps could not be listed).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::Special | Self::NotYours => LeftOutKind::Kept,
+            Self::NoSystem | Self::AppOpen => LeftOutKind::ForNow,
+        }
+    }
 }
 
 /// What becomes of one folder.
@@ -39,8 +48,8 @@ impl Reason {
 pub(crate) enum Verdict<'a> {
     /// Not recognized as an installed app's cache: nothing is said.
     NotClaimed,
-    /// Recognized, kept, and reported as left out with the reason.
-    LeftOut(Reason),
+    /// Recognized as a cache of the owner's app, kept, and reported as left out with the reason.
+    LeftOut(Reason, Owner<'a>),
     /// Offered as a cache of the owner's app.
     Offered(Owner<'a>),
 }
@@ -100,16 +109,16 @@ pub(crate) fn decide<'a, 'r>(
         return Verdict::NotClaimed;
     }
     if inside.special {
-        return Verdict::LeftOut(Reason::Special);
+        return Verdict::LeftOut(Reason::Special, owner);
     }
     let facts = candidate.facts;
     if !facts.owned_by_user || facts.system_immutable || facts.restricted || facts.user_immutable || inside.foreign {
-        return Verdict::LeftOut(Reason::NotYours);
+        return Verdict::LeftOut(Reason::NotYours, owner);
     }
-    let Ok(running) = running() else { return Verdict::LeftOut(Reason::NoSystem) };
+    let Ok(running) = running() else { return Verdict::LeftOut(Reason::NoSystem, owner) };
     let runs = running.apps().iter().any(|open| open.bundle_ids.iter().any(|id| owner.app.owns(id)));
     if runs || running.owner_of(&candidate.path).is_some() {
-        return Verdict::LeftOut(Reason::AppOpen);
+        return Verdict::LeftOut(Reason::AppOpen, owner);
     }
     Verdict::Offered(owner)
 }

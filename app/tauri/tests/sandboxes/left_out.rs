@@ -2,12 +2,13 @@
 //! the cases' `[[case.left-out]]` expect, exactly, in both directions.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use fresher_core::LeftOutCount;
 use fresher_sandbox::CaseFile;
 use serde_json::Value;
 
-use crate::harness::{Failure, failure};
+use crate::harness::{Failure, failure, relative};
 
 /// Items per (category id, reason key).
 type Counts = BTreeMap<(String, String), u32>;
@@ -61,10 +62,17 @@ fn compare(expected: &Counts, reported: &Counts) -> Result<(), String> {
     if problems.is_empty() { Ok(()) } else { Err(format!("left-outs differ: {}", problems.join("; "))) }
 }
 
-/// The report's `leftOut`: the counts as the engine made them, `None` when there are none, so a case file that leaves
-/// nothing out keeps the report it always had.
-pub(crate) fn report(reported: &[LeftOutCount]) -> Option<Value> {
-    (!reported.is_empty()).then(|| serde_json::to_value(reported).unwrap())
+/// The report's `leftOut`: the counts as the engine made them, each listed item's path relative to the sandbox, `None`
+/// when there are none, so a case file that leaves nothing out keeps the report it always had.
+pub(crate) fn report(reported: &[LeftOutCount], sandbox: &Path) -> Option<Value> {
+    (!reported.is_empty()).then(|| {
+        let mut counts = serde_json::to_value(reported).unwrap();
+        let shown = counts.as_array_mut().into_iter().flatten().filter_map(|count| count["shown"].as_array_mut());
+        for (entry, count) in shown.flatten().zip(reported.iter().flat_map(|count| &count.shown)) {
+            entry["path"] = Value::String(relative(&count.path, sandbox));
+        }
+        counts
+    })
 }
 
 #[cfg(test)]

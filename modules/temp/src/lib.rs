@@ -11,7 +11,7 @@ mod names;
 
 use fresher_core::{
     CategoryDescriptor, CategoryIcon, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink,
-    IdError, Interest, InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext,
+    IdError, Interest, InterestError, KnownFolder, LeftOutItem, LeftOutKind, Locales, Match, Module, ModuleContext,
     ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text,
     TextArg, TextKey, TextKeyError, Timestamp,
 };
@@ -66,19 +66,13 @@ impl LeftOutKeys {
 
     /// Every key, in the order the module declares them.
     fn all(&self) -> Vec<TextKey> {
-        [
-            &self.system,
-            &self.locked,
-            &self.app_open,
-            &self.special,
-            &self.lock,
-            &self.recent,
-            &self.scan_again,
-            &self.no_system,
-        ]
-        .into_iter()
-        .cloned()
-        .collect()
+        Reason::ALL.into_iter().map(|reason| self.of(reason).clone()).collect()
+    }
+
+    /// The keys of the reasons that keep an item for good.
+    fn kept(&self) -> Vec<TextKey> {
+        let kept = Reason::ALL.into_iter().filter(|reason| reason.kind() == LeftOutKind::Kept);
+        kept.map(|reason| self.of(reason).clone()).collect()
     }
 }
 
@@ -144,7 +138,8 @@ impl TempModule {
         let settings = vec![OLDER_THAN.descriptor(id)?];
         let left_out = LeftOutKeys::new()?;
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::System, vec![category.clone()], settings, locales)?
-            .with_problems(left_out.all())?;
+            .with_problems(left_out.all())?
+            .with_kept(left_out.kept())?;
         let interests = PLACES
             .into_iter()
             .map(|place| Interest::new(Pattern::Under(place.folder, "*".into()), Claim::Whole, vec![]))
@@ -186,15 +181,20 @@ impl Module for TempModule {
             days: OLDER_THAN.days(cx.settings()),
             running: system.running_apps().map_err(|_| NoSystem),
         };
+        let title = || Text::new(self.title.clone()).with("name", TextArg::Text(name.to_string_lossy().into_owned()));
         match decide(&item, &scan) {
             Verdict::NotClaimed => {}
             Verdict::LeftOut(kept) => {
-                let reason = self.left_out.of(kept).clone();
-                out.left_out(LeftOutItem { category: self.category.id(), reason, sizes: matched.sizes });
+                out.left_out(LeftOutItem {
+                    category: self.category.id(),
+                    reason: self.left_out.of(kept).clone(),
+                    sizes: matched.sizes,
+                    path: matched.path.clone(),
+                    title: title(),
+                });
             }
             Verdict::Offered { age_days } => {
-                let title =
-                    Text::new(self.title.clone()).with("name", TextArg::Text(name.to_string_lossy().into_owned()));
+                let title = title();
                 let reason = Text::new(reason.clone()).with("days", TextArg::Count(age_days));
                 let path = matched.path.clone();
                 let subject = Subject::Path(path.clone());

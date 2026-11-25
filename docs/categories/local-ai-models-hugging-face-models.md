@@ -31,8 +31,8 @@ first answer that applies:
 | 2   | its name does not fit the layout of the store: `models--` plus an owner and a name; any other shape, or a kind the store does not list, is not claimed | not claimed                                     |
 | 3   | the tool's sign is missing (above)                                                     | not claimed                                     |
 | 4   | the folder could not be read in full, or no time of it is known                        | not claimed                                     |
-| 5   | a socket, a pipe or a device inside                                                    | left out: a running program may be using it     |
-| 6   | not yours, locked by the system, restricted or locked by you, or something inside is   | left out: removing it needs an administrator    |
+| 5   | a socket, a pipe or a device inside                                                    | kept for good: a running program may be using it     |
+| 6   | not yours, locked by the system, restricted or locked by you, or something inside is   | kept for good: removing it needs an administrator    |
 | 7   | otherwise                                                                              | **offered**                                     |
 
 A folder that is not claimed is not shown and nothing is said about it. Age is not judged: every model is offered, with

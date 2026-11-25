@@ -4,42 +4,93 @@
     "leftOut": [
       {
         "category": "xcode.simulator-caches",
+        "path": "Library/Developer/CoreSimulator/Caches",
         "reason": "xcode.left-out.no-system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {},
+          "key": "xcode.title.simulator-caches"
         }
       },
       {
         "category": "xcode.archives",
+        "path": "Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive",
         "reason": "xcode.left-out.no-system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 256,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Shop 01-03-2026, 10.15"
+            }
+          },
+          "key": "xcode.title.archive"
         }
       },
       {
         "category": "xcode.device-support",
+        "path": "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)",
         "reason": "xcode.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19A346"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.0"
+            }
+          },
+          "key": "xcode.title.device-support"
         }
       },
       {
         "category": "xcode.device-support",
+        "path": "Library/Developer/Xcode/iOS DeviceSupport/15.1 (19B74)",
         "reason": "xcode.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19B74"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.1"
+            }
+          },
+          "key": "xcode.title.device-support"
         }
       }
     ],
@@ -52,42 +103,93 @@
     "leftOut": [
       {
         "category": "xcode.simulator-caches",
+        "path": "Library/Developer/CoreSimulator/Caches",
         "reason": "xcode.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {},
+          "key": "xcode.title.simulator-caches"
         }
       },
       {
         "category": "xcode.archives",
+        "path": "Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive",
         "reason": "xcode.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 256,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Shop 01-03-2026, 10.15"
+            }
+          },
+          "key": "xcode.title.archive"
         }
       },
       {
         "category": "xcode.device-support",
+        "path": "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)",
         "reason": "xcode.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19A346"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.0"
+            }
+          },
+          "key": "xcode.title.device-support"
         }
       },
       {
         "category": "xcode.device-support",
+        "path": "Library/Developer/Xcode/iOS DeviceSupport/15.1 (19B74)",
         "reason": "xcode.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19B74"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.1"
+            }
+          },
+          "key": "xcode.title.device-support"
         }
       }
     ],
@@ -100,42 +202,93 @@
     "leftOut": [
       {
         "category": "xcode.simulator-caches",
+        "path": "Library/Developer/CoreSimulator/Caches",
         "reason": "xcode.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {},
+          "key": "xcode.title.simulator-caches"
         }
       },
       {
         "category": "xcode.archives",
+        "path": "Library/Developer/Xcode/Archives/2026-03-01/Shop 01-03-2026, 10.15.xcarchive",
         "reason": "xcode.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 256,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "Shop 01-03-2026, 10.15"
+            }
+          },
+          "key": "xcode.title.archive"
         }
       },
       {
         "category": "xcode.device-support",
+        "path": "Library/Developer/Xcode/iOS DeviceSupport/15.0 (19A346)",
         "reason": "xcode.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19A346"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.0"
+            }
+          },
+          "key": "xcode.title.device-support"
         }
       },
       {
         "category": "xcode.device-support",
+        "path": "Library/Developer/Xcode/iOS DeviceSupport/15.1 (19B74)",
         "reason": "xcode.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "build": {
+              "kind": "text",
+              "value": "19B74"
+            },
+            "platform": {
+              "kind": "text",
+              "value": "iOS"
+            },
+            "version": {
+              "kind": "text",
+              "value": "15.1"
+            }
+          },
+          "key": "xcode.title.device-support"
         }
       }
     ],

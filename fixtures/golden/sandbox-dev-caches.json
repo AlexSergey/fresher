@@ -180,10 +180,12 @@
     {
       "category": "dev-caches.xcode-derived-data",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "dev-caches.left-out.not-yours"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -194,10 +196,12 @@
     {
       "category": "dev-caches.xcode-derived-data",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "dev-caches.left-out.special"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

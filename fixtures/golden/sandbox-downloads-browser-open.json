@@ -8,10 +8,31 @@
     {
       "category": "downloads.unfinished",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "downloads.left-out.browser-open"
       },
+      "shown": [
+        {
+          "path": "home/Downloads/open.zip.crdownload",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "open.zip.crdownload"
+              }
+            },
+            "key": "downloads.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

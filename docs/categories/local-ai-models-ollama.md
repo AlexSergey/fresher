@@ -39,7 +39,7 @@ scan; the first answer that applies decides for every model:
 | #   | Situation                                                                                                  | Result                                         |
 | --- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | 1   | no `~/.ollama/models`, or it does not hold both `manifests` and `blobs`                                    | not claimed                                    |
-| 2   | a folder of the manifests' tree, a manifest, a layer or a partial download is not yours, locked or restricted | left out: removing it needs an administrator   |
+| 2   | a folder of the manifests' tree, a manifest, a layer or a partial download is not yours, locked or restricted | kept for good: removing it needs an administrator   |
 | 3   | `blobs/` holds a download not finished (`sha256-<hex>-partial`, or that name and `-<n>`)                  | left out: Ollama is downloading a model        |
 | 4   | an entry at a host's, namespace's or model's depth of `manifests/` may hide manifests the app never reads (a link, a file of a plain name, a folder whose name starts with a dot), or a manifest could not be read: not JSON, not schema 2, a digest off its shape, over 4 KiB, a link, gone | left out: which files are shared is unknown    |
 

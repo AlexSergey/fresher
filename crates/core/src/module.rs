@@ -6,8 +6,8 @@ use crate::ids::is_kebab_case;
 use crate::settings::schema::ENABLED;
 use crate::{
     CancelToken, Capability, CategoryDescriptor, CategoryId, Clock, CommandRunner, Insight, Interest, LeftOutItem,
-    Match, ModuleGroup, ModuleId, ModuleSettings, NewFinding, PlaceSeen, SettingDescriptor, SystemFacts, Text, TextKey,
-    ToolCommand, ToolId,
+    LeftOutKind, Match, ModuleGroup, ModuleId, ModuleSettings, NewFinding, PlaceSeen, SettingDescriptor, SystemFacts,
+    Text, TextKey, ToolCommand, ToolId,
 };
 
 /// A feature of the app (Docker, `node_modules`, duplicates): it states what it wants to see during the walk and
@@ -36,6 +36,7 @@ pub struct ModuleDescriptor {
     locales: Locales,
     tool_checks: Vec<ToolCommand>,
     problems: Vec<TextKey>,
+    kept: Vec<TextKey>,
     choices: Vec<ModuleChoice>,
 }
 
@@ -104,6 +105,8 @@ pub enum DescriptorError {
     ForeignProblem { key: String, module: String },
     #[error("problem `{key}` is listed twice")]
     DuplicateProblem { key: String },
+    #[error("kept reason `{key}` is not a declared problem, or is listed twice")]
+    KeptReason { key: String },
     #[error("choice `{name}` is not a kebab-case name, or is listed twice")]
     ChoiceName { name: String },
     #[error("choice `{name}` selects no category")]
@@ -143,6 +146,7 @@ impl ModuleDescriptor {
             locales,
             tool_checks: Vec::new(),
             problems: Vec::new(),
+            kept: Vec::new(),
             choices: Vec::new(),
         })
     }
@@ -178,6 +182,20 @@ impl ModuleDescriptor {
             }
         }
         self.problems = keys;
+        Ok(self)
+    }
+
+    /// This descriptor with the left-out reasons that keep an item for good (`LeftOutKind::Kept`): it is in use, or
+    /// never a candidate by its nature. Every other left-out reason keeps an item for now. Refused when a key is not
+    /// one of the declared problems (`with_problems` comes first) or is listed twice.
+    pub fn with_kept(mut self, keys: Vec<TextKey>) -> Result<Self, DescriptorError> {
+        let mut seen = BTreeSet::new();
+        for key in &keys {
+            if !self.problems.contains(key) || !seen.insert(key) {
+                return Err(DescriptorError::KeptReason { key: key.as_str().into() });
+            }
+        }
+        self.kept = keys;
         Ok(self)
     }
 
@@ -240,6 +258,16 @@ impl ModuleDescriptor {
     /// The keys the module may report as a failure or a left-out reason, in the order it declared them.
     pub fn problems(&self) -> &[TextKey] {
         &self.problems
+    }
+
+    /// The left-out reasons that keep an item for good, in the order the module declared them.
+    pub fn kept(&self) -> &[TextKey] {
+        &self.kept
+    }
+
+    /// Whether a left-out for `reason` is kept for good (one of `with_kept`) or for now (any other).
+    pub fn left_out_kind(&self, reason: &TextKey) -> LeftOutKind {
+        if self.kept.contains(reason) { LeftOutKind::Kept } else { LeftOutKind::ForNow }
     }
 
     /// The choices of the module's page, in the order it declared them; empty for a module without.
@@ -680,6 +708,34 @@ mod tests {
         }
 
         #[test]
+        fn a_kept_reason_that_is_not_declared_or_is_listed_twice_is_refused() {
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES)
+                .unwrap()
+                .with_problems(vec![key("demo.left-out.open")])
+                .unwrap();
+
+            let undeclared = descriptor.clone().with_kept(vec![key("demo.left-out.current")]);
+            let twice = descriptor.with_kept(vec![key("demo.left-out.open"), key("demo.left-out.open")]);
+
+            assert_eq!(undeclared, Err(DescriptorError::KeptReason { key: "demo.left-out.current".into() }));
+            assert_eq!(twice, Err(DescriptorError::KeptReason { key: "demo.left-out.open".into() }));
+        }
+
+        #[test]
+        fn a_reason_not_kept_for_good_is_kept_for_now() {
+            let descriptor = ModuleDescriptor::new(demo(), crate::ModuleGroup::Debug, vec![], vec![], LOCALES)
+                .unwrap()
+                .with_problems(vec![key("demo.left-out.open"), key("demo.left-out.current")])
+                .unwrap()
+                .with_kept(vec![key("demo.left-out.current")])
+                .unwrap();
+
+            assert_eq!(descriptor.left_out_kind(&key("demo.left-out.open")), crate::LeftOutKind::ForNow);
+            assert_eq!(descriptor.left_out_kind(&key("demo.left-out.unknown")), crate::LeftOutKind::ForNow);
+            assert_eq!(descriptor.left_out_kind(&key("demo.left-out.current")), crate::LeftOutKind::Kept);
+        }
+
+        #[test]
         fn a_choice_name_that_is_not_kebab_case_is_refused() {
             for name in ["Keep", "keep_settings", ""] {
                 let error = with_two_categories().with_choices(vec![choice(name, &["demo.caches"])]);
@@ -726,7 +782,13 @@ mod tests {
 
             crate::FindingSink::left_out(
                 &mut found,
-                crate::LeftOutItem { category, reason: key("demo.left-out.open"), sizes: crate::Sizes::ZERO },
+                crate::LeftOutItem {
+                    category,
+                    reason: key("demo.left-out.open"),
+                    sizes: crate::Sizes::ZERO,
+                    path: "/a".into(),
+                    title: crate::Text::new(key("demo.finding.title")),
+                },
             );
 
             assert_eq!(found, []);

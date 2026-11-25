@@ -154,10 +154,49 @@
     {
       "category": "downloads.installers",
       "items": 2,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "downloads.left-out.not-older"
       },
+      "shown": [
+        {
+          "path": "home/Downloads/Later.dmg",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "Later.dmg"
+              }
+            },
+            "key": "downloads.title"
+          }
+        },
+        {
+          "path": "home/Downloads/Sample-2.0.dmg",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "Sample-2.0.dmg"
+              }
+            },
+            "key": "downloads.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -168,10 +207,31 @@
     {
       "category": "downloads.large-untouched",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "downloads.left-out.recent"
       },
+      "shown": [
+        {
+          "path": "home/Downloads/recent.iso",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 2147483648,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "recent.iso"
+              }
+            },
+            "key": "downloads.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -182,10 +242,12 @@
     {
       "category": "downloads.macos-installers",
       "items": 1,
+      "kind": "kept",
       "reason": {
         "args": {},
         "key": "downloads.left-out.newer-macos"
       },
+      "shown": [],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",
@@ -196,10 +258,31 @@
     {
       "category": "downloads.unfinished",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "downloads.left-out.recent"
       },
+      "shown": [
+        {
+          "path": "home/Downloads/fresh.zip.crdownload",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "fresh.zip.crdownload"
+              }
+            },
+            "key": "downloads.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

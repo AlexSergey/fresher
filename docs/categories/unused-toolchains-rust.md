@@ -33,8 +33,8 @@ artifact folder (such as `node_modules` or `target`). For each toolchain folder,
 | 3   | a moving channel (`stable`, `beta` or `nightly` without a date)                               | not claimed                                 |
 | 4   | the folder could not be read in full, or no time of it is known                               | not claimed                                 |
 | 5   | a known reference keeps it: the default, an override or a pin                                 | not claimed (it is in use)                  |
-| 6   | a socket, a pipe or a device inside                                                           | left out: a running program may be using it |
-| 7   | not yours, locked by the system, restricted or locked by you, or something inside is          | left out: removing it needs an administrator |
+| 6   | a socket, a pipe or a device inside                                                           | kept for good: a running program may be using it |
+| 7   | not yours, locked by the system, restricted or locked by you, or something inside is          | kept for good: removing it needs an administrator |
 | 8   | the walk did not read every folder                                                            | left out: a project there might use it      |
 | 9   | the default could not be read                                                                 | left out: every version is kept             |
 | 10  | another pointer or a pin could not be read                                                    | left out: Fresher cannot tell what is used  |

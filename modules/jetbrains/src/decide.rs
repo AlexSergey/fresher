@@ -2,7 +2,7 @@
 //! values. Every row but the fourth and the last keeps the folder; the fourth waits for every folder of the scan
 //! (`uninstalled.rs`); nothing here reads the disk.
 
-use fresher_core::{BundleId, InstalledApp, RunningApp};
+use fresher_core::{BundleId, InstalledApp, LeftOutKind, RunningApp};
 
 use crate::name::{Version, installed_version};
 use crate::products::{Product, Products};
@@ -48,6 +48,36 @@ pub(crate) enum Reason {
 }
 
 impl Reason {
+    /// Every reason, in the order the module declares their keys.
+    pub(crate) const ALL: [Self; 11] = [
+        Self::Current,
+        Self::Newer,
+        Self::Running,
+        Self::UnknownVersion,
+        Self::NoSystem,
+        Self::UsedRecently,
+        Self::UnknownIde,
+        Self::InstalledElsewhere,
+        Self::VendorAppOpen,
+        Self::AppsUnread,
+        Self::SpotlightUnread,
+    ];
+
+    /// Whether the folder is kept for good (the version you use, a newer one's, or an installed IDE's) or only for
+    /// now (an IDE is open, a list could not be read, it changed lately).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::Current | Self::Newer | Self::UnknownIde | Self::InstalledElsewhere => LeftOutKind::Kept,
+            Self::Running
+            | Self::VendorAppOpen
+            | Self::UnknownVersion
+            | Self::NoSystem
+            | Self::AppsUnread
+            | Self::SpotlightUnread
+            | Self::UsedRecently => LeftOutKind::ForNow,
+        }
+    }
+
     /// Whether the reason is about an IDE that is not installed: its left-out goes under that category.
     pub(crate) const fn of_removed_ide(self) -> bool {
         matches!(self, Self::UsedRecently | Self::UnknownIde | Self::InstalledElsewhere | Self::SpotlightUnread)

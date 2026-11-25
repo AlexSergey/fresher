@@ -24,6 +24,17 @@ fn every_run() -> Vec<ModuleRun> {
     every_scan().into_iter().map(|(_, run)| run).collect()
 }
 
+mod negative {
+    use fresher_testing::left_out_kinds;
+
+    use crate::support::logs;
+
+    #[test]
+    fn what_only_passes_is_never_kept_for_good() {
+        assert_eq!(left_out_kinds(&logs()).for_now, ["scan-again", "locked", "recent"]);
+    }
+}
+
 mod positive {
     use std::collections::BTreeSet;
     use std::path::Path;
@@ -84,5 +95,10 @@ mod positive {
                 assert!(std::fs::symlink_metadata(path).unwrap().file_type().is_file(), "{path:?}");
             }
         }
+    }
+
+    #[test]
+    fn only_what_is_in_use_or_never_a_candidate_is_kept_for_good() {
+        assert_eq!(fresher_testing::left_out_kinds(&logs()).kept, ["special", "not-yours"]);
     }
 }

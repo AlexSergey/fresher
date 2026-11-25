@@ -8,10 +8,31 @@
     {
       "category": "xcode.archives",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "xcode.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Developer/Xcode/Archives/2026-01-15/Notes 15-01-2026, 09.00.xcarchive",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {
+              "name": {
+                "kind": "text",
+                "value": "Notes 15-01-2026, 09.00"
+              }
+            },
+            "key": "xcode.title.archive"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",
@@ -22,10 +43,39 @@
     {
       "category": "xcode.device-support",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "xcode.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Developer/Xcode/iOS DeviceSupport/14.0 (18A373)",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {
+              "build": {
+                "kind": "text",
+                "value": "18A373"
+              },
+              "platform": {
+                "kind": "text",
+                "value": "iOS"
+              },
+              "version": {
+                "kind": "text",
+                "value": "14.0"
+              }
+            },
+            "key": "xcode.title.device-support"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",
@@ -36,10 +86,26 @@
     {
       "category": "xcode.simulator-caches",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "xcode.left-out.app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Developer/CoreSimulator/Caches",
+          "sizes": {
+            "allocated": 4096,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 4096
+          },
+          "title": {
+            "args": {},
+            "key": "xcode.title.simulator-caches"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 4096,
         "completeness": "complete",

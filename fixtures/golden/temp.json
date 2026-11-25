@@ -212,42 +212,82 @@
     "leftOut": [
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/build",
         "reason": "temp.left-out.recent",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 16384,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "build"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/fresh.tmp",
         "reason": "temp.left-out.recent",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "fresh.tmp"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/read.dat",
         "reason": "temp.left-out.recent",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 1024,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "read.dat"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/unpacked",
         "reason": "temp.left-out.recent",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 67584,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "unpacked"
+            }
+          },
+          "key": "temp.finding.title"
         }
       }
     ],
@@ -260,22 +300,42 @@
     "leftOut": [
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/.com.example.Editor.XXXXXX",
         "reason": "temp.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 2048,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": ".com.example.Editor.XXXXXX"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/com.example.Editor.tmp",
         "reason": "temp.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "com.example.Editor.tmp"
+            }
+          },
+          "key": "temp.finding.title"
         }
       }
     ],
@@ -288,72 +348,142 @@
     "leftOut": [
       {
         "category": "temp.old-files",
+        "path": "private/tmp/.X0-lock",
         "reason": "temp.left-out.lock",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 11,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": ".X0-lock"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/tmp/dev.sock",
         "reason": "temp.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 0,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "dev.sock"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/app.lock",
         "reason": "temp.left-out.lock",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 0,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "app.lock"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/pipe",
         "reason": "temp.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 0,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "pipe"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/server.pid",
         "reason": "temp.left-out.lock",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 6,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "server.pid"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/session",
         "reason": "temp.left-out.lock",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4107,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "session"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/srv",
         "reason": "temp.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 0,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "srv"
+            }
+          },
+          "key": "temp.finding.title"
         }
       }
     ],
@@ -366,62 +496,122 @@
     "leftOut": [
       {
         "category": "temp.old-files",
+        "path": "private/tmp/theirs",
         "reason": "temp.left-out.system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 2048,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "theirs"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/com.apple.x",
         "reason": "temp.left-out.system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 8192,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "com.apple.x"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/held.dat",
         "reason": "temp.left-out.system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "held.dat"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/kept.txt",
         "reason": "temp.left-out.locked",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 1024,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "kept.txt"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/mixed",
         "reason": "temp.left-out.system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 8192,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "mixed"
+            }
+          },
+          "key": "temp.finding.title"
         }
       },
       {
         "category": "temp.old-files",
+        "path": "private/var/folders/xx/fixture/T/updater.pkg",
         "reason": "temp.left-out.system",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 1048576,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "updater.pkg"
+            }
+          },
+          "key": "temp.finding.title"
         }
       }
     ],

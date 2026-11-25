@@ -272,9 +272,9 @@ test.describe('positive cases', () => {
 
     for (const [script, category, line, file] of [
       ['jetbrains', 'Old JetBrains IDE settings', '2 items left out (600 MB)', 'category-details-jetbrains.png'],
-      ['temp', 'Old temporary files', '3 items left out (12 MB)', 'category-details-temp.png'],
+      ['temp', 'Old temporary files', '3 items kept (12 MB)', 'category-details-temp.png'],
       ['logs', 'Old app logs', '1 item left out (3 MB)', 'category-details-logs.png'],
-      ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)', 'category-details-dev-caches.png'],
+      ['devCachesXcodeOpen', "Gradle's caches", '1 item kept (35 MB)', 'category-details-dev-caches.png'],
       ['appCaches', 'App caches', '1 item left out (90 MB)', 'category-details-app-caches.png'],
       ['appCachesBrowsers', 'Browser caches', '1 item left out (30 MB)', 'category-details-app-caches-browsers.png'],
       [
@@ -286,13 +286,8 @@ test.describe('positive cases', () => {
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)', 'category-details-app-leftovers.png'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)', 'category-details-downloads.png'],
       ['staleProjects', 'Packages of old projects', '2 items left out', 'category-details-stale-projects.png'],
-      ['localAiModels', 'Hugging Face models', '1 item left out (300 MB)', 'category-details-local-ai-models.png'],
-      [
-        'unusedToolchains',
-        'Unused Node versions',
-        '1 item left out (110 MB)',
-        'category-details-unused-toolchains.png',
-      ],
+      ['localAiModels', 'Hugging Face models', '1 item kept (300 MB)', 'category-details-local-ai-models.png'],
+      ['unusedToolchains', 'Unused Node versions', '1 item kept (110 MB)', 'category-details-unused-toolchains.png'],
     ] as const) {
       test(`of ${category}, with its left-out lines`, async ({ page }) => {
         await detailsAfter(page, SCRIPTS[script], category);
@@ -359,6 +354,9 @@ test.describe('positive cases', () => {
       await scanFinished(page);
       const leftOut = page.getByRole('region', { name: 'Found, but left out' });
       await expect(leftOut).toContainText('2 items left out (4.3 GB)');
+      // Each item held back is listed by its name and its path (cut in the middle, whole for assistive technology).
+      await expect(leftOut).toContainText('Weather');
+      await expect(leftOut).toContainText('/Users/someone/Library/Developer/Xcode/DerivedData/Weather-abcdefghijklmn');
       // The totals have arrived: Gradle's caches are a card, not a left-out row.
       await expect(page.locator('[data-card]').filter({ hasText: "Gradle's caches" })).toBeVisible();
       await expect(leftOut).not.toContainText("Gradle's caches");

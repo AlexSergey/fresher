@@ -4,32 +4,62 @@
     "leftOut": [
       {
         "category": "local-ai-models.hugging-face-models",
+        "path": ".cache/huggingface/hub/models--o--locked",
         "reason": "local-ai-models.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 1088,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "o/locked"
+            }
+          },
+          "key": "local-ai-models.title"
         }
       },
       {
         "category": "local-ai-models.hugging-face-models",
+        "path": ".cache/huggingface/hub/models--o--socket",
         "reason": "local-ai-models.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 1088,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "o/socket"
+            }
+          },
+          "key": "local-ai-models.title"
         }
       },
       {
         "category": "local-ai-models.lm-studio",
+        "path": ".lmstudio/models/pub/open-model",
         "reason": "local-ai-models.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 2048,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "name": {
+              "kind": "text",
+              "value": "pub/open-model"
+            }
+          },
+          "key": "local-ai-models.title"
         }
       }
     ],

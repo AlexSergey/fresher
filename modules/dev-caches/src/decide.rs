@@ -3,7 +3,7 @@
 
 use std::ffi::OsStr;
 
-use fresher_core::{EntryKind, MarkerCheck, RunningSet};
+use fresher_core::{EntryKind, LeftOutKind, MarkerCheck, RunningSet};
 
 use crate::gathered::{Candidate, Sign};
 use crate::name::project;
@@ -23,6 +23,20 @@ pub(crate) enum Reason {
     Special,
     AppOpen,
     NoSystem,
+}
+
+impl Reason {
+    /// Every reason, in the order the module declares their keys.
+    pub(crate) const ALL: [Self; 4] = [Self::NotYours, Self::Special, Self::AppOpen, Self::NoSystem];
+
+    /// Whether the cache is kept for what it is (not the user's, a socket inside) or for what goes on now (its app is
+    /// open, the open apps could not be listed).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::NotYours | Self::Special => LeftOutKind::Kept,
+            Self::AppOpen | Self::NoSystem => LeftOutKind::ForNow,
+        }
+    }
 }
 
 /// What becomes of one cache folder.

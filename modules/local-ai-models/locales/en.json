@@ -26,6 +26,7 @@
   "local-ai-models.enabled.label": "Local AI models",
   "local-ai-models.enabled.description": "Finds models downloaded by Hugging Face, LM Studio and Ollama. Each one goes to the Trash; most come back by download.",
   "local-ai-models.title": "{name}",
+  "local-ai-models.store-title": "Every Ollama model",
   "local-ai-models.reason.hugging-face": "Downloaded from Hugging Face; last opened or changed on {date}. A program that needs it downloads {size} again.",
   "local-ai-models.reason.lm-studio": "Kept by LM Studio; last opened or changed on {date}. Downloading it again in LM Studio takes {size}; a model you added yourself does not come back.",
   "local-ai-models.reason.ollama": "Kept by Ollama; last opened or changed on {date}. `ollama pull {name}` downloads its {size} again; a model you made yourself does not come back that way.",

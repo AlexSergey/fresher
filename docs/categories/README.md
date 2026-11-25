@@ -61,6 +61,39 @@ One file per category: category `<module>.<name>` is documented in `<module>-<na
 The `**Example:**` line is shown in the README's "What it finds" table (`npm run readme:generate`);
 `npm run check:readme` refuses a file without it.
 
+## Left out: for now, or kept for good
+
+An item a module recognizes and does not offer is left out with a reason, and every reason has a kind, declared by its
+module (`ModuleDescriptor::with_kept`; the user's decision of 2026-11-25):
+
+- **Kept for good**: Fresher keeps the item for what it is: the version you use, a newer version's data, an app that
+  is installed, a socket, a lock, the system's or another user's file. Nothing is to be done, and the next scan keeps it
+  too. The Scan screen does not show it at all; a category's details show it as one quiet line ("3 items kept
+  (1.4 GB): This is the version you use.").
+- **For now** (every other reason): the item would be offered, but something passing holds it back: an app is open, it
+  changed lately, a list or a folder could not be read, a lock the user can lift, a download not finished. Scan and the
+  details show the line with each item by name, path and size (the ten largest, then how many more).
+
+In the decision tables of the category files, "left out" is for now and "kept for good" is for good. The reasons, by
+module:
+
+| Module              | Kept for good                                            | For now                                                                                                          |
+| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `app-caches`        | `special`, `not-yours`                                   | `no-system`, `app-open`                                                                                          |
+| `app-leftovers`     | `installed-elsewhere`, `special`, `not-yours`            | `no-system`, `apps-unread`, `running`, `scan-again`, `used-recently`, `spotlight-unread`                         |
+| `dev-caches`        | `not-yours`, `special`                                   | `app-open`, `no-system`                                                                                          |
+| `downloads`         | `newer-macos`, `special`, `not-yours`                    | `no-system`, `apps-unread`, `browser-open`, `recent`, `not-older`, `scan-again`                                  |
+| `jetbrains`         | `current`, `newer`, `unknown-ide`, `installed-elsewhere` | `running`, `unknown-version`, `no-system`, `used-recently`, `vendor-app-open`, `apps-unread`, `spotlight-unread` |
+| `local-ai-models`   | `not-yours`, `special`                                   | `app-open`, `no-system`, `ollama-unreadable`, `ollama-download`, `ollama-incomplete`                             |
+| `logs`              | `special`, `not-yours`                                   | `scan-again`, `locked`, `recent`                                                                                 |
+| `stale-projects`    | none                                                     | `scan-again`, `unread`, `recent`, `cache-recent`                                                                 |
+| `temp`              | `system`, `special`, `lock`                              | `locked`, `app-open`, `recent`, `scan-again`, `no-system`                                                        |
+| `unused-toolchains` | `special`, `not-yours`                                   | `partial-scan`, `default-unknown`, `pin-unknown`                                                                 |
+| `xcode`             | `special`, `not-yours`                                   | `no-system`, `app-open`                                                                                          |
+
+Each reason's key is `<module>.left-out.<reason>`; each module's contract test lists both parts (`left_out_kinds` of
+`fresher-testing`).
+
 ## Catalogue
 
 | Category                        | Danger level | Rule                                           | File                                                                     |

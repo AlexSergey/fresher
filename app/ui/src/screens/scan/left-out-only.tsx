@@ -8,6 +8,7 @@ import { t, tText } from '../../i18n';
 import { LeftOutLines } from '../../product/left-out-lines/left-out-lines';
 import { useNavigation } from '../../state/navigation';
 import { useCore } from '../../state/store';
+import { useAppInfo } from '../use-app-info';
 import styles from './left-out-only.module.css';
 
 export type LeftOutOnlyProps = {
@@ -22,8 +23,9 @@ const NONE: readonly string[] = [];
 // The ids an ignore list holds; none until the settings are loaded.
 const idsOf = (value: SettingValue | undefined): readonly string[] => (value?.kind === 'ids' ? value.value : NONE);
 
-// The categories of the last scan that the modules left out whole: left-out counts but no card. A hidden module's and
-// an ignored category's left-outs, kept from the scan's events, leave with their findings.
+// The categories of the last scan that the modules left out whole: counts held back for now but no card. What is kept
+// for good (the version you use) is not shown here at all. A hidden module's and an ignored category's left-outs, kept
+// from the scan's events, leave with their findings.
 const rowsOf = (
   finished: readonly { readonly leftOut: readonly LeftOutCount[]; readonly module: string }[],
   cards: readonly CategoryId[],
@@ -37,7 +39,7 @@ const rowsOf = (
       continue;
     }
     for (const count of leftOut) {
-      if (!cards.includes(count.category) && !ignored.includes(count.category)) {
+      if (count.kind === 'for-now' && !cards.includes(count.category) && !ignored.includes(count.category)) {
         rows.set(count.category, [...(rows.get(count.category) ?? []), count]);
       }
     }
@@ -49,6 +51,7 @@ const rowsOf = (
 const LeftOutRow = ({ category, counts }: Row): JSX.Element => {
   const navigation = useNavigation();
   const nameId = useId();
+  const home = useAppInfo()?.home ?? null;
 
   return (
     <li aria-labelledby={nameId} className={styles.row}>
@@ -70,14 +73,14 @@ const LeftOutRow = ({ category, counts }: Row): JSX.Element => {
             </Button>
           </span>
         </div>
-        <LeftOutLines counts={counts} />
+        <LeftOutLines counts={counts} home={home} />
       </Tile>
     </li>
   );
 };
 
 // What the last scan found but left out whole, under the groups: a heading like theirs, then one tile per category,
-// with its lines and Details.
+// with its lines, each item held back by name, path and size, and Details.
 // Nothing before a scan, during one (its totals arrive after its left-outs, so a category with findings would show
 // here first), or when every category with left-outs has a card.
 export const LeftOutOnly = ({ cards }: LeftOutOnlyProps): JSX.Element | null => {

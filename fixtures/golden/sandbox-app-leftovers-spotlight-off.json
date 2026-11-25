@@ -8,10 +8,49 @@
     {
       "category": "app-leftovers.caches",
       "items": 2,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "app-leftovers.left-out.spotlight-unread"
       },
+      "shown": [
+        {
+          "path": "home/Library/Caches/com.example.Unsearched",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "id": {
+                "kind": "text",
+                "value": "com.example.Unsearched"
+              }
+            },
+            "key": "app-leftovers.title.caches"
+          }
+        },
+        {
+          "path": "home/Library/Saved Application State/com.example.Unsearched.savedState",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 4096,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "id": {
+                "kind": "text",
+                "value": "com.example.Unsearched"
+              }
+            },
+            "key": "app-leftovers.title.saved-state"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

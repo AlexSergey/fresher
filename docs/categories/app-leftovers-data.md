@@ -37,9 +37,9 @@ is claimed only when its name, without the row's suffix, is a bundle id (`com.ex
 | 8  | a restored scan, a place not read in full, or a leftover folder read in part                            | left out: scan again                    |
 | 9  | a leftover changed within the days set in Settings (default 30), or its time is unknown                 | left out: used recently                 |
 | 10 | Spotlight cannot see every app (it is off, or a drive is not indexed)                                   | left out: Spotlight unread              |
-| 11 | Spotlight finds an app with the id                                                                      | left out: installed elsewhere           |
-| 12 | a socket, a pipe or a device inside                                                                     | left out: a program may be using it     |
-| 13 | not yours, locked by the system, restricted or locked by you, or something inside is                    | left out: needs an administrator        |
+| 11 | Spotlight finds an app with the id                                                                      | kept for good: installed elsewhere           |
+| 12 | a socket, a pipe or a device inside                                                                     | kept for good: a program may be using it     |
+| 13 | not yours, locked by the system, restricted or locked by you, or something inside is                    | kept for good: needs an administrator        |
 | 14 | otherwise                                                                                               | **offered**                             |
 
 Never offered: a name that is not an id (`Notes`, `Cookies.binarycookies`), anything of Apple's (`com.apple.`), group

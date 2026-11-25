@@ -59,6 +59,7 @@ pub(crate) struct TestModuleBuilder {
     choices: Vec<ModuleChoice>,
     tool_checks: Vec<ToolCommand>,
     problems: Vec<TextKey>,
+    kept: Vec<TextKey>,
     locales: &'static str,
     interests: Vec<Interest>,
     on_match: OnMatch,
@@ -78,6 +79,7 @@ impl TestModule {
             choices: Vec::new(),
             tool_checks: Vec::new(),
             problems: Vec::new(),
+            kept: Vec::new(),
             locales: "{}",
             interests: Vec::new(),
             on_match: OnMatch::Find,
@@ -122,6 +124,12 @@ impl TestModuleBuilder {
     /// The module declares `keys` as the problems it may report.
     pub(crate) fn problems(mut self, keys: &[&str]) -> Self {
         self.problems = keys.iter().map(|key| TextKey::new(*key).unwrap()).collect();
+        self
+    }
+
+    /// The module keeps for good what it leaves out for one of `keys`, which `problems` declares.
+    pub(crate) fn kept(mut self, keys: &[&str]) -> Self {
+        self.kept = keys.iter().map(|key| TextKey::new(*key).unwrap()).collect();
         self
     }
 
@@ -183,7 +191,7 @@ impl TestModuleBuilder {
         for check in self.tool_checks {
             descriptor = descriptor.with_tool_check(check).unwrap();
         }
-        descriptor = descriptor.with_problems(self.problems).unwrap();
+        descriptor = descriptor.with_problems(self.problems).unwrap().with_kept(self.kept).unwrap();
         if !self.choices.is_empty() {
             descriptor = descriptor.with_choices(self.choices).unwrap();
         }

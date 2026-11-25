@@ -4,42 +4,82 @@
     "leftOut": [
       {
         "category": "app-caches.library-caches",
+        "path": "Library/Caches/com.example.Agent",
         "reason": "app-caches.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Agent"
+            }
+          },
+          "key": "app-caches.title.own"
         }
       },
       {
         "category": "app-caches.library-caches",
+        "path": "Library/Caches/com.example.Busy",
         "reason": "app-caches.left-out.special",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Busy"
+            }
+          },
+          "key": "app-caches.title.own"
         }
       },
       {
         "category": "app-caches.library-caches",
+        "path": "Library/Caches/com.example.Locked",
         "reason": "app-caches.left-out.not-yours",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Locked"
+            }
+          },
+          "key": "app-caches.title.own"
         }
       },
       {
         "category": "app-caches.library-caches",
+        "path": "Library/Caches/com.example.Open",
         "reason": "app-caches.left-out.app-open",
         "sizes": {
           "allocated": 0,
           "completeness": "complete",
           "logical": 4096,
           "reclaimable": 0
+        },
+        "title": {
+          "args": {
+            "app": {
+              "kind": "text",
+              "value": "Open"
+            }
+          },
+          "key": "app-caches.title.own"
         }
       }
     ],

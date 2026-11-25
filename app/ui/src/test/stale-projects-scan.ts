@@ -3,6 +3,7 @@ import type {
   Event,
   Finding,
   LeftOutCount,
+  LeftOutEntry,
   ModuleInfo,
   Overview,
   SettingsView,
@@ -14,6 +15,7 @@ import staleTexts from '../../../../modules/stale-projects/locales/en.json' with
 import { iconOf } from './category-icons';
 import { FULL_COVERAGE, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the old projects module as the core streams it: the packages of two folders of one project, a build
 // folder, a Python environment and a Rust incremental cache are offered; two more `node_modules` and a `target` are
@@ -146,18 +148,26 @@ export const STALE_PROJECTS_MODULES: readonly ModuleInfo[] = [
   },
 ];
 
-const left = (category: string, key: string, items: number, bytes: number): LeftOutCount => ({
-  category,
-  items,
-  reason: { args: {}, key: `stale-projects.left-out.${key}` },
-  sizes: sized(bytes),
-});
+// A folder of a project that changed lately, titled by its project and folder as its finding would be.
+const recent = (project: string, folder: string, bytes: number): LeftOutEntry =>
+  leftOutEntry(
+    { args: { folder: text(folder), project: text(project) }, key: 'stale-projects.title' },
+    `${HOME}/Projects/${project}/${folder}`,
+    sized(bytes),
+  );
 
-// Two `node_modules` and a `target` of projects changed within the days, a coverage build used within 7 days.
+// Two projects that changed within the days, and a Rust build cache a build used this week.
 export const STALE_PROJECTS_LEFT_OUT: readonly LeftOutCount[] = [
-  left('stale-projects.dependencies', 'recent', 2, 1_300 * MB),
-  left('stale-projects.build-output', 'recent', 1, 900 * MB),
-  left('stale-projects.rust-build-cache', 'cache-recent', 1, 2_100 * MB),
+  forNowCount('stale-projects.dependencies', 'stale-projects.left-out.recent', sized(1_300 * MB), [
+    recent('blog', 'node_modules', 800 * MB),
+    recent('admin', 'node_modules', 500 * MB),
+  ]),
+  forNowCount('stale-projects.build-output', 'stale-projects.left-out.recent', sized(900 * MB), [
+    recent('blog', 'dist', 900 * MB),
+  ]),
+  forNowCount('stale-projects.rust-build-cache', 'stale-projects.left-out.cache-recent', sized(2_100 * MB), [
+    recent('engine', 'target', 2_100 * MB),
+  ]),
 ];
 
 export const STALE_PROJECTS_SCAN: readonly Event[] = [

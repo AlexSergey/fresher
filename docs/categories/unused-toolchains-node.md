@@ -34,8 +34,8 @@ that prefix. For each version folder, the first answer that applies:
 | 4   | the newest installed version (`nvm use node` means it; a linked folder counts as installed) | not claimed                                 |
 | 5   | the folder could not be read in full, or no time of it is known                               | not claimed                                 |
 | 6   | a known reference keeps it: the default, an alias or a pin                                    | not claimed (it is in use)                  |
-| 7   | a socket, a pipe or a device inside                                                           | left out: a running program may be using it |
-| 8   | not yours, locked by the system, restricted or locked by you, or something inside is          | left out: removing it needs an administrator |
+| 7   | a socket, a pipe or a device inside                                                           | kept for good: a running program may be using it |
+| 8   | not yours, locked by the system, restricted or locked by you, or something inside is          | kept for good: removing it needs an administrator |
 | 9   | the walk did not read every folder                                                            | left out: a project there might use it      |
 | 10  | the default could not be read                                                                 | left out: every version is kept             |
 | 11  | another alias or a pin could not be read                                                      | left out: Fresher cannot tell what is used  |

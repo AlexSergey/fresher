@@ -19,6 +19,17 @@ mod helpers {
     }
 }
 
+mod negative {
+    use fresher_testing::left_out_kinds;
+
+    use crate::helpers::demo;
+
+    #[test]
+    fn what_only_passes_is_never_kept_for_good() {
+        assert_eq!(left_out_kinds(&demo()).for_now, ["open"]);
+    }
+}
+
 mod positive {
     use fresher_core::{ByteSize, Removal};
     use fresher_testing::{
@@ -72,5 +83,10 @@ mod positive {
 
         assert_ne!(problems, []);
         assert_eq!(problems, paths);
+    }
+
+    #[test]
+    fn only_what_is_in_use_or_never_a_candidate_is_kept_for_good() {
+        assert_eq!(fresher_testing::left_out_kinds(&demo()).kept, Vec::<String>::new());
     }
 }

@@ -226,10 +226,15 @@ impl ModuleRun {
         findings.sort_by(|left, right| left.key().cmp(right.key()));
         let mut report = json!({ "outcome": self.outcome, "findings": findings });
         if !self.left_out.is_empty() {
-            let left_out = self
-                .left_out
-                .iter()
-                .map(|item| json!({ "category": item.category, "reason": item.reason, "sizes": item.sizes }));
+            let left_out = self.left_out.iter().map(|item| {
+                json!({
+                    "category": item.category,
+                    "reason": item.reason,
+                    "title": item.title,
+                    "path": item.path,
+                    "sizes": item.sizes,
+                })
+            });
             report["leftOut"] = Value::Array(left_out.collect());
         }
         if !self.insights.is_empty() {
@@ -364,6 +369,13 @@ pub(crate) mod sample {
             self
         }
 
+        /// This module, keeping for good what it leaves out for one of `keys`, which it declares.
+        pub(crate) fn keeping(mut self, keys: &[&str]) -> Self {
+            let keys = keys.iter().map(|key| TextKey::new(*key).unwrap()).collect();
+            self.descriptor = self.descriptor.with_kept(keys).unwrap();
+            self
+        }
+
         /// This module, offering a choice `name` that selects its category.
         pub(crate) fn choosing(mut self, name: &str) -> Self {
             let id = CategoryId::new(self.descriptor.id(), "sample.caches").unwrap();
@@ -422,7 +434,14 @@ pub(crate) mod sample {
             if let Some(reason) = self.left_out {
                 let category = self.left_out_category.unwrap_or_else(|| self.descriptor.categories()[0].id());
                 let sizes = Sizes::complete(ByteSize::new(7), ByteSize::new(7));
-                out.left_out(LeftOutItem { category, reason: TextKey::new(reason).unwrap(), sizes });
+                out.left_out(LeftOutItem {
+                    category,
+                    reason: TextKey::new(reason).unwrap(),
+                    sizes,
+                    path: "/sample/kept".into(),
+                    title: Text::new(TextKey::new("sample.item.title").unwrap())
+                        .with("name", TextArg::Text("x".into())),
+                });
             }
             for insight in &self.insights {
                 out.describe(insight.clone());
@@ -712,6 +731,8 @@ mod tests {
                 serde_json::json!([{
                     "category": "sample.caches",
                     "reason": "sample.left-out.open",
+                    "title": { "key": "sample.item.title", "args": { "name": { "kind": "text", "value": "x" } } },
+                    "path": "/sample/kept",
                     "sizes": { "logical": 7, "allocated": 7, "reclaimable": 7, "completeness": "complete" },
                 }])
             );

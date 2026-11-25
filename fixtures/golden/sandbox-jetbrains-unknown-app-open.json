@@ -8,10 +8,35 @@
     {
       "category": "jetbrains.caches",
       "items": 1,
+      "kind": "for-now",
       "reason": {
         "args": {},
         "key": "jetbrains.left-out.vendor-app-open"
       },
+      "shown": [
+        {
+          "path": "home/Library/Caches/JetBrains/RustRover2024.2",
+          "sizes": {
+            "allocated": 0,
+            "completeness": "complete",
+            "logical": 1048576,
+            "reclaimable": 0
+          },
+          "title": {
+            "args": {
+              "product": {
+                "kind": "text",
+                "value": "RustRover"
+              },
+              "version": {
+                "kind": "text",
+                "value": "2024.2"
+              }
+            },
+            "key": "jetbrains.finding.title"
+          }
+        }
+      ],
       "sizes": {
         "allocated": 0,
         "completeness": "complete",

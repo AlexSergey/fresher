@@ -260,6 +260,8 @@
   "core.largest.withheld.read-in-part": "Fresher could not read all of it, so it cannot tell what it holds.",
   "core.largest.withheld.standard-folder": "A standard folder of your Mac. Open it to choose what is inside.",
   "core.largest.withheld.trash": "What is already in the Trash. Empty it from the Finder.",
+  "core.left-out.kept.one": "{count} item kept ({size}):",
+  "core.left-out.kept.other": "{count} items kept ({size}):",
   "core.left-out.summary.one": "{count} item left out ({size}):",
   "core.left-out.summary.other": "{count} items left out ({size}):",
   "core.module.panicked": "This part of the app stopped on an error. The rest of the scan finished.",

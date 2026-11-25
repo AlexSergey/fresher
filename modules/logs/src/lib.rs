@@ -12,7 +12,7 @@ mod names;
 
 use fresher_core::{
     CategoryDescriptor, CategoryIcon, CategoryId, Claim, DangerLevel, DaySetting, DescriptorError, FindingSink,
-    IdError, Interest, InterestError, KnownFolder, LeftOutItem, Locales, Match, Module, ModuleContext,
+    IdError, Interest, InterestError, KnownFolder, LeftOutItem, LeftOutKind, Locales, Match, Module, ModuleContext,
     ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Pattern, Removal, SettingError, Subject, Text,
     TextArg, TextKey, TextKeyError, Timestamp,
 };
@@ -97,6 +97,11 @@ impl LogsModule {
             .map(|reason| TextKey::new(reason.key()).map(|key| (reason, key)))
             .collect::<Result<Vec<_>, _>>()?;
         let problems = left_out.iter().map(|(_, key)| key.clone()).collect();
+        let kept = left_out
+            .iter()
+            .filter(|(reason, _)| reason.kind() == LeftOutKind::Kept)
+            .map(|(_, key)| key.clone())
+            .collect();
         let descriptor = ModuleDescriptor::new(
             id,
             ModuleGroup::System,
@@ -104,7 +109,8 @@ impl LogsModule {
             settings,
             locales,
         )?
-        .with_problems(problems)?;
+        .with_problems(problems)?
+        .with_kept(kept)?;
         let interests = (1..=MAX_DEPTH)
             .map(|depth| {
                 Interest::new(Pattern::Under(KnownFolder::Logs, vec!["*"; depth].join("/")), Claim::Item, vec![])
@@ -168,16 +174,22 @@ impl Module for LogsModule {
             Place::AppLogs => &self.app_logs,
             Place::CrashReports => &self.crash_reports,
         };
+        let title = || Text::new(self.title.clone()).with("name", TextArg::Text(name.to_string_lossy().into_owned()));
         match decide(&item, &scan) {
             Verdict::NotClaimed => {}
             Verdict::LeftOut(kept) => {
                 if let Some((_, reason)) = self.left_out.iter().find(|(reason, _)| *reason == kept) {
-                    out.left_out(LeftOutItem { category: category.id(), reason: reason.clone(), sizes: matched.sizes });
+                    out.left_out(LeftOutItem {
+                        category: category.id(),
+                        reason: reason.clone(),
+                        sizes: matched.sizes,
+                        path: matched.path.clone(),
+                        title: title(),
+                    });
                 }
             }
             Verdict::Offered { age_days } => {
-                let title =
-                    Text::new(self.title.clone()).with("name", TextArg::Text(name.to_string_lossy().into_owned()));
+                let title = title();
                 let path = matched.path.clone();
                 let finding = NewFinding::new(
                     category,

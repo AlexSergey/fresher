@@ -666,7 +666,7 @@ test.describe('negative cases', () => {
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, GRADLE);
 
-    await expect(details(page)).toContainText(`1 item left out (35 MB): ${dev('left-out.not-yours')}`);
+    await expect(details(page)).toContainText(`1 item kept (35 MB): ${dev('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
     await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('1 item selected');
@@ -768,7 +768,7 @@ test.describe('negative cases', () => {
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, AI_HF_MODELS);
 
-    await expect(details(page)).toContainText(`1 item left out (300 MB): ${ai('left-out.not-yours')}`);
+    await expect(details(page)).toContainText(`1 item kept (300 MB): ${ai('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
     await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
@@ -792,7 +792,7 @@ test.describe('negative cases', () => {
 
     await openDetails(page, UT_NODE);
 
-    await expect(details(page)).toContainText(`1 item left out (110 MB): ${ut('left-out.not-yours')}`);
+    await expect(details(page)).toContainText(`1 item kept (110 MB): ${ut('left-out.not-yours')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
     // A "Look before removing" category has no Select all: its items are ticked one by one.
     await expect(page.getByRole('checkbox', { name: /^Select all \d+$/ })).toHaveCount(0);
@@ -922,7 +922,7 @@ test.describe('negative cases', () => {
 
     await openDetails(page, XC_DEVICE_SUPPORT);
 
-    await expect(details(page)).toContainText(`1 item left out (300 MB): ${xc('left-out.special')}`);
+    await expect(details(page)).toContainText(`1 item kept (300 MB): ${xc('left-out.special')}`);
     await expect(page.getByRole('checkbox', { name: /left out/ })).toHaveCount(0);
     await page.getByRole('checkbox', { name: /^Select all \d+$/ }).check();
     await expect(selectionBar(page)).toContainText('2 items selected');
@@ -1883,11 +1883,21 @@ test.describe('positive cases', () => {
   test('the items left out are lines under their category, with their reason', async ({ page }) => {
     await openJetbrains(page);
 
+    // The version in use is kept for good: nothing of it is on the Scan screen.
+    await expect(page.getByText(jb('left-out.current'))).toHaveCount(0);
     await openDetails(page, JB.caches);
-    await expect(details(page)).toContainText(`3 items left out (1.4 GB): ${jb('left-out.current')}`);
+    await expect(details(page)).toContainText(`3 items kept (1.4 GB): ${jb('left-out.current')}`);
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, JB.settings);
     await expect(details(page)).toContainText(`2 items left out (600 MB): ${jb('left-out.running')}`);
+    // Each folder of the open IDE is listed by its name, its path from the home and its size.
+    const held = details(page).getByRole('list', { name: 'The items left out' });
+    await expect(held.getByRole('listitem')).toHaveCount(2);
+    await expect(held.getByRole('listitem').first()).toContainText('GoLand 2024.2');
+    await expect(held.getByRole('listitem').first()).toContainText(
+      '/Users/someone/Library/Application Support/JetBrains/GoLand2024.2',
+    );
+    await expect(held.getByRole('listitem').first()).toContainText('400 MB');
   });
 
   test('the data of an IDE that is no longer installed is its own Medium category with the findings named', async ({
@@ -1994,8 +2004,8 @@ test.describe('positive cases', () => {
 
     const category = details(page);
     await expect(category).toContainText(`4,712 items left out (790 MB): ${tmp('left-out.recent')}`);
-    await expect(category).toContainText(`3 items left out (12 MB): ${tmp('left-out.system')}`);
-    await expect(category).toContainText(`1 item left out (0 bytes): ${tmp('left-out.special')}`);
+    await expect(category).toContainText(`3 items kept (12 MB): ${tmp('left-out.system')}`);
+    await expect(category).toContainText(`1 item kept (0 bytes): ${tmp('left-out.special')}`);
   });
 
   test('the temporary findings go from the review to the Trash, and the cleanup is put back from the Cleanups', async ({

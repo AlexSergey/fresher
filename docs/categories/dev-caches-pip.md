@@ -32,8 +32,8 @@ applies:
 | 1 | the found item is not a folder (a file, a link, a socket, a pipe)                    | not claimed                                  |
 | 2 | the tool's sign is missing (above)                                                   | not claimed                                  |
 | 3 | the folder could not be read in full                                                 | not claimed                                  |
-| 4 | a socket, a pipe or a device inside                                                  | left out: a running program may be using it  |
-| 5 | not yours, locked by the system, restricted or locked by you, or something inside is | left out: removing it needs an administrator |
+| 4 | a socket, a pipe or a device inside                                                  | kept for good: a running program may be using it  |
+| 5 | not yours, locked by the system, restricted or locked by you, or something inside is | kept for good: removing it needs an administrator |
 | 6 | otherwise                                                                            | **offered**                                  |
 
 A folder that is not claimed is not shown and nothing is said about it. Times are not read: a cache is offered whatever

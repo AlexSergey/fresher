@@ -263,15 +263,15 @@ test.describe('positive cases', () => {
       ['jetbrains', 'Old JetBrains IDE settings', '2 items left out (600 MB)'],
       ['temp', 'Old temporary files', '4,712 items left out (790 MB)'],
       ['logs', 'Old app logs', '1 item left out (3 MB)'],
-      ['devCachesXcodeOpen', "Gradle's caches", '1 item left out (35 MB)'],
+      ['devCachesXcodeOpen', "Gradle's caches", '1 item kept (35 MB)'],
       ['appCaches', 'App caches', '1 item left out (90 MB)'],
       ['appCachesBrowsers', 'Browser caches', '1 item left out (30 MB)'],
       ['appCachesBrowsers', 'Web-based app caches', 'Redis Insight: GPUCache'],
       ['appLeftovers', 'Caches of removed apps', '1 item left out (220 MB)'],
       ['downloads', 'Unfinished downloads', '1 item left out (48 MB)'],
       ['staleProjects', 'Packages of old projects', '2 items left out (1.3 GB)'],
-      ['localAiModels', 'Hugging Face models', '1 item left out (300 MB)'],
-      ['unusedToolchains', 'Unused Node versions', '1 item left out (110 MB)'],
+      ['localAiModels', 'Hugging Face models', '1 item kept (300 MB)'],
+      ['unusedToolchains', 'Unused Node versions', '1 item kept (110 MB)'],
     ] as const) {
       test(`the details of ${category}, with its left-out lines`, async ({ page }) => {
         await detailsAfter(page, SCRIPTS[script], category);
@@ -322,6 +322,9 @@ test.describe('positive cases', () => {
       await scanFinished(page);
       const leftOut = page.getByRole('region', { name: 'Found, but left out' });
       await expect(leftOut).toContainText('2 items left out (4.3 GB)');
+      // Each item held back is listed by its name and its path (cut in the middle, whole for assistive technology).
+      await expect(leftOut).toContainText('Weather');
+      await expect(leftOut).toContainText('/Users/someone/Library/Developer/Xcode/DerivedData/Weather-abcdefghijklmn');
       // The totals have arrived: Gradle's caches are a card, not a left-out row.
       await expect(page.locator('[data-card]').filter({ hasText: "Gradle's caches" })).toBeVisible();
       await expect(leftOut).not.toContainText("Gradle's caches");

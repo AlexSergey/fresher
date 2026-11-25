@@ -1,7 +1,7 @@
 //! What becomes of each first-level entry of Downloads: the tables of the design's section 3.4, row by row, on plain
 //! values. Nothing here reads the disk or asks the system.
 
-use fresher_core::{BundleId, ByteSize, InstalledApp, Receipt, RunningApp, SystemVersion, Timestamp};
+use fresher_core::{BundleId, ByteSize, InstalledApp, LeftOutKind, Receipt, RunningApp, SystemVersion, Timestamp};
 
 use crate::gathered::Entry;
 use crate::name::{Named, Version};
@@ -67,6 +67,17 @@ impl Reason {
             Self::ScanAgain => "downloads.left-out.scan-again",
             Self::Special => "downloads.left-out.special",
             Self::NotYours => "downloads.left-out.not-yours",
+        }
+    }
+
+    /// Whether the file is kept for what it is (the installer of a newer macOS, a socket, not the user's) or for what
+    /// goes on now (a browser is open, it changed lately, a list or the file could not be read, an app not updated).
+    pub(crate) const fn kind(self) -> LeftOutKind {
+        match self {
+            Self::NewerMacos | Self::Special | Self::NotYours => LeftOutKind::Kept,
+            Self::NoSystem | Self::AppsUnread | Self::BrowserOpen | Self::Recent | Self::NotOlder | Self::ScanAgain => {
+                LeftOutKind::ForNow
+            }
         }
     }
 }

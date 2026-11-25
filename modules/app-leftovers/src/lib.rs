@@ -18,7 +18,7 @@ mod places;
 
 use fresher_core::{
     BundleId, CategoryDescriptor, CategoryIcon, CategoryId, DaySetting, DescriptorError, EntryKind, FindingSink,
-    IdError, Interest, InterestError, LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext,
+    IdError, Interest, InterestError, LeftOutItem, LeftOutKind, Locales, Match, Module, ModuleChoice, ModuleContext,
     ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Removal, SettingError, Subject, Text, TextArg,
     TextKey, TextKeyError, Timestamp,
 };
@@ -62,6 +62,11 @@ pub enum AppLeftoversError {
 struct RowTexts {
     category: CategoryDescriptor,
     title: TextKey,
+}
+
+/// The title of a leftover of the app `id` in a row of `texts`, offered or left out.
+fn title(texts: &RowTexts, id: &BundleId) -> Text {
+    Text::new(texts.title.clone()).with("id", TextArg::Text(id.as_str().to_owned()))
 }
 
 /// The `app-leftovers` module.
@@ -127,6 +132,13 @@ impl AppLeftoversModule {
             .collect::<Result<Vec<_>, _>>()?;
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::Apps, categories, settings, locales)?
             .with_problems(left_out.iter().map(|(_, key)| key.clone()).collect())?
+            .with_kept(
+                left_out
+                    .iter()
+                    .filter(|(reason, _)| reason.kind() == LeftOutKind::Kept)
+                    .map(|(_, key)| key.clone())
+                    .collect(),
+            )?
             .with_choices(choices)?;
         let interests = places.interests()?;
         Ok(Self {
@@ -159,7 +171,13 @@ impl AppLeftoversModule {
         let Some(key) = self.key_of(reason) else { return };
         for leftover in leftovers {
             let Some(texts) = self.rows.get(leftover.row) else { continue };
-            out.left_out(LeftOutItem { category: texts.category.id(), reason: key.clone(), sizes: leftover.sizes });
+            out.left_out(LeftOutItem {
+                category: texts.category.id(),
+                reason: key.clone(),
+                sizes: leftover.sizes,
+                path: leftover.path.clone(),
+                title: title(texts, &leftover.id),
+            });
         }
     }
 
@@ -167,7 +185,7 @@ impl AppLeftoversModule {
     fn finding(&self, id: &BundleId, leftover: &Leftover, days: u32) -> Option<NewFinding> {
         let (row, texts) = (self.places.row(leftover.row)?, self.rows.get(leftover.row)?);
         let name = leftover.path.file_name()?.to_string_lossy();
-        let title = Text::new(texts.title.clone()).with("id", TextArg::Text(id.as_str().to_owned()));
+        let title = title(texts, id);
         let reason = Text::new(self.reason.clone()).with("days", TextArg::Count(u64::from(days)));
         let identity = format!("{}/{name}", row.id);
         let subject = Subject::Path(leftover.path.clone());

@@ -264,11 +264,17 @@ mod tests {
         volume_notes().purgeable_note()
     }
 
-    /// The line over a category's left-outs, both plural forms, with the args the UI passes to `core.left-out.summary`:
-    /// its translator picks the form by `count`.
-    fn left_out_summaries() -> [Text; 2] {
+    /// The lines over a category's left-outs, held back for now and kept for good, both plural forms, with the args
+    /// the UI passes to `core.left-out.summary` and `core.left-out.kept`: its translator picks the form by `count`.
+    fn left_out_summaries() -> [Text; 4] {
         let size = ByteSize::new(1024);
-        [("core.left-out.summary.one", 1), ("core.left-out.summary.other", 2)].map(|(form, count)| {
+        [
+            ("core.left-out.summary.one", 1),
+            ("core.left-out.summary.other", 2),
+            ("core.left-out.kept.one", 1),
+            ("core.left-out.kept.other", 2),
+        ]
+        .map(|(form, count)| {
             Text::new(TextKey::new(form).unwrap())
                 .with("count", TextArg::Count(count))
                 .with("size", TextArg::Size(size))

@@ -22,7 +22,7 @@ again.
 ## How the app decides
 
 The module `downloads`. A restored scan or a folder not read in full is left out (scan again); a macOS version that
-cannot be read, left out; the running macOS older than the installer's version, left out (it is for a newer macOS);
-a socket, pipe or device inside, or something not yours or locked, left out; otherwise **offered**. A name not in the
+cannot be read, left out; the running macOS older than the installer's version, kept for good (it is for a newer macOS);
+a socket, pipe or device inside, or something not yours or locked, kept for good; otherwise **offered**. A name not in the
 table is not claimed. `Install macOS ….app` in `/Applications` is never looked at. Nothing in Downloads is read unless
 you turn on its switch in Settings or grant Full Disk Access. The folders go to the Trash.

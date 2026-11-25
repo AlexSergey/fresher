@@ -158,10 +158,13 @@ impl Report {
         let descriptor = self.categories.get(item.category);
         match verdict {
             Verdict::NotClaimed => {}
-            Verdict::LeftOut(reason) => {
-                let reason = self.left_out.get(reason).clone();
-                out.left_out(LeftOutItem { category: descriptor.id(), reason, sizes: item.sizes });
-            }
+            Verdict::LeftOut(reason) => out.left_out(LeftOutItem {
+                category: descriptor.id(),
+                reason: self.left_out.get(reason).clone(),
+                sizes: item.sizes,
+                path: item.path.to_path_buf(),
+                title: self.title(item, place),
+            }),
             Verdict::Offered => {
                 let Some(reason) = self.reason(item) else { return };
                 out.push(self.finding(descriptor, item, place, reason));
@@ -186,13 +189,18 @@ impl Report {
     fn finding(&self, descriptor: &CategoryDescriptor, item: &Item<'_>, place: Where<'_>, reason: Text) -> NewFinding {
         let relative = item.path.strip_prefix(place.home).unwrap_or(item.path);
         let identity = format!("{}/{}", item.category.name(), relative.to_string_lossy());
-        let project = place.outermost.file_name().map_or_else(|| place.outermost.as_os_str(), |name| name);
-        let folder = item.path.strip_prefix(place.outermost).unwrap_or(item.path);
-        let title = Text::new(self.title.clone())
-            .with("project", TextArg::Text(project.to_string_lossy().into_owned()))
-            .with("folder", TextArg::Text(folder.to_string_lossy().into_owned()));
+        let title = self.title(item, place);
         let (subject, removal) =
             (Subject::Path(item.path.to_path_buf()), Removal::MoveToTrash(item.path.to_path_buf()));
         NewFinding::new(descriptor, identity, subject, item.sizes, title, reason, removal)
+    }
+
+    /// The title of `item`, offered or left out: its outermost project's name and its folder in that project.
+    fn title(&self, item: &Item<'_>, place: Where<'_>) -> Text {
+        let project = place.outermost.file_name().map_or_else(|| place.outermost.as_os_str(), |name| name);
+        let folder = item.path.strip_prefix(place.outermost).unwrap_or(item.path);
+        Text::new(self.title.clone())
+            .with("project", TextArg::Text(project.to_string_lossy().into_owned()))
+            .with("folder", TextArg::Text(folder.to_string_lossy().into_owned()))
     }
 }

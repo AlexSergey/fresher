@@ -23,9 +23,9 @@ mod uninstalled;
 
 use fresher_core::{
     CategoryDescriptor, CategoryIcon, CategoryId, DangerLevel, DaySetting, DescriptorError, EntryKind, FindingSink,
-    IdError, Interest, InterestError, LeftOutItem, Locales, Match, Module, ModuleContext, ModuleDescriptor,
-    ModuleError, ModuleGroup, ModuleId, NewFinding, Removal, RunningSet, SettingError, Subject, Text, TextArg, TextKey,
-    TextKeyError, Timestamp,
+    IdError, Interest, InterestError, LeftOutItem, LeftOutKind, Locales, Match, Module, ModuleContext,
+    ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, NewFinding, Removal, RunningSet, SettingError, Subject, Text,
+    TextArg, TextKey, TextKeyError, Timestamp,
 };
 
 use crate::decide::{Reason, Verdict, decide};
@@ -89,24 +89,18 @@ impl LeftOutKeys {
         }
     }
 
+    /// The keys of the reasons that keep a folder for good: it is in use, or an installed app may use it.
+    fn kept(&self) -> Vec<TextKey> {
+        Reason::ALL
+            .into_iter()
+            .filter(|reason| reason.kind() == LeftOutKind::Kept)
+            .map(|reason| self.of(reason).clone())
+            .collect()
+    }
+
     /// Every key, in the order the module declares them.
     fn all(&self) -> Vec<TextKey> {
-        [
-            &self.current,
-            &self.newer,
-            &self.running,
-            &self.unknown_version,
-            &self.no_system,
-            &self.used_recently,
-            &self.unknown_ide,
-            &self.installed_elsewhere,
-            &self.vendor_app_open,
-            &self.apps_unread,
-            &self.spotlight_unread,
-        ]
-        .into_iter()
-        .cloned()
-        .collect()
+        Reason::ALL.into_iter().map(|reason| self.of(reason).clone()).collect()
     }
 }
 
@@ -191,7 +185,8 @@ impl JetBrainsModule {
         let left_out = LeftOutKeys::new()?;
         let settings = vec![UNINSTALLED_AFTER.descriptor(id)?];
         let descriptor = ModuleDescriptor::new(id, ModuleGroup::Development, listed, settings, locales)?
-            .with_problems(left_out.all())?;
+            .with_problems(left_out.all())?
+            .with_kept(left_out.kept())?;
         let interests = PLACES.into_iter().map(Place::interest).collect::<Result<_, _>>()?;
         Ok(Self {
             descriptor,
@@ -240,7 +235,16 @@ impl JetBrainsModule {
         if let Some(reason) = kept {
             let reason = self.left_out.of(reason);
             for folder in folders {
-                let item = LeftOutItem { category: self.uninstalled.id(), reason: reason.clone(), sizes: folder.sizes };
+                let title = Text::new(self.uninstalled_title.of(folder.place).clone())
+                    .with("product", TextArg::Text(product.name().into()))
+                    .with("version", TextArg::Text(folder.version.to_string()));
+                let item = LeftOutItem {
+                    category: self.uninstalled.id(),
+                    reason: reason.clone(),
+                    sizes: folder.sizes,
+                    path: folder.path,
+                    title,
+                };
                 out.left_out(item);
             }
             return;
@@ -291,12 +295,12 @@ impl Module for JetBrainsModule {
         let installed = system
             .installed_apps_complete()
             .map_err(|_| if system.installed_apps().is_ok() { Reason::AppsUnread } else { Reason::NoSystem });
+        let args = |text: Text| {
+            text.with("product", TextArg::Text(product.name().into()))
+                .with("version", TextArg::Text(version.to_string()))
+        };
         match decide(&self.products, product, version, installed, running) {
             Verdict::Offer { current, app } => {
-                let args = |text: Text| {
-                    text.with("product", TextArg::Text(product.name().into()))
-                        .with("version", TextArg::Text(version.to_string()))
-                };
                 let title = args(Text::new(self.title.clone()));
                 let reason = args(Text::new(self.reason.clone())).with("current", TextArg::Text(current.to_string()));
                 let identity = format!("{}/{}", place.identity(), name.to_string_lossy());
@@ -307,9 +311,18 @@ impl Module for JetBrainsModule {
                 out.push(finding.for_app(app));
             }
             Verdict::LeftOut(reason) => {
-                let category = if reason.of_removed_ide() { &self.uninstalled } else { category };
-                let reason = self.left_out.of(reason).clone();
-                out.left_out(LeftOutItem { category: category.id(), reason, sizes: matched.sizes });
+                let (category, title) = if reason.of_removed_ide() {
+                    (&self.uninstalled, self.uninstalled_title.of(place))
+                } else {
+                    (category, &self.title)
+                };
+                out.left_out(LeftOutItem {
+                    category: category.id(),
+                    reason: self.left_out.of(reason).clone(),
+                    sizes: matched.sizes,
+                    path: matched.path.clone(),
+                    title: args(Text::new(title.clone())),
+                });
             }
             Verdict::Uninstalled => {
                 let waiting = Waiting {

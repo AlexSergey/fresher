@@ -6,7 +6,7 @@ use std::path::Path;
 
 use fresher_core::{BundleId, ByteSize, EntryFacts, EntryKind, Inside, InstalledApp, RunningApp, RunningSet, Sizes};
 
-use crate::decide::{Naming, NoSystem, Verdict, decide};
+use crate::decide::{Naming, NoSystem, Reason, Verdict, decide};
 use crate::exclude::Exclude;
 use crate::gathered::{Candidate, Source};
 
@@ -78,6 +78,14 @@ fn table_verdict<'a>(
     decided(candidate, Naming::Table(&BundleId::new(id).unwrap()), apps, open)
 }
 
+/// The reason of a verdict that keeps the folder, its owner aside; `None` for any other verdict.
+fn left_out((verdict, asked): (Verdict<'_>, usize)) -> (Option<Reason>, usize) {
+    match verdict {
+        Verdict::LeftOut(reason, _) => (Some(reason), asked),
+        Verdict::NotClaimed | Verdict::Offered(_) => (None, asked),
+    }
+}
+
 fn decided<'a>(
     candidate: &Candidate,
     naming: Naming<'_>,
@@ -95,7 +103,9 @@ fn decided<'a>(
 mod negative {
     use fresher_core::{EntryFacts, EntryKind, Inside, Sizes};
 
-    use super::{CHROME, CHROME_HELPER, EDITOR, HELPER, folder, installed, running, table, table_verdict, verdict};
+    use super::{
+        CHROME, CHROME_HELPER, EDITOR, HELPER, folder, installed, left_out, running, table, table_verdict, verdict,
+    };
     use crate::decide::{NoSystem, Reason, Verdict};
     use crate::gathered::Candidate;
 
@@ -167,7 +177,7 @@ mod negative {
         let inside = Some(Inside { special: true, foreign: true, ..Inside::EMPTY });
         let found = Candidate { inside, ..folder(EDITOR) };
 
-        assert_eq!(verdict(&found, Ok(&apps), Ok(&none)), (Verdict::LeftOut(Reason::Special), 0));
+        assert_eq!(left_out(verdict(&found, Ok(&apps), Ok(&none))), (Some(Reason::Special), 0));
     }
 
     #[test]
@@ -180,17 +190,17 @@ mod negative {
         for facts in [theirs, flagged, restricted, locked] {
             let found = Candidate { facts, ..folder(EDITOR) };
 
-            assert_eq!(verdict(&found, Ok(&apps), Ok(&none)), (Verdict::LeftOut(Reason::NotYours), 0), "{facts:?}");
+            assert_eq!(left_out(verdict(&found, Ok(&apps), Ok(&none))), (Some(Reason::NotYours), 0), "{facts:?}");
         }
         let foreign = Candidate { inside: Some(Inside { foreign: true, ..Inside::EMPTY }), ..folder(EDITOR) };
-        assert_eq!(verdict(&foreign, Ok(&apps), Ok(&none)), (Verdict::LeftOut(Reason::NotYours), 0));
+        assert_eq!(left_out(verdict(&foreign, Ok(&apps), Ok(&none))), (Some(Reason::NotYours), 0));
     }
 
     #[test]
     fn it_is_kept_when_the_running_apps_cannot_be_listed() {
         let apps = installed();
 
-        assert_eq!(verdict(&folder(EDITOR), Ok(&apps), Err(NoSystem)), (Verdict::LeftOut(Reason::NoSystem), 1));
+        assert_eq!(left_out(verdict(&folder(EDITOR), Ok(&apps), Err(NoSystem))), (Some(Reason::NoSystem), 1));
     }
 
     #[test]
@@ -198,7 +208,7 @@ mod negative {
         let apps = installed();
         let open = running(&[("Mail", &["com.example.Mail"]), ("Editor", &[EDITOR])]);
         for name in [EDITOR, HELPER, "com.example.Editor.Cache"] {
-            assert_eq!(verdict(&folder(name), Ok(&apps), Ok(&open)), (Verdict::LeftOut(Reason::AppOpen), 1), "{name}");
+            assert_eq!(left_out(verdict(&folder(name), Ok(&apps), Ok(&open))), (Some(Reason::AppOpen), 1), "{name}");
         }
     }
 
@@ -207,7 +217,7 @@ mod negative {
         let apps = installed();
         let helper = running(&[("Editor Helper", &[HELPER])]);
 
-        assert_eq!(verdict(&folder(EDITOR), Ok(&apps), Ok(&helper)), (Verdict::LeftOut(Reason::AppOpen), 1));
+        assert_eq!(left_out(verdict(&folder(EDITOR), Ok(&apps), Ok(&helper))), (Some(Reason::AppOpen), 1));
     }
 
     #[test]
@@ -217,7 +227,7 @@ mod negative {
 
         let found = verdict(&folder("com.example.Editor.Cache"), Ok(&apps), Ok(&unlisted));
 
-        assert_eq!(found, (Verdict::LeftOut(Reason::AppOpen), 1));
+        assert_eq!(left_out(found), (Some(Reason::AppOpen), 1));
     }
 
     #[test]
@@ -274,7 +284,7 @@ mod negative {
         let (apps, none) = (installed(), running(&[]));
         let found = Candidate { inside: Some(Inside { special: true, ..Inside::EMPTY }), ..table("Cache") };
 
-        assert_eq!(table_verdict(&found, CHROME, Ok(&apps), Ok(&none)), (Verdict::LeftOut(Reason::Special), 0));
+        assert_eq!(left_out(table_verdict(&found, CHROME, Ok(&apps), Ok(&none))), (Some(Reason::Special), 0));
     }
 
     #[test]
@@ -286,8 +296,8 @@ mod negative {
             Candidate { facts: EntryFacts { user_immutable: true, ..EntryFacts::REMOVABLE }, ..table("Cache") };
         let foreign = Candidate { inside: Some(Inside { foreign: true, ..Inside::EMPTY }), ..table("Cache") };
         for found in [theirs, locked, foreign] {
-            let kept = (Verdict::LeftOut(Reason::NotYours), 0);
-            assert_eq!(table_verdict(&found, CHROME, Ok(&apps), Ok(&none)), kept, "{found:?}");
+            let kept = (Some(Reason::NotYours), 0);
+            assert_eq!(left_out(table_verdict(&found, CHROME, Ok(&apps), Ok(&none))), kept, "{found:?}");
         }
     }
 
@@ -297,7 +307,7 @@ mod negative {
 
         let found = table_verdict(&table("Cache"), CHROME, Ok(&apps), Err(NoSystem));
 
-        assert_eq!(found, (Verdict::LeftOut(Reason::NoSystem), 1));
+        assert_eq!(left_out(found), (Some(Reason::NoSystem), 1));
     }
 
     #[test]
@@ -307,7 +317,7 @@ mod negative {
         for name in ["Cache", "Code Cache"] {
             let found = table_verdict(&table(name), CHROME, Ok(&apps), Ok(&open));
 
-            assert_eq!(found, (Verdict::LeftOut(Reason::AppOpen), 1), "{name}");
+            assert_eq!(left_out(found), (Some(Reason::AppOpen), 1), "{name}");
         }
     }
 
@@ -318,7 +328,7 @@ mod negative {
 
         let found = table_verdict(&table("Cache"), CHROME, Ok(&apps), Ok(&helper));
 
-        assert_eq!(found, (Verdict::LeftOut(Reason::AppOpen), 1));
+        assert_eq!(left_out(found), (Some(Reason::AppOpen), 1));
     }
 }
 
@@ -463,7 +473,7 @@ mod property {
 
             let (decided, asked) = verdict(&found, apps, open);
 
-            let stopped = matches!(decided, Verdict::NotClaimed | Verdict::LeftOut(Reason::Special | Reason::NotYours));
+            let stopped = matches!(decided, Verdict::NotClaimed | Verdict::LeftOut(Reason::Special | Reason::NotYours, _));
             prop_assert_eq!(asked, usize::from(!stopped));
         }
 
@@ -478,7 +488,7 @@ mod property {
 
             let (decided, asked) = table_verdict(&found, id, apps, open);
 
-            let stopped = matches!(decided, Verdict::NotClaimed | Verdict::LeftOut(Reason::Special | Reason::NotYours));
+            let stopped = matches!(decided, Verdict::NotClaimed | Verdict::LeftOut(Reason::Special | Reason::NotYours, _));
             prop_assert_eq!(asked, usize::from(!stopped));
         }
     }

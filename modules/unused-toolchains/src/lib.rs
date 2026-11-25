@@ -93,7 +93,8 @@ impl UnusedToolchainsModule {
             vec![settings::node_versions_setting(id)?],
             locales,
         )?
-        .with_problems(report.problems())?;
+        .with_problems(report.problems())?
+        .with_kept(report.kept())?;
         let toolchains = Toolchains::shipped()?;
         let interests = toolchains.interests()?;
         Ok(Self { descriptor, toolchains, interests, report, gathered: Gathered::default() })

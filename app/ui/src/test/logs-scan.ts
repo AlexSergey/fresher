@@ -14,6 +14,7 @@ import coreTexts from '../../../../crates/core/locales/en.json' with { type: 'js
 import logsTexts from '../../../../modules/logs/locales/en.json' with { type: 'json' };
 import { FULL_COVERAGE, readyCategory, SCRIPTS_DICTIONARY } from './demo-scan';
 import { FINDING_DICTIONARY } from './finding-fixtures';
+import { forNowCount, leftOutEntry } from './left-out';
 
 // A scan of the logs module as the core streams it: old logs in the user's Logs folder, an old crash report, and one
 // recent log left out. The texts are the module's own and the core's, read from their locale files. Shared by the
@@ -110,12 +111,9 @@ export const LOGS_MODULES: readonly ModuleInfo[] = [
 
 // What the module recognised and left out: one log written within the last week.
 export const LOGS_LEFT_OUT: readonly LeftOutCount[] = [
-  {
-    category: 'logs.app-logs',
-    items: 1,
-    reason: { args: {}, key: 'logs.left-out.recent' },
-    sizes: sized(3 * MB),
-  },
+  forNowCount('logs.app-logs', 'logs.left-out.recent', sized(3 * MB), [
+    leftOutEntry({ args: { name: text('writer.log') }, key: 'logs.title' }, `${LOGS}/Writer/writer.log`, sized(3 * MB)),
+  ]),
 ];
 
 export const LOGS_SCAN: readonly Event[] = [

@@ -80,6 +80,11 @@ impl<'a> Entries<'a> {
         self.store.is_some_and(|found| OLLAMA_LAYOUT.iter().all(|name| found.holds.iter().any(|held| held == name)))
     }
 
+    /// The store folder, when it was matched.
+    pub(crate) fn store_path(&self) -> Option<&'a Path> {
+        self.store.map(|store| store.path.as_path())
+    }
+
     /// The manifests to read, in name order: each tag and the match of its file.
     pub(crate) fn manifests(&self) -> &[(OllamaTag, &'a Candidate)] {
         &self.manifests

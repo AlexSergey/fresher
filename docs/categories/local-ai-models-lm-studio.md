@@ -31,8 +31,8 @@ first answer that applies:
 | 2   | its name does not fit the store's layout (a publisher and a model, neither starting with a dot) | not claimed                                     |
 | 3   | the tool's sign is missing (above)                                                     | not claimed                                     |
 | 4   | the folder could not be read in full, or no time of it is known                        | not claimed                                     |
-| 5   | a socket, a pipe or a device inside                                                    | left out: a running program may be using it     |
-| 6   | not yours, locked by the system, restricted or locked by you, or something inside is   | left out: removing it needs an administrator    |
+| 5   | a socket, a pipe or a device inside                                                    | kept for good: a running program may be using it     |
+| 6   | not yours, locked by the system, restricted or locked by you, or something inside is   | kept for good: removing it needs an administrator    |
 | 7   | the open apps could not be listed; LM Studio's store names its app | left out: the app list is unknown               |
 | 8   | LM Studio is open (its bundle id is among the running apps) | left out: the app may be using it               |
 | 9   | otherwise                                                                              | **offered**                                     |
