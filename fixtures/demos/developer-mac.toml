@@ -22,6 +22,8 @@ feature = "developer-mac"
 
 [demo]
 now = 1795000000
+# The recordings show the app, not the agreement's sheet: the world starts with it accepted at `now`.
+agreement = "accepted"
 sizes = "as-declared"
 shows = [
   "dev-caches.xcode-derived-data",

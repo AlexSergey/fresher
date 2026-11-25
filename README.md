@@ -154,8 +154,8 @@ need. It can also remove an app you choose, after showing you what goes with it.
 
 The first release does not offer the kinds marked High: only what comes back, or what you can check by eye.
 
-<!--video: assets/demo/cleanup.gif, folded under "See a cleanup, from the scan to putting it back", width 800, alt
-"Fresher moves Xcode build data to the Trash after a confirmation, then puts it back from the Cleanups screen"-->
+<!--video: assets/demo/cleanup.gif, folded under "See a cleanup, from the scan to the space it freed", width 800,
+alt "Fresher moves Xcode build data to the Trash after a confirmation and shows how much space it freed"-->
 
 ## What it does not do
 

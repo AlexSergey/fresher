@@ -1,9 +1,8 @@
-# A cleanup, start to finish: scan, tick the largest Safe category, review it (its tile, ticked whole), press Review's
-# "Move to the Trash", accept the agreement (as a user would, the first time), confirm the confirmation's "Yes, move to
-# the Trash" (never the permanent choice), read the result, open Cleanups and its cleanup, put everything back. Screens:
-# Scan, Review, the agreement sheet, the confirm dialog, the cleanup's result, Cleanups, one cleanup. About 10 s of
-# pauses.
-# The scenario's wait ends at the result; putting back has no state a target can name, so a pause covers it.
+# A cleanup, from the scan to the space it freed: scan, tick the largest Safe category, review it (its tile, ticked
+# whole), press Review's "Move to the Trash", confirm the confirmation's "Yes, move to the Trash" (never the permanent
+# choice), and rest on the result that says how much was freed. Screens: Scan, Review, the confirm dialog, the
+# cleanup's result. The world starts with the agreement accepted (`agreement = "accepted"` in its `[demo]`), so no
+# sheet comes between; the user's wish (2026-11-25): skip the sheet and end on the result. About 7 s of pauses.
 world = "developer-mac"
 window = { width = 1100, height = 720 }
 
@@ -28,24 +27,8 @@ click = { role = "button", name = "Move to the Trash" }
 [[step]]
 pause = 1200
 [[step]]
-click = { role = "button", name = "I understand" }
-[[step]]
-pause = 800
-[[step]]
 click = { role = "button", name = "Yes, move to the Trash" }
 [[step]]
 wait = "cleanup-finished"
 [[step]]
-pause = 1500
-[[step]]
-click = { role = "button", name = "Cleanups" }
-[[step]]
-pause = 800
-[[step]]
-click = { role = "button", name-start = "Cleanup of" }
-[[step]]
-pause = 800
-[[step]]
-click = { role = "button", name = "Put back all still in the Trash" }
-[[step]]
-pause = 1500
+pause = 2500

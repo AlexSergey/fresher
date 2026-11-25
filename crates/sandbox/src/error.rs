@@ -198,6 +198,12 @@ pub enum CaseError {
     /// A `[settings]` value that is not a bool, an integer or a string.
     #[error("the setting `{key}` must be a bool, an integer or a string")]
     SettingValue { key: String },
+    /// A `[settings]` key of the agreement: a sandbox starts with the agreement asked, so a cleanup in it shows the sheet
+    /// as a new user's first cleanup does. Only a demo world's `agreement = "accepted"` writes the acceptance.
+    #[error(
+        "the setting `{key}` is the agreement's: a sandbox starts with it asked (a demo world may say `agreement`)"
+    )]
+    AgreementSetting { key: String },
     /// Two case files set one setting to different values: a sandbox has one value.
     #[error("the setting `{key}` is set to different values by two case files; a sandbox has one")]
     SettingTwice { key: String },

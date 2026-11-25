@@ -79,3 +79,7 @@ Deviations:
   1500 ms pause follows it instead of a wait.
 - The overview heading is matched whole: a card's title carries no size.
 
+**Changed on 2026-11-25 at the user's request** ("skip I understand with a flag for the recording; end on the screen
+where we moved to the Trash and see how much was freed, without going to Cleanups"): the demo world says
+`agreement = "accepted"` in its `[demo]`, so the agreement's sheet never shows in a recording, and the `cleanup`
+scenario ends on the cleanup's result after a 2.5 s pause; the Cleanups and put back steps are gone.

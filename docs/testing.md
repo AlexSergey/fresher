@@ -771,7 +771,9 @@ the cleanup; every positive must be offered at its `item`, in its `category`, wi
 asserted for every case file before the harness accepts it, as a user would: a fresh sandbox's data folder holds no
 acceptance, and the file's first prepare (the cleanup of its positives, or, for a file whose only positives are
 uninstalls, its first uninstall) must be refused for the agreement with no plan left pending; a file with no positive
-prepares nothing and never meets it. A case file whose `[settings]` already accept the agreement fails. After the scan
+prepares nothing and never meets it. A case file whose `[settings]` name a key of the agreement
+(`core.agreement.version`, `core.agreement.accepted-at`) is refused when it is parsed, and the run also fails a sandbox
+that starts accepted. After the scan
 and before the cleanup, the storage map is read: the sandbox sits on a fake volume of 1 GiB with the tree's size plus
 64 MiB used and 256 MiB free, so every part is the same on every Mac; the parts add up to the capacity, the by-meaning
 groups and the by-place roots (with the parts that are no file of the scan) to the same total, and every `[case.map]`
@@ -988,7 +990,9 @@ states an **allocated** size equal to its declared size, so gigabytes show as gi
 ids the world must offer (at least one, each a valid id, no duplicate). `[demo.volume]` (`name`, `capacity`, `used`,
 `free` and the optional `macos`, the size of macOS's own system volume; `used + free + macos` at most `capacity`, the
 rest being the disk's own space) states the disk the ring and the storage map show, in `world.toml`'s `[volume]`;
-two demo files stating different volumes are refused. A demo world shows a Mac whose scan saw everything: its
+two demo files stating different volumes are refused. `agreement` is `"asked"` (the default: the first cleanup shows
+the agreement's sheet) or `"accepted"`: the generator writes the acceptance at `now` into the settings file, so a
+recording of a cleanup goes straight to the confirmation; it is the only way a sandbox starts accepted. A demo world shows a Mac whose scan saw everything: its
 `[settings]` turn on the switch (`core.access.<folder>`) of every guarded folder it states granted, and it puts no file
 under a folder only Full Disk Access opens (`Pictures`, `Movies`, `Music`), which a sandbox cannot state. A demo file has only cases of a third kind, `kind = "scenery"`:
 part of the picture, never checked by the autotest. A scenery case has no `expect`, `map`, `left-out` or `insight`

@@ -486,6 +486,9 @@ fn check_settings(settings: &BTreeMap<String, toml::Value>) -> Result<(), CaseEr
         if SettingKey::new(key.as_str()).is_err() {
             return Err(CaseError::SettingKey { key: key.clone() });
         }
+        if [fresher_core::AGREEMENT_VERSION_KEY, fresher_core::AGREEMENT_ACCEPTED_AT].contains(&key.as_str()) {
+            return Err(CaseError::AgreementSetting { key: key.clone() });
+        }
         if !matches!(value, toml::Value::Boolean(_) | toml::Value::Integer(_) | toml::Value::String(_)) {
             return Err(CaseError::SettingValue { key: key.clone() });
         }
@@ -1169,6 +1172,17 @@ after-cleanup = "in-trash"
                 let error = refused(&text);
 
                 assert!(matches!(&error, CaseError::SettingValue { key } if key == "demo.count"), "{value}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_setting_of_the_agreement_is_refused() {
+            for key in ["core.agreement.version", "core.agreement.accepted-at"] {
+                let text = format!("{}[settings]\n\"{key}\" = 1\n", file(&[NEGATIVE]));
+
+                let error = refused(&text);
+
+                assert!(matches!(&error, CaseError::AgreementSetting { key: found } if found == key), "{key}: {error}");
             }
         }
 

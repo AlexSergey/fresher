@@ -15,6 +15,18 @@ pub struct Demo {
     sizes: DemoSizes,
     shows: Vec<CategoryId>,
     volume: Option<DemoVolume>,
+    agreement: DemoAgreement,
+}
+
+/// Whether the app starts a demo world with the agreement asked or accepted.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DemoAgreement {
+    /// As for a new user: the first cleanup shows the agreement's sheet.
+    #[default]
+    Asked,
+    /// Accepted at the world's `now`, so a recording of a cleanup goes straight to the confirmation.
+    Accepted,
 }
 
 /// How the world's sparse files take space on disk.
@@ -47,6 +59,8 @@ pub(crate) struct RawDemo {
     sizes: DemoSizes,
     shows: Vec<String>,
     volume: Option<RawVolume>,
+    #[serde(default)]
+    agreement: DemoAgreement,
 }
 
 /// A `[demo.volume]`, and the `[volume]` of `world.toml`.
@@ -92,7 +106,7 @@ impl Demo {
                     .map_err(|source| refused(format!("`shows` holds `{id}`, not a category id: {source}")))
             })
             .collect::<Result<_, _>>()?;
-        Ok(Self { now, sizes: raw.sizes, shows, volume })
+        Ok(Self { now, sizes: raw.sizes, shows, volume, agreement: raw.agreement })
     }
 
     /// The world's clock: the moment it is generated at, never the wall clock.
@@ -113,6 +127,11 @@ impl Demo {
     /// The volume the world states it is on; `None` leaves the Mac's.
     pub const fn volume(&self) -> Option<&DemoVolume> {
         self.volume.as_ref()
+    }
+
+    /// Whether the app starts the world with the agreement asked or accepted.
+    pub const fn agreement(&self) -> DemoAgreement {
+        self.agreement
     }
 }
 
@@ -296,6 +315,13 @@ size = 1048576
         }
 
         #[test]
+        fn an_agreement_other_than_asked_or_accepted_is_refused() {
+            let error = refused(&world(&format!("{HEADER}agreement = \"skipped\"\n"), &[SCENERY]));
+
+            assert!(matches!(&error, CaseError::Parse { .. }), "{error}");
+        }
+
+        #[test]
         fn a_category_shown_twice_is_refused() {
             let header = HEADER.replace(
                 "[\"dev-caches.xcode-derived-data\"]",
@@ -353,7 +379,7 @@ size = 1048576
         use std::time::{Duration, SystemTime};
 
         use super::{HEADER, MORE_SCENERY, SCENERY, world};
-        use crate::{CaseFile, CaseKind, DemoSizes};
+        use crate::{CaseFile, CaseKind, DemoAgreement, DemoSizes};
 
         #[test]
         fn a_demo_file_with_two_scenery_cases_parses_with_its_header() {
@@ -393,6 +419,14 @@ size = 1048576
             let demo = file.demo().unwrap();
             assert_eq!(demo.sizes(), DemoSizes::Sparse);
             assert_eq!(demo.volume(), None);
+            assert_eq!(demo.agreement(), DemoAgreement::Asked);
+        }
+
+        #[test]
+        fn a_header_may_start_the_world_with_the_agreement_accepted() {
+            let file = CaseFile::parse(&world(&format!("{HEADER}agreement = \"accepted\"\n"), &[SCENERY])).unwrap();
+
+            assert_eq!(file.demo().unwrap().agreement(), DemoAgreement::Accepted);
         }
 
         #[test]

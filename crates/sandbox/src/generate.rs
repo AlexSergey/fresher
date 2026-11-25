@@ -11,7 +11,7 @@ use fresher_testing::{FixtureError, TreeDescription};
 
 use crate::expected::checklist;
 use crate::layout::{CHECKLIST, DATA_FOLDER, PARTS, WORLD, canonical_folder, holds_marker};
-use crate::{CaseFile, Sandbox, SandboxError, World, merged_settings};
+use crate::{CaseFile, DemoAgreement, Sandbox, SandboxError, World, merged_settings};
 
 /// What a run of the generator made: the sandbox and the entries in it the generator did not make.
 #[derive(Debug)]
@@ -89,7 +89,8 @@ pub fn generate_leaving_out(
     user: u32,
 ) -> Result<Generated, SandboxError> {
     let tree = merged_tree(files)?;
-    let settings = merged_settings(files).map_err(|source| SandboxError::Case { source })?;
+    let mut settings = merged_settings(files).map_err(|source| SandboxError::Case { source })?;
+    settings.extend(demo_acceptance(files));
     let sandbox = Sandbox::at(target(into, real_protection, user)?);
     let own = own_paths(&tree);
     refuse_shared_files(sandbox.path(), &own)?;
@@ -106,6 +107,23 @@ pub fn generate_leaving_out(
     write_settings(&sandbox, settings)?;
     let strangers = strangers(sandbox.path(), &own)?;
     Ok(Generated { sandbox, strangers })
+}
+
+/// The agreement's acceptance a demo world with `agreement = "accepted"` starts with, at the world's clock; nothing for
+/// any other file (case files cannot write these keys: `CaseError::AgreementSetting`).
+fn demo_acceptance(files: &[CaseFile]) -> Vec<(String, toml::Value)> {
+    let Some(demo) = files.iter().filter_map(CaseFile::demo).find(|demo| demo.agreement() == DemoAgreement::Accepted)
+    else {
+        return Vec::new();
+    };
+    let at = demo.now().duration_since(SystemTime::UNIX_EPOCH).map_or(0, |since| since.as_secs());
+    vec![
+        (
+            fresher_core::AGREEMENT_VERSION_KEY.to_owned(),
+            toml::Value::Integer(i64::from(fresher_core::AGREEMENT_VERSION)),
+        ),
+        (fresher_core::AGREEMENT_ACCEPTED_AT.to_owned(), toml::Value::Integer(i64::try_from(at).unwrap_or(i64::MAX))),
+    ]
 }
 
 /// Writes the case files' `[settings]` into the settings file of the sandbox's data folder, in the app's own format,
@@ -381,6 +399,17 @@ name = "Mine"
         }
 
         #[test]
+        fn a_demo_world_without_agreement_writes_no_acceptance() {
+            let folder = tempfile::tempdir().unwrap();
+            let into = folder.path().join("sandbox");
+            let header = "feature = \"world\"\n[demo]\nnow = 1795000000\nshows = [\"dev-caches.npm\"]\n";
+
+            run(&[CaseFile::parse(header).unwrap()], &into).unwrap();
+
+            assert!(!into.join(".fresher-data").join("settings.json").exists());
+        }
+
+        #[test]
         fn a_non_empty_folder_without_a_marker_is_refused() {
             let folder = tempfile::tempdir().unwrap();
             fs::write(folder.path().join("notes.txt"), "mine").unwrap();
@@ -579,6 +608,23 @@ name = "Mine"
             let data = DataFolder::open(fs::canonicalize(&into).unwrap().join(".fresher-data")).unwrap();
             let stored = FileSettingsStore::new(data).load().unwrap();
             let expected = json!({ "demo.count": 3, "demo.deep": true, "demo.mode": "few" });
+            assert_eq!(serde_json::to_value(stored).unwrap(), expected);
+        }
+
+        #[test]
+        fn a_demo_world_that_says_accepted_starts_with_the_agreement_accepted_at_its_clock() {
+            let folder = tempfile::tempdir().unwrap();
+            let into = folder.path().join("sandbox");
+            let header = "feature = \"world\"\n[demo]\nnow = 1795000000\nshows = [\"dev-caches.npm\"]\nagreement = \"accepted\"\n";
+
+            run(&[crate::CaseFile::parse(header).unwrap()], &into).unwrap();
+
+            let data = DataFolder::open(fs::canonicalize(&into).unwrap().join(".fresher-data")).unwrap();
+            let stored = FileSettingsStore::new(data).load().unwrap();
+            let expected = json!({
+                fresher_core::AGREEMENT_VERSION_KEY: fresher_core::AGREEMENT_VERSION,
+                fresher_core::AGREEMENT_ACCEPTED_AT: 1_795_000_000,
+            });
             assert_eq!(serde_json::to_value(stored).unwrap(), expected);
         }
 

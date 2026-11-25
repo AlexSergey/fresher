@@ -188,7 +188,8 @@ filters and the Apps filter.
   exempt, each with its reason; two rule tweaks (a placeholder is not "trash").
 - The hints are anchors and described controls, not a new component; `Select` and `SegmentedControl` gained a
   `description` prop. The sidebar's Review count, the ring's legend and the storage map's figures have none.
-- A case file's `[settings]` can pre-accept the agreement in a hand-built sandbox: [deferred](../../deferred/sandbox-case-settings-agreement.md).
+- A case file's `[settings]` could pre-accept the agreement in a hand-built sandbox: deferred, then done on 2026-11-25
+  (the parser refuses the agreement's keys; only a demo world's `agreement = "accepted"` writes the acceptance).
 
 **Calls taken while building.** The jetbrains names read "... of older JetBrains IDEs"; the Trash line is reworded
 ("until the Trash is emptied", "what an app's own tool removes"); texts whose meaning looked wrong were listed, not

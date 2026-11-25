@@ -72,9 +72,10 @@ mod negative {
         assert!(failure.problem.contains("trial.caches"), "{failure}");
     }
 
-    /// The case file's `[settings]` write the acceptance into the sandbox's data folder before the app starts.
+    /// A case file's `[settings]` cannot write the acceptance: the file is refused before a sandbox exists. The
+    /// harness also checks the agreement is asked when the engine starts (`check_agreement_guard`).
     #[test]
-    fn a_sandbox_that_starts_accepted_fails_the_agreement_check() {
+    fn a_case_file_that_would_start_accepted_is_refused() {
         let settings = format!("[settings]\n\"core.agreement.version\" = {}\n", fresher_core::AGREEMENT_VERSION);
         let text =
             format!("feature = \"trial\"\nmodule = \"trial\"\n{settings}{}", trial_positive("a cache", CACHE_IN_TRASH));
@@ -82,7 +83,7 @@ mod negative {
         let failure = run("accepted", &text).unwrap_err();
 
         assert_eq!(failure.case, "accepted", "{failure}");
-        assert!(failure.problem.contains("the agreement accepted"), "{failure}");
+        assert!(failure.problem.contains("is the agreement's"), "{failure}");
     }
 
     #[test]
