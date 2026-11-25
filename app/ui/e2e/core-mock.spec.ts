@@ -307,8 +307,21 @@ test.describe('positive cases', () => {
       build: { kind: 'release' },
       high: 'withheld',
       home: '/Users/someone',
+      now: expect.any(Number),
       version: '0.0.1',
     });
+  });
+
+  test('the app info tells the moment of the page clock, as the core tells its own', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+
+    const [info, pageSecs] = await Promise.all([
+      call<AppInfo>(page, COMMANDS.appInfo, {}),
+      page.evaluate(() => Math.floor(Date.now() / 1000)),
+    ]);
+
+    expect(Math.abs(info.now - pageSecs)).toBeLessThanOrEqual(2);
   });
 
   test('the agreement is accepted by default, with the five lines and no changes text', async ({ page }) => {

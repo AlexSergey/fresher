@@ -584,8 +584,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   (`VolumeMap.summary`). The detailed parts stay in the core for its by-meaning and place queries; no screen asks
   for them now.
 - **Scan** (`screens/scan/`, plan 042): a toolbar ("Scan", when the last scan finished as "2 minutes ago",
-  formatted by `i18n/relative-time.ts` from the core's time and an injected wall clock, `state/wall-clock.ts`; Scan
-  again, or Stop while scanning), then **the disk card** (`product/disk-card/`): the ring of the home volume made of
+  formatted by `i18n/relative-time.ts` from the core's time and an injected wall clock, `state/wall-clock.ts`, which
+  in a sandbox follows the core's clock (`AppInfo.now`, its world's) so a fresh scan reads "now"; Scan again, or Stop while scanning), then **the disk card** (`product/disk-card/`): the ring of the home volume made of
   the summary's four used parts with Free as the track, "<size> can be freed" in its centre (Scan before the first
   scan), the disk's name and "<free> free of <capacity>", and a two-column legend with an "i" per part holding the
   core's description; hovering a legend row or its arc highlights the other; a part too small to see gets a minimum
@@ -705,7 +705,9 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   its page, an optional tab and an optional setting to focus); no router. `screenToShow` returns to Scan when a shown
   category is no longer among the categories the core lists. The sidebar has Scan, Largest (only while High is
   offered), Apps, Review, Cleanups and Settings and scrolls in a short window. When the focused element leaves the
-  screen, the focus goes to the screen's heading (`screens/keep-focus.ts`).
+  screen, the focus goes to the screen's heading (`screens/keep-focus.ts`). A heading focused that way (`tabindex="-1"`)
+  only marks where the keyboard and VoiceOver continue: it shows no focus ring (`design/base/reset.css`); every control
+  keeps its ring.
 
 ### The demo player
 

@@ -68,6 +68,11 @@ pub(crate) struct DemoRect {
 }
 
 impl DemoMode {
+    /// Whether the environment, read through `var`, asks for demo mode (`FRESHER_DEMO` is set), before it is checked.
+    pub(crate) fn asked(var: impl Fn(&str) -> Option<OsString>) -> bool {
+        var(DEMO_VARIABLE).is_some()
+    }
+
     /// The mode the environment asks for, read through `var`: `None` when `FRESHER_DEMO` is unset; refused when it is
     /// set without a `sandbox` (the checked sandbox folder), names a relative path or no valid scenario, asks for the
     /// system's Trash, or names a scenario whose world the sandbox was not generated from.
@@ -264,6 +269,11 @@ mod tests {
         const SANDBOX: &str = "/private/tmp/fresher-demo/overview-1";
 
         #[test]
+        fn without_the_variable_no_demo_is_asked() {
+            assert!(!DemoMode::asked(env(None)));
+        }
+
+        #[test]
         fn without_the_variable_there_is_no_demo_mode() {
             let mode = DemoMode::from_env(env(None), Some(Path::new(SANDBOX)), SandboxTrash::Sandbox, Path::new(HOME))
                 .unwrap();
@@ -392,6 +402,11 @@ mod tests {
         use super::{DemoMode, env, marked, mode, scenario};
         use crate::demo::{DemoRect, finish, write_result, write_window};
         use crate::sandbox::SandboxTrash;
+
+        #[test]
+        fn the_variable_asks_for_a_demo_before_it_is_checked() {
+            assert!(DemoMode::asked(env(Some(Path::new("not even absolute.toml")))));
+        }
 
         #[test]
         fn a_valid_scenario_gives_a_mode_that_keeps_the_home_and_the_sandbox_private() {

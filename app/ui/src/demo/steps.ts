@@ -9,6 +9,8 @@ export const TARGET_TIMEOUT_MS = 5000;
 export const STATE_TIMEOUT_MS = 60_000;
 const POLL_MS = 50;
 const SCROLL_MS = 400;
+// The longest a smooth scroll that brings a target into view is waited for.
+export const REVEAL_TIMEOUT_MS = 2000;
 
 // What a step needs; the clock is injected so tests run on fake time.
 export type StepDeps = {
@@ -62,16 +64,11 @@ const locate = async (deps: StepDeps, target: Target): Promise<Located> => {
   return answer ?? { kind: 'failed', reason: `no element is the ${what}` };
 };
 
-const glideTo = async (deps: StepDeps, element: HTMLElement): Promise<void> => {
-  const box = element.getBoundingClientRect();
-  await deps.pointer.moveTo(box.left + box.width / 2, box.top + box.height / 2);
-};
-
 // The element that scrolls for a target: its nearest ancestor (or itself) that overflows vertically. A
 // screen scrolls in a plain container, which no role or name can address.
-const scrollerOf = (element: HTMLElement): HTMLElement | null => {
-  const view = element.ownerDocument.defaultView;
-  for (let node: HTMLElement | null = element; node !== null; node = node.parentElement) {
+const scrollerOf = (element: HTMLElement | null): HTMLElement | null => {
+  const view = element?.ownerDocument.defaultView;
+  for (let node = element; node !== null; node = node.parentElement) {
     const { overflowY } = view?.getComputedStyle(node) ?? { overflowY: '' };
     if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
       return node;
@@ -79,6 +76,54 @@ const scrollerOf = (element: HTMLElement): HTMLElement | null => {
   }
 
   return null;
+};
+
+type Band = { readonly bottom: number; readonly top: number };
+
+// The band of the window in which the content of `scroller` is seen: its box, or the whole window without one.
+const bandOf = (scroller: HTMLElement | null, element: HTMLElement): Band => {
+  if (scroller !== null) {
+    return scroller.getBoundingClientRect();
+  }
+
+  return { bottom: element.ownerDocument.defaultView?.innerHeight ?? 0, top: 0 };
+};
+
+// How a target must be in view before the pointer moves to it: a control the pointer acts on wholly, a region the
+// pointer scrolls in only in part.
+type Reveal = 'part' | 'whole';
+
+const inView = (box: Band, band: Band, reveal: Reveal): boolean =>
+  reveal === 'whole'
+    ? box.top >= band.top && box.bottom <= band.bottom
+    : box.bottom > band.top && box.top < band.bottom;
+
+// Brings the target into view as a user scrolls to what they point at, so the recording shows it: unless it is already
+// in view, its scroller glides (a smooth scroll) to centre it, or to its top when it is taller than the view, and the
+// step goes on once the scroll has settled.
+const reveal = async (deps: StepDeps, element: HTMLElement, how: Reveal): Promise<void> => {
+  const scroller = scrollerOf(element.parentElement);
+  const box = element.getBoundingClientRect();
+  const band = bandOf(scroller, element);
+  if (scroller === null || inView(box, band, how)) {
+    return;
+  }
+  const height = band.bottom - band.top;
+  const offset = box.height > height ? 0 : (height - box.height) / 2;
+  const most = scroller.scrollHeight - scroller.clientHeight;
+  const top = Math.round(Math.min(most, Math.max(0, scroller.scrollTop + box.top - band.top - offset)));
+  scroller.scrollTo({ behavior: 'smooth', top });
+  await poll(deps, REVEAL_TIMEOUT_MS, () => (Math.abs(scroller.scrollTop - top) < 1 ? true : null));
+};
+
+// Brings the target into view, then glides the pointer to the middle of the part of it that is in view.
+const pointAt = async (deps: StepDeps, element: HTMLElement, how: Reveal): Promise<void> => {
+  await reveal(deps, element, how);
+  const box = element.getBoundingClientRect();
+  const band = bandOf(scrollerOf(element.parentElement), element);
+  const top = Math.max(box.top, band.top);
+  const bottom = Math.max(top, Math.min(box.bottom, band.bottom));
+  await deps.pointer.moveTo(box.left + box.width / 2, (top + bottom) / 2);
 };
 
 const STATES: Readonly<Record<AppState, (store: CoreStore) => boolean>> = {
@@ -110,6 +155,18 @@ const clickOn = async (deps: StepDeps, element: HTMLElement, name: string): Prom
   return DONE;
 };
 
+// Scrolls the scroller of the target by `by` pixels, smoothly, and waits for the scroll.
+const scrollIn = async (deps: StepDeps, element: HTMLElement, name: string, by: number): Promise<StepResult> => {
+  const scroller = scrollerOf(element);
+  if (scroller === null) {
+    return { kind: 'failed', reason: `nothing scrolls at the ${name}` };
+  }
+  scroller.scrollBy({ behavior: 'smooth', top: by });
+  await deps.sleep(SCROLL_MS);
+
+  return DONE;
+};
+
 export const runStep = async (step: Step, deps: StepDeps): Promise<StepResult> => {
   switch (step.kind) {
     case 'click':
@@ -120,7 +177,7 @@ export const runStep = async (step: Step, deps: StepDeps): Promise<StepResult> =
         return located;
       }
       const { element } = located;
-      await glideTo(deps, element);
+      await pointAt(deps, element, step.kind === 'scroll' ? 'part' : 'whole');
       if (step.kind === 'click') {
         return await clickOn(deps, element, nameOf(step.target));
       } else if (step.kind === 'hover') {
@@ -128,12 +185,7 @@ export const runStep = async (step: Step, deps: StepDeps): Promise<StepResult> =
           element.dispatchEvent(mouseEvent(type, bubbles));
         }
       } else {
-        const scroller = scrollerOf(element);
-        if (scroller === null) {
-          return { kind: 'failed', reason: `nothing scrolls at the ${nameOf(step.target)}` };
-        }
-        scroller.scrollBy({ behavior: 'smooth', top: step.by });
-        await deps.sleep(SCROLL_MS);
+        return await scrollIn(deps, element, nameOf(step.target), step.by);
       }
 
       return DONE;

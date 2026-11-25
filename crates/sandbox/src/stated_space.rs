@@ -2,10 +2,13 @@ use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
 
-use fresher_core::{ByteSize, DiskSpace, ReadError, VolumeFacts, Volumes};
+use fresher_core::{ByteSize, DiskSpace, Neighbour, NeighbourRole, ReadError, VolumeFacts, Volumes};
 use fresher_testing::FakeVolumes;
 
 use crate::DemoVolume;
+
+/// The name of macOS's own system volume, as the Finder's disk utility shows it.
+const MACOS_VOLUME: &str = "macOS";
 
 /// The volumes of sandbox mode in a demo world that states its volume: the stated space answered for every path, so
 /// the app never shows the developer's disk; which volume a path is on and the bytes still available are the inner
@@ -16,11 +19,16 @@ pub struct StatedSpace {
 }
 
 impl StatedSpace {
-    /// `inner` with the space of `volume`: a plain internal volume mounted at `/`, no purgeable space, no neighbours.
+    /// `inner` with the space of `volume`: a plain internal volume mounted at `/`, no purgeable space, and macOS's
+    /// system volume as its one neighbour when the world states its size.
     pub fn new(inner: Arc<dyn Volumes>, volume: &DemoVolume) -> Self {
         let bytes = ByteSize::new;
-        let space =
+        let mut space =
             FakeVolumes::disk(volume.name(), bytes(volume.capacity()), bytes(volume.used()), bytes(volume.free()));
+        if volume.macos() > 0 {
+            let used = bytes(volume.macos());
+            space.neighbours.push(Neighbour { name: MACOS_VOLUME.to_owned(), role: NeighbourRole::System, used });
+        }
         Self { inner, space }
     }
 }
@@ -100,7 +108,7 @@ mod tests {
     mod positive {
         use std::path::Path;
 
-        use fresher_core::{ByteSize, MountKind, Volumes as _};
+        use fresher_core::{ByteSize, MountKind, NeighbourRole, Volumes as _};
 
         use super::{StatedSpace, facts, inner, volume};
 
@@ -119,6 +127,20 @@ mod tests {
                 assert_eq!((space.mount_point.as_path(), space.kind), (Path::new("/"), MountKind::Internal));
                 assert_eq!((space.purgeable, space.neighbours.len()), (None, 0));
             }
+        }
+
+        #[test]
+        fn a_stated_macos_size_is_the_system_volume_beside_it() {
+            let text = "feature = \"developer-mac\"\n[demo]\nnow = 1795000000\nshows = [\"trial.caches\"]\n\
+                        [demo.volume]\nname = \"Macintosh HD\"\ncapacity = 1000\nused = 500\nfree = 300\nmacos = 150\n\
+                        [[case]]\nname = \"a cache\"\nkind = \"scenery\"\n[[case.file]]\npath = \"home/a.bin\"\n";
+            let volume = crate::CaseFile::parse(text).unwrap().demo().unwrap().volume().unwrap().clone();
+
+            let space = StatedSpace::new(inner(), &volume).space(Path::new("/")).unwrap();
+
+            let neighbours: Vec<_> =
+                space.neighbours.iter().map(|next| (next.name.as_str(), next.role, next.used)).collect();
+            assert_eq!(neighbours, [("macOS", NeighbourRole::System, ByteSize::new(150))]);
         }
 
         #[test]

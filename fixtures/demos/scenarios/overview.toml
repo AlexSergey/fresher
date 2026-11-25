@@ -1,6 +1,6 @@
 # The README's hero: a scan of the developer's Mac. Screens: Scan (the ring, the danger zones and their cards).
-# The pointer scans, rests on the largest card of the Safe zone, scrolls the results down and back up. About 5.5 s of
-# pauses.
+# The pointer scans, rests on the largest card of the Safe zone (the page glides down to it first), scrolls the
+# results down and back up. About 5.5 s of pauses.
 # Every target is traced to its text key in `crates/sandbox/src/scenario/traced.rs` (the test refuses a target no text
 # says). A card's Details button has no name of its own (all read "Details"), so no step opens a category.
 world = "developer-mac"

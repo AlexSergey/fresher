@@ -223,6 +223,26 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('the heading a screen change focuses shows no ring, the control focused next does', async ({ page }) => {
+    await mockCore(page, SCRIPTS.cleaning);
+    await page.goto('/');
+    await expect(heading(page, 'Scan')).toBeVisible();
+    const ringOf = (target: Locator): Promise<[boolean, string]> =>
+      target.evaluate((element) => [element.matches(':focus-visible'), getComputedStyle(element).boxShadow]);
+
+    await page.getByRole('navigation', { name: 'Screens' }).getByRole('button', { name: 'Cleanups' }).focus();
+    await page.keyboard.press('Enter');
+    const cleanups = heading(page, 'Cleanups');
+    await expect(cleanups).toBeFocused();
+
+    expect(await ringOf(cleanups)).toEqual([true, 'none']);
+    await page.keyboard.press('Tab');
+    const next = page.locator(':focus');
+    const [visible, shadow] = await ringOf(next);
+    expect(visible).toBe(true);
+    expect(shadow).not.toBe('none');
+  });
+
   test('a dialog opened by keyboard gives the focus back to its opener', async ({ page }) => {
     await openStory(page, 'Dialog/from-a-button');
     const opener = page.getByRole('button', { name: 'Review…' });

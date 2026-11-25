@@ -193,6 +193,11 @@ impl Engine {
         self.shared.home()
     }
 
+    /// The moment on the engine's clock: the time every one of its timestamps is read from (in sandbox mode the world's).
+    pub fn now(&self) -> Timestamp {
+        Timestamp::from_system_time(self.shared.ports.clock.now())
+    }
+
     pub fn status(&self) -> Result<EngineStatus, CommandError> {
         Ok(lock(&self.shared.machine)?.status())
     }
@@ -670,6 +675,15 @@ mod tests {
         use fresher_testing::FakeAccess;
 
         use crate::testing::{Fixture, START, ScriptedWalk, engine, wait_for_finish};
+
+        #[test]
+        fn now_is_the_engines_clock() {
+            let fixture = Fixture::new(ScriptedWalk::new());
+            fixture.clock.advance(std::time::Duration::from_secs(90));
+            let engine = fixture.engine();
+
+            assert_eq!(engine.now(), fresher_core::Timestamp::from_secs(START + 90));
+        }
 
         #[test]
         fn accept_agreement_records_the_clocks_time_and_answers_the_view() {

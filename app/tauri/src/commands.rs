@@ -24,6 +24,7 @@ pub(crate) fn app_info(build: State<'_, Build>, engine: State<'_, Engine>) -> Ap
         build: build.inner().clone(),
         high: engine.high_level(),
         home: engine.home_folder(),
+        now: engine.now(),
     }
 }
 
@@ -665,6 +666,11 @@ mod tests {
             assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
             assert_eq!(info.build, build);
             assert_eq!(info.high, fresher_core::HighLevel::Offered);
+            assert_eq!(
+                info.now,
+                fresher_core::Timestamp::from_secs(1_700_000_000),
+                "the engine's clock, not the Mac's"
+            );
         }
 
         #[test]

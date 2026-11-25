@@ -7,14 +7,14 @@ import { useWallClock } from '../../state/wall-clock';
 
 const MINUTE_MS = 60_000;
 
-// How long ago the last scan finished ("2 minutes ago"): the clock is read when the scan changes and again every
-// minute while one is shown; `null` without a last scan.
+// How long ago the last scan finished ("2 minutes ago"): the clock is read when the scan or the clock changes and again
+// every minute while one is shown; `null` without a last scan.
 export const useScannedAgo = (finished: null | Timestamp): null | string => {
   const clock = useWallClock();
-  const [read, setRead] = useState(() => ({ finished, now: clock.epochMs() }));
+  const [read, setRead] = useState(() => ({ clock, finished, now: clock.epochMs() }));
 
-  if (read.finished !== finished) {
-    setRead({ finished, now: clock.epochMs() });
+  if (read.finished !== finished || read.clock !== clock) {
+    setRead({ clock, finished, now: clock.epochMs() });
   }
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export const useScannedAgo = (finished: null | Timestamp): null | string => {
 
     // eslint-disable-next-line @eslint-react/web-api-no-leaked-timeout -- the clock's timer returns its own cancel
     return clock.setTimeout(() => {
-      setRead({ finished, now: clock.epochMs() });
+      setRead({ clock, finished, now: clock.epochMs() });
     }, MINUTE_MS);
   }, [clock, finished, read]);
 

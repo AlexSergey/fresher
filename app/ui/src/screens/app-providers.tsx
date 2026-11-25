@@ -5,14 +5,14 @@ import type { ModuleInfo } from '../ipc/bindings.generated';
 import { Announcer } from '../design/feedback/announcer/announcer';
 import { Toaster } from '../design/feedback/toast/toaster';
 import { t } from '../i18n';
-import { failureOf, getFindings, getModules } from '../ipc';
+import { failureOf, getAppInfo, getFindings, getModules } from '../ipc';
 import { systemClock } from '../state/clock';
 import { connectCore } from '../state/connect';
 import { createFindingsSource } from '../state/findings';
 import { createNavigation, type Navigation, NavigationContext } from '../state/navigation';
 import { CoreContext, type CoreStore } from '../state/store';
 import { FindingsContext } from '../state/use-findings';
-import { systemWallClock, type WallClock, WallClockContext } from '../state/wall-clock';
+import { systemWallClock, type WallClock, WallClockContext, wallClockOf } from '../state/wall-clock';
 import { DemoPathForm } from './demo-path-form';
 import { ModulesContext } from './use-modules';
 
@@ -21,7 +21,7 @@ export type AppProvidersProps = {
   // The screen to show; a new one, at the overview, when not given (a test passes its own to read where it went).
   readonly navigation?: Navigation;
   readonly store: CoreStore;
-  // The time of day; the system's when not given (a test fixes it).
+  // The time of day; the core's when not given (a test fixes it).
   readonly wallClock?: WallClock;
 };
 
@@ -30,24 +30,41 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 
 // Everything a screen reads, around the app: the core's store (connected to the core once), the finding pages, the
-// navigation, the modules the core lists, the time of day, the toasts and the one polite announcer.
-export const AppProviders = ({
-  children,
-  navigation,
-  store,
-  wallClock = systemWallClock,
-}: AppProvidersProps): JSX.Element => {
+// navigation, the modules the core lists, the time of day the core counts on, the toasts and the one polite announcer.
+export const AppProviders = ({ children, navigation, store, wallClock }: AppProvidersProps): JSX.Element => {
   const [ownNavigation] = useState(createNavigation);
   const [findings] = useState(() =>
     createFindingsSource(getFindings, { clock: systemClock, maxPages: MAX_PAGES, pageSize: PAGE_SIZE }),
   );
   const [modules, setModules] = useState<null | readonly ModuleInfo[]>(null);
+  const [coreClock, setCoreClock] = useState<WallClock>(systemWallClock);
 
   useEffect(() => {
     connectCore(store);
   }, [store]);
 
   useEffect(() => findings.follow(store), [findings, store]);
+
+  // The core's clock, asked once: until it answers (or when it refuses), the page's own.
+  useEffect(() => {
+    if (wallClock !== undefined) {
+      return;
+    }
+    let current = true;
+
+    getAppInfo().then(
+      (info) => {
+        if (current) {
+          setCoreClock(wallClockOf(info, Date.now()));
+        }
+      },
+      () => undefined,
+    );
+
+    return (): void => {
+      current = false;
+    };
+  }, [wallClock]);
 
   // The modules carry each category's availability, worked out by the core from the access it has at the moment of the
   // call: listed at start and again whenever the access changes. One request at a time; a change that comes while one
@@ -111,7 +128,7 @@ export const AppProviders = ({
       <NavigationContext value={navigation ?? ownNavigation}>
         <FindingsContext value={findings}>
           <ModulesContext value={modules}>
-            <WallClockContext value={wallClock}>
+            <WallClockContext value={wallClock ?? coreClock}>
               <Toaster closeLabel={t('ui.screen.frame.close')} label={t('ui.screen.frame.toasts')}>
                 <Announcer>
                   <DemoPathForm>{children}</DemoPathForm>

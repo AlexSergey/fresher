@@ -24,7 +24,7 @@ use fresher_system::{
 use fresher_testing::{FactsLens, FakeTrash, StatedFacts, StatedInstalledApps};
 
 use crate::adapters::UnknownAccess;
-use crate::compose::{ComposeError, Shared, assemble, real_protection, user_temp};
+use crate::compose::{ComposeError, ModuleSet, Shared, assemble, real_protection, user_temp};
 
 mod commands;
 
@@ -55,8 +55,9 @@ pub enum SandboxTrash {
 pub struct SandboxMode {
     path: PathBuf,
     trash: SandboxTrash,
-    /// The one module registered, for an autotest of its case file; `None` (the app's) registers every module.
-    only: Option<ModuleId>,
+    /// The modules registered: every module of the build (the app's), the shipped ones (a demo's), or the one of an
+    /// autotest's case file.
+    modules: ModuleSet,
     /// Whether its engine offers High findings: withheld, as in the app, unless the autotest offers it.
     high: HighLevel,
 }
@@ -99,14 +100,21 @@ impl SandboxEngineError {
 impl SandboxMode {
     /// The sandbox at `path`, its cleanups going to `trash`.
     pub fn new(path: impl Into<PathBuf>, trash: SandboxTrash) -> Self {
-        Self { path: path.into(), trash, only: None, high: HighLevel::Withheld }
+        Self { path: path.into(), trash, modules: ModuleSet::Every, high: HighLevel::Withheld }
     }
 
     /// The same mode with only `module` registered, as the autotest of a case file naming it runs; no module when the
     /// app has none with that id.
     #[must_use]
     pub fn only(self, module: ModuleId) -> Self {
-        Self { only: Some(module), ..self }
+        Self { modules: ModuleSet::Only(module), ..self }
+    }
+
+    /// The same mode with only the modules a release ships registered: a demo shows the app as it ships, never the
+    /// made-up findings of the dev-only modules.
+    #[must_use]
+    pub fn shipped_modules(self) -> Self {
+        Self { modules: ModuleSet::Shipped, ..self }
     }
 
     /// The same mode with High findings offered. For the sandbox autotest only, which runs a case file's High
@@ -133,7 +141,7 @@ impl SandboxMode {
         if !path.is_absolute() {
             return Err(SandboxRefusal::NotAbsolute { path });
         }
-        Ok(Some(Self { path, trash, only: None, high: HighLevel::Withheld }))
+        Ok(Some(Self { path, trash, modules: ModuleSet::Every, high: HighLevel::Withheld }))
     }
 
     /// The sandbox folder as it was named.
@@ -302,7 +310,7 @@ pub(crate) fn compose(
         commands: ports.commands,
         access: ports.access,
         cleanup,
-        only: mode.only,
+        modules: mode.modules,
         apps,
         installs: ports.installs,
         high: mode.high,

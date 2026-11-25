@@ -1,12 +1,12 @@
-//! What the app says about itself: its version, which kind of build it is, whether it offers High findings and the
-//! home folder it works on.
+//! What the app says about itself: its version, which kind of build it is, whether it offers High findings, the home
+//! folder it works on and the moment on its clock.
 
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{HighLevel, Text, TextArg, TextKey};
+use crate::{HighLevel, Text, TextArg, TextKey, Timestamp};
 
 /// The app's answer to "which build is this".
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -18,6 +18,9 @@ pub struct AppInfo {
     /// The home folder its engine works on (a sandbox's own home in sandbox mode), for showing a path as `~/…`;
     /// `None` when it is not known.
     pub home: Option<PathBuf>,
+    /// The moment of the answer on its engine's clock, which a sandbox's world may set apart from the Mac's: what
+    /// says how long ago something happened counts on it.
+    pub now: Timestamp,
 }
 
 /// The kind of build. Only a development build can run in a sandbox; a release build never reports one.
@@ -111,11 +114,12 @@ mod tests {
                 build,
                 high: HighLevel::Withheld,
                 home: Some("/tmp/box/home".into()),
+                now: crate::Timestamp::from_secs(1_795_000_000),
             };
             let json = serde_json::to_string(&info).unwrap();
             assert_eq!(
                 json,
-                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"],"trash":{"key":"core.build.trash.system","args":{}}},"high":"withheld","home":"/tmp/box/home"}"#
+                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"],"trash":{"key":"core.build.trash.system","args":{}}},"high":"withheld","home":"/tmp/box/home","now":1795000000}"#
             );
         }
 

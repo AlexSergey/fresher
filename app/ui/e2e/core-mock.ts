@@ -284,6 +284,7 @@ const storageOfScan = (
 type ByCommand = {
   readonly agreementHook: string;
   readonly answers: Readonly<Record<string, unknown>>;
+  readonly appInfo: string;
   readonly appsHook: string;
   readonly busy: Refusal;
   readonly cancelScan: string;
@@ -391,6 +392,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
   const setup: ByCommand = {
     agreementHook: AGREEMENT_HOOK,
     answers: byCommand(withHigh(withCoreTexts(withRefreshAccess(script.answers)), script.high)),
+    appInfo: COMMANDS.appInfo,
     appsHook: APPS_HOOK,
     busy: BUSY,
     cancelScan: COMMANDS.cancelScan,
@@ -663,11 +665,23 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
         : answer;
     };
 
+    // The core's clock is the page's: the app info's moment is read when the page asks.
+    const onThePageClock = (answer: unknown): unknown =>
+      typeof answer === 'object' && answer !== null ? { ...answer, now: Math.floor(Date.now() / 1000) } : answer;
+
+    const timed = (command: string, answer: Promise<unknown>): Promise<unknown> => {
+      if (command === core.getOverview) {
+        return answer.then(recently);
+      }
+
+      return command === core.appInfo ? answer.then(onThePageClock) : answer;
+    };
+
     let nextCallback = 1;
     Object.defineProperty(globalThis, '__TAURI_INTERNALS__', {
       value: {
         invoke: (command: string, args: Readonly<Record<string, unknown>>): Promise<unknown> =>
-          command === core.getOverview ? invoke(command, args).then(recently) : invoke(command, args),
+          timed(command, invoke(command, args)),
         transformCallback: (callback: (message: unknown) => void): number => {
           const id = nextCallback;
           nextCallback += 1;

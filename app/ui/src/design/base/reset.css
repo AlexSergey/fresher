@@ -55,4 +55,12 @@
   :focus:not(:focus-visible) {
     outline: none;
   }
+
+  /*
+   * A heading the focus is moved to (`tabindex="-1"`) only marks where the keyboard and VoiceOver continue on a new
+   * screen: it is no control, so it shows no ring, whichever input came last. Every control keeps its ring.
+   */
+  :is(h1, h2, h3, h4, h5, h6)[tabindex='-1']:focus-visible {
+    box-shadow: none;
+  }
 }

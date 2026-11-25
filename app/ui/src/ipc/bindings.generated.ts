@@ -13,7 +13,12 @@ high: HighLevel,
  * The home folder its engine works on (a sandbox's own home in sandbox mode), for showing a path as `~/…`;
  * `None` when it is not known.
  */
-home: string | null, };
+home: string | null, 
+/**
+ * The moment of the answer on its engine's clock, which a sandbox's world may set apart from the Mac's: what
+ * says how long ago something happened counts on it.
+ */
+now: Timestamp, };
 
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.

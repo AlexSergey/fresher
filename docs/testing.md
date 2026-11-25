@@ -986,8 +986,11 @@ the generator writes the files and `world.toml` at it, so ages in the picture ne
 (the default: a sparse file takes no disk, as in every other file) or `"as-declared"` (every sparse file of the world
 states an **allocated** size equal to its declared size, so gigabytes show as gigabytes); `shows` lists the category
 ids the world must offer (at least one, each a valid id, no duplicate). `[demo.volume]` (`name`, `capacity`, `used`,
-`free`; `used + free` at most `capacity`) states the disk the ring and the storage map show, in `world.toml`'s `[volume]`;
-two demo files stating different volumes are refused. A demo file has only cases of a third kind, `kind = "scenery"`:
+`free` and the optional `macos`, the size of macOS's own system volume; `used + free + macos` at most `capacity`, the
+rest being the disk's own space) states the disk the ring and the storage map show, in `world.toml`'s `[volume]`;
+two demo files stating different volumes are refused. A demo world shows a Mac whose scan saw everything: its
+`[settings]` turn on the switch (`core.access.<folder>`) of every guarded folder it states granted, and it puts no file
+under a folder only Full Disk Access opens (`Pictures`, `Movies`, `Music`), which a sandbox cannot state. A demo file has only cases of a third kind, `kind = "scenery"`:
 part of the picture, never checked by the autotest. A scenery case has no `expect`, `map`, `left-out` or `insight`
 and a demo file has no `module`; a scenery case outside a demo file, and a negative or positive case inside one, are
 refused. `EXPECTED.md` of a demo world lists its cases and says what they show is not checked. The stated `allocated`
@@ -1078,17 +1081,23 @@ permanent delete. The types are exported to the UI with `ts-rs`.
 `/private/tmp/fresher-demo/<scenario>-<n>` (the first free `n`), and prints it; an existing `--into` is refused and
 nothing is ever removed or overwritten (old folders stay until macOS clears `/private/tmp`). The app, started with
 `FRESHER_SANDBOX=<that folder>` and `FRESHER_DEMO=<absolute path of the scenario>` (debug builds only; `FRESHER_DEMO`
-without a sandbox stops the start), sizes the window to the scenario, places it at (80, 80) and, through two commands
+without a sandbox stops the start), registers only the modules a release ships (the dev-only `demo` and `trial`
+modules' made-up findings stay out of the picture), sizes the window to the scenario, places it at (80, 80) and, through two commands
 (`demo_play`, `demo_finished`), writes two files at the sandbox's root for the recorder: `demo-window.json` (the
 window's rectangle on its screen in physical pixels and the scale) and `demo-result.json` (`finished` with the elapsed
 milliseconds, or `failed` with the step and the reason), then exits 0 or 1.
 
 **The player** (`app/ui/src/demo/`, imported only under `import.meta.env.DEV` inside the app): waits 1500 ms (lead-in),
-then plays each step with a drawn pointer that glides to its target in 600 ms. A target must match exactly one visible
-element within 5 s, a named state within 60 s. After each step it checks the page's text for the private texts (the real
+then plays each step with a drawn pointer that glides to its target in 600 ms. Before the pointer moves, a target not
+in view (a control not wholly, a region of a `scroll` step not at all) is brought into view as a user scrolls to what
+they point at: its scroll area glides (a smooth scroll) to centre it, or to its top when it is taller than the view,
+and the step goes on once the scroll settles (at most 2 s). A target must match exactly one visible element within 5 s,
+a named state within 60 s. After each step it checks the page's text for the private texts (the real
 home's path and the sandbox's, `/tmp` alias included) and fails on a hit. It refuses at run time any control named like
 the permanent delete, `Delete` or `Remove` (a prefix match, so it over-refuses). The build banner is hidden while a demo
-plays.
+plays, and so are focus rings: the player clicks by script, which the browser takes for keyboard use, and a user who
+clicks with the mouse sees no ring. The page's "how long ago" counts on the core's clock, which in a sandbox is its
+world's (`AppInfo.now`), so a scan that just finished reads "now" whatever the Mac's date.
 
 **The agreement** is accepted by a scenario step, as a user would: the `cleanup` scenario clicks "I understand" on the
 sheet; a demo world never states an acceptance, and no production hook accepts for it. A recording of it shows the sheet
@@ -1107,8 +1116,9 @@ the app is single-instance and a second launch does not start):
   [`hacks/`](./hacks/README.md).
 
 The demo worlds' scan test: `cargo nextest run -p fresher-app --test demos` scans every world of `fixtures/demos/` in
-sandbox mode with every module and fails when a category of its `shows` offers nothing, so a world that stops showing a
-module fails in CI. The scripts' tests (`scripts/demo-record.test.ts`) use a fake spawner: nothing is captured.
+sandbox mode with the modules a release ships and its own `[settings]`, and fails when a category of its `shows` offers
+nothing, when a guarded place was not entered or a folder not read, when a size it shows is partial, or when the
+storage map's capacity or macOS part is not the world's, so a world that stops showing a module fails in CI. The scripts' tests (`scripts/demo-record.test.ts`) use a fake spawner: nothing is captured.
 
 ### The development run record
 

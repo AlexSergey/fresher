@@ -652,8 +652,8 @@ mod positive {
 
     use fresher_core::{SandboxTrashAt, SettingUpdate, SettingValue, Simulated};
 
-    use super::{SANDBOX_MARKER, World, clean, env, found, prepare, scan};
-    use crate::sandbox::{SandboxMode, SandboxTrash};
+    use super::{SANDBOX_MARKER, World, clean, env, fakes, found, prepare, scan};
+    use crate::sandbox::{SandboxMode, SandboxTrash, compose};
 
     #[test]
     fn offering_high_offers_it() {
@@ -936,6 +936,23 @@ mod positive {
             fresher_core::Build::Sandbox { path: canonical, simulated: vec![Simulated::Running], trash }
         );
         assert!(!world.real_data().exists());
+    }
+
+    /// A demo shows the app as it ships: the dev-only modules, registered in every other debug-build sandbox, are not.
+    #[test]
+    fn the_shipped_modules_leave_out_the_dev_only_ones() {
+        let world = World::new();
+        let modules = |mode: &SandboxMode| -> Vec<String> {
+            let (engine, _) = compose(mode, &world.real_home(), &world.real_data(), |_| Ok(fakes())).unwrap();
+            engine.modules().iter().map(|module| module.id.as_str().to_owned()).collect()
+        };
+        let every = SandboxMode::new(world.folder.path(), SandboxTrash::Sandbox);
+
+        let shipped = modules(&every.clone().shipped_modules());
+
+        assert!(modules(&every).iter().any(|id| id == "trial"));
+        assert!(shipped.iter().any(|id| id == "app-caches"), "{shipped:?}");
+        assert!(shipped.iter().all(|id| id != "demo" && id != "trial"), "{shipped:?}");
     }
 
     #[test]

@@ -6,7 +6,7 @@ import type { Pointer } from './pointer';
 import type { StepDeps } from './steps';
 
 import { createCoreStore } from '../state/store';
-import { runStep, STATE_TIMEOUT_MS, TARGET_TIMEOUT_MS } from './steps';
+import { REVEAL_TIMEOUT_MS, runStep, STATE_TIMEOUT_MS, TARGET_TIMEOUT_MS } from './steps';
 
 const target = (name: string): Target => ({ name: { kind: 'exact', text: name }, role: 'button' });
 
@@ -31,6 +31,35 @@ const rig = (store: CoreStore = createCoreStore()): Rig => {
 };
 
 const click = (name: string): Step => ({ kind: 'click', target: target(name) });
+
+const rect = (top: number, height: number): DOMRect =>
+  ({ bottom: top + height, height, left: 0, right: 100, top, width: 100, x: 0, y: top }) as DOMRect;
+
+type Laid = { readonly area: HTMLElement; readonly element: HTMLElement; readonly scrollTo: ReturnType<typeof vi.fn> };
+
+// A screen's scroll area, 500 px high over 2,000 px of content, at the window's top, and in it the element `html` at
+// `at` px of the content, `height` px high. Scrolling moves the element up; `settles` says whether a scroll ever ends.
+const layOut = (html: string, at: number, height: number, settles = true): Laid => {
+  document.body.innerHTML = `<div id="area" style="overflow-y: auto">${html}</div>`;
+  const area = document.querySelector<HTMLElement>('#area');
+  const element = area?.firstElementChild;
+  if (area === null || !(element instanceof HTMLElement)) {
+    throw new Error('the layout is missing');
+  }
+  Object.defineProperty(area, 'scrollHeight', { value: 2000 });
+  Object.defineProperty(area, 'clientHeight', { value: 500 });
+  area.getBoundingClientRect = (): DOMRect => rect(0, 500);
+  element.getBoundingClientRect = (): DOMRect => rect(at - area.scrollTop, height);
+  const scrollTo = vi.fn(({ top }: ScrollToOptions) => {
+    if (settles) {
+      area.scrollTop = top ?? 0;
+    }
+  });
+  area.scrollTo = scrollTo as unknown as typeof area.scrollTo;
+  area.scrollBy = vi.fn();
+
+  return { area, element, scrollTo };
+};
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -127,6 +156,35 @@ describe('runStep', () => {
       expect(pointer.press).not.toHaveBeenCalled();
     });
 
+    it('does not scroll to a target already wholly in view', async () => {
+      const { scrollTo } = layOut('<button>Scan</button>', 200, 40);
+      const { deps, pointer } = rig();
+
+      expect(await runStep(click('Scan'), deps)).toEqual({ kind: 'done' });
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(pointer.moveTo).toHaveBeenCalledWith(50, 220);
+    });
+
+    it('does not bring into view a region the pointer scrolls in that is already in view in part', async () => {
+      const { scrollTo } = layOut('<section aria-label="Safe to remove">cards</section>', 300, 900);
+      const { deps, pointer } = rig();
+      const region: Target = { name: { kind: 'exact', text: 'Safe to remove' }, role: 'region' };
+
+      expect(await runStep({ by: 400, kind: 'scroll', target: region }, deps)).toEqual({ kind: 'done' });
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(pointer.moveTo).toHaveBeenCalledWith(50, 400);
+    });
+
+    it('goes on after 2 s when the scroll to a target never settles', async () => {
+      const { scrollTo } = layOut('<button>Scan</button>', 1200, 40, false);
+      const { clock, deps, pointer } = rig();
+
+      expect(await runStep(click('Scan'), deps)).toEqual({ kind: 'done' });
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      expect(clock.time).toBeGreaterThanOrEqual(REVEAL_TIMEOUT_MS);
+      expect(pointer.press).toHaveBeenCalledTimes(1);
+    });
+
     it('fails a scroll when nothing overflows', async () => {
       document.body.innerHTML = '<button>Scan</button>';
       const { deps } = rig();
@@ -149,6 +207,38 @@ describe('runStep', () => {
       expect(pointer.moveTo).toHaveBeenCalledTimes(1);
       expect(pointer.press).toHaveBeenCalledTimes(1);
       expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('brings a target below the view to its middle with a smooth scroll, then glides to it', async () => {
+      const { scrollTo } = layOut('<button>Scan</button>', 1200, 40);
+      const { deps, pointer } = rig();
+      expect(await runStep(click('Scan'), deps)).toEqual({ kind: 'done' });
+      expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 970 });
+      expect(scrollTo.mock.invocationCallOrder[0]).toBeLessThan(pointer.moveTo.mock.invocationCallOrder[0] ?? 0);
+      expect(pointer.moveTo).toHaveBeenCalledWith(50, 250);
+    });
+
+    it('brings a target above the view back into view, never past the content top', async () => {
+      const { area, scrollTo } = layOut('<h3>Xcode build data</h3>', 100, 40);
+      area.scrollTop = 800;
+      const { deps } = rig();
+
+      const result = await runStep(
+        { kind: 'hover', target: { name: { kind: 'exact', text: 'Xcode build data' }, role: 'heading' } },
+        deps,
+      );
+
+      expect(result).toEqual({ kind: 'done' });
+      expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 0 });
+    });
+
+    it('brings a region out of view to its top before scrolling in it', async () => {
+      const { scrollTo } = layOut('<section aria-label="Safe to remove">cards</section>', 1100, 900);
+      const { deps } = rig();
+      const region: Target = { name: { kind: 'exact', text: 'Safe to remove' }, role: 'region' };
+
+      expect(await runStep({ by: 400, kind: 'scroll', target: region }, deps)).toEqual({ kind: 'done' });
+      expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 1100 });
     });
 
     it('clicks a target that appears after a while', async () => {

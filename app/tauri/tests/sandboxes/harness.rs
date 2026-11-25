@@ -259,6 +259,10 @@ impl World {
         let mode = SandboxMode::new(generated.sandbox.path(), SandboxTrash::Sandbox);
         let mode =
             if files.iter().any(|file| file.high() == HighLevel::Withheld) { mode } else { mode.offering_high() };
+        // A demo world is scanned as a demo plays it: the modules a release ships, and its own `[settings]` deciding
+        // which guarded folders are read.
+        let demo = files.iter().any(|file| file.demo().is_some());
+        let mode = if demo { mode.shipped_modules() } else { mode };
         let mode = match module {
             None => mode,
             Some(id) => mode.only(fresher_core::ModuleId::new(leak(id)).map_err(|error| failure(name, error))?),
@@ -285,8 +289,9 @@ impl World {
             return Err(failure(name, format!("the setting `{key}` of the case file is refused: {problem}")));
         }
         // The switch decides whether a guarded folder or other apps' data is read: the run turns on the switch of
-        // every stated one, as the user would before scanning it.
-        for capability in world.stated_capabilities() {
+        // every stated one, as the user would before scanning it; a demo world states its switches itself.
+        let stated = if demo { Vec::new() } else { world.stated_capabilities() };
+        for capability in stated {
             let key = format!("core.access.{}", capability.id());
             let update = json!({ "key": key, "value": { "kind": "switch", "value": true } });
             let update = serde_json::from_value(update).map_err(|error| failure(name, error))?;

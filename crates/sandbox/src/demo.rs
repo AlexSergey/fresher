@@ -28,13 +28,15 @@ pub enum DemoSizes {
     AsDeclared,
 }
 
-/// The volume a demo world states it is on, in bytes.
+/// The volume a demo world states it is on, in bytes: what the volume holds, what is free and what macOS's own system
+/// volume takes of the same capacity; the rest of the capacity is the disk's own space.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DemoVolume {
     name: String,
     capacity: u64,
     used: u64,
     free: u64,
+    macos: u64,
 }
 
 #[derive(Deserialize)]
@@ -55,6 +57,8 @@ pub(crate) struct RawVolume {
     capacity: u64,
     used: u64,
     free: u64,
+    #[serde(default)]
+    macos: u64,
 }
 
 impl Demo {
@@ -113,7 +117,7 @@ impl Demo {
 }
 
 impl DemoVolume {
-    /// Refuses an empty name, no capacity, or more used and free than the capacity, naming the field.
+    /// Refuses an empty name, no capacity, or more used, free and macOS's than the capacity, naming the field.
     pub(crate) fn from_raw(raw: RawVolume) -> Result<Self, String> {
         if raw.name.is_empty() {
             return Err("`volume.name` must not be empty".into());
@@ -121,15 +125,24 @@ impl DemoVolume {
         if raw.capacity == 0 {
             return Err("`volume.capacity` must be more than 0".into());
         }
-        if raw.used.checked_add(raw.free).is_none_or(|taken| taken > raw.capacity) {
-            return Err("`volume.used` and `volume.free` together must not exceed `volume.capacity`".into());
+        let taken = raw.used.checked_add(raw.free).and_then(|taken| taken.checked_add(raw.macos));
+        if taken.is_none_or(|taken| taken > raw.capacity) {
+            return Err(
+                "`volume.used`, `volume.free` and `volume.macos` together must not exceed `volume.capacity`".into()
+            );
         }
-        Ok(Self { name: raw.name, capacity: raw.capacity, used: raw.used, free: raw.free })
+        Ok(Self { name: raw.name, capacity: raw.capacity, used: raw.used, free: raw.free, macos: raw.macos })
     }
 
     /// The volume as `world.toml` writes it.
     pub(crate) fn to_raw(&self) -> RawVolume {
-        RawVolume { name: self.name.clone(), capacity: self.capacity, used: self.used, free: self.free }
+        RawVolume {
+            name: self.name.clone(),
+            capacity: self.capacity,
+            used: self.used,
+            free: self.free,
+            macos: self.macos,
+        }
     }
 
     /// The volume's name, as the Finder shows it.
@@ -150,6 +163,11 @@ impl DemoVolume {
     /// The bytes free.
     pub const fn free(&self) -> u64 {
         self.free
+    }
+
+    /// The bytes macOS's own system volume takes of the capacity; 0 when the world does not say.
+    pub const fn macos(&self) -> u64 {
+        self.macos
     }
 }
 
@@ -311,6 +329,17 @@ size = 1048576
         }
 
         #[test]
+        fn a_volume_whose_macos_takes_more_than_the_rest_of_its_capacity_is_refused() {
+            for macos in [5, u64::MAX] {
+                let header = format!(
+                    "{HEADER}[demo.volume]\nname = \"Mac\"\ncapacity = 10\nused = 3\nfree = 3\nmacos = {macos}\n"
+                );
+
+                assert!(demo_reason(&header).contains("`volume.macos`"), "{macos}");
+            }
+        }
+
+        #[test]
         fn a_volume_with_an_empty_name_or_no_capacity_is_refused() {
             let empty = format!("{HEADER}[demo.volume]\nname = \"\"\ncapacity = 10\nused = 1\nfree = 1\n");
             let none = format!("{HEADER}[demo.volume]\nname = \"Mac\"\ncapacity = 0\nused = 0\nfree = 0\n");
@@ -330,7 +359,7 @@ size = 1048576
         fn a_demo_file_with_two_scenery_cases_parses_with_its_header() {
             let header = format!(
                 "{}sizes = \"as-declared\"\n[demo.volume]\nname = \"Macintosh HD\"\ncapacity = 494384795648\n\
-                 used = 401234567890\nfree = 93150227758\n",
+                 used = 401234567890\nfree = 83150227758\nmacos = 10000000000\n",
                 HEADER.replace(
                     "[\"dev-caches.xcode-derived-data\"]",
                     "[\"dev-caches.xcode-derived-data\", \"app-caches.library-caches\"]"
@@ -346,8 +375,8 @@ size = 1048576
             assert_eq!(shows, ["dev-caches.xcode-derived-data", "app-caches.library-caches"]);
             let volume = demo.volume().unwrap();
             assert_eq!(
-                (volume.name(), volume.capacity(), volume.used(), volume.free()),
-                ("Macintosh HD", 494_384_795_648, 401_234_567_890, 93_150_227_758)
+                (volume.name(), volume.capacity(), volume.used(), volume.free(), volume.macos()),
+                ("Macintosh HD", 494_384_795_648, 401_234_567_890, 83_150_227_758, 10_000_000_000)
             );
             assert_eq!(file.module(), None);
             let kinds: Vec<_> = file.cases().iter().map(|case| (case.name(), case.kind())).collect();

@@ -2,17 +2,22 @@
 # the category ids the scan of the whole app must offer (`app/tauri/tests/demos.rs` scans it with every module and fails
 # naming a category that offers nothing). Every case is scenery. The files are sparse and `sizes = "as-declared"` states
 # each one's declared size as the space it takes, so the app shows tens of gigabytes that cost no disk; `[demo.volume]`
-# states the disk, whose used space exceeds the world's total by about 300 GB (the rest of the Mac). Every name is made
-# up: no real person, company or product; the apps' bundle ids are under `com.example.` or are those of the tools the
-# app cleans.
+# states the disk, whose used space exceeds the world's total by about 300 GB (the rest of the Mac), with macOS's own
+# system volume beside it and a few gigabytes of the disk's own space. Every name is made up: no real person, company or
+# product; the apps' bundle ids are under `com.example.` or are those of the tools the app cleans.
 #
 # Left out on purpose: the `xcode`, `docker`, `trash`, `jetbrains` and Ollama stories (their shapes need an external
 # program's answer, a Trash the sandbox keeps apart, or multi-file stores whose sizes must agree, which a sparse world
-# does not model); the `stale-projects` other kinds of build output; and a permission card (access is stated granted
-# for every guarded folder the modules read, so none shows).
+# does not model); the `stale-projects` other kinds of build output; and a permission notice: access is stated granted
+# for every guarded folder the modules read and `[settings]` turns their switches on, as a user who allowed them has,
+# so the scan reads them all; no file is under a folder only Full Disk Access opens (Pictures, Movies, Music), which a
+# sandbox cannot state, so no size reads as partial.
 feature = "developer-mac"
 
 [settings]
+"core.access.desktop" = true
+"core.access.documents" = true
+"core.access.downloads" = true
 "unused-toolchains.node-versions" = true
 
 [demo]
@@ -45,8 +50,9 @@ shows = [
 [demo.volume]
 name = "Macintosh HD"
 capacity = 494384795648
-used = 444000000000
+used = 425000000000
 free = 50384795648
+macos = 12100000000
 
 [[case]]
 name = "Xcode build products of three projects"
@@ -400,13 +406,13 @@ size = 18000000
 path = "home/Documents/Work/Designs/archive.zip"
 size = 2600000000
 [[case.file]]
-path = "home/Pictures/Photos Library.photoslibrary/originals/0/IMG_0001.heic"
+path = "home/Documents/Photos/2026/IMG_0001.heic"
 size = 17800000000
 [[case.file]]
-path = "home/Movies/Holiday/Cut.mov"
+path = "home/Documents/Footage/Holiday/Cut.mov"
 size = 9400000000
 [[case.file]]
-path = "home/Music/Library/Albums/mix.flac"
+path = "home/Documents/Recordings/mix.flac"
 size = 3100000000
 [[case.file]]
 path = "home/Desktop/notes.md"

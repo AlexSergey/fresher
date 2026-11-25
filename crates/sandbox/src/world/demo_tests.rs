@@ -16,8 +16,8 @@ fn demo(sizes: &str, volume: &str, cases: &str) -> CaseFile {
     .unwrap()
 }
 
-const VOLUME: &str =
-    "[demo.volume]\nname = \"Macintosh HD\"\ncapacity = 994662584320\nused = 701202362368\nfree = 293460221952\n";
+const VOLUME: &str = "[demo.volume]\nname = \"Macintosh HD\"\ncapacity = 994662584320\nused = 701202362368\n\
+                      free = 273460221952\nmacos = 12000000000\n";
 
 /// A scenery case with a sparse file of 6 GiB, a data file and a sparse file owned by the system.
 const SCENERY: &str = r#"

@@ -13,8 +13,8 @@ use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
     AccessProbe, Build, Clock, CommandRunner, FinderSettings, FolderReader, HighLevel, InstallRecords, InstalledApps,
-    KnownFolders, Module, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError, SystemPorts,
-    Volumes,
+    KnownFolders, Module, ModuleGroup, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError,
+    SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 #[cfg(not(debug_assertions))]
@@ -145,6 +145,8 @@ pub(crate) fn start(
     #[cfg(debug_assertions)]
     if let Some(mode) = crate::sandbox::SandboxMode::from_env(&var)? {
         apply(&MACOS_POLICY)?;
+        // A demo shows the app as it ships: the dev-only modules' made-up findings stay out of the recording.
+        let mode = if crate::demo::DemoMode::asked(&var) { mode.shipped_modules() } else { mode };
         // The running apps come from the sandbox's world, never the Mac's: an app open on the Mac changes nothing.
         let (engine, sandbox) =
             crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
@@ -265,7 +267,7 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
         commands,
         access: Arc::new(MacAccess::new(home.to_path_buf(), macos_version(Path::new("/")))),
         cleanup,
-        only: None,
+        modules: ModuleSet::Every,
         // The first release withholds High (plan 042); development builds too, so the walk sees what ships.
         high: HighLevel::Withheld,
     })
@@ -282,7 +284,7 @@ pub(crate) fn apply(policy: &IoPolicy) -> Result<(), ComposeError> {
 
 /// What the shared assembly takes, chosen apart by the normal engine and the sandbox's: the data `folder`, the reader
 /// of the disk, the places the walk never opens, the known folders (whose home is `~` of the scan roots), the ports
-/// read through, the cleanup, and the one module registered (`None`: every module of the app).
+/// read through, the cleanup, and the modules registered.
 pub(crate) struct Shared {
     pub(crate) folder: DataFolder,
     /// The system's bulk reader; in sandbox mode seen through the sandbox's stated facts.
@@ -296,7 +298,7 @@ pub(crate) struct Shared {
     pub(crate) commands: Arc<dyn CommandRunner>,
     pub(crate) access: Arc<dyn AccessProbe>,
     pub(crate) cleanup: CleanupPorts,
-    pub(crate) only: Option<ModuleId>,
+    pub(crate) modules: ModuleSet,
     /// The installed apps: the apps folders and Spotlight on a Mac; in a sandbox its listed and declared apps, with the
     /// change times its world states.
     pub(crate) apps: Arc<dyn InstalledApps>,
@@ -319,7 +321,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         commands,
         access,
         cleanup,
-        only,
+        modules,
         apps,
         installs,
         high,
@@ -351,7 +353,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         system_ui,
         system,
     };
-    Ok(Engine::with_cleanup(registry_of(only)?, ports, cleanup, high)?)
+    Ok(Engine::with_cleanup(registry_of(modules)?, ports, cleanup, high)?)
 }
 
 /// The system's ports, whose small files are read through `reader`, the walk's own (in sandbox mode the sandbox's
@@ -446,14 +448,37 @@ fn bundle_of(executable: &Path) -> Option<&Path> {
 /// Every module of the app, in a fixed order. The dev-only `demo` and `trial` modules run in debug builds only.
 #[cfg(test)]
 pub(crate) fn registry() -> Result<Registry, ComposeError> {
-    registry_of(None)
+    registry_of(ModuleSet::Every)
 }
 
-/// The app's modules, or only the one with the id `only` (none when the app has no such module).
-fn registry_of(only: Option<ModuleId>) -> Result<Registry, ComposeError> {
+/// Which of the app's modules an engine registers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModuleSet {
+    /// Every module of the build, the dev-only ones of a debug build included.
+    Every,
+    /// The modules a release ships: a debug build's dev-only ones (the `Debug` group) left out, as a demo plays.
+    Shipped,
+    /// Only the one with this id (none when the app has no such module), as the autotest of a case file runs.
+    Only(ModuleId),
+}
+
+impl ModuleSet {
+    /// Whether `module` is in the set.
+    fn holds(self, module: &dyn Module) -> bool {
+        let descriptor = module.descriptor();
+        match self {
+            Self::Every => true,
+            Self::Shipped => descriptor.group() != ModuleGroup::Debug,
+            Self::Only(id) => descriptor.id() == id,
+        }
+    }
+}
+
+/// The app's modules of `set`.
+fn registry_of(set: ModuleSet) -> Result<Registry, ComposeError> {
     let mut registry = Registry::new()?;
     for module in modules()? {
-        if only.is_none_or(|id| module.descriptor().id() == id) {
+        if set.holds(module.as_ref()) {
             registry.register(module)?;
         }
     }
@@ -741,7 +766,9 @@ mod tests {
     mod positive {
         use std::path::{Path, PathBuf};
 
-        use crate::compose::{MACOS_POLICY, bundle_of, checked_user_temp, engine, engine_with, user_temp};
+        use crate::compose::{
+            MACOS_POLICY, ModuleSet, bundle_of, checked_user_temp, engine, engine_with, modules, user_temp,
+        };
 
         #[test]
         fn a_home_reached_through_a_link_is_spelled_as_the_disk_spells_it() {
@@ -866,6 +893,34 @@ mod tests {
 
             let ids: Vec<&str> = engine.modules().iter().map(|module| module.id.as_str()).collect();
             assert_eq!(ids, expected);
+        }
+
+        #[test]
+        fn the_shipped_set_leaves_out_the_dev_only_modules_in_every_build() {
+            let modules = modules().unwrap();
+
+            let ids: Vec<&str> = modules
+                .iter()
+                .filter(|module| ModuleSet::Shipped.holds(module.as_ref()))
+                .map(|module| module.descriptor().id().as_str())
+                .collect();
+            assert_eq!(
+                ids,
+                [
+                    "app-caches",
+                    "temp",
+                    "logs",
+                    "dev-caches",
+                    "app-leftovers",
+                    "downloads",
+                    "jetbrains",
+                    "stale-projects",
+                    "local-ai-models",
+                    "unused-toolchains",
+                    "xcode",
+                    "docker",
+                ]
+            );
         }
 
         #[test]

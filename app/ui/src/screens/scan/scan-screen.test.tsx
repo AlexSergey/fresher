@@ -26,6 +26,7 @@ import {
   UNEXPLAINED_COVERAGE,
 } from '../../test/demo-scan';
 import { createFakeClock } from '../../test/fake-clock';
+import { sandboxBuild } from '../../test/sandbox-build';
 import {
   DEMO_MAP_COMPLETE,
   DEMO_MAP_NO_SCAN,
@@ -470,6 +471,34 @@ describe('ScanScreen', () => {
       });
 
       expect(screen.getByText('3 minutes ago')).toBeInTheDocument();
+    });
+
+    it("a sandbox's scan that just finished reads now, though its world's clock is days behind the Mac's", async () => {
+      const finished = DEMO_OVERVIEW.lastScan?.finished ?? 0;
+      vi.useFakeTimers({ now: (finished + 7 * 86_400) * 1000, toFake: ['Date'] });
+      core({
+        appInfo: () => ({
+          build: sandboxBuild(),
+          high: 'withheld',
+          home: '/demo',
+          now: finished + 5,
+          version: '0.1.0',
+        }),
+        getOverview: () => DEMO_OVERVIEW,
+      });
+
+      try {
+        render(
+          <AppProviders store={createCoreStore()}>
+            <ScanScreen />
+          </AppProviders>,
+        );
+
+        expect(await screen.findByText('now')).toBeInTheDocument();
+        expect(screen.queryByText('7 days ago')).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('the cards sit in their danger zones, the safest first', async () => {

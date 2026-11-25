@@ -28,4 +28,12 @@
   .pressed {
     transform: scale(0.8);
   }
+
+  /*
+   * The player clicks by script, which the browser takes for keyboard use, so a dialog's first focus would show its
+   * ring; a user who clicks with the mouse sees none, and neither does the recording.
+   */
+  :global(:root[data-demo='playing'] :focus-visible) {
+    box-shadow: none;
+  }
 }
