@@ -69,7 +69,9 @@ module (`ModuleDescriptor::with_kept`; the user's decision of 2026-11-25):
 - **Kept for good**: Fresher keeps the item for what it is: the version you use, a newer version's data, an app that
   is installed, a socket, a lock, the system's or another user's file. Nothing is to be done, and the next scan keeps it
   too. The Scan screen does not show it at all; a category's details show it as one quiet line ("3 items kept
-  (1.4 GB): This is the version you use.").
+  (1.4 GB): This is the version you use."). The user confirmed the classification on 2026-11-25: what only an
+  administrator can remove, a macOS installer newer than the system, and the settings of the IDE in use are never
+  shown as something to remove.
 - **For now** (every other reason): the item would be offered, but something passing holds it back: an app is open, it
   changed lately, a list or a folder could not be read, a lock the user can lift, a download not finished. Scan and the
   details show the line with each item by name, path and size (the ten largest, then how many more).
