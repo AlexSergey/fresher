@@ -17,10 +17,10 @@ sample of the copied folders. When that check finds a change the journal missed 
 scan becomes a full walk with the same `on_progress`, and the full walk's counters start again from zero. The engine
 publishes both runs under one `expected`, so the bar rose by what the rescan walked and fell back to 0. The dev run
 records of scans of the real home all finish as `full`; they hold no `scan-progress` event and no fallback reason, so
-they do not show which fallback it was. The other suspects were ruled out: the engine publishes `ScanProgress` from the one walk only and takes
-`expected` once at the start (`crates/engine/src/session.rs`, `estimate.rs`); the UI only throttles the progress and
-turns `bytes` against `expected` into the percent. The other fallbacks (no cache, a journal gap, too many changes)
-happen before the rescan reports anything.
+they do not show which fallback it was. The other suspects were ruled out: the engine publishes `ScanProgress` from the
+one walk only and takes `expected` once at the start (`crates/engine/src/session.rs`, `estimate.rs`); the UI only
+throttles the progress and turns `bytes` against `expected` into the percent. The other fallbacks (no cache, a journal
+gap, too many changes) happen before the rescan reports anything.
 
 A test reproduced it: `a_failed_check_never_lowers_the_progress_the_rescan_reported`
 (`crates/scanner/src/rescan/check_tests.rs`) saw the bytes go from 20 to 0.

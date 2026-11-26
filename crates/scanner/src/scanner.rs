@@ -323,7 +323,8 @@ pub(crate) fn header(
 
 /// `on_progress` passed only what rises: each count is the highest seen, and nothing is passed until one of them rises.
 /// A rescan that becomes a full scan has reported its own counts; the full walk counts again from zero, and the
-/// progress holds until it passes them.
+/// progress holds until it passes them. When the tree shrank in between, the full walk may never pass them: the last
+/// counts passed are then the rescan's mark, not the full walk's total; the summary stays right.
 fn rising(on_progress: &mut dyn FnMut(WalkProgress)) -> impl FnMut(WalkProgress) + '_ {
     let mut mark = WalkProgress::default();
     move |progress| {
