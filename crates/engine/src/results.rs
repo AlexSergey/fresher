@@ -63,8 +63,10 @@ pub(crate) struct Results {
     volumes: RootVolumes,
     /// A scan began and has not finished.
     scanning: bool,
-    /// A setting that applies at the next scan changed since the running scan began: its `LastScan` takes the mark.
-    settings_changed_in_scan: bool,
+    /// How many times a setting that applies at the next scan changed: a plan reads it with the settings it takes.
+    settings_revision: u64,
+    /// The revision the running scan's plan read: a scan that ends on another one takes the mark in its `LastScan`.
+    scan_settings: u64,
     /// The claims of the findings once the scan resolved them; until then every finding counts its own sizes.
     claims: Option<Claims>,
 }
@@ -94,7 +96,8 @@ impl fmt::Debug for Results {
             .field("state_findings", &self.state_findings.len())
             .field("volumes", &self.volumes)
             .field("scanning", &self.scanning)
-            .field("settings_changed_in_scan", &self.settings_changed_in_scan)
+            .field("settings_revision", &self.settings_revision)
+            .field("scan_settings", &self.scan_settings)
             .field("claims", &self.claims.is_some())
             .finish()
     }
@@ -135,15 +138,23 @@ impl Results {
             state_findings: Arc::from([]),
             volumes: RootVolumes::default(),
             scanning: false,
-            settings_changed_in_scan: false,
+            settings_revision: 0,
+            scan_settings: 0,
             claims: None,
         }
     }
 
     /// Forgets the previous scan's findings and the picks for those of a scan of `roots` and of the `places` outside
-    /// them, whose volumes are `volumes`; gives the first id of the new scan (`None` when the ids ran out). The paths
-    /// the picks removed stay until a new state is kept: they are of the state still kept.
-    pub(crate) fn begin(&mut self, roots: &[PathBuf], places: &[Place], volumes: RootVolumes) -> Option<u32> {
+    /// them, whose volumes are `volumes`, planned with the settings of revision `settings`; gives the first id of the
+    /// new scan (`None` when the ids ran out). The paths the picks removed stay until a new state is kept: they are of
+    /// the state still kept.
+    pub(crate) fn begin(
+        &mut self,
+        roots: &[PathBuf],
+        places: &[Place],
+        volumes: RootVolumes,
+        settings: u64,
+    ) -> Option<u32> {
         self.findings.clear();
         self.own.clear();
         roots.clone_into(&mut self.roots);
@@ -152,7 +163,7 @@ impl Results {
         self.limited.clear();
         self.claims = None;
         self.scanning = true;
-        self.settings_changed_in_scan = false;
+        self.scan_settings = settings;
         self.next_id
     }
 
@@ -167,7 +178,7 @@ impl Results {
 
     /// The scan ended: `next_id` is the first id the next scan may use.
     pub(crate) fn finish(&mut self, mut last: LastScan, next_id: Option<u32>) {
-        last.settings_changed = self.settings_changed_in_scan;
+        last.settings_changed = self.settings_revision != self.scan_settings;
         self.last = Some(last);
         self.next_id = next_id;
         self.scanning = false;
@@ -326,13 +337,20 @@ impl Results {
         }
     }
 
-    /// A setting that applies at the next scan changed: since the last scan, or, while a scan runs, since it began.
+    /// A setting that applies at the next scan changed: since the last scan, or, while a scan runs, since its plan
+    /// read the settings (a scan planned but not begun yet takes the mark too: its plan read the revision before).
     pub(crate) fn mark_settings_changed(&mut self) {
-        if self.scanning {
-            self.settings_changed_in_scan = true;
-        } else if let Some(last) = &mut self.last {
+        self.settings_revision = self.settings_revision.wrapping_add(1);
+        if !self.scanning
+            && let Some(last) = &mut self.last
+        {
             last.settings_changed = true;
         }
+    }
+
+    /// The revision of the settings that apply at the next scan; read by a plan under the settings' lock.
+    pub(crate) const fn settings_revision(&self) -> u64 {
+        self.settings_revision
     }
 
     /// From now on, category totals add each finding's counted size.
@@ -669,7 +687,7 @@ mod tests {
             results.set_next_id(Some(2));
             let pick = picked(&mut results, "/f/mine.iso");
 
-            let first = results.begin(&[], &[], crate::storage::roots::RootVolumes::default());
+            let first = results.begin(&[], &[], crate::storage::roots::RootVolumes::default(), 0);
 
             assert_eq!(results.own(), []);
             assert_eq!(first, Some(pick.id().get() + 1));

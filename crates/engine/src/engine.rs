@@ -565,7 +565,11 @@ impl Engine {
             &expand_home(&roots, self.shared.home().as_deref()),
             &protection,
         );
-        Ok(ScanPlan { roots, places, opt_ins, modules, mode, ignored: settings.ignored(&self.shared.registry) })
+        // Read under the settings' lock, which every change holds while it marks the results: a change after this
+        // plan marks its scan, even one made before the scan's thread begins.
+        let settings_revision = lock(&self.shared.results)?.settings_revision();
+        let ignored = settings.ignored(&self.shared.registry);
+        Ok(ScanPlan { roots, places, opt_ins, modules, mode, ignored, settings_revision })
     }
 }
 

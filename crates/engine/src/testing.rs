@@ -11,12 +11,12 @@ use std::time::Duration;
 use fresher_core::{
     AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION, AGREEMENT_VERSION_KEY, AutoEmpty, ByteSize, CancelToken,
     CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan, DangerLevel, Depth,
-    DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, FullScanReason, Interest, ItemDone,
-    LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
-    ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal,
-    ScanKind, SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
-    Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress,
-    WalkRequest, WalkSummary,
+    DiskSpace, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, FullScanReason,
+    Interest, ItemDone, LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor,
+    ModuleError, ModuleGroup, ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection,
+    PutBackOutcome, ReadError, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId, StoreError, StoredSettings,
+    Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable,
+    VolumeFacts, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeFinderSettings, FakeSystemUi, FakeVolumes,
@@ -628,6 +628,52 @@ impl Cleaner for HeldCleaner {
     }
 }
 
+/// Volumes that hold the first `identify` until the gate is released, then answer as the fake volumes they wrap: a
+/// scan's thread held before it begins, after `start_scan` returned.
+#[derive(Debug)]
+pub(crate) struct HeldVolumes {
+    inner: FakeVolumes,
+    gate: Gate,
+    holding: Gate,
+    held: AtomicBool,
+}
+
+impl HeldVolumes {
+    pub(crate) fn new(inner: FakeVolumes) -> (Self, Gate) {
+        let gate = Gate::default();
+        (Self { inner, gate: gate.clone(), holding: Gate::default(), held: AtomicBool::new(false) }, gate)
+    }
+
+    /// Waits until the first `identify` is held; fails after 10 s instead of hanging.
+    pub(crate) fn wait_until_holding(&self) {
+        let deadline = std::time::Instant::now() + PATIENCE;
+        while !self.holding.is_released() {
+            assert!(std::time::Instant::now() < deadline, "the volumes never held an identify");
+            thread::yield_now();
+        }
+    }
+}
+
+impl Volumes for HeldVolumes {
+    fn identify(&self, path: &std::path::Path) -> Result<VolumeFacts, ReadError> {
+        if !self.held.swap(true, Ordering::AcqRel) {
+            self.holding.release();
+            while !self.gate.is_released() {
+                thread::yield_now();
+            }
+        }
+        self.inner.identify(path)
+    }
+
+    fn available(&self, path: &std::path::Path) -> Result<ByteSize, ReadError> {
+        self.inner.available(path)
+    }
+
+    fn space(&self, path: &std::path::Path) -> Result<DiskSpace, ReadError> {
+        self.inner.space(path)
+    }
+}
+
 /// The settings file in memory; it can refuse to be read or written.
 #[derive(Debug, Default)]
 pub(crate) struct MemorySettings {
@@ -708,6 +754,8 @@ pub(crate) struct Fixture {
     pub(crate) cleaner: Arc<dyn Cleaner>,
     pub(crate) journal: Arc<MemoryCleanupJournal>,
     pub(crate) volumes: Arc<FakeVolumes>,
+    /// The volumes port the engine is given in place of `volumes`, when a test sets one.
+    volumes_port: Option<Arc<dyn Volumes>>,
     pub(crate) finder: Arc<FakeFinderSettings>,
     /// Whether the settings hold the acceptance of the current agreement when the engine is built.
     agreement: bool,
@@ -729,6 +777,7 @@ impl Fixture {
             cleaner: Arc::new(FakeCleaner::default()),
             journal: Arc::default(),
             volumes: Arc::default(),
+            volumes_port: None,
             finder: Arc::new(FakeFinderSettings::new(AutoEmpty::Unknown)),
             agreement: true,
             high: fresher_core::HighLevel::Offered,
@@ -760,6 +809,12 @@ impl Fixture {
 
     pub(crate) fn volumes(mut self, volumes: FakeVolumes) -> Self {
         self.volumes = Arc::new(volumes);
+        self
+    }
+
+    /// The engine reads the volumes through `port`; the test keeps its own `Arc` to look at it.
+    pub(crate) fn volumes_port(mut self, port: Arc<impl Volumes + 'static>) -> Self {
+        self.volumes_port = Some(port);
         self
     }
 
@@ -819,7 +874,7 @@ impl Fixture {
         let cleanup = CleanupPorts {
             cleaner: self.cleaner,
             journal: self.journal,
-            volumes: self.volumes,
+            volumes: self.volumes_port.unwrap_or(self.volumes),
             finder: self.finder,
             // Where the fake cleaner lands what it moves.
             trashes: vec![PathBuf::from("/fake-trash")],

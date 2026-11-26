@@ -1,10 +1,11 @@
+use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
 use fresher_core::{Event, SettingUpdate, SettingValue};
 
 use crate::Engine;
-use crate::testing::{Fixture, ScriptedWalk, scan, wait_for_finish};
+use crate::testing::{Fixture, HeldVolumes, ScriptedWalk, scan, wait_for_finish};
 
 fn change_roots(engine: &Engine) {
     let roots = SettingValue::Folders(vec!["~/Projects".into()]);
@@ -77,6 +78,22 @@ mod positive {
         let events = engine.subscribe();
         engine.start_scan(crate::ScanMode::Auto).unwrap();
         wait_for_start(&events);
+
+        change_roots(&engine);
+        gate.release();
+        wait_for_finish(&events);
+
+        assert!(settings_changed(&engine));
+    }
+
+    #[test]
+    fn a_change_after_the_start_before_the_scan_begins_marks_the_scan_that_ends() {
+        let (volumes, gate) = HeldVolumes::new(fresher_testing::FakeVolumes::default());
+        let volumes = Arc::new(volumes);
+        let engine = Fixture::new(ScriptedWalk::new()).volumes_port(Arc::clone(&volumes)).engine();
+        let events = engine.subscribe();
+        engine.start_scan(crate::ScanMode::Auto).unwrap();
+        volumes.wait_until_holding();
 
         change_roots(&engine);
         gate.release();

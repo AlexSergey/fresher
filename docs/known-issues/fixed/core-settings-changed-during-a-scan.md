@@ -14,7 +14,8 @@ running scan then finishes with a new `LastScan`, unmarked.
 
 ## Fix
 
-The results keep "a setting that applies at the next scan changed since the running scan began", cleared when a scan
-begins. A change while a scan runs sets it; a change with no scan running still marks the last scan. The scan's
-`LastScan` takes the flag when the scan ends, whatever its outcome, so the UI shows "Rescan to apply". Proved by
-`crates/engine/src/scan_settings_tests.rs`.
+The results count the changes of the settings that apply at the next scan (a revision). A scan's plan reads that
+revision under the settings' lock, at the moment it reads the settings, in `start_scan`; the scan's `LastScan`, when
+the scan ends, whatever its outcome, is marked when the revision moved since, so the UI shows "Rescan to apply". A
+change made after `start_scan` returned but before the scan's thread began is caught too. A change with no scan
+running still marks the last scan. Proved by `crates/engine/src/scan_settings_tests.rs`.

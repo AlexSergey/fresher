@@ -38,6 +38,8 @@ pub(crate) struct ScanPlan {
     pub(crate) mode: WalkMode,
     /// The ignore lists: a left-out of an ignored category is not counted.
     pub(crate) ignored: Ignored,
+    /// The revision of the settings this plan read (`Results::settings_revision`): a change after it marks the scan.
+    pub(crate) settings_revision: u64,
 }
 
 /// An enabled module and its settings.
@@ -165,7 +167,7 @@ fn begin(shared: &Shared, plan: &ScanPlan) -> (Option<u32>, Option<ByteSize>) {
     let volumes = shared.read_volumes(&walked);
     let mut results = lock_anyway(&shared.results);
     let expected = estimate::expected(results.state().as_deref(), &roots, &volumes);
-    (results.begin(&plan.roots, &plan.places, volumes), expected)
+    (results.begin(&plan.roots, &plan.places, volumes, plan.settings_revision), expected)
 }
 
 /// Every registered module's interests, enabled or not, so turning one off never changes what the walk reads (design
