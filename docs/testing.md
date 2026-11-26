@@ -12,7 +12,8 @@ separate blocks) is in the root [`CLAUDE.md`](../CLAUDE.md). Set up by plan
 - **Every rule is tested both ways**: paths it must NOT claim come first (look-alike folders, a current version, a
   symlink out of the root), then the paths it must claim.
 - **Deterministic**: no wall clock (the `Clock` port, `FakeClock` in tests), no network, no real home folder. Every test
-  runs on a temporary fixture tree; the Trash and external commands are ports with fakes.
+  runs on a temporary fixture tree; the Trash and external commands are ports with fakes. No test reads a network
+  volume: a network mount is known only by its flags in the system's cached list of mounts and is never asked.
 - **Nothing is ever deleted outside a temporary folder** in a test: `FakeTrash` moves items into a folder inside the
   fixture tree; every cleaner in a test is `Reach::Sandbox`, acting only below a fixture holding the sandbox marker
   (`FixtureTree::with_sandbox`), or `Reach::SandboxFolder`, acting only strictly inside a generated sandbox folder with
