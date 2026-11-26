@@ -40,3 +40,4 @@ needs. When it is done, its row and file are removed in the same change.
 | [The README at the first release](./readme-at-release.md) | 2026-11-22 | when plan 013 publishes the first release | the package manager's line in the README's Install block |
 | [The disk image's window](./dmg-window-design.md) | 2026-11-26 | 0.2.0 | a drawn background with an arrow to Applications, a fixed window size and icon places, as other apps' images have |
 | [Issues for contributors](./contributor-issues.md) | 2026-11-26 | when 0.1.0 is published | one good first issue per developer tool's cache, the disk image's window, help wanted on four known issues; two labels; CONTRIBUTING's start |
+| [Left-out items folded at the bottom of a category](./left-out-folded-at-the-bottom.md) | 2026-11-26 | 0.2.0 | the left-out lines below the offered items, folded under an accordion, so a long list is not read as what goes |
