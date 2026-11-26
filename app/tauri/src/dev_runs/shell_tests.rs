@@ -320,6 +320,7 @@ mod positive {
         let record = snapshot(folder.path());
         let scan = &record["scans"][0];
         assert_eq!(scan["kind"], json!({ "kind": "full" }));
+        assert_eq!(scan["fallback"], json!(null), "the reference walk never falls back");
         assert_eq!(scan["outcome"], json!({ "kind": "completed" }));
         assert!(scan["durationMs"].is_u64(), "{scan}");
         assert!(scan["finished"].is_string(), "{scan}");

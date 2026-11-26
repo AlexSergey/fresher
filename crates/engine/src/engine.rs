@@ -10,10 +10,10 @@ use fresher_core::{
     AGREEMENT_VERSION, Access, AccessProbe, AccessStatus, AgreementView, AppDetail, AppId, AppsQuery, AppsView,
     CancelToken, Capability, Cleaner, CleanupDetail, CleanupId, CleanupJournal, CleanupPlanView, CleanupSelection,
     CleanupsPage, Clock, CommandError, CommandRunner, Confirmation, Dictionary, DiskState, DiskWalk, EngineStatus,
-    Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery, HighLevel, KnownFolder, ModuleInfo,
-    Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey, SettingUpdate,
-    SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, Timestamp, TrashView, UninstallChoice, Volumes,
-    WalkMode,
+    Event, FinderSettings, Finding, FindingId, FindingsPage, FindingsQuery, FullScanReason, HighLevel, KnownFolder,
+    ModuleInfo, Operation, Overview, PlanId, PutBackReport, ScanId, SchemaError, SettingEffect, SettingKey,
+    SettingUpdate, SettingsStore, SettingsView, SystemUi, SystemUiError, TextKey, Timestamp, TrashView,
+    UninstallChoice, Volumes, WalkMode,
 };
 
 use crate::access::AccessView;
@@ -107,6 +107,8 @@ pub(crate) struct Shared {
     pub(crate) apps: Mutex<AppsCache>,
     /// Held by the one listing that measures the bundles; never by a scan.
     pub(crate) apps_gate: Mutex<()>,
+    /// The last scan whose walk ended, with why it read every folder when its rescan fell back.
+    pub(crate) fallback: Mutex<Option<(ScanId, Option<FullScanReason>)>>,
 }
 
 impl Shared {
@@ -174,6 +176,7 @@ impl Engine {
             trash_folders: Mutex::new(Vec::new()),
             apps: Mutex::new(AppsCache::default()),
             apps_gate: Mutex::new(()),
+            fallback: Mutex::new(None),
         };
         Ok(Self { shared: Arc::new(shared) })
     }
@@ -503,6 +506,13 @@ impl Engine {
     /// cannot be read answers an empty page.
     pub fn cleanups(&self, offset: u32, limit: u32) -> CleanupsPage {
         cleanup::page(&self.shared, offset, limit)
+    }
+
+    /// Why the walk of `scan` read every folder although a rescan was asked; `None` when it did not, or when `scan` is
+    /// not the last scan whose walk ended. For diagnostics (the development run record), never shown in the interface.
+    pub fn fallback(&self, scan: ScanId) -> Option<FullScanReason> {
+        let last = lock_anyway(&self.shared.fallback);
+        last.as_ref().filter(|(last, _)| *last == scan).and_then(|(_, reason)| reason.clone())
     }
 
     /// One cleanup of the journal with every item: its outcome or skip reason, and where it is now.

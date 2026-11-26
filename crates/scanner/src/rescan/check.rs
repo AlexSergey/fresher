@@ -1,7 +1,12 @@
 //! The check of a rescan: the journal is trusted only as far as a sample confirms it. A sample of the folders the
 //! rescan copied without reading is read again and compared with the patched tree; one difference means a full scan.
 
-use fresher_core::{CancelToken, EntryKind, FullScanReason};
+use std::cmp::Ordering;
+use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt as _;
+use std::path::PathBuf;
+
+use fresher_core::{CancelToken, CheckDifference, CheckFailure, EntryKind, FoldedPart, FullScanReason};
 
 use crate::rescan::Stop;
 use crate::rescan::frozen::Frozen;
@@ -17,7 +22,8 @@ pub(crate) const CHECK_SAMPLE: usize = 32;
 
 /// Reads a sample of `unchanged` (folders of `tree`, frozen, that the rescan did not read) and compares each with its
 /// node: its kept entries' names and kinds, its kept files' sizes, its folded bytes and whether an entry failed. The
-/// tree keeps no file ids, so a file replaced by another of the same size is not seen; the journal reports it.
+/// tree keeps no file ids, so a file replaced by another of the same size is not seen; the journal reports it. A
+/// difference fails the check with the first differing folder of the tree (`CheckFailure`).
 pub(crate) fn check(
     tree: &Tree,
     unchanged: &[NodeIndex],
@@ -27,7 +33,7 @@ pub(crate) fn check(
 ) -> Result<(), Stop> {
     let frozen = Frozen::new(tree);
     let mut jobs = Vec::new();
-    let mut differences = 0_usize;
+    let mut differed: Vec<(NodeIndex, CheckDifference)> = Vec::new();
     for node in sample(tree, unchanged, seed) {
         let Some(path) = tree.path(node) else { continue };
         let Some(root) = crate::rescan::change_set::ancestry(tree, node).last() else { continue };
@@ -35,7 +41,7 @@ pub(crate) fn check(
         let is_root = root.node == node;
         let identity = if is_root { Ok(root.identity) } else { walk.reader.identify(&path) };
         let Ok(identity) = identity else {
-            differences += 1;
+            differed.push((node, CheckDifference::NotIdentified));
             continue;
         };
         let state = walk.matcher.root_state(&path);
@@ -54,17 +60,28 @@ pub(crate) fn check(
         });
     }
     for report in walk.read_all(jobs, cancel)? {
-        let same = match &report.body {
-            Body::Folder(folder) => same(&frozen, report.node, &folder.batch),
-            Body::Failed(_) | Body::Opaque(_) => false,
+        let difference = match &report.body {
+            Body::Folder(folder) => difference(&frozen, report.node, &folder.batch),
+            Body::Failed(_) => Some(CheckDifference::NotRead),
+            Body::Opaque(_) => Some(CheckDifference::Summed),
         };
-        differences += usize::from(!same);
+        differed.extend(difference.map(|difference| (report.node, difference)));
     }
-    if differences > 0 {
-        tracing::warn!(differences, "the journal missed changes the check found; a full scan follows");
-        return Err(Stop::Full(FullScanReason::CheckFailed));
+    differed.sort_by_key(|&(node, _)| node);
+    let folders = u32::try_from(differed.len()).unwrap_or(u32::MAX);
+    let Some((node, difference)) = differed.into_iter().next() else { return Ok(()) };
+    tracing::warn!(folders, ?difference, "the journal missed changes the check found; a full scan follows");
+    let folder = inside_root(tree, node);
+    Err(Stop::Full(FullScanReason::CheckFailed(CheckFailure { folder, difference, folders })))
+}
+
+/// The path of `node` inside its root; empty for a root.
+fn inside_root(tree: &Tree, node: NodeIndex) -> PathBuf {
+    let root = crate::rescan::change_set::ancestry(tree, node).last().and_then(|root| tree.path(root));
+    match (tree.path(node), root) {
+        (Some(path), Some(root)) => path.strip_prefix(&root).map(PathBuf::from).unwrap_or(path),
+        _ => PathBuf::new(),
     }
-    Ok(())
 }
 
 /// `CHECK_SAMPLE` folders of `unchanged` that can be read and compared (not opaque, collapsed, avoided, on another
@@ -93,12 +110,12 @@ pub(crate) fn sample(tree: &Tree, unchanged: &[NodeIndex], seed: u64) -> Vec<Nod
 /// A kept entry as the check compares it: its name, its kind and, for a file, its logical and allocated sizes.
 type Entry<'a> = (&'a [u8], EntryKind, Option<(u64, u64)>);
 
-/// Whether the folder's listing, folded, is what the node holds.
-fn same(frozen: &Frozen<'_>, node: NodeIndex, batch: &FolderBatch) -> bool {
+/// What differs between the folder's listing, folded, and what the node holds; `None` when nothing does.
+fn difference(frozen: &Frozen<'_>, node: NodeIndex, batch: &FolderBatch) -> Option<CheckDifference> {
     let tree = frozen.tree;
-    let Some(found) = tree.node(node) else { return false };
-    if batch.incomplete != found.flags.has(Flag::Incomplete) || own_of(batch) != frozen.own(node) {
-        return false;
+    let Some(found) = tree.node(node) else { return Some(CheckDifference::NotRead) };
+    if batch.incomplete != found.flags.has(Flag::Incomplete) {
+        return Some(CheckDifference::Incomplete);
     }
     let mut kept: Vec<Entry<'_>> = batch
         .kept
@@ -110,7 +127,7 @@ fn same(frozen: &Frozen<'_>, node: NodeIndex, batch: &FolderBatch) -> bool {
         })
         .collect();
     kept.sort_by(|left, right| left.0.cmp(right.0));
-    let children: Vec<Entry<'_>> = tree
+    let mut children: Vec<Entry<'_>> = tree
         .children(node)
         .filter_map(|child| {
             let kind = tree.node(child)?.flags.kind();
@@ -118,7 +135,47 @@ fn same(frozen: &Frozen<'_>, node: NodeIndex, batch: &FolderBatch) -> bool {
             Some((tree.name(child), kind, (kind == EntryKind::File).then_some((raw.logical, raw.allocated))))
         })
         .collect();
-    kept == children
+    children.sort_by(|left, right| left.0.cmp(right.0));
+    entry_difference(&kept, &children).or_else(|| folded_difference(own_of(batch), frozen.own(node)))
+}
+
+/// The first difference between the listing's kept entries and the node's children, both sorted by name.
+fn entry_difference(listed: &[Entry<'_>], held: &[Entry<'_>]) -> Option<CheckDifference> {
+    let name = |name: &[u8]| PathBuf::from(OsStr::from_bytes(name));
+    let (mut listed, mut held) = (listed.iter().peekable(), held.iter().peekable());
+    loop {
+        match (listed.peek(), held.peek()) {
+            (None, None) => return None,
+            (Some(added), None) => return Some(CheckDifference::EntryAdded(name(added.0))),
+            (None, Some(missing)) => return Some(CheckDifference::EntryMissing(name(missing.0))),
+            (Some(left), Some(right)) => match left.0.cmp(right.0) {
+                Ordering::Less => return Some(CheckDifference::EntryAdded(name(left.0))),
+                Ordering::Greater => return Some(CheckDifference::EntryMissing(name(right.0))),
+                Ordering::Equal if left.1 != right.1 => return Some(CheckDifference::Kind(name(left.0))),
+                Ordering::Equal if left.2 != right.2 => return Some(CheckDifference::Size(name(left.0))),
+                Ordering::Equal => {
+                    listed.next();
+                    held.next();
+                }
+            },
+        }
+    }
+}
+
+/// The first part in which the folded files of the listing (`listed`) differ from the node's own bytes (`held`).
+fn folded_difference(listed: Sums, held: Sums) -> Option<CheckDifference> {
+    let part = if listed.files != held.files {
+        FoldedPart::Files
+    } else if listed.logical != held.logical {
+        FoldedPart::Logical
+    } else if listed.allocated != held.allocated {
+        FoldedPart::Allocated
+    } else if listed.reclaimable != held.reclaimable {
+        FoldedPart::Reclaimable
+    } else {
+        return None;
+    };
+    Some(CheckDifference::Folded(part))
 }
 
 /// A folder's own bytes from its folded listing, as `Tree::apply` and `place_file` count them.

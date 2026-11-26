@@ -130,9 +130,10 @@ pub(crate) fn run(shared: &Shared, scan: ScanId, cancel: &CancelToken, plan: &Sc
     output.coverage = coverage::after_walk(entry.not_entered, summary.as_ref());
     if let Some(summary) = &summary {
         output.kind = summary.kind;
-        if let Some(reason) = summary.fallback {
+        if let Some(reason) = &summary.fallback {
             tracing::info!(?reason, "the rescan read every folder");
         }
+        *lock_anyway(&shared.fallback) = Some((scan, summary.fallback.clone()));
     }
 
     let walk_complete = summary.as_ref().is_some_and(WalkSummary::is_complete);
@@ -562,6 +563,25 @@ mod tests {
 
         fn beta() -> ModuleId {
             ModuleId::new("beta").unwrap()
+        }
+
+        #[test]
+        fn a_scan_that_did_not_fall_back_has_no_fallback() {
+            let engine = Fixture::new(ScriptedWalk::new()).engine();
+
+            scan(&engine);
+
+            assert_eq!(engine.fallback(fresher_core::ScanId::new(1)), None);
+        }
+
+        #[test]
+        fn the_fallback_of_an_earlier_scan_is_not_answered() {
+            let walk = ScriptedWalk::new().falling_back(fresher_core::FullScanReason::NoCache);
+            let engine = Fixture::new(walk).engine();
+
+            scan(&engine);
+
+            assert_eq!(engine.fallback(fresher_core::ScanId::new(2)), None);
         }
 
         #[test]
@@ -1219,6 +1239,25 @@ mod tests {
 
             assert_eq!(*commits.lock().unwrap(), [vec![], vec![]]);
             assert_eq!((first.get(), second.get()), (1, 2));
+        }
+
+        #[test]
+        fn the_fallback_of_a_scan_says_which_check_failed() {
+            use std::path::PathBuf;
+
+            use fresher_core::{CheckDifference, CheckFailure, FullScanReason};
+
+            let failure = CheckFailure {
+                folder: PathBuf::from("Library/Caches"),
+                difference: CheckDifference::EntryAdded(PathBuf::from("new.bin")),
+                folders: 2,
+            };
+            let reason = FullScanReason::CheckFailed(failure);
+            let engine = Fixture::new(ScriptedWalk::new().falling_back(reason.clone())).engine();
+
+            scan(&engine);
+
+            assert_eq!(engine.fallback(ScanId::new(1)), Some(reason));
         }
 
         #[test]

@@ -11,10 +11,10 @@ use std::time::Duration;
 use fresher_core::{
     AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION, AGREEMENT_VERSION_KEY, AutoEmpty, ByteSize, CancelToken,
     CategoryDescriptor, CategoryId, Claim, ClaimedPath, Cleaner, CleanupContext, ConfirmedPlan, DangerLevel, Depth,
-    DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, Interest, ItemDone, LeftOutItem,
-    Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup, ModuleId, Need,
-    NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal, ScanKind,
-    SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
+    DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, FullScanReason, Interest, ItemDone,
+    LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
+    ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection, PutBackOutcome, Rehearsal, Removal,
+    ScanKind, SettingsStore, Sizes, StateId, StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey,
     Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable, WalkError, WalkMode, WalkProgress,
     WalkRequest, WalkSummary,
 };
@@ -295,6 +295,7 @@ pub(crate) struct ScriptedWalk {
     unreadable_by: BTreeMap<Unreadable, u64>,
     places: BTreeMap<usize, PlaceSeen>,
     kind: ScanKind,
+    fallback: Option<FullScanReason>,
     error: Option<WalkError>,
     commit_error: Option<WalkError>,
     panics: bool,
@@ -408,6 +409,12 @@ impl ScriptedWalk {
     /// The walk reports that it read the disk as `kind`.
     pub(crate) const fn kind(mut self, kind: ScanKind) -> Self {
         self.kind = kind;
+        self
+    }
+
+    /// The walk reports that a rescan fell back to reading every folder, for `reason`.
+    pub(crate) fn falling_back(mut self, reason: FullScanReason) -> Self {
+        self.fallback = Some(reason);
         self
     }
 
@@ -528,7 +535,8 @@ impl DiskWalk for ScriptedWalk {
         unreadable.extend(&self.unreadable_by);
         let entries = u64::try_from(self.folders.len()).unwrap();
         let places = self.places.clone();
-        Ok(WalkSummary { entries, unreadable, kind: self.kind, places, ..WalkSummary::default() })
+        let fallback = self.fallback.clone();
+        Ok(WalkSummary { entries, unreadable, kind: self.kind, fallback, places, ..WalkSummary::default() })
     }
 
     fn commit(&self, claims: &[ClaimedPath]) -> Result<Arc<dyn DiskState>, WalkError> {

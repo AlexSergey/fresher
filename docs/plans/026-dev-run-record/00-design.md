@@ -250,7 +250,7 @@ in place of `.json`:
   ],
   "scans": [
     {
-      "id": 1, "kind": { "kind": "full" }, "started": "…", "finished": "…", "durationMs": 41230,
+      "id": 1, "kind": { "kind": "full" }, "fallback": "no-cache", "started": "…", "finished": "…", "durationMs": 41230,
       "outcome": { "kind": "completed" },
       "coverage": { /* Coverage */ },
       "modules": {
@@ -284,7 +284,9 @@ in place of `.json`:
 - `settings` and `access` are read again (`Engine::settings()`, `Engine::access_status()`) at every snapshot.
 - A scan is opened by `scan-started` and filled by `findings-added` (per module: the finding as serialised, plus
   `titleText` and `reasonText`), `module-finished` (`outcome`, `leftOut` with `reasonText`), `scan-coverage`,
-  `findings-removed` and closed by `scan-finished` (`kind`, `outcome`). A module's group comes from
+  `findings-removed` and closed by `scan-finished` (`kind`, `outcome`, and `fallback` from `Engine::fallback`: why the
+  walk read every folder although a rescan was asked, `null` when it did not; a failed check gives
+  `{ "check-failed": { "folder", "difference", "folders" } }` with the first differing folder inside its root). A module's group comes from
   `Engine::modules()` (`ModuleInfo.group`). A restored scan (`ScanKind::Restored`) is a scan like any other.
 - A cleanup is opened by `cleanup-started` (`scan` = the id of the last scan in the record, `method`) and filled at
   `cleanup-finished` from `Engine::cleanup(id)`: each `CleanupItemView` becomes an item of its module's group (the

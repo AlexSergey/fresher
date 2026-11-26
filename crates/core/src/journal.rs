@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use serde::Serialize;
+
 use crate::{CancelToken, VolumeId};
 
 /// The system's record of the folders that changed on a volume.
@@ -36,7 +38,8 @@ pub struct Changes {
 }
 
 /// Why the journal cannot tell what changed; the rescan becomes a full scan.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, thiserror::Error)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, thiserror::Error)]
+#[serde(rename_all = "kebab-case")]
 pub enum JournalGap {
     #[error("the volume keeps no journal")]
     NoJournal,

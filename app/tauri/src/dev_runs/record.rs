@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use fresher_core::{
-    Access, ActionKind, CapabilityState, CleanupId, Coverage, DangerLevel, Ended, Finding, FindingId, LeftOutCount,
-    Method, ModuleGroup, ModuleId, ModuleOutcome, RecordedOutcome, ScanId, ScanKind, ScanOutcome, SettingKey, Sizes,
-    SkipCode,
+    Access, ActionKind, CapabilityState, CleanupId, Coverage, DangerLevel, Ended, Finding, FindingId, FullScanReason,
+    LeftOutCount, Method, ModuleGroup, ModuleId, ModuleOutcome, RecordedOutcome, ScanId, ScanKind, ScanOutcome,
+    SettingKey, Sizes, SkipCode,
 };
 use serde::Serialize;
 
@@ -57,6 +57,8 @@ pub(crate) struct ActionRecord {
 pub(crate) struct ScanRecord {
     pub(crate) id: ScanId,
     pub(crate) kind: Option<ScanKind>,
+    /// Why the walk read every folder although a rescan was asked (`Engine::fallback`).
+    pub(crate) fallback: Option<FullScanReason>,
     pub(crate) started: String,
     pub(crate) finished: Option<String>,
     pub(crate) duration_ms: Option<u64>,

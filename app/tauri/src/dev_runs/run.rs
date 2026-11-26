@@ -178,6 +178,7 @@ impl Run {
                 let duration_ms = self.scan_started.take().map(|started| millis_since(started, self.clock.now()));
                 if let Some(record) = self.scan(*scan) {
                     record.kind = Some(*kind);
+                    record.fallback = engine.fallback(*scan);
                     record.outcome = Some(outcome.clone());
                     record.finished = Some(at);
                     record.duration_ms = duration_ms;
@@ -223,6 +224,7 @@ impl Run {
         self.record.scans.push(ScanRecord {
             id,
             kind: None,
+            fallback: None,
             started: at,
             finished: None,
             duration_ms: None,

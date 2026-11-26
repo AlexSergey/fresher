@@ -619,7 +619,7 @@ mod property {
 
             let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&changed, &[]));
 
-            let fallback = rescan.summary.as_ref().unwrap().fallback;
+            let fallback = rescan.summary.as_ref().unwrap().fallback.clone();
             prop_assert!(fallback.is_none() || fallback == Some(FullScanReason::TooManyChanges), "{fallback:?}");
             assert_same(&rescan, &rig.full());
         }

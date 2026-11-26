@@ -97,8 +97,10 @@ pub struct ClaimedPath {
     pub category: CategoryId,
 }
 
-/// Why a walk asked for a rescan read every folder instead. Logged by the engine, never shown with a path.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Why a walk asked for a rescan read every folder instead. Logged by the engine and kept in the development run
+/// record, never shown in the interface.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum FullScanReason {
     NoCache,
     BrokenCache,
@@ -111,8 +113,53 @@ pub enum FullScanReason {
     JournalGap(JournalGap),
     TooManyChanges,
     /// The sampled check of unchanged folders found a change the journal did not report.
-    CheckFailed,
+    CheckFailed(CheckFailure),
     AskedByUser,
+}
+
+/// The first folder of a rescan's sample that differed from the cached tree, and how.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckFailure {
+    /// The folder as a path inside its scan root; empty for the root itself.
+    pub folder: PathBuf,
+    pub difference: CheckDifference,
+    /// How many folders of the sample differed.
+    pub folders: u32,
+}
+
+/// What the check of a rescan found different in a folder; an entry is named by its name in the folder.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CheckDifference {
+    /// The folder's identity could not be read.
+    NotIdentified,
+    /// The folder could not be read.
+    NotRead,
+    /// The folder was read as summed whole (claimed by its own marker), not as the listed folder the tree holds.
+    Summed,
+    /// An entry could be read and now cannot, or the reverse.
+    Incomplete,
+    /// The small files folded into the folder differ, first in this part of their sums.
+    Folded(FoldedPart),
+    /// A kept entry of the tree is not in the listing.
+    EntryMissing(PathBuf),
+    /// The listing holds an entry the tree does not keep.
+    EntryAdded(PathBuf),
+    /// A kept entry is of another kind.
+    Kind(PathBuf),
+    /// A kept file has other sizes.
+    Size(PathBuf),
+}
+
+/// A part of the sums of a folder's folded files.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FoldedPart {
+    Files,
+    Logical,
+    Allocated,
+    Reclaimable,
 }
 
 /// How far the walk has got.
@@ -207,6 +254,17 @@ mod tests {
         }
 
         #[test]
+        fn a_reason_without_details_is_written_as_its_name() {
+            use crate::{FullScanReason, JournalGap};
+
+            assert_eq!(serde_json::to_value(FullScanReason::NoCache).unwrap(), serde_json::json!("no-cache"));
+            assert_eq!(
+                serde_json::to_value(FullScanReason::JournalGap(JournalGap::TooOld)).unwrap(),
+                serde_json::json!({ "journal-gap": "too-old" })
+            );
+        }
+
+        #[test]
         fn a_place_not_seen_in_full_is_not_complete() {
             for seen in [PlaceSeen::Unread, PlaceSeen::NotScanned, PlaceSeen::Unknown] {
                 assert!(!seen.is_complete(), "{seen:?}");
@@ -230,6 +288,31 @@ mod tests {
             let summary = WalkSummary { not_scanned: [(NotScanned::Avoided, 2)].into(), ..WalkSummary::default() };
 
             assert!(summary.is_complete());
+        }
+
+        #[test]
+        fn a_failed_check_is_written_with_its_folder_and_what_differed() {
+            use std::path::PathBuf;
+
+            use crate::{CheckDifference, CheckFailure, FoldedPart, FullScanReason};
+
+            let entry = CheckFailure {
+                folder: PathBuf::from("Library/Caches"),
+                difference: CheckDifference::EntryMissing(PathBuf::from("gone.bin")),
+                folders: 3,
+            };
+            let folded = CheckFailure { difference: CheckDifference::Folded(FoldedPart::Logical), ..entry.clone() };
+
+            assert_eq!(
+                serde_json::to_value(FullScanReason::CheckFailed(entry)).unwrap(),
+                serde_json::json!({ "check-failed": {
+                    "folder": "Library/Caches", "difference": { "entry-missing": "gone.bin" }, "folders": 3
+                } })
+            );
+            assert_eq!(
+                serde_json::to_value(FullScanReason::CheckFailed(folded)).unwrap()["check-failed"]["difference"],
+                serde_json::json!({ "folded": "logical" })
+            );
         }
 
         #[test]

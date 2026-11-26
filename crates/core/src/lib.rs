@@ -141,6 +141,6 @@ pub use texts::core_dictionary;
 pub use volume::{DiskSpace, MountKind, Neighbour, NeighbourRole, VolumeFacts, VolumeId, Volumes};
 pub use walk::PlaceSeen;
 pub use walk::{
-    ClaimedPath, DiskWalk, FullScanReason, Place, Subtree, SubtreeQuery, Unreadable, WalkError, WalkMode, WalkProgress,
-    WalkRequest, WalkSummary,
+    CheckDifference, CheckFailure, ClaimedPath, DiskWalk, FoldedPart, FullScanReason, Place, Subtree, SubtreeQuery,
+    Unreadable, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
 };

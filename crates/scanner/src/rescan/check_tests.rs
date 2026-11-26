@@ -1,8 +1,16 @@
 //! Tests of the check and the fallbacks, and the deterministic bars of the rescan on `SMALL`.
 
+use std::path::{Path, PathBuf};
+
+use fresher_core::{
+    ByteSize, CheckDifference, CheckFailure, EntryAccess, FolderIdentity, FolderListing, FolderReader, FullScanReason,
+    RawEntry, ReadError, Sizes,
+};
+
 use crate::matcher::testing::set_of;
-use crate::rescan::testing::Rig;
+use crate::rescan::testing::{Rig, Walked};
 use crate::rescan::tests::twenty_folders;
+use crate::walk::std_reader::StdReader;
 
 /// The tree of 20 folders, scanned once: fewer folders than the sample, so the check reads every unchanged one.
 fn rig() -> Rig {
@@ -11,13 +19,73 @@ fn rig() -> Rig {
     rig
 }
 
+/// The check's failure of a rescan that fell back for it; `None` for any other end.
+fn failure(rescan: &Walked) -> Option<CheckFailure> {
+    match &rescan.summary.as_ref().unwrap().fallback {
+        Some(FullScanReason::CheckFailed(failure)) => Some(failure.clone()),
+        _ => None,
+    }
+}
+
+/// The failure of the folder `folder` (inside the root) with `difference`, alone in the sample.
+#[expect(clippy::unnecessary_wraps, reason = "the failure it is compared with is an option")]
+fn failed(folder: &str, difference: CheckDifference) -> Option<CheckFailure> {
+    Some(CheckFailure { folder: PathBuf::from(folder), difference, folders: 1 })
+}
+
+/// The portable reader, with every entry named in `broken` read as failed, and every file named in `clones` read as
+/// a clone (group 1) with that private size.
+#[derive(Debug, Default)]
+struct Altered {
+    broken: Vec<&'static str>,
+    clones: Vec<(&'static str, u64)>,
+}
+
+impl FolderReader for Altered {
+    fn identify(&self, path: &Path) -> Result<FolderIdentity, ReadError> {
+        StdReader::new().identify(path)
+    }
+
+    fn access(&self, path: &Path) -> Result<EntryAccess, ReadError> {
+        StdReader::new().access(path)
+    }
+
+    fn read(&self, path: &Path, expected: FolderIdentity, out: &mut FolderListing) -> Result<(), ReadError> {
+        StdReader::new().read(path, expected, out)?;
+        let entries: Vec<(Vec<u8>, RawEntry)> = out.iter().map(|(name, entry)| (name.to_vec(), *entry)).collect();
+        out.clear();
+        for (name, mut entry) in entries {
+            let named = |wanted: &str| name == wanted.as_bytes();
+            if self.broken.iter().any(|&broken| named(broken)) {
+                entry.error = Some(ReadError::Vanished);
+            }
+            if let Some(&(_, private)) = self.clones.iter().find(|&&(clone, _)| named(clone)) {
+                let sizes = entry.sizes;
+                entry.clone = Some(1);
+                entry.sizes = Sizes::new(sizes.logical, sizes.allocated, ByteSize::new(private));
+            }
+            out.push(&name, entry)?;
+        }
+        Ok(())
+    }
+
+    fn head(&self, folder: &Path, name: &str, limit: usize) -> Result<Vec<u8>, ReadError> {
+        StdReader::new().head(folder, name, limit)
+    }
+}
+
 mod negative {
+    use std::path::PathBuf;
     use std::sync::Arc;
 
-    use fresher_core::{CancelToken, DiskWalk, FullScanReason, ScanKind, WalkMode};
+    use fresher_core::{
+        CancelToken, CheckDifference, Claim, DiskWalk, FoldedPart, FullScanReason, Pattern, ScanKind, WalkMode,
+    };
 
-    use super::rig;
-    use crate::rescan::testing::{assert_same, journal_of};
+    use super::{Altered, failed, failure, rig};
+    use crate::matcher::testing::{interest, set_of};
+    use crate::rescan::testing::{Refusing, Rig, assert_same, journal_of};
+    use crate::rescan::tests::twenty_folders;
     use crate::walk::counting::CountingReader;
     use crate::walk::std_reader::StdReader;
 
@@ -28,8 +96,7 @@ mod negative {
 
         let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
 
-        let summary = rescan.summary.as_ref().unwrap();
-        assert_eq!(summary.fallback, Some(FullScanReason::CheckFailed));
+        assert_eq!(failure(&rescan), failed("x03", CheckDifference::Folded(FoldedPart::Files)));
         let tree = rescan.tree.as_ref().unwrap();
         assert_eq!(tree.sums(tree.lookup(&rig.path("x03")).unwrap()).unwrap().logical, 700);
     }
@@ -43,9 +110,88 @@ mod negative {
         let rescan = rig.rescan(Arc::clone(&reader) as _, journal_of(&[rig.path("d")], &[]));
 
         let summary = rescan.summary.as_ref().unwrap();
-        assert_eq!((summary.kind, summary.fallback), (ScanKind::Full, Some(FullScanReason::CheckFailed)));
+        assert_eq!(summary.kind, ScanKind::Full);
+        assert_eq!(failure(&rescan), failed("a/b", CheckDifference::EntryAdded(PathBuf::from("missed"))));
         assert_eq!(reader.reads()[&rig.path("a/b/missed")], 1);
         assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_file_grown_unseen_fails_the_check_in_its_folded_bytes() {
+        let rig = rig();
+        std::fs::write(rig.path("d/g"), vec![0; 30]).unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("d", CheckDifference::Folded(FoldedPart::Logical)));
+    }
+
+    #[test]
+    fn a_folder_gone_unseen_fails_the_check_where_it_was_listed() {
+        let rig = rig();
+        rig.remove(&rig.path("x05"));
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        let gone = failure(&rescan).unwrap();
+        assert_eq!((gone.folder, gone.difference), (PathBuf::new(), CheckDifference::EntryMissing("x05".into())));
+        assert_eq!(gone.folders, 2, "the root, and the folder that is no longer there to identify");
+    }
+
+    #[test]
+    fn a_large_file_resized_unseen_fails_the_check_in_its_size() {
+        let rig = Rig::new(&twenty_folders(), set_of(&[]));
+        std::fs::write(rig.path("x07/big.bin"), vec![1; 2 << 20]).unwrap();
+        rig.scan();
+        std::fs::write(rig.path("x07/big.bin"), vec![1; 3 << 20]).unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("x07", CheckDifference::Size("big.bin".into())));
+    }
+
+    #[test]
+    fn a_large_file_replaced_by_a_folder_unseen_fails_the_check_in_its_kind() {
+        let rig = Rig::new(&twenty_folders(), set_of(&[]));
+        std::fs::write(rig.path("x07/big.bin"), vec![1; 2 << 20]).unwrap();
+        rig.scan();
+        rig.remove(&rig.path("x07/big.bin"));
+        std::fs::create_dir(rig.path("x07/big.bin")).unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("x07", CheckDifference::Kind("big.bin".into())));
+    }
+
+    #[test]
+    fn a_folder_that_cannot_be_read_again_fails_the_check() {
+        let rig = rig();
+        let reader = Refusing { refused: vec![rig.path("x09")] };
+
+        let rescan = rig.rescan(Arc::new(reader), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("x09", CheckDifference::NotRead));
+    }
+
+    #[test]
+    fn an_entry_that_fails_unseen_fails_the_check() {
+        let rig = rig();
+
+        let rescan = rig.rescan(Arc::new(Altered { broken: vec!["g"], ..Altered::default() }), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("d", CheckDifference::Incomplete));
+    }
+
+    #[test]
+    fn a_folder_claimed_whole_by_a_new_marker_fails_the_check() {
+        let marker = interest(Pattern::MarkerFile("Gemfile".into()), Claim::Whole, &[]);
+        let rig = Rig::new(&twenty_folders(), set_of(&[marker]));
+        rig.scan();
+        std::fs::write(rig.path("x02/Gemfile"), b"").unwrap();
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("x02", CheckDifference::Summed));
     }
 
     #[test]
@@ -59,7 +205,7 @@ mod negative {
             .walk(&rig.request(WalkMode::Auto), &CancelToken::new(), &mut |_| {}, &mut |seen| progress.push(seen))
             .unwrap();
 
-        assert_eq!(summary.fallback, Some(FullScanReason::CheckFailed));
+        assert!(matches!(summary.fallback, Some(FullScanReason::CheckFailed(_))), "{:?}", summary.fallback);
         let fallen: Vec<_> = progress
             .windows(2)
             .filter(|pair| pair[1].entries < pair[0].entries || pair[1].bytes < pair[0].bytes)
@@ -101,7 +247,8 @@ mod positive {
         let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&[rig.path("x03")], &[]));
 
         let summary = rescan.summary.as_ref().unwrap();
-        assert_eq!((summary.kind, summary.fallback), (fresher_core::ScanKind::Rescan { changed_folders: 2 }, None));
+        assert_eq!(summary.kind, fresher_core::ScanKind::Rescan { changed_folders: 2 });
+        assert_eq!(summary.fallback, None);
         assert_same(&rescan, &rig.full());
     }
 
