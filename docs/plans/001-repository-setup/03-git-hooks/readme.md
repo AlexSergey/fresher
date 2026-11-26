@@ -26,4 +26,4 @@ Implemented 2026-11-15.
   - A `Cargo.toml` change runs `cargo deny check` and `cargo machete`.
 - `npm run pre-push` passes: lint, knip, machete, deny and, until plan 04 adds the coverage line, the scripts' tests.
 - `npm audit` reports 9 moderate dev-only advisories (`minimatch` through the lint plugins): recorded in
-  `docs/known-issues/repo-moderate-audit-advisories.md`; the production audit is clean.
+  `docs/known-issues/fixed/repo-moderate-audit-advisories.md`; the production audit is clean.

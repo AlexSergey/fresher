@@ -129,6 +129,11 @@ development run record (`app/tauri/src/dev_runs/`), compiled in debug builds onl
 | `typescript`                      | 6.0.3   | Apache-2.0        |
 | `typescript-eslint`               | 8.72.2  | MIT               |
 
+The root `package.json` has an `overrides` entry that gives `@typescript-eslint/typescript-estree`,
+`eslint-plugin-jsx-a11y-x` and `eslint-plugin-sonarjs` `minimatch` `^11.0.8`, the major `eslint` uses, because their own
+range holds an advisory. Remove it when those plugins raise their `minimatch` range (checked with each dependency
+update).
+
 ### Licences outside the allowlist, in development packages
 
 The installed npm tree (385 packages) is mostly MIT, Apache-2.0, ISC and BSD. These are not on the allowlist; none of
