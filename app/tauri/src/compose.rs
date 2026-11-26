@@ -13,8 +13,8 @@ use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
     AccessProbe, Build, Clock, CommandRunner, DiskWalk, FinderSettings, FolderReader, HighLevel, InstallRecords,
-    InstalledApps, KnownFolders, Module, ModuleGroup, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps,
-    SchemaError, SystemPorts, Volumes,
+    InstalledApps, KnownFolders, Module, ModuleGroup, ModuleId, OpenFiles, Protection, ProtectionError, ReaderFiles,
+    RunningApps, SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 #[cfg(not(debug_assertions))]
@@ -213,11 +213,17 @@ pub(crate) fn engine(data_folder: impl Into<PathBuf>, home: &Path) -> Result<Eng
 }
 
 fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Result<Engine, ComposeError> {
-    assemble(normal(data_folder, home, policy)?)
+    assemble(normal(data_folder, home, policy, Arc::new(MacOpenFiles::new()))?)
 }
 
-/// What the normal engine is assembled from: the real ports of this Mac, after the process's IO policy is set.
-fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Result<Shared, ComposeError> {
+/// What the normal engine is assembled from: the real ports of this Mac, after the process's IO policy is set, with
+/// `open_files` the cleaner's check of what the user's processes hold (`MacOpenFiles` but in tests).
+fn normal(
+    data_folder: impl Into<PathBuf>,
+    home: &Path,
+    policy: &IoPolicy,
+    open_files: Arc<dyn OpenFiles>,
+) -> Result<Shared, ComposeError> {
     apply(policy)?;
     let folder = DataFolder::open(data_folder)?;
     // Before any write: the folder's own scratch files left by an interrupted write go.
@@ -234,7 +240,7 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
     let trash = Arc::new(MacTrash::new());
     let cleaner = CleanerPorts {
         trash,
-        open_files: Arc::new(MacOpenFiles::new()),
+        open_files,
         running: Arc::clone(&running),
         commands: Arc::clone(&commands),
         clock: Arc::clone(&clock),
@@ -567,6 +573,9 @@ mod tests {
 
     mod negative {
         use std::path::Path;
+        use std::sync::Arc;
+
+        use fresher_testing::FakeOpenFiles;
 
         use super::NO_POLICY;
         use crate::compose::{ComposeError, IoPolicy, bundle_of, checked_user_temp, engine_with, normal};
@@ -586,7 +595,7 @@ mod tests {
         fn the_normal_engine_has_no_standing_avoid_list() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
 
-            let shared = normal(folder.path(), home.path(), &NO_POLICY).unwrap();
+            let shared = normal(folder.path(), home.path(), &NO_POLICY, Arc::new(FakeOpenFiles::default())).unwrap();
 
             assert_eq!(shared.avoid, Vec::<std::path::PathBuf>::new());
         }
@@ -600,7 +609,7 @@ mod tests {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             std::fs::create_dir(home.path().join("Desktop")).unwrap();
 
-            let shared = normal(folder.path(), home.path(), &NO_POLICY).unwrap();
+            let shared = normal(folder.path(), home.path(), &NO_POLICY, Arc::new(FakeOpenFiles::default())).unwrap();
 
             let status = shared.access.status();
             let places = shared.access.guarded_places(&[std::path::PathBuf::from("~")]);
@@ -673,20 +682,23 @@ mod tests {
             assert_eq!(std::fs::read_dir(sandbox.path()).unwrap().count(), 0);
         }
 
-        /// The real composition of a development build (the real scanner, the real open-files check, the refusing
-        /// Trash, the dry-run reach) on the trial module's folders beside a valid marker, where the sandbox reach
-        /// would move them: the cleanup runs every check and changes nothing.
+        /// The real composition of a development build (the real scanner, the refusing Trash, the dry-run reach) on
+        /// the trial module's folders beside a valid marker, where the sandbox reach would move them: the cleanup runs
+        /// every check and changes nothing. The open-files check is a fake that sees nothing held: the real one asks
+        /// every process of the user's about the files it holds, none of them the test's.
         #[cfg(debug_assertions)]
         #[test]
         fn the_development_engine_moves_nothing_on_the_real_disk() {
             use fresher_core::{RecordedOutcome, SettingUpdate, SettingValue, SkipCode};
 
+            use crate::compose::assemble;
             use crate::testing::{
                 caches, echo, is_cleanup_finished, is_scan_finished, listing, trial_home, until_finished,
             };
 
             let (folder, tree) = (tempfile::tempdir().unwrap(), trial_home(true));
-            let engine = engine_with(folder.path(), tree.root(), &NO_POLICY).unwrap();
+            let open_files = Arc::new(FakeOpenFiles::default());
+            let engine = assemble(normal(folder.path(), tree.root(), &NO_POLICY, open_files).unwrap()).unwrap();
             engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
             let roots = SettingValue::Folders(vec![tree.root().to_path_buf()]);
             engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
