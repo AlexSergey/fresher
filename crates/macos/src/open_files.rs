@@ -20,7 +20,19 @@ const MAPPED_REUSE: Duration = Duration::from_secs(30);
 /// cannot be seen without administrator rights (they answer `EPERM`) and are counted, not failed.
 #[derive(Debug, Default)]
 pub struct MacOpenFiles {
+    asked: Asked,
     mapped: Mutex<Option<MappedWalk>>,
+}
+
+/// The processes a snapshot asks.
+#[derive(Debug, Default)]
+enum Asked {
+    /// Every process of the current user's but this one.
+    #[default]
+    UserProcesses,
+    /// Only these, this one left out: a test's own children, so a test never reads another app's open files.
+    #[cfg(test)]
+    Only(Vec<pid_t>),
 }
 
 /// One walk of the mapped regions, kept for `MAPPED_REUSE` for the same `within`.
@@ -34,6 +46,21 @@ struct MappedWalk {
 impl MacOpenFiles {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Asks only `pids` (this process is still left out).
+    #[cfg(test)]
+    fn asking(pids: &[u32]) -> Self {
+        let pids = pids.iter().filter_map(|&pid| pid_t::try_from(pid).ok()).collect();
+        Self { asked: Asked::Only(pids), ..Self::default() }
+    }
+
+    fn processes(&self) -> io::Result<Vec<pid_t>> {
+        match &self.asked {
+            Asked::UserProcesses => user_processes(),
+            #[cfg(test)]
+            Asked::Only(pids) => Ok(pids.iter().copied().filter(|&pid| pid != this_process()).collect()),
+        }
     }
 
     /// The mapped files under `within`, from the last walk while it is fresh, else from a new one.
@@ -57,7 +84,7 @@ impl MacOpenFiles {
 
 impl OpenFiles for MacOpenFiles {
     fn snapshot(&self, within: &[PathBuf]) -> Result<OpenSet, OpenFilesError> {
-        let pids = user_processes().map_err(|error| OpenFilesError { reason: error.to_string() })?;
+        let pids = self.processes().map_err(|error| OpenFilesError { reason: error.to_string() })?;
         let mut names = Names::default();
         let mut held = Vec::new();
         let mut withheld = 0_usize;
@@ -88,7 +115,7 @@ impl OpenFiles for MacOpenFiles {
 /// `ESRCH`: both are left out. Only a failure to list the processes at all is an error.
 fn user_processes() -> io::Result<Vec<pid_t>> {
     let user = libproc::user_id();
-    let this = pid_t::try_from(std::process::id()).unwrap_or(0);
+    let this = this_process();
     let mut others = 0_usize;
     let mut pids = Vec::new();
     for pid in libproc::all_pids()? {
@@ -104,6 +131,10 @@ fn user_processes() -> io::Result<Vec<pid_t>> {
     }
     tracing::debug!(mine = pids.len(), others, "processes");
     Ok(pids)
+}
+
+fn this_process() -> pid_t {
+    pid_t::try_from(std::process::id()).unwrap_or(0)
 }
 
 /// The paths at or under one of `within`, by components: `/a/cache2` is not under `/a/cache`.
@@ -166,6 +197,13 @@ mod tests {
     /// A child process, killed when dropped.
     struct Holder(Child);
 
+    impl Holder {
+        /// The open files asked of this child alone.
+        fn open_files(&self) -> MacOpenFiles {
+            MacOpenFiles::asking(&[self.0.id()])
+        }
+    }
+
     impl Drop for Holder {
         fn drop(&mut self) {
             let _ = self.0.kill();
@@ -205,7 +243,7 @@ mod tests {
 
         use super::{folder, hold, until_held};
         use crate::MacOpenFiles;
-        use crate::open_files::app_name;
+        use crate::open_files::{app_name, this_process, user_processes};
 
         #[test]
         fn a_process_outside_an_app_bundle_has_no_app_name() {
@@ -216,11 +254,14 @@ mod tests {
         #[test]
         fn a_file_nobody_holds_is_not_in_the_set() {
             let (_folder, root) = folder();
-            let file = root.join("nobody.txt");
+            let (file, other) = (root.join("nobody.txt"), root.join("other.txt"));
             fs::write(&file, b"held by nobody").unwrap();
+            fs::write(&other, b"held by the child").unwrap();
+            let holder = hold(Some(&other), &root);
 
-            let set = MacOpenFiles::new().snapshot(std::slice::from_ref(&root)).unwrap();
+            let set = until_held(&holder.open_files(), std::slice::from_ref(&root), &other);
 
+            assert!(set.holder_under(&other).is_some());
             assert_eq!(set.holder_under(&file), None);
         }
 
@@ -231,9 +272,10 @@ mod tests {
             fs::write(&file, b"the cleaner holds what it checks").unwrap();
             let _held = File::open(&file).unwrap();
 
-            let set = MacOpenFiles::new().snapshot(std::slice::from_ref(&root)).unwrap();
+            let set = MacOpenFiles::asking(&[std::process::id()]).snapshot(std::slice::from_ref(&root)).unwrap();
 
             assert_eq!(set.holder_under(&file), None);
+            assert!(!user_processes().unwrap().contains(&this_process()));
         }
 
         #[test]
@@ -244,8 +286,8 @@ mod tests {
             fs::create_dir(&other).unwrap();
             let file = held.join("file.txt");
             fs::write(&file, b"held").unwrap();
-            let _holder = hold(Some(&file), &root);
-            let open_files = MacOpenFiles::new();
+            let holder = hold(Some(&file), &root);
+            let open_files = holder.open_files();
             assert!(until_held(&open_files, std::slice::from_ref(&held), &file).holder_under(&file).is_some());
 
             let set = open_files.snapshot(std::slice::from_ref(&other)).unwrap();
@@ -260,8 +302,8 @@ mod tests {
             let (cache, cache2) = (root.join("a").join("cache"), root.join("a").join("cache2"));
             fs::create_dir_all(&cache).unwrap();
             fs::create_dir_all(&cache2).unwrap();
-            let _holder = hold(None, &cache);
-            let open_files = MacOpenFiles::new();
+            let holder = hold(None, &cache);
+            let open_files = holder.open_files();
             assert!(until_held(&open_files, std::slice::from_ref(&root), &cache).holder_under(&cache).is_some());
 
             let set = open_files.snapshot(std::slice::from_ref(&cache2)).unwrap();
@@ -281,7 +323,6 @@ mod tests {
         use fresher_core::OpenFiles as _;
 
         use super::{Holder, MAP_FILE, PATIENCE, folder, hold, until_held};
-        use crate::MacOpenFiles;
         use crate::ffi::libproc::Mapping;
         use crate::open_files::app_name;
 
@@ -299,9 +340,9 @@ mod tests {
             let (_folder, root) = folder();
             let file = root.join("held.txt");
             fs::write(&file, b"held open by a child").unwrap();
-            let _holder = hold(Some(&file), &root);
+            let holder = hold(Some(&file), &root);
 
-            let set = until_held(&MacOpenFiles::new(), std::slice::from_ref(&root), &file);
+            let set = until_held(&holder.open_files(), std::slice::from_ref(&root), &file);
 
             assert_eq!(set.holder_under(&file), Some("sleep"));
         }
@@ -311,9 +352,9 @@ mod tests {
             let (_folder, root) = folder();
             let working = root.join("working");
             fs::create_dir(&working).unwrap();
-            let _holder = hold(None, &working);
+            let holder = hold(None, &working);
 
-            let set = until_held(&MacOpenFiles::new(), std::slice::from_ref(&root), &working);
+            let set = until_held(&holder.open_files(), std::slice::from_ref(&root), &working);
 
             assert_eq!(set.holder_under(&working), Some("sleep"));
         }
@@ -337,7 +378,7 @@ mod tests {
                 std::thread::sleep(Duration::from_millis(20));
             }
 
-            let set = MacOpenFiles::new().snapshot(std::slice::from_ref(&root)).unwrap();
+            let set = holder.open_files().snapshot(std::slice::from_ref(&root)).unwrap();
 
             assert!(ready.exists(), "the child did not map the file");
             assert!(set.holder_under(&file).is_some());
