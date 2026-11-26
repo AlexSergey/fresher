@@ -114,7 +114,8 @@ pub(crate) fn rescan(
             return Err(Stop::Full(FullScanReason::CheckFailed(failure)));
         }
         // Every folder that differed is named by the journal's new answer: the cached tree is patched again with
-        // that answer, so those folders are read as a full scan would see them.
+        // that answer, so those folders are read as a full scan would see them. The second tree needs no new check:
+        // a folder copied in both patches passed the first one, and the ones that differed are now read again.
         if let Some(named) = named {
             let set = ChangeSet::of(&cached, &named, gather).map_err(Stop::Full)?;
             changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
