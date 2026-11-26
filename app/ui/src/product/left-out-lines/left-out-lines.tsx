@@ -103,6 +103,8 @@ const Line = ({ bar, count, home, open: initiallyOpen }: LineProps): JSX.Element
             type="button"
           >
             {icon}
+            {/* A left-out reason is a bare text key in the core (`crates/core/src/left_out.rs`), never with a `detail`:
+                no ProblemText "Details" button is needed inside the toggle. */}
             <span className={styles.sentence}>
               {summaryOf(count)} {tText(count.reason)}
             </span>

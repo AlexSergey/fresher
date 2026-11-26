@@ -1140,8 +1140,6 @@ here:
 - A sandbox scan "made days ago" (the sandbox's clock starts at its generation):
   [`app-sandbox-scan-dated-at-generation`](./known-issues/app-sandbox-scan-dated-at-generation.md). Regenerate with
   `rm -rf sandbox/<name>`.
-- A category whose items are all left out shows "0 bytes / 0 items" (Xcode while Xcode is open):
-  [`ui-category-all-left-out-shows-zero`](./known-issues/fixed/ui-category-all-left-out-shows-zero.md).
 - The scan offers an item inside the Trash:
   [`app-scan-offers-an-item-in-the-trash`](./known-issues/app-scan-offers-an-item-in-the-trash.md).
 - A developer cache with a locked sub-folder is not offered, with no reason:
