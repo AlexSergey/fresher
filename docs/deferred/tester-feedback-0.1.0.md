@@ -30,3 +30,6 @@ go with the last one.
    [Big projects left alone](../ideas/big-stale-projects.md), drafted as plan
    [044](../plans/044-largest-folders/readme.md) after [043](../plans/043-build-flags/readme.md) turns Largest and
    High back on.
+5. **Other accounts, more tools, many small places** (the tester's second message): new ideas
+   [Other users on the Mac](../ideas/other-users-on-the-mac.md), [.NET and NuGet packages](../ideas/dotnet-nuget-packages.md)
+   and [Many small places that add up](../ideas/many-small-places.md).
