@@ -96,7 +96,8 @@ them in this order because the first ones teach the screens used by the rest.
      without a rescan; a cleanup prepared after the ignore does not list the item.
 - [ ] **Plan 011, problems and reasons** ([011/03/01](./plans/011-diagnostics/03-finish/01-docs-and-conclusions.md)).
   1. `npm run dev` (the demo module): scan; the demo category shows "1 item left out (150 MB): The app that made it is
-     open. Quit the app, then scan again." with its item under it: "Example: com.example.notes", its path and 150 MB.
+     open. Quit the app, then scan again." folded; press it to see its item: "Example: com.example.notes", its path
+     and 150 MB.
   2. Quit and start again: the Scan screen opens with its Scan button and no result; nothing is read until you press
      it (rules, 10).
   3. `FRESHER_SANDBOX=relative npm run dev`: a dialog with a plain sentence and the sandbox's refusal under it; no main
@@ -791,7 +792,7 @@ du -sh ~/Library/Caches/Google/Chrome/*/{Cache,"Code Cache"} ~/Library/Caches/Ch
 - [ ] With Full Disk Access: the line's first number against `du -sh ~/.Trash`; without it: the line shows only a
       share, or nothing.
 - [ ] Finder, Settings, Advanced, "Remove items from the Trash after 30 days" on: `defaults read com.apple.finder
-    FXRemoveOldTrashItems` prints `1`; the line shows a date only when a share is there.
+  FXRemoveOldTrashItems` prints `1`; the line shows a date only when a share is there.
 - [ ] With a USB disk holding something in its Trash and scanned: a line of its own, named after the disk.
 - [ ] Open Trash opens Finder's Trash window (`open ~/.Trash` does the same, with and without Full Disk Access).
 
@@ -1081,7 +1082,7 @@ plan 004's conclusions.
 - [ ] Confirm or overrule the decisions taken as recommended on 2026-11-16: the 10 s target on a warm tree, one thread
       per core, the tree-heap bar kept on its test; say whether a cold-scan target is wanted.
 - [ ] Optional, the generated big tree: `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture
-    ten_scans_of_the_large` (the footprint after ten scans stays within its budget).
+  ten_scans_of_the_large` (the footprint after ten scans stays within its budget).
 
 ### 5.2 The first real cleanups, in a sandbox ([deferred](./test-cases/sandbox-cleanup.md), [008/08/02](./plans/008-safe-removal/08-finish/02-sandbox-run.md))
 
@@ -1186,7 +1187,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)            | pending                         | 1.8, 2.7, 2.9, 4 |
 | [026/03/03 run and conclusions](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md) | pending                         | 2.0              |
 | [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                        | deferred, due before release    | 5.1              |
-| [Deferred: the first real cleanups](./test-cases/sandbox-cleanup.md) (008/08/02)                          | deferred, due before release    | 5.2              |
+| [Deferred: the first real cleanups](./test-cases/sandbox-cleanup.md) (008/08/02)                            | deferred, due before release    | 5.2              |
 | [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)           | pending                         | 1.9, 2.8         |
 | [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)         | pending                         | 1.11, 2.10       |
 | [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)             | pending                         | 1.12, 2.11       |

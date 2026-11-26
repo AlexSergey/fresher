@@ -658,6 +658,8 @@ test.describe('negative cases', () => {
     await expect(cards(page).filter({ hasText: XCODE_DATA })).toHaveCount(0);
     const leftOut = page.getByRole('region', { name: 'Found, but left out' });
     await expect(leftOut).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
+    await leftOut.getByRole('button', { name: /^2 items left out \(4.3 GB\)/ }).click();
+    await expect(leftOut.getByRole('list', { name: 'The items left out' })).toBeVisible();
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, XCODE_DATA);
     await expect(details(page)).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
@@ -762,6 +764,8 @@ test.describe('negative cases', () => {
     await expect(cards(page).filter({ hasText: AI_LM_STUDIO })).toHaveCount(0);
     const leftOut = page.getByRole('region', { name: 'Found, but left out' });
     await expect(leftOut).toContainText(`1 item left out (4.7 GB): ${ai('left-out.app-open')}`);
+    await leftOut.getByRole('button', { name: /^1 item left out \(4.7 GB\)/ }).click();
+    await expect(leftOut.getByRole('list', { name: 'The items left out' })).toBeVisible();
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, AI_LM_STUDIO);
     await expect(details(page)).toContainText(`1 item left out (4.7 GB): ${ai('left-out.app-open')}`);
@@ -783,6 +787,8 @@ test.describe('negative cases', () => {
     await expect(cards(page).filter({ hasText: AI_OLLAMA })).toHaveCount(0);
     const leftOut = page.getByRole('region', { name: 'Found, but left out' });
     await expect(leftOut).toContainText(`1 item left out (6.3 GB): ${ai('left-out.ollama-download')}`);
+    await leftOut.getByRole('button', { name: /^1 item left out \(6.3 GB\)/ }).click();
+    await expect(leftOut.getByRole('list', { name: 'The items left out' })).toBeVisible();
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, AI_OLLAMA);
     await expect(details(page)).toContainText(`1 item left out (6.3 GB): ${ai('left-out.ollama-download')}`);
@@ -1524,7 +1530,7 @@ test.describe('positive cases', () => {
     await expect(page.getByText('The scan was stopped', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Some folders were not scanned' })).toHaveCount(0);
     await expect(cards(page)).toHaveText([/1 item/, /1 item/]);
-    await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
+    await expect(page.getByRole('button', { exact: true, name: 'Scan again' })).toBeVisible();
   });
 
   test('a long list loads its pages as the keyboard moves to its end', async ({ page }) => {

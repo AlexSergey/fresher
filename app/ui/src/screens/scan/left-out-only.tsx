@@ -80,7 +80,7 @@ const LeftOutRow = ({ category, counts }: Row): JSX.Element => {
 };
 
 // What the last scan found but left out whole, under the groups: a heading like theirs, then one tile per category,
-// with its lines, each item held back by name, path and size, and Details.
+// with its lines, each folded over its items held back (name, path, size), and Details.
 // Nothing before a scan, during one (its totals arrive after its left-outs, so a category with findings would show
 // here first), or when every category with left-outs has a card.
 export const LeftOutOnly = ({ cards }: LeftOutOnlyProps): JSX.Element | null => {

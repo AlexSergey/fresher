@@ -124,6 +124,6 @@ test.describe('positive cases', () => {
     await page.getByRole('button', { name: 'Stop' }).click();
 
     await expect(card).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
+    await expect(page.getByRole('button', { exact: true, name: 'Scan again' })).toBeVisible();
   });
 });

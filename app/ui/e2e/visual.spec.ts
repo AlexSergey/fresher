@@ -354,9 +354,8 @@ test.describe('positive cases', () => {
       await scanFinished(page);
       const leftOut = page.getByRole('region', { name: 'Found, but left out' });
       await expect(leftOut).toContainText('2 items left out (4.3 GB)');
-      // Each item held back is listed by its name and its path (cut in the middle, whole for assistive technology).
-      await expect(leftOut).toContainText('Weather');
-      await expect(leftOut).toContainText('/Users/someone/Library/Developer/Xcode/DerivedData/Weather-abcdefghijklmn');
+      // The line is folded: its items list stays hidden until the toggle is opened.
+      await expect(leftOut.getByRole('list', { name: 'The items left out' })).toBeHidden();
       // The totals have arrived: Gradle's caches are a card, not a left-out row.
       await expect(page.locator('[data-card]').filter({ hasText: "Gradle's caches" })).toBeVisible();
       await expect(leftOut).not.toContainText("Gradle's caches");

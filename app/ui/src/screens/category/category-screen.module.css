@@ -1,7 +1,7 @@
 /*
  * A category's details: the toolbar, the header (name and group, size and count), then its parts on the content column
- * (the answers, the choices, the items, the folded left-out bars), with room at the bottom for the selection bar. The items sit
- * in a frame of up to twelve rows (`--rows`), so the page keeps its height while the list's pages load.
+ * (the answers, the choices, the items, the folded left-out bars), with room at the bottom for the selection bar. The
+ * items sit in a frame of up to twelve rows (`--rows`), so the page keeps its height while the list's pages load.
  */
 @layer components {
   .header {

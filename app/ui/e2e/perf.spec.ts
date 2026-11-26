@@ -273,7 +273,9 @@ test.describe('positive cases', () => {
       return {
         'scan, scan screen': await sampleOf(page, async () => {
           await scanButton(page).click();
-          await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible({ timeout: SCAN_TIMEOUT });
+          await expect(page.getByRole('button', { exact: true, name: 'Scan again' })).toBeVisible({
+            timeout: SCAN_TIMEOUT,
+          });
           await expect(cards(page)).toHaveCount(12);
         }),
       };
@@ -282,7 +284,9 @@ test.describe('positive cases', () => {
       await mockCore(page, STREAMED);
       await page.goto('/');
       await scanButton(page).click();
-      await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible({ timeout: SCAN_TIMEOUT });
+      await expect(page.getByRole('button', { exact: true, name: 'Scan again' })).toBeVisible({
+        timeout: SCAN_TIMEOUT,
+      });
       await settle(page);
 
       return {
