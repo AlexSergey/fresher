@@ -172,7 +172,7 @@ the guarded places as the walk opens it (03/03); "Check again" also runs the too
 declares no need (agent's call 33, 03/05); a refused opt-in or volume offers "Open System Settings" with the core's new
 `core.access.<id>.denied` text, in the notices and the Permissions group, which also shows its heading and switches
 before the status is known (04/02, 04/04); dead UI code went (`hasStaleResult`, `useAccess`, 04/01). Recorded, not
-fixed: three known issues ([I/O policy in a compose test](../../known-issues/app-compose-test-sets-the-io-policy.md),
+fixed: three known issues ([I/O policy in a compose test](../../known-issues/fixed/app-compose-test-sets-the-io-policy.md),
 [relaunch after a confirmed cleanup](../../known-issues/app-relaunch-after-a-confirmed-cleanup.md),
 ["Reopen Fresher" state is local](../../known-issues/fixed/ui-reopen-button-state-is-local.md)) and one deferred item
 ([steps as a list](../../deferred/access-steps-as-a-list.md)). Two checks were added to "By hand" (a volume opt-in, and

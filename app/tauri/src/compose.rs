@@ -559,12 +559,15 @@ mod tests {
         fresher_core::SystemFacts::new(&ports)
     }
 
+    /// An I/O policy that sets nothing, for the tests that do not check the policy.
+    const NO_POLICY: super::IoPolicy =
+        super::IoPolicy { never_download_cloud_files: || Ok(()), leave_access_times: || Ok(()) };
+
     mod negative {
         use std::path::Path;
 
-        use crate::compose::{
-            ComposeError, IoPolicy, MACOS_POLICY, bundle_of, checked_user_temp, engine, engine_with, normal,
-        };
+        use super::NO_POLICY;
+        use crate::compose::{ComposeError, IoPolicy, bundle_of, checked_user_temp, engine_with, normal};
 
         #[test]
         fn the_systems_small_files_never_follow_a_link_through_the_lens() {
@@ -581,7 +584,7 @@ mod tests {
         fn the_normal_engine_has_no_standing_avoid_list() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
 
-            let shared = normal(folder.path(), home.path(), &MACOS_POLICY).unwrap();
+            let shared = normal(folder.path(), home.path(), &NO_POLICY).unwrap();
 
             assert_eq!(shared.avoid, Vec::<std::path::PathBuf>::new());
         }
@@ -595,7 +598,7 @@ mod tests {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
             std::fs::create_dir(home.path().join("Desktop")).unwrap();
 
-            let shared = normal(folder.path(), home.path(), &MACOS_POLICY).unwrap();
+            let shared = normal(folder.path(), home.path(), &NO_POLICY).unwrap();
 
             let status = shared.access.status();
             let places = shared.access.guarded_places(&[std::path::PathBuf::from("~")]);
@@ -609,7 +612,7 @@ mod tests {
         fn a_relative_data_folder_is_refused() {
             let home = tempfile::tempdir().unwrap();
 
-            let error = engine("relative/folder", home.path());
+            let error = engine_with("relative/folder", home.path(), &NO_POLICY);
 
             assert!(matches!(error, Err(ComposeError::DataFolder(_))), "{error:?}");
         }
@@ -681,7 +684,7 @@ mod tests {
             };
 
             let (folder, tree) = (tempfile::tempdir().unwrap(), trial_home(true));
-            let engine = engine(folder.path(), tree.root()).unwrap();
+            let engine = engine_with(folder.path(), tree.root(), &NO_POLICY).unwrap();
             engine.accept_agreement(fresher_core::AGREEMENT_VERSION).unwrap();
             let roots = SettingValue::Folders(vec![tree.root().to_path_buf()]);
             engine.update_setting(SettingUpdate { key: "core.scan.roots".into(), value: roots }).unwrap();
@@ -787,9 +790,8 @@ mod tests {
     mod positive {
         use std::path::{Path, PathBuf};
 
-        use crate::compose::{
-            MACOS_POLICY, ModuleSet, bundle_of, checked_user_temp, engine, engine_with, modules, user_temp,
-        };
+        use super::NO_POLICY;
+        use crate::compose::{MACOS_POLICY, ModuleSet, bundle_of, checked_user_temp, engine_with, modules, user_temp};
 
         #[test]
         fn a_home_reached_through_a_link_is_spelled_as_the_disk_spells_it() {
@@ -910,7 +912,7 @@ mod tests {
                 ]
             };
 
-            let engine = engine(folder.path(), home.path()).unwrap();
+            let engine = engine_with(folder.path(), home.path(), &NO_POLICY).unwrap();
 
             let ids: Vec<&str> = engine.modules().iter().map(|module| module.id.as_str()).collect();
             assert_eq!(ids, expected);
@@ -945,6 +947,8 @@ mod tests {
         }
 
         #[test]
+        /// The one test that applies the real I/O policy, which changes a setting of the whole process: it needs a
+        /// process of its own (nextest gives one).
         fn the_normal_engine_withholds_high() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
 
@@ -957,7 +961,7 @@ mod tests {
         fn the_engine_records_its_cleanups_in_the_data_folder() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
 
-            let engine = engine(folder.path(), home.path()).unwrap();
+            let engine = engine_with(folder.path(), home.path(), &NO_POLICY).unwrap();
 
             let page = engine.cleanups(0, 10);
             assert_eq!((page.total, page.blocked), (0, None));

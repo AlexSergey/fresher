@@ -1,6 +1,6 @@
 # A compose test sets the real I/O policy of the test process
 
-**Status:** open · **Updated:** 2026-11-19
+**Status:** fixed (the compose tests pass a no-op I/O policy; one keeps the real one and notes it needs a process of its own) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -15,12 +15,8 @@ expects.
 test in a process of its own, so today no other test sees it; `cargo test`, which runs the tests of a binary in one
 process, would.
 
-## What was tried
+## Fix
 
-Nothing yet: the test needs the normal parts (the real `MacAccess` on a temporary home), and `normal` takes the policy
-as a parameter already.
-
-## Options left
-
-- Pass a no-op `IoPolicy` (as the compose tests of a failing policy do) where the test only checks the access.
-- Keep `MACOS_POLICY` for the one test that checks the policy is applied, and mark it as needing a process of its own.
+The tests of `app/tauri/src/compose.rs` that do not check the policy pass a no-op `IoPolicy` (`NO_POLICY`), as the
+failing-policy tests do. `the_normal_engine_withholds_high` keeps `MACOS_POLICY` and says in a comment that it needs a
+process of its own, which nextest gives.
