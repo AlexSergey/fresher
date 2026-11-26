@@ -68,7 +68,7 @@ open. The design: [`../00-design.md`](../00-design.md), section 4, "Sandbox".
   outcome, the tree after.
 - `app/tauri/tests/sandboxes.rs` — the three files in `case_files!`, sorted by file name.
 - `docs/testing.md` — the three case files in the list of case files, as `app-leftovers`' are described.
-- `docs/known-issues/repo-sandbox-all-worlds-interact.md` — access joins as Spotlight does (the most restrictive wins
+- `docs/known-issues/fixed/repo-sandbox-all-worlds-interact.md` — access joins as Spotlight does (the most restrictive wins
   in `all`).
 
 What the code does for each case is written down when the file is made; a case that differs from the design is fixed

@@ -1153,7 +1153,7 @@ here:
 - Flaky autotests: the WebKit gallery part 3 times out under load
   ([`ui-axe-gallery-part-3-webkit-timeout`](./known-issues/ui-axe-gallery-part-3-webkit-timeout.md); rerun it alone).
 - The `all` sandbox's checklist is wrong where worlds interact
-  ([`repo-sandbox-all-worlds-interact`](./known-issues/repo-sandbox-all-worlds-interact.md)); use one case file at a time.
+  ([`repo-sandbox-all-worlds-interact`](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)); use one case file at a time.
 - `npm run dev` and `npm run dev:sandbox` share one window: a launch while one is open shows the old window's mode.
 
 If it is not known, capture and send:

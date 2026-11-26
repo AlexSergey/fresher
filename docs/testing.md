@@ -538,7 +538,9 @@ the real ones (`Sandbox::places_protection`: every user's folders and `private/v
 out and kept whole, its `TemporaryItems` never, `private/tmp` whole); the Mac's lists never carve the sandbox's
 `T`. Sandbox mode's clock starts at that `now`, and the autotest's clock stands at it. `all` writes every case file
 into one sandbox, joins their worlds, and leaves out whole a file that writes a path an earlier file wrote (named on
-stderr and in `EXPECTED.md`).
+stderr and in `EXPECTED.md`). Its `EXPECTED.md` opens with a warning naming the files that install or open an app,
+turn Spotlight off or set an access (read from the case files, not a kept list): their world changes other files'
+cases, so a check by hand uses a feature's own sandbox.
 
 - It refuses a folder that is not empty and holds no valid marker, and a folder the real Mac's protection list
   refuses (the home itself, a protected place or an ancestor of one).
@@ -584,7 +586,7 @@ The case files:
   and its web data and cookies as Medium, its support folder as High. Every leftover's entries state their age and
   status change (40 days, or 5). The second runs with Spotlight off, a world of its own: a removed app's files are
   left out (`spotlight-unread`); in `npm run sandbox -- all` Spotlight is then off for every case file
-  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+  ([known issue](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)).
 - `high-withheld.toml`: the High switch as the app ships it (plan 042), on the `app-leftovers` module, with
   `high = "withheld"`. A removed app's support folder (High) is not offered and is the user's folders on the map; the
   same app's caches (Safe) are offered and go to the Trash.
@@ -631,7 +633,7 @@ The case files:
 - `jetbrains-unknown-app-open.toml` and `jetbrains-unknown-app-installed.toml`: an app of the vendor that the module
   does not know, open (every folder kept) or installed (every removed IDE's data kept). Files of their own, since the
   app keeps the folders of every case beside it; in `npm run sandbox -- all` it keeps those of `jetbrains.toml` too
-  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+  ([known issue](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)).
 
 - `dev-caches.toml`, `dev-caches-unsigned.toml` and `dev-caches-xcode-open.toml`: the `dev-caches` module, in three
   files because its places are fixed, so a world where a sign is missing or Xcode is open cannot sit beside the
@@ -655,7 +657,7 @@ The case files:
   caps the fake volume's used space to what it holds. The second denies access: nothing in Downloads is read. The
   third runs with Chrome open: its unfinished download is left out (`browser-open`). Denied access and an open browser
   are worlds of their own; in `npm run sandbox -- all` the most restrictive access wins, so Downloads is then denied for
-  every case file ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)). The autotest does not opt in to
+  every case file ([known issue](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)). The autotest does not opt in to
   Downloads in Settings, so a `not-asked` answer turning granted after the opt-in is not proven there but in the core
   e2e (`tests/downloads.rs`, below); a case file cannot opt in.
 
@@ -676,7 +678,7 @@ The case files:
   other two files are worlds of their own, since a left-out of the whole store hides every model beside it: an
   unreadable manifest and a download in progress keep every Ollama model. Each writes the lone layer of the first file
   too, so in `npm run sandbox -- all` they are left out whole and named in `EXPECTED.md`; write them by name
-  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+  ([known issue](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)).
 
 - `logs.toml`: the `logs` module, offered from `home/Library/Logs`. A removed app's or a JetBrains IDE's folder (other
   modules' to decide), a link, an app's state and lock files, a folder named `Logs` outside the Library are never
@@ -714,7 +716,7 @@ The case files:
   stderr and in `EXPECTED.md`; each runs by name. In `all` the main file is written but the module does not
   run there: `downloads-denied.toml` denies Downloads for every case file and the module needs it; a run by hand uses
   the feature's own sandbox
-  ([known issue](./known-issues/repo-sandbox-all-worlds-interact.md)).
+  ([known issue](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)).
 
 - `temp.toml`: the `temp` module, in the sandbox's two temporary places, with stated facts for what the disk cannot
   make. A fresh file, a folder unpacked with old modification times, an old folder with one file changed a day ago,

@@ -18,6 +18,13 @@ use crate::{
 const AGREEMENT: &str = "\nBefore the first cleanup, a fresh sandbox asks you to accept the short agreement: Not now starts \
                          nothing; I understand goes on to the confirmation.\n";
 
+/// The header's warning on a sandbox of several case files, which share one world; `{}` is the files whose world joins
+/// the others'.
+const SHARED_WORLD: &str = "\n**Several case files share this sandbox's one world.** The apps they install or open, Spotlight being \
+                            off and the access they set join, so a case of one file can show differently here than \
+                            its own file expects; this list is not exact where they do. For a check by hand use a \
+                            feature's own sandbox: `npm run sandbox -- <name>`. Files whose world joins the others': {}.\n";
+
 /// The line under a High positive of a file the autotest runs with High offered.
 const WITHHELD_IN_THE_APP: &str = "Not shown in the app: High is withheld in this release.";
 
@@ -34,6 +41,13 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
         "# What the sandbox must show\n\nOpen the app on this sandbox, scan, clean everything it offers, and tick each case.\n",
     );
     text.push_str(AGREEMENT);
+    if files.len() > 1 {
+        let named: Vec<String> =
+            files.iter().filter(|file| sets_the_world(file)).map(|file| format!("`{}`", file.feature())).collect();
+        if !named.is_empty() {
+            let _ = write!(text, "{}", SHARED_WORLD.replace("{}", &named.join(", ")));
+        }
+    }
     for file in files {
         if file.demo().is_some() {
             let _ = write!(text, "\n## {}\n\nA demo world: what it shows is not checked.\n\n", file.feature());
@@ -113,6 +127,19 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
     }
     let _ = write!(text, "\n## Open the app on it\n\n```sh\nnpm run dev:sandbox -- {}\n```\n", sandbox.display());
     text
+}
+
+/// Whether a case of the file installs or opens an app, turns Spotlight off or sets an access: what joins the world
+/// every file of one sandbox shares.
+fn sets_the_world(file: &CaseFile) -> bool {
+    file.cases().iter().any(|case| {
+        !case.tree().apps().is_empty()
+            || case.running_apps().next().is_some()
+            || !case.running_elsewhere().is_empty()
+            || !case.elsewhere().is_empty()
+            || case.spotlight_off()
+            || !case.access().is_empty()
+    })
 }
 
 /// What must happen to the case, in one sentence. A negative of a file that names its module reads "never offered by
@@ -418,6 +445,25 @@ reason = "in-use"
         }
 
         #[test]
+        fn a_sandbox_of_one_case_file_has_no_shared_world_warning() {
+            let cases = CASES.replacen("kind = \"negative\"\n", "kind = \"negative\"\nspotlight = \"off\"\n", 1);
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            assert!(!text.contains("share this sandbox's one world"), "{text}");
+        }
+
+        #[test]
+        fn several_case_files_that_set_no_world_have_no_shared_world_warning() {
+            let other = CASES.replace("feature = \"trial\"", "feature = \"other\"");
+            let files = [CaseFile::parse(CASES).unwrap(), CaseFile::parse(&other).unwrap()];
+
+            let text = checklist(&files, &[], Path::new("/sandbox"), super::now());
+
+            assert!(!text.contains("share this sandbox's one world"), "{text}");
+        }
+
+        #[test]
         fn a_negative_names_only_its_top_paths() {
             let text = checklist(&[CaseFile::parse(CASES).unwrap()], &[], Path::new("/sandbox"), super::now());
 
@@ -648,6 +694,24 @@ reason = "in-use"
                 "{text}"
             );
             assert!(text.contains("  - `Applications/Keeper.app` stated: last used 240 days ago."), "{text}");
+        }
+
+        #[test]
+        fn several_case_files_warn_and_name_the_ones_whose_world_joins_the_others() {
+            let quiet = CASES.replace("feature = \"trial\"", "feature = \"quiet\"");
+            let loud = CASES.replace("feature = \"trial\"", "feature = \"loud\"").replacen(
+                "kind = \"negative\"\n",
+                "kind = \"negative\"\nspotlight = \"off\"\n",
+                1,
+            );
+            let files = [CaseFile::parse(&quiet).unwrap(), CaseFile::parse(&loud).unwrap()];
+
+            let text = checklist(&files, &[], Path::new("/sandbox"), super::now());
+
+            assert!(text.contains("**Several case files share this sandbox's one world.**"), "{text}");
+            assert!(text.contains("a feature's own sandbox: `npm run sandbox -- <name>`"), "{text}");
+            assert!(text.contains("Files whose world joins the others': `loud`.\n"), "{text}");
+            assert!(text.find("share this sandbox").unwrap() < text.find("## quiet").unwrap(), "{text}");
         }
 
         #[test]

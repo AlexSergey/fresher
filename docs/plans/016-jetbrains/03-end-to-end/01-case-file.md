@@ -64,5 +64,5 @@ all its cases: the Toolbox case uses DataSpell (a removed DataGrip is a positive
 files of their own. Not expressible in a sandbox: Spotlight elsewhere (the sandbox's search answers from its listed
 apps) and a restored scan (the harness scans once); both are in the core e2e. The linked-app case proves the list
 stays whole, not that the link is read where it points (the reader's unit tests do). Running `all` makes the worlds
-interact ([known issue](../../../known-issues/repo-sandbox-all-worlds-interact.md)). The check that changing an
+interact ([known issue](../../../known-issues/fixed/repo-sandbox-all-worlds-interact.md)). The check that changing an
 expectation on purpose fails each kind of case is still to do by hand (see 04/02).

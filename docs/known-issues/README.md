@@ -47,7 +47,6 @@ When an issue is fixed, its file takes the status `fixed` with a link to the cha
 | [A forged journal record can send a real trashed item to a place of its choosing](./core-forged-journal-moves-a-trashed-item.md) | core | open | the journal is plain text; a record forged whole, naming a real trashed item, is put back where it says (audit REMOVAL-1) |
 | [Moderate audit advisories in the lint tooling](./repo-moderate-audit-advisories.md)      | repo    | open   | 9 moderate `minimatch` advisories through typescript-eslint, sonarjs, jsx-a11y-x (dev only)       |
 | [Supply-chain hardening left for later](./repo-supply-chain-hardening-left.md) | repo | open | lifecycle scripts run on `npm ci`, no gitleaks in CI, an unused fs plugin compiled in, a moving runner image (audit SUPPLY-8) |
-| [The `all` sandbox's checklist is wrong where worlds interact](./repo-sandbox-all-worlds-interact.md) | repo    | open   | one case file's apps change another's cases in `npm run sandbox -- all`; its `EXPECTED.md` does not say so |
 | [An unreadable folder inside a claimed match is not counted as not read](./scanner-unreadable-folder-in-a-claimed-match.md) | scanner | open | a developer cache with a locked sub-folder is not offered, and the user is not told why; the coverage stays empty |
 | [A project's last activity does not see a file edited in place](./core-project-activity-misses-edits-in-place.md) | core | open | only folder times count; an editor that saves in place moves none |
 | [A project cleaned once looks active again](./core-cleaned-stale-project-looks-active.md) | core | open | removing an artifact moves the project folder's time, so the rest waits for the days again |
@@ -70,6 +69,7 @@ Kept for the record: what the cause was and how it was fixed.
 
 | Issue                                                                                     | Part    | Status | What                                                                                              |
 | ----------------------------------------------------------------------------------------- | ------- | ------ | ------------------------------------------------------------------------------------------------- |
+| [The `all` sandbox's checklist is wrong where worlds interact](./fixed/repo-sandbox-all-worlds-interact.md) | repo    | fixed | the `all` checklist opens with a warning naming the files whose worlds join; the interaction stays by design |
 | [A compose test sets the real I/O policy of the test process](./fixed/app-compose-test-sets-the-io-policy.md) | app | fixed | the compose tests pass a no-op I/O policy; the one that needs the real one says it needs a process of its own |
 | [The "Reopen Fresher" button is forgotten when its card is rebuilt](./fixed/ui-reopen-button-state-is-local.md) | ui | fixed | the flag lives in the UI store for the session; the card and the row both read it |
 | [A setting changed during a scan does not ask for a rescan](./fixed/core-settings-changed-during-a-scan.md) | core | fixed | the engine carries a change made during a scan into that scan's `LastScan`, so "Rescan to apply" is shown |

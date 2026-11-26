@@ -72,7 +72,7 @@ asks Spotlight.
 - `npm run sandbox -- app-leftovers` (and the other) writes `sandbox/<feature>/` with `world.toml` (the apps, the
   running and elsewhere apps, the stated entries) and an `EXPECTED.md` that names them; `npm run sandbox -- all`
   writes them beside the other case files without a clash (Spotlight off then holds for every module's look by hand:
-  said in `EXPECTED.md`, [known issue](../../../known-issues/repo-sandbox-all-worlds-interact.md)).
+  said in `EXPECTED.md`, [known issue](../../../known-issues/fixed/repo-sandbox-all-worlds-interact.md)).
 - `cargo nextest run -p fresher-sandbox -p fresher-app`; `npm run lint`.
 
 ## Conclusions
@@ -93,7 +93,7 @@ Deviations and calls:
 - The banner names a simulated Spotlight: `Build::Sandbox.simulated_spotlight`, regenerated bindings, two UI keys, the
   banner tests, story and e2e. The default mock has it `false`, so no screenshot changed.
 - Spotlight off in the `all` sandbox keeps the positives of every module that asks Spotlight; recorded in the known issue
-  [`repo-sandbox-all-worlds-interact.md`](../../../known-issues/repo-sandbox-all-worlds-interact.md).
+  [`repo-sandbox-all-worlds-interact.md`](../../../known-issues/fixed/repo-sandbox-all-worlds-interact.md).
 - A sandbox `[[case.app]]` cannot declare helpers; a declared helper is covered by the fixtures of 02/03.
 
 Tests: changing an expectation on purpose fails the autotest, once per kind (a danger, a left-out's items, a proof

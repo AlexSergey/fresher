@@ -1,6 +1,6 @@
 # The `all` sandbox's checklist is wrong where case files' worlds interact
 
-**Status:** open · **Updated:** 2026-11-19
+**Status:** fixed (the `all` checklist opens with a warning naming the files whose worlds join; the interaction itself stays by design) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -39,15 +39,11 @@ A sandbox has one world: the generator joins every file's installed apps and `wo
 Spotlight's answers. The autotest runs each case file in a sandbox of its own, so it never sees the clash; `all` only
 leaves out a file writing a path an earlier file wrote.
 
-## What was tried
+## Fix
 
-Nothing beyond keeping the interacting cases in case files of their own (plan 016/03/01), so each file's own sandbox
-and autotest hold.
-
-## Options left
-
-- `all` warns, or leaves out, the files whose world changes another file's cases (it would need to know which do).
-  This is a different issue from the path clash above: the apps, Spotlight and access interaction is not a path two
-  files write, so `all` does not see it.
-- `EXPECTED.md` of `all` names the files whose apps may change the others' cases.
-- Use a feature's own sandbox (`npm run sandbox -- jetbrains`) for a run by hand; `all` only for a look around.
+The `EXPECTED.md` of a sandbox of several case files opens with a warning: the files share one world, a case can show
+differently than its own file expects, and a check by hand uses a feature's own sandbox (`npm run sandbox -- <name>`).
+It names the files whose world joins the others' (a case installs or opens an app, turns Spotlight off or sets an
+access), read from the case files by the generator (`sets_the_world` in `crates/sandbox/src/expected.rs`), so no list is
+kept by hand. The interaction itself stays by design: one sandbox has one world, and the autotest runs each file in a
+sandbox of its own.
