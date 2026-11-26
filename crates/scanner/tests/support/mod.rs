@@ -417,7 +417,7 @@ fn random_tree_of(root: &Path, names_of: &[&str], items: &[RandomItem]) -> Vec<P
     let mut locked = Vec::new();
     for (kind, names, size) in items {
         let path = names.iter().fold(root.to_path_buf(), |path, &name| path.join(names_of[name % names_of.len()]));
-        if path.symlink_metadata().is_ok() {
+        if path.symlink_metadata().is_ok() || beneath_a_link(root, &path) {
             continue;
         }
         let Some(parent) = path.parent() else { continue };
@@ -451,4 +451,13 @@ fn random_tree_of(root: &Path, names_of: &[&str], items: &[RandomItem]) -> Vec<P
         let _ = fs::set_permissions(folder, fs::Permissions::from_mode(0o000));
     }
     locked
+}
+
+/// Whether a folder between `root` and `path` is a link: an item there would be made through it, outside the tree
+/// when the link points out (`/usr`).
+fn beneath_a_link(root: &Path, path: &Path) -> bool {
+    path.ancestors()
+        .skip(1)
+        .take_while(|folder| *folder != root)
+        .any(|folder| folder.symlink_metadata().is_ok_and(|metadata| metadata.file_type().is_symlink()))
 }
