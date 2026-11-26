@@ -63,6 +63,8 @@ pub(crate) struct Results {
     volumes: RootVolumes,
     /// A scan began and has not finished.
     scanning: bool,
+    /// A setting that applies at the next scan changed since the running scan began: its `LastScan` takes the mark.
+    settings_changed_in_scan: bool,
     /// The claims of the findings once the scan resolved them; until then every finding counts its own sizes.
     claims: Option<Claims>,
 }
@@ -92,6 +94,7 @@ impl fmt::Debug for Results {
             .field("state_findings", &self.state_findings.len())
             .field("volumes", &self.volumes)
             .field("scanning", &self.scanning)
+            .field("settings_changed_in_scan", &self.settings_changed_in_scan)
             .field("claims", &self.claims.is_some())
             .finish()
     }
@@ -132,6 +135,7 @@ impl Results {
             state_findings: Arc::from([]),
             volumes: RootVolumes::default(),
             scanning: false,
+            settings_changed_in_scan: false,
             claims: None,
         }
     }
@@ -148,6 +152,7 @@ impl Results {
         self.limited.clear();
         self.claims = None;
         self.scanning = true;
+        self.settings_changed_in_scan = false;
         self.next_id
     }
 
@@ -161,7 +166,8 @@ impl Results {
     }
 
     /// The scan ended: `next_id` is the first id the next scan may use.
-    pub(crate) fn finish(&mut self, last: LastScan, next_id: Option<u32>) {
+    pub(crate) fn finish(&mut self, mut last: LastScan, next_id: Option<u32>) {
+        last.settings_changed = self.settings_changed_in_scan;
         self.last = Some(last);
         self.next_id = next_id;
         self.scanning = false;
@@ -320,9 +326,11 @@ impl Results {
         }
     }
 
-    /// A setting that applies at the next scan changed since the last scan.
+    /// A setting that applies at the next scan changed: since the last scan, or, while a scan runs, since it began.
     pub(crate) fn mark_settings_changed(&mut self) {
-        if let Some(last) = &mut self.last {
+        if self.scanning {
+            self.settings_changed_in_scan = true;
+        } else if let Some(last) = &mut self.last {
             last.settings_changed = true;
         }
     }

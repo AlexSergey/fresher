@@ -32,7 +32,6 @@ When an issue is fixed, its file takes the status `fixed` with a link to the cha
 | Issue                                                                                     | Part    | Status | What                                                                                              |
 | ----------------------------------------------------------------------------------------- | ------- | ------ | ------------------------------------------------------------------------------------------------- |
 | [Quitting from the Dock during a cleanup does not ask](./app-quit-during-cleanup.md)      | app     | open   | The Dock's Quit cannot be held: the cleanup stops after the item in flight, no question; ⌘Q asks |
-| [A setting changed during a scan does not ask for a rescan](./core-settings-changed-during-a-scan.md) | core    | open   | the running scan ends unmarked, so "Rescan to apply" is not shown for a change made during it     |
 | [The scan offers an item inside the Trash](./app-scan-offers-an-item-in-the-trash.md) | app     | open   | the cleanup leaves it out as protected; whether the scan should skip the Trash is open            |
 | [A sandbox scan says it was made days ago](./app-sandbox-scan-dated-at-generation.md) | app | open | sandbox mode's clock starts at the generation; the interface counts from the computer's clock |
 | [The sandbox clock starts again at every launch](./app-sandbox-clock-restarts-each-launch.md) | app | open | sandbox mode only: after a relaunch the Trash line can count cleanups twice and the cache age guard is inert |
@@ -73,6 +72,7 @@ Kept for the record: what the cause was and how it was fixed.
 
 | Issue                                                                                     | Part    | Status | What                                                                                              |
 | ----------------------------------------------------------------------------------------- | ------- | ------ | ------------------------------------------------------------------------------------------------- |
+| [A setting changed during a scan does not ask for a rescan](./fixed/core-settings-changed-during-a-scan.md) | core | fixed | the engine carries a change made during a scan into that scan's `LastScan`, so "Rescan to apply" is shown |
 | [Spotlight does not see an IDE on a volume it does not index](./fixed/app-spotlight-misses-an-excluded-volume.md) | app | fixed | every mounted volume is checked indexed once per scan; one that is not keeps everything (plan 019/01/03) |
 | [The sandbox autotests failed at times on an allocated size](./fixed/app-sandbox-storage-map-allocated-size.md) | app | fixed | a data-filled fixture file grown by appends kept blocks past its end under load; it is sized first now |
 | [The disk chart keeps its numbers after a cleanup](./fixed/ui-chart-stale-after-a-cleanup.md) | core | fixed | the storage map takes out the tree's sizes of what a cleanup removed, and the cleanup reads the volume again at its end |

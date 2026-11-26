@@ -84,7 +84,7 @@ Reset all asking first.
 - "Show in Finder" for the data folder and clearing the scan cache are left out (design, 6; decision 5); export and
   import with a preview, and a default-removal setting, are deferred (decisions 3 and 8). The licences of the
   dependencies stay [deferred](../../deferred/licence-notices.md).
-- Known issue: [a setting changed during a scan](../../known-issues/core-settings-changed-during-a-scan.md) does not
+- Known issue: [a setting changed during a scan](../../known-issues/fixed/core-settings-changed-during-a-scan.md) does not
   ask for a rescan after that scan.
 - The Permissions group shows the four opt-in switches; each permission's state comes with plan 006/04.
 - No hack was added (`docs/hacks/` unchanged).

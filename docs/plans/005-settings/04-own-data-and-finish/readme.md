@@ -26,5 +26,5 @@ Built as written, with the version from the user's decision of 2026-11-16 (0.5.5
   app's licence; the dependencies' licences stay [deferred](../../../deferred/licence-notices.md).
 - Docs: the architecture's settings and ignore list, a deletion-safety rule ("Settings never weaken deletion
   safety"), the tests, the ideas marked as taken, a known issue
-  ([a change during a scan](../../../known-issues/core-settings-changed-during-a-scan.md)), four deferred items.
+  ([a change during a scan](../../../known-issues/fixed/core-settings-changed-during-a-scan.md)), four deferred items.
 - The version files are at 0.5.5; plan 009 targets 0.5.5 too, so the second branch merged keeps it.

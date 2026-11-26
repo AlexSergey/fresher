@@ -179,7 +179,8 @@ No database: the app keeps its own state in small plain files, with nothing to i
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,
   `ignored`, `permissions`, or `module` for every module's) and its **effect** (`now`, or `next-scan`: a change marks
-  the last scan, and the UI offers "Scan again to apply it"; the app never rescans on its own). The kinds are `switch`,
+  the last scan, or the scan running, and the UI offers "Scan again to apply it"; the app never rescans on its own).
+  The kinds are `switch`,
   `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder), `ids` (of
   categories, modules or groups, checked by what they hold: `IdOf`) and `paths` (the ignore lists). `reset_settings` puts every setting but the ignore lists back to its default in one save.
 - **The ignore list** (`core.ignore.modules`, `core.ignore.groups`, `core.ignore.categories`, `core.ignore.paths`):

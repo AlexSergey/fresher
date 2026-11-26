@@ -36,6 +36,8 @@ mod places;
 mod registry;
 mod results;
 mod reveal;
+#[cfg(test)]
+mod scan_settings_tests;
 mod session;
 mod settings;
 mod state;

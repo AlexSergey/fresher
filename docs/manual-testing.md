@@ -1152,8 +1152,6 @@ here:
   [`ui-reopen-button-state-is-local`](./known-issues/ui-reopen-button-state-is-local.md); relaunch right after a
   confirmed cleanup cuts it short:
   [`app-relaunch-after-a-confirmed-cleanup`](./known-issues/app-relaunch-after-a-confirmed-cleanup.md).
-- A setting changed during a scan shows no "Rescan to apply":
-  [`core-settings-changed-during-a-scan`](./known-issues/core-settings-changed-during-a-scan.md).
 - Flaky autotests: the WebKit gallery part 3 times out under load
   ([`ui-axe-gallery-part-3-webkit-timeout`](./known-issues/ui-axe-gallery-part-3-webkit-timeout.md); rerun it alone).
 - The `all` sandbox's checklist is wrong where worlds interact
