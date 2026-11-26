@@ -15,7 +15,15 @@ export type ScreenStackProps = {
 
 // One screen on the stack: open (the current one) or leaving. `arrived` when a screen change brought it: it fades in
 // and its heading takes the focus (Scan after a details screen: the card it came from); the first screen of the app just appears.
-type Layer = { readonly arrived: boolean; readonly key: string; readonly open: boolean; readonly screen: Screen };
+// `mount` counts the openings of one key: a screen opened again while it still fades out is a new mount, so it reads
+// its data anew as any screen does when it opens.
+type Layer = {
+  readonly arrived: boolean;
+  readonly key: string;
+  readonly mount: number;
+  readonly open: boolean;
+  readonly screen: Screen;
+};
 
 const FADE_OUT: readonly Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
 
@@ -97,7 +105,7 @@ const ScreenLayer = ({ children, layer, onGone }: ScreenLayerProps): JSX.Element
 export const ScreenStack = ({ render, screen }: ScreenStackProps): JSX.Element => {
   const [shown, setShown] = useState(screen);
   const [layers, setLayers] = useState<readonly Layer[]>(() => [
-    { arrived: false, key: screenKey(screen), open: true, screen },
+    { arrived: false, key: screenKey(screen), mount: 0, open: true, screen },
   ]);
 
   // A new screen replaces the open one in the same render, so no frame shows neither.
@@ -107,9 +115,11 @@ export const ScreenStack = ({ render, screen }: ScreenStackProps): JSX.Element =
     setShown(screen);
     setLayers((all) => {
       const current = all.find((layer) => layer.open);
+      const leaving = all.find((layer) => layer.key === key && !layer.open);
       const others = all.filter((layer) => layer.key !== key).map((layer) => ({ ...layer, open: false }));
+      const mount = current?.key === key ? current.mount : (leaving?.mount ?? -1) + 1;
 
-      return [...others, { arrived: current?.key !== key || current.arrived, key, open: true, screen }];
+      return [...others, { arrived: current?.key !== key || current.arrived, key, mount, open: true, screen }];
     });
   }
 
@@ -117,7 +127,7 @@ export const ScreenStack = ({ render, screen }: ScreenStackProps): JSX.Element =
     <div className={styles.stack}>
       {layers.map((layer) => (
         <ScreenLayer
-          key={layer.key}
+          key={`${layer.key}#${String(layer.mount)}`}
           layer={layer}
           onGone={() => {
             setLayers((all) => all.filter((one) => one.key !== layer.key || one.open));
