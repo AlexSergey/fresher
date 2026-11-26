@@ -2,13 +2,16 @@
 
 use std::path::{Path, PathBuf};
 
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+
 use fresher_core::{
-    ByteSize, CheckDifference, CheckFailure, EntryAccess, FolderIdentity, FolderListing, FolderReader, FullScanReason,
-    RawEntry, ReadError, Sizes,
+    ByteSize, CancelToken, ChangeJournal, Changes, CheckDifference, CheckFailure, EntryAccess, FolderIdentity,
+    FolderListing, FolderReader, FullScanReason, JournalGap, JournalPosition, RawEntry, ReadError, Sizes, VolumeId,
 };
+use fresher_testing::FakeChangeJournal;
 
 use crate::matcher::testing::set_of;
-use crate::rescan::testing::{Rig, Walked};
+use crate::rescan::testing::{LATER, Rig, VOLUME, Walked};
 use crate::rescan::tests::twenty_folders;
 use crate::walk::std_reader::StdReader;
 
@@ -74,6 +77,46 @@ impl FolderReader for Altered {
     }
 }
 
+/// A journal that answers as `inner`, with `written` landing in the tree right after its first answer: a change made
+/// after the rescan asked the journal, which the journal names only when asked again.
+#[derive(Debug)]
+struct WrittenAfter {
+    inner: FakeChangeJournal,
+    written: PathBuf,
+    done: AtomicBool,
+}
+
+impl WrittenAfter {
+    fn new(inner: FakeChangeJournal, written: PathBuf) -> Self {
+        Self { inner, written, done: AtomicBool::new(false) }
+    }
+}
+
+impl ChangeJournal for WrittenAfter {
+    fn position(&self, volume: &VolumeId) -> Option<JournalPosition> {
+        self.inner.position(volume)
+    }
+
+    fn changes_since(
+        &self,
+        volume: &VolumeId,
+        since: &JournalPosition,
+        cancel: &CancelToken,
+    ) -> Result<Changes, JournalGap> {
+        let answer = self.inner.changes_since(volume, since, cancel);
+        if !self.done.swap(true, AtomicOrdering::SeqCst) {
+            std::fs::write(&self.written, vec![0; 700]).unwrap();
+        }
+        answer
+    }
+}
+
+/// A journal answering nothing, then `folders` when asked again, from `AT` to `LATER`.
+fn journal_late(folders: &[PathBuf]) -> FakeChangeJournal {
+    let changes = |folders: &[PathBuf]| Changes { folders: folders.to_vec(), subtrees: Vec::new(), end: LATER };
+    FakeChangeJournal::default().at(VOLUME, LATER).answering(Ok(changes(&[]))).answering(Ok(changes(folders)))
+}
+
 mod negative {
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -82,7 +125,7 @@ mod negative {
         CancelToken, CheckDifference, Claim, DiskWalk, FoldedPart, FullScanReason, Pattern, ScanKind, WalkMode,
     };
 
-    use super::{Altered, failed, failure, rig};
+    use super::{Altered, WrittenAfter, failed, failure, journal_late, rig};
     use crate::matcher::testing::{interest, set_of};
     use crate::rescan::testing::{Refusing, Rig, assert_same, journal_of};
     use crate::rescan::tests::twenty_folders;
@@ -114,6 +157,17 @@ mod negative {
         assert_eq!(failure(&rescan), failed("a/b", CheckDifference::EntryAdded(PathBuf::from("missed"))));
         assert_eq!(reader.reads()[&rig.path("a/b/missed")], 1);
         assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_change_the_journal_still_does_not_name_when_asked_again_fails_the_check() {
+        let rig = rig();
+        let journal = WrittenAfter::new(journal_late(&[rig.path("d")]), rig.path("x03/late.txt"));
+        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(journal));
+
+        let rescan = rig.walk(&scanner, WalkMode::Auto);
+
+        assert_eq!(failure(&rescan), failed("x03", CheckDifference::Folded(FoldedPart::Files)));
     }
 
     #[test]
@@ -183,6 +237,19 @@ mod negative {
     }
 
     #[test]
+    fn a_clone_whose_private_size_changed_unseen_fails_the_check() {
+        let rig = Rig::new(&twenty_folders(), set_of(&[]));
+        std::fs::write(rig.path("x04/clone.bin"), vec![1; 700]).unwrap();
+        rig.scan_with(Arc::new(Altered { clones: vec![("clone.bin", 0)], ..Altered::default() }));
+        // Its other copy, elsewhere, was removed: its blocks are now its own, and its folder moves no event.
+        let alone = Altered { clones: vec![("clone.bin", 4096)], ..Altered::default() };
+
+        let rescan = rig.rescan(Arc::new(alone), journal_of(&[], &[]));
+
+        assert_eq!(failure(&rescan), failed("x04", CheckDifference::Folded(FoldedPart::Allocated)));
+    }
+
+    #[test]
     fn a_folder_claimed_whole_by_a_new_marker_fails_the_check() {
         let marker = interest(Pattern::MarkerFile("Gemfile".into()), Claim::Whole, &[]);
         let rig = Rig::new(&twenty_folders(), set_of(&[marker]));
@@ -231,7 +298,9 @@ mod negative {
 mod positive {
     use std::sync::Arc;
 
-    use super::rig;
+    use fresher_core::WalkMode;
+
+    use super::{WrittenAfter, journal_late, rig};
     use crate::rescan::check::{CHECK_SAMPLE, sample};
     use crate::rescan::testing::{Refusing, Rig, assert_same, journal_of};
     use crate::tree::node::{Flag, NodeIndex};
@@ -250,6 +319,18 @@ mod positive {
         assert_eq!(summary.kind, fresher_core::ScanKind::Rescan { changed_folders: 2 });
         assert_eq!(summary.fallback, None);
         assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_change_made_after_the_journal_answered_and_named_when_asked_again_passes_the_check() {
+        let rig = rig();
+        let journal = WrittenAfter::new(journal_late(&[rig.path("x03")]), rig.path("x03/late.txt"));
+        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(journal));
+
+        let rescan = rig.walk(&scanner, WalkMode::Auto);
+
+        let summary = rescan.summary.as_ref().unwrap();
+        assert_eq!((summary.kind, &summary.fallback), (fresher_core::ScanKind::Rescan { changed_folders: 0 }, &None));
     }
 
     #[test]

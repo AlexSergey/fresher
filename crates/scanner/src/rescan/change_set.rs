@@ -8,7 +8,9 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use fresher_core::{CancelToken, ChangeJournal, FullScanReason, JournalGap, JournalPosition, Timestamp, VolumeId};
+use fresher_core::{
+    CancelToken, ChangeJournal, Changes, FullScanReason, JournalGap, JournalPosition, Timestamp, VolumeId,
+};
 
 use crate::rescan::load::Cached;
 use crate::tree::arena::Tree;
@@ -65,9 +67,7 @@ impl ChangeSet {
             return Err(FullScanReason::JournalGap(JournalGap::TooOld));
         }
         let mut named = Self::default();
-        for (volume, since) in positions(cached)? {
-            let changes =
-                with.journal.changes_since(&volume, &since, with.cancel).map_err(FullScanReason::JournalGap)?;
+        for changes in changes(cached, with.journal, with.cancel)? {
             for folder in &changes.folders {
                 named.place(tree, folder, false);
             }
@@ -145,6 +145,18 @@ impl ChangeSet {
     }
 }
 
+/// What the journal says changed on each volume of the roots since the position the cache holds for it, up to now.
+pub(crate) fn changes(
+    cached: &Cached,
+    journal: &dyn ChangeJournal,
+    cancel: &CancelToken,
+) -> Result<Vec<Changes>, FullScanReason> {
+    positions(cached)?
+        .iter()
+        .map(|(volume, since)| journal.changes_since(volume, since, cancel).map_err(FullScanReason::JournalGap))
+        .collect()
+}
+
 /// The volumes of the roots, once each, with the position the cache holds for them.
 fn positions(cached: &Cached) -> Result<Vec<(VolumeId, JournalPosition)>, FullScanReason> {
     let mut asked: Vec<(VolumeId, JournalPosition)> = Vec::new();
@@ -159,7 +171,7 @@ fn positions(cached: &Cached) -> Result<Vec<(VolumeId, JournalPosition)>, FullSc
 
 /// The folder node at `path` or the nearest ancestor of it in the tree; `None` for a path under no root. A node that
 /// is not a folder (a file replaced by a folder) stands for its parent.
-fn nearest(tree: &Tree, path: &Path) -> Option<NodeIndex> {
+pub(crate) fn nearest(tree: &Tree, path: &Path) -> Option<NodeIndex> {
     let root = tree.roots().iter().find(|root| path.starts_with(tree.path(root.node).unwrap_or_default()))?;
     let root_path = tree.path(root.node)?;
     let mut at = path;

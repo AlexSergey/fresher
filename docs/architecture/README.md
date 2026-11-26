@@ -237,12 +237,14 @@ Everything)`. `AppInfo.high` reports it to the UI. The rule:
   position, taken before the walk read anything. A scan the user starts (`WalkMode::Auto`) loads the cache, checks it
   is of the same roots, volumes, avoid list and interests, asks the change journal what changed since (`ChangeJournal`,
   FSEvents), reads again only those folders with their parents and the unreadable ones, copies the rest of the tree,
-  then reads a sample of the copied folders: one difference, a gap in the journal, a position older than two weeks or
-  too many changes, and the scan is full (`WalkSummary::fallback` says why; for a failed check, the first folder that
-  differed, as a path inside its root, and what differed in it). The engine logs the reason and keeps it for the last
-  scan (`Engine::fallback`), which the development run record writes; the interface never shows it. The progress of one walk only rises: a
-  rescan that becomes full has reported what it walked again, the full walk counts from zero, and the scanner passes on
-  only the counts that pass the highest seen, so the bar holds until the full walk passes them. A cache of another avoid
+  then reads a sample of the copied folders: one difference the journal does not name when asked again (a folder it
+  names then changed after the rescan first asked it: the system numbers a change a little after it is made, and the
+  next scan reads that folder again), a gap in the journal, a position older than two weeks or too many changes, and
+  the scan is full (`WalkSummary::fallback` says why; for a failed check, the first folder that differed, as a path
+  inside its root, and what differed in it). The engine logs the reason and keeps it for the last scan
+  (`Engine::fallback`), which the development run record writes; the interface never shows it. The progress of one
+  walk only rises: a rescan that becomes full has reported what it walked again, the full walk counts from zero, and
+  the scanner passes on only the counts that pass the highest seen, so the bar holds until the full walk passes them. A cache of another avoid
   list is refused (`OtherAvoidList`), since reading only the changes would then be wrong. The cache never shows a result
   by itself: at launch the engine starts nothing (no scan, no restore of the last result; rule 10), and the first scan
   the user starts after a restart is a rescan of the cache the last one saved. The places walked outside the roots are

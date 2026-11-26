@@ -1,14 +1,15 @@
 //! The check of a rescan: the journal is trusted only as far as a sample confirms it. A sample of the folders the
-//! rescan copied without reading is read again and compared with the patched tree; one difference means a full scan.
+//! rescan copied without reading is read again and compared with the patched tree; one difference the journal does
+//! not name when asked again means a full scan.
 
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt as _;
 use std::path::PathBuf;
 
-use fresher_core::{CancelToken, CheckDifference, CheckFailure, EntryKind, FoldedPart, FullScanReason};
+use fresher_core::{CancelToken, Changes, CheckDifference, CheckFailure, EntryKind, FoldedPart, WalkError};
 
-use crate::rescan::Stop;
+use crate::rescan::change_set::{self, ancestry};
 use crate::rescan::frozen::Frozen;
 use crate::tree::arena::Tree;
 use crate::tree::fold::FolderBatch;
@@ -20,23 +21,26 @@ use crate::walk::worker::Body;
 /// How many unchanged folders a rescan reads again to check the journal (plan 004/07/03).
 pub(crate) const CHECK_SAMPLE: usize = 32;
 
+/// A folder of the sample and what differed in it.
+pub(crate) type Differed = (NodeIndex, CheckDifference);
+
 /// Reads a sample of `unchanged` (folders of `tree`, frozen, that the rescan did not read) and compares each with its
 /// node: its kept entries' names and kinds, its kept files' sizes, its folded bytes and whether an entry failed. The
-/// tree keeps no file ids, so a file replaced by another of the same size is not seen; the journal reports it. A
-/// difference fails the check with the first differing folder of the tree (`CheckFailure`).
+/// tree keeps no file ids, so a file replaced by another of the same size is not seen; the journal reports it. Gives
+/// every folder that differed, in the tree's order.
 pub(crate) fn check(
     tree: &Tree,
     unchanged: &[NodeIndex],
     walk: &Walk<'_>,
     seed: u64,
     cancel: &CancelToken,
-) -> Result<(), Stop> {
+) -> Result<Vec<Differed>, WalkError> {
     let frozen = Frozen::new(tree);
     let mut jobs = Vec::new();
-    let mut differed: Vec<(NodeIndex, CheckDifference)> = Vec::new();
+    let mut differed: Vec<Differed> = Vec::new();
     for node in sample(tree, unchanged, seed) {
         let Some(path) = tree.path(node) else { continue };
-        let Some(root) = crate::rescan::change_set::ancestry(tree, node).last() else { continue };
+        let Some(root) = ancestry(tree, node).last() else { continue };
         let Some(root) = tree.roots().iter().find(|found| found.node == root) else { continue };
         let is_root = root.node == node;
         let identity = if is_root { Ok(root.identity) } else { walk.reader.identify(&path) };
@@ -68,16 +72,36 @@ pub(crate) fn check(
         differed.extend(difference.map(|difference| (report.node, difference)));
     }
     differed.sort_by_key(|&(node, _)| node);
+    Ok(differed)
+}
+
+/// The folders of `differed` the journal does not name in `changes`, asked again after the check read them: a
+/// folder it names now changed after the rescan first asked (the system numbers a change a little after it is made,
+/// and the disk keeps changing during the rescan). That is no change the journal missed: like a folder that changes
+/// after a full scan read it, it is read again by the next scan, whose position is taken before this one read
+/// anything.
+pub(crate) fn not_named(tree: &Tree, differed: Vec<Differed>, changes: &[Changes]) -> Vec<Differed> {
+    let nearest = |path: &PathBuf| change_set::nearest(tree, path);
+    let folders: Vec<NodeIndex> = changes.iter().flat_map(|changes| &changes.folders).filter_map(nearest).collect();
+    let subtrees: Vec<NodeIndex> = changes.iter().flat_map(|changes| &changes.subtrees).filter_map(nearest).collect();
+    differed
+        .into_iter()
+        .filter(|&(node, _)| !folders.contains(&node) && !ancestry(tree, node).any(|up| subtrees.contains(&up)))
+        .collect()
+}
+
+/// The check's failure: the first folder of `differed`, with what differed in it and how many folders did; `None`
+/// when none did.
+pub(crate) fn failure(tree: &Tree, differed: Vec<Differed>) -> Option<CheckFailure> {
     let folders = u32::try_from(differed.len()).unwrap_or(u32::MAX);
-    let Some((node, difference)) = differed.into_iter().next() else { return Ok(()) };
+    let (node, difference) = differed.into_iter().next()?;
     tracing::warn!(folders, ?difference, "the journal missed changes the check found; a full scan follows");
-    let folder = inside_root(tree, node);
-    Err(Stop::Full(FullScanReason::CheckFailed(CheckFailure { folder, difference, folders })))
+    Some(CheckFailure { folder: inside_root(tree, node), difference, folders })
 }
 
 /// The path of `node` inside its root; empty for a root.
 fn inside_root(tree: &Tree, node: NodeIndex) -> PathBuf {
-    let root = crate::rescan::change_set::ancestry(tree, node).last().and_then(|root| tree.path(root));
+    let root = ancestry(tree, node).last().and_then(|root| tree.path(root));
     match (tree.path(node), root) {
         (Some(path), Some(root)) => path.strip_prefix(&root).map(PathBuf::from).unwrap_or(path),
         _ => PathBuf::new(),

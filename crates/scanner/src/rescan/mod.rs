@@ -97,7 +97,19 @@ pub(crate) fn rescan(
     };
     let changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
     let patched = patch::patch(&cached.tree, &set, walk, cancel, on_progress)?;
-    check::check(&patched.tree, &patched.unchanged, walk, sources.seed, cancel)?;
+    let differed = check::check(&patched.tree, &patched.unchanged, walk, sources.seed, cancel)?;
+    if !differed.is_empty() {
+        let missed = match change_set::changes(&cached, sources.journal, cancel) {
+            Ok(named) => check::not_named(&patched.tree, differed, &named),
+            Err(FullScanReason::JournalGap(JournalGap::Cancelled)) if cancel.is_cancelled() => {
+                return Err(Stop::Walk(WalkError::Cancelled));
+            }
+            Err(_) => differed,
+        };
+        if let Some(failure) = check::failure(&patched.tree, missed) {
+            return Err(Stop::Full(FullScanReason::CheckFailed(failure)));
+        }
+    }
     emit::emit(&patched.tree, walk.matcher, walk.interests, on_match);
     let summary = summary::summarize(&patched.tree, ScanKind::Rescan { changed_folders: changed });
     Ok((patched.tree, summary))
