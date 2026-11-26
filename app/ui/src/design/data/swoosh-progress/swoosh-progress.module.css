@@ -1,6 +1,7 @@
 /*
- * The logo's swoosh as a progress line, drawn by its parent's box. The fill grows by its dash; unknown progress is a
- * short dash running along the track while `--loop-state` runs.
+ * The logo's swoosh as a progress line, drawn by its parent's box. The fill grows by its dash, moved on animation
+ * frames with the star (useAnimatedNumber); unknown progress is a short dash running along the track while
+ * `--loop-state` runs.
  */
 @layer components {
   .swoosh {
@@ -31,28 +32,16 @@
     fill: var(--swoosh-start);
   }
 
-  .dash {
-    transition: stroke-dashoffset var(--duration-slow) var(--ease-enter);
-  }
-
   .sweep {
     animation: swoosh-sweep var(--duration-sweep) var(--ease-linear) infinite;
     animation-play-state: var(--loop-state);
   }
 
-  /* Reduced motion: the fill jumps to its value; the unknown dash rests. */
+  /* Reduced motion: the unknown dash rests (the known fill jumps to its value in useAnimatedNumber). */
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-motion='full']) .dash {
-      transition: none;
-    }
-
     :root:not([data-motion='full']) .sweep {
       animation: none;
     }
-  }
-
-  :root[data-motion='reduced'] .dash {
-    transition: none;
   }
 
   :root[data-motion='reduced'] .sweep {

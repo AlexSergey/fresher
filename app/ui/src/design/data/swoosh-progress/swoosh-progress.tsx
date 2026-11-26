@@ -1,5 +1,6 @@
 import { type JSX, useEffect, useId, useRef, useState } from 'react';
 
+import { useAnimatedNumber } from '../../motion';
 import styles from './swoosh-progress.module.css';
 
 export type SwooshProgressProps = {
@@ -39,14 +40,16 @@ export const SwooshProgress = ({ label, value }: SwooshProgressProps): JSX.Eleme
 
   const known = value !== null;
   const fraction = known && Number.isFinite(value) ? clamp(value) : 0;
-  // The known fill is one dash pushed back along the path: the offset moves (inside the motion budget), the length not.
+  // One moving value for the fill and the star, so the star stays on the fill's head while it grows.
+  const shown = useAnimatedNumber(fraction);
+  // The known fill is one dash pushed back along the path: the offset moves, the length not.
   const dash = known
-    ? { strokeDasharray: `${LENGTH} ${LENGTH}`, strokeDashoffset: (1 - fraction) * LENGTH }
+    ? { strokeDasharray: `${LENGTH} ${LENGTH}`, strokeDashoffset: (1 - shown) * LENGTH }
     : { strokeDasharray: `${UNKNOWN_DASH} ${LENGTH}` };
 
   useEffect(() => {
-    setHead(known && fraction > 0 ? headOf(pathRef.current, fraction) : null);
-  }, [known, fraction]);
+    setHead(known && shown > 0 ? headOf(pathRef.current, shown) : null);
+  }, [known, shown]);
 
   const common = { d: PATH, fill: 'none', pathLength: LENGTH, strokeLinecap: 'round', strokeWidth: 14 } as const;
   const aria = known
@@ -76,13 +79,13 @@ export const SwooshProgress = ({ label, value }: SwooshProgressProps): JSX.Eleme
         <>
           <path
             {...common}
-            className={known ? styles.dash : styles.sweep}
+            className={known ? undefined : styles.sweep}
             filter={`url(#${glow})`}
             opacity="0.6"
             stroke={`url(#${gradient})`}
             {...dash}
           />
-          <path {...common} className={known ? styles.dash : styles.sweep} stroke={`url(#${gradient})`} {...dash} />
+          <path {...common} className={known ? undefined : styles.sweep} stroke={`url(#${gradient})`} {...dash} />
         </>
       )}
       {known && fraction > 0 ? <circle className={styles.cap} cx="30" cy="200" r="7" /> : null}
