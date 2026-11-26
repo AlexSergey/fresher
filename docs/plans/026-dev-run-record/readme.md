@@ -92,7 +92,7 @@ and run the checks.
   run, an append-only event file, an atomic snapshot) and its English texts are there to reuse (02/03 writes it in).
 - [The debug panel and the developer command line](../../deferred/dev-debug-panel.md): its "print a dry run" is
   answered on the real Mac by the dry run and the record; the panel and the rest stay deferred (02/03 writes it in).
-- [The first real cleanups, in a sandbox](../../deferred/removal-sandbox-run.md): unchanged; real cleanups in a
+- [The first real cleanups, in a sandbox](../../test-cases/sandbox-cleanup.md): unchanged; real cleanups in a
   development build stay in sandbox mode.
 
 ## Risks

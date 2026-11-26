@@ -1083,7 +1083,7 @@ plan 004's conclusions.
 - [ ] Optional, the generated big tree: `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture
     ten_scans_of_the_large` (the footprint after ten scans stays within its budget).
 
-### 5.2 The first real cleanups, in a sandbox ([deferred](./deferred/removal-sandbox-run.md), [008/08/02](./plans/008-safe-removal/08-finish/02-sandbox-run.md))
+### 5.2 The first real cleanups, in a sandbox ([deferred](./test-cases/sandbox-cleanup.md), [008/08/02](./plans/008-safe-removal/08-finish/02-sandbox-run.md))
 
 Step 2 of the deferred item (the scan) is held by `npm run sandbox:test`. The numbered steps below keep the deferred
 file's order; the real Trash, the real process table, an image and the real window are what only a hand can check.
@@ -1192,7 +1192,7 @@ Status as of the plan files on 2026-11-19: all are waiting for the run (no item 
 | [021/04/02 runs and conclusions](./plans/021-stale-projects/04-finish/02-run-and-conclusions.md)            | pending                         | 1.8, 2.7, 2.9, 4 |
 | [026/03/03 run and conclusions](./plans/026-dev-run-record/03-checker-and-finish/03-run-and-conclusions.md) | pending                         | 2.0              |
 | [Deferred: the fast scan on your home](./deferred/fast-scan-home-run.md) (004/08/03)                        | deferred, due before release    | 5.1              |
-| [Deferred: the first real cleanups](./deferred/removal-sandbox-run.md) (008/08/02)                          | deferred, due before release    | 5.2              |
+| [Deferred: the first real cleanups](./test-cases/sandbox-cleanup.md) (008/08/02)                          | deferred, due before release    | 5.2              |
 | [023/03/02 runs and conclusions](./plans/023-local-ai-models/03-finish/02-run-and-conclusions.md)           | pending                         | 1.9, 2.8         |
 | [024/04/02 runs and conclusions](./plans/024-unused-toolchains/04-finish/02-run-and-conclusions.md)         | pending                         | 1.11, 2.10       |
 | [029/04/02 runs and conclusions](./plans/029-ollama-models/04-finish/02-run-and-conclusions.md)             | pending                         | 1.12, 2.11       |

@@ -1,6 +1,6 @@
 # 008/08/02 — The sandbox run by hand
 
-**Status:** ✔️ done (the run by hand is [deferred](../../../deferred/removal-sandbox-run.md)) · **Version:** 0.5.0 ·
+**Status:** ✔️ done (the run by hand is [deferred](../../../test-cases/sandbox-cleanup.md)) · **Version:** 0.5.0 ·
 **Date:** 2026-11-16 · **Modules:** app (by hand)
 
 The real Trash, the real process table and the real window, never on real data: a development build (`Reach::Sandbox`)
@@ -72,8 +72,18 @@ Changed from the files above, by what 01 and the code say:
 ## Conclusions
 
 Prepared and not run: the user decided on 2026-11-16 to merge plan 008 (with the built parts of plan 006) into `main`
-without the run by hand. The run is [deferred](../../../deferred/removal-sandbox-run.md) to before the first release;
+without the run by hand. The run is [deferred](../../../test-cases/sandbox-cleanup.md) to before the first release;
 that file summarises the checklist, and the script and the checklist with a blank for each result stay in
 `NO_COMMIT/008-sandbox/`. Its results go into this step when it is run. Until then the by-hand items of the acceptance
 (the real Trash, put back, Finder's own Put Back, a held folder and a disk image without a Trash skipped, quitting
 mid-cleanup) are held only by the automated tests named in the plan's conclusions.
+
+**Run on 2026-11-26, before 0.1.0**, as the test cases [`sandbox-cleanup.md`](../../../test-cases/sandbox-cleanup.md)
+(they replace the checklist above and are run again before every release; the results are in
+[`test-cases/README.md`](../../../test-cases/README.md)). Everything held: the system's Trash, put back of all and of
+one item from Fresher (each to its own place, same names side by side), an item in use left out naming its holder,
+the permanent delete, an emptied folder, ⌘Q during a cleanup (Keep cleaning, Stop and quit, then "Stopped by you"
+in Cleanups). Found: Review kept the last cleanup's result after a new pick (fixed, 6dbf5674); Finder's own Put Back,
+the disk chart after a cleanup and the confirmation's hidden choice of method are known issues. Not run: an image
+without a Trash and an unmarked folder (sandbox mode reaches only inside its own marked folder; the cleaner's tests
+hold both), a network share, macOS before 27.

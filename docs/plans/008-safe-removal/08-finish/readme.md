@@ -21,5 +21,5 @@ Depends on every other plan of 008.
 
 Done on 2026-11-16. The docs describe the removal as built (01, with one gap found and fixed on the branch: the
 cleaner's re-check now refuses a forced tool argument in every form the plan builder does, `-rf` included). The
-sandbox run by hand (02) is prepared and [deferred](../../../deferred/removal-sandbox-run.md) by the user's decision of
+sandbox run by hand (02) is prepared and [deferred](../../../test-cases/sandbox-cleanup.md) by the user's decision of
 2026-11-16 to merge without it. The version is 0.5.0 and the conclusions are written (03).

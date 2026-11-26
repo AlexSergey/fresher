@@ -102,7 +102,7 @@ and run the checks.
   is written.
 - [Local AI models](../../ideas/local-ai-models.md): its Ollama line and its "freed bytes, not listed bytes" answered
   by this plan; other apps' models and the chunk cache stay ideas.
-- [Default removal setting](../../deferred/default-removal-setting.md), [removal sandbox run](../../deferred/removal-sandbox-run.md):
+- [Default removal setting](../../deferred/default-removal-setting.md), [removal sandbox run](../../test-cases/sandbox-cleanup.md):
   touched (a new removal kind), not due.
 
 ## Risks

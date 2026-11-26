@@ -120,7 +120,7 @@ parts of plan [006](../006-permissions/readme.md) (the capability model with the
 the removability of findings with the walk's entry facts, 05/01), on which it was built; 006 was **not** merged first,
 as the header above planned, and its rest continues on a new branch from `main`
 ([`../../workflow.md`](../../workflow.md)). The sandbox run by hand (08/02) is prepared and
-[deferred](../../deferred/removal-sandbox-run.md) to before the first release.
+[deferred](../../test-cases/sandbox-cleanup.md) to before the first release.
 
 ### What was built
 
@@ -224,7 +224,7 @@ the most important ones:
 
 ### Left to later plans
 
-- The sandbox run by hand: [deferred](../../deferred/removal-sandbox-run.md), before the first release.
+- The sandbox run by hand: [deferred](../../test-cases/sandbox-cleanup.md), before the first release.
 - Plan [006](../006-permissions/readme.md): its probes by the user (01); the macOS adapter (03), whose `SystemUi`
   replaces the stand-in behind the `reveal_in_trash` command; the UI (04); "needs an administrator" in the UI and its
   docs (05/02–05/03).

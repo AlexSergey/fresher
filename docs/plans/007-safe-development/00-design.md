@@ -185,7 +185,7 @@ In sandbox mode the composition (`app/tauri/src/compose.rs`) changes exactly the
   can be removed outside a sandbox" otherwise. The core says which (a `build` field in the app's info answer); the UI
   renders it.
 - **The real Trash** (`--real-trash`) is the only way out of the sandbox, and only for its own items: what the
-  deferred [sandbox run](../../deferred/removal-sandbox-run.md) of plan 008 needs to see the system's Trash, put back
+  deferred [sandbox run](../../test-cases/sandbox-cleanup.md) of plan 008 needs to see the system's Trash, put back
   and Finder's Put Back.
 - Running apps, open files and commands stay real: they are read, never changed, and a tool removal never runs in a
   sandbox. A real running app that owns a sandbox folder's name makes it skipped, as on a Mac; the autotests use fakes

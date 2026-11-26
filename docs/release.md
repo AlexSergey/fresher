@@ -69,18 +69,21 @@ release follows this document. The design and its decisions: plan [013](./plans/
    versions.
 4. **Check and commit.** `npm run check:version -- X.Y.Z` passes; the change is one commit on `main`
    (`chore(repo): release X.Y.Z`) through the hooks.
-5. **Dry run (optional).** Actions → Release → "Run workflow" on `main` builds the same files without a release and
+5. **Test cases by hand.** Every case of [`test-cases/`](./test-cases/README.md) is run on the release's commit and
+   its result written in the column of the new version. A failed case is fixed (with an autotest where one can hold
+   it) and run again before the tag; a case that fails because of a known issue is marked ⚠️ and the issue named.
+6. **Dry run (optional).** Actions → Release → "Run workflow" on `main` builds the same files without a release and
    keeps them as the `release` artifact for 14 days.
-6. **Push and wait.** `git push origin main`; CI passes on that commit (a tag is never the first build of its tree).
-7. **Tag.** `git tag -a vX.Y.Z -m "Fresher X.Y.Z"` on that commit, then `git push origin vX.Y.Z`. The workflow
+7. **Push and wait.** `git push origin main`; CI passes on that commit (a tag is never the first build of its tree).
+8. **Tag.** `git tag -a vX.Y.Z -m "Fresher X.Y.Z"` on that commit, then `git push origin vX.Y.Z`. The workflow
    (`.github/workflows/release.yml`) refuses a tag that is not on `main` or that differs from the version in any
    place, builds the image, writes `SHA256SUMS`, attests the provenance and makes the **draft** release.
-8. **Check the draft.** On the Releases page: the image, `SHA256SUMS` and the text are there; download the image, run
+9. **Check the draft.** On the Releases page: the image, `SHA256SUMS` and the text are there; download the image, run
    `shasum -a 256 -c SHA256SUMS` and `gh attestation verify <image> --repo AlexSergey/fresher`; install it as the
    notes say and open it on the oldest supported macOS (13) and the newest, on Apple silicon and on Intel where a Mac
    is at hand: the first launch, About's version, a scan. From the second release on, open the new version over the
    data folder of the previous one (its settings, ignore list and cleanups are kept).
-9. **Publish** the draft. Then the README's release items of
+10. **Publish** the draft. Then the README's release items of
    [`deferred/readme-at-release.md`](./deferred/readme-at-release.md) are due.
 
 A broken draft is deleted with its tag (`git push --delete origin vX.Y.Z`), fixed on `main` and tagged again.

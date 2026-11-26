@@ -17,7 +17,7 @@
 - `docs/deferred/dev-debug-panel.md` (new) and its row — the debug panel and the developer command line beyond the
   generator, with the reasons of the design's section 9; due when the deferred
   [world](../../../deferred/sandbox-world.md) is built.
-- `docs/deferred/removal-sandbox-run.md` — "What doing it needs" points to `npm run dev:sandbox -- trial --real-trash`
+- `docs/test-cases/sandbox-cleanup.md` — "What doing it needs" points to `npm run dev:sandbox -- trial --real-trash`
   instead of the local script; the parts the autotests now hold are struck from it.
 
 ## Produces
