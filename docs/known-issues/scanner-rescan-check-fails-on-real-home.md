@@ -29,7 +29,8 @@ ones written most; one such folder in the sample was enough. Reproduced by
   claimed whole) and how many folders differed. The engine logs it and keeps it for the last scan
   (`Engine::fallback`); the development run record writes it as each scan's `fallback`.
 - The check now asks the journal again when a folder differs, and a folder the journal names by then is no missed
-  change; a difference the journal still does not name falls back as before
+  change: the cached tree is patched again with that answer, so the result holds the folder as a full scan reads it.
+  A difference the journal still does not name falls back as before
   (`a_change_the_journal_still_does_not_name_when_asked_again_fails_the_check`).
 - Ruled out by reading the code: times (the check compares none), folders the walk does not enter (opaque, collapsed,
   avoided, other-volume and unreadable folders are never sampled; the places outside the roots are always walked

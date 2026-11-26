@@ -238,8 +238,9 @@ Everything)`. `AppInfo.high` reports it to the UI. The rule:
   is of the same roots, volumes, avoid list and interests, asks the change journal what changed since (`ChangeJournal`,
   FSEvents), reads again only those folders with their parents and the unreadable ones, copies the rest of the tree,
   then reads a sample of the copied folders: one difference the journal does not name when asked again (a folder it
-  names then changed after the rescan first asked it: the system numbers a change a little after it is made, and the
-  next scan reads that folder again), a gap in the journal, a position older than two weeks or too many changes, and
+  names then changed after the rescan first asked it, or just before, since the system numbers a change a little after
+  it is made; the cached tree is then patched again with that answer, so the folder is read as it is now), a gap in
+  the journal, a position older than two weeks or too many changes, and
   the scan is full (`WalkSummary::fallback` says why; for a failed check, the first folder that differed, as a path
   inside its root, and what differed in it). The engine logs the reason and keeps it for the last scan
   (`Engine::fallback`), which the development run record writes; the interface never shows it. The progress of one

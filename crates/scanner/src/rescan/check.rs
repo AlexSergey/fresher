@@ -76,10 +76,8 @@ pub(crate) fn check(
 }
 
 /// The folders of `differed` the journal does not name in `changes`, asked again after the check read them: a
-/// folder it names now changed after the rescan first asked (the system numbers a change a little after it is made,
-/// and the disk keeps changing during the rescan). That is no change the journal missed: like a folder that changes
-/// after a full scan read it, it is read again by the next scan, whose position is taken before this one read
-/// anything.
+/// folder it names now changed after the rescan first asked, or just before (the system numbers a change a little
+/// after it is made). That is no change the journal missed; the rescan reads it again with the new answer.
 pub(crate) fn not_named(tree: &Tree, differed: Vec<Differed>, changes: &[Changes]) -> Vec<Differed> {
     let nearest = |path: &PathBuf| change_set::nearest(tree, path);
     let folders: Vec<NodeIndex> = changes.iter().flat_map(|changes| &changes.folders).filter_map(nearest).collect();

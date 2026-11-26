@@ -62,12 +62,17 @@ impl ChangeSet {
 
     /// The change set of `cached` since its journal positions; any doubt is the reason for a full scan.
     pub(crate) fn gather(cached: &Cached, with: Gather<'_>) -> Result<Self, FullScanReason> {
-        let tree = &cached.tree;
         if with.now.secs().saturating_sub(cached.header.taken.secs()) > MAX_POSITION_AGE_SECS {
             return Err(FullScanReason::JournalGap(JournalGap::TooOld));
         }
+        Self::of(cached, &changes(cached, with.journal, with.cancel)?, with)
+    }
+
+    /// The change set of `cached` for `changes`, the journal's answers since its positions.
+    pub(crate) fn of(cached: &Cached, changes: &[Changes], with: Gather<'_>) -> Result<Self, FullScanReason> {
+        let tree = &cached.tree;
         let mut named = Self::default();
-        for changes in changes(cached, with.journal, with.cancel)? {
+        for changes in changes {
             for folder in &changes.folders {
                 named.place(tree, folder, false);
             }

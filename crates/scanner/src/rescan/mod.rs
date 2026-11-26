@@ -95,19 +95,30 @@ pub(crate) fn rescan(
         }
         Err(reason) => return Err(Stop::Full(reason)),
     };
-    let changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
-    let patched = patch::patch(&cached.tree, &set, walk, cancel, on_progress)?;
+    let mut changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
+    let mut patched = patch::patch(&cached.tree, &set, walk, cancel, on_progress)?;
     let differed = check::check(&patched.tree, &patched.unchanged, walk, sources.seed, cancel)?;
     if !differed.is_empty() {
-        let missed = match change_set::changes(&cached, sources.journal, cancel) {
-            Ok(named) => check::not_named(&patched.tree, differed, &named),
+        let named = match change_set::changes(&cached, sources.journal, cancel) {
+            Ok(named) => Some(named),
             Err(FullScanReason::JournalGap(JournalGap::Cancelled)) if cancel.is_cancelled() => {
                 return Err(Stop::Walk(WalkError::Cancelled));
             }
-            Err(_) => differed,
+            Err(_) => None,
+        };
+        let missed = match &named {
+            Some(named) => check::not_named(&patched.tree, differed, named),
+            None => differed,
         };
         if let Some(failure) = check::failure(&patched.tree, missed) {
             return Err(Stop::Full(FullScanReason::CheckFailed(failure)));
+        }
+        // Every folder that differed is named by the journal's new answer: the cached tree is patched again with
+        // that answer, so those folders are read as a full scan would see them.
+        if let Some(named) = named {
+            let set = ChangeSet::of(&cached, &named, gather).map_err(Stop::Full)?;
+            changed = u32::try_from(set.reread.len() + set.rewalk.len()).unwrap_or(u32::MAX);
+            patched = patch::patch(&cached.tree, &set, walk, cancel, on_progress)?;
         }
     }
     emit::emit(&patched.tree, walk.matcher, walk.interests, on_match);

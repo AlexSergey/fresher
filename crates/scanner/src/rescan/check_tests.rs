@@ -330,7 +330,8 @@ mod positive {
         let rescan = rig.walk(&scanner, WalkMode::Auto);
 
         let summary = rescan.summary.as_ref().unwrap();
-        assert_eq!((summary.kind, &summary.fallback), (fresher_core::ScanKind::Rescan { changed_folders: 0 }, &None));
+        assert_eq!((summary.kind, &summary.fallback), (fresher_core::ScanKind::Rescan { changed_folders: 2 }, &None));
+        assert_same(&rescan, &rig.full());
     }
 
     #[test]
