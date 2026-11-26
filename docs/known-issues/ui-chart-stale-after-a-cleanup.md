@@ -39,7 +39,9 @@ Left as it was:
 - a cleanup its tool runs (`ItemOutcome::ToolDone`) moves only Free: it removes no path of the tree, so "Can be freed"
   keeps its bytes until the next scan;
 - a root that is neither the home folder nor a volume still counts the bytes moved to the Trash among its Your
-  folders, though the Trash that holds them is outside it.
+  folders, though the Trash that holds them is outside it;
+- a cleaned path is skipped when one of its ancestors was cleaned too, whatever the ancestor's method: an inner path
+  deleted permanently, then its parent moved to the Trash, leaves Your folders high by the inner path's bytes.
 
 ## What was tried
 
