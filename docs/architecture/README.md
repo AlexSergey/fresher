@@ -513,9 +513,10 @@ carries them as it carries findings. Left-outs are event-only: they are not in t
 result, so they come with the scan the user starts. The rules engine reports none yet.
 
 The UI shows only the for-now counts on the Scan screen ("Found, but left out": a tile per category with no card, each
-line with its items by name, short path from `~`, full path in the tooltip, and size, then "And N more items"); a
-category's details show the for-now lines as bars with their items and the kept counts as one quiet line each ("3 items
-kept (1.4 GB): This is the version you use."), after them.
+line folded: its sentence is a toggle that opens its items by name, short path from `~`, full path in the tooltip, and
+size, then "And N more items"); a category's details show, below the offered items, the for-now lines as folded bars
+the same way and the kept counts as one quiet line each ("3 items kept (1.4 GB): This is the version you use."), after
+them. A category with no offered item and some left out shows no size and count in its header.
 
 ### Insights
 

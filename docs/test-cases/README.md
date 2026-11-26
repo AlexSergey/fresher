@@ -16,6 +16,7 @@ are in the table below, one column per release.
 | File                                     | Area                                                                               |
 | ---------------------------------------- | ---------------------------------------------------------------------------------- |
 | [`sandbox-cleanup.md`](./sandbox-cleanup.md) | scan, move to the Trash, put back, permanent delete, an item in use, quitting, in a sandbox with the system's Trash |
+| [`left-out-lines.md`](./left-out-lines.md) | the left-out lines of a category's details, folded at the bottom, and a category with everything left out, on a real scan |
 
 ## Results
 
@@ -35,3 +36,5 @@ are in the table below, one column per release.
 | SC-10 | Quit during a long cleanup: Keep cleaning, Stop and quit | ✔️; ⚠️ [known issue](../known-issues/fixed/ui-confirm-dialog-hides-the-method.md) |
 | SC-11 | After a stopped cleanup, Cleanups shows it stopped       | ✔️                                                          |
 | SC-12 | The disk chart after a cleanup                           | ⚠️ [known issue](../known-issues/fixed/ui-chart-stale-after-a-cleanup.md) |
+| LO-01 | Many left-out items are folded at the bottom             | —                                                           |
+| LO-02 | A category whose items are all left out shows no zeros   | —                                                           |
