@@ -44,6 +44,8 @@ const RUNNING: readonly CoreAction[] = [
   { cleanup: 1, type: 'cleanup-confirmed' },
 ];
 
+const PICK_CACHES: CoreAction = { category: 'demo.caches', type: 'toggle-category' };
+
 const APP = VIDEO_STUDIO_DETAIL.summary.app;
 
 // The uninstall of the demo plan's cleanup, confirmed for the Trash and named cleanup 1 by the core.
@@ -215,9 +217,40 @@ describe('the cleanup state', () => {
         running,
       );
     });
+
+    it('a new scan or a new pick does not hide a running cleanup', () => {
+      const running = run([...RUNNING, EVENTS.started]);
+
+      const state = run([{ modules: ['demo'], scan: 2, type: 'scan-started' }, TOTALS_LOADED, PICK_CACHES], running);
+
+      expect(state.cleanup).toBe(running.cleanup);
+    });
+
+    it('a pick that changes nothing keeps the result of a finished cleanup', () => {
+      const finished = run([...RUNNING, EVENTS.started, EVENTS.finished]);
+
+      expect(run([{ type: 'clear' }], finished)).toBe(finished);
+    });
   });
 
   describe('positive cases', () => {
+    it('a new scan clears the result of a finished cleanup, so Review shows the new pick', () => {
+      const finished = run([...RUNNING, EVENTS.started, EVENTS.finished]);
+
+      const state = run([{ modules: ['demo'], scan: 2, type: 'scan-started' }], finished);
+
+      expect(state.cleanup).toStrictEqual({ kind: 'idle' });
+    });
+
+    it('a new pick clears the result of a finished cleanup, so Review shows the new pick', () => {
+      const finished = run([TOTALS_LOADED, ...RUNNING, EVENTS.started, EVENTS.finished]);
+
+      const state = run([PICK_CACHES], finished);
+
+      expect(state.cleanup).toStrictEqual({ kind: 'idle' });
+      expect(state.selection.categories.size).toBe(1);
+    });
+
     it('the confirmation sends the risk as given', () => {
       for (const highRiskUnderstood of [true, false]) {
         expect(confirmationOf(HIGH_PLAN, 'trash', highRiskUnderstood)).toMatchObject({

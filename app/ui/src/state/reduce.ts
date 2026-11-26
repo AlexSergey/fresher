@@ -140,6 +140,10 @@ const markStale = (state: CoreState): CoreState => (state.stale ? state : { ...s
 const withCleanup = (state: CoreState, cleanup: CleanupState): CoreState =>
   cleanup === state.cleanup ? state : { ...state, cleanup };
 
+// A finished cleanup's result belongs to the scan and the pick it removed: a new scan or a new pick drops it, so Review
+// shows what is picked now and not the last result.
+const resultDropped = (cleanup: CleanupState): CleanupState => (cleanup.kind === 'finished' ? NO_CLEANUP : cleanup);
+
 // The core forgets the previous scan's findings when a scan starts: nothing is counted until the next overview.
 const startScan = (state: CoreState, event: Extract<Event, { readonly type: 'scan-started' }>): CoreState => {
   const status: EngineStatus = { scan: event.scan, state: 'scanning' };
@@ -147,6 +151,7 @@ const startScan = (state: CoreState, event: Extract<Event, { readonly type: 'sca
   return {
     ...state,
     appsMeasuring: null,
+    cleanup: resultDropped(state.cleanup),
     coverage: null,
     failure: null,
     modules: [],
@@ -319,7 +324,7 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
         (category) => totals.find((total) => total.category === category)?.highestDanger,
       );
 
-      return selection === state.selection ? state : { ...state, selection };
+      return selection === state.selection ? state : { ...state, cleanup: resultDropped(state.cleanup), selection };
     }
     case 'cleanup-confirmed':
     case 'cleanup-confirming':
