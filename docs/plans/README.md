@@ -89,3 +89,5 @@ release is 0.1.0, for testers (the user, 2026-11-25); how a release is cut: [`..
 | 040 | [The README](./040-readme/readme.md) | ✔️ done | 0.1.0 | repo, scripts, ci, docs |
 | 042 | [A plain interface](./042-plain-interface/readme.md) | ✔️ done | 0.1.0 | core, engine, modules, testing, sandbox, e2e, app, app/tauri, app/ui, scripts, docs |
 | 041 | [The security audit](./041-security-audit/readme.md) | ✔️ done | 0.1.0 | every crate and module, app, scripts, repo, docs |
+| 043 | [Build flags, and High and Largest back on](./043-build-flags/readme.md) | 📝 draft | 0.2.0 | core, app/tauri, app/ui, scripts, e2e, docs |
+| 044 | [Big folders left alone, on the Largest screen](./044-largest-folders/readme.md) | 📝 draft | 0.2.0 | core, scanner, engine, testing, sandbox, e2e, app/tauri, app/ui, docs |

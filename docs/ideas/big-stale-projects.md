@@ -1,6 +1,7 @@
 # Big projects left alone
 
-**Since:** 2026-11-26 · The user's extension of the first tester's feedback on 0.1.0
+**Since:** 2026-11-26 · The user's extension of the first tester's feedback on 0.1.0 · **Plan:**
+[044](../plans/044-largest-folders/readme.md) (draft): shown on Largest, Show in Finder only (the user, 2026-11-26)
 
 ## Problem
 

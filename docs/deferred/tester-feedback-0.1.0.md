@@ -27,4 +27,6 @@ go with the last one.
 3. **Data of AI coding assistants and the projects they leave behind**: a new idea,
    [AI coding assistants' data](../ideas/ai-coding-assistants-data.md).
 4. **Big projects not changed for a long time, whoever made them** (the user's addition): a new idea,
-   [Big projects left alone](../ideas/big-stale-projects.md).
+   [Big projects left alone](../ideas/big-stale-projects.md), drafted as plan
+   [044](../plans/044-largest-folders/readme.md) after [043](../plans/043-build-flags/readme.md) turns Largest and
+   High back on.
