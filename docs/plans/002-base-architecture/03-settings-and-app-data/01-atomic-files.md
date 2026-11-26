@@ -47,4 +47,4 @@ The file primitives 03/02 builds the settings file on and later plans (004 cache
   dependency) and the write succeeds. The temporary files are named `.<target>.<random>.tmp`, so one left by a crash
   is recognized as the store's. Removing such leftovers in `DataFolder::open` is not done: only `fresher-cleaner` may
   delete and the store deletes nothing in this plan; see
-  [`store-stale-temporary-files.md`](../../../known-issues/store-stale-temporary-files.md).
+  [`store-stale-temporary-files.md`](../../../known-issues/fixed/store-stale-temporary-files.md).

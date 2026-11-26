@@ -9,7 +9,10 @@ enforces: [`restrictions/deletion-safety.md`](../restrictions/deletion-safety.md
 
 - `DiskCleaner` implements the core's `Cleaner` port: `rehearse`, `execute`, `locate`, `put_back`. Nothing else of
   the crate is public but its constructor's inputs (`Reach`, `RealDiskToken`, in debug builds `DryRunToken`,
-  `CleanerPorts`) and the `Verified` type, which only the guard can make.
+  `CleanerPorts`) and the `Verified` type, which only the guard can make, and one more operation outside a plan:
+  `remove_stale_temporaries(folder, targets)` (`own_data.rs`), the app's own data folder's stale `.<target>.<random>.tmp`
+  files, regular files directly in the held folder only, run by the shell when the folder opens
+  ([`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md)); it reaches the same deletion point.
 - `DiskCleaner::new(reach, user, home, protection, ports)`: the reach (below), the uid the app runs as, the home folder
   (a root written `~` or `~/…` is read under it), the system's protected places, and the ports it acts through
   (`Trash`, `OpenFiles`, `RunningApps`, `CommandRunner`, `Clock`). The app gives the system's Trash to the cleaner and

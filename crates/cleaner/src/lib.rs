@@ -10,6 +10,7 @@
 
 mod beneath;
 mod guard;
+mod own_data;
 mod paths;
 mod pipeline;
 mod put_back;
@@ -30,6 +31,7 @@ use fresher_core::{
 use crate::pipeline::Cleaning;
 
 pub use guard::Verified;
+pub use own_data::{OwnDataError, StaleTemporaries, remove_stale_temporaries};
 #[cfg(debug_assertions)]
 pub use reach::DryRunToken;
 pub use reach::{Reach, RealDiskToken, SandboxError, SandboxFolder};

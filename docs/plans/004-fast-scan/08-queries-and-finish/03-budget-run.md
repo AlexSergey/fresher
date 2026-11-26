@@ -32,7 +32,7 @@ The measured numbers of the conclusions; plan 010 starts from the cache sizes me
 - Every target row has a measured value; every failing bar has a recorded decision.
 - The footprint after ten scans of `LARGE` with changes between them stays within `FOOTPRINT_BUDGET`, and the data
   folder holds only the settings file and the four slot files (plus any stale temporary file of the
-  [known issue](../../../known-issues/store-stale-temporary-files.md), counted and noted).
+  [known issue](../../../known-issues/fixed/store-stale-temporary-files.md), counted and noted).
 - A partly rewritten APFS clone gets a new clone id while it still shares most of its blocks (measured outside the
   plan, 2026-11-15). On a real tree with such clones, the totals equal the allocated bytes on the volume within the
   bar, so no shared block is counted twice and none is lost.

@@ -10,7 +10,7 @@ use crate::atomic::{file_path, io_error, read_file, write_atomic};
 use crate::migrate::{Migration, migrate};
 use crate::versioned::{Versioned, read_versioned, write_versioned};
 
-const FILE_NAME: &str = "settings.json";
+pub(crate) const FILE_NAME: &str = "settings.json";
 /// Where a broken settings file is kept, once, before the first save replaces it.
 const BROKEN_FILE_NAME: &str = "settings.broken.json";
 /// The migrations of the settings file, one per version step; version 1 has none.

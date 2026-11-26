@@ -75,6 +75,24 @@ The app deletes files from a real person's disk. These rules hold in every versi
   setup and the sandbox generator's binary), once each, for that lookup only (`HOME_LOOKUPS` in
   `crates/cleaner/tests/deletion_point.rs`).
 
+## The app's own stale temporary files
+
+- **Rule:** one removal happens outside a confirmed plan: when the app opens its data folder it removes the stale
+  temporary files of an interrupted atomic write. Only entries directly in that folder (no recursion) that are regular
+  files (never a link, looked at without following it) and are named exactly `.<target>.<random>.tmp`, `<target>` one
+  of the store's own atomically written files and `<random>` one or more ASCII letters or digits. They are deleted for
+  good (they are the app's scratch files), the folder is held open through no link, and each entry is checked again
+  right before it goes. A failure is logged and never stops the start. Nothing else in the folder is removed; clearing
+  the scan cache stays [deferred](../deferred/own-data-clearing.md).
+- **Why:** a crash between creating the temporary file and renaming it leaves a file nothing reads; it is the app's own
+  and recognizable, so removing it needs no confirmation, and keeping the removal in the cleaner keeps one place that
+  deletes.
+- **Enforced by:** the operation lives in `fresher-cleaner` (`crates/cleaner/src/own_data.rs`) and reaches the one
+  deletion point (`unlink` in `remove/permanent.rs`), so the lint and `tests/deletion_point.rs` stay as they are; the
+  store only names its files (`atomically_written_files`, `crates/store/src/own_files.rs`) and deletes nothing. Tests
+  in `own_data.rs` (a link, a folder, other names, a file in a subfolder are kept) and `app/tauri/src/own_data.rs`
+  (the start goes on when the folder cannot be read).
+
 ## Trash first
 
 - **Rule:** items are moved to the Trash by default; a permanent delete is a separate, explicit choice per confirmation.

@@ -15,7 +15,7 @@ use std::path::Path;
 use fresher_core::{ItemIdentity, ItemOutcome, TrashedItem};
 
 pub(crate) use empty::{Way, empty};
-pub(crate) use permanent::{delete, delete_entry};
+pub(crate) use permanent::{delete, delete_entry, unlink};
 pub(crate) use together::together;
 pub(crate) use tool::run_tool;
 pub(crate) use trash::to_trash;

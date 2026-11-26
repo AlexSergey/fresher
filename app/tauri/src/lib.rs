@@ -18,6 +18,7 @@ mod identity;
 mod instance;
 mod largest_commands;
 mod navigation;
+mod own_data;
 #[cfg(debug_assertions)]
 mod sandbox;
 mod settings_commands;

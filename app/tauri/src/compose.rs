@@ -220,6 +220,8 @@ fn engine_with(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) 
 fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Result<Shared, ComposeError> {
     apply(policy)?;
     let folder = DataFolder::open(data_folder)?;
+    // Before any write: the folder's own scratch files left by an interrupted write go.
+    crate::own_data::clear_stale_temporaries(&folder);
     let volumes: Arc<dyn Volumes> = Arc::new(MacVolumes::new());
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let running: Arc<dyn RunningApps> = Arc::new(MacRunningApps::new());

@@ -241,7 +241,7 @@ The user's requirement: super lightweight, capped, safe to lose.
 - **Nothing is ever deleted**: the files are fixed slots (`scan-1.bin` … `scan-2.previous.bin`), written by the
   store's atomic write and rotated by renaming `current` over `previous`. No deleting function is called, so the
   deletion rule needs no exception. Clearing the cache on demand is plan 005's, with the store's stale temporary files
-  ([known issue](../../known-issues/store-stale-temporary-files.md)).
+  ([known issue](../../known-issues/fixed/store-stale-temporary-files.md)).
 - **The envelope** (the store's): a magic, the container format and version, the scope key, the body's length and a
   CRC-32 (`crc32fast`, already in the lock file); a newer, older or broken file is discarded (`VersionPolicy::Discard`)
   and costs one full scan, never a wrong result.

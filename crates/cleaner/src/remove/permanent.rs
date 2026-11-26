@@ -107,12 +107,12 @@ fn remove_beneath(parent: &File, name: &OsStr, expected: ItemIdentity, device: u
 }
 
 /// Removes the entry `name` of the held folder `folder` if it is still `expected`: the one call of a deleting
-/// function in the workspace.
+/// function in the workspace (the walk above and `own_data` reach it).
 #[expect(
     clippy::disallowed_methods,
     reason = "the single deletion point of the workspace (docs/architecture/removal.md)"
 )]
-fn unlink(folder: &File, name: &OsStr, expected: ItemIdentity) -> Result<(), SkipReason> {
+pub(crate) fn unlink(folder: &File, name: &OsStr, expected: ItemIdentity) -> Result<(), SkipReason> {
     let found = beneath::identity_at(folder, name).map_err(|error| open_failure(&error))?;
     if found != expected {
         return Err(SkipReason::Replaced);

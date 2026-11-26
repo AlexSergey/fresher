@@ -145,7 +145,7 @@ A code review of the plan found these defects in the core crates; each is fixed 
   protected system folders (`SettingProblem::RefusedFolder`).
 - **An atomic write failed after its rename** when the folder could not be synced: now logged, the write succeeds;
   temporary files are named `.<target>.<random>.tmp`. Removing stale ones is a
-  [known issue](../../known-issues/store-stale-temporary-files.md), left to plan 005.
+  [known issue](../../known-issues/fixed/store-stale-temporary-files.md), left to plan 005.
 - **`CACHEDIR.TAG` was checked, then opened by path** (a race): it is opened once with `O_NOFOLLOW | O_NONBLOCK` and
   checked through the handle.
 

@@ -59,10 +59,8 @@ impl FileScanCache {
     }
 
     fn slots(&self) -> impl Iterator<Item = Slot> {
-        (1..=self.policy.scopes.get()).map(|number| Slot {
-            current: format!("scan-{number}.bin"),
-            previous: format!("scan-{number}.previous.bin"),
-        })
+        (1..=self.policy.scopes.get())
+            .map(|number| Slot { current: current_file_name(number), previous: format!("scan-{number}.previous.bin") })
     }
 
     /// The slot whose current file is of `scope`.
@@ -171,6 +169,11 @@ impl ScanCache for FileScanCache {
         }
         commit(&self.folder, staged)
     }
+}
+
+/// The current file of slot `number`: the only cache file written atomically (the previous one is a rename).
+pub(crate) fn current_file_name(number: u8) -> String {
+    format!("scan-{number}.bin")
 }
 
 fn size_of(bytes: &[u8]) -> ByteSize {
