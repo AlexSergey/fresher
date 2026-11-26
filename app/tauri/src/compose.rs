@@ -560,7 +560,8 @@ mod tests {
     }
 
     /// An I/O policy that sets nothing, for the tests that do not check the policy. The tests of `start` cannot take
-    /// it (`start` applies the real policy in a sandbox run): they need a process of their own, which nextest gives.
+    /// it: every `start` applies the real policy (a sandbox run through `apply`, any other through `engine`), so each
+    /// of them needs a process of its own, which nextest gives.
     const NO_POLICY: super::IoPolicy =
         super::IoPolicy { never_download_cloud_files: || Ok(()), leave_access_times: || Ok(()) };
 
@@ -964,6 +965,21 @@ mod tests {
 
             let page = engine.cleanups(0, 10);
             assert_eq!((page.total, page.blocked), (0, None));
+        }
+
+        #[test]
+        fn the_start_removes_the_data_folders_stale_temporary_files_and_keeps_its_own_files() {
+            let (root, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            // The folder is reached through no link: the clearing refuses one.
+            let folder = std::fs::canonicalize(root.path()).unwrap();
+            let stale = folder.join(".settings.json.a1B2c3.tmp");
+            std::fs::write(&stale, b"half").unwrap();
+            std::fs::write(folder.join("settings.json"), b"{}").unwrap();
+
+            engine_with(&folder, home.path(), &NO_POLICY).unwrap();
+
+            assert!(!stale.exists());
+            assert!(folder.join("settings.json").exists());
         }
     }
 }

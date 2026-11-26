@@ -1,6 +1,6 @@
 # A compose test sets the real I/O policy of the test process
 
-**Status:** fixed (the compose tests pass a no-op I/O policy; the `start` tests that apply the real one need a process of their own) · **Updated:** 2026-11-26
+**Status:** fixed (the compose tests pass a no-op I/O policy; every `start` test applies the real one and needs a process of its own) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -18,7 +18,8 @@ process, would.
 ## Fix
 
 The tests of `app/tauri/src/compose.rs` that build the engine or the normal parts pass a no-op `IoPolicy`
-(`NO_POLICY`), as the failing-policy tests do. What remains are the `compose::start(...)` tests: in a debug build with
-a sandbox environment `start` applies the real policy (`apply(&MACOS_POLICY)`), and it takes no policy parameter. They
-need a process of their own, which nextest gives; `cargo test`, which runs a binary's tests in one process, would
-share the setting. A comment at `NO_POLICY` says so.
+(`NO_POLICY`), as the failing-policy tests do. What remains are the `compose::start(...)` tests: every `start` applies
+the real policy (a sandbox run through `apply(&MACOS_POLICY)`, any other through `engine`, which builds with
+`MACOS_POLICY`), and it takes no policy parameter. So every `start` test applies the real policy and needs a process of
+its own, which nextest gives; `cargo test`, which runs a binary's tests in one process, would share the setting. A
+comment at `NO_POLICY` says so.
