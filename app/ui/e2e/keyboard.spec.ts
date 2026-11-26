@@ -174,8 +174,10 @@ test.describe('negative cases', () => {
     }
   });
 
+  // The script answers the Largest screen's list. The tiles come with the overview asked for after the scan's end, so
+  // the walk waits for them: Back to Scan then always finds the tile it came from.
   test('a screen change never drops the focus', async ({ page }) => {
-    await mockCore(page, SCRIPTS.cleaning);
+    await mockCore(page, SCRIPTS.largest);
     await page.goto('/');
     await expect(heading(page, 'Scan')).toBeVisible();
 
@@ -185,12 +187,14 @@ test.describe('negative cases', () => {
     await expect(page.getByRole('heading', { level: 3, name: 'Example caches' })).toBeVisible();
     expect(await focusKept(page)).toBe(true);
 
-    await page.getByRole('button', { name: 'Details' }).first().focus();
+    const caches = page.locator('[data-category="demo.caches"]').getByRole('button', { name: 'Details' });
+    await expect(caches).toBeVisible();
+    await caches.focus();
     await page.keyboard.press('Enter');
     await expect(heading(page, 'Example caches')).toBeFocused();
     await page.getByRole('button', { name: 'Back to Scan' }).focus();
     await page.keyboard.press('Enter');
-    await expect(heading(page, 'Scan')).toBeFocused();
+    await expect(caches).toBeFocused();
 
     for (const [nav, name] of [
       ['Largest', 'Largest files and folders'],
