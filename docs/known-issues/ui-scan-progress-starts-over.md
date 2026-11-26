@@ -6,7 +6,8 @@
 
 Seen by the user on the 0.1.0 release build (the dry-run image, installed, a first scan of the real home folder): the
 scan's progress bar rises to about 16 %, falls back to 0 and rises again to the end. The scan completes and its result
-is right; the progress looks as if the scan ran twice.
+is right; the progress looks as if the scan ran twice. Seen again by the user on the release draft of 0.1.0 (the
+image downloaded by the browser, installed in Applications): it happens every time, not once.
 
 ## Cause
 
