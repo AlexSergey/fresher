@@ -1,6 +1,6 @@
 # The fast scan measured on the developer's home
 
-**Agreed:** 2026-11-16, by the user (plan 004 merged without it) · **Due at:** before the first release, or earlier
+**Agreed:** 2026-11-16, by the user (plan 004 merged without it) · **Due at:** 0.2.0 (moved from before the first release by the user, 2026-11-26), or earlier
 when a scan feels slow
 
 ## What is postponed

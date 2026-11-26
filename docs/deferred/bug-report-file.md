@@ -1,6 +1,6 @@
 # The bug-report file
 
-**Agreed:** 2026-11-17, by the user (plan 011, the light form) · **Due at:** before the first release
+**Agreed:** 2026-11-17, by the user (plan 011, the light form) · **Due at:** 0.2.0 (moved from before the first release by the user, 2026-11-26)
 
 ## What is postponed
 

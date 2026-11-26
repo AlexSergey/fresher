@@ -1,7 +1,7 @@
 # Clearing the app's own data
 
 **Agreed:** 2026-11-16, delegated to the agent by the user (plan 005, decision 5) · **Due at:** when the scan cache
-or the stale temporary files cause a problem, or before the first release
+or the stale temporary files cause a problem, or 0.2.0 (moved from before the first release by the user, 2026-11-26)
 
 ## What is postponed
 

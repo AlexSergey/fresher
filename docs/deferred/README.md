@@ -10,16 +10,16 @@ needs. When it is done, its row and file are removed in the same change.
 
 | Item                                                             | Agreed     | Due at                   | What                                                                            |
 | ---------------------------------------------------------------- | ---------- | ------------------------ | ------------------------------------------------------------------------------- |
-| [The fast scan on the developer's home](./fast-scan-home-run.md) | 2026-11-16 | before the first release | plan 004's budget run by hand: the home folder's scan, rescans, clones          |
+| [The fast scan on the developer's home](./fast-scan-home-run.md) | 2026-11-16 | 0.2.0                    | plan 004's budget run by hand: the home folder's scan, rescans, clones          |
 | [Settings export and import](./settings-export-import.md)        | 2026-11-16 | when a user asks         | Export… and Import… with a preview of the changes; today the file itself       |
-| [Clearing the app's own data](./own-data-clearing.md)            | 2026-11-16 | before the first release | clear the scan cache and stale temporary files without breaking the deletion rule |
+| [Clearing the app's own data](./own-data-clearing.md)            | 2026-11-16 | 0.2.0                    | clear the scan cache and stale temporary files without breaking the deletion rule |
 | [A setting for the default removal](./default-removal-setting.md) | 2026-11-16 | when the user asks       | pre-select a permanent delete in the confirmation (rule 2 says no today)        |
 | [The world outside the disk in a sandbox](./sandbox-world.md) | 2026-11-16 | the first module that reads open files or the clock | plan 007's former plan 06: open files, the rest of access and the steps between scans per case file (apps, running apps and the clock: plan 016; stated file facts: plan 017; Spotlight's answers: plan 019; the guarded folders' access and the installs: plan 020; tools and other apps' data: plan 032) |
 | [The debug panel and the developer command line](./dev-debug-panel.md) | 2026-11-17 | when the deferred world is built | the panel's knobs need the world's fakes; the command line beyond the generator |
-| [A log file of a session](./session-log-file.md)                 | 2026-11-17 | before the first release | an opt-in log file per session and the scan's phase timings; memory only today  |
-| [The bug-report file](./bug-report-file.md)                      | 2026-11-17 | before the first release | a report the user saves and sends, and the notice after an unexpected exit      |
+| [A log file of a session](./session-log-file.md)                 | 2026-11-17 | 0.2.0                    | an opt-in log file per session and the scan's phase timings; memory only today  |
+| [The bug-report file](./bug-report-file.md)                      | 2026-11-17 | 0.2.0                    | a report the user saves and sends, and the notice after an unexpected exit      |
 | [Why an item matched](./match-explanations.md)                   | 2026-11-17 | the first rule-based module that needs more than its reason | "Why this?" on a finding, and a rule's own left-out reasons |
-| [The diagnostics corner](./diagnostics-screen.md)                | 2026-11-17 | before the first release | versions, permissions, scan statistics, recent problems                           |
+| [The diagnostics corner](./diagnostics-screen.md)                | 2026-11-17 | 0.2.0                    | versions, permissions, scan statistics, recent problems                           |
 | [A module names its app's data folders](./module-names-app-data.md) | 2026-11-17 | the next change to the map's app lines | the version in use's folders in the IDE's line of the map, not in the user's folders |
 | [A folder's age from its direct children](./folder-age-from-children.md) | 2026-11-17 | plan 016's run by hand (04/02) | a removed IDE's age from the newest of its folders and their direct children |
 | [A special entry shown as a file in the browse view](./special-entry-in-browse-view.md) | 2026-11-17 | the next change to the browse view's entry kinds | a socket, a pipe or a device is `EntryKind::Other` in the core but a file in the browse view's `NodeKind` |
