@@ -1,6 +1,6 @@
 # 013 — Release and distribution
 
-**Status:** 🔨 in progress (built, awaiting the user's look) · **Version:** 0.1.0 · **Date:** 2026-11-25 · **Modules:** repo, ci, scripts, app, app/ui, docs
+**Status:** ✔️ done (01, signing, on hold) · **Version:** 0.1.0 · **Date:** 2026-11-25 · **Modules:** repo, ci, scripts, app, app/ui, docs
 
 Drafted on 2026-11-15 as one file; written as a global plan on 2026-11-25 from the user's answers of that day (see
 "Decisions"). Approved by the user for the licence notices, the version 0.1.0, the unsigned first release and the app
@@ -124,3 +124,9 @@ Built on 2026-11-25 on `feat/013-release-workflow`; awaiting the user's look, th
 
 For the user's look: the changelog's and the notes' wording, agent's calls 8 to 15, and the first dry run of the
 workflow before the tag.
+
+**Released 2026-11-26.** 0.1.0 was cut by [`../../release.md`](../../release.md): the test cases by hand first
+([`../../test-cases/`](../../test-cases/README.md), two bugs found and fixed before the tag), a dry run, the tag
+`v0.1.0` on 4e6b57f7, the draft checked (checksums, attestation of 4e6b57f7, a browser download installed and opened
+through "Open Anyway", a scan) and published by the user. Signing with a Developer ID (01) stays on hold until an Apple
+Developer account exists.

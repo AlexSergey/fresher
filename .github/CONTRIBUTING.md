@@ -10,6 +10,13 @@ npm run dev
 npm test
 ```
 
+## Where to start
+
+Issues labelled [`good first issue`](https://github.com/AlexSergey/fresher/labels/good%20first%20issue) are small and
+self-contained; most add a developer tool's cache (`new category`), built like the existing ones. Issues labelled
+[`help wanted`](https://github.com/AlexSergey/fresher/labels/help%20wanted) are known defects that need someone to find
+the cause. Say on an issue that you are taking it before you start, so two people do not build the same thing.
+
 ## Read first
 
 - [`goal.md`](../docs/goal.md) and [`rules.md`](../docs/rules.md)

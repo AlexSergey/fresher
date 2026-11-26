@@ -1,7 +1,7 @@
 # The README at the first release
 
 **Agreed:** 2026-11-22, by the user's delegation (plan [040](../plans/040-readme/readme.md)) ·
-**Due at:** when plan 013 publishes the first release
+**Due at:** when a package for a package manager exists (0.1.0 was published on 2026-11-26 without one)
 
 ## What is postponed
 
