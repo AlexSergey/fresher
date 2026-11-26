@@ -53,7 +53,8 @@ const state = (capability: Capability, access: Access, note: CapabilityState['no
 
 const NOT_RUNNING = { args: { tool: { kind: 'text', value: 'Docker' } }, key: 'core.access.tool.not-ready' } as const;
 
-const rows = (states: readonly CapabilityState[]): (() => JSX.Element) =>
+// `reopenShown`: System Settings were opened for Full Disk Access, so "Reopen Fresher" shows beside it.
+const rows = (states: readonly CapabilityState[], reopenShown = false): (() => JSX.Element) =>
   function Story(): JSX.Element {
     // Set here, so a story shown alone has its texts whatever else the gallery loads.
     setCoreDictionary(DICTIONARY);
@@ -63,7 +64,7 @@ const rows = (states: readonly CapabilityState[]): (() => JSX.Element) =>
         modules={MODULES}
         onOpenSettings={ignore}
         onReopen={ignore}
-        reopenShown
+        reopenShown={reopenShown}
         states={states}
         switchOf={(id) => <p>{`The switch of ${id}`}</p>}
       />
@@ -82,6 +83,10 @@ export const stories = storiesOf('PermissionRows', {
       state(REMOVABLE, 'unknown'),
       state(DOCKER, 'unknown', NOT_RUNNING),
     ]),
+    width: 560,
+  },
+  'reopen-shown': {
+    render: rows([state(ALL_FILES, 'denied'), state(DESKTOP, 'granted')], true),
     width: 560,
   },
 });
