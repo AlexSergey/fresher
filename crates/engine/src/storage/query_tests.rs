@@ -112,6 +112,40 @@ fn leaves(groups: &[MeaningGroup]) -> u64 {
     total
 }
 
+/// The map after a scan by `fixture`, then one cleanup by `method` of each finding of `findings`, in turn.
+fn map_after_cleanups(fixture: crate::testing::Fixture, findings: &[u32], method: &str) -> StorageMap {
+    use crate::cleanup::testing::{echo, select, wait_for_cleanup};
+
+    let engine = fixture.engine();
+    crate::testing::scan(&engine);
+    let events = engine.subscribe();
+    for &finding in findings {
+        let view = engine.prepare_cleanup(&select(&[finding], &[])).unwrap();
+        engine.confirm_cleanup(&echo(&view, method)).unwrap();
+        wait_for_cleanup(&events);
+    }
+    engine.storage_map().unwrap()
+}
+
+/// The home of `home` with `/home/Caches/x/Caches` (40 bytes, owned by `alpha.caches`) inside its `Caches`, over a
+/// walk that finds them as findings 1 (`/home/Caches`) and 2 (the one inside).
+fn nested() -> crate::testing::Fixture {
+    let state = state(
+        1,
+        &[
+            ("/home", 300),
+            ("/home/Caches", 100),
+            ("/home/Caches/x", 40),
+            ("/home/Caches/x/Caches", 40),
+            ("/home/Movies", 150),
+        ],
+    )
+    .with_owner(Path::new("/home/Caches"), caches())
+    .with_owner(Path::new("/home/Caches/x/Caches"), caches());
+    let walk = walk(vec![state]).folder("Caches", "/home/Caches/x/Caches", bytes(40));
+    crate::testing::Fixture::new(walk).module(alpha()).volumes(startup())
+}
+
 /// Waits for the next `FindingsAdded`: its findings are in the results by then.
 fn next_batch(events: &Receiver<Event>) {
     loop {
@@ -133,15 +167,38 @@ fn started(events: &Receiver<Event>) {
 mod negative {
     use std::sync::Arc;
 
-    use fresher_core::{CommandError, Descent, MapPhase, NodeId, Operation, SettingUpdate, SettingValue, StateId};
-    use fresher_testing::FakeVolumes;
+    use fresher_core::{
+        CommandError, Descent, FindingId, ItemOutcome, MapPhase, NodeId, Operation, SettingUpdate, SettingValue,
+        StateId,
+    };
+    use fresher_testing::{FakeCleaner, FakeVolumes};
     use serde_json::json;
 
     use super::{
-        BATCH_LIMIT, alpha, facts, home, many_caches, next_batch, owned, part, parts, started, startup, state,
-        two_volumes, walk,
+        BATCH_LIMIT, alpha, facts, home, many_caches, map_after_cleanups, next_batch, owned, part, parts, started,
+        startup, state, two_volumes, walk,
     };
-    use crate::testing::{Fixture, MemorySettings, ScriptedWalk, scan, wait_for_finish};
+    use crate::testing::{Fixture, MemorySettings, ScriptedWalk, bytes, scan, wait_for_finish};
+
+    #[test]
+    fn a_cleaned_path_the_tree_does_not_hold_takes_nothing_out() {
+        let walk = walk(vec![home(1)]).folder("Caches", "/home/Ghost/Caches", bytes(10));
+        let fixture = Fixture::new(walk).module(alpha()).volumes(startup());
+
+        let map = map_after_cleanups(fixture, &[2], "permanent");
+
+        assert_eq!((part(&map, "explained"), part(&map, "your-folders")), (100, 200));
+    }
+
+    #[test]
+    fn a_folder_emptied_with_entries_skipped_is_not_taken_out() {
+        let cleaner = FakeCleaner::default().ending(FindingId::new(1), ItemOutcome::Emptied { moved: 2, skipped: 1 });
+        let fixture = Fixture::new(walk(vec![home(1)])).module(alpha()).volumes(startup()).cleaner(Arc::new(cleaner));
+
+        let map = map_after_cleanups(fixture, &[1], "permanent");
+
+        assert_eq!((part(&map, "explained"), part(&map, "your-folders")), (100, 200));
+    }
 
     #[test]
     fn a_cancelled_scan_of_other_roots_changes_neither_the_map_nor_its_meaning() {
@@ -325,15 +382,15 @@ mod positive {
     use std::sync::Arc;
 
     use fresher_core::{
-        Access, Capability, Descent, DiskState, IgnoreTarget, IgnoredEntry, MapPhase, MeaningGroup, NotScanned,
-        PartKind, RemainderReason, StateId, Unreadable,
+        Access, Capability, Descent, DiskState, FindingId, IgnoreTarget, IgnoredEntry, ItemOutcome, MapPhase,
+        MeaningGroup, NotScanned, PartKind, RemainderReason, StateId, Unreadable,
     };
-    use fresher_testing::{FakeAccess, FakeVolumes};
+    use fresher_testing::{FakeAccess, FakeCleaner, FakeVolumes};
     use serde_json::json;
 
     use super::{
-        BATCH_LIMIT, alpha, caches, disk, facts, home, leaves, many_caches, next_batch, owned, part, parts, started,
-        startup, state, two_volumes, walk,
+        BATCH_LIMIT, alpha, caches, disk, facts, home, leaves, many_caches, map_after_cleanups, nested, next_batch,
+        owned, part, parts, started, startup, state, two_volumes, walk,
     };
     use crate::cleanup::testing::{echo, select, wait_for_cleanup};
     use crate::testing::{Fixture, MemorySettings, ScriptedWalk, bytes, scan, wait_for_finish};
@@ -463,6 +520,23 @@ mod positive {
             ])
         );
         assert!(!map.volumes[0].disk_changed());
+    }
+
+    #[test]
+    fn a_path_cleaned_inside_one_cleaned_after_it_is_counted_once() {
+        let map = map_after_cleanups(nested(), &[2, 1], "permanent");
+
+        assert_eq!((part(&map, "explained"), part(&map, "your-folders")), (0, 200));
+    }
+
+    #[test]
+    fn a_folder_emptied_with_nothing_skipped_is_taken_out() {
+        let cleaner = FakeCleaner::default().ending(FindingId::new(1), ItemOutcome::Emptied { moved: 2, skipped: 0 });
+        let fixture = Fixture::new(walk(vec![home(1)])).module(alpha()).volumes(startup()).cleaner(Arc::new(cleaner));
+
+        let map = map_after_cleanups(fixture, &[1], "permanent");
+
+        assert_eq!((part(&map, "explained"), part(&map, "your-folders")), (0, 200));
     }
 
     #[test]

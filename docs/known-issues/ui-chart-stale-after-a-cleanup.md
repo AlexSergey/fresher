@@ -32,8 +32,14 @@ Explained and stays in the root among Your folders, since the Trash is the user'
 Free and the remainder follow. Nothing is read on a query and nothing is scanned: the reads are part of the cleanup the
 user confirmed. The next scan forgets the list with the state.
 
-Left as it was: the by-meaning groups (`storage_meaning`, which no screen asks for now) stay those of the scan until the
-next one; a put back does not bring its bytes back to Explained, as it does not bring its findings back.
+Left as it was:
+
+- the by-meaning groups (`storage_meaning`, which no screen asks for now) stay those of the scan until the next one;
+- a put back does not bring its bytes back to Explained, as it does not bring its findings back;
+- a cleanup its tool runs (`ItemOutcome::ToolDone`) moves only Free: it removes no path of the tree, so "Can be freed"
+  keeps its bytes until the next scan;
+- a root that is neither the home folder nor a volume still counts the bytes moved to the Trash among its Your
+  folders, though the Trash that holds them is outside it.
 
 ## What was tried
 
