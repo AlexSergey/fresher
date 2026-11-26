@@ -117,7 +117,7 @@ fn paced(play: Play) -> Paced {
 mod negative {
     use std::time::Duration;
 
-    use fresher_core::WalkError;
+    use fresher_core::{ByteSize, WalkError};
 
     use super::{Play, TARGET, paced, progress};
     use crate::DEMO_SCAN_TIME;
@@ -147,7 +147,20 @@ mod negative {
 
         assert_eq!(walk.ended, Err(WalkError::Cancelled));
         assert_eq!(walk.sent.len(), 12);
-        assert!(walk.elapsed < DEMO_SCAN_TIME);
+        let walked = Duration::from_millis(200);
+        assert!(walk.sent.iter().filter(|(at, _)| *at <= walked).count() < 12, "the cancel landed during the walk");
+        assert!(walk.elapsed > walked && walk.elapsed < DEMO_SCAN_TIME);
+    }
+
+    #[test]
+    fn the_progress_never_ends_below_the_walks_bytes_when_they_pass_the_target() {
+        let walk = paced(Play { target: Some(ByteSize::new(1_000_000)), ..Play::taking(Duration::from_millis(800)) });
+
+        for pair in walk.sent.windows(2) {
+            let ((_, before), (_, after)) = (pair[0], pair[1]);
+            assert!(after.entries >= before.entries && after.bytes >= before.bytes, "{before:?} then {after:?}");
+        }
+        assert_eq!(walk.last(), Some(progress(1_000, 4_000_000)));
     }
 
     #[test]

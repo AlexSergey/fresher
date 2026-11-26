@@ -20,9 +20,10 @@ pub type Pause = Arc<dyn Fn(Duration) + Send + Sync>;
 /// The walk of a demo, in sandbox mode only. The inner walk runs as it is: its matches go on at once and its summary is
 /// its own. Its progress numbers are made up for the recording, as a function of the time since the scan began: the
 /// bytes go evenly toward `target` (the demo volume's used space, which the bar measures against; the walk's own bytes
-/// without one) and the entries toward the walk's, reaching both once `minimum` has passed. A progress goes out every
-/// 50 ms, never lower than the one before; the end is held until the walk is done and `minimum` has passed. A small
-/// demo world is walked in about a second; paced, a recording shows the bar fill. A failed walk ends at once.
+/// when they are more, or without one) and the entries toward the walk's, reaching both once `minimum` has passed. A
+/// progress goes out every 50 ms, never lower than the one before; the end is held until the walk is done and `minimum`
+/// has passed. A small demo world is walked in about a second; paced, a recording shows the bar fill. A failed walk
+/// ends at once.
 pub struct PacedWalk {
     inner: Arc<dyn DiskWalk>,
     clock: Arc<dyn Clock>,
@@ -61,7 +62,7 @@ impl Pacer {
         let elapsed =
             now.duration_since(self.began).map_or(0, |elapsed| u64::try_from(elapsed.as_nanos()).unwrap_or(u64::MAX));
         let elapsed = elapsed.min(whole);
-        let bytes = self.target.unwrap_or(self.walked.bytes);
+        let bytes = self.target.map_or(self.walked.bytes, |target| target.max(self.walked.bytes));
         WalkProgress {
             entries: share(self.walked.entries, elapsed, whole),
             bytes: ByteSize::new(share(bytes.bytes(), elapsed, whole)),

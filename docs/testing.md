@@ -1092,10 +1092,10 @@ commands (`demo_play`, `demo_finished`), writes two files at the sandbox's root 
 elapsed milliseconds, or `failed` with the step and the reason), then exits 0 or 1. Its scan is paced (`PacedWalk` of
 `fresher-sandbox`, wired by `SandboxMode::paced_scan`): a demo world is walked in about a second, so a demo's progress
 numbers are made up for the recording, as a function of the time since the scan began: every 50 ms they rise evenly, the
-bytes toward the demo volume's used space (the size the bar measures against; the walk's own bytes when the world states
-no volume), the entries toward the walk's, and they never go down. The scan ends once the walk is done and 3 s
-(`DEMO_SCAN_TIME`) have passed, so a recording shows the bar fill. The findings and the walk's summary stay real.
-Nothing else is paced: the app, the demo worlds' scan test and every autotest walk as they go.
+bytes toward the demo volume's used space (the size the bar measures against; the walk's own bytes when they are more,
+or when the world states no volume), the entries toward the walk's, and they never go down. The scan ends once the walk
+is done and 3 s (`DEMO_SCAN_TIME`) have passed, so a recording shows the bar fill. The findings and the walk's summary
+stay real. Nothing else is paced: the app, the demo worlds' scan test and every autotest walk as they go.
 
 **The player** (`app/ui/src/demo/`, imported only under `import.meta.env.DEV` inside the app): waits 1500 ms (lead-in),
 then plays each step with a drawn pointer that glides to its target in 600 ms. Before the pointer moves, a target not

@@ -20,11 +20,11 @@ In demo mode only (a debug build started with `FRESHER_SANDBOX` and `FRESHER_DEM
 `PacedWalk` (`crates/sandbox/src/paced_walk.rs`). The walk runs as it is: its matches go on at once and its summary is
 its own, so the findings are real. Only a demo's progress numbers are made up for the recording, as a function of the
 time since the scan began: every 50 ms they rise evenly, the bytes toward the demo volume's used space (`[demo.volume]
-used`, the size the bar measures against, so the bar fills; the walk's own bytes when the world states no volume) and
-the entries toward the walk's, and they never go down. The scan ends once the walk is done and `DEMO_SCAN_TIME` (3 s)
-has passed; a cancel stops it at the next tick, a failed walk ends at once. The wrapper is chosen in the sandbox's
-composition (`SandboxMode::paced_scan`, `ScanPace` in `app/tauri/src/sandbox.rs`), compiled into debug builds only; the
-app, the demo worlds' scan test and every autotest walk unpaced. Tests on a fake clock:
+used`, the size the bar measures against, so the bar fills; the walk's own bytes when they are more, or when the world
+states no volume) and the entries toward the walk's, and they never go down. The scan ends once the walk is done and
+`DEMO_SCAN_TIME` (3 s) has passed; a cancel stops it at the next tick, a failed walk ends at once. The wrapper is chosen
+in the sandbox's composition (`SandboxMode::paced_scan`, `ScanPace` in `app/tauri/src/sandbox.rs`), compiled into debug
+builds only; the app, the demo worlds' scan test and every autotest walk unpaced. Tests on a fake clock:
 `crates/sandbox/src/paced_walk_tests.rs`. The 3 s keep the `cleanup` scenario well inside its 20 s budget.
 
 ## What was tried
