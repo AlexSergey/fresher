@@ -10,14 +10,37 @@ import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 
 type Arrival = { readonly opacity: number; readonly rise: number };
 
-type Watched = { __arrival__?: Arrival };
+type Watched = { __arrival__?: Arrival; __fill__?: number[] };
 
-// How long the scanning card's fill takes to move to a new value: 0 when it jumps.
-const fillGlide = (page: Page): Promise<number> =>
-  page
-    .locator('[role="progressbar"] path[stroke-dasharray]')
-    .last()
-    .evaluate((fill) => Number.parseFloat(getComputedStyle(fill).transitionDuration));
+// Records the scanning card's fill on every frame from the page's start: each new offset of its dash.
+const watchFill = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    const offsets: number[] = [];
+    const sample = (): void => {
+      const fill = [...document.querySelectorAll('[role="progressbar"] path[stroke-dasharray]')].at(-1);
+      const offset = fill?.getAttribute('stroke-dashoffset');
+
+      if (offset !== null && offset !== undefined && Number(offset) !== offsets.at(-1)) {
+        offsets.push(Number(offset));
+      }
+      requestAnimationFrame(sample);
+    };
+
+    (window as Watched).__fill__ = offsets;
+    requestAnimationFrame(sample);
+  });
+};
+
+// How many offsets the fill showed between its first one and the one of its value, once it rests there: 0 when it
+// jumps, more when it glides.
+const fillSteps = async (page: Page): Promise<number> => {
+  const bar = page.getByRole('progressbar');
+  const resting = (100 - Number(await bar.getAttribute('aria-valuenow'))) * 10;
+
+  await page.waitForFunction((offset) => (window as Watched).__fill__?.at(-1) === offset, resting);
+
+  return page.evaluate(() => Math.max(((window as Watched).__fill__ ?? []).length - 2, 0));
+};
 
 // Catches the next screen's arrival at its first frame: the animation is paused at 0 and the screen's opacity and
 // rise (its vertical offset, in pixels) read there.
@@ -53,6 +76,7 @@ const arrival = async (page: Page): Promise<Arrival> => {
 
 // Opens the app on the held demo scan and starts it: the scan stays running.
 const scanning = async (page: Page): Promise<void> => {
+  await watchFill(page);
   await mockCore(page, SCRIPTS.live);
   await page.goto('/');
   await scanButton(page).click();
@@ -84,7 +108,7 @@ test.describe('negative cases', () => {
   test("a scan under reduced motion jumps the card's fill to its value", async ({ page }) => {
     await scanning(page);
 
-    expect(await fillGlide(page)).toBe(0);
+    expect(await fillSteps(page)).toBe(0);
   });
 
   test('a screen change under reduced motion only fades', async ({ page }) => {
@@ -106,7 +130,7 @@ test.describe('positive cases', () => {
   test("a scan under full motion glides the card's fill to its value", async ({ page }) => {
     await scanning(page);
 
-    expect(await fillGlide(page)).toBeGreaterThan(0);
+    expect(await fillSteps(page)).toBeGreaterThan(0);
   });
 
   test('a screen change under full motion fades and rises', async ({ page }) => {
