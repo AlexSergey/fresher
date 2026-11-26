@@ -25,6 +25,10 @@ files, not the user's). A failure is logged and never stops the start. The restr
 [`../../restrictions/deletion-safety.md`](../../restrictions/deletion-safety.md), "Scanning is read-only"; the rest of
 [the deferred item](../../deferred/own-data-clearing.md) stays deferred.
 
+A limit, kept on purpose: the folder is opened through no link, so a data folder whose path holds a link anywhere (the
+folder itself, or a folder above it, linked elsewhere) is never cleared. It fails safe: the start logs a warning, goes
+on, and the stale files stay, as before the fix.
+
 ## What was tried (before the fix)
 
 - Since the code review of plan 002 the temporary files are named `.<target>.<random>.tmp`, so one left behind is

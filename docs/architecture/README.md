@@ -179,10 +179,10 @@ No database: the app keeps its own state in small plain files, with nothing to i
   against the settings schema in the core (pure); an unknown key or a broken value falls back to its default and is
   reported, never a crash. Each setting carries its **group** (where the settings screen shows it: `general`, `scan`,
   `ignored`, `permissions`, or `module` for every module's) and its **effect** (`now`, or `next-scan`: a change marks
-  the last scan, or the scan running, and the UI offers "Scan again to apply it"; the app never rescans on its own).
-  The kinds are `switch`,
-  `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder), `ids` (of
-  categories, modules or groups, checked by what they hold: `IdOf`) and `paths` (the ignore lists). `reset_settings` puts every setting but the ignore lists back to its default in one save.
+  the last scan, or the scan running, and the UI offers "Scan again to apply it"; the app never rescans on its own). The
+  kinds are `switch`, `number`, `choice`, `folders` (`~`, `~/…` or a plain absolute path, never a protected folder),
+  `ids` (of categories, modules or groups, checked by what they hold: `IdOf`) and `paths` (the ignore lists).
+  `reset_settings` puts every setting but the ignore lists back to its default in one save.
 - **The ignore list** (`core.ignore.modules`, `core.ignore.groups`, `core.ignore.categories`, `core.ignore.paths`):
   the engine keeps a scan's ignored findings in memory but leaves them out of every answer and plan, so a restore
   shows them again without a rescan; the cleaner gets the ignored paths as protection. An ignored group hides every
@@ -241,17 +241,17 @@ Everything)`. `AppInfo.high` reports it to the UI. The rule:
   then reads a sample of the copied folders: one difference the journal does not name when asked again (a folder it
   names then changed after the rescan first asked it, or just before, since the system numbers a change a little after
   it is made; the cached tree is then patched again with that answer, so the folder is read as it is now), a gap in
-  the journal, a position older than two weeks or too many changes, and
-  the scan is full (`WalkSummary::fallback` says why; for a failed check, the first folder that differed, as a path
-  inside its root, and what differed in it). The engine logs the reason and keeps it for the last scan
-  (`Engine::fallback`), which the development run record writes; the interface never shows it. The progress of one
-  walk only rises: a rescan that becomes full has reported what it walked again, the full walk counts from zero, and
-  the scanner passes on only the counts that pass the highest seen, so the bar holds until the full walk passes them. A cache of another avoid
-  list is refused (`OtherAvoidList`), since reading only the changes would then be wrong. The cache never shows a result
-  by itself: at launch the engine starts nothing (no scan, no restore of the last result; rule 10), and the first scan
-  the user starts after a restart is a rescan of the cache the last one saved. The places walked outside the roots are
-  never served from the cache: a rescan walks each again in full, whatever the journal says (it reports no read, and a
-  status change through a hard link elsewhere moves no event in the folder).
+  the journal, a position older than two weeks or too many changes, and the scan is full (`WalkSummary::fallback` says
+  why; for a failed check, the first folder that differed, as a path inside its root, and what differed in it). The
+  engine logs the reason and keeps it for the last scan (`Engine::fallback`), which the development run record writes;
+  the interface never shows it. The progress of one walk only rises: a rescan that becomes full has reported what it
+  walked again, the full walk counts from zero, and the scanner passes on only the counts that pass the highest seen, so
+  the bar holds until the full walk passes them. A cache of another avoid list is refused (`OtherAvoidList`), since
+  reading only the changes would then be wrong. The cache never shows a result by itself: at launch the engine starts
+  nothing (no scan, no restore of the last result; rule 10), and the first scan the user starts after a restart is a
+  rescan of the cache the last one saved. The places walked outside the roots are never served from the cache: a rescan
+  walks each again in full, whatever the journal says (it reports no read, and a status change through a hard link
+  elsewhere moves no event in the folder).
 - **Places outside the scan roots** (`WalkRequest.places`, the engine's `places.rs`): the user's temporary folder and
   `/private/tmp` (`KnownFolder::is_walked_place`), when a registered module's interest is anchored in one, enabled or
   not, it lies outside the home, and no scan root holds it or lies in it, are walked as roots of their own after the

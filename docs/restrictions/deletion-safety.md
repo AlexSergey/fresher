@@ -212,10 +212,11 @@ The app deletes files from a real person's disk. These rules hold in every versi
   protected or whole place of the real Mac, with the real and the sandbox protection lists joined, so it removes
   nothing the real list would keep. Tests: `crates/cleaner/tests/reach.rs`, `crates/core/src/cleanup/protection.rs`,
   `app/tauri/tests/sandboxes.rs`. A development build outside a sandbox has a fourth, the dry run (`Reach::DryRun`,
-  debug builds only): every check runs on the real disk and no item is acted on; it ends "a dry run". What it cannot
-  rehearse is what runs inside the act: an emptied folder's checks of its place and of each entry, and the Trash's own
-  answers such as `NoTrash`. Tests: `crates/cleaner/src/pipeline.rs`, `crates/cleaner/tests/never.rs`,
-  `app/tauri/src/compose.rs`.
+  debug builds only): every check runs on the real disk and no item is acted on; it ends "a dry run". The one exception
+  is the removal of the store's own stale temporary files ("Scanning is read-only"): it runs in development builds too,
+  on the app's own data folder only, never on an item of a plan. What the dry run cannot rehearse is what runs inside
+  the act: an emptied folder's checks of its place and of each entry, and the Trash's own answers such as `NoTrash`.
+  Tests: `crates/cleaner/src/pipeline.rs`, `crates/cleaner/tests/never.rs`, `app/tauri/src/compose.rs`.
   `/Applications` is a protected place that opens its whole app bundles, for an uninstall the user confirmed and
   nothing else (plan [036](../plans/036-uninstall/readme.md)): `Protection::with_app_folders` lets through exactly
   `/Applications/<name>.app` and `/Applications/<sub>/<name>.app` (the last name's extension exactly `app`, `<sub>`

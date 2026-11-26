@@ -194,8 +194,9 @@ Each is recorded in its step as an agent's call.
 - [A FIFO is read as a regular file](../../known-issues/fixed/core-fifo-read-as-file.md) (open): the core's entry kinds have
   no "other", so a named pipe with a marker's name counts as that marker for the matcher (the walker's tag read
   refuses it, so a `CACHEDIR.TAG` FIFO is never `Valid`). The fix is a core contract, for a later plan.
-- [Stale temporary files in the data folder](../../known-issues/fixed/store-stale-temporary-files.md) (open, from plan 002):
-  the cache writes the same way; the footprint run found none.
+- [Stale temporary files in the data folder](../../known-issues/fixed/store-stale-temporary-files.md) (from plan
+  002, since fixed: the data folder's stale temporary files are removed when it opens): the cache writes the same way;
+  the footprint run found none.
 
 ### By hand (the user)
 
