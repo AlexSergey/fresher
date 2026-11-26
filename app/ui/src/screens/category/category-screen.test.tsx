@@ -245,10 +245,40 @@ describe('CategoryScreen', () => {
       scanned(store, [DOWNLOADS_LEFT_OUT], { ...DEMO_OVERVIEW, totals: DEMO_OVERVIEW.totals.slice(0, 1) });
 
       expect(screen.queryByText('Nothing found here')).toBeNull();
-      expect(screen.getByText('Everything found here was left out. The lines above say why.')).toBeVisible();
+      expect(screen.getByText('Everything found here was left out. The lines below say why.')).toBeVisible();
       expect(leftOutLines()).toHaveTextContent(
         '2 items kept (4 MB): The app that made it is open. Quit the app, then scan again.',
       );
+    });
+
+    it('shows no size and no count in the header when everything found was left out', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderDetails('demo.downloads');
+      const sizes = { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 } as const;
+      const zero = { category: 'demo.downloads', count: 0, highestDanger: 'low', sizes } as const;
+
+      scanned(store, [{ ...DEMO_LEFT_OUT, category: 'demo.downloads' }], {
+        ...DEMO_OVERVIEW,
+        totals: [DEMO_OVERVIEW.totals[0] as Overview['totals'][number], zero],
+      });
+
+      expect(screen.getByRole('heading', { level: 1, name: 'Example downloads' })).toBeVisible();
+      expect(screen.queryByText('0 items')).toBeNull();
+      expect(screen.queryByText(/^0 bytes$/u)).toBeNull();
+      expect(screen.getByText('Everything found here was left out. The lines below say why.')).toBeVisible();
+    });
+
+    it('shows no item held back for now before its toggle is pressed', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderDetails('demo.caches');
+
+      scanned(store, [DEMO_LEFT_OUT]);
+
+      expect(screen.getByRole('button', { name: /^1 item left out \(157\.3 MB\)/u })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+      expect(screen.queryByRole('list', { name: 'The items left out' })).toBeNull();
     });
 
     it('shows a count kept for good as a quiet line with no item and no bar', async () => {
@@ -400,6 +430,16 @@ describe('CategoryScreen', () => {
       expect(leftOutLines()).not.toHaveTextContent('kept');
     });
 
+    it('shows the left-out lines after the offered items', async () => {
+      core({ getOverview: () => IDLE });
+      const { store } = await renderDetails('demo.caches');
+
+      scanned(store, [DEMO_LEFT_OUT]);
+
+      const findings = await screen.findByRole('region', { name: 'The items of Example caches' });
+      expect(findings.compareDocumentPosition(leftOutLines() as HTMLElement)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
     it('shows each line held back for now as a bar led by an i icon', async () => {
       core({ getOverview: () => IDLE });
       const { store } = await renderDetails('demo.caches');
@@ -417,6 +457,7 @@ describe('CategoryScreen', () => {
       const { store } = await renderDetails('demo.caches');
 
       scanned(store, [DEMO_LEFT_OUT]);
+      fireEvent.click(screen.getByRole('button', { name: /^1 item left out/u }));
 
       const item = within(screen.getByRole('list', { name: 'The items left out' })).getByRole('listitem');
       expect(item).toHaveTextContent('Example: com.example.notes');

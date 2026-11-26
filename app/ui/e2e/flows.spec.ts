@@ -661,7 +661,9 @@ test.describe('negative cases', () => {
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, XCODE_DATA);
     await expect(details(page)).toContainText(`2 items left out (4.3 GB): ${dev('left-out.app-open')}`);
-    await expect(details(page)).toContainText('Everything found here was left out. The lines above say why.');
+    await expect(details(page)).toContainText('Everything found here was left out. The lines below say why.');
+    // Nothing is offered: the header shows no "0 bytes / 0 items".
+    await expect(details(page).getByText(/^0 (bytes|items)$/)).toHaveCount(0);
     await expect(details(page).getByRole('checkbox')).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, GRADLE);
@@ -763,7 +765,7 @@ test.describe('negative cases', () => {
     await expect(leftOut.getByRole('checkbox')).toHaveCount(0);
     await openDetails(page, AI_LM_STUDIO);
     await expect(details(page)).toContainText(`1 item left out (4.7 GB): ${ai('left-out.app-open')}`);
-    await expect(details(page)).toContainText('Everything found here was left out. The lines above say why.');
+    await expect(details(page)).toContainText('Everything found here was left out. The lines below say why.');
     await expect(details(page).getByRole('checkbox')).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, AI_HF_MODELS);
@@ -1890,8 +1892,13 @@ test.describe('positive cases', () => {
     await page.getByRole('button', { name: 'Back to Scan' }).click();
     await openDetails(page, JB.settings);
     await expect(details(page)).toContainText(`2 items left out (600 MB): ${jb('left-out.running')}`);
-    // Each folder of the open IDE is listed by its name, its path from the home and its size.
+    // The folders of the open IDE are folded under their line, which opens them.
     const held = details(page).getByRole('list', { name: 'The items left out' });
+    await expect(held).toBeHidden();
+    await details(page)
+      .getByRole('button', { name: `2 items left out (600 MB): ${jb('left-out.running')}` })
+      .click();
+    // Each is listed by its name, its path from the home and its size.
     await expect(held.getByRole('listitem')).toHaveCount(2);
     await expect(held.getByRole('listitem').first()).toContainText('GoLand 2024.2');
     await expect(held.getByRole('listitem').first()).toContainText(

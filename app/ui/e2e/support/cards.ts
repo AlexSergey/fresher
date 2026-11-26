@@ -21,9 +21,10 @@ export const detailsOf = (page: Page, name: string): Locator =>
 export const cardNames = (page: Page): Locator =>
   page.locator('section[data-level]').getByRole('heading', { level: 3 });
 
-// Waits for the end of a scan on Scan: Scan again shows once the core's last overview has arrived.
+// Waits for the end of a scan on Scan: Scan again shows once the core's last overview has arrived. Exact: a left-out
+// line's toggle can end with "then scan again".
 export const scanFinished = async (page: Page): Promise<void> => {
-  await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
+  await expect(page.getByRole('button', { exact: true, name: 'Scan again' })).toBeVisible();
 };
 
 // Opens a category's details from its card: the details' heading, the category's name, takes the focus.

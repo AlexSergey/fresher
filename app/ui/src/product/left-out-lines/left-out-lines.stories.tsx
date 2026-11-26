@@ -41,9 +41,17 @@ export const stories = storiesOf('LeftOutLines', {
     render: withTexts(() => <LeftOutLines bar counts={[MANY, KEPT]} home="/Users/someone" />),
     width: 560,
   },
+  'details-bars-opened': {
+    render: withTexts(() => <LeftOutLines bar counts={[MANY, KEPT]} home="/Users/someone" open />),
+    width: 560,
+  },
   'one-line': { render: withTexts(() => <LeftOutLines counts={[DEMO_LEFT_OUT]} />), width: 560 },
   'with-more': {
     render: withTexts(() => <LeftOutLines counts={[MANY]} home="/Users/someone" />),
+    width: 560,
+  },
+  'with-more-opened': {
+    render: withTexts(() => <LeftOutLines counts={[MANY]} home="/Users/someone" open />),
     width: 560,
   },
 });

@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { mockCore, SCRIPTS } from './core-mock';
-import { scanButton } from './support/cards';
+import { details, openDetails, scanButton, scanFinished } from './support/cards';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
 import { nextFrames } from './support/frames';
 import { motionOff } from './support/motion';
@@ -245,6 +245,32 @@ test.describe('positive cases', () => {
     const [visible, shadow] = await ringOf(next);
     expect(visible).toBe(true);
     expect(shadow).not.toBe('none');
+  });
+
+  test("Tab reaches a left-out line's toggle, named by its sentence, and Enter unfolds its items", async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+    await scanButton(page).click();
+    await scanFinished(page);
+    await openDetails(page, 'Example caches');
+    const toggle = details(page).getByRole('button', {
+      name: '1 item left out (157.3 MB): The app that made it is open. Quit the app, then scan again.',
+    });
+    const items = details(page).getByRole('list', { name: 'The items left out' });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(items).toBeHidden();
+
+    // From the focused heading, Tab walks the screen's controls down to the line under the items.
+    for (let stop = 0; stop < 40 && !(await toggle.evaluate((element) => element === document.activeElement)); stop++) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(items.getByRole('listitem')).toHaveCount(1);
+    await page.keyboard.press('Space');
+    await expect(items).toBeHidden();
   });
 
   test('a dialog opened by keyboard gives the focus back to its opener', async ({ page }) => {

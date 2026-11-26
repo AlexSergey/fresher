@@ -107,6 +107,14 @@ describe('LeftOutOnly', () => {
       expect(screen.queryByText(/kept/u)).toBeNull();
     });
 
+    it('shows no item held back before its toggle is pressed', async () => {
+      await renderSection([DOWNLOADS_LEFT_OUT]);
+
+      const toggle = within(section() as HTMLElement).getByRole('button', { name: /^1 item left out/u });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(within(section() as HTMLElement).queryByRole('list', { name: 'The items left out' })).toBeNull();
+    });
+
     it('shows no left-out section while a scan runs', async () => {
       const { store } = await renderSection([DOWNLOADS_LEFT_OUT]);
 
@@ -140,6 +148,7 @@ describe('LeftOutOnly', () => {
 
     it('lists each item held back for now by its name, its path and its size', async () => {
       await renderSection([DOWNLOADS_LEFT_OUT]);
+      fireEvent.click(within(section() as HTMLElement).getByRole('button', { name: /^1 item left out/u }));
 
       const items = within(section() as HTMLElement).getByRole('list', { name: 'The items left out' });
       const item = within(items).getByRole('listitem');

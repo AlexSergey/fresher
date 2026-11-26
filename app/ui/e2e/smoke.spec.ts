@@ -48,7 +48,7 @@ test.describe('positive cases', () => {
 
     await scanButton(page).click();
 
-    await expect(page.getByRole('button', { name: 'Scan again' })).toBeVisible();
+    await expect(page.getByRole('button', { exact: true, name: 'Scan again' })).toBeVisible();
     await expect(page.locator('[data-card]')).toHaveCount(2);
   });
 

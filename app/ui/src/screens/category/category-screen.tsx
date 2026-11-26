@@ -39,11 +39,11 @@ const NO_LEFT_OUT: readonly LeftOutCount[] = [];
 
 const textOf = (key: string): string => tText({ args: {}, key });
 
-// "What is this, and is it safe to remove?" for one category: its name, its group, its size and count, why it cannot
-// be cleaned when unavailable, the three answers, what was left out of it as bars, the module's choices that touch
-// it, and every finding with its box (and one "Select all" for the whole category, unless it is "Look before
-// removing"); the selection bar once something is selected. Back returns to the overview. Selecting here is not
-// removing: Review stays the only way to a cleanup.
+// "What is this, and is it safe to remove?" for one category: its name, its group, its size and count (not when
+// everything found was left out), why it cannot be cleaned when unavailable, the three answers, the module's choices
+// that touch it, every finding with its box (and one "Select all" for the whole category, unless it is "Look before
+// removing"), then what was left out of it as folded bars; the selection bar once something is selected. Back returns
+// to the overview. Selecting here is not removing: Review stays the only way to a cleanup.
 export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
@@ -68,6 +68,8 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
   const named = { name: { kind: 'text', value: name } } as const;
   const count = total?.count ?? 0;
   const ownLeftOut = leftOut.filter((one) => one.category === category);
+  // Everything found was left out: the header shows no "0 bytes / 0 items", the lines below say why.
+  const allLeftOut = count === 0 && ownLeftOut.length > 0;
   const backRef = useRef<HTMLButtonElement>(null);
   const previousCountRef = useRef(count);
 
@@ -109,7 +111,7 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
             </span>
           )}
         </div>
-        {total === undefined ? null : (
+        {total === undefined || allLeftOut ? null : (
           <div className={styles.total}>
             <SizeText {...honestSize(total.sizes)} size="title-1" />
             <span className={styles.count}>
@@ -128,7 +130,6 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
           </section>
         ) : null}
         <CategoryAbout category={category} />
-        <LeftOutLines bar counts={ownLeftOut} home={home} />
         <ModuleChoices category={category} module={module} totals={totals} />
         {unavailable || (scanning && count === 0) ? null : total === undefined || count === 0 ? (
           ownLeftOut.length > 0 ? (
@@ -159,6 +160,7 @@ export const CategoryScreen = ({ category, module }: CategoryScreenProps): JSX.E
             </div>
           </section>
         )}
+        <LeftOutLines bar counts={ownLeftOut} home={home} />
       </div>
       <SelectionBar
         onClear={() => {

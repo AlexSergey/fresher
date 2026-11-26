@@ -279,6 +279,13 @@ test.describe('positive cases', () => {
         await expect(details(page).getByRole('checkbox').first()).toBeVisible();
 
         expect(await violations(page)).toStrictEqual([]);
+        // Opened, the lines' items pass too.
+        for (const toggle of await details(page)
+          .locator('button[aria-expanded="false"]', { hasText: 'left out' })
+          .all()) {
+          await toggle.click();
+        }
+        expect(await violations(page)).toStrictEqual([]);
       });
     }
 
@@ -330,6 +337,10 @@ test.describe('positive cases', () => {
       await expect(leftOut).not.toContainText("Gradle's caches");
       await leftOut.scrollIntoViewIfNeeded();
 
+      expect(await violations(page)).toStrictEqual([]);
+      // Opened, its items pass too.
+      await leftOut.getByRole('button', { name: /^2 items left out/ }).click();
+      await expect(leftOut.getByRole('list', { name: 'The items left out' })).toBeVisible();
       expect(await violations(page)).toStrictEqual([]);
     });
 

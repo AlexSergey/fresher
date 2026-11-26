@@ -198,7 +198,7 @@
   "ui.screen.category.comes-back": "Comes back?",
   "ui.screen.category.count.one": "{count} item",
   "ui.screen.category.count.other": "{count} items",
-  "ui.screen.category.empty.left-out": "Everything found here was left out. The lines above say why.",
+  "ui.screen.category.empty.left-out": "Everything found here was left out. The lines below say why.",
   "ui.screen.category.empty.text": "The last scan found nothing of this kind.",
   "ui.screen.category.empty.title": "Nothing found here",
   "ui.screen.category.if-removed": "If you remove it",

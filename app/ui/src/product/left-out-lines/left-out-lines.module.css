@@ -1,4 +1,5 @@
-/* The quiet lines under a category: how many items were left out, how big and why, then each item held back. */
+/* The quiet lines of a category: how many items were left out, how big and why; a line held back for now is a toggle
+   that unfolds each item. The chevron turns by transform; under reduced motion it turns without moving. */
 @layer components {
   .lines {
     display: grid;
@@ -22,6 +23,51 @@
     flex-wrap: wrap;
     align-items: center;
     column-gap: var(--space-1);
+  }
+
+  .toggle {
+    display: flex;
+    align-items: flex-start;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: var(--space-1);
+    text-align: start;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .toggle:hover {
+    color: var(--text-primary);
+  }
+
+  .toggle:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+
+  .sentence {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chevron {
+    display: inline-flex;
+    flex: none;
+    align-self: center;
+    color: var(--text-tertiary);
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .toggle[aria-expanded='true'] .chevron {
+    transform: rotate(90deg);
+  }
+
+  .items[hidden] {
+    display: none;
   }
 
   .items {
@@ -82,6 +128,22 @@
     color: var(--text-tertiary);
   }
 
+  /* The toggle fills its bar, so the whole bar opens it; the items sit under it inside the bar. */
+  .lines[data-bar] .line[data-foldable] {
+    padding: 0;
+    gap: 0;
+  }
+
+  .lines[data-bar] .toggle {
+    padding: 10px var(--space-3-5);
+    border-radius: var(--radius-md);
+    gap: 6px;
+  }
+
+  .lines[data-bar] .toggle + .items {
+    padding: 0 var(--space-3-5) 10px;
+  }
+
   .lines[data-bar] .summary > :nth-child(1) {
     margin-right: 6px;
   }
@@ -95,5 +157,15 @@
     height: 14px;
     flex: none;
     color: var(--text-tertiary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='full']) .chevron {
+      transition: none;
+    }
+  }
+
+  :root[data-motion='reduced'] .chevron {
+    transition: none;
   }
 }
