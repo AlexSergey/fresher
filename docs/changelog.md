@@ -6,7 +6,7 @@ versioning; until 1.0.0 a minor version may change how the app behaves. How a re
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-11-25
+## [0.1.0] - 2026-11-26
 
 The first release, for testers: please try it on your Mac and tell us what it got wrong.
 
