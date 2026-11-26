@@ -49,20 +49,42 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
-  test('a long plan at 900 × 600 keeps the method and the buttons in view and scrolls only its list', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ height: 600, width: 900 });
-    await openStory(page, 'ConfirmDialog/long-list');
-    const dialog = page.getByRole('dialog');
-    const body = dialog
-      .getByRole('list', { name: 'The items of Example caches' })
-      .locator('xpath=ancestor::div[contains(@class,"body")][1]');
+  // A long plan (a virtual list), a mid-size one (30 items listed as they are) and one of several categories (with
+  // the High tick): whatever the plan, the method and the buttons stay in view and one region scrolls.
+  for (const [story, ticks] of [
+    ['long-list', 1],
+    ['mid-list', 1],
+    ['several-categories', 2],
+  ] as const) {
+    test(`the plan ${story} at 900 × 600 keeps the method and the buttons in view and scrolls one region`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ height: 600, width: 900 });
+      await openStory(page, `ConfirmDialog/${story}`);
+      const dialog = page.getByRole('dialog');
 
-    await expect(dialog.getByRole('checkbox', { name: /Delete permanently/u })).toBeInViewport({ ratio: 1 });
-    await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeInViewport({ ratio: 1 });
-    expect(await body.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
-  });
+      await expect(dialog.getByRole('checkbox', { name: /Delete permanently/u })).toBeInViewport({ ratio: 1 });
+      await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeInViewport({ ratio: 1 });
+
+      // Every tick, the High one of a High plan with it.
+      await expect(dialog.getByRole('checkbox')).toHaveCount(ticks);
+
+      for (const tick of await dialog.getByRole('checkbox').all()) {
+        await expect(tick).toBeInViewport({ ratio: 1 });
+      }
+
+      const scrolling = await dialog.evaluate(
+        (element) =>
+          [element, ...element.querySelectorAll('*')].filter((node) => {
+            const { overflowY } = getComputedStyle(node);
+
+            return (overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight;
+          }).length,
+      );
+
+      expect(scrolling).toBe(1);
+    });
+  }
 
   test('the keyboard moves through the dialog from its first control', async ({ page }) => {
     await openStory(page, 'Dialog/short-body');

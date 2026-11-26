@@ -1,7 +1,7 @@
 /*
  * The confirmation's body. Static by the safety rule: nothing here moves; the dialog's own fade and scale is the one
  * motion. A long group's virtual list is set still (its rows do not enter), and the High tick's and the permanent
- * choice's marks appear at once instead of drawing themselves.
+ * choice's marks appear at once instead of drawing themselves. The two sit in the footer, with the buttons.
  */
 @layer components {
   .content {
@@ -15,7 +15,7 @@
     flex: none;
   }
 
-  /* The group with a long list takes the height the dialog leaves; its list scrolls, nothing else does. */
+  /* The group with a long list takes the height the dialog leaves: its list scrolls, the body does not. */
   .content > .group:has(.long) {
     min-height: 0;
     flex: 1 1 auto;
@@ -165,10 +165,23 @@
     animation: none;
   }
 
+  /* The footer: the High tick and the method above the buttons, out of the scroll, so they are always in sight. */
+  .actions {
+    display: grid;
+    flex: 1;
+    gap: var(--space-4);
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
   .choice,
   .high {
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--border-subtle);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .choice path,

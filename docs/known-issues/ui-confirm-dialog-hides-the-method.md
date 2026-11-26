@@ -1,6 +1,6 @@
 # The confirmation of a long cleanup hides the choice of method
 
-**Status:** fixed (the list takes the height the dialog leaves, one scroll only) · **Updated:** 2026-11-26
+**Status:** fixed (the choice of method and the High tick sit with the buttons, out of the scroll) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -11,14 +11,21 @@ confirm without seeing how the items will be removed.
 
 ## Cause
 
-The long group's list had a fixed height of 320 px, and the dialog's body (header and footer fixed, the body between
-them scrolling) is shorter than the content at the window's minimum, 900 x 600. The list scrolled inside its own box
-and the body scrolled as well, so the choice of method, last in the content, was below the fold.
+The High tick and the choice of method were the last part of the dialog's body, the region between the fixed header
+and footer that scrolls. At the window's minimum, 900 x 600, any plan longer than the body (a long group's virtual
+list of a fixed 320 px, but also a plain list of some 30 items, or several short groups) pushed them below the fold.
+A long group scrolled twice: its virtual list inside its own box, and the body around it.
 
 ## Fix
 
-The content now fills the height of the body as a column: the group with a long list takes what the rest leaves
-(`flex: 1 1 320px`, at least 96 px) and everything else keeps its size, so the list is the only scroll region and the
-heading, the choice of method and the buttons stay in view. The shared dialog body gives its content the body's height
-for this. Checked by a unit test (structure and layout rules) and an end-to-end case at 900 x 600 in Chromium and
-WebKit.
+The High tick and the choice of method (with its line on when the space comes back) moved from the body into the
+dialog's footer, above the buttons (`confirm-dialog.tsx`, `.actions`): the footer does not scroll, so for any plan
+(one item, a plain list, several categories, a virtual list of hundreds) they and the buttons are always in sight,
+and the items scroll in the one region above them. A long group's virtual list keeps its own scroller, so for it the
+body does not scroll: the content fills the body's height as a column and the group takes what the rest leaves
+(`flex: 1 1 320px`, at least 96 px). For this the shared dialog body gives its content the body's height, and it is
+positioned, so a visually hidden text in a scrolled-out row is clipped by the body instead of scrolling the dialog.
+
+Checked by a unit test (the tick and the choice in the footer, out of the list) and an end-to-end case at 900 x 600
+in Chromium and WebKit for a long plan, a plan of 30 items and a plan of three categories with the High tick: the
+ticks and the confirm button wholly in view, and one scrolling region in the dialog.

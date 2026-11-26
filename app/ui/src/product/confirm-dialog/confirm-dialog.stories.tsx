@@ -12,6 +12,8 @@ import {
   LEFT_OUT_PLAN,
   LONG_PLAN,
   LONG_TOGETHER_PLAN,
+  MID_PLAN,
+  SEVERAL_PLAN,
   TOGETHER_PLAN,
   TOOL_PLAN,
 } from '../../test/cleanup-plan';
@@ -59,7 +61,9 @@ export const stories = storiesOf('ConfirmDialog', {
   'highest-high': open(HIGH_PLAN),
   'left-out': open(LEFT_OUT_PLAN),
   'long-list': open(LONG_PLAN),
+  'mid-list': open(MID_PLAN),
   permanent: open(DEMO_PLAN, true),
+  'several-categories': open(SEVERAL_PLAN),
   'together-item': open(TOGETHER_PLAN),
   'together-item-open': open(TOGETHER_PLAN, false, true),
   'together-item-open-long': open(LONG_TOGETHER_PLAN, false, true),

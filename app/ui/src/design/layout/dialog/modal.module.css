@@ -99,7 +99,9 @@
     color: var(--text-secondary);
   }
 
+  /* Positioned, so an absolute child (a visually hidden text) is clipped by the body and never scrolls the dialog. */
   .body {
+    position: relative;
     min-height: 0;
     flex: 1;
     padding: var(--space-2) var(--space-6) var(--space-5);
@@ -107,7 +109,10 @@
     overscroll-behavior: contain;
   }
 
-  /* As tall as the body, so a content that fills its height (a list that shrinks) never makes the body scroll. */
+  /*
+   * As tall as the body, so a content that fills its height (a list that shrinks) never makes the body scroll. Pinned
+   * so, it does not resize when its children grow past it: the overflow is measured again on each render instead.
+   */
   .content {
     height: 100%;
   }

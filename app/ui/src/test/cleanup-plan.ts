@@ -147,6 +147,24 @@ export const LONG_PLAN: CleanupPlanView = planOf(
   ),
 );
 
+// 30 caches: one group listed as it is, longer than a short window.
+export const MID_PLAN: CleanupPlanView = planOf(
+  Array.from({ length: 30 }, (_, at) =>
+    findingOf({ bytes: 9_000_000 + at * 1_000_000, id: 400 + at, level: 'safe', name: `cache-${String(at + 1)}` }),
+  ),
+);
+
+// Three short groups, caches, downloads and projects, one of them High: a plan of several categories.
+export const SEVERAL_PLAN: CleanupPlanView = planOf([
+  ...Array.from({ length: 6 }, (_, at) => findingOf({ id: 500 + at, level: 'safe', name: `cache-${String(at + 1)}` })),
+  ...Array.from({ length: 6 }, (_, at) =>
+    findingOf({ category: 'demo.downloads', id: 510 + at, level: 'low', name: `installer-${String(at + 1)}` }),
+  ),
+  ...Array.from({ length: 4 }, (_, at) =>
+    findingOf({ category: 'demo.projects', id: 520 + at, level: 'high', name: `project-${String(at + 1)}` }),
+  ),
+]);
+
 const MODEL_PATHS = [
   '/Users/someone/.ollama/models/manifests/registry.ollama.ai/library/demo/latest',
   '/Users/someone/.ollama/models/blobs/sha256-0a1b2c3d4e5f',

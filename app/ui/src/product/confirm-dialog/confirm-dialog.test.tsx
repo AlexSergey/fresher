@@ -488,6 +488,21 @@ describe('ConfirmDialog', () => {
       expect(css).toMatch(/\.content \{[^}]*height: 100%;[^}]*flex-direction: column;/u);
     });
 
+    it('the High tick and the method sit in the footer with the buttons, out of the items that scroll', () => {
+      openDialog({ plan: HIGH_PLAN });
+      const confirm = screen.getByRole('button', { name: 'Yes, move to the Trash' });
+      // eslint-disable-next-line testing-library/no-node-access -- the footer is the dialog's fixed region, it has no role
+      const footer = confirm.closest('footer');
+      const items = screen.getByRole('list', { name: 'The items of Example caches' });
+
+      expect(footer).not.toBeNull();
+      expect(footer).toContainElement(highTick());
+      expect(footer).toContainElement(permanentChoice());
+      expect(footer?.contains(items)).toBe(false);
+      expect(highTick().compareDocumentPosition(permanentChoice()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(permanentChoice().compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('the total size is static text', () => {
       const dialog = openDialog();
 

@@ -290,7 +290,8 @@ const titleOf = (plan: CleanupPlanView, way: Way, permanent: boolean): string =>
 
 // The confirmation of a removal: the action and the count, the highest danger level with its sentence, the total size,
 // the exact items grouped by category and by how they go, with what each group loses, what will not be removed and why,
-// the High tick of a High plan, off, and the permanent choice, off. Every figure is the core's plan: nothing is summed
+// the High tick of a High plan, off, and the permanent choice, off: these two sit with the buttons, below the items
+// that scroll, so they are always in sight. Every figure is the core's plan: nothing is summed
 // here. A plan whose items were all left out has no confirm button. Cancel has the first focus; no key confirms; a High
 // plan cannot be confirmed until its tick is ticked. Static by the safety rule: only the dialog's own entrance moves.
 export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialogProps): JSX.Element | null => {
@@ -354,24 +355,49 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
         size: { kind: 'text', value: size.accessibleText },
       })}
       footer={
-        <>
-          <Button onClick={onCancel} ref={cancelRef} variant="secondary">
-            {t('ui.confirm.cancel')}
-          </Button>
-          <Button
-            aria-describedby={blocked ? highId : undefined}
-            disabled={blocked}
-            icon={Trash2}
-            onClick={() => {
-              onConfirm(method, high && understood);
-            }}
-            variant={irreversible ? 'danger' : 'primary'}
-          >
-            {way === 'tools'
-              ? t('ui.confirm.remove')
-              : t(method === 'permanent' ? 'ui.confirm.delete' : 'ui.confirm.trash')}
-          </Button>
-        </>
+        <div className={styles.actions}>
+          {high ? (
+            <div className={styles.high} id={highId}>
+              <Checkbox
+                checked={understood}
+                description={t('ui.confirm.high-description')}
+                label={t('ui.confirm.high')}
+                onChange={setUnderstood}
+              />
+            </div>
+          ) : null}
+          {way === 'tools' ? null : (
+            <div className={styles.choice}>
+              {method === 'trash' ? <p className={styles.space}>{t('ui.confirm.space-later')}</p> : null}
+              {way === 'choice' ? (
+                <Checkbox
+                  checked={permanent}
+                  description={t('ui.confirm.permanent-description')}
+                  label={t('ui.confirm.permanent')}
+                  onChange={setPermanent}
+                />
+              ) : null}
+            </div>
+          )}
+          <div className={styles.buttons}>
+            <Button onClick={onCancel} ref={cancelRef} variant="secondary">
+              {t('ui.confirm.cancel')}
+            </Button>
+            <Button
+              aria-describedby={blocked ? highId : undefined}
+              disabled={blocked}
+              icon={Trash2}
+              onClick={() => {
+                onConfirm(method, high && understood);
+              }}
+              variant={irreversible ? 'danger' : 'primary'}
+            >
+              {way === 'tools'
+                ? t('ui.confirm.remove')
+                : t(method === 'permanent' ? 'ui.confirm.delete' : 'ui.confirm.trash')}
+            </Button>
+          </div>
+        </div>
       }
       initialFocus={cancelRef}
       onClose={onCancel}
@@ -391,29 +417,6 @@ export const ConfirmDialog = ({ onCancel, onConfirm, open, plan }: ConfirmDialog
           <Group group={group} key={`${group.category} ${group.action}`} method={method} />
         ))}
         {plan.leftOut.length === 0 ? null : <LeftOutList items={plan.leftOut} />}
-        {high ? (
-          <div className={styles.high} id={highId}>
-            <Checkbox
-              checked={understood}
-              description={t('ui.confirm.high-description')}
-              label={t('ui.confirm.high')}
-              onChange={setUnderstood}
-            />
-          </div>
-        ) : null}
-        {way === 'tools' ? null : (
-          <div className={styles.choice}>
-            {method === 'trash' ? <p className={styles.space}>{t('ui.confirm.space-later')}</p> : null}
-            {way === 'choice' ? (
-              <Checkbox
-                checked={permanent}
-                description={t('ui.confirm.permanent-description')}
-                label={t('ui.confirm.permanent')}
-                onChange={setPermanent}
-              />
-            ) : null}
-          </div>
-        )}
       </div>
     </Dialog>
   );

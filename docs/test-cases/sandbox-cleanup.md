@@ -116,10 +116,10 @@ for i in range(300):
 cd ../../..
 ```
 
-Pick the whole cache category, choose **Delete permanently** in the confirmation (it may be below the fold: [known
-issue](../known-issues/ui-confirm-dialog-hides-the-method.md)) and confirm; press ⌘Q right away. While it runs: ⌘Q asks; **Keep cleaning** changes nothing and the
-cleanup goes on. ⌘Q again, **Stop and quit**: the app stops after the item in hand and quits. Closing the window asks
-the same. The Dock's Quit does not ask: [known issue](../known-issues/app-quit-during-cleanup.md).
+Pick the whole cache category, choose **Delete permanently** in the confirmation and confirm; press ⌘Q right away. While
+it runs: ⌘Q asks; **Keep cleaning** changes nothing and the cleanup goes on. ⌘Q again, **Stop and quit**: the app stops
+after the item in hand and quits. Closing the window asks the same. The Dock's Quit does not ask: [known
+issue](../known-issues/app-quit-during-cleanup.md).
 
 ### SC-11 After a stopped cleanup, Cleanups shows it stopped
 
