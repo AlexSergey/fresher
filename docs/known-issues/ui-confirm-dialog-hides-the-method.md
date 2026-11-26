@@ -29,3 +29,9 @@ positioned, so a visually hidden text in a scrolled-out row is clipped by the bo
 Checked by a unit test (the tick and the choice in the footer, out of the list) and an end-to-end case at 900 x 600
 in Chromium and WebKit for a long plan, a plan of 30 items and a plan of three categories with the High tick: the
 ticks and the confirm button wholly in view, and one scrolling region in the dialog.
+
+## Left as it was
+
+- A long plan (a virtual list) with the High tick, at the window's minimum: the footer with both ticks is taller, so
+  the body may be too low for the group's heading and the list's 96 px, and it scrolls as well as the list. The ticks
+  and the buttons stay in sight; only the two scroll bars come back, in this case only. No end-to-end case covers it.
