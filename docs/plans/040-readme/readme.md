@@ -1,6 +1,6 @@
 # 040 — The README
 
-**Status:** 🔨 in progress (awaiting the user's walk) · **Version:** 0.1.0 · **Date:** 2026-11-22 · **Modules:** repo, scripts, ci, docs
+**Status:** ✔️ done · **Version:** 0.1.0 · **Date:** 2026-11-22 · **Modules:** repo, scripts, ci, docs
 
 Written on 2026-11-22 from the draft of the same day and a read of `main` at 33d51a6c. Approved by the user's
 delegation of 2026-11-22 (see "Decisions"). The design, with its agent's calls: [`00-design.md`](./00-design.md).
@@ -132,6 +132,9 @@ right line.
 **Plans of 031 to 039 and 04/01.** `main` b9cafed1 was merged in: 031 was the base; 037, 032, 038, 035, 036 and 039 came
 in with the security fixes for `url` and `cookie`. The README's Docker sentence is plan 032's ("shows what Docker takes
 and the command; never runs it"), "Trash first" and "No warranty" follow plan 039's agreement lines and glossary.
+
+**Done 2026-11-26.** The user looked at the README after 0.1.0 was published ("the README is excellent"); its download
+button and release badge point at the published release.
 
 ## Follow-up of 2026-11-25
 
