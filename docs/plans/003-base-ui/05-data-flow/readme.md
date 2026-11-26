@@ -5,7 +5,7 @@
 What the screens need from the core, and how the UI keeps it without holding every finding: two additive fields in the
 core's contract, a store that keeps totals refreshed from the overview, findings paged on demand, the selection, and
 the current screen. The design: [`../00-design.md`](../00-design.md), "Data flow". Closes
-[`known-issues/ui-findings-kept-in-memory.md`](../../../known-issues/ui-findings-kept-in-memory.md).
+[`known-issues/fixed/ui-findings-kept-in-memory.md`](../../../known-issues/fixed/ui-findings-kept-in-memory.md).
 
 Depends on plan 002 only; touches no design file, so it runs in wave 1 beside plan 01. Its steps run in order; 02
 waits for 01/02 (both touch `app/ui/src/app.tsx` and the screenshots of plan 002).
@@ -28,7 +28,7 @@ waits for 01/02 (both touch `app/ui/src/app.tsx` and the screenshots of plan 002
   `state/refresh.ts` at most 4 times a second while findings arrive and once more at the end of a scan; progress
   reaches React at most 10 times a second. A batch of findings changes nothing but the stale mark, so 1,000 batches
   leave the state as it was. The known issue
-  [`ui-findings-kept-in-memory.md`](../../../known-issues/ui-findings-kept-in-memory.md) is fixed.
+  [`ui-findings-kept-in-memory.md`](../../../known-issues/fixed/ui-findings-kept-in-memory.md) is fixed.
 - **Findings are paged**: `state/findings.ts` keeps at most 10 pages of 100 per app, least recently used dropped; a
   scroll through 100,000 generated findings never holds more than 1,000. `useFindings(view)` gives a list its total,
   rows, range callback and failure. The e2e mock pages the same way, from one shared contract (`src/test/page-of.ts`).

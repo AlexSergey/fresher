@@ -64,5 +64,5 @@ The IPC module and store plan 003 builds its screens on.
   "scanning" a scan whose `scan-finished` came, is ignored, and an idle overview does not end a scan the events started.
   Adding findings copied the whole group per finding (O(N²)); a batch is now grouped in one pass and each group it
   touches is copied once (50,000 findings in batches of 256: 2.4 s before, 20 ms after). The store still keeps every
-  finding: `docs/known-issues/ui-findings-kept-in-memory.md`. `mockCore` takes an optional `subscribe` answer, so a
+  finding: `docs/known-issues/fixed/ui-findings-kept-in-memory.md`. `mockCore` takes an optional `subscribe` answer, so a
   test can delay it.

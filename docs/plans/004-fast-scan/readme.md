@@ -191,7 +191,7 @@ Each is recorded in its step as an agent's call.
 
 ### Known issues
 
-- [A FIFO is read as a regular file](../../known-issues/core-fifo-read-as-file.md) (open): the core's entry kinds have
+- [A FIFO is read as a regular file](../../known-issues/fixed/core-fifo-read-as-file.md) (open): the core's entry kinds have
   no "other", so a named pipe with a marker's name counts as that marker for the matcher (the walker's tag read
   refuses it, so a `CACHEDIR.TAG` FIFO is never `Valid`). The fix is a core contract, for a later plan.
 - [Stale temporary files in the data folder](../../known-issues/store-stale-temporary-files.md) (open, from plan 002):

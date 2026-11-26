@@ -32,6 +32,6 @@ are in the table below, one column per release.
 | SC-07 | Review after a finished cleanup shows the new pick       | ❌ fixed by 6dbf5674, then ✔️                               |
 | SC-08 | Finder's own Put Back                                    | ⚠️ [known issue](../known-issues/cleaner-finder-put-back-unreliable.md) |
 | SC-09 | Put back one item, and an emptied folder's file, from Fresher | ✔️                                                     |
-| SC-10 | Quit during a long cleanup: Keep cleaning, Stop and quit | ✔️; ⚠️ [known issue](../known-issues/ui-confirm-dialog-hides-the-method.md) |
+| SC-10 | Quit during a long cleanup: Keep cleaning, Stop and quit | ✔️; ⚠️ [known issue](../known-issues/fixed/ui-confirm-dialog-hides-the-method.md) |
 | SC-11 | After a stopped cleanup, Cleanups shows it stopped       | ✔️                                                          |
-| SC-12 | The disk chart after a cleanup                           | ⚠️ [known issue](../known-issues/ui-chart-stale-after-a-cleanup.md) |
+| SC-12 | The disk chart after a cleanup                           | ⚠️ [known issue](../known-issues/fixed/ui-chart-stale-after-a-cleanup.md) |

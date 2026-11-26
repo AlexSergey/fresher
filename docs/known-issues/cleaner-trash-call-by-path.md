@@ -23,7 +23,7 @@ call removes it by its identity.
   instead is not journalled (security audit 2026-11-25): its original place is unknown, and journalling it under the
   verified item's path made put back bring it there. Finder's own Put Back restores it to where it came from.
 - The permanent delete acts beneath held folders since plan 008/04's hardening
-  ([`cleaner-act-by-path.md`](./cleaner-act-by-path.md)): each entry is checked against its listing right before
+  ([`fixed/cleaner-act-by-path.md`](./fixed/cleaner-act-by-path.md)): each entry is checked against its listing right before
   `unlinkat`, so a replacement can only be an entry of the same verified folder, on the same volume, never behind a
   link.
 

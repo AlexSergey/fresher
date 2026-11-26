@@ -16,7 +16,7 @@
 - `app/ui/src/state/connect.ts` — starts the refresher with the store.
 - `app/ui/src/app.tsx` — the bare screen of plan 002 lists the category totals (name, size, count, highest level)
   instead of findings, until 07/01 replaces it; its screenshots are updated and looked at.
-- `docs/known-issues/ui-findings-kept-in-memory.md` — closed: the store keeps totals; the lists are paged (05/03).
+- `docs/known-issues/fixed/ui-findings-kept-in-memory.md` — closed: the store keeps totals; the lists are paged (05/03).
   Its row in `docs/known-issues/README.md` follows the folder's convention for a closed issue.
 
 ## Produces

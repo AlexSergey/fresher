@@ -219,7 +219,7 @@ the most important ones:
   the user's own processes, and not a file opened after the last snapshot.
 - [`cleaner-trash-call-by-path.md`](../../known-issues/cleaner-trash-call-by-path.md): the system's Trash call takes a
   path; a swapped parent is detected after the move.
-- [`core-fifo-read-as-file.md`](../../known-issues/core-fifo-read-as-file.md): a FIFO in a scanned folder is read as a
+- [`core-fifo-read-as-file.md`](../../known-issues/fixed/core-fifo-read-as-file.md): a FIFO in a scanned folder is read as a
   regular file.
 
 ### Left to later plans

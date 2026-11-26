@@ -8,7 +8,7 @@ In the dev run records, every scan of the real home (`NO_COMMIT/dev-runs/*_mac.e
 `kind: full`, and no rescan does. The scan that ran gives the right result, but the rescan runs first and its work is
 lost: it loads the cache, walks again the changes and the places outside the roots, reads the check's sample, and then
 a full walk reads everything anyway. Each scan the user starts takes longer than a full scan alone. The scan's progress
-falling back to 0 (`ui-scan-progress-starts-over.md`) came from this fallback; the bar now holds instead.
+falling back to 0 (`fixed/ui-scan-progress-starts-over.md`) came from this fallback; the bar now holds instead.
 
 ## Cause
 

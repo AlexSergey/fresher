@@ -32,5 +32,5 @@ A chromium keyboard test (Dialog, long body) fails with or without this change: 
 Final review: `core.left-out.summary` is asked for with its count and the translator picks the form; the label key is
 `ui.left-out-lines.label`; a category with only left-outs has a quiet row (no box, no disclosure) and leaves the page
 once it is ignored. The chromium failure is a known issue
-([`ui-keyboard-e2e-dialog-long-body`](../../../known-issues/ui-keyboard-e2e-dialog-long-body.md)).
+([`ui-keyboard-e2e-dialog-long-body`](../../../known-issues/fixed/ui-keyboard-e2e-dialog-long-body.md)).
 

@@ -61,7 +61,7 @@ disk images they mount inside them, skipped without `hdiutil`); nothing touches 
   swapped for a link in the microseconds between the check and the act can make them act behind the link; after a
   move this is detected and reported (and what can be named is journalled), after a delete it is not. Processes of
   other users and a file opened after the last snapshot are not seen.
-- **Hardened afterwards** (the known issue [`cleaner-act-by-path`](../../../known-issues/cleaner-act-by-path.md), now
+- **Hardened afterwards** (the known issue [`cleaner-act-by-path`](../../../known-issues/fixed/cleaner-act-by-path.md), now
   fixed): a permanent delete, the emptying of a folder and check 11's walk act beneath held folders through
   `fresher-macos`'s new `beneath` module (`open_folder`, `open_folder_at`, `identity_at`, `read_folder`, `remove_at`;
   `openat`/`fstatat`/`unlinkat` relative to a descriptor, `O_NOFOLLOW_ANY`). The cleaner now depends on

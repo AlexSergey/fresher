@@ -4,7 +4,7 @@
 
 ## Symptom
 
-Found in the sandbox run by hand before 0.1.0 ([`../test-cases/sandbox-cleanup.md`](../test-cases/sandbox-cleanup.md),
+Found in the sandbox run by hand before 0.1.0 ([`../../test-cases/sandbox-cleanup.md`](../../test-cases/sandbox-cleanup.md),
 SC-10, a cleanup of 300 items): the confirmation dialog shows two scroll bars, one on its list of items and one on the
 dialog itself, and the "delete permanently" choice is below the fold until the dialog is scrolled. The user may
 confirm without seeing how the items will be removed.

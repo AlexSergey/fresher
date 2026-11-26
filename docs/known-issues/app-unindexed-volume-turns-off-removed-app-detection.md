@@ -18,7 +18,7 @@ as not indexed without being asked.
 
 - Asking only the volume that holds the home and the apps folders: an app on an external disk would then be offered
   as removed, the case the known issue
-  [Spotlight does not see an IDE on a volume it does not index](./app-spotlight-misses-an-excluded-volume.md) closed.
+  [Spotlight does not see an IDE on a volume it does not index](./fixed/app-spotlight-misses-an-excluded-volume.md) closed.
 
 ## Options left
 

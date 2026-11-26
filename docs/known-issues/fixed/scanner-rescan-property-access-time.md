@@ -1,6 +1,6 @@
 # The rescan property test fails at times on a file's access time
 
-**Status:** fixed ([plan 017, Conclusions](../plans/017-temp-files/readme.md#conclusions)) · **Updated:** 2026-11-18
+**Status:** fixed ([plan 017, Conclusions](../../plans/017-temp-files/readme.md#conclusions)) · **Updated:** 2026-11-18
 
 ## Symptom
 
@@ -9,7 +9,7 @@ once in 1,500 cases, only under load (the whole workspace's tests running at onc
 `inside.newest_file_access` differs by one second between the rescan and the full scan that follows it. Every other
 value of the two trees is equal, `inside.lock_named` included. The failing seed does not fail again when run alone, so
 no regression file is kept. Seen during plan 017/02/02 (2026-11-17); the field comes from plan
-[017/01/03](../plans/017-temp-files/01-core-prerequisites/03-times.md).
+[017/01/03](../../plans/017-temp-files/01-core-prerequisites/03-times.md).
 
 ## Cause
 

@@ -6,7 +6,7 @@
 Before a module takes "Spotlight found no app with this id" as "not installed", the system asks whether Spotlight can
 see every mounted volume; a volume left out of the index, a network share or a timeout makes the search incomplete,
 and every module that asks (`jetbrains`, `app-leftovers`) keeps everything. Closes the known issue
-[Spotlight misses an excluded volume](../../../known-issues/app-spotlight-misses-an-excluded-volume.md). The design:
+[Spotlight misses an excluded volume](../../../known-issues/fixed/app-spotlight-misses-an-excluded-volume.md). The design:
 [`../00-design.md`](../00-design.md), section 1.3 (agent's call 7).
 
 ## Files
@@ -49,7 +49,7 @@ and every module that asks (`jetbrains`, `app-leftovers`) keeps everything. Clos
   indexed, turn it on and scan again." `docs/categories/jetbrains-uninstalled.md`: the same reason in its decision.
 - `modules/jetbrains/src/tests.rs` — a removed IDE's data kept `spotlight-unread` when `search_complete` fails while
   `find` would find nothing.
-- `docs/known-issues/app-spotlight-misses-an-excluded-volume.md` removed and its row in `docs/known-issues/README.md`
+- `docs/known-issues/fixed/app-spotlight-misses-an-excluded-volume.md` removed and its row in `docs/known-issues/README.md`
   removed (the README's rule for a fixed issue, if it keeps fixed ones instead: status `fixed` with this plan's link).
 - `docs/architecture/modules.md` — the `find_apps` row: "after checking once per scan that Spotlight sees every
   mounted volume; an error when it cannot".

@@ -1,6 +1,6 @@
 # The UI keeps every finding of a scan in memory
 
-**Status:** fixed ([plan 003/05](../plans/003-base-ui/05-data-flow/readme.md)) · **Updated:** 2026-11-16
+**Status:** fixed ([plan 003/05](../../plans/003-base-ui/05-data-flow/readme.md)) · **Updated:** 2026-11-16
 
 ## Fix
 

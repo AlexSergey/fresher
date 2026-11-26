@@ -26,7 +26,7 @@ plan [016](../016-jetbrains/readme.md)'s removed IDEs to every app. The idea:
 The core first gains what the code lacks: interests that match only bundle-id names (so a whole claim of
 `Caches/*` never swallows `Caches/JetBrains` or `Caches/Homebrew`), what the walk saw of each interest's place (the
 global check would block the module on every Mac without Full Disk Access), a check that Spotlight can see every
-mounted volume (closing a [known issue](../../known-issues/app-spotlight-misses-an-excluded-volume.md) of `jetbrains`
+mounted volume (closing a [known issue](../../known-issues/fixed/app-spotlight-misses-an-excluded-volume.md) of `jetbrains`
 too), a removed app's name in the storage map (a deferred item, done in 01/04), the group Apps
 and a module's selection choices. Tests at every level, as plans 016 to 018 did: unit, fixture, sandbox, core e2e, UI
 e2e, runs by hand.
@@ -114,7 +114,7 @@ and run the checks.
 - A removed app's name in the storage map (a deferred item): done in 01/04; its file is removed.
 - The module harnesses of the core e2e share their code (a deferred item): done in 03/02; its file is removed.
 - [The sandbox world](../../deferred/sandbox-world.md): Spotlight's answers taken in 03/01; the rest stays deferred.
-- The known issue [Spotlight misses an excluded volume](../../known-issues/app-spotlight-misses-an-excluded-volume.md):
+- The known issue [Spotlight misses an excluded volume](../../known-issues/fixed/app-spotlight-misses-an-excluded-volume.md):
   closed in 01/03.
 
 ## Risks

@@ -70,4 +70,4 @@ cache's tree format went to 4 (5 in 02/02).
 
 Seen while building, not caused here: the sandbox autotest `storage_map` flakes under the whole workspace's load (a 48
 MiB file's allocated size off by 48 blocks), on the base commit too; and the rescan property test fails about once in
-1,500 cases on `newest_file_access` ([known issue](../../../known-issues/scanner-rescan-property-access-time.md)).
+1,500 cases on `newest_file_access` ([known issue](../../../known-issues/fixed/scanner-rescan-property-access-time.md)).

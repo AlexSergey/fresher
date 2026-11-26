@@ -73,7 +73,7 @@ app. The idea: [uninstalled app leftovers](../../ideas/uninstalled-app-leftovers
    place left out on purpose (`Library/Containers`, avoided) or outside the scan roots. The scanner's tree knows each
    folder's own state (`Flag::{Incomplete, Avoided, OtherVolume}`, unreadable), but no module can ask it.
 3. **Spotlight's reach.** `MacInstalledApps::find` asks Spotlight and cannot tell a volume left out of the index from
-   a volume with no app ([known issue](../../known-issues/app-spotlight-misses-an-excluded-volume.md)).
+   a volume with no app ([known issue](../../known-issues/fixed/app-spotlight-misses-an-excluded-volume.md)).
 4. **A removed app's name** (a deferred item, done by plan 019/01/04), **the group Apps** and **a
    module's selection choices**: none exists.
 
@@ -546,7 +546,7 @@ No new third-party dependency.
   file removed.
 - [The sandbox world](../../deferred/sandbox-world.md): partly taken in 03/01 (Spotlight's answers); open files,
   tools' answers, access and the steps between scans stay deferred.
-- The known issue [Spotlight misses an excluded volume](../../known-issues/app-spotlight-misses-an-excluded-volume.md):
+- The known issue [Spotlight misses an excluded volume](../../known-issues/fixed/app-spotlight-misses-an-excluded-volume.md):
   closed in 01/03.
 - Not due: [why an item matched](../../deferred/match-explanations.md) (code, not rules);
   [a module names its app's data folders](../../deferred/module-names-app-data.md) (these folders are named after the

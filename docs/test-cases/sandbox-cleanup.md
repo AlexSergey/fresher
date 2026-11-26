@@ -129,7 +129,7 @@ the items not reached are still on disk.
 ### SC-12 The disk chart after a cleanup
 
 After SC-05 and SC-06, the chart on Scan shows the space the cleanups took out. Today it keeps the old numbers:
-[known issue](../known-issues/ui-chart-stale-after-a-cleanup.md).
+[known issue](../known-issues/fixed/ui-chart-stale-after-a-cleanup.md).
 
 ## Afterwards
 

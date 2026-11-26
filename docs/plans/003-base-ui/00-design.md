@@ -29,7 +29,7 @@ without ever making the moment of deletion feel like a game.
 5. **The base screens**, working on the `demo` module of plan [002](../002-base-architecture/readme.md): overview,
    the generic module page, review, settings, the missing-permission state.
 6. **Large scans stay smooth**: the UI no longer keeps every finding in memory; lists are paged from the core and
-   virtualised ([`known-issues/ui-findings-kept-in-memory.md`](../../known-issues/ui-findings-kept-in-memory.md)).
+   virtualised ([`known-issues/fixed/ui-findings-kept-in-memory.md`](../../known-issues/fixed/ui-findings-kept-in-memory.md)).
 7. **Safety and accessibility are part of "done"** for every component: keyboard, VoiceOver, contrast, reduced motion.
 
 ## Non-goals
@@ -495,7 +495,7 @@ The bindings are regenerated; the golden report and the mocked core follow.
   (totals per category and `found`), the dictionary, the last failure. The `groups` of findings are removed.
 - During a scan the store refreshes the overview on `findings-added`, `module-finished` and `scan-finished`, at most
   4 times a second and always once at the end. This closes
-  [`known-issues/ui-findings-kept-in-memory.md`](../../known-issues/ui-findings-kept-in-memory.md).
+  [`known-issues/fixed/ui-findings-kept-in-memory.md`](../../known-issues/fixed/ui-findings-kept-in-memory.md).
 - **Findings are paged**: `state/findings.ts` keeps a page cache per query (`module`, `category`, `order`), pages of
   100, at most 10 pages, least recently used dropped. `useFindings(query, range)` gives `VirtualList` the rows it
   shows (or placeholders while a page loads). A new scan clears the cache; during a scan the visible pages are

@@ -3,7 +3,7 @@
 **Status:** ✔️ done · **Version:** 0.1.0 · **Date:** 2026-11-17 · **Modules:**
 core, macos, scanner, cleaner, docs
 
-Design section 4; fixes the [known issue](../../../known-issues/core-fifo-read-as-file.md) "A FIFO is read as a
+Design section 4; fixes the [known issue](../../../known-issues/fixed/core-fifo-read-as-file.md) "A FIFO is read as a
 regular file".
 
 ## Files
@@ -19,7 +19,7 @@ regular file".
   cache is a `BrokenCache` full scan, logged).
 - `crates/cleaner/src/guard/identity.rs` (check 7) — an item whose kind is `Other` now is refused as changed, whatever
   was confirmed; `crates/cleaner/src/paths.rs` keeps `O_NONBLOCK` (comment points at the test).
-- `docs/known-issues/core-fifo-read-as-file.md` — status `fixed`, the link to this step; its row in the README.
+- `docs/known-issues/fixed/core-fifo-read-as-file.md` — status `fixed`, the link to this step; its row in the README.
 
 ## Produces
 

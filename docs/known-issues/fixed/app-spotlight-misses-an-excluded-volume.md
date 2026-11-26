@@ -1,6 +1,6 @@
 # Spotlight does not see an IDE on a volume it does not index
 
-**Status:** fixed ([plan 019/01/03](../plans/019-uninstalled-app-leftovers/01-core-prerequisites/03-spotlight-reach.md)) · **Updated:** 2026-11-18
+**Status:** fixed ([plan 019/01/03](../../plans/019-uninstalled-app-leftovers/01-core-prerequisites/03-spotlight-reach.md)) · **Updated:** 2026-11-18
 
 ## Symptom
 

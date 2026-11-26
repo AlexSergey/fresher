@@ -44,7 +44,7 @@ Done on 2026-11-16.
   `perf-chromium`); `docs/quality.md` names the import boundaries and the design system's guards, and says the
   performance spec is run by hand only; `docs/goal.md` section 6 and `docs/rules.md` name the visual direction
   "Graphite and Iris" (approved with the plan on 2026-11-15, agent's call 12), linking the design.
-- [`ui-findings-kept-in-memory.md`](../../../known-issues/ui-findings-kept-in-memory.md) is closed as fixed by plan
+- [`ui-findings-kept-in-memory.md`](../../../known-issues/fixed/ui-findings-kept-in-memory.md) is closed as fixed by plan
   05, with the heap measured in 08/01.
 - The checks: `npm run pre-push` passes (UI coverage 98.9 % lines, 92.5 % branches, 94.9 % functions, 97.9 %
   statements; Rust lines over the 90 % floor); `npm run test:e2e` passes (the core e2e, 6 tests; Playwright, 157

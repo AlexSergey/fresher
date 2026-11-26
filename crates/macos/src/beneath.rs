@@ -1,7 +1,7 @@
 //! Acting beneath a held folder: every call names one entry of a folder that is held open, never a path, so a folder
 //! swapped for a link after it was opened cannot send a call anywhere else. Folders are opened through no link in
 //! any component (`O_NOFOLLOW_ANY`); an entry is a link as itself. The cleaner removes with these (plan 008; the
-//! known issue `docs/known-issues/cleaner-act-by-path.md`).
+//! known issue `docs/known-issues/fixed/cleaner-act-by-path.md`).
 
 use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};

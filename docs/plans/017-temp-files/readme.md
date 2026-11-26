@@ -19,7 +19,7 @@ module is `modules/temp` (`fresher-module-temp`), in a new group, System.
 
 The core first gains what the research found missing: the two places as known folders with their protection, walked
 although they lie outside the home; a fourth entry kind for sockets and pipes (the
-[known issue](../../known-issues/core-fifo-read-as-file.md) fixed); the status-change time and the newest change of a
+[known issue](../../known-issues/fixed/core-fifo-read-as-file.md) fixed); the status-change time and the newest change of a
 whole folder; a sandbox that states the facts it cannot make on disk. Tests at every level, as plan
 [016](../016-jetbrains/readme.md) did: unit, fixture, sandbox, core e2e, UI e2e, runs by hand.
 
@@ -80,7 +80,7 @@ and run the checks.
   and every declared left-out reason used by a fixture run.
 - No path outside the user's own `T` (but `TemporaryItems`) and `/private/tmp` can be offered: the protection list's
   tests, the cleaner's `tests/never.rs` with the new places, and the sandbox's negatives prove it.
-- The [FIFO known issue](../../known-issues/core-fifo-read-as-file.md) is fixed: a pipe is `Other`, never a marker, and
+- The [FIFO known issue](../../known-issues/fixed/core-fifo-read-as-file.md) is fixed: a pipe is `Other`, never a marker, and
   the guard opens one without blocking (a test).
 - `npm run sandbox:test -- temp` passes; it fails when a case's expectation (an item, a danger, a left-out count, a
   stated fact) is changed on purpose (done once by hand per kind, written in the conclusions).
@@ -128,7 +128,7 @@ helpers, done by plan 018/03/02, [a special entry in the browse
 view](../../deferred/special-entry-in-browse-view.md)); a flake under load seen before this plan, the accessibility
 gallery's part 3 in WebKit ([known issue](../../known-issues/ui-axe-gallery-part-3-webkit-timeout.md)); the parked small
 points of the design's conclusions. Fixed in the final review's wave: the rescan property test's access time ([known
-issue](../../known-issues/scanner-rescan-property-access-time.md)), its changes settling the files they write; the
+issue](../../known-issues/fixed/scanner-rescan-property-access-time.md)), its changes settling the files they write; the
 sandbox autotests' allocated sizes under load (`storage_map`, `trial`; [known
-issue](../../known-issues/app-sandbox-storage-map-allocated-size.md)), a data-filled fixture file sized before it is
+issue](../../known-issues/fixed/app-sandbox-storage-map-allocated-size.md)), a data-filled fixture file sized before it is
 written.

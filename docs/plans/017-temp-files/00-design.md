@@ -41,7 +41,7 @@ with the reason.
   and can be wrong in both directions. The status-change time cannot be set by an app and moves on every write, rename
   or permission change.
 - **Sockets and named pipes are common there**, and the core reads a named pipe as a regular file today
-  ([known issue](../../known-issues/core-fifo-read-as-file.md)).
+  ([known issue](../../known-issues/fixed/core-fifo-read-as-file.md)).
 
 ## Goals
 
@@ -154,7 +154,7 @@ registered module's interest names and no scan root holds: the engine passes the
 `EntryKind::Other`: a socket, a named pipe, a device — read from the bulk read's object type (and `NaiveWalk`'s file
 type). The matcher never counts it as a marker; an `Under` interest matches it as itself, so a module can see and refuse
 it. The guard refuses an item whose kind is now `Other` (check 7: not the confirmed kind). A test proves the guard opens
-a pipe without blocking. The [known issue](../../known-issues/core-fifo-read-as-file.md) is marked fixed.
+a pipe without blocking. The [known issue](../../known-issues/fixed/core-fifo-read-as-file.md) is marked fixed.
 
 ### 5. Times and the subtree
 

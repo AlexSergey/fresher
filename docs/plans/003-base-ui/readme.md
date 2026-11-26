@@ -90,7 +90,7 @@ screenshots (the gallery and the screens on the `demo` module).
 - The performance spec meets the budget on the reference Mac; the numbers are in the conclusions.
 - With "Reduce motion" on, nothing translates, scales or loops; with VoiceOver, the scan's progress and end are
   announced and every control has a name.
-- The UI store keeps no findings; [`ui-findings-kept-in-memory.md`](../../known-issues/ui-findings-kept-in-memory.md) is
+- The UI store keeps no findings; [`ui-findings-kept-in-memory.md`](../../known-issues/fixed/ui-findings-kept-in-memory.md) is
   closed.
 
 ## Conclusions
@@ -112,7 +112,7 @@ interface on 2026-11-16; the plan is ✔️ done.
   Store), exactly two new window permissions for the drag region.
 - **The data flow** (05): two additive core fields (`Overview.found`, `FindingsQuery.order`); the store keeps the
   core's totals, never the findings; lists are paged (at most 10 pages of 100); selection and navigation stores. The
-  known issue [`ui-findings-kept-in-memory.md`](../../known-issues/ui-findings-kept-in-memory.md) is fixed.
+  known issue [`ui-findings-kept-in-memory.md`](../../known-issues/fixed/ui-findings-kept-in-memory.md) is fixed.
 - **The product components** (06) in `product/`: the scan hero and progress, category cards and their grid, the
   module section, the finding row and list, the selection bar, the confirmation dialog, the result summary, the
   permission card and the settings row.

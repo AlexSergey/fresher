@@ -1,6 +1,6 @@
 # A FIFO is read as a regular file
 
-**Status:** fixed ([plan 017/01/02](../plans/017-temp-files/01-core-prerequisites/02-entry-kind.md)) · **Updated:** 2026-11-17
+**Status:** fixed ([plan 017/01/02](../../plans/017-temp-files/01-core-prerequisites/02-entry-kind.md)) · **Updated:** 2026-11-17
 
 ## Symptom
 

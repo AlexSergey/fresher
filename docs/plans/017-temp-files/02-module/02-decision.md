@@ -67,4 +67,4 @@ The review's ruling, built in the fix round:
 
 61 tests of the module at the time, among them two property tests. The design's row 2 and row 7 and the category file
 were brought up to date in 04/01. The rescan property test's rare failure seen here is a [known
-issue](../../../known-issues/scanner-rescan-property-access-time.md).
+issue](../../../known-issues/fixed/scanner-rescan-property-access-time.md).

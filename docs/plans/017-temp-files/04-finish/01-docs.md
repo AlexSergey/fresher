@@ -18,7 +18,7 @@ Every doc the plan's change affects, as built (the docs a step already updated a
 - `docs/testing.md` — the stated facts and the lens (if 01/05 left anything), the `temp.toml` case file in the list of
   case files.
 - `docs/categories/temp-old-files.md` — as built; the catalogue row.
-- `docs/known-issues/core-fifo-read-as-file.md` — fixed (01/02), checked.
+- `docs/known-issues/fixed/core-fifo-read-as-file.md` — fixed (01/02), checked.
 - `docs/deferred/sandbox-world.md` — the stated file facts built here; open files, tools, access and the steps between
   scans still deferred; its README row.
 - `docs/ideas/system-junk-cleaner.md` — its link to this plan (written with the plan) checked; crash reports, caches

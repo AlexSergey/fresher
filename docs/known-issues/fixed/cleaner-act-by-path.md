@@ -1,12 +1,12 @@
 # The cleaner acts on a path after checking a handle
 
-**Status:** fixed ([plan 008/04, Conclusions](../plans/008-safe-removal/04-cleaner/readme.md#conclusions)) ·
+**Status:** fixed ([plan 008/04, Conclusions](../../plans/008-safe-removal/04-cleaner/readme.md#conclusions)) ·
 **Updated:** 2026-11-16
 
 ## Fix
 
 A permanent delete, the emptying of a folder and the growth walk act beneath held folders
-([`architecture/removal.md`](../architecture/removal.md), "Kinds of removal"). `fresher-macos`'s `beneath` module
+([`architecture/removal.md`](../../architecture/removal.md), "Kinds of removal"). `fresher-macos`'s `beneath` module
 gives the cleaner safe calls that name one entry of a folder held open, never a path: `open_folder`
 (`O_DIRECTORY | O_NOFOLLOW_ANY`), `open_folder_at` (`openat` with `O_NOFOLLOW_ANY`), `identity_at` (`fstatat` with
 `AT_SYMLINK_NOFOLLOW`), `read_folder` (the bulk read) and `remove_at` (`unlinkat`, `AT_REMOVEDIR` for a folder). The
