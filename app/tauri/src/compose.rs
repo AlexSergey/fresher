@@ -559,7 +559,8 @@ mod tests {
         fresher_core::SystemFacts::new(&ports)
     }
 
-    /// An I/O policy that sets nothing, for the tests that do not check the policy.
+    /// An I/O policy that sets nothing, for the tests that do not check the policy. The tests of `start` cannot take
+    /// it (`start` applies the real policy in a sandbox run): they need a process of their own, which nextest gives.
     const NO_POLICY: super::IoPolicy =
         super::IoPolicy { never_download_cloud_files: || Ok(()), leave_access_times: || Ok(()) };
 
@@ -791,7 +792,7 @@ mod tests {
         use std::path::{Path, PathBuf};
 
         use super::NO_POLICY;
-        use crate::compose::{MACOS_POLICY, ModuleSet, bundle_of, checked_user_temp, engine_with, modules, user_temp};
+        use crate::compose::{ModuleSet, bundle_of, checked_user_temp, engine_with, modules, user_temp};
 
         #[test]
         fn a_home_reached_through_a_link_is_spelled_as_the_disk_spells_it() {
@@ -947,12 +948,10 @@ mod tests {
         }
 
         #[test]
-        /// The one test that applies the real I/O policy, which changes a setting of the whole process: it needs a
-        /// process of its own (nextest gives one).
         fn the_normal_engine_withholds_high() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
 
-            let engine = engine_with(folder.path(), home.path(), &MACOS_POLICY).unwrap();
+            let engine = engine_with(folder.path(), home.path(), &NO_POLICY).unwrap();
 
             assert_eq!(engine.high_level(), fresher_core::HighLevel::Withheld);
         }
