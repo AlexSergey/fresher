@@ -426,6 +426,14 @@ mod negative {
     }
 
     #[test]
+    fn sandbox_mode_does_not_pace_its_scan_by_default() {
+        let mode = SandboxMode::from_env(env(&[("FRESHER_SANDBOX", "/tmp/s")])).unwrap().unwrap();
+
+        assert_eq!(mode.pace, crate::sandbox::ScanPace::AsWalked);
+        assert_eq!(SandboxMode::new("/tmp/s", crate::sandbox::SandboxTrash::Sandbox).shipped_modules().pace, mode.pace);
+    }
+
+    #[test]
     fn a_relative_sandbox_path_does_not_start() {
         let refusal = SandboxMode::from_env(env(&[("FRESHER_SANDBOX", "sandbox/trial")]));
 
@@ -660,6 +668,13 @@ mod positive {
         let mode = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).offering_high();
 
         assert_eq!(mode.high, fresher_core::HighLevel::Offered);
+    }
+
+    #[test]
+    fn a_paced_scan_is_a_demos() {
+        let mode = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).paced_scan();
+
+        assert_eq!(mode.pace, crate::sandbox::ScanPace::Demo);
     }
 
     #[test]

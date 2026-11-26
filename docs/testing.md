@@ -1089,7 +1089,11 @@ without a sandbox stops the start), registers only the modules a release ships (
 modules' made-up findings stay out of the picture), sizes the window to the scenario, places it at (80, 80) and, through two commands
 (`demo_play`, `demo_finished`), writes two files at the sandbox's root for the recorder: `demo-window.json` (the
 window's rectangle on its screen in physical pixels and the scale) and `demo-result.json` (`finished` with the elapsed
-milliseconds, or `failed` with the step and the reason), then exits 0 or 1.
+milliseconds, or `failed` with the step and the reason), then exits 0 or 1. Its scan is paced (`PacedWalk` of `fresher-sandbox`,
+wired by `SandboxMode::paced_scan`): a demo world is walked in about a second, so the walk's progress is held back and
+given out rising evenly until 3 s (`DEMO_SCAN_TIME`) have passed since the scan began, and a recording shows the bar
+filling; a slower walk is not held. Nothing else is paced: the app, the demo worlds' scan test and every autotest walk
+as they go.
 
 **The player** (`app/ui/src/demo/`, imported only under `import.meta.env.DEV` inside the app): waits 1500 ms (lead-in),
 then plays each step with a drawn pointer that glides to its target in 600 ms. Before the pointer moves, a target not

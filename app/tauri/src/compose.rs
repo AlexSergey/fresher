@@ -12,9 +12,9 @@ use fresher_cleaner::DryRunToken;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, FinderSettings, FolderReader, HighLevel, InstallRecords, InstalledApps,
-    KnownFolders, Module, ModuleGroup, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps, SchemaError,
-    SystemPorts, Volumes,
+    AccessProbe, Build, Clock, CommandRunner, DiskWalk, FinderSettings, FolderReader, HighLevel, InstallRecords,
+    InstalledApps, KnownFolders, Module, ModuleGroup, ModuleId, Protection, ProtectionError, ReaderFiles, RunningApps,
+    SchemaError, SystemPorts, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine, Ports, Registry, RegistryError};
 #[cfg(not(debug_assertions))]
@@ -146,7 +146,8 @@ pub(crate) fn start(
     if let Some(mode) = crate::sandbox::SandboxMode::from_env(&var)? {
         apply(&MACOS_POLICY)?;
         // A demo shows the app as it ships: the dev-only modules' made-up findings stay out of the recording.
-        let mode = if crate::demo::DemoMode::asked(&var) { mode.shipped_modules() } else { mode };
+        // Its small world is walked in a second: the demo's scan is paced, so the recording shows it run.
+        let mode = if crate::demo::DemoMode::asked(&var) { mode.shipped_modules().paced_scan() } else { mode };
         // The running apps come from the sandbox's world, never the Mac's: an app open on the Mac changes nothing.
         let (engine, sandbox) =
             crate::sandbox::compose(&mode, &home, &data_folder, crate::sandbox::SandboxPorts::real)?;
@@ -270,6 +271,8 @@ fn normal(data_folder: impl Into<PathBuf>, home: &Path, policy: &IoPolicy) -> Re
         modules: ModuleSet::Every,
         // The first release withholds High (plan 042); development builds too, so the walk sees what ships.
         high: HighLevel::Withheld,
+        #[cfg(debug_assertions)]
+        pace: crate::sandbox::ScanPace::AsWalked,
     })
 }
 
@@ -306,6 +309,9 @@ pub(crate) struct Shared {
     pub(crate) installs: Arc<dyn InstallRecords>,
     /// Whether the engine offers High findings: withheld in the app, offered by the sandbox autotest.
     pub(crate) high: HighLevel,
+    /// How the scan gives out its progress: as walked, but in a demo (debug builds only).
+    #[cfg(debug_assertions)]
+    pub(crate) pace: crate::sandbox::ScanPace,
 }
 
 /// The engine both paths share: the real walk of the disk over `shared`, the app's modules and its settings file.
@@ -325,6 +331,8 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         apps,
         installs,
         high,
+        #[cfg(debug_assertions)]
+        pace,
     } = shared;
     let options = ScannerOptions {
         standing_avoid: avoid,
@@ -343,17 +351,27 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
     )
     // One clock dates the scan's states and the journal's records, so the Trash view can compare them.
     .with_clock(Arc::clone(&clock));
+    let walk: Arc<dyn DiskWalk> = Arc::new(walk);
+    #[cfg(debug_assertions)]
+    let walk = paced(walk, pace, &clock);
     let system_ui = Arc::new(MacSystemUi::new(Arc::clone(&commands)));
-    let ports = Ports {
-        walk: Arc::new(walk),
-        settings: Arc::new(FileSettingsStore::new(folder)),
-        clock,
-        commands,
-        access,
-        system_ui,
-        system,
-    };
+    let ports =
+        Ports { walk, settings: Arc::new(FileSettingsStore::new(folder)), clock, commands, access, system_ui, system };
     Ok(Engine::with_cleanup(registry_of(modules)?, ports, cleanup, high)?)
+}
+
+/// `walk` as `pace` asks: a demo's is held to its minimum time, sleeping the scan's thread between its progresses.
+#[cfg(debug_assertions)]
+fn paced(walk: Arc<dyn DiskWalk>, pace: crate::sandbox::ScanPace, clock: &Arc<dyn Clock>) -> Arc<dyn DiskWalk> {
+    match pace {
+        crate::sandbox::ScanPace::AsWalked => walk,
+        crate::sandbox::ScanPace::Demo => Arc::new(fresher_sandbox::PacedWalk::new(
+            walk,
+            Arc::clone(clock),
+            Arc::new(std::thread::sleep),
+            fresher_sandbox::DEMO_SCAN_TIME,
+        )),
+    }
 }
 
 /// The system's ports, whose small files are read through `reader`, the walk's own (in sandbox mode the sandbox's

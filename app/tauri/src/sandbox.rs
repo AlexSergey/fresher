@@ -50,6 +50,16 @@ pub enum SandboxTrash {
     Real,
 }
 
+/// How the scan of sandbox mode gives out its progress.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ScanPace {
+    /// As the walk goes: the app's, and every autotest's.
+    AsWalked,
+    /// A demo's: held to a minimum time with its progress rising evenly over it, so a recording shows the scan run
+    /// (`fresher_sandbox::PacedWalk`).
+    Demo,
+}
+
 /// A development build's sandbox mode: the sandbox folder, the Trash its cleanups use, and the modules it registers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SandboxMode {
@@ -60,6 +70,8 @@ pub struct SandboxMode {
     modules: ModuleSet,
     /// Whether its engine offers High findings: withheld, as in the app, unless the autotest offers it.
     high: HighLevel,
+    /// How its scan gives out its progress: as walked, unless a demo plays.
+    pace: ScanPace,
 }
 
 /// Why sandbox mode does not start: the app then stops instead of running anywhere else.
@@ -100,7 +112,13 @@ impl SandboxEngineError {
 impl SandboxMode {
     /// The sandbox at `path`, its cleanups going to `trash`.
     pub fn new(path: impl Into<PathBuf>, trash: SandboxTrash) -> Self {
-        Self { path: path.into(), trash, modules: ModuleSet::Every, high: HighLevel::Withheld }
+        Self {
+            path: path.into(),
+            trash,
+            modules: ModuleSet::Every,
+            high: HighLevel::Withheld,
+            pace: ScanPace::AsWalked,
+        }
     }
 
     /// The same mode with only `module` registered, as the autotest of a case file naming it runs; no module when the
@@ -115,6 +133,13 @@ impl SandboxMode {
     #[must_use]
     pub fn shipped_modules(self) -> Self {
         Self { modules: ModuleSet::Shipped, ..self }
+    }
+
+    /// The same mode with a demo's scan: a fast walk is held to `fresher_sandbox::DEMO_SCAN_TIME`, its progress rising
+    /// evenly. For demo mode only; the demo worlds' scan test and every autotest walk as the app does.
+    #[must_use]
+    pub fn paced_scan(self) -> Self {
+        Self { pace: ScanPace::Demo, ..self }
     }
 
     /// The same mode with High findings offered. For the sandbox autotest only, which runs a case file's High
@@ -141,7 +166,7 @@ impl SandboxMode {
         if !path.is_absolute() {
             return Err(SandboxRefusal::NotAbsolute { path });
         }
-        Ok(Some(Self { path, trash, modules: ModuleSet::Every, high: HighLevel::Withheld }))
+        Ok(Some(Self { path, trash, modules: ModuleSet::Every, high: HighLevel::Withheld, pace: ScanPace::AsWalked }))
     }
 
     /// The sandbox folder as it was named.
@@ -314,6 +339,7 @@ pub(crate) fn compose(
         apps,
         installs: ports.installs,
         high: mode.high,
+        pace: mode.pace,
     })?;
     Ok((engine, sandbox))
 }

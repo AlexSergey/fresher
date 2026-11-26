@@ -19,6 +19,7 @@ mod expected;
 mod generate;
 mod largest;
 mod layout;
+mod paced_walk;
 mod scenario;
 mod stated_access;
 mod stated_space;
@@ -34,6 +35,7 @@ pub use error::{CaseError, SandboxError};
 pub use generate::{Generated, LeftOutFile, generate, generate_leaving_out, without_clashes};
 pub use largest::{LargestExpectation, Shown};
 pub use layout::Sandbox;
+pub use paced_walk::{DEMO_SCAN_TIME, PacedWalk, Pause};
 pub use scenario::{
     AppState, DemoOutcome, DemoPlay, DemoWindow, NameMatch, Role, Scenario, ScenarioError, Step, Target, Wait,
     is_plain_name,
