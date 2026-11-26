@@ -63,6 +63,7 @@ const rows = (states: readonly CapabilityState[]): (() => JSX.Element) =>
         modules={MODULES}
         onOpenSettings={ignore}
         onReopen={ignore}
+        reopenShown
         states={states}
         switchOf={(id) => <p>{`The switch of ${id}`}</p>}
       />

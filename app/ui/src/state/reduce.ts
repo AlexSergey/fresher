@@ -37,6 +37,8 @@ export type CoreAction =
   | { readonly storageMap: StorageMap; readonly type: 'storage-map-loaded' }
   // The demo player (demo/start.ts) began to play a scenario.
   | { readonly type: 'demo-started' }
+  // "Open System Settings" was pressed for Full Disk Access.
+  | { readonly type: 'full-disk-settings-opened' }
   | { readonly type: 'overview-requested' }
   // The quit question was answered, either way.
   | { readonly type: 'quit-answered' };
@@ -61,6 +63,8 @@ export type CoreState = {
   readonly demo: boolean;
   readonly dictionary: Dictionary | null;
   readonly failure: Failure | null;
+  // Settings were opened for Full Disk Access in this session: "Reopen Fresher" shows beside it, not saved.
+  readonly fullDiskSettingsOpened: boolean;
   // How many times an ignore list changed in this session: the finding pages start again (state/findings.ts).
   readonly ignoreChanges: number;
   // The modules that finished in the followed scan, with how, what each left out (counted by the engine) and what
@@ -115,6 +119,7 @@ export const INITIAL_STATE: CoreState = {
   demo: false,
   dictionary: null,
   failure: null,
+  fullDiskSettingsOpened: false,
   ignoreChanges: 0,
   modules: [],
   outcome: null,
@@ -136,6 +141,10 @@ const NOTHING: Sizes = { allocated: 0, completeness: 'complete', logical: 0, rec
 
 // The overview no longer counts everything: unchanged when it already did not, so a batch renders nothing.
 const markStale = (state: CoreState): CoreState => (state.stale ? state : { ...state, stale: true });
+
+// Unchanged when it was already set, so nothing renders.
+const withFullDiskSettingsOpened = (state: CoreState): CoreState =>
+  state.fullDiskSettingsOpened ? state : { ...state, fullDiskSettingsOpened: true };
 
 const withCleanup = (state: CoreState, cleanup: CleanupState): CoreState =>
   cleanup === state.cleanup ? state : { ...state, cleanup };
@@ -349,6 +358,8 @@ export const reduce = (state: CoreState, action: CoreAction): CoreState => {
 
       return reduceEvent(seen === state.seen ? state : { ...state, seen }, action);
     }
+    case 'full-disk-settings-opened':
+      return withFullDiskSettingsOpened(state);
     case 'overview-loaded':
       return loadOverview(state, action.overview);
     case 'overview-requested':

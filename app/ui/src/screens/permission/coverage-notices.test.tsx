@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+// eslint-disable-next-line testing-library/no-manual-cleanup -- the card is rebuilt on purpose, in the same test
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AccessStatus, Capability, Coverage, Overview, SettingsView } from '../../ipc/bindings.generated';
@@ -322,6 +323,21 @@ describe('CoverageNotices', () => {
       await waitFor(() => {
         expect(startScan).toHaveBeenCalledOnce();
       });
+    });
+
+    it('reopen_stays_when_the_card_is_rebuilt', async () => {
+      const store = await show({ answers: { openAccessSettings: () => null }, coverage: FULL_DISK });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Open System Settings' }));
+      await screen.findByRole('button', { name: 'Reopen Fresher' });
+      cleanup();
+      render(
+        <AppProviders store={store}>
+          <CoverageNotices />
+        </AppProviders>,
+      );
+
+      expect(await screen.findByRole('button', { name: 'Reopen Fresher' })).toBeInTheDocument();
     });
 
     it('reopen_calls_relaunch', async () => {

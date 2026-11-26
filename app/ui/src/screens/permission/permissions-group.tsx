@@ -8,7 +8,7 @@ import { Button } from '../../design/primitives/button/button';
 import { t } from '../../i18n';
 import { failureOf, openAccessSettings, refreshAccess, relaunch } from '../../ipc';
 import { SettingsRow } from '../../product/settings-row/settings-row';
-import { useCoreStore } from '../../state/store';
+import { useCore, useCoreStore } from '../../state/store';
 import { isReadOnly } from '../settings/file-notice';
 import screenStyles from '../settings/settings-screen.module.css';
 import { useModules } from '../use-modules';
@@ -32,6 +32,7 @@ export const PermissionsGroup = ({
   const store = useCoreStore();
   const status = useAccessStatus();
   const modules = useModules();
+  const reopenShown = useCore((state) => state.fullDiskSettingsOpened);
   const readOnly = isReadOnly(view.file);
   const failed = (error: unknown): void => {
     store.dispatch({ failure: failureOf(error), type: 'command-failed' });
@@ -79,12 +80,16 @@ export const PermissionsGroup = ({
             <PermissionRows
               modules={modules ?? []}
               onOpenSettings={(capability) => {
+                if (capability.kind === 'all-files') {
+                  store.dispatch({ type: 'full-disk-settings-opened' });
+                }
                 openAccessSettings(capability).catch(failed);
               }}
               onReopen={() => {
                 // The promise never settles: the app restarts.
                 relaunch().catch(failed);
               }}
+              reopenShown={reopenShown}
               states={status.capabilities}
               switchOf={(id) => switchRow(`core.access.${id}`)}
             />

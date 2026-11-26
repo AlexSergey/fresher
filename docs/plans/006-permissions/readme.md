@@ -174,7 +174,7 @@ declares no need (agent's call 33, 03/05); a refused opt-in or volume offers "Op
 before the status is known (04/02, 04/04); dead UI code went (`hasStaleResult`, `useAccess`, 04/01). Recorded, not
 fixed: three known issues ([I/O policy in a compose test](../../known-issues/app-compose-test-sets-the-io-policy.md),
 [relaunch after a confirmed cleanup](../../known-issues/app-relaunch-after-a-confirmed-cleanup.md),
-["Reopen Fresher" state is local](../../known-issues/ui-reopen-button-state-is-local.md)) and one deferred item
+["Reopen Fresher" state is local](../../known-issues/fixed/ui-reopen-button-state-is-local.md)) and one deferred item
 ([steps as a list](../../deferred/access-steps-as-a-list.md)). Two checks were added to "By hand" (a volume opt-in, and
 other apps' data before macOS 14). Playwright baselines regenerated and looked at:
 `module-page-app-leftovers{,-chosen}` (2.5 GB, the data category with its support folder alone) and `settings-temp`

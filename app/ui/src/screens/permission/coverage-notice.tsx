@@ -1,4 +1,4 @@
-import { type JSX, useState } from 'react';
+import type { JSX } from 'react';
 
 import { Notice } from '../../design/feedback/notice/notice';
 import { t, tText } from '../../i18n';
@@ -27,7 +27,7 @@ const stepsOf = (how: string): readonly string[] => how.split(/\s*\d+\.\s+/u).fi
 export const CoverageNotice = ({ current, entry, id }: CoverageNoticeProps): JSX.Element => {
   const store = useCoreStore();
   const { scan } = useScanActions();
-  const [opened, setOpened] = useState(false);
+  const opened = useCore((state) => state.fullDiskSettingsOpened);
   const key = `core.access.${id}`;
   const switchedOn = useCore((state) => {
     const value = state.settings?.values[key];
@@ -61,7 +61,7 @@ export const CoverageNotice = ({ current, entry, id }: CoverageNoticeProps): JSX
         access={current === 'unknown' ? 'unknown' : 'denied'}
         how={stepsOf(text(id, 'how'))}
         onOpenSettings={() => {
-          setOpened(true);
+          store.dispatch({ type: 'full-disk-settings-opened' });
           openAccessSettings(capability).catch(failed);
         }}
         {...(opened

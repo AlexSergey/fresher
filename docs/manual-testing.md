@@ -1148,9 +1148,7 @@ here:
   [`scanner-unreadable-folder-in-a-claimed-match`](./known-issues/scanner-unreadable-folder-in-a-claimed-match.md).
 - A removed-app detection that keeps everything while a USB stick or an installer image is mounted:
   [`app-unindexed-volume-turns-off-removed-app-detection`](./known-issues/app-unindexed-volume-turns-off-removed-app-detection.md).
-- "Reopen Fresher" forgets itself after the card is rebuilt:
-  [`ui-reopen-button-state-is-local`](./known-issues/ui-reopen-button-state-is-local.md); relaunch right after a
-  confirmed cleanup cuts it short:
+- "Reopen Fresher" right after a confirmed cleanup cuts it short:
   [`app-relaunch-after-a-confirmed-cleanup`](./known-issues/app-relaunch-after-a-confirmed-cleanup.md).
 - Flaky autotests: the WebKit gallery part 3 times out under load
   ([`ui-axe-gallery-part-3-webkit-timeout`](./known-issues/ui-axe-gallery-part-3-webkit-timeout.md); rerun it alone).

@@ -1,6 +1,6 @@
 # The "Reopen Fresher" button is forgotten when its card is rebuilt
 
-**Status:** open · **Updated:** 2026-11-19
+**Status:** fixed (`fix(ui)`: "settings were opened for Full Disk Access" lives in the UI store for the session) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -13,11 +13,8 @@ the button is gone until "Open System Settings" is clicked again.
 Whether settings were opened is state of the component (`useState` in `coverage-notice.tsx` and `permission-rows.tsx`),
 not of the store, so it is lost when the component unmounts.
 
-## What was tried
+## Fix
 
-Nothing: clicking "Open System Settings" again brings it back, and the pane opens again, which does no harm.
-
-## Options left
-
-- Keep "settings were opened for Full Disk Access" in the store for the session.
-- Show "Reopen Fresher" whenever Full Disk Access is missing, with the note that it is needed only after a grant.
+The flag lives in the UI store (`fullDiskSettingsOpened`, set by the `full-disk-settings-opened` action) for the session
+and is not saved. "Open System Settings" on the Full Disk Access card and on its row sets it; both read it, so
+"Reopen Fresher" stays after the card is rebuilt and shows on the card and the row alike.

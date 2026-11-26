@@ -102,6 +102,10 @@ const SETTINGS: SettingsView = {
 
 describe('reduce', () => {
   describe('negative cases', () => {
+    it('no settings were opened for Full Disk Access before the press', () => {
+      expect(run([]).fullDiskSettingsOpened).toBe(false);
+    });
+
     it('a setting-changed event for another key keeps the selection', () => {
       const state = run([PICKED, changed('demo.count', { kind: 'number', value: 3 })]);
 
@@ -326,6 +330,12 @@ describe('reduce', () => {
   });
 
   describe('positive cases', () => {
+    it('keeps that settings were opened for Full Disk Access, a scan does not forget it', () => {
+      const state = run([{ type: 'full-disk-settings-opened' }, ...DEMO_SCAN]);
+
+      expect(state.fullDiskSettingsOpened).toBe(true);
+    });
+
     it('keeps that a demo plays once the player started it', () => {
       expect(run([{ type: 'demo-started' }]).demo).toBe(true);
     });

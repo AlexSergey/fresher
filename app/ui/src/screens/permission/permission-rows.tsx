@@ -1,4 +1,4 @@
-import { type JSX, type ReactNode, useState } from 'react';
+import type { JSX, ReactNode } from 'react';
 
 import type { Access, Capability, CapabilityState, ModuleInfo } from '../../ipc/bindings.generated';
 
@@ -13,6 +13,8 @@ export type PermissionRowsProps = {
   readonly modules: readonly ModuleInfo[];
   readonly onOpenSettings: (capability: Capability) => void;
   readonly onReopen: () => void;
+  // Settings were opened for Full Disk Access: "Reopen Fresher" shows beside it.
+  readonly reopenShown: boolean;
   // The capabilities in the core's order.
   readonly states: readonly CapabilityState[];
   // The opt-in switch of the capability with this id: the typed setting row.
@@ -66,36 +68,34 @@ const FullDiskAccess = ({
   access,
   onOpenSettings,
   onReopen,
-}: Pick<PermissionRowsProps, 'onOpenSettings' | 'onReopen'> & { readonly access: Access }): JSX.Element => {
-  const [opened, setOpened] = useState(false);
-
-  return (
-    <Row access={access} description={text('all-files', 'unlocks')} name={text('all-files', 'name')}>
-      {access === 'granted' ? null : (
-        <div className={styles.actions}>
-          <Button
-            onClick={() => {
-              setOpened(true);
-              onOpenSettings({ kind: 'all-files' });
-            }}
-            size="small"
-            variant="secondary"
-          >
-            {t('ui.coverage.open-settings')}
-          </Button>
-          {opened ? (
-            <>
-              <Button onClick={onReopen} size="small" variant="secondary">
-                {t('ui.coverage.reopen')}
-              </Button>
-              <span className={styles.note}>{t('ui.coverage.reopen.text')}</span>
-            </>
-          ) : null}
-        </div>
-      )}
-    </Row>
-  );
-};
+  reopenShown,
+}: Pick<PermissionRowsProps, 'onOpenSettings' | 'onReopen' | 'reopenShown'> & {
+  readonly access: Access;
+}): JSX.Element => (
+  <Row access={access} description={text('all-files', 'unlocks')} name={text('all-files', 'name')}>
+    {access === 'granted' ? null : (
+      <div className={styles.actions}>
+        <Button
+          onClick={() => {
+            onOpenSettings({ kind: 'all-files' });
+          }}
+          size="small"
+          variant="secondary"
+        >
+          {t('ui.coverage.open-settings')}
+        </Button>
+        {reopenShown ? (
+          <>
+            <Button onClick={onReopen} size="small" variant="secondary">
+              {t('ui.coverage.reopen')}
+            </Button>
+            <span className={styles.note}>{t('ui.coverage.reopen.text')}</span>
+          </>
+        ) : null}
+      </div>
+    )}
+  </Row>
+);
 
 // Every capability of the core with its state, what it unlocks and the one action that grants it. A capability that
 // is not needed on this Mac is left out, a granted one has no action.
@@ -103,6 +103,7 @@ export const PermissionRows = ({
   modules,
   onOpenSettings,
   onReopen,
+  reopenShown,
   states,
   switchOf,
 }: PermissionRowsProps): JSX.Element => (
@@ -126,7 +127,15 @@ export const PermissionRows = ({
           return null;
         }
         if (capability.kind === 'all-files') {
-          return <FullDiskAccess access={access} key={id} onOpenSettings={onOpenSettings} onReopen={onReopen} />;
+          return (
+            <FullDiskAccess
+              access={access}
+              key={id}
+              onOpenSettings={onOpenSettings}
+              onReopen={onReopen}
+              reopenShown={reopenShown}
+            />
+          );
         }
 
         return (

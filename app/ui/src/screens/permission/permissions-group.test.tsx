@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -181,6 +181,13 @@ describe('PermissionsGroup', () => {
       expect(row?.querySelectorAll('p')).toHaveLength(0);
     });
 
+    it('reopen_is_not_offered_before_settings_were_opened', async () => {
+      await show(FULL);
+      await screen.findByRole('button', { name: 'Open System Settings' });
+
+      expect(screen.queryByRole('button', { name: 'Reopen Fresher' })).toBeNull();
+    });
+
     it('a_failed_check_again_reports_the_failure', async () => {
       const store = await show(FULL, { refreshAccess: refuse(BUSY) });
 
@@ -224,6 +231,17 @@ describe('PermissionsGroup', () => {
       expect(
         within(permissions).getByText('Lets Fresher measure what takes space on a drive you added.'),
       ).toBeInTheDocument();
+    });
+
+    it('reopen_shows_when_the_card_opened_the_settings', async () => {
+      const store = await show(FULL);
+
+      await screen.findByRole('button', { name: 'Open System Settings' });
+      act(() => {
+        store.dispatch({ type: 'full-disk-settings-opened' });
+      });
+
+      expect(screen.getByRole('button', { name: 'Reopen Fresher' })).toBeInTheDocument();
     });
 
     it('open_system_settings_passes_the_capability', async () => {
