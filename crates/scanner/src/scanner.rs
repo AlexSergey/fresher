@@ -321,6 +321,20 @@ pub(crate) fn header(
     }
 }
 
+/// `on_progress` passed only what rises: each count is the highest seen, and nothing is passed until one of them rises.
+/// A rescan that becomes a full scan has reported its own counts; the full walk counts again from zero, and the
+/// progress holds until it passes them.
+fn rising(on_progress: &mut dyn FnMut(WalkProgress)) -> impl FnMut(WalkProgress) + '_ {
+    let mut mark = WalkProgress::default();
+    move |progress| {
+        let risen = WalkProgress { entries: mark.entries.max(progress.entries), bytes: mark.bytes.max(progress.bytes) };
+        if risen != mark {
+            mark = risen;
+            on_progress(risen);
+        }
+    }
+}
+
 impl DiskWalk for Scanner {
     /// `Full` reads every folder; `Auto` patches the cached tree with the folders the journal says changed, and reads
     /// every folder on any doubt (`fallback` says why).
@@ -331,6 +345,8 @@ impl DiskWalk for Scanner {
         on_match: &mut dyn FnMut(Match),
         on_progress: &mut dyn FnMut(WalkProgress),
     ) -> Result<WalkSummary, WalkError> {
+        let mut on_progress = rising(on_progress);
+        let on_progress: &mut dyn FnMut(WalkProgress) = &mut on_progress;
         let Prepared { roots, boundary, matcher, scope, user } = self.prepare(request)?;
         let positions = self.positions(&scope);
         let walk = Walk {

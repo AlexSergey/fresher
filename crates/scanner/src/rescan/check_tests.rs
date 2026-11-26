@@ -14,7 +14,7 @@ fn rig() -> Rig {
 mod negative {
     use std::sync::Arc;
 
-    use fresher_core::{FullScanReason, ScanKind, WalkMode};
+    use fresher_core::{CancelToken, DiskWalk, FullScanReason, ScanKind, WalkMode};
 
     use super::rig;
     use crate::rescan::testing::{assert_same, journal_of};
@@ -46,6 +46,26 @@ mod negative {
         assert_eq!((summary.kind, summary.fallback), (ScanKind::Full, Some(FullScanReason::CheckFailed)));
         assert_eq!(reader.reads()[&rig.path("a/b/missed")], 1);
         assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_failed_check_never_lowers_the_progress_the_rescan_reported() {
+        let rig = rig();
+        std::fs::write(rig.path("x03/missed.txt"), vec![0; 700]).unwrap();
+        let scanner = rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[rig.path("d")])));
+        let mut progress = Vec::new();
+
+        let summary = scanner
+            .walk(&rig.request(WalkMode::Auto), &CancelToken::new(), &mut |_| {}, &mut |seen| progress.push(seen))
+            .unwrap();
+
+        assert_eq!(summary.fallback, Some(FullScanReason::CheckFailed));
+        let fallen: Vec<_> = progress
+            .windows(2)
+            .filter(|pair| pair[1].entries < pair[0].entries || pair[1].bytes < pair[0].bytes)
+            .collect();
+        assert!(fallen.is_empty(), "{fallen:?}");
+        assert_eq!(progress.last().map(|last| last.entries), Some(summary.entries));
     }
 
     #[test]

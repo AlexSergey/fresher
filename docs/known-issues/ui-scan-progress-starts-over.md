@@ -1,6 +1,6 @@
 # The scan's progress goes to about 16 %, then starts over
 
-**Status:** open · **Updated:** 2026-11-26
+**Status:** fixed (the scanner passes on only the progress that rises) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -11,22 +11,27 @@ image downloaded by the browser, installed in Applications): it happens every ti
 
 ## Cause
 
-Not investigated. To check first:
+The scanner, not the UI. A scan the user starts is a rescan (`WalkMode::Auto`, `crates/scanner/src/scanner.rs`): it
+walks again what changed and the places outside the roots (always in full), reporting their progress, then checks a
+sample of the copied folders. When that check finds a change the journal missed (`FullScanReason::CheckFailed`), the
+scan becomes a full walk with the same `on_progress`, and the full walk's counters start again from zero. The engine
+publishes both runs under one `expected`, so the bar rose by what the rescan walked and fell back to 0. The dev run
+records of scans of the real home all finish as `full`; they hold no `scan-progress` event and no fallback reason, so
+they do not show which fallback it was. The other suspects were ruled out: the engine publishes `ScanProgress` from the one walk only and takes
+`expected` once at the start (`crates/engine/src/session.rs`, `estimate.rs`); the UI only throttles the progress and
+turns `bytes` against `expected` into the percent. The other fallbacks (no cache, a journal gap, too many changes)
+happen before the rescan reports anything.
 
-- whether one scan publishes two runs of `scan-progress` whose `bytes` start again from zero: the walk of the scan roots
-  and a second walk (the places walked outside the roots, the measure of the apps) each with its own counter, under
-  one `expected` (`crates/engine/src/session.rs`);
-- whether `expected` changes during the scan (a first scan has no previous one to estimate from);
-- how the UI turns `bytes` and `expected` into the percentage (`app/ui/src/state/progress.ts` and the scan screen).
+A test reproduced it: `a_failed_check_never_lowers_the_progress_the_rescan_reported`
+(`crates/scanner/src/rescan/check_tests.rs`) saw the bytes go from 20 to 0.
 
-The development run record of a scan (`npm run dev`, `NO_COMMIT/dev-runs/*.events.jsonl`) holds every
-`scan-progress` event and shows which of these it is.
+## Fix
+
+One counter, the bar only rises: the scanner wraps `on_progress` so each count is the highest seen and nothing is
+passed on until one of them rises (`rising` in `crates/scanner/src/scanner.rs`). After a fallback the bar holds at
+what the rescan reached until the full walk passes it, then rises to the end. The rescan's counts are not added to the
+full walk's, which would count the same folders twice.
 
 ## What was tried
 
-Nothing yet.
-
-## Options left
-
-- One counter for the whole scan, so the bar only rises.
-- If the scan has two phases on purpose, show them as two named steps instead of one bar that starts over.
+Nothing else.

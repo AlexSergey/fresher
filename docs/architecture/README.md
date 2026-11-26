@@ -238,7 +238,9 @@ Everything)`. `AppInfo.high` reports it to the UI. The rule:
   is of the same roots, volumes, avoid list and interests, asks the change journal what changed since (`ChangeJournal`,
   FSEvents), reads again only those folders with their parents and the unreadable ones, copies the rest of the tree,
   then reads a sample of the copied folders: one difference, a gap in the journal, a position older than two weeks or
-  too many changes, and the scan is full (`WalkSummary::fallback` says why). A cache of another avoid list is refused
+  too many changes, and the scan is full (`WalkSummary::fallback` says why). The progress of one walk only rises: a
+  rescan that becomes full has reported what it walked again, the full walk counts from zero, and the scanner passes on
+  only the counts that pass the highest seen, so the bar holds until the full walk passes them. A cache of another avoid list is refused
   (`OtherAvoidList`), since reading only the changes would then be wrong. The cache never shows a result by itself: at
   launch the engine starts nothing (no scan, no restore of the last result; rule 10), and the first scan the user
   starts after a restart is a rescan of the cache the last one saved. The places walked outside the roots are never
