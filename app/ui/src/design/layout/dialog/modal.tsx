@@ -50,7 +50,9 @@ const Body = ({ children, titleId }: { readonly children: ReactNode; readonly ti
       role={focusable ? 'region' : undefined}
       tabIndex={focusable ? 0 : undefined}
     >
-      <div ref={contentRef}>{children}</div>
+      <div className={styles.content} ref={contentRef}>
+        {children}
+      </div>
     </div>
   );
 };

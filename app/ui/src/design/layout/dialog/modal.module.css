@@ -107,6 +107,11 @@
     overscroll-behavior: contain;
   }
 
+  /* As tall as the body, so a content that fills its height (a list that shrinks) never makes the body scroll. */
+  .content {
+    height: 100%;
+  }
+
   .footer {
     display: flex;
     justify-content: flex-end;

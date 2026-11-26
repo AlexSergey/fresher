@@ -5,8 +5,20 @@
  */
 @layer components {
   .content {
-    display: grid;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
     gap: var(--space-5);
+  }
+
+  .content > * {
+    flex: none;
+  }
+
+  /* The group with a long list takes the height the dialog leaves; its list scrolls, nothing else does. */
+  .content > .group:has(.long) {
+    min-height: 0;
+    flex: 1 1 auto;
   }
 
   .summary {
@@ -29,7 +41,8 @@
   }
 
   .group {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: var(--space-2);
   }
 
@@ -142,7 +155,8 @@
   }
 
   .long {
-    height: 320px;
+    min-height: 96px;
+    flex: 1 1 320px;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
   }

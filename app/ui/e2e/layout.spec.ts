@@ -49,6 +49,21 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('a long plan at 900 × 600 keeps the method and the buttons in view and scrolls only its list', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 600, width: 900 });
+    await openStory(page, 'ConfirmDialog/long-list');
+    const dialog = page.getByRole('dialog');
+    const body = dialog
+      .getByRole('list', { name: 'The items of Example caches' })
+      .locator('xpath=ancestor::div[contains(@class,"body")][1]');
+
+    await expect(dialog.getByRole('checkbox', { name: /Delete permanently/u })).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByRole('button', { name: 'Yes, move to the Trash' })).toBeInViewport({ ratio: 1 });
+    expect(await body.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+  });
+
   test('the keyboard moves through the dialog from its first control', async ({ page }) => {
     await openStory(page, 'Dialog/short-body');
     const dialog = page.getByRole('dialog', { name: 'Move 3 items to the Trash?' });

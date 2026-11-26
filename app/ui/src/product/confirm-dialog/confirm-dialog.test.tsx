@@ -475,6 +475,19 @@ describe('ConfirmDialog', () => {
       expect(items).toBeInTheDocument();
     });
 
+    it('a long plan scrolls only its list: the method and the buttons are outside it', () => {
+      const dialog = openDialog({ plan: LONG_PLAN });
+      const items = screen.getByRole('list', { name: 'The items of Example caches' });
+
+      expect(items.contains(permanentChoice())).toBe(false);
+      expect(items.contains(screen.getByRole('button', { name: 'Yes, move to the Trash' }))).toBe(false);
+      expect(items.contains(screen.getByRole('heading', { name: 'Move 240 items to the Trash?' }))).toBe(false);
+      expect(dialog).toContainElement(permanentChoice());
+      // The list takes the height the dialog leaves, so the dialog's own body has nothing to scroll.
+      expect(css).toMatch(/\.long \{[^}]*min-height: 96px;[^}]*flex: 1 1 320px;/u);
+      expect(css).toMatch(/\.content \{[^}]*height: 100%;[^}]*flex-direction: column;/u);
+    });
+
     it('the total size is static text', () => {
       const dialog = openDialog();
 
