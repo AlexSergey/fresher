@@ -15,7 +15,7 @@
   "scripts": {
     "bench": "cargo bench -p fresher-scanner --bench scan --locked",
     "build": "RUSTFLAGS=\"--remap-path-prefix=$HOME=~\" tauri build -- --locked && npm run check:bundle",
-    "build:release": "CI=true RUSTFLAGS=\"--remap-path-prefix=$HOME=~\" tauri build --target universal-apple-darwin --bundles app,dmg -- --locked && npm run check:bundle -- --release",
+    "build:release": "CI=true TAURI_BUNDLER_DMG_IGNORE_CI=true RUSTFLAGS=\"--remap-path-prefix=$HOME=~\" tauri build --target universal-apple-darwin --bundles app,dmg -- --locked && npm run check:bundle -- --release",
     "check:bundle": "node scripts/check-bundle.ts",
     "check:crate-deps": "node scripts/check-crate-deps.ts",
     "check:deny": "cargo deny check",

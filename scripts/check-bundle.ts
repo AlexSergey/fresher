@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -133,13 +133,17 @@ export const appProblems = (
   return problems;
 };
 
-// The disk image verifies, opens read-only without showing in Finder, and holds `Fresher.app`, which `checkApp`
-// checks where it lies in the image; the image is detached again whatever the checks say.
+// The files Finder lays the image's window out from: without them it opens on the default window, with no background.
+export const WINDOW_FILES = ['.DS_Store', join('.background', 'background.png')] as const;
+
+// The disk image verifies, opens read-only without showing in Finder, holds its window's layout and `Fresher.app`,
+// which `checkApp` checks where it lies in the image; the image is detached again whatever the checks say.
 export const dmgProblems = (
   hdiutil: Run,
   dmg: string,
   mountpoint: string,
   checkApp: (app: string) => readonly string[],
+  exists: (path: string) => boolean,
 ): readonly string[] => {
   const verify = hdiutil(['verify', '-quiet', dmg]);
   if (verify.status !== 0) {
@@ -150,6 +154,11 @@ export const dmgProblems = (
     return [`the disk image could not be opened (hdiutil attach): ${attach.stderr.trim()}`];
   }
   const problems = checkApp(join(mountpoint, 'Fresher.app')).map((problem) => `inside the disk image: ${problem}`);
+  for (const file of WINDOW_FILES) {
+    if (!exists(join(mountpoint, file))) {
+      problems.push(`the disk image's window is not laid out: no ${file} (did Finder's step run?)`);
+    }
+  }
   const detach = hdiutil(['detach', mountpoint]);
   if (detach.status !== 0) {
     problems.push(`the disk image could not be closed (hdiutil detach): ${detach.stderr.trim()}`);
@@ -203,8 +212,12 @@ const releaseProblems = (tools: Tools, bundle: string, home: string | undefined)
   const mountpoint = mkdtempSync(join(tmpdir(), 'fresher-check-bundle-'));
   try {
     problems.push(
-      ...dmgProblems(runner(HDIUTIL), dmg, mountpoint, (inside) =>
-        appProblems(tools, inside, readFileSync, home, true),
+      ...dmgProblems(
+        runner(HDIUTIL),
+        dmg,
+        mountpoint,
+        (inside) => appProblems(tools, inside, readFileSync, home, true),
+        existsSync,
       ).map((problem) => `${dmg}: ${problem}`),
     );
   } finally {

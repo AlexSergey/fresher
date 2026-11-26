@@ -61,6 +61,7 @@ const hdiutil =
 
 const TOOLS: Tools = { codesign: codesign({}), lipo: lipoSaying('x86_64 arm64'), nm: () => ok('', '_open\n') };
 const EXECUTABLE = (): Buffer => Buffer.from('\0~/.cargo/registry/src/x.rs\0');
+const ALL_FILES = (): boolean => true;
 
 describe('check-bundle', () => {
   describe('negative cases', () => {
@@ -139,7 +140,7 @@ describe('check-bundle', () => {
     it('a_disk_image_that_does_not_verify_is_refused_and_not_opened', () => {
       const calls: string[] = [];
       const failing = { status: 1, stderr: 'checksum mismatch', stdout: '' };
-      const problems = dmgProblems(hdiutil(calls, { verify: failing }), '/x/F.dmg', '/m', () => []);
+      const problems = dmgProblems(hdiutil(calls, { verify: failing }), '/x/F.dmg', '/m', () => [], ALL_FILES);
       assert.deepEqual(problems, ['the disk image does not verify (hdiutil verify): checksum mismatch']);
       assert.deepEqual(calls, ['verify -quiet /x/F.dmg']);
     });
@@ -147,7 +148,7 @@ describe('check-bundle', () => {
     it('a_disk_image_that_cannot_be_opened_is_refused', () => {
       const calls: string[] = [];
       const failing = { status: 1, stderr: 'no mountable file systems', stdout: '' };
-      const problems = dmgProblems(hdiutil(calls, { attach: failing }), '/x/F.dmg', '/m', () => []);
+      const problems = dmgProblems(hdiutil(calls, { attach: failing }), '/x/F.dmg', '/m', () => [], ALL_FILES);
       assert.equal(problems.length, 1);
       assert.equal(calls.length, 2);
     });
@@ -155,19 +156,51 @@ describe('check-bundle', () => {
     it('an_app_in_the_disk_image_that_fails_a_check_is_refused_and_the_image_is_closed', () => {
       const calls: string[] = [];
       const checked: string[] = [];
-      const problems = dmgProblems(hdiutil(calls), '/x/F.dmg', '/m', (app) => {
-        checked.push(app);
+      const problems = dmgProblems(
+        hdiutil(calls),
+        '/x/F.dmg',
+        '/m',
+        (app) => {
+          checked.push(app);
 
-        return ['the executable has no x86_64 code'];
-      });
+          return ['the executable has no x86_64 code'];
+        },
+        ALL_FILES,
+      );
       assert.deepEqual(problems, ['inside the disk image: the executable has no x86_64 code']);
       assert.deepEqual(checked, ['/m/Fresher.app']);
       assert.equal(calls.at(-1), 'detach /m');
     });
 
+    it('a_disk_image_whose_window_is_not_laid_out_is_refused_and_the_image_is_closed', () => {
+      const calls: string[] = [];
+      const problems = dmgProblems(
+        hdiutil(calls),
+        '/x/F.dmg',
+        '/m',
+        () => [],
+        (path) => path !== '/m/.DS_Store',
+      );
+      assert.deepEqual(problems, ["the disk image's window is not laid out: no .DS_Store (did Finder's step run?)"]);
+      assert.equal(calls.at(-1), 'detach /m');
+      const asked: string[] = [];
+      dmgProblems(
+        hdiutil([]),
+        '/x/F.dmg',
+        '/m',
+        () => [],
+        (path) => {
+          asked.push(path);
+
+          return false;
+        },
+      );
+      assert.deepEqual(asked, ['/m/.DS_Store', '/m/.background/background.png']);
+    });
+
     it('a_disk_image_left_open_is_said', () => {
       const failing = { status: 1, stderr: 'resource busy', stdout: '' };
-      assert.equal(dmgProblems(hdiutil([], { detach: failing }), '/x/F.dmg', '/m', () => []).length, 1);
+      assert.equal(dmgProblems(hdiutil([], { detach: failing }), '/x/F.dmg', '/m', () => [], ALL_FILES).length, 1);
     });
 
     it('no_disk_image_or_more_than_one_is_not_a_release_image', () => {
@@ -216,7 +249,7 @@ describe('check-bundle', () => {
     it('a_disk_image_that_verifies_and_holds_a_passing_app_passes', () => {
       const calls: string[] = [];
       assert.deepEqual(
-        dmgProblems(hdiutil(calls), '/x/F.dmg', '/m', () => []),
+        dmgProblems(hdiutil(calls), '/x/F.dmg', '/m', () => [], ALL_FILES),
         [],
       );
       assert.deepEqual(calls, [

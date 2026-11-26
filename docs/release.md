@@ -30,7 +30,19 @@ release follows this document. The design and its decisions: plan [013](./plans/
 ## What a release holds
 
 - **`Fresher_X.Y.Z_universal.dmg`**: one disk image for Apple silicon and Intel, macOS 13 or later
-  (`npm run build:release`, checked by `npm run check:bundle -- --release`).
+  (`npm run build:release`, checked by `npm run check:bundle -- --release`). It opens on a fixed 660 × 400 pt window
+  (`bundle.macOS.dmg` in `app/tauri/tauri.conf.json`; the window's height of 428 counts Finder's title bar) with the
+  app at (170, 205), the Applications link at (490, 205) and a drawn background: the app's dark ground, "Drag Fresher
+  to Applications" and an arrow between the two icons. The background is `app/tauri/dmg/background.svg`, rendered by
+  hand to `background.png` at 1320 × 800 px marked 144 dpi, so Finder draws it sharp on Retina at its size in points
+  (`rsvg-convert -w 1320 -h 800 background.svg -o background.png && sips -s dpiWidth 144 -s dpiHeight 144
+background.png`); the bundler takes only a PNG, JPEG or GIF, not a multi-resolution TIFF. Finder draws the icons'
+  names black in light mode and white in dark mode on the same picture, so each name sits on an iris plate both
+  colours read on; the plates follow the icons' places and the 16 pt names. The user chose this look on 2026-11-26
+  from three drafts, and checked a test image in Finder. Finder lays the window out through an AppleScript the
+  bundler skips when `CI` is set, so `build:release` sets `TAURI_BUNDLER_DMG_IGNORE_CI=true` (locally and in the
+  release workflow); the terminal, or the runner, needs Automation access to Finder. `check:bundle -- --release`
+  refuses an image without the window's `.DS_Store` or its `.background/background.png`.
 - **`SHA256SUMS`** of the image, and a **build provenance attestation** (`gh attestation verify`).
 - **The release's text**: [`releases/X.Y.Z.md`](./releases/) (what it is, supported Macs, install, first launch, Full
   Disk Access, how to check the download, no warranty, where to report), followed by the version's section of
