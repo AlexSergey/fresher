@@ -8,7 +8,7 @@ use std::sync::{Arc, OnceLock};
 
 use fresher_core::{
     BundleId, ByteSize, CategoryDescriptor, CategoryId, CategoryTotal, CleanupId, CommandError, Completeness,
-    DiskState, Finding, FindingId, FindingOrder, FindingsPage, HiddenBy, HiddenModule, IgnoredCount, LastScan,
+    DiskState, Finding, FindingId, FindingOrder, FindingsPage, HiddenBy, HiddenModule, IgnoredCount, LastScan, Method,
     ModuleGroup, ModuleId, Place, Sizes, Subject,
 };
 
@@ -32,6 +32,8 @@ pub(crate) struct Results {
     /// The paths of the picks a cleanup removed since `state` was kept, and the paths of the items that went (an
     /// uninstall's bundle and parts among them): the Largest screen and the Apps list leave them out.
     gone: Vec<PathBuf>,
+    /// The paths the cleanups since `state` was kept removed whole, in order: the map takes them out of its sizes.
+    cleaned: Vec<Cleaned>,
     ignored: Ignored,
     /// What the High switch leaves out of every answer, set once at build.
     withheld: Withheld,
@@ -50,7 +52,7 @@ pub(crate) struct Results {
     shares: Arc<OnceLock<Shares>>,
     /// The Largest screen's items of `state`: built on the first query, a new slot with each state.
     largest: ItemsSlot,
-    /// The volumes of `state`'s roots, read at its commit.
+    /// The volumes of `state`'s roots, read at its commit and again at the end of each cleanup.
     state_volumes: RootVolumes,
     /// The places walked outside the roots by the scan that committed `state`.
     state_walked: Arc<[Place]>,
@@ -72,6 +74,7 @@ impl fmt::Debug for Results {
             .field("findings", &self.findings.len())
             .field("own", &self.own.len())
             .field("gone", &self.gone)
+            .field("cleaned", &self.cleaned)
             .field("ignored", &self.ignored)
             .field("withheld", &self.withheld)
             .field("state_withheld", &self.state_withheld)
@@ -111,6 +114,7 @@ impl Results {
             findings: Vec::new(),
             own: Vec::new(),
             gone: Vec::new(),
+            cleaned: Vec::new(),
             ignored: Ignored::default(),
             state_withheld: Arc::new(withheld.clone()),
             withheld,
@@ -297,6 +301,18 @@ impl Results {
         removed.into_iter().chain(inside).collect()
     }
 
+    /// A cleanup removed every byte of `cleaned` and left the state's roots on `volumes`, read again (`None` when there
+    /// was no state to read them for): the map of the state takes them in.
+    pub(crate) fn keep_cleaned(&mut self, cleaned: &[Cleaned], volumes: Option<RootVolumes>) {
+        if self.state.is_none() {
+            return;
+        }
+        self.cleaned.extend_from_slice(cleaned);
+        if let Some(volumes) = volumes {
+            self.state_volumes = volumes;
+        }
+    }
+
     /// The disk changed since the last scan: `cleanup` acted on it.
     pub(crate) fn mark_changed(&mut self, cleanup: CleanupId) {
         if let Some(last) = &mut self.last {
@@ -322,11 +338,12 @@ impl Results {
 
     /// Keeps `state`, the disk state a scan committed, and the owners of its places, in place of the previous ones.
     /// Its roots' `volumes` and the current findings that name their app are kept with it.
-    /// The picks and the paths they removed are forgotten: they were of the previous state.
+    /// The picks and the paths the cleanups removed are forgotten: they were of the previous state.
     pub(crate) fn keep_state(&mut self, state: Arc<dyn DiskState>, places: AppPlaces, volumes: RootVolumes) {
         self.state = Some(state);
         self.own.clear();
         self.gone.clear();
+        self.cleaned.clear();
         self.places = Some(Arc::new(places));
         self.shares = Arc::new(OnceLock::new());
         self.largest = ItemsSlot::default();
@@ -350,6 +367,7 @@ impl Results {
             largest: Arc::clone(&self.largest),
             own: Arc::from(self.own.as_slice()),
             gone: Arc::from(self.gone.as_slice()),
+            cleaned: Arc::from(self.cleaned.as_slice()),
             ignored: self.ignored.clone(),
             withheld: Arc::clone(&self.state_withheld),
             volumes: self.state_volumes.clone(),
@@ -460,7 +478,7 @@ impl Results {
 pub(crate) struct Committed {
     pub(crate) state: Arc<dyn DiskState>,
     pub(crate) places: Arc<AppPlaces>,
-    /// The volumes of the state's roots, read at its commit.
+    /// The volumes of the state's roots, read at its commit and again at the end of each cleanup.
     pub(crate) volumes: RootVolumes,
     /// The places walked outside the roots by the scan that committed the state.
     pub(crate) walked: Arc<[Place]>,
@@ -472,6 +490,8 @@ pub(crate) struct Committed {
     pub(crate) own: Arc<[Finding]>,
     /// The paths a cleanup removed since the state was kept: the picks and every path of an item that went.
     pub(crate) gone: Arc<[PathBuf]>,
+    /// The paths the cleanups removed whole since the state was kept, in order.
+    pub(crate) cleaned: Arc<[Cleaned]>,
     shares: Arc<OnceLock<Shares>>,
     ignored: Ignored,
     withheld: Arc<Withheld>,
@@ -494,6 +514,13 @@ impl fmt::Debug for Committed {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.debug_struct("Committed").field("state", &self.state.id()).finish_non_exhaustive()
     }
+}
+
+/// A path a cleanup removed whole since the state was kept, and how: to the Trash its bytes stay on the volume.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Cleaned {
+    pub(crate) path: PathBuf,
+    pub(crate) method: Method,
 }
 
 /// The finding `id` of `findings`, in id order.

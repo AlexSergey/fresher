@@ -322,6 +322,7 @@ mod negative {
 
 mod positive {
     use std::path::Path;
+    use std::sync::Arc;
 
     use fresher_core::{
         Access, Capability, Descent, DiskState, IgnoreTarget, IgnoredEntry, MapPhase, MeaningGroup, NotScanned,
@@ -334,6 +335,7 @@ mod positive {
         BATCH_LIMIT, alpha, caches, disk, facts, home, leaves, many_caches, next_batch, owned, part, parts, started,
         startup, state, two_volumes, walk,
     };
+    use crate::cleanup::testing::{echo, select, wait_for_cleanup};
     use crate::testing::{Fixture, MemorySettings, ScriptedWalk, bytes, scan, wait_for_finish};
 
     #[test]
@@ -406,6 +408,61 @@ mod positive {
         assert_eq!(volume.parts()[2].kind, PartKind::Remainder { outside_scan: true, reasons });
         assert_eq!(volume.roots(), [home(1).roots()[0]]);
         assert!(!volume.disk_changed());
+    }
+
+    #[test]
+    fn a_move_to_the_trash_leaves_what_can_be_freed_and_stays_in_your_folders() {
+        let engine = Fixture::new(walk(vec![home(1)])).module(alpha()).volumes(startup()).engine();
+        scan(&engine);
+        let events = engine.subscribe();
+        let view = engine.prepare_cleanup(&select(&[1], &[])).unwrap();
+
+        engine.confirm_cleanup(&echo(&view, "trash")).unwrap();
+        wait_for_cleanup(&events);
+
+        let map = engine.storage_map().unwrap();
+        assert_eq!(map.phase, MapPhase::Complete { state: StateId::new(1) });
+        assert_eq!(
+            parts(&map.volumes[0]),
+            owned(&[
+                ("explained", 0),
+                ("your-folders", 300),
+                ("outside", 100),
+                ("mac-os", 0),
+                ("swap", 0),
+                ("disk-own", 100),
+                ("free", 500)
+            ])
+        );
+    }
+
+    #[test]
+    fn a_permanent_delete_leaves_the_map_with_the_volume_read_again() {
+        let fixture = Fixture::new(walk(vec![home(1)])).module(alpha()).volumes(startup());
+        let volumes = Arc::clone(&fixture.volumes);
+        let engine = fixture.engine();
+        scan(&engine);
+        let events = engine.subscribe();
+        let view = engine.prepare_cleanup(&select(&[1], &[])).unwrap();
+        volumes.now_with_space("/", disk("Macintosh HD", "/", 1000, 300, 600));
+
+        engine.confirm_cleanup(&echo(&view, "permanent")).unwrap();
+        wait_for_cleanup(&events);
+
+        let map = engine.storage_map().unwrap();
+        assert_eq!(
+            parts(&map.volumes[0]),
+            owned(&[
+                ("explained", 0),
+                ("your-folders", 200),
+                ("outside", 100),
+                ("mac-os", 0),
+                ("swap", 0),
+                ("disk-own", 100),
+                ("free", 600)
+            ])
+        );
+        assert!(!map.volumes[0].disk_changed());
     }
 
     #[test]

@@ -21,6 +21,7 @@ use crate::cleanup::pending::Purpose;
 use crate::engine::{CleanupPorts, Shared};
 use crate::error::{EngineError, lock, lock_anyway};
 use crate::own::check_picks;
+use crate::results::Cleaned;
 use crate::state::{OperationThread, Running};
 
 /// The journal is made durable after this many outcomes…
@@ -122,6 +123,9 @@ struct Run<'a> {
     /// The paths that went: every path of an item whose whole path went, and the parts of an item of several paths
     /// that went before it stopped. What was at or below them leaves the results too, picks or not.
     went: Vec<PathBuf>,
+    /// The paths whose every byte went, with how: those of `went`, and every folder emptied with no entry left. The
+    /// storage map takes them out of the last state's sizes.
+    cleaned: Vec<Cleaned>,
     /// How the items of an uninstall ended and how many of their parts went, in order, to teach App Management at the
     /// end; `None` for any other plan and for an uninstall App Management is not involved in.
     uninstalled: Option<Vec<(ItemOutcome, Option<u32>)>>,
@@ -154,6 +158,7 @@ impl<'a> Run<'a> {
             cleared: Vec::new(),
             paths,
             went: Vec::new(),
+            cleaned: Vec::new(),
             uninstalled,
             unsynced: 0,
             synced_at: shared.ports.clock.now(),
@@ -188,8 +193,17 @@ impl<'a> Run<'a> {
         if clears(&item.outcome) {
             self.cleared.push(item.finding);
         }
-        let paths = usize::try_from(item.index).ok().and_then(|index| self.paths.get(index));
-        self.went.extend_from_slice(went(&item.outcome, paths.map_or(&[], Vec::as_slice), item.went));
+        let paths =
+            usize::try_from(item.index).ok().and_then(|index| self.paths.get(index)).map_or(&[][..], Vec::as_slice);
+        let went = went(&item.outcome, paths, item.went);
+        self.went.extend_from_slice(went);
+        let method = match item.outcome {
+            ItemOutcome::Moved => Method::Trash,
+            ItemOutcome::Deleted => Method::Permanent,
+            _ => self.report.method,
+        };
+        let cleaned = if clears(&item.outcome) { paths } else { went };
+        self.cleaned.extend(cleaned.iter().map(|path| Cleaned { path: path.clone(), method }));
         if let Some(uninstalled) = &mut self.uninstalled {
             uninstalled.push((item.outcome.clone(), item.went));
         }
@@ -200,9 +214,10 @@ impl<'a> Run<'a> {
     }
 
     /// The cleanup ended: the last outcomes, the space measured again, the journal's end, the removed findings (and
-    /// those at or below a path that went, an uninstalled app's bundle and parts among them) out of the results and
-    /// the last scan marked changed, what an uninstall taught App Management (`AccessChanged` once when it changed
-    /// the state), `FindingsRemoved`, `CleanupFinished`, then `Idle` — the last three under the state's lock.
+    /// those at or below a path that went, an uninstalled app's bundle and parts among them) out of the results, what
+    /// went and the last state's volumes read again kept for the storage map, the last scan marked changed, what an
+    /// uninstall taught App Management (`AccessChanged` once when it changed the state), `FindingsRemoved`,
+    /// `CleanupFinished`, then `Idle` — the last three under the state's lock.
     fn end(&mut self, ended: Ended) {
         self.ended = true;
         if let Some(batch) = self.batcher.take() {
@@ -218,11 +233,16 @@ impl<'a> Run<'a> {
         self.report.ended = ended;
         self.report.measured = self.before.gained(&after);
         self.learn();
+        let roots = lock_anyway(&self.shared.results)
+            .state()
+            .map(|state| state.roots().into_iter().filter_map(|root| state.path(root)).collect::<Vec<_>>());
+        let volumes = roots.map(|roots| self.shared.read_volumes(&roots));
 
         let mut machine = lock_anyway(&self.shared.machine);
         let (scan, findings) = {
             let mut results = lock_anyway(&self.shared.results);
             let findings = results.remove(&self.removed, &self.cleared, &self.went);
+            results.keep_cleaned(&self.cleaned, volumes);
             results.mark_changed(self.cleanup);
             (results.last().map(|last| last.scan), findings)
         };

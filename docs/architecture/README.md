@@ -357,6 +357,11 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
   [035](../plans/035-large-files/readme.md), the section "The largest files" below) with its way up as a breadcrumb.
 - **The three phases** (`query.rs`): no scan, scanning and complete (the phase is in the map, `MapPhase`); a query
   takes what it needs under the results' lock and builds after letting it go, so none blocks a scan.
+- **After a cleanup** (`query.rs`, `cleaned_under`): the complete map takes out the tree's sizes of every path the
+  cleanups since the commit removed whole (`Results::keep_cleaned`): a permanent delete leaves the root, a move to the
+  Trash leaves Explained and stays in the root among Your folders (the Trash is the user's folder). The cleanup reads
+  the state's volumes again at its end, so Free and the remainder follow too; no rescan, nothing read on a query. The
+  by-meaning groups stay those of the scan until the next one.
 - **Budget**: the shares of a scan of the `LARGE` tree take under 50 ms and 5 MB
   (`crates/e2e/tests/storage_budget.rs`, run by hand; [`../testing.md`](../testing.md)).
 - The commands are `get_storage_map` and `get_storage_meaning(volume)` (`app/tauri/src/storage_commands.rs`;

@@ -1,6 +1,6 @@
 # The disk chart keeps its numbers after a cleanup
 
-**Status:** open · **Updated:** 2026-11-26
+**Status:** fixed (the map takes out what a cleanup removed; the volume is read again) · **Updated:** 2026-11-26
 
 ## Symptom
 
@@ -10,17 +10,31 @@ had before the cleanups.
 
 ## Cause
 
-Not investigated yet. To check first:
+The engine, not the UI. The UI marks its state stale on `findings-removed` and `cleanup-finished`, and the refresher
+asks `get_storage_map` again (`app/ui/src/state/refresh.ts`); the engine answered the same map, so the reducer kept the
+old one. The complete map (`complete` in `crates/engine/src/storage/query.rs`) is built only from the last scan's tree
+sizes, its shares (what the modules explain, "Can be freed") and the volumes read at the scan's commit. A cleanup took
+its findings out of the results and the overview, but changed none of these: "Can be freed" kept the removed bytes, and
+Free kept the volume's space as it was at the scan. The sandbox's real-volume rounding was not the cause: the
+"Can be freed" part is the sandbox's own sizes, and it did not move either.
 
-- which numbers stay: what Fresher can free (the findings removed by the cleanup), or the free space of the volume;
-- whether the chart is refreshed after `cleanup-finished` and `findings-removed`, or only after a scan;
-- in sandbox mode the volume's space is the real Mac's (`docs/testing.md`, "Sandbox mode"), so 100 MB freed on a large
-  disk may be lost in the chart's rounding; the sizes of the findings are the sandbox's own.
+Two tests reproduced it (`crates/engine/src/storage/query_tests.rs`):
+`a_move_to_the_trash_leaves_what_can_be_freed_and_stays_in_your_folders` and
+`a_permanent_delete_leaves_the_map_with_the_volume_read_again` saw the map after the cleanup equal to the one before.
+
+## Fix
+
+The cleanup keeps for the map every path it removed whole (the paths that went and every folder emptied with no entry
+left), with how it went, and at its end reads the volumes of the state's roots again
+(`Results::keep_cleaned`, `crates/engine/src/cleanup/operation.rs`). The complete map takes the tree's sizes of those
+paths out (`cleaned_under` in `query.rs`): a permanent delete leaves the root and Explained; a move to the Trash leaves
+Explained and stays in the root among Your folders, since the Trash is the user's folder. With the volume read again,
+Free and the remainder follow. Nothing is read on a query and nothing is scanned: the reads are part of the cleanup the
+user confirmed. The next scan forgets the list with the state.
+
+Left as it was: the by-meaning groups (`storage_meaning`, which no screen asks for now) stay those of the scan until the
+next one; a put back does not bring its bytes back to Explained, as it does not bring its findings back.
 
 ## What was tried
 
-Nothing yet.
-
-## Options left
-
-- Refresh the chart from the core after every cleanup, as the findings list already is.
+Nothing else.

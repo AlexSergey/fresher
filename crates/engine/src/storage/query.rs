@@ -3,16 +3,18 @@
 //! a scan, and the volumes are never read here but before the first scan. The by-meaning view and the places answer for
 //! the map of the phase the map query answers.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    Access, AccessStatus, Capability, CommandError, Descent, FindingsQuery, MapPhase, MapPlace, MeaningGroup, NodeId,
-    NotScanned, Operation, PlaceView, Sizes, StorageMap, Text, Unreadable, UnreadablePlace, VolumeMap,
+    Access, AccessStatus, Capability, CommandError, Descent, FindingsQuery, MapPhase, MapPlace, MeaningGroup, Method,
+    NodeId, NotScanned, Operation, PlaceView, Sizes, StorageMap, Text, Unreadable, UnreadablePlace, VolumeMap,
 };
 
 use crate::Engine;
+use crate::claims::minus;
 use crate::error::{EngineError, lock};
-use crate::results::Committed;
+use crate::results::{Committed, add};
 use crate::storage::meaning::{append_volume_parts, meaning};
 use crate::storage::place::place_view;
 use crate::storage::roots::{RootVolumes, expand_home};
@@ -159,8 +161,8 @@ fn unscanned(
         .collect()
 }
 
-/// The full maps of the committed state, each with the roots it holds: the tree's sizes, the shares, and the folders
-/// on the volume the scan could not read.
+/// The full maps of the committed state, each with the roots it holds: the tree's sizes and the shares less what the
+/// cleanups since took out, and the folders on the volume the scan could not read.
 fn complete(committed: &Committed, access: &AccessStatus) -> Result<Vec<(VolumeMap, Vec<NodeId>)>, CommandError> {
     let state = &*committed.state;
     let shares = committed.shares();
@@ -180,15 +182,21 @@ fn complete(committed: &Committed, access: &AccessStatus) -> Result<Vec<(VolumeM
         let (unreadable_folders, needs) = unread(&places, access);
         let roots_on_volume = on_volume
             .iter()
-            .map(|&&(root, ref path)| RootOnVolume {
-                path: path.clone(),
-                node: Some(root),
-                sizes: state.node(root).map_or(Sizes::ZERO, |node| node.sizes),
-                explained: shares
-                    .roots()
-                    .iter()
-                    .find(|share| share.root == root)
-                    .map_or(Sizes::ZERO, |share| share.explained),
+            .map(|&&(root, ref path)| {
+                let cleaned = cleaned_under(committed, path);
+                RootOnVolume {
+                    path: path.clone(),
+                    node: Some(root),
+                    sizes: minus(state.node(root).map_or(Sizes::ZERO, |node| node.sizes), cleaned.left),
+                    explained: minus(
+                        shares
+                            .roots()
+                            .iter()
+                            .find(|share| share.root == root)
+                            .map_or(Sizes::ZERO, |share| share.explained),
+                        cleaned.explained,
+                    ),
+                }
             })
             .collect();
         let input =
@@ -202,6 +210,38 @@ fn complete(committed: &Committed, access: &AccessStatus) -> Result<Vec<(VolumeM
         maps.push((map, on_volume.iter().map(|(root, _)| *root).collect()));
     }
     Ok(maps)
+}
+
+/// What the cleanups since the commit took out of one root.
+struct CleanedSizes {
+    /// The bytes that left the volume: deleted. A move to the Trash keeps its bytes in the root, as the user's folders.
+    left: Sizes,
+    /// The bytes that are no longer explained: deleted or moved to the Trash.
+    explained: Sizes,
+}
+
+/// What the cleanups since the commit took out of the root at `root`, by the tree's sizes of each path they removed
+/// whole. A path below another removed one is in it already; a path removed again (put back, then removed) counts as
+/// its last removal went; a path the tree does not hold adds nothing.
+fn cleaned_under(committed: &Committed, root: &Path) -> CleanedSizes {
+    let state = &*committed.state;
+    let shares = committed.shares();
+    let paths: HashSet<&Path> = committed.cleaned.iter().map(|cleaned| cleaned.path.as_path()).collect();
+    let mut counted: HashSet<&Path> = HashSet::new();
+    let mut sizes = CleanedSizes { left: Sizes::ZERO, explained: Sizes::ZERO };
+    for cleaned in committed.cleaned.iter().rev() {
+        let path = cleaned.path.as_path();
+        let inside = path.ancestors().skip(1).any(|above| paths.contains(above));
+        if !path.starts_with(root) || inside || !counted.insert(path) {
+            continue;
+        }
+        let Some((id, node)) = state.find(path).and_then(|id| Some((id, state.node(id)?))) else { continue };
+        if cleaned.method == Method::Permanent {
+            sizes.left = add(sizes.left, node.sizes);
+        }
+        sizes.explained = add(sizes.explained, shares.explained(state, id));
+    }
+    sizes
 }
 
 /// How many folders `places` hold that the scan did not read (each place and the folders hidden under it; a place on

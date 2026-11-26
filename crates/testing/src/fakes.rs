@@ -181,12 +181,12 @@ impl CommandRunner for FakeCommandRunner {
     }
 }
 
-/// Fixed volume facts per root: a path is on the volume of the longest root it starts with. The available space is
-/// played from a script, one value per call.
+/// Volume facts per root: a path is on the volume of the longest root it starts with. The available space is played
+/// from a script, one value per call; a volume's space can change while a test runs.
 #[derive(Debug, Default)]
 pub struct FakeVolumes {
     roots: Vec<(PathBuf, VolumeFacts)>,
-    spaces: Vec<(PathBuf, DiskSpace)>,
+    spaces: Mutex<Vec<(PathBuf, DiskSpace)>>,
     available: Mutex<VecDeque<Result<ByteSize, ReadError>>>,
     space_calls: Mutex<usize>,
 }
@@ -201,9 +201,17 @@ impl FakeVolumes {
 
     /// Puts `root` and everything under it on a volume of `space`.
     #[must_use]
-    pub fn with_space(mut self, root: impl Into<PathBuf>, space: DiskSpace) -> Self {
-        self.spaces.push((root.into(), space));
+    pub fn with_space(self, root: impl Into<PathBuf>, space: DiskSpace) -> Self {
+        self.now_with_space(root, space);
         self
+    }
+
+    /// From now on, `root` and everything under it are on a volume of `space`, in place of the one `root` had.
+    pub fn now_with_space(&self, root: impl Into<PathBuf>, space: DiskSpace) {
+        let root = root.into();
+        let mut spaces = lock(&self.spaces);
+        spaces.retain(|(known, _)| *known != root);
+        spaces.push((root, space));
     }
 
     /// A plain internal volume: no neighbours, no purgeable space.
@@ -249,7 +257,7 @@ impl Volumes for FakeVolumes {
 
     fn space(&self, path: &Path) -> Result<DiskSpace, ReadError> {
         *lock(&self.space_calls) += 1;
-        self.spaces
+        lock(&self.spaces)
             .iter()
             .filter(|(root, _)| path.starts_with(root))
             .max_by_key(|(root, _)| root.components().count())
