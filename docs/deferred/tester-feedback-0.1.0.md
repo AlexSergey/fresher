@@ -13,6 +13,8 @@ go with the last one.
 - The split into categories by how safe they are to remove reads well.
 - It found long-unused `node_modules` folders.
 - Its numbers matched what another cleaner showed for the same places (npm's cache).
+- Xcode's old builds that are no longer used were found; another cleaner does not find them. "If it is worked on
+  further, it will be great."
 
 ## What did not
 
