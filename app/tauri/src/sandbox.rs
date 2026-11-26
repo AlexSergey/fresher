@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, HighLevel, InstallRecords, InstalledApps, KnownFolders, ModuleId,
-    OpenFiles, Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
+    AccessProbe, Build, ByteSize, Clock, CommandRunner, HighLevel, InstallRecords, InstalledApps, KnownFolders,
+    ModuleId, OpenFiles, Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
@@ -55,9 +55,20 @@ pub enum SandboxTrash {
 pub(crate) enum ScanPace {
     /// As the walk goes: the app's, and every autotest's.
     AsWalked,
-    /// A demo's: held to a minimum time with its progress rising evenly over it, so a recording shows the scan run
-    /// (`fresher_sandbox::PacedWalk`).
-    Demo,
+    /// A demo's: held to a minimum time, its progress numbers made up for the recording and rising evenly over it, the
+    /// bytes toward `used`, the demo volume's used space, which the bar measures against (`fresher_sandbox::PacedWalk`).
+    /// `used` is the world's, filled in when the engine is made ([`ScanPace::of_world`]); the findings stay real.
+    Demo { used: Option<ByteSize> },
+}
+
+impl ScanPace {
+    /// The pace with a demo's `used` taken from `world`'s stated volume; `None` when it states none.
+    pub(crate) fn of_world(self, world: &World) -> Self {
+        match self {
+            Self::AsWalked => Self::AsWalked,
+            Self::Demo { .. } => Self::Demo { used: world.volume().map(|volume| ByteSize::new(volume.used())) },
+        }
+    }
 }
 
 /// A development build's sandbox mode: the sandbox folder, the Trash its cleanups use, and the modules it registers.
@@ -139,7 +150,7 @@ impl SandboxMode {
     /// evenly. For demo mode only; the demo worlds' scan test and every autotest walk as the app does.
     #[must_use]
     pub fn paced_scan(self) -> Self {
-        Self { pace: ScanPace::Demo, ..self }
+        Self { pace: ScanPace::Demo { used: None }, ..self }
     }
 
     /// The same mode with High findings offered. For the sandbox autotest only, which runs a case file's High
@@ -339,7 +350,7 @@ pub(crate) fn compose(
         apps,
         installs: ports.installs,
         high: mode.high,
-        pace: mode.pace,
+        pace: mode.pace.of_world(&world),
     })?;
     Ok((engine, sandbox))
 }

@@ -365,11 +365,12 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
 fn paced(walk: Arc<dyn DiskWalk>, pace: crate::sandbox::ScanPace, clock: &Arc<dyn Clock>) -> Arc<dyn DiskWalk> {
     match pace {
         crate::sandbox::ScanPace::AsWalked => walk,
-        crate::sandbox::ScanPace::Demo => Arc::new(fresher_sandbox::PacedWalk::new(
+        crate::sandbox::ScanPace::Demo { used } => Arc::new(fresher_sandbox::PacedWalk::new(
             walk,
             Arc::clone(clock),
             Arc::new(std::thread::sleep),
             fresher_sandbox::DEMO_SCAN_TIME,
+            used,
         )),
     }
 }

@@ -434,6 +434,17 @@ mod negative {
     }
 
     #[test]
+    fn a_demo_world_stating_no_volume_gives_its_pace_no_used_space() {
+        let world = World::new();
+        let stated = fresher_sandbox::World::read(&world.sandbox()).unwrap();
+
+        let pace =
+            SandboxMode::new("/tmp/s", crate::sandbox::SandboxTrash::Sandbox).paced_scan().pace.of_world(&stated);
+
+        assert_eq!(pace, crate::sandbox::ScanPace::Demo { used: None });
+    }
+
+    #[test]
     fn a_relative_sandbox_path_does_not_start() {
         let refusal = SandboxMode::from_env(env(&[("FRESHER_SANDBOX", "sandbox/trial")]));
 
@@ -674,7 +685,20 @@ mod positive {
     fn a_paced_scan_is_a_demos() {
         let mode = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).paced_scan();
 
-        assert_eq!(mode.pace, crate::sandbox::ScanPace::Demo);
+        assert_eq!(mode.pace, crate::sandbox::ScanPace::Demo { used: None });
+    }
+
+    #[test]
+    fn a_demos_pace_goes_toward_its_volumes_used_space() {
+        let world = World::new();
+        let volume = "[volume]\nname = \"Macintosh HD\"\ncapacity = 994662584320\nused = 701202362368\nfree = 1\n";
+        fs::write(world.sandbox().world(), volume).unwrap();
+        let stated = fresher_sandbox::World::read(&world.sandbox()).unwrap();
+
+        let pace = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).paced_scan().pace.of_world(&stated);
+
+        let used = Some(fresher_core::ByteSize::new(701_202_362_368));
+        assert_eq!(pace, crate::sandbox::ScanPace::Demo { used });
     }
 
     #[test]

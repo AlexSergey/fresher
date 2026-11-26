@@ -1085,15 +1085,17 @@ permanent delete. The types are exported to the UI with `ts-rs`.
 `/private/tmp/fresher-demo/<scenario>-<n>` (the first free `n`), and prints it; an existing `--into` is refused and
 nothing is ever removed or overwritten (old folders stay until macOS clears `/private/tmp`). The app, started with
 `FRESHER_SANDBOX=<that folder>` and `FRESHER_DEMO=<absolute path of the scenario>` (debug builds only; `FRESHER_DEMO`
-without a sandbox stops the start), registers only the modules a release ships (the dev-only `demo` and `trial`
-modules' made-up findings stay out of the picture), sizes the window to the scenario, places it at (80, 80) and, through two commands
-(`demo_play`, `demo_finished`), writes two files at the sandbox's root for the recorder: `demo-window.json` (the
-window's rectangle on its screen in physical pixels and the scale) and `demo-result.json` (`finished` with the elapsed
-milliseconds, or `failed` with the step and the reason), then exits 0 or 1. Its scan is paced (`PacedWalk` of `fresher-sandbox`,
-wired by `SandboxMode::paced_scan`): a demo world is walked in about a second, so the walk's progress is held back and
-given out rising evenly until 3 s (`DEMO_SCAN_TIME`) have passed since the scan began, and a recording shows the bar
-filling; a slower walk is not held. Nothing else is paced: the app, the demo worlds' scan test and every autotest walk
-as they go.
+without a sandbox stops the start), registers only the modules a release ships (the dev-only `demo` and `trial` modules'
+made-up findings stay out of the picture), sizes the window to the scenario, places it at (80, 80) and, through two
+commands (`demo_play`, `demo_finished`), writes two files at the sandbox's root for the recorder: `demo-window.json`
+(the window's rectangle on its screen in physical pixels and the scale) and `demo-result.json` (`finished` with the
+elapsed milliseconds, or `failed` with the step and the reason), then exits 0 or 1. Its scan is paced (`PacedWalk` of
+`fresher-sandbox`, wired by `SandboxMode::paced_scan`): a demo world is walked in about a second, so a demo's progress
+numbers are made up for the recording, as a function of the time since the scan began: every 50 ms they rise evenly, the
+bytes toward the demo volume's used space (the size the bar measures against; the walk's own bytes when the world states
+no volume), the entries toward the walk's, and they never go down. The scan ends once the walk is done and 3 s
+(`DEMO_SCAN_TIME`) have passed, so a recording shows the bar fill. The findings and the walk's summary stay real.
+Nothing else is paced: the app, the demo worlds' scan test and every autotest walk as they go.
 
 **The player** (`app/ui/src/demo/`, imported only under `import.meta.env.DEV` inside the app): waits 1500 ms (lead-in),
 then plays each step with a drawn pointer that glides to its target in 600 ms. Before the pointer moves, a target not
