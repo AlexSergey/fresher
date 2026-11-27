@@ -64,3 +64,4 @@ One file per idea, `<topic>.md`:
 | [Other users on the Mac](./other-users-on-the-mac.md) | 2026-11-26 | user | other accounts' homes: run Fresher in each today; later an admin's scan through the helper, the owner on every row |
 | [.NET and NuGet packages](./dotnet-nuget-packages.md) | 2026-11-26 | user | NuGet's caches and package versions no project restores, .NET SDKs nothing points at |
 | [Many small places that add up](./many-small-places.md) | 2026-11-26 | user | a checked list of small caches of more tools, added as rows of a module's table |
+| [A first-run onboarding](./first-run-onboarding.md) | 2026-11-27 | user | one screen before the first scan: Full Disk Access with Open System Settings or Skip for now; scans and probes nothing on its own; candidate for 0.2.0 |

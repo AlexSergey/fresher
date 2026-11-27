@@ -1,14 +1,16 @@
-# The first tester's feedback on 0.1.0
+# Testers' feedback on 0.1.0
 
-**Agreed:** 2026-11-26, by the user, who relayed it · **Due at:** 0.2.0 planning
+**Agreed:** 2026-11-26 and 2026-11-27, by the user, who relayed it · **Due at:** 0.2.0 planning
 
 ## What is postponed
 
-The first outside feedback on the 0.1.0 release, from a developer who ran it on their own Mac. Each point is weighed
+The first outside feedback on the 0.1.0 release, from developers who ran it on their own Macs. Each point is weighed
 when 0.2.0 is planned; a point taken into a plan, or dropped by the user, leaves this file, and the file and its row
 go with the last one.
 
-## What worked
+## The first tester (2026-11-26)
+
+### What worked
 
 - The split into categories by how safe they are to remove reads well.
 - It found long-unused `node_modules` folders.
@@ -16,7 +18,7 @@ go with the last one.
 - Xcode's old builds that are no longer used were found; another cleaner does not find them. "If it is worked on
   further, it will be great."
 
-## What did not
+### What did not
 
 1. **How to remove what was found was not obvious.** The selection bar at the bottom of the window did not catch the
    eye; the tester looked for the way to remove the items for a while. Needs a design: a more visible bar, a "Review"
@@ -36,3 +38,15 @@ go with the last one.
 5. **Other accounts, more tools, many small places** (the tester's second message): new ideas
    [Other users on the Mac](../ideas/other-users-on-the-mac.md), [.NET and NuGet packages](../ideas/dotnet-nuget-packages.md)
    and [Many small places that add up](../ideas/many-small-places.md).
+
+## The second tester (2026-11-27)
+
+1. **Who it is for was not clear at the top of the site.** "Make it clear at the top that it is for people who develop
+   on a Mac." Done on `main` the same day: a "For developers on a Mac" badge above the hero's title, and a lead that
+   opens with what it finds on a developer's Mac.
+2. **Answers before searching.** "A troubleshooting section right away, so people do not search on their own." Done
+   on `main` the same day: a Troubleshooting section after Install (Help in the navigation) with six questions, from
+   macOS not opening Fresher to reporting a problem, each answered with the app's own texts.
+3. **Full Disk Access asked too late.** "I opened it, scanned, and then saw many folders were not scanned; better if
+   it asked for the permission at once, with an option to skip, so I scan everything right away — a very minimal
+   onboarding." A new idea, [A first-run onboarding](../ideas/first-run-onboarding.md), a candidate for 0.2.0.
