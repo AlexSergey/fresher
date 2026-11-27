@@ -104,8 +104,9 @@ jobs:
           trap 'rm -f "$script" "$known_hosts"' EXIT
           {
             echo 'set cmd:fail-exit true'
-            echo 'set net:max-retries 2'
+            echo 'set net:max-retries 6'
             echo 'set net:timeout 30'
+            echo 'set net:reconnect-interval-base 5'
             case "$protocol" in
               ftps)
                 # Explicit TLS on the FTP port: the login and every file go encrypted, and the certificate is checked.
@@ -125,7 +126,7 @@ jobs:
                 ;;
             esac
             # Only inside SITE_PATH; the hosting's own files (.htaccess, .user.ini, .well-known/, cgi-bin/) are left alone.
-            echo "mirror --reverse --delete --no-perms --verbose --parallel=4 --exclude-glob .htaccess --exclude-glob .user.ini --exclude-glob .well-known/ --exclude-glob cgi-bin/ \"$RUNNER_TEMP/site/\" \"$site_path\""
+            echo "mirror --reverse --delete --overwrite --no-perms --verbose --parallel=1 --exclude-glob .htaccess --exclude-glob .user.ini --exclude-glob .well-known/ --exclude-glob cgi-bin/ \"$RUNNER_TEMP/site/\" \"$site_path\""
             echo 'bye'
           } > "$script"
 
