@@ -38,6 +38,7 @@
           <a href="#confirm">Safety</a>
           <a href="#finds">What it finds</a>
           <a href="#install">Install</a>
+          <a href="#help">Help</a>
         </div>
         <div class="nav-end quiet">
           <a href="https://github.com/AlexSergey/fresher">GitHub</a>
@@ -55,11 +56,12 @@
     <main id="top">
       <section class="wrap split hero" aria-labelledby="hero-title">
         <div class="stack hero-text">
-          <span class="eyebrow">disk cleaner for macOS · free and open source</span>
+          <span class="badge"><span class="badge-dot" aria-hidden="true"></span>For developers on a Mac</span>
           <h1 id="hero-title">Your Mac is full.<br /><span class="accent">See why.</span></h1>
           <p class="hero-lead">
-            Fresher explains every gigabyte in plain English, shows the risk of removing it, and removes nothing you
-            have not confirmed. Made with developers' Macs in mind.
+            A disk cleaner for what a developer's Mac piles up: Xcode build data, package caches, old IDE versions, the
+            packages of projects you stopped touching. It explains every gigabyte in plain English, shows the risk of
+            removing it, and removes nothing you have not confirmed.
           </p>
           <div class="actions">
             <a
@@ -278,8 +280,8 @@
               asks for money came from somewhere else.
             </p>
             <p>
-              Fresher itself never asks for your password or for administrator rights. A copy that does is not
-              Fresher: delete it.
+              Fresher itself never asks for your password or for administrator rights. A copy that does is not Fresher:
+              delete it.
             </p>
           </div>
           <div class="first-launch">
@@ -290,6 +292,59 @@
               <li>macOS asks for your password to confirm. After that it opens normally.</li>
             </ol>
           </div>
+        </div>
+      </section>
+
+      <section id="help" class="wrap section stack help" aria-labelledby="help-title">
+        <div class="stack help-head">
+          <h2 id="help-title">Troubleshooting</h2>
+          <p class="lead">The questions people ask first, answered with what the app itself says.</p>
+        </div>
+        <div class="questions">
+          <details class="question">
+            <summary>macOS will not open Fresher</summary>
+            <p>
+              This version is not signed with an Apple Developer ID yet, so macOS blocks its first launch. Open it once,
+              then go to System Settings → Privacy &amp; Security, scroll down and click "Open Anyway" next to the line
+              about Fresher. Confirm with your password; after that it opens normally.
+            </p>
+          </details>
+          <details class="question">
+            <summary>Some folders were not scanned</summary>
+            <p>
+              Fresher does not have Full Disk Access. Open System Settings → Privacy &amp; Security → Full Disk Access,
+              turn on Fresher, then come back and scan again. If the app shows "Reopen Fresher", click it: Fresher sees
+              the new access after it reopens.
+            </p>
+          </details>
+          <details class="question">
+            <summary>The space did not come back</summary>
+            <p>
+              Items go to the Trash, and the space returns only when the Trash is emptied. Fresher never empties the
+              Trash for you: empty it in Finder when you are sure.
+            </p>
+          </details>
+          <details class="question">
+            <summary>I removed something I need</summary>
+            <p>
+              Open Cleanups, choose the cleanup, and click Put back on the items you need. They return to where they
+              were, as long as they are still in the Trash.
+            </p>
+          </details>
+          <details class="question">
+            <summary>An app is not offered for removal</summary>
+            <p>
+              The app says why next to it. Most often the app, or a part of it, is open: quit it, then uninstall it. An
+              app that needs an administrator is removed in Finder, and an app macOS protects cannot be removed.
+            </p>
+          </details>
+          <details class="question">
+            <summary>Something else went wrong</summary>
+            <p>
+              Open an issue on <a href="https://github.com/AlexSergey/fresher/issues">GitHub</a> and say what you did
+              and what you saw. The app sends nothing on its own, so a report is the only way we hear about it.
+            </p>
+          </details>
         </div>
       </section>
     </main>
