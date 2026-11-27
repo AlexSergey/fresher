@@ -52,6 +52,7 @@
     "release:version": "node scripts/release-version.ts set",
     "sandbox": "cargo run -q -p fresher-sandbox --locked -- generate",
     "sandbox:test": "cargo nextest run -p fresher-app --test sandboxes --locked",
+    "site:build": "node scripts/site.ts build",
     "tauri": "tauri",
     "test": "npm run test:rust && npm run test:ui && npm run test:scripts",
     "test:cov": "npm run test:cov:rust && npm run test:cov:ui",

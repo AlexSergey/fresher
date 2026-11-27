@@ -30,17 +30,18 @@ Before planning or implementing anything, read:
 
 ## Repository map
 
-| Folder       | What                                                                | Stack                     |
-| ------------ | ------------------------------------------------------------------- | ------------------------- |
-| `crates/`    | the Rust core: domain, engine, rules, scanner, store, cleaner       | Rust (Cargo workspace)    |
-| `modules/`   | the feature modules: one crate each (`fresher-module-<id>`)         | Rust (Cargo workspace)    |
-| `app/tauri/` | the Tauri 2 shell: thin commands that call the core                 | Rust                      |
-| `app/ui/`    | the user interface                                                  | TypeScript, React, Vite   |
-| `fixtures/`  | small fake file trees and golden reports used by tests              | —                         |
-| `scripts/`   | repository guards run by the git hooks                              | TypeScript (Node) / shell |
-| `assets/`    | the demo GIFs and images the README uses (`assets/demo/*.gif`)      | binary media              |
-| `docs/`      | ALL documentation: goal, rules, architecture, categories, plans     | Markdown                  |
-| `NO_COMMIT/` | local experiments and scratch work; ignored by git, never committed | anything                  |
+| Folder       | What                                                                    | Stack                     |
+| ------------ | ----------------------------------------------------------------------- | ------------------------- |
+| `crates/`    | the Rust core: domain, engine, rules, scanner, store, cleaner           | Rust (Cargo workspace)    |
+| `modules/`   | the feature modules: one crate each (`fresher-module-<id>`)             | Rust (Cargo workspace)    |
+| `app/tauri/` | the Tauri 2 shell: thin commands that call the core                     | Rust                      |
+| `app/ui/`    | the user interface                                                      | TypeScript, React, Vite   |
+| `fixtures/`  | small fake file trees and golden reports used by tests                  | —                         |
+| `scripts/`   | repository guards run by the git hooks                                  | TypeScript (Node) / shell |
+| `assets/`    | the demo GIFs and images the README uses (`assets/demo/*.gif`)          | binary media              |
+| `site/`      | the website getfresher.app: static pages, built by `npm run site:build` | HTML, CSS                 |
+| `docs/`      | ALL documentation: goal, rules, architecture, categories, plans         | Markdown                  |
+| `NO_COMMIT/` | local experiments and scratch work; ignored by git, never committed     | anything                  |
 
 The layout is created by plan [001](./docs/plans/001-repository-setup/readme.md); until it is implemented some folders
 do not exist yet.

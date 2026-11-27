@@ -6,7 +6,9 @@ release follows this document. The design and its decisions: plan [013](./plans/
 ## Principles
 
 - **One official place to download**: the repository's GitHub Releases page. No mirrors, no installers hosted
-  elsewhere, no package manager until one is set up on purpose (then this document names it).
+  elsewhere, no package manager until one is set up on purpose (then this document names it). The website's
+  `https://getfresher.app/download` is a link to it, not a copy: it sends the browser on to the latest release's
+  disk image on GitHub ("The website" below).
 - **A person publishes.** CI builds, checks and drafts the release; the user checks the draft and publishes it. Nothing
   reaches users without the user's look (rule 10, [`rules.md`](./rules.md)).
 - **No update check, no network.** The app never asks the internet whether a new version exists; users download new
@@ -100,4 +102,46 @@ background.png`); the bundler takes only a PNG, JPEG or GIF, not a multi-resolut
 10. **Publish** the draft. Then the README's release items of
    [`deferred/readme-at-release.md`](./deferred/readme-at-release.md) are due.
 
+Publishing the release starts the website's deploy (`.github/workflows/site.yml`), which writes
+`https://getfresher.app/download` for the new disk image; check that a click on Download gets
+`Fresher_X.Y.Z_universal.dmg`.
+
 A broken draft is deleted with its tag (`git push --delete origin vX.Y.Z`), fixed on `main` and tagged again.
+
+## The website
+
+`https://getfresher.app` is built from `site/` by `npm run site:build` (`scripts/site.ts`; plan
+[046](./plans/046-website/readme.md)) and uploaded by `.github/workflows/site.yml`: on a push to `main` that changes
+what the site is built from, when a full release is published (a pre-release is skipped), and by hand from `main`
+(Actions → Site → "Run workflow"). A release run builds from `main`, not from the tag. The build reads the latest
+published release from GitHub's API and refuses one without exactly one `Fresher_<version>_universal.dmg` on its tag;
+its `/download` page counts the visit and sends the browser on to that image, and the landing page shows its version.
+Nothing on the site is edited by hand at a release.
+
+- **Preview:** `npm run site:build` (it asks GitHub for the latest release; `-- --release <file.json>` reads a saved
+  answer instead), then serve `dist/site/` (`python3 -m http.server -d dist/site`).
+- **The counter:** GoatCounter, site code `getfresher`, set in `site/config.json`; the repository variable
+  `GOATCOUNTER_CODE`, when set, stands in for it. The placeholder `GOATCOUNTER_CODE` in the file leaves the counter out.
+- **The upload:** `lftp` (from `apt`) mirrors `dist/site/` into the site's folder over FTPS (the default: explicit
+  TLS, the certificate checked against the system's CA list and the host name) or SFTP (the host key checked against
+  `SITE_HOST_KEY`). Plain FTP is never used. It deletes in that folder what the site no longer has, so **a file put
+  into the web root by hand is deleted by the next deploy**; only the hosting's `.htaccess`, `.user.ini`,
+  `.well-known/` and `cgi-bin/` are left alone. Nothing outside the folder is touched.
+- **The environment:** the job runs in the GitHub Environment `site`, which holds the hosting's secrets and lets only
+  `main` deploy. Set it up once:
+  1. Settings → Environments → New environment, named `site`.
+  2. Deployment branches and tags: "Selected branches and tags" → add the rule `main`.
+  3. Add the environment secrets `SITE_HOST`, `SITE_USER` and `SITE_PASSWORD` there (and the optional settings below,
+     as environment variables or secrets).
+  4. Delete any repository-level secrets of the same names (Settings → Secrets and variables → Actions).
+
+| Name               | Kind                 | Value                                                                                                                                   |
+| ------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `SITE_HOST`        | secret               | the FTP or SFTP host; for FTPS exactly the name its certificate is issued for (such as `gooddev.ftp.tools`), or the TLS check fails     |
+| `SITE_USER`        | secret               | the upload user, locked to the site's folder                                                                                            |
+| `SITE_PASSWORD`    | secret               | its password (handed to lftp in the environment, never on a command line)                                                               |
+| `SITE_PROTOCOL`    | variable (or secret) | optional: `ftps` (the default) or `sftp`                                                                                                |
+| `SITE_PORT`        | variable (or secret) | optional: 21 for FTPS and 22 for SFTP by default                                                                                        |
+| `SITE_PATH`        | variable (or secret) | optional: the site's folder as the upload user sees it, absolute; `/` by default                                                        |
+| `SITE_HOST_KEY`    | secret               | SFTP only: the host key as a `known_hosts` line (`ssh-keyscan -p <port> <host>`, checked against the fingerprint the hosting publishes) |
+| `GOATCOUNTER_CODE` | variable             | optional: stands in for `site/config.json`'s code                                                                                       |

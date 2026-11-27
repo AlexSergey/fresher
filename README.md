@@ -18,6 +18,7 @@
 </p>
 
 <p align="center">
+  <a href="https://getfresher.app">getfresher.app</a> ·
   <a href="#why-fresher">Why Fresher</a> ·
   <a href="#install">Install</a> ·
   <a href="#what-it-finds">What it finds</a> ·
@@ -64,6 +65,10 @@ take it back, safely.
 
 **[Download the latest `.dmg`](https://github.com/AlexSergey/fresher/releases/latest)**, open it and drag Fresher to
 Applications. It runs on macOS 13 or later, on Apple silicon and Intel. What changed in each version: [the changelog](docs/changelog.md).
+
+> **Get Fresher only from [getfresher.app](https://getfresher.app) or [this repository's releases](https://github.com/AlexSergey/fresher/releases).**
+> It is free, and it never asks for your password or for administrator rights: a copy that asks for money or for a
+> password is not Fresher.
 
 ### First launch on macOS
 

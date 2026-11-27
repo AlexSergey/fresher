@@ -151,7 +151,8 @@ the cache's cap, the data folder's footprint) are tests and run in the hook; see
 CI (GitHub Actions) runs the same on every pull request and on `main`, release commits included: a tag is never the
 first build of its tree. The workflows live in `.github/workflows/`; every action is pinned to a full commit SHA with its version in a
 comment, and every tool is installed through `taiki-e/install-action` at an exact version, checked against its
-checksum (nothing is downloaded and run unverified).
+checksum (nothing is downloaded and run unverified). The one exception is `lftp` in `site.yml`, installed from the
+Ubuntu runner's `apt`, whose packages the system checks by signature (plan 046).
 
 | Workflow     | Job     | Runs                                                                                           |
 | ------------ | ------- | ---------------------------------------------------------------------------------------------- |
@@ -163,6 +164,7 @@ checksum (nothing is downloaded and run unverified).
 | `advisories.yml` | advisories | `cargo deny check advisories` and `npm audit --omit=dev`, weekly: an advisory published after the last push |
 | `release.yml` | `build` | on a pushed tag `v*.*.*`, or by hand as a dry run: the tag is on `main`, the version check with the tag's version, `npm run test:scripts`, `npm run build:release` (the universal app and its disk image, and their check), `SHA256SUMS`; the files kept as an artifact. No caches |
 |              | `release` | on a tag only: the files checked against `SHA256SUMS`, the build provenance attested, a draft release made with the image, `SHA256SUMS` and the release notes with the version's changelog section as its text; a person publishes it ([`release.md`](./release.md)) |
+| `site.yml` | `deploy` | in the `site` environment, from `main` only: on a change to what the site is built from, on a published full release, or by hand; the site script's tests, `npm run site:build` against the latest release, and the upload with `lftp` over FTPS or SFTP ([`release.md`](./release.md), "The website") |
 
 The `ci.yml` jobs run one after another on `macos-latest`. Each starts with `.github/actions/setup`: Node from `.nvmrc`,
 the Rust toolchain from `rust-toolchain.toml`, the npm and cargo caches, `npm ci`. The cargo tools are installed at the

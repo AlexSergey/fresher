@@ -59,6 +59,20 @@
 - **Why:** the README shows the app; media belongs in one folder, apart from the code.
 - **Enforced by:** the staged-files guard (docs/hacks), the recorder's budget check.
 
+## The website
+
+- **Rule:** `site/` holds the source of the website, getfresher.app (plan
+  [046](../plans/046-website/readme.md)): static HTML and one style sheet, no framework, no build tool, no font or
+  script from another site but the visit counter's. `npm run site:build` (`scripts/site.ts`) fills it from
+  `docs/categories` and the latest release, copies its images from `assets/` and writes `dist/site/`, which git
+  ignores; only `.github/workflows/site.yml` uploads it. The counter's site code is the one value in
+  `site/config.json`; the hosting's access is in the repository's secrets, never in a file. The site names no other
+  product.
+- **Why:** one stable address for the download and the project; the list of kinds of files never drifts from the
+  catalogue; nothing secret is committed.
+- **Enforced by:** the build refuses a page with a slot left or unknown, a release without its one universal disk
+  image, or a counter code that is not one (`scripts/site.test.ts`, `scripts/site-pages.test.ts`); review.
+
 ## Hooks are never bypassed
 
 - **Rule:** no `--no-verify`; what a hook reports is fixed.

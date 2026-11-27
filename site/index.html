@@ -1,0 +1,312 @@
+<!doctype html>
+<!--
+  The source of getfresher.app (plan 046). `npm run site:build` fills the slot comments and the values in double
+  braces from docs/categories, the latest release and site/config.json, and writes the site to dist/site.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fresher — disk cleaner for macOS</title>
+    <meta
+      name="description"
+      content="A free, open-source disk cleaner for macOS. It explains every gigabyte in plain English, shows the risk of removing it, and removes nothing you have not confirmed."
+    />
+    <meta property="og:title" content="Fresher — your Mac is full. See why." />
+    <meta
+      property="og:description"
+      content="A free, open-source disk cleaner for macOS, made with developers' Macs in mind."
+    />
+    <meta property="og:image" content="https://getfresher.app/social-preview.png" />
+    <meta property="og:url" content="https://getfresher.app/" />
+    <meta name="theme-color" content="#0e0f12" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <!-- site:counter -->
+  </head>
+  <body>
+    <a class="skip" href="#top">Skip to the content</a>
+
+    <div class="topline">
+      <p class="wrap">
+        Fresher is free and open source. Its code and every release live at
+        <a href="https://github.com/AlexSergey/fresher">github.com/AlexSergey/fresher</a>.
+      </p>
+    </div>
+
+    <header class="site-header">
+      <nav class="wrap nav" aria-label="Main">
+        <a class="brand" href="#top">
+          <img src="/logo.png" alt="" width="22" height="22" />
+          Fresher
+        </a>
+        <div class="nav-links quiet">
+          <a href="#finds">What it finds</a>
+          <a href="#confirm">Safety</a>
+          <a href="#principles">Principles</a>
+          <a href="#install">Install</a>
+        </div>
+        <div class="nav-end quiet">
+          <a href="https://github.com/AlexSergey/fresher">GitHub</a>
+          <a
+            class="btn-primary btn-small"
+            href="/download/"
+            data-goatcounter-click="download-nav"
+            data-goatcounter-title="Download (navigation)"
+            >Download</a
+          >
+        </div>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="wrap split hero" aria-labelledby="hero-title">
+        <div class="stack hero-text">
+          <span class="eyebrow">disk cleaner for macOS · free and open source</span>
+          <h1 id="hero-title">Your Mac is full.<br /><span class="accent">See why.</span></h1>
+          <p class="hero-lead">
+            Fresher explains every gigabyte in plain English, shows the risk of removing it, and removes nothing you
+            have not confirmed. Made with developers' Macs in mind.
+          </p>
+          <div class="actions">
+            <a
+              class="btn-primary"
+              href="/download/"
+              data-goatcounter-click="download-hero"
+              data-goatcounter-title="Download (hero)"
+            >
+              <svg
+                aria-hidden="true"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 4v11"></path>
+                <path d="m7.5 10.5 4.5 4.5 4.5-4.5"></path>
+                <path d="M5 20h14"></path>
+              </svg>
+              Download for macOS
+            </a>
+            <a class="btn" href="https://github.com/AlexSergey/fresher">View the source</a>
+          </div>
+          <dl class="facts">
+            <div>
+              <dt>Runs on</dt>
+              <dd>macOS 13+</dd>
+            </div>
+            <div>
+              <dt>App network</dt>
+              <dd>None at all</dd>
+            </div>
+            <div>
+              <dt>Removes to</dt>
+              <dd>The Trash</dd>
+            </div>
+          </dl>
+        </div>
+        <figure class="hero-shot">
+          <div class="shot">
+            <picture>
+              <source srcset="/cleanup.gif" media="(prefers-reduced-motion: no-preference)" />
+              <img
+                src="/cleanup-still.png"
+                width="800"
+                height="524"
+                alt="Fresher scans a Mac, moves Xcode build data to the Trash after a confirmation and shows how much space it freed"
+              />
+            </picture>
+          </div>
+          <figcaption class="caption">
+            A scan, a confirmed cleanup of Xcode build data, and the space it gave back.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="finds" class="wrap section stack finds" aria-labelledby="finds-title">
+        <div class="finds-head">
+          <div class="stack">
+            <h2 id="finds-title">{{kind-count}} kinds of files, each with its risk</h2>
+            <p class="lead">
+              Every kind has a page: what it is, which app made it, what happens if it goes. There is no "Other": what
+              Fresher does not recognize is shown as its real folders.
+            </p>
+          </div>
+          <!-- site:danger-bar -->
+        </div>
+        <div class="levels">
+          <!-- site:kinds -->
+        </div>
+      </section>
+
+      <section id="confirm" class="wrap section split" aria-labelledby="confirm-title">
+        <div class="stack confirm-text">
+          <h2 id="confirm-title">You see everything before anything goes</h2>
+          <p class="lead">
+            Scanning only reads. Before a cleanup you see the exact items, their size and the highest danger among them.
+            Each item is checked again right before it goes, and anything that changed is skipped.
+          </p>
+          <ul class="plain-list dashes">
+            <li>Items go to the Trash; the Cleanups screen puts them back.</li>
+            <li>A permanent delete is a separate tick, every time.</li>
+            <li>System folders and other users' files are never touched.</li>
+          </ul>
+        </div>
+        <figure class="confirm-shot">
+          <div class="dialog">
+            <p class="dialog-title">Move 3 items to the Trash?</p>
+            <ul class="plain-list dialog-rows">
+              <li class="dialog-row">
+                <span class="dot safe" aria-hidden="true"></span>
+                <span class="dialog-item">
+                  <span class="dialog-name">Xcode build data</span>
+                  <span class="dialog-path">~/Library/Developer/Xcode/DerivedData/App-…</span>
+                </span>
+                <span class="dialog-level">Safe to remove</span>
+              </li>
+              <li class="dialog-row">
+                <span class="dot low" aria-hidden="true"></span>
+                <span class="dialog-item">
+                  <span class="dialog-name">npm's download cache</span>
+                  <span class="dialog-path">~/.npm/_cacache</span>
+                </span>
+                <span class="dialog-level">Usually safe</span>
+              </li>
+              <li class="dialog-row">
+                <span class="dot medium" aria-hidden="true"></span>
+                <span class="dialog-item">
+                  <span class="dialog-name">Old JetBrains IDE settings</span>
+                  <span class="dialog-path">~/Library/Application Support/JetBrains/WebStorm2025.2</span>
+                </span>
+                <span class="dialog-level">Look before removing</span>
+              </li>
+            </ul>
+            <div class="dialog-buttons" aria-hidden="true">
+              <span class="fake-btn secondary">Cancel</span>
+              <span class="fake-btn primary">Move to Trash</span>
+            </div>
+          </div>
+          <figcaption class="caption">
+            The confirmation, drawn after the app's own. Sizes are left out on purpose.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="principles" class="wrap section stack principles" aria-labelledby="principles-title">
+        <h2 id="principles-title">What it holds to</h2>
+        <div class="principle-grid">
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">01</span>
+            <div class="stack">
+              <h3>Knows a developer’s Mac</h3>
+              <p>
+                Xcode data, old IDE versions, package caches, builds of projects untouched for a year, unused
+                toolchains, local AI models.
+              </p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">02</span>
+            <div class="stack">
+              <h3>Private</h3>
+              <p>The app makes no network requests: no telemetry, no analytics, no crash reports, no update checks.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">03</span>
+            <div class="stack">
+              <h3>Nothing in the background</h3>
+              <p>No helper, no login item, no scheduled scans. Opening the app starts nothing.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">04</span>
+            <div class="stack">
+              <h3>Plain English</h3>
+              <p>Every kind of file says what it is, what made it, and whether it comes back.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">05</span>
+            <div class="stack">
+              <h3>Undoable</h3>
+              <p>The Trash first, Put Back from the app. It never empties the Trash for you.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">06</span>
+            <div class="stack">
+              <h3>Never an administrator</h3>
+              <p>It never asks for administrator rights and never removes what it cannot name.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="wrap section split install" aria-labelledby="install-title">
+        <div class="stack install-text">
+          <h2 id="install-title">Install</h2>
+          <p class="lead">
+            Download the disk image, open it and drag Fresher to Applications. Apple silicon and Intel, macOS 13 or
+            later.
+          </p>
+          <div class="actions">
+            <a
+              class="btn-primary"
+              href="/download/"
+              data-goatcounter-click="download-install"
+              data-goatcounter-title="Download (install)"
+              >Download the .dmg</a
+            >
+            <span class="version quiet"
+              >Version {{version}} ·
+              <a href="https://github.com/AlexSergey/fresher/blob/main/docs/changelog.md">What's new</a></span
+            >
+          </div>
+        </div>
+        <div class="stack install-more">
+          <div class="stack">
+            <span class="label">With Homebrew <span class="soon">soon</span></span>
+            <code class="command">brew install --cask alexsergey/tap/fresher</code>
+          </div>
+          <div class="official">
+            <h3>Get it only from here</h3>
+            <p>
+              Fresher is published only on <a href="https://getfresher.app">getfresher.app</a> and
+              <a href="https://github.com/AlexSergey/fresher/releases">its GitHub releases</a>. It is free: a copy that
+              asks for money came from somewhere else.
+            </p>
+            <p>
+              Fresher itself never asks for your password or for administrator rights. A copy that does is not
+              Fresher: delete it.
+            </p>
+          </div>
+          <div class="first-launch">
+            <h3>The first launch</h3>
+            <ol>
+              <li>Open Fresher once; macOS says it cannot verify it.</li>
+              <li>System Settings → Privacy &amp; Security → "Open Anyway".</li>
+              <li>macOS asks for your password to confirm. After that it opens normally.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-row quiet">
+        <span>Fresher — disk cleaner for Mac</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/AlexSergey/fresher">Source</a>
+        <a href="https://github.com/AlexSergey/fresher/blob/main/docs/changelog.md">Changelog</a>
+        <a href="https://github.com/AlexSergey/fresher/blob/main/docs/restrictions/privacy.md">Privacy</a>
+        <a href="https://github.com/AlexSergey/fresher/issues">Report a problem</a>
+        <span>MIT or Apache 2.0 · no warranty</span>
+      </div>
+    </footer>
+  </body>
+</html>

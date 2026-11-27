@@ -1,0 +1,132 @@
+# The website, getfresher.app (plan 046): built by `npm run site:build` from site/, docs/categories and the latest
+# release, then uploaded to the hosting with lftp over FTPS (explicit TLS) or SFTP; plain FTP is never used. It runs
+# when main changes what the site is built from, when a release is published (a new /download target), and by hand.
+# The hosting's access lives in the repository's secrets (docs/release.md, "The website").
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'scripts/site.ts'
+      - 'scripts/site-pages.ts'
+      - 'scripts/readme-catalogue.ts'
+      - 'docs/categories/**'
+      - 'assets/logo.png'
+      - 'assets/social-preview.png'
+      - 'assets/demo/cleanup.gif'
+      - '.github/workflows/site.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+# One upload at a time; a newer run waits instead of cutting one in the middle.
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+env:
+  HUSKY: 0
+
+jobs:
+  deploy:
+    # Only main or a published full release deploys; a pre-release never moves /download.
+    if: >-
+      (github.ref == 'refs/heads/main' || github.event_name == 'release') &&
+      (github.event_name != 'release' || !github.event.release.prerelease)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The hosting's secrets live in this environment, whose deployment branches are limited to main
+    # (docs/release.md, "The website").
+    environment: site
+    permissions:
+      contents: read
+    steps:
+      # A release run builds from main, not from the tag's older tree; the release itself comes from GitHub's API.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
+          persist-credentials: false
+      # The build needs Node alone: no npm package, so no npm ci.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: node --test scripts/site-pages.test.ts scripts/site.test.ts
+      # The latest release from GitHub's API, read with the job's own token; the counter's code from site/config.json,
+      # or from the repository variable GOATCOUNTER_CODE when it is set.
+      - name: Build the site
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GOATCOUNTER_CODE: ${{ vars.GOATCOUNTER_CODE }}
+        run: node scripts/site.ts build --out "$RUNNER_TEMP/site"
+      - name: Install lftp
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends lftp
+      - name: Upload the site
+        env:
+          SITE_PROTOCOL: ${{ vars.SITE_PROTOCOL || secrets.SITE_PROTOCOL }}
+          SITE_HOST: ${{ secrets.SITE_HOST }}
+          SITE_PORT: ${{ vars.SITE_PORT || secrets.SITE_PORT }}
+          SITE_USER: ${{ secrets.SITE_USER }}
+          SITE_PATH: ${{ vars.SITE_PATH || secrets.SITE_PATH }}
+          SITE_HOST_KEY: ${{ secrets.SITE_HOST_KEY }}
+          # lftp reads the password from this variable (`open --env-password`); it is never on a command line.
+          LFTP_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          protocol="${SITE_PROTOCOL:-ftps}"
+          case "$protocol" in
+            ftps) ;;
+            sftp) [ -n "$SITE_HOST_KEY" ] || fail "SFTP needs SITE_HOST_KEY: the known_hosts line of the hosting's key" ;;
+            *) fail "SITE_PROTOCOL must be ftps or sftp (plain FTP is never used)" ;;
+          esac
+          [ -n "$SITE_HOST" ] && [ -n "$SITE_USER" ] && [ -n "$LFTP_PASSWORD" ] \
+            || fail "SITE_HOST, SITE_USER and SITE_PASSWORD must be set in the repository's secrets"
+          # The folder the site owns on the hosting. The FTP user is locked to the web root, so it is `/` by default; the
+          # upload deletes what the site no longer has inside it, and nothing outside it.
+          site_path="${SITE_PATH:-/}"
+          case "$site_path" in
+            /*) ;;
+            *) fail "SITE_PATH must be an absolute folder on the hosting, such as / or /www" ;;
+          esac
+          for value in "$SITE_HOST" "$SITE_USER" "$site_path" "${SITE_PORT:-}"; do
+            case "$value" in *'"'* | *"'"* | *\\* | *$'\n'*) fail "a SITE_ secret holds a quote, a backslash or a new line" ;; esac
+          done
+
+          script="$RUNNER_TEMP/upload.lftp"
+          known_hosts="$RUNNER_TEMP/known_hosts"
+          trap 'rm -f "$script" "$known_hosts"' EXIT
+          {
+            echo 'set cmd:fail-exit true'
+            echo 'set net:max-retries 2'
+            echo 'set net:timeout 30'
+            case "$protocol" in
+              ftps)
+                # Explicit TLS on the FTP port: the login and every file go encrypted, and the certificate is checked.
+                echo 'set ftp:ssl-force true'
+                echo 'set ftp:ssl-protect-data true'
+                echo 'set ssl:verify-certificate true'
+                echo 'set ssl:check-hostname true'
+                echo 'set ssl:ca-file /etc/ssl/certs/ca-certificates.crt'
+                echo "open --user \"$SITE_USER\" --env-password --port \"${SITE_PORT:-21}\" \"ftp://$SITE_HOST\""
+                ;;
+              sftp)
+                # The host's key is checked against SITE_HOST_KEY (a known_hosts line), never accepted blindly.
+                printf '%s\n' "$SITE_HOST_KEY" > "$known_hosts"
+                chmod 600 "$known_hosts"
+                echo "set sftp:connect-program \"ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts\""
+                echo "open --user \"$SITE_USER\" --env-password --port \"${SITE_PORT:-22}\" \"sftp://$SITE_HOST\""
+                ;;
+            esac
+            # Only inside SITE_PATH; the hosting's own files (.htaccess, .user.ini, .well-known/, cgi-bin/) are left alone.
+            echo "mirror --reverse --delete --no-perms --verbose --parallel=4 --exclude-glob .htaccess --exclude-glob .user.ini --exclude-glob .well-known/ --exclude-glob cgi-bin/ \"$RUNNER_TEMP/site/\" \"$site_path\""
+            echo 'bye'
+          } > "$script"
+
+          lftp -f "$script"

@@ -19,6 +19,18 @@
   (`the_read_names_the_seen_socket_and_an_empty_config_never_a_context`), its fixture tests and the e2e flow
   (`crates/e2e/tests/docker.rs`). The shown commands keep `--context`: the user runs them, not the app.
 
+## The website counts visits, the app does not
+
+- **Rule:** the website, getfresher.app, counts its page views and the clicks of its download links with GoatCounter:
+  no cookie, no personal data, so no consent banner; `/download` counts its own view before it sends the browser on to
+  the disk image on GitHub. This is the website's only third-party script. The app is not part of it: it still makes
+  no network request of any kind (above).
+- **Why:** the user wants to know how many people visit and download (plan [046](../plans/046-website/readme.md));
+  a cookieless counter needs no consent and keeps nothing that names a person. GitHub counts the real downloads of
+  each release asset.
+- **Enforced by:** `scripts/site-pages.ts` (the counter's tag and `/download`'s script, the only scripts the build
+  writes) and its tests; review of `site/`.
+
 ## Local data only
 
 - **Rule:** scan results, the scan cache, history and settings are stored only in the app's own folder in

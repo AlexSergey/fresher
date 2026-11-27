@@ -191,3 +191,15 @@ its version in a comment ([`quality.md`](./quality.md), "Layer 5"). They run on 
 | `actions/download-artifact`       | 8.0.2   | MIT               | the release's files, from the build job to the release job     |
 | `actions/attest-build-provenance` | 4.2.2   | MIT               | the release's build provenance (`gh attestation verify`)       |
 | `github/codeql-action`            | 4.39.3  | MIT               | CodeQL                                                         |
+
+## The website
+
+What the website, getfresher.app, uses (plan [046](./plans/046-website/readme.md)). None of it is part of the app.
+
+| Dependency  | Version                    | Licence             | What for                                                                                                                                                       |
+| ----------- | -------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lftp`      | Ubuntu's package, unpinned | GPL-3.0-or-later    | uploads the built site to the hosting over FTPS or SFTP in `.github/workflows/site.yml`; installed from the runner's `apt`, never a third-party action         |
+| GoatCounter | the hosted service         | EUPL-1.2 (its code) | counts the site's page views and download clicks without cookies; its script `https://gc.zgo.at/count.js` is the only script the site loads from another host |
+
+The site uses the system's fonts: no font file is downloaded or committed. `scripts/site.ts` needs Node alone (no
+npm package).
