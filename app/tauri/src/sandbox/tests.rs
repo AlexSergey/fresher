@@ -418,11 +418,11 @@ mod negative {
     }
 
     #[test]
-    fn sandbox_mode_withholds_high_by_default() {
+    fn sandbox_mode_follows_the_high_flag() {
         let mode = SandboxMode::from_env(env(&[("FRESHER_SANDBOX", "/tmp/s")])).unwrap().unwrap();
 
-        assert_eq!(mode.high, fresher_core::HighLevel::Withheld);
-        assert_eq!(SandboxMode::new("/tmp/s", crate::sandbox::SandboxTrash::Sandbox).high, mode.high);
+        assert_eq!(mode.flags.high, crate::flags::FLAGS.high);
+        assert_eq!(SandboxMode::new("/tmp/s", crate::sandbox::SandboxTrash::Sandbox).flags.high, mode.flags.high);
     }
 
     #[test]
@@ -678,7 +678,32 @@ mod positive {
     fn offering_high_offers_it() {
         let mode = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).offering_high();
 
-        assert_eq!(mode.high, fresher_core::HighLevel::Offered);
+        assert_eq!(mode.flags.high, fresher_core::HighLevel::Offered);
+    }
+
+    #[test]
+    fn offering_high_keeps_the_other_flags() {
+        let plain = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox);
+
+        let offering = plain.clone().offering_high();
+
+        assert_eq!(offering.flags.largest, plain.flags.largest);
+    }
+
+    #[test]
+    fn withholding_high_withholds_it() {
+        let mode = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox).withholding_high();
+
+        assert_eq!(mode.flags.high, fresher_core::HighLevel::Withheld);
+    }
+
+    #[test]
+    fn withholding_high_keeps_the_other_flags() {
+        let plain = SandboxMode::new("/tmp/s", SandboxTrash::Sandbox);
+
+        let withholding = plain.clone().withholding_high();
+
+        assert_eq!(withholding.flags.largest, plain.flags.largest);
     }
 
     #[test]

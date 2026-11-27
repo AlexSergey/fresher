@@ -60,7 +60,7 @@ jobs:
       - run: npm run test:scripts
       # The universal app and its disk image, then the bundle check on both (scripts/check-bundle.ts --release).
       - run: npm run build:release
-      # The release's body: docs/releases/<v>.md, then the version's section of docs/changelog.md.
+      # The release's body: docs/releases/<v>.md, the version's section of docs/changelog.md, then "This build".
       - name: Gather the release files and their checksums
         env:
           VERSION: ${{ steps.version.outputs.version }}

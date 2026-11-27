@@ -16,7 +16,12 @@ import { AppProviders } from './app-providers';
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
     ...sampleAgreementAnswers,
-    appInfo: () => ({ build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.1.0' }),
+    appInfo: () => ({
+      build: { kind: 'release' },
+      flags: { high: 'offered', largest: 'shown' },
+      home: '/Users/someone',
+      version: '0.1.0',
+    }),
     getAccessStatus: () => GRANTED,
     getDictionary: () => DEMO_DICTIONARY,
     getModules: () => DEMO_MODULES,
@@ -94,7 +99,12 @@ describe('AppFrame', () => {
 
     it('a release build has no banner', async () => {
       core({
-        appInfo: () => ({ build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.1.0' }),
+        appInfo: () => ({
+          build: { kind: 'release' },
+          flags: { high: 'offered', largest: 'shown' },
+          home: '/Users/someone',
+          version: '0.1.0',
+        }),
       });
       await renderFrame();
 
@@ -105,7 +115,7 @@ describe('AppFrame', () => {
       core({
         appInfo: () => ({
           build: sandboxBuild(['running']),
-          high: 'offered',
+          flags: { high: 'offered', largest: 'shown' },
           home: SANDBOX_HOME,
           version: '0.1.0',
         }),
@@ -122,9 +132,14 @@ describe('AppFrame', () => {
       expect(document.body.textContent).not.toContain('/Users/dev/sandboxes/trial');
     });
 
-    it('the sidebar has no Largest while High is withheld', async () => {
+    it('the sidebar has no Largest while the build hides it', async () => {
       core({
-        appInfo: () => ({ build: { kind: 'release' }, high: 'withheld', home: '/Users/someone', version: '0.1.0' }),
+        appInfo: () => ({
+          build: { kind: 'release' },
+          flags: { high: 'offered', largest: 'hidden' },
+          home: '/Users/someone',
+          version: '0.1.0',
+        }),
       });
 
       await renderFrame();
@@ -280,6 +295,32 @@ describe('AppFrame', () => {
       expect(screen.getByRole('button', { current: 'page', name: 'Scan' })).toBeInTheDocument();
     });
 
+    it('the sidebar lists Largest while the build shows it', async () => {
+      core({
+        appInfo: () => ({ build: { kind: 'release' }, flags: { high: 'offered', largest: 'shown' } }),
+        getOverview: () => DEMO_OVERVIEW,
+      });
+
+      await renderFrame();
+
+      expect(await screen.findByRole('button', { name: 'Largest' })).toBeInTheDocument();
+    });
+
+    it('the sidebar lists Largest while the build shows it, with High withheld too', async () => {
+      core({
+        appInfo: () => ({
+          build: { kind: 'release' },
+          flags: { high: 'withheld', largest: 'shown' },
+          home: '/Users/someone',
+          version: '0.1.0',
+        }),
+      });
+
+      await renderFrame();
+
+      expect(await screen.findByRole('button', { name: 'Largest' })).toBeInTheDocument();
+    });
+
     it('the sidebar shows the logo beside the name', async () => {
       core();
 
@@ -295,7 +336,7 @@ describe('AppFrame', () => {
       core({
         appInfo: () => ({
           build: sandboxBuild(['running']),
-          high: 'offered',
+          flags: { high: 'offered', largest: 'shown' },
           home: SANDBOX_HOME,
           version: '0.1.0',
         }),

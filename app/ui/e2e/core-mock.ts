@@ -1,12 +1,13 @@
 import type { Page } from '@playwright/test';
 
 import type {
+  AppInfo,
+  BuildFlags,
   Coverage,
   Dictionary,
   Event,
   Finding,
   FindingsQuery,
-  HighLevel,
   MeaningGroup,
   ModuleInfo,
   Overview,
@@ -220,7 +221,7 @@ import { CLEANUP_HOOKS, type CleanupScript, mockCleanup } from './support/cleanu
 import { IGNORE_HOOK, IGNORED_PATHS_HOOK, mockIgnore } from './support/ignore-mock';
 import { LARGEST_HOOK, mockLargest, ownIdOf } from './support/largest-mock';
 
-export { withheld } from './support/withheld';
+export { firstRelease, withheld } from './support/withheld';
 
 // What the mocked core does: an answer per command key, a refusal per command key, the events a scan streams, and
 // the overview `get_overview` answers once the scan is asked for (until then, its answer in `answers`).
@@ -234,8 +235,8 @@ export type CoreScript = {
   readonly apps?: { readonly denied?: boolean; readonly measuring?: boolean; readonly withheld?: boolean };
   // The cleanup commands over the scan's findings (support/cleanup-mock.ts); without it they are not answered.
   readonly cleanup?: CleanupScript;
-  // Whether the app info says the core offers High findings: `offered` by default, as the core's tests run it.
-  readonly high?: HighLevel;
+  // The build's flags the app info answers; by default `{ high: 'offered', largest: 'shown' }`, what the core can produce.
+  readonly flags?: Partial<BuildFlags>;
   // The scan streams this many events, then waits for `releaseScan` (or Stop): the live states can be looked at.
   readonly hold?: number;
   // The ignore commands of modules and groups, kept in the tab's session storage (support/ignore-mock.ts).
@@ -363,14 +364,17 @@ const withCoreTexts = <T>(
     ? { ...answers, getDictionary: { ...AGREEMENT_DICTIONARY, ...DANGER_TEXTS, ...answers.getDictionary } }
     : answers;
 
-// The app info answers the script's `high`, when it states one.
-const withHigh = <T>(
+// The app info answers the script's `flags`, when it states any.
+const withFlags = <T>(
   answers: Partial<Readonly<Record<CommandKey, T>>> = {},
-  high: HighLevel | undefined,
+  flags: Partial<BuildFlags> | undefined,
 ): Partial<Readonly<Record<CommandKey, T>>> =>
-  high === undefined || typeof answers.appInfo !== 'object' || answers.appInfo === null
+  flags === undefined || typeof answers.appInfo !== 'object' || answers.appInfo === null
     ? answers
-    : { ...answers, appInfo: { ...answers.appInfo, high } };
+    : {
+        ...answers,
+        appInfo: { ...answers.appInfo, flags: { ...(answers.appInfo as Partial<AppInfo>).flags, ...flags } },
+      };
 
 const byCommand = <T>(table: Partial<Readonly<Record<CommandKey, T>>> = {}): Readonly<Record<string, T>> =>
   Object.fromEntries((Object.entries(table) as [CommandKey, T][]).map(([key, value]) => [COMMANDS[key], value]));
@@ -391,7 +395,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
   );
   const setup: ByCommand = {
     agreementHook: AGREEMENT_HOOK,
-    answers: byCommand(withHigh(withCoreTexts(withRefreshAccess(script.answers)), script.high)),
+    answers: byCommand(withFlags(withCoreTexts(withRefreshAccess(script.answers)), script.flags)),
     appInfo: COMMANDS.appInfo,
     appsHook: APPS_HOOK,
     busy: BUSY,
@@ -720,7 +724,12 @@ export const releaseScan = async (page: Page): Promise<void> => {
 
 // What the core answers before any scan: the demo module, its texts and settings, Full Disk Access granted.
 const ANSWERS = {
-  appInfo: { build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.0.1' },
+  appInfo: {
+    build: { kind: 'release' },
+    flags: { high: 'offered', largest: 'shown' },
+    home: '/Users/someone',
+    version: '0.0.1',
+  },
   cancelScan: null,
   getAccessStatus: GRANTED,
   getDictionary: { ...SCRIPTS_DICTIONARY, ...STORAGE_DICTIONARY },
@@ -1329,7 +1338,12 @@ export const SCRIPTS = {
   development: {
     answers: {
       ...ANSWERS,
-      appInfo: { build: { kind: 'development' }, high: 'offered', home: '/Users/someone', version: '0.1.0' },
+      appInfo: {
+        build: { kind: 'development' },
+        flags: { high: 'offered', largest: 'shown' },
+        home: '/Users/someone',
+        version: '0.1.0',
+      },
     },
   },
   // Xcode's scan with the docker module describing OrbStack (answered, four parts, three commands) and offering nothing.
@@ -1475,7 +1489,12 @@ export const SCRIPTS = {
   sandboxed: {
     answers: {
       ...ANSWERS,
-      appInfo: { build: sandboxBuild(['running']), high: 'offered', home: SANDBOX_HOME, version: '0.1.0' },
+      appInfo: {
+        build: sandboxBuild(['running']),
+        flags: { high: 'offered', largest: 'shown' },
+        home: SANDBOX_HOME,
+        version: '0.1.0',
+      },
       getDictionary: { ...ANSWERS.getDictionary, ...BUILD_DICTIONARY },
     },
   },

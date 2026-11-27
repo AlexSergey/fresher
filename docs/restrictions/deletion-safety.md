@@ -134,23 +134,24 @@ The app deletes files from a real person's disk. These rules hold in every versi
   UI's e2e mock, which refuses a High echo without the tick as the core does. The confirmation
   (`app/ui/src/product/confirm-dialog/confirm-dialog.tsx`) shows the tick above the permanent choice and apart from it,
   cleared at every opening, and keeps its confirm button inactive until it is ticked, in Review and on an app's page.
-- **Unused while High is withheld** (below): no plan reaches High, so the tick is never shown in the app; it stays,
-  with its tests, for when High is offered again.
 
-## High is withheld in the first release
+## High is withheld when the build says so
 
-- **Rule:** while the app sets `HighLevel::Withheld` (every build of the first release, development included), no
-  finding at High leaves the engine: no page, total, found size, "Can be freed", module category or choice, or
+- **Rule:** while the build's `high` flag is `withheld` (the app sets `HighLevel::Withheld`; 0.1.0 withheld it, 0.2.0
+  offers it, `flags.toml`), no finding at High leaves the engine: no page, total, found size, "Can be freed", module category or choice, or
   left-out names one; no insight part at High is described (the Docker card loses its volumes line), no app page
   lists a footprint item of a High kind and no Apps row shows a part of a High kind (their sizes neither); and every
   prepare with a High item, every Largest pick and every uninstall of everything is refused (`HighWithheld`), acting
-  on nothing.
+  on nothing. The value is set only before the build (`flags.toml`, or `FRESHER_FLAGS` on the build's command line),
+  never by a file or a setting the user can write.
 - **Not covered today:** a finding at a lower level whose path is, or holds, a withheld finding's path is not refused:
   the engine only checks each item's own level and category. No module produces such a pair now; a module that would
   must be checked against this rule first.
-- **Why:** the user's decision of 2026-11-24: the first release offers only what comes back or what the user can check
-  by eye.
-- **Enforced by:** the switch is a required argument of `Engine::new` and `Engine::with_cleanup`
+- **Why:** the user's decisions of 2026-11-24 (the first release offers only what comes back or what the user can check
+  by eye) and of 2026-11-26 (0.2.0 offers High again, each item with its own tick, and the build says which).
+- **Enforced by:** `app/tauri/build.rs` reads `flags.toml` (and `FRESHER_FLAGS`) into `FLAGS` and fails the build on a
+  malformed value, and `npm run check:flags` checks the shape of `flags.toml` and that every flag is read by a source; the
+  switch is a required argument of `Engine::new` and `Engine::with_cleanup`
   (`crates/engine/src/engine.rs`); `Withheld` (`crates/engine/src/withheld.rs`) leaves a finding out of
   `Results::shown` (`crates/engine/src/results.rs`) when its own level or its category is High, and out of the
   published `FindingsAdded`; `Shares::of` (`crates/engine/src/storage/shares.rs`) counts a High owner as an ignored
@@ -160,7 +161,7 @@ The app deletes files from a real person's disk. These rules hold in every versi
   checked; `pick_own_item` (`crates/engine/src/own.rs`) and `prepare_uninstall` with `Everything`
   (`crates/engine/src/apps/uninstall.rs`) refuse; the app page leaves `Everything` out of its choices and the items
   of a High kind out of its footprint (`crates/engine/src/apps/page.rs`), and an Apps row leaves them out of its
-  parts and sizes (`crates/engine/src/apps/list.rs`). The UI hides Largest from the sidebar (`AppInfo.high`): the
+  parts and sizes (`crates/engine/src/apps/list.rs`). The UI shows Largest in the sidebar only while the build's `largest` flag is `shown` (`AppInfo.flags.largest`): the
   core still answers its queries, and refuses the pick. Tests: `crates/engine/src/high_tests.rs`,
   `crates/e2e/tests/high_withheld.rs`; the sandbox's `high-withheld.toml` (step 02).
 

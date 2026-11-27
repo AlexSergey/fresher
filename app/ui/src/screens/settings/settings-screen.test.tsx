@@ -68,7 +68,12 @@ const STORAGE: Refusal = { error: { code: 'storage' }, text: { args: {}, key: 'c
 const core = (answers: Partial<CoreAnswers> = {}): void => {
   mockCore({
     ...sampleAgreementAnswers,
-    appInfo: () => ({ build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '1.2.3' }),
+    appInfo: () => ({
+      build: { kind: 'release' },
+      flags: { high: 'offered', largest: 'shown' },
+      home: '/Users/someone',
+      version: '1.2.3',
+    }),
     getDictionary: () => DICTIONARY,
     getModules: () => MODULES,
     getOverview: () => IDLE,

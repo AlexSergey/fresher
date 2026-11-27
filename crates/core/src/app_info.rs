@@ -1,4 +1,4 @@
-//! What the app says about itself: its version, which kind of build it is, whether it offers High findings, the home
+//! What the app says about itself: its version, which kind of build it is, which flags it ships with, the home
 //! folder it works on and the moment on its clock.
 
 use std::path::{Path, PathBuf};
@@ -6,15 +6,15 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{HighLevel, Text, TextArg, TextKey, Timestamp};
+use crate::{BuildFlags, Text, TextArg, TextKey, Timestamp};
 
 /// The app's answer to "which build is this".
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 pub struct AppInfo {
     pub version: String,
     pub build: Build,
-    /// Whether its engine offers High findings: withheld in this release.
-    pub high: HighLevel,
+    /// What the build ships with; its `high` is the engine's.
+    pub flags: BuildFlags,
     /// The home folder its engine works on (a sandbox's own home in sandbox mode), for showing a path as `~/…`;
     /// `None` when it is not known.
     pub home: Option<PathBuf>,
@@ -99,8 +99,8 @@ mod tests {
     mod positive {
         use std::path::Path;
 
-        use crate::HighLevel;
         use crate::app_info::{AppInfo, Build, SandboxTrashAt, Simulated};
+        use crate::{BuildFlags, HighLevel, LargestScreen};
 
         #[test]
         fn a_sandbox_build_serializes_with_its_folder() {
@@ -112,14 +112,14 @@ mod tests {
             let info = AppInfo {
                 version: "0.1.0".into(),
                 build,
-                high: HighLevel::Withheld,
+                flags: BuildFlags { high: HighLevel::Withheld, largest: LargestScreen::Hidden },
                 home: Some("/tmp/box/home".into()),
                 now: crate::Timestamp::from_secs(1_795_000_000),
             };
             let json = serde_json::to_string(&info).unwrap();
             assert_eq!(
                 json,
-                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"],"trash":{"key":"core.build.trash.system","args":{}}},"high":"withheld","home":"/tmp/box/home","now":1795000000}"#
+                r#"{"version":"0.1.0","build":{"kind":"sandbox","path":"/tmp/box","simulated":["running","access"],"trash":{"key":"core.build.trash.system","args":{}}},"flags":{"high":"withheld","largest":"hidden"},"home":"/tmp/box/home","now":1795000000}"#
             );
         }
 

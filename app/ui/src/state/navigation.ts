@@ -1,6 +1,6 @@
 import { createContext, use, useSyncExternalStore } from 'react';
 
-import type { AppId, CategoryId, CleanupId, HighLevel, ModuleId, SettingKey } from '../ipc/bindings.generated';
+import type { AppId, CategoryId, CleanupId, LargestScreen, ModuleId, SettingKey } from '../ipc/bindings.generated';
 
 // The tabs of Settings' Ignored section.
 export type IgnoredTab = 'groups' | 'items' | 'modules';
@@ -67,15 +67,15 @@ export type InsightRef = { readonly identity: string; readonly module: ModuleId 
 
 // The screen to show: the details of a category no module the core lists has (`categories`, every listed module's,
 // `null` while they are not known yet), an insight the last scan did not describe (`insights`) and Largest unless the
-// core offers High (`high`, `null` while it is not known yet) fall back to Scan.
+// build shows it (`largest`, `null` while it is not known yet) fall back to Scan.
 export const screenToShow = (
   screen: Screen,
   categories: null | readonly CategoryId[],
   insights: readonly InsightRef[] = [],
-  high: HighLevel | null = null,
+  largest: LargestScreen | null = null,
 ): Screen => {
   if (screen.kind === 'largest') {
-    return high === 'offered' ? screen : START;
+    return largest === 'shown' ? screen : START;
   }
 
   if (screen.kind === 'category') {
@@ -108,9 +108,9 @@ export const useNavigation = (): Navigation => {
 export const useScreen = (
   categories: null | readonly CategoryId[],
   insights: readonly InsightRef[] = [],
-  high: HighLevel | null = null,
+  largest: LargestScreen | null = null,
 ): Screen => {
   const navigation = useNavigation();
 
-  return screenToShow(useSyncExternalStore(navigation.subscribe, navigation.getScreen), categories, insights, high);
+  return screenToShow(useSyncExternalStore(navigation.subscribe, navigation.getScreen), categories, insights, largest);
 };

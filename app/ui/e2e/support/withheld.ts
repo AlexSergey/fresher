@@ -4,7 +4,7 @@ import type { CoreScript } from '../core-mock';
 // What a core that withholds High produces from the same home (mirrors the engine's rule, docs/restrictions): no finding
 // whose own level or whose category is High, no total, found size or left-out of those, no High category in a module,
 // no insight part at High, no Everything choice on an app's page, no part at High in an Apps row nor its bytes, and
-// `high: 'withheld'` in the app info.
+// `flags.high: 'withheld'` in the app info (`largest` stays as the script has it).
 
 const lessBy = (sizes: Sizes, gone: readonly Sizes[]): Sizes => ({
   ...sizes,
@@ -68,7 +68,7 @@ export const withheld = (script: CoreScript): CoreScript => {
     ...script,
     ...(answers === undefined ? {} : { answers: { ...answers, getModules: withheldModules(answers.getModules) } }),
     ...(apps === undefined ? {} : { apps: { ...apps, withheld: true } }),
-    high: 'withheld',
+    flags: { ...script.flags, high: 'withheld' },
     ...(scan === undefined ? {} : { scan: scan.map(withheldEvent) }),
     ...(scanned === undefined ? {} : { scanned: withheldOverview(scanned) }),
     ...(scanning === undefined ? {} : { scanning: withheldOverview(scanning) }),
@@ -76,4 +76,11 @@ export const withheld = (script: CoreScript): CoreScript => {
       ? {}
       : { stop: { events: stop.events.map(withheldEvent), overview: withheldOverview(stop.overview) } }),
   };
+};
+
+// The app as 0.1.0 shipped it: High withheld and Largest hidden.
+export const firstRelease = (script: CoreScript): CoreScript => {
+  const base = withheld(script);
+
+  return { ...base, flags: { ...base.flags, largest: 'hidden' } };
 };

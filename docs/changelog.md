@@ -6,6 +6,15 @@ versioning; until 1.0.0 a minor version may change how the app behaves. How a re
 
 ## [Unreleased]
 
+### What Fresher finds
+
+- **Items at High are offered again**, in their own group, each with its own tick in the confirmation.
+- **Largest is back in the sidebar**: pick a large file to remove.
+
+### How it keeps you safe
+
+- **What a build ships with is set in one place before the build**, and the release's text lists it.
+
 ### Installing
 
 - **The disk image shows how to install**: its window says "Drag Fresher to Applications", with an arrow from the app

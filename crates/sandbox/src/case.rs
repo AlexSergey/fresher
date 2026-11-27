@@ -23,7 +23,7 @@ pub struct CaseFile {
     feature: String,
     module: Option<ModuleId>,
     demo: Option<Demo>,
-    /// `high = "withheld"`: the file runs with High withheld, as the app does; offered when absent.
+    /// `high = "withheld"`: the file runs with High withheld, as a build that withholds High does; offered when absent.
     high: HighLevel,
     /// The file's `[settings]`: the values of the modules' settings, shared by every case of the file.
     settings: BTreeMap<String, toml::Value>,

@@ -8,8 +8,9 @@ use std::sync::Arc;
 
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach, SandboxFolder};
 use fresher_core::{
-    AccessProbe, Build, ByteSize, Clock, CommandRunner, HighLevel, InstallRecords, InstalledApps, KnownFolders,
-    ModuleId, OpenFiles, Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash, Volumes,
+    AccessProbe, Build, BuildFlags, ByteSize, Clock, CommandRunner, HighLevel, InstallRecords, InstalledApps,
+    KnownFolders, ModuleId, OpenFiles, Protection, ProtectionError, RunningApps, SandboxTrashAt, Simulated, Trash,
+    Volumes,
 };
 use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
@@ -79,8 +80,8 @@ pub struct SandboxMode {
     /// The modules registered: every module of the build (the app's), the shipped ones (a demo's), or the one of an
     /// autotest's case file.
     modules: ModuleSet,
-    /// Whether its engine offers High findings: withheld, as in the app, unless the autotest offers it.
-    high: HighLevel,
+    /// What its build ships with: the build's flags, as in the app, unless the autotest offers High.
+    flags: BuildFlags,
     /// How its scan gives out its progress: as walked, unless a demo plays.
     pace: ScanPace,
 }
@@ -127,7 +128,7 @@ impl SandboxMode {
             path: path.into(),
             trash,
             modules: ModuleSet::Every,
-            high: HighLevel::Withheld,
+            flags: crate::flags::FLAGS,
             pace: ScanPace::AsWalked,
         }
     }
@@ -154,10 +155,17 @@ impl SandboxMode {
     }
 
     /// The same mode with High findings offered. For the sandbox autotest only, which runs a case file's High
-    /// positives; the app's sandbox mode withholds High, as the app does.
+    /// positives; the app's sandbox mode takes the build's `high` flag, as the app does.
     #[must_use]
     pub fn offering_high(self) -> Self {
-        Self { high: HighLevel::Offered, ..self }
+        Self { flags: BuildFlags { high: HighLevel::Offered, ..self.flags }, ..self }
+    }
+
+    /// The same mode with High findings withheld, whatever the build's flag says. For the sandbox autotest only, which
+    /// proves that a build withholding High offers nothing at High.
+    #[must_use]
+    pub fn withholding_high(self) -> Self {
+        Self { flags: BuildFlags { high: HighLevel::Withheld, ..self.flags }, ..self }
     }
 
     /// The mode the environment asks for, read through `var`: `FRESHER_SANDBOX` (an absolute path) and
@@ -177,7 +185,12 @@ impl SandboxMode {
         if !path.is_absolute() {
             return Err(SandboxRefusal::NotAbsolute { path });
         }
-        Ok(Some(Self { path, trash, modules: ModuleSet::Every, high: HighLevel::Withheld, pace: ScanPace::AsWalked }))
+        Ok(Some(Self { path, trash, modules: ModuleSet::Every, flags: crate::flags::FLAGS, pace: ScanPace::AsWalked }))
+    }
+
+    /// What its build ships with.
+    pub fn flags(&self) -> BuildFlags {
+        self.flags
     }
 
     /// The sandbox folder as it was named.
@@ -349,7 +362,7 @@ pub(crate) fn compose(
         modules: mode.modules,
         apps,
         installs: ports.installs,
-        high: mode.high,
+        flags: mode.flags,
         pace: mode.pace.of_world(&world),
     })?;
     Ok((engine, sandbox))

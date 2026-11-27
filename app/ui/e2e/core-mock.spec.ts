@@ -19,7 +19,7 @@ import { DEMO_FINDINGS, DEMO_SCAN, GRANTED, IDLE } from '../src/test/demo-scan';
 import { largeScan } from '../src/test/large-scan';
 import { pageOf } from '../src/test/page-of';
 import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
-import { mockCore, SCRIPTS } from './core-mock';
+import { firstRelease, mockCore, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import { scanButton } from './support/cards';
 import { largestAnswerOf, pickAnswerOf, placeAnswerOf } from './support/largest-mock';
@@ -29,7 +29,12 @@ import { largestAnswerOf, pickAnswerOf, placeAnswerOf } from './support/largest-
 const SCAN = largeScan({ categories: 3, count: 1000 });
 
 const answers = {
-  appInfo: { build: { kind: 'release' }, high: 'offered', home: '/Users/someone', version: '0.0.1' },
+  appInfo: {
+    build: { kind: 'release' },
+    flags: { high: 'offered', largest: 'shown' },
+    home: '/Users/someone',
+    version: '0.0.1',
+  },
   getAccessStatus: GRANTED,
   getDictionary: SCAN.dictionary,
   getModules: [],
@@ -105,6 +110,23 @@ const NESTED_SCAN: readonly Event[] = [
 ];
 
 test.describe('negative cases', () => {
+  test('the app info keeps its flags when the script names none', async ({ page }) => {
+    await mockCore(page, SCRIPTS.demo);
+    await page.goto('/');
+
+    const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
+
+    expect(info.flags).toStrictEqual({ high: 'offered', largest: 'shown' });
+  });
+
+  test('withheld leaves largest as the script has it', async ({ page }) => {
+    await mockCore(page, withheld({ ...SCRIPTS.demo, flags: { largest: 'hidden' } }));
+    await page.goto('/');
+    const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
+
+    expect(info.flags).toStrictEqual({ high: 'withheld', largest: 'hidden' });
+  });
+
   test('a not-accepted agreement stays not accepted until it is accepted, and refuses another version', async ({
     page,
   }) => {
@@ -288,24 +310,33 @@ test.describe('negative cases', () => {
 });
 
 test.describe('positive cases', () => {
+  test('firstRelease withholds High and hides Largest', async ({ page }) => {
+    await mockCore(page, firstRelease(SCRIPTS.demo));
+    await page.goto('/');
+
+    const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
+
+    expect(info.flags).toStrictEqual({ high: 'withheld', largest: 'hidden' });
+  });
+
   test('the app info offers High by default', async ({ page }) => {
     await mockCore(page, SCRIPTS.demo);
     await page.goto('/');
 
     const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
 
-    expect(info.high).toBe('offered');
+    expect(info.flags.high).toBe('offered');
   });
 
-  test('the app info answers the script’s high', async ({ page }) => {
-    await mockCore(page, { ...SCRIPTS.demo, high: 'withheld' });
+  test('the app info answers the script’s flags', async ({ page }) => {
+    await mockCore(page, { ...SCRIPTS.demo, flags: { high: 'withheld' } });
     await page.goto('/');
 
     const info = await call<AppInfo>(page, COMMANDS.appInfo, {});
 
     expect(info).toStrictEqual({
       build: { kind: 'release' },
-      high: 'withheld',
+      flags: { high: 'withheld', largest: 'shown' },
       home: '/Users/someone',
       now: expect.any(Number),
       version: '0.0.1',

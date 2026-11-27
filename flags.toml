@@ -1,0 +1,17 @@
+# What a build ships with (plan 043). Read by app/tauri/build.rs before the build; nothing reads it at runtime.
+# A build may override a value on its command line: FRESHER_FLAGS=largest=hidden,high=withheld.
+# `type` names the enum of fresher-core the value becomes; each value is a variant in kebab-case.
+
+[high]
+about = "Whether items at High, which may hold the only copy of the user's data, are offered."
+type = "HighLevel"
+values = ["offered", "withheld"]
+release = "offered"
+development = "offered"
+
+[largest]
+about = "Whether the sidebar shows the Largest screen."
+type = "LargestScreen"
+values = ["shown", "hidden"]
+release = "shown"
+development = "shown"

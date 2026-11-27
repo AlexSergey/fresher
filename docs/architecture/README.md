@@ -198,17 +198,26 @@ No database: the app keeps its own state in small plain files, with nothing to i
   `core.agreement.accepted-at`), written only by `Engine::accept_agreement`; every prepare and every confirm checks it
   (`BlockedReason::Agreement`, after the settings file and before the journal; [`removal.md`](./removal.md), "Fail
   closed").
+- **The build's flags** (plan 043): `flags.toml` at the root says what a build ships with, one table per flag (`about`,
+  `type`, `values`, and its `release` and `development` value). `app/tauri/build.rs` reads it before the build
+  (`build/flags.rs`), applies the override `FRESHER_FLAGS=name=value,...` of the build's own command line, and writes
+  `FLAGS: BuildFlags` into `OUT_DIR` (`src/flags.rs` includes it); the compiler holds the rest (a flag without a
+  field, a `type` that is not the field's, a value without a variant). The build fails on a file or an override that
+  breaks the shape (not TOML, a missing or other key, an empty `about`, fewer than two or repeated or non-kebab-case
+  values, a `release` or `development` outside `values`, an override naming an unknown flag, a value outside the
+  flag's, a flag twice or an item without `=`). Nothing reads the file at runtime: a flag is the build's, not the
+  user's. The UI reads the flags only from `AppInfo.flags`.
 - **The High switch** (plan 042; `HighLevel::{Offered, Withheld}`, `crates/core/src/danger.rs`): a required argument
-  of `Engine::new` and `Engine::with_cleanup`, set by the app (`app/tauri/src/compose.rs`, `sandbox.rs`): `Withheld`
-  in every build of the first release, development and sandbox mode included; tests and the sandbox autotest pass
-  `Offered` (a case file with `high = "withheld"` runs as the app does). `Withheld` (`crates/engine/src/withheld.rs`)
+  of `Engine::new` and `Engine::with_cleanup`, set by the app from `FLAGS.high` (`app/tauri/src/compose.rs`, `sandbox.rs`;
+  `offered` in 0.2.0, `withheld` in 0.1.0; sandbox mode follows it too); tests and the sandbox autotest pass
+  `Offered` (a case file with `high = "withheld"` runs as a build that withholds High). `Withheld` (`crates/engine/src/withheld.rs`)
   leaves out of every answer a finding whose own level or category is High: pages, `finding`, totals, the found size,
   `explained_under`, "Can be freed" on the map, a module's categories and choices (an empty choice dropped), its
   left-outs, insight parts at High, an app page's footprint items of a High kind and an Apps row's parts of a High
   kind; and it refuses with `CommandError::HighWithheld` every prepare holding a High item (first in
   `rehearse_and_keep`, before the agreement and settings checks), `pick_own_item` and `prepare_uninstall(_,
-Everything)`. `AppInfo.high` reports it to the UI. The rule:
-  [`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md), "High is withheld in the first release".
+Everything)`. `AppInfo.flags.high` reports it to the UI. The rule:
+  [`../restrictions/deletion-safety.md`](../restrictions/deletion-safety.md), "High is withheld when the build says so".
 - **Atomic writes**: a temporary file in the same folder, `fsync`, then a rename.
 - **The version policy**: every file the app writes carries `format` and `version`. What holds the user's decisions or
   history (settings, the cleanup journal, history points) is migrated forward one version at a time; what can be
@@ -455,8 +464,10 @@ the user can choose one. The core judges, the UI renders.
 - **The commands** are `get_largest`, `get_largest_place` and `pick_own_item` (`app/tauri/src/largest_commands.rs`).
 - **UI**: the screen `screens/largest/` (`Screen` `largest`; Files and Folders as tabs, the filters, a selection bar) and
   the component `product/own-item-row/`; the sidebar lists Scan, Largest, Apps (plan 036), Review, Cleanups and Settings.
-- **Hidden while High is withheld** (plan 042): a pick is High, so the sidebar leaves Largest out and the core refuses
-  `pick_own_item` (`HighWithheld`). The two queries are still answered; nothing in the UI asks them.
+- **Shown while the build's `largest` flag is `shown`** (plan 043): the sidebar and the navigation leave Largest out
+  otherwise. Largest is shown in 0.2.0 (hidden in 0.1.0). A pick is High, so its files are removable only while the
+  build offers High: the core refuses `pick_own_item` (`HighWithheld`) while High is withheld. The two queries are
+  still answered; nothing in the UI asks them while Largest is hidden.
 
 ## Problems and reasons
 
@@ -708,8 +719,7 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
   "Items" (plan 005's categories and paths), each with its count; the tabs are the design system's `Tabs`
   (`design/layout/tabs/`: an ARIA tab list, arrow keys, one tab stop). Scan's "N ignored" link opens the first tab
   that has an entry (`Screen.settings.tab`).
-- **The High switch in the UI**: `AppInfo.high` says whether the core offers High; while it is `withheld` the sidebar
-  leaves out Largest (`screens/frame-sidebar.tsx`; also hidden until the app info is known). Everything else that
+- **The High switch in the UI**: `AppInfo.flags.high` says whether the core offers High. Everything else that
   High would show (the groups, Review's tiles, an app page's choices) comes from the core, which leaves it out.
 - **The design pieces** of plan 042: the mockups' colours as tokens (`design/tokens/`), the primary button's sheen and
   the menu's accent hover, the section separator, the tile, the category icon badge, the disk card, the swoosh, the
@@ -717,8 +727,8 @@ The import boundaries, enforced by ESLint (`@typescript-eslint/no-restricted-imp
 - **Navigation** (`state/navigation.ts`): the screen is a discriminated union (`scan`, `category` with its category,
   `largest`, `review`, `cleanups`, `cleanup` with its cleanup, `insight` with its module and identity, `settings` with
   its page, an optional tab and an optional setting to focus); no router. `screenToShow` returns to Scan when a shown
-  category is no longer among the categories the core lists. The sidebar has Scan, Largest (only while High is
-  offered), Apps, Review, Cleanups and Settings and scrolls in a short window. When the focused element leaves the
+  category is no longer among the categories the core lists. The sidebar has Scan, Largest (only while the build's
+  `largest` flag is `shown`), Apps, Review, Cleanups and Settings and scrolls in a short window. When the focused element leaves the
   screen, the focus goes to the screen's heading (`screens/keep-focus.ts`). A heading focused that way (`tabindex="-1"`)
   only marks where the keyboard and VoiceOver continue: it shows no focus ring (`design/base/reset.css`); every control
   keeps its ring.

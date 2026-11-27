@@ -439,7 +439,7 @@ this walk.
 
 ### 1.24 A plain interface ([042/09/01](./plans/042-plain-interface/09-finish/01-docs-and-conclusions.md))
 
-Each sandbox from a fresh folder: `rm -rf sandbox/<name> && npm run dev:sandbox -- <name>`. The app withholds High in
+Each sandbox from a fresh folder: `rm -rf sandbox/<name> && npm run dev:sandbox -- <name>`. The app (0.1.0) withholds High in
 every build: nothing at High shows anywhere.
 
 - [ ] `trial`: Scan before a scan: the disk card holds Scan in its ring. Scan: the scanning card's swoosh fills, the

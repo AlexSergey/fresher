@@ -6,9 +6,9 @@
  */
 export type AppInfo = { version: string, build: Build, 
 /**
- * Whether its engine offers High findings: withheld in this release.
+ * What the build ships with; its `high` is the engine's.
  */
-high: HighLevel, 
+flags: BuildFlags, 
 /**
  * The home folder its engine works on (a sandbox's own home in sandbox mode), for showing a path as `~/…`;
  * `None` when it is not known.
@@ -19,6 +19,25 @@ home: string | null,
  * says how long ago something happened counts on it.
  */
 now: Timestamp, };
+
+/**
+ * What a build ships with. It is set before the build from `flags.toml` by the app's build script (plan 043) and
+ * never changes at runtime.
+ */
+export type BuildFlags = { 
+/**
+ * Whether the engine offers High findings.
+ */
+high: HighLevel, 
+/**
+ * Whether the sidebar shows Largest.
+ */
+largest: LargestScreen, };
+
+/**
+ * Whether the sidebar shows the Largest screen.
+ */
+export type LargestScreen = "shown" | "hidden";
 
 /**
  * The kind of build. Only a development build can run in a sandbox; a release build never reports one.
@@ -359,8 +378,8 @@ export type ScanKind = { "kind": "full" } | { "kind": "rescan", changedFolders: 
 export type DangerLevel = "safe" | "low" | "medium" | "high";
 
 /**
- * Whether the engine offers High findings at all. The first release withholds High: the app sets the switch when it
- * starts (plan 042), and tests and the sandbox autotest name it explicitly.
+ * Whether the engine offers High findings at all. The app sets the switch when it starts, from the build's `high`
+ * flag (`flags.toml`); tests and the sandbox autotest name it explicitly.
  */
 export type HighLevel = "offered" | "withheld";
 

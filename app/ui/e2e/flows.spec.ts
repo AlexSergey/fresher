@@ -15,7 +15,7 @@ import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
 import { XCODE_DICTIONARY } from '../src/test/xcode-scan';
-import { mockCore, releaseScan, SCRIPTS, withheld } from './core-mock';
+import { firstRelease, mockCore, releaseScan, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import {
   cardNames,
@@ -436,8 +436,8 @@ const reviewDownloads = async (page: Page): Promise<void> => {
 };
 
 test.describe('negative cases', () => {
-  test('the sidebar has no Largest while High is withheld', async ({ page }) => {
-    await mockCore(page, withheld(SCRIPTS.largest));
+  test('the sidebar has no Largest while the build hides Largest', async ({ page }) => {
+    await mockCore(page, firstRelease(SCRIPTS.largest));
     await page.goto('/');
     await scanButton(page).click();
     await scanFinished(page);

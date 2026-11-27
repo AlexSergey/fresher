@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { PLAN_GONE } from '../src/test/cleanup-plan';
-import { type CoreScript, mockCore, SCRIPTS, withheld } from './core-mock';
+import { type CoreScript, firstRelease, mockCore, SCRIPTS } from './core-mock';
 import { details, navScan, openDetails, scanButton, scanFinished, tickItemsOf } from './support/cards';
 import { requestQuit } from './support/cleanup-mock';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
@@ -204,7 +204,7 @@ test.describe('positive cases', () => {
     });
 
     test('a finished scan while High is withheld', async ({ page }) => {
-      await open(page, withheld(SCRIPTS.demo));
+      await open(page, firstRelease(SCRIPTS.demo));
       await scan(page);
       await expect(page.getByRole('button', { name: 'Details' })).toHaveCount(2);
       await expect(page.getByRole('navigation').getByRole('button', { name: 'Largest' })).toHaveCount(0);

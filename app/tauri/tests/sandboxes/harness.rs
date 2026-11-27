@@ -254,11 +254,14 @@ impl World {
             .map_err(|error| failure(name, error))?;
         let generated = generate(files, &self.folder.path().join(SANDBOX), now, &real, current_user())
             .map_err(|error| failure(name, format!("the sandbox cannot be generated: {error}")))?;
-        // The app withholds High; the autotest offers it, so a file's High positives are checked, unless a file says
-        // `high = "withheld"` and proves that the app as it ships offers nothing High.
+        // The autotest offers High, so a file's High positives are checked, unless a file says `high = "withheld"`:
+        // it runs as a build that withholds High and proves that such a build offers nothing High.
         let mode = SandboxMode::new(generated.sandbox.path(), SandboxTrash::Sandbox);
-        let mode =
-            if files.iter().any(|file| file.high() == HighLevel::Withheld) { mode } else { mode.offering_high() };
+        let mode = if files.iter().any(|file| file.high() == HighLevel::Withheld) {
+            mode.withholding_high()
+        } else {
+            mode.offering_high()
+        };
         // A demo world is scanned as a demo plays it: the modules a release ships, and its own `[settings]` deciding
         // which guarded folders are read.
         let demo = files.iter().any(|file| file.demo().is_some());

@@ -66,8 +66,11 @@ describe('navigation', () => {
       expect(shown).toStrictEqual({ kind: 'scan' });
     });
 
-    it('largest falls back to Scan while High is withheld or not known yet', () => {
-      expect(screenToShow({ kind: 'largest' }, null, [], 'withheld')).toStrictEqual({ kind: 'scan' });
+    it('sends Largest back to Scan while the build hides it', () => {
+      expect(screenToShow({ kind: 'largest' }, null, [], 'hidden')).toStrictEqual({ kind: 'scan' });
+    });
+
+    it('sends Largest back to Scan while the flags are not known', () => {
       expect(screenToShow({ kind: 'largest' }, null)).toStrictEqual({ kind: 'scan' });
     });
 
@@ -95,8 +98,8 @@ describe('navigation', () => {
       expect(createNavigation().getScreen()).toEqual({ kind: 'scan' });
     });
 
-    it('largest is shown when High is offered', () => {
-      expect(screenToShow({ kind: 'largest' }, null, [], 'offered')).toStrictEqual({ kind: 'largest' });
+    it('keeps Largest while the build shows it', () => {
+      expect(screenToShow({ kind: 'largest' }, null, [], 'shown')).toStrictEqual({ kind: 'largest' });
     });
 
     it('navigates to an insight screen', () => {

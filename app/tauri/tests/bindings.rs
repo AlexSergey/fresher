@@ -12,17 +12,17 @@ mod support {
 
     use fresher_core::{Acceptance, AgreementView};
     use fresher_core::{
-        Access, AccessStatus, ActionKind, AppInfo, Availability, BlockedReason, Build, ByteSize, Capability,
-        CapabilityState, CategoryDescriptor, CategoryIcon, CategoryId, CategoryInfo, CategoryPick, CategoryTotal,
-        ChildOrder, ChoiceInfo, CleanupDetail, CleanupId, CleanupItemRef, CleanupItemView, CleanupPlanView,
-        CleanupReport, CleanupSelection, CleanupSummary, CleanupsPage, CleanupsQuery, CommandError, Completeness,
-        Confirmation, Coverage, DangerLevel, Dictionary, Ended, EngineStatus, Event, Figure, Finding, FindingId,
-        FindingKey, FindingOrder, FindingsPage, FindingsQuery, GuardedFolder, HiddenBy, HiddenModule, HighLevel, IdOf,
-        IgnoreTarget, IgnoredCount, IgnoredEntry, Insight, InsightPart, ItemOutcome, ItemReport, LastScan, LeftOut,
-        LeftOutCount, LeftOutEntry, LeftOutKind, Locale, Method, ModuleGroup, ModuleId, ModuleInfo, ModuleOutcome,
-        Need, NeedKind, NodeId, NodeInfo, NodeKind, NodePage, NotEntered, NotScanned, Operation, OutcomeCounts,
-        Overview, OwnData, PlanGroup, PlanId, PlanItemView, PlanSummary, PutBackItem, PutBackOutcome, PutBackReport,
-        PutBackRequest, RecordedOutcome, Refusal, Removability, Removal, ScanId, ScanKind, ScanOutcome,
+        Access, AccessStatus, ActionKind, AppInfo, Availability, BlockedReason, Build, BuildFlags, ByteSize,
+        Capability, CapabilityState, CategoryDescriptor, CategoryIcon, CategoryId, CategoryInfo, CategoryPick,
+        CategoryTotal, ChildOrder, ChoiceInfo, CleanupDetail, CleanupId, CleanupItemRef, CleanupItemView,
+        CleanupPlanView, CleanupReport, CleanupSelection, CleanupSummary, CleanupsPage, CleanupsQuery, CommandError,
+        Completeness, Confirmation, Coverage, DangerLevel, Dictionary, Ended, EngineStatus, Event, Figure, Finding,
+        FindingId, FindingKey, FindingOrder, FindingsPage, FindingsQuery, GuardedFolder, HiddenBy, HiddenModule,
+        HighLevel, IdOf, IgnoreTarget, IgnoredCount, IgnoredEntry, Insight, InsightPart, ItemOutcome, ItemReport,
+        LastScan, LeftOut, LeftOutCount, LeftOutEntry, LeftOutKind, Locale, Method, ModuleGroup, ModuleId, ModuleInfo,
+        ModuleOutcome, Need, NeedKind, NodeId, NodeInfo, NodeKind, NodePage, NotEntered, NotScanned, Operation,
+        OutcomeCounts, Overview, OwnData, PlanGroup, PlanId, PlanItemView, PlanSummary, PutBackItem, PutBackOutcome,
+        PutBackReport, PutBackRequest, RecordedOutcome, Refusal, Removability, Removal, ScanId, ScanKind, ScanOutcome,
         SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingUpdate,
         SettingValue, SettingsFile, SettingsView, ShownCommand, Simulated, Sizes, SkipCode, SkipReason, StateId,
         Subject, Text, TextArg, TextKey, Timestamp, ToolCommand, ToolId, TrashLine, TrashState, TrashView, Unit,
@@ -37,8 +37,8 @@ mod support {
         PlaceRow, PlaceShare, PlaceView, RemainderReason, StorageMap, SummaryKind, SummaryPart, VolumeMap,
     };
     use fresher_core::{
-        ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, Offer, OwnPlace, OwnRow, PlaceCount, Unchanged,
-        Withheld,
+        ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, LargestScreen, Offer, OwnPlace, OwnRow, PlaceCount,
+        Unchanged, Withheld,
     };
     use fresher_sandbox::{AppState, DemoOutcome, DemoPlay, DemoWindow, NameMatch, Role, Scenario, Step, Target, Wait};
     use ts_rs::{Config, TS};
@@ -62,6 +62,8 @@ mod support {
         let config = Config::new();
         let mut declarations = vec![
             declaration::<AppInfo>(&config),
+            declaration::<BuildFlags>(&config),
+            declaration::<LargestScreen>(&config),
             declaration::<Build>(&config),
             declaration::<Simulated>(&config),
             declaration::<Event>(&config),

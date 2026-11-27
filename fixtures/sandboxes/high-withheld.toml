@@ -1,4 +1,4 @@
-# The High switch as the app ships it (plan 042): the app withholds High, and every other case file runs with High
+# The High switch as a build that withholds High runs it (plan 042): every other case file runs with High
 # offered so its High positives are checked. This one runs with High withheld, on the `app-leftovers` module: a removed
 # app's support folder (High) is not offered, and its caches (Safe) still are and go to the Trash. Whatever its cases
 # say, the autotest also checks that no finding, no total and no part of the map's "Explained" holds a High item.

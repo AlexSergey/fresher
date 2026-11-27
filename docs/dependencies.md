@@ -28,7 +28,7 @@ Direct dependencies of the workspace. All are taken from `[workspace.dependencie
 | `tauri-plugin-dialog`          | 2.8.4   | Apache-2.0 OR MIT         | app (the folder picker, from Rust only; brings `rfd` and `tauri-plugin-fs`)        |
 | `tempfile`                     | 3.27.0  | MIT OR Apache-2.0         | app, cleaner, e2e, macos, sandbox, scanner, store, system, testing                  |
 | `thiserror`                    | 2.0.21  | MIT OR Apache-2.0         | app, cleaner, core, engine, macos, module-app-caches, module-app-leftovers, module-demo, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-logs, module-stale-projects, module-temp, module-trial, module-unused-toolchains, module-xcode, rules, sandbox, scanner, store, system, testing |
-| `toml`                         | 1.2.1   | MIT OR Apache-2.0         | module-app-caches, module-app-leftovers, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-stale-projects, module-unused-toolchains, module-xcode, rules, sandbox, testing |
+| `toml`                         | 1.2.1   | MIT OR Apache-2.0         | app (its build script and the script's tests), module-app-caches, module-app-leftovers, module-dev-caches, module-docker, module-downloads, module-jetbrains, module-local-ai-models, module-stale-projects, module-unused-toolchains, module-xcode, rules, sandbox, testing |
 | `tracing`                      | 0.1.44  | MIT                       | app, engine, macos, module-downloads, scanner, store, system                        |
 | `ts-rs`                        | 12.0.1  | MIT                       | app, core, sandbox                                                                  |
 

@@ -18,8 +18,8 @@ impl DangerLevel {
     pub const ALL: [Self; 4] = [Self::Safe, Self::Low, Self::Medium, Self::High];
 }
 
-/// Whether the engine offers High findings at all. The first release withholds High: the app sets the switch when it
-/// starts (plan 042), and tests and the sandbox autotest name it explicitly.
+/// Whether the engine offers High findings at all. The app sets the switch when it starts, from the build's `high`
+/// flag (`flags.toml`); tests and the sandbox autotest name it explicitly.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "kebab-case")]
 pub enum HighLevel {

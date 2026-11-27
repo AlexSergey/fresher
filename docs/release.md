@@ -46,8 +46,9 @@ background.png`); the bundler takes only a PNG, JPEG or GIF, not a multi-resolut
 - **`SHA256SUMS`** of the image, and a **build provenance attestation** (`gh attestation verify`).
 - **The release's text**: [`releases/X.Y.Z.md`](./releases/) (what it is, supported Macs, install, first launch, Full
   Disk Access, how to check the download, no warranty, where to report), followed by the version's section of
-  [`changelog.md`](./changelog.md) under "What's new in X.Y.Z". `node scripts/release-version.ts notes X.Y.Z` prints
-  it.
+  [`changelog.md`](./changelog.md) under "What's new in X.Y.Z", and ending with "This build": the flags of
+  [`flags.toml`](../flags.toml)'s release column the build ships with, one line each.
+  `node scripts/release-version.ts notes X.Y.Z` prints it.
 - The draft is not marked as a pre-release, so GitHub's "latest release" (the README's download link and badge) points
   at it.
 
@@ -74,7 +75,8 @@ background.png`); the bundler takes only a PNG, JPEG or GIF, not a multi-resolut
 ## Cutting a release
 
 1. **Version.** On `main`, `npm run release:version -- X.Y.Z` writes the version into every place and refreshes the
-   lock files (nothing to do when the version already is X.Y.Z, as for 0.1.0).
+   lock files (nothing to do when the version already is X.Y.Z, as for 0.1.0). `flags.toml`'s release column is what
+   the release must ship; a tag never builds with `FRESHER_FLAGS` (a local build or the dry run may).
 2. **Changelog.** "Unreleased" becomes `## [X.Y.Z] - YYYY-MM-DD` with the day of the tag; the links at the bottom get
    the new version.
 3. **Release notes.** `docs/releases/X.Y.Z.md`, from the previous one. `.github/SECURITY.md` names the supported

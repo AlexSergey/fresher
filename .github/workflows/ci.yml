@@ -56,6 +56,7 @@ jobs:
       - run: npm run check:locks
       - run: npm run check:version
       - run: npm run check:texts
+      - run: npm run check:flags
       - run: npm run knip
       - run: npm run check:machete
       - run: npm run check:deny

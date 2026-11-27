@@ -4,10 +4,10 @@
 #![expect(clippy::needless_pass_by_value, reason = "Tauri hands a command its state and inputs by value")]
 
 use fresher_core::{
-    AccessStatus, AgreementView, AppInfo, Build, Capability, CleanupDetail, CleanupId, CleanupItemRef, CleanupPlanView,
-    CleanupSelection, CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingId, FindingsPage,
-    FindingsQuery, IgnoreTarget, IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport, PutBackRequest,
-    Refusal, ScanId, SettingUpdate, SettingsView, TrashView,
+    AccessStatus, AgreementView, AppInfo, Build, BuildFlags, Capability, CleanupDetail, CleanupId, CleanupItemRef,
+    CleanupPlanView, CleanupSelection, CleanupsPage, CleanupsQuery, Confirmation, Dictionary, Event, FindingId,
+    FindingsPage, FindingsQuery, IgnoreTarget, IgnoredEntry, Locale, ModuleInfo, Overview, PlanId, PutBackReport,
+    PutBackRequest, Refusal, ScanId, SettingUpdate, SettingsView, TrashView,
 };
 use fresher_engine::{Engine, ScanMode};
 use tauri::ipc::Channel;
@@ -16,13 +16,14 @@ use tauri::{AppHandle, Runtime, State};
 use crate::events::EventForwarder;
 use crate::shell;
 
-/// The version of the app, the kind of build it is, whether its engine offers High findings and its home folder.
+/// The version of the app, the kind of build it is, the build's flags (their `high` is the engine's) and its home
+/// folder.
 #[tauri::command]
-pub(crate) fn app_info(build: State<'_, Build>, engine: State<'_, Engine>) -> AppInfo {
+pub(crate) fn app_info(build: State<'_, Build>, flags: State<'_, BuildFlags>, engine: State<'_, Engine>) -> AppInfo {
     AppInfo {
         version: env!("CARGO_PKG_VERSION").to_owned(),
         build: build.inner().clone(),
-        high: engine.high_level(),
+        flags: BuildFlags { high: engine.high_level(), ..*flags.inner() },
         home: engine.home_folder(),
         now: engine.now(),
     }
@@ -236,6 +237,7 @@ mod tests {
         use serde_json::json;
 
         use super::first_page;
+        use crate::commands::app_info;
         use crate::commands::{
             accept_agreement, cancel_cleanup, cancel_scan, confirm_cleanup, discard_cleanup, get_agreement,
             get_cleanup, get_cleanups, get_dictionary, get_findings, open_access_settings, open_trash, prepare_cleanup,
@@ -246,6 +248,19 @@ mod tests {
         };
         #[cfg(debug_assertions)]
         use crate::testing::{is_cleanup_finished, listing};
+        use fresher_core::{Build, BuildFlags, HighLevel, LargestScreen};
+        use tauri::Manager;
+
+        #[test]
+        fn app_info_reports_the_engines_high_over_the_managed_one() {
+            let shell = Shell::new();
+            shell.app.manage(Build::Development);
+            shell.app.manage(BuildFlags { high: HighLevel::Withheld, largest: LargestScreen::Hidden });
+
+            let info = app_info(shell.app.state::<Build>(), shell.app.state::<BuildFlags>(), shell.engine());
+
+            assert_eq!(info.flags, BuildFlags { high: HighLevel::Offered, largest: LargestScreen::Hidden });
+        }
 
         #[test]
         fn start_scan_twice_is_busy() {
@@ -546,7 +561,7 @@ mod tests {
         };
         use fresher_testing::FakeAccess;
 
-        use fresher_core::{Build, PutBackOutcome, SandboxTrashAt, Simulated, TrashState};
+        use fresher_core::{Build, BuildFlags, PutBackOutcome, SandboxTrashAt, Simulated, TrashState};
         use serde_json::json;
         use tauri::Manager;
 
@@ -660,12 +675,19 @@ mod tests {
                 trash: SandboxTrashAt::System.text(),
             };
             shell.app.manage(build.clone());
+            shell.app.manage(BuildFlags {
+                high: fresher_core::HighLevel::Offered,
+                largest: fresher_core::LargestScreen::Shown,
+            });
 
-            let info = app_info(shell.app.state::<Build>(), shell.engine());
+            let info = app_info(shell.app.state::<Build>(), shell.app.state::<BuildFlags>(), shell.engine());
 
             assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
             assert_eq!(info.build, build);
-            assert_eq!(info.high, fresher_core::HighLevel::Offered);
+            assert_eq!(
+                info.flags,
+                BuildFlags { high: fresher_core::HighLevel::Offered, largest: fresher_core::LargestScreen::Shown }
+            );
             assert_eq!(
                 info.now,
                 fresher_core::Timestamp::from_secs(1_700_000_000),
@@ -678,8 +700,12 @@ mod tests {
             let tree = trial_home(false);
             let shell = Shell::cleaning(tree.root());
             shell.app.manage(Build::Development);
+            shell.app.manage(BuildFlags {
+                high: fresher_core::HighLevel::Offered,
+                largest: fresher_core::LargestScreen::Shown,
+            });
 
-            let info = app_info(shell.app.state::<Build>(), shell.engine());
+            let info = app_info(shell.app.state::<Build>(), shell.app.state::<BuildFlags>(), shell.engine());
 
             assert_eq!(info.home.as_deref(), Some(tree.root()));
         }

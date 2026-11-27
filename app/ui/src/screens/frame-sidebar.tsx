@@ -31,7 +31,8 @@ export const FrameSidebar = ({ onNavigate, screen }: FrameSidebarProps): JSX.Ele
     summary.count > 0
       ? { count: summary.count, key: 'ui.screen.frame.review-count' as const }
       : { count: summary.toCheck.categories, key: 'ui.screen.frame.review-to-check' as const };
-  const largest = useAppInfo()?.high === 'offered';
+  // Largest only while the build shows it.
+  const largest = useAppInfo()?.flags.largest === 'shown';
 
   return (
     <Sidebar

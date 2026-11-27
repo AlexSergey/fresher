@@ -5,6 +5,9 @@
 #[cfg(any(debug_assertions, test))]
 mod adapters;
 mod apps_commands;
+#[cfg(test)]
+#[path = "../build/flags.rs"]
+mod build_flags;
 mod commands;
 mod compose;
 #[cfg(debug_assertions)]
@@ -14,6 +17,7 @@ mod dev_runs;
 #[cfg(debug_assertions)]
 mod dry_run;
 mod events;
+mod flags;
 mod identity;
 mod instance;
 mod largest_commands;
@@ -137,6 +141,7 @@ fn start(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         data_folder,
         home,
         build,
+        flags,
         #[cfg(debug_assertions)]
         run,
         #[cfg(debug_assertions)]
@@ -166,6 +171,7 @@ fn start(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         dev_runs::follow(app.handle().clone(), events);
     }
     app.manage(build);
+    app.manage(flags);
     app.manage(settings_commands::HomeFolder(home));
     app.manage(events::EventForwarder::default());
     app.manage(fresher_store::DataFolder::open(data_folder)?);

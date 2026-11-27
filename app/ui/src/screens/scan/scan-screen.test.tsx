@@ -479,7 +479,7 @@ describe('ScanScreen', () => {
       core({
         appInfo: () => ({
           build: sandboxBuild(),
-          high: 'withheld',
+          flags: { high: 'withheld', largest: 'shown' },
           home: '/demo',
           now: finished + 5,
           version: '0.1.0',

@@ -157,7 +157,7 @@ need. It can also remove an app you choose, after showing you what goes with it.
 
 <!-- what-it-finds:end -->
 
-The first release does not offer the kinds marked High: only what comes back, or what you can check by eye.
+Release 0.1.0 did not offer the kinds marked High: only what comes back, or what you can check by eye. Release 0.2.0 offers them, in their own group, each with its own tick in the confirmation.
 
 ## What it does not do
 

@@ -410,7 +410,14 @@ describe('CategoryScreen', () => {
     });
 
     it('shows each item with its name, a path from ~ and no level badge', async () => {
-      core({ appInfo: () => ({ build: sandboxBuild(), high: 'offered', home: '/demo', version: '0.1.0' }) });
+      core({
+        appInfo: () => ({
+          build: sandboxBuild(),
+          flags: { high: 'offered', largest: 'shown' },
+          home: '/demo',
+          version: '0.1.0',
+        }),
+      });
 
       await renderDetails('demo.caches');
 

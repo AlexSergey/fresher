@@ -26,7 +26,7 @@ const SHARED_WORLD: &str = "\n**Several case files share this sandbox's one worl
                             feature's own sandbox: `npm run sandbox -- <name>`. Files whose world joins the others': {}.\n";
 
 /// The line under a High positive of a file the autotest runs with High offered.
-const WITHHELD_IN_THE_APP: &str = "Not shown in the app: High is withheld in this release.";
+const SHOWN_WHILE_OFFERED: &str = "Shown in the app only while the build offers High (`flags.toml`, `high`).";
 
 /// `EXPECTED.md`: per case file, one checkbox per case, negatives first, each with one plain sentence and, under it,
 /// its apps (installed, open, or found by Spotlight elsewhere), whether it turns Spotlight off, which guarded folders
@@ -62,10 +62,10 @@ pub(crate) fn checklist(files: &[CaseFile], left_out: &[LeftOutFile], sandbox: &
             .flat_map(|kind| file.cases().iter().filter(move |case| case.kind() == kind));
         for case in ordered {
             let _ = writeln!(text, "- [ ] **{}**: {}.", case.name(), sentence(case, file.module()));
-            // The autotest offers High in this file, but the app always withholds it.
+            // The autotest offers High in this file; the app shows it only while its build offers High.
             let high = case.expect().is_some_and(|expect| expect.danger() == DangerLevel::High);
             if high && file.high() == HighLevel::Offered {
-                let _ = writeln!(text, "  - {WITHHELD_IN_THE_APP}");
+                let _ = writeln!(text, "  - {SHOWN_WHILE_OFFERED}");
             }
             for app in case.tree().apps() {
                 let open = case.running_apps().any(|running| running.path == app.path);
@@ -434,14 +434,14 @@ reason = "in-use"
         use crate::expected::checklist;
 
         #[test]
-        fn a_high_positive_of_a_withheld_file_has_no_withheld_line() {
+        fn a_high_positive_of_a_withheld_file_has_no_shown_while_offered_line() {
             let cases = CASES.replace("feature = \"trial\"\n", "feature = \"trial\"\nhigh = \"withheld\"\n");
             let cases = cases.replace("danger = \"safe\"", "danger = \"high\"");
 
             let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             assert!(text.contains("offered in *trial.caches* (High)"), "{text}");
-            assert!(!text.contains("Not shown in the app"), "{text}");
+            assert!(!text.contains("Shown in the app only while"), "{text}");
         }
 
         #[test]
@@ -628,10 +628,10 @@ reason = "in-use"
                      choose what is inside.",
                     "  - On Largest, nothing in `home/Documents` is listed, and the notice above the list says Fresher \
                      did not look there and how to allow it.",
-                    "  - Not shown in the app: High is withheld in this release.",
+                    "  - Shown in the app only while the build offers High (`flags.toml`, `high`).",
                     "  - On Largest, `home/A/Photos.zip` is listed as *Archive* and can be chosen. It names `Photos` \
                      beside it.",
-                    "  - Not shown in the app: High is withheld in this release.",
+                    "  - Shown in the app only while the build offers High (`flags.toml`, `high`).",
                     "  - On Largest, `home/B` is listed and can be chosen.",
                 ]
             );
@@ -838,19 +838,19 @@ reason = "in-use"
         }
 
         #[test]
-        fn a_high_positive_says_it_is_not_shown_in_the_app() {
+        fn a_high_positive_says_when_it_is_shown_in_the_app() {
             let cases = CASES.replace("danger = \"safe\"", "danger = \"high\"");
 
             let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
 
             assert!(
                 text.contains(
-                    "`home/work/Sample app cache`; in the sandbox's Trash after the cleanup.\n  - Not shown in the \
-                     app: High is withheld in this release.\n"
+                    "`home/work/Sample app cache`; in the sandbox's Trash after the cleanup.\n  - Shown in the app \
+                     only while the build offers High (`flags.toml`, `high`).\n"
                 ),
                 "{text}"
             );
-            assert_eq!(text.matches("Not shown in the app").count(), 1, "{text}");
+            assert_eq!(text.matches("Shown in the app only while").count(), 1, "{text}");
         }
 
         #[test]

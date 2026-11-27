@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, it } from 'node:test';
 
+import { buildSection } from './flags.ts';
 import {
   cargoLockPlaces,
   cargoWorkspaceVersion,
@@ -203,9 +204,16 @@ describe('release-version', () => {
 
     it('the_release_body_is_the_notes_then_whats_new', () => {
       assert.equal(
-        releaseBody('# Fresher 0.2.0\n\nNotes.\n\n', '### Fixed\n\n- two', '0.2.0'),
-        "# Fresher 0.2.0\n\nNotes.\n\n## What's new in 0.2.0\n\n### Fixed\n\n- two\n",
+        releaseBody('# Fresher 0.2.0\n\nNotes.\n\n', '### Fixed\n\n- two', '0.2.0', '## This build\n\n- x\n'),
+        "# Fresher 0.2.0\n\nNotes.\n\n## What's new in 0.2.0\n\n### Fixed\n\n- two\n\n## This build\n\n- x\n",
       );
+    });
+
+    it('the_body_ends_with_the_builds_flags', () => {
+      const flags = readFileSync(join(import.meta.dirname, '..', 'flags.toml'), 'utf8');
+      const { section } = buildSection(flags, undefined);
+      assert.ok(section?.startsWith('## This build'));
+      assert.ok(releaseBody('Notes.', '- one', '0.2.0', section ?? '').endsWith(section ?? 'x'));
     });
 
     it('the_same_version_everywhere_passes', () => {

@@ -12,7 +12,7 @@ use fresher_cleaner::DryRunToken;
 use fresher_cleaner::RealDiskToken;
 use fresher_cleaner::{CleanerPorts, DiskCleaner, Reach};
 use fresher_core::{
-    AccessProbe, Build, Clock, CommandRunner, DiskWalk, FinderSettings, FolderReader, HighLevel, InstallRecords,
+    AccessProbe, Build, BuildFlags, Clock, CommandRunner, DiskWalk, FinderSettings, FolderReader, InstallRecords,
     InstalledApps, KnownFolders, Module, ModuleGroup, ModuleId, OpenFiles, Protection, ProtectionError, ReaderFiles,
     RunningApps, SchemaError, SystemPorts, Volumes,
 };
@@ -119,6 +119,8 @@ pub(crate) struct Start {
     pub(crate) data_folder: PathBuf,
     pub(crate) home: PathBuf,
     pub(crate) build: Build,
+    /// What the build ships with, whose `high` the engine follows.
+    pub(crate) flags: BuildFlags,
     /// The development run record, when the launcher asked for one (`FRESHER_DEV_RUNS`).
     #[cfg(debug_assertions)]
     pub(crate) run: Option<crate::dev_runs::run::Run>,
@@ -156,7 +158,7 @@ pub(crate) fn start(
         let demo = crate::demo::DemoMode::from_env(&var, Some(sandbox.path()), mode.trash(), &home)?;
         let home = sandbox.home();
         let run = begin_run(launch.as_ref(), &build, &home, &engine)?;
-        return Ok(Start { engine, data_folder: sandbox.data_folder(), home, build, run, demo });
+        return Ok(Start { engine, data_folder: sandbox.data_folder(), home, build, flags: mode.flags(), run, demo });
     }
     // Outside sandbox mode a demo is refused before any engine is made.
     #[cfg(debug_assertions)]
@@ -170,6 +172,7 @@ pub(crate) fn start(
         data_folder,
         home,
         build,
+        flags: crate::flags::FLAGS,
         #[cfg(debug_assertions)]
         run,
         #[cfg(debug_assertions)]
@@ -277,8 +280,8 @@ fn normal(
         access: Arc::new(MacAccess::new(home.to_path_buf(), macos_version(Path::new("/")))),
         cleanup,
         modules: ModuleSet::Every,
-        // The first release withholds High (plan 042); development builds too, so the walk sees what ships.
-        high: HighLevel::Withheld,
+        // The build's flags (`flags.toml`).
+        flags: crate::flags::FLAGS,
         #[cfg(debug_assertions)]
         pace: crate::sandbox::ScanPace::AsWalked,
     })
@@ -315,8 +318,9 @@ pub(crate) struct Shared {
     pub(crate) apps: Arc<dyn InstalledApps>,
     /// The installer receipts and the macOS version: the Mac's, or the sandbox's world's.
     pub(crate) installs: Arc<dyn InstallRecords>,
-    /// Whether the engine offers High findings: withheld in the app, offered by the sandbox autotest.
-    pub(crate) high: HighLevel,
+    /// What the build ships with; its `high` says whether the engine offers High findings: the app's flag, offered by
+    /// the sandbox autotest.
+    pub(crate) flags: BuildFlags,
     /// How the scan gives out its progress: as walked, but in a demo (debug builds only).
     #[cfg(debug_assertions)]
     pub(crate) pace: crate::sandbox::ScanPace,
@@ -338,7 +342,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
         modules,
         apps,
         installs,
-        high,
+        flags,
         #[cfg(debug_assertions)]
         pace,
     } = shared;
@@ -365,7 +369,7 @@ pub(crate) fn assemble(shared: Shared) -> Result<Engine, ComposeError> {
     let system_ui = Arc::new(MacSystemUi::new(Arc::clone(&commands)));
     let ports =
         Ports { walk, settings: Arc::new(FileSettingsStore::new(folder)), clock, commands, access, system_ui, system };
-    Ok(Engine::with_cleanup(registry_of(modules)?, ports, cleanup, high)?)
+    Ok(Engine::with_cleanup(registry_of(modules)?, ports, cleanup, flags.high)?)
 }
 
 /// `walk` as `pace` asks: a demo's is held to its minimum time, sleeping the scan's thread between its progresses.
@@ -778,6 +782,15 @@ mod tests {
             assert_eq!(std::fs::read_dir(records.path()).unwrap().count(), 0);
         }
 
+        #[test]
+        fn the_start_carries_the_builds_flags() {
+            let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+
+            let start = crate::compose::start(folder.path().into(), home.path().into(), |_| None).unwrap();
+
+            assert_eq!(start.flags, crate::flags::FLAGS);
+        }
+
         /// Nothing happens without the user (the user, 2026-11-25): the start reads no disk, so the engine it gives is
         /// idle and knows no last scan.
         #[test]
@@ -961,12 +974,12 @@ mod tests {
         }
 
         #[test]
-        fn the_normal_engine_withholds_high() {
+        fn the_normal_engine_follows_the_high_flag() {
             let (folder, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
 
             let engine = engine_with(folder.path(), home.path(), &NO_POLICY).unwrap();
 
-            assert_eq!(engine.high_level(), fresher_core::HighLevel::Withheld);
+            assert_eq!(engine.high_level(), crate::flags::FLAGS.high);
         }
 
         #[test]

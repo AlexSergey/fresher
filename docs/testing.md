@@ -263,7 +263,7 @@ cleanups of a hundred items through the real journal.
   pick and an uninstall of everything are refused with `HighWithheld` before the agreement check, with no plan kept;
   then `Offered` as before and every lower level kept. `crates/e2e/tests/high_withheld.rs` does the same on files (a
   withheld home offers nothing at High and refuses its plan; the same home offered lists it). The sandbox's
-  `high-withheld.toml` runs as the app ships (below).
+  `high-withheld.toml` runs as a build that withholds High (below).
 - `app/tauri/tests/bindings.rs` — the IPC types: every type the commands and events carry is rendered by `ts-rs` and
   compared byte for byte with `app/ui/src/ipc/bindings.generated.ts`; no listed type refers to an unlisted one, no
   number becomes a `bigint`, no field is in snake_case. `UPDATE_BINDINGS=1 cargo nextest run -p fresher-app --test
@@ -316,9 +316,11 @@ cleanups of a hundred items through the real journal.
   its ignore part (`e2e/support/ignore-mock.ts`, `SCRIPTS.ignoring`) answers `ignore` and `restore_ignored` for
   modules, groups and items (`ignore` with a finding, `restore_ignored` with a path) and keeps the lists for the
   session; `get_findings` leaves out the findings at or inside an ignored path, but the category totals are not
-  recomputed; `e2e/core-mock.spec.ts` proves its paging. The mock's app info says `high: 'offered'` by default, so
-  every script stays what the core can produce; a script's `high` option sets it, and `withheld(script)`
-  (`e2e/support/withheld.ts`, re-exported from `core-mock.ts`) turns a script into what a withholding core produces
+  recomputed; `e2e/core-mock.spec.ts` proves its paging. The mock's app info says `flags: { high: 'offered', largest: 'shown' }` by default, so
+  every script stays what the core can produce; a script names the build's flags with `flags` (`high`, `largest`),
+  `withheld(script)` sets `high` only (`largest` stays as the script has it) and `firstRelease(script)` sets both as
+  0.1.0 shipped (High withheld, Largest hidden); the core's own tests and the sandbox name `HighLevel` explicitly (a
+  case file's `high = "withheld"`). `withheld` (`e2e/support/withheld.ts`, re-exported from `core-mock.ts`) turns a script into what a withholding core produces
   from the same home: no finding whose level or category is High, no total, found size, left-out or module category
   of those, no insight part at High, and the Apps mock's `withheld` world (no Everything choice, no item at High on a
   page, no part at High in a row nor its bytes). Its known limit: it does not touch the cleanup and Largest parts of a
@@ -591,7 +593,7 @@ The case files:
   status change (40 days, or 5). The second runs with Spotlight off, a world of its own: a removed app's files are
   left out (`spotlight-unread`); in `npm run sandbox -- all` Spotlight is then off for every case file
   ([known issue](./known-issues/fixed/repo-sandbox-all-worlds-interact.md)).
-- `high-withheld.toml`: the High switch as the app ships it (plan 042), on the `app-leftovers` module, with
+- `high-withheld.toml`: the High switch as a build that withholds High runs (plan 042), on the `app-leftovers` module, with
   `high = "withheld"`. A removed app's support folder (High) is not offered and is the user's folders on the map; the
   same app's caches (Safe) are offered and go to the Trash.
 - `large-files.toml`: the Largest screen, on the `trial` module, every case with a `[case.largest]` and the smallest
@@ -764,13 +766,12 @@ cleanup not over within 180 s fails, naming the last event seen. The case file i
 temporary too), run through the app's own sandbox composition (`sandbox_engine`) with fakes for the clock (standing at
 the generated sandbox's `now`), volumes, open files and commands, the running apps of the generated sandbox's
 `world.toml`, its access (a fake that knows nothing when it states none), its receipts and macOS version, and its
-stated facts (as sandbox mode takes
-them), and only the case file's `module` registered. The app, in sandbox mode too, withholds High (plan 042); the
-autotest runs every case file with High offered (`SandboxMode::offering_high`), so the High positives of the modules
-stay checked, but a file that says `high = "withheld"`: it runs as the app ships, and whatever its cases say, no
+stated facts (as sandbox mode takes them), and only the case file's `module` registered. The app, in sandbox mode too,
+offers High only while its build's `high` flag says so (`flags.toml`; plan 043); the autotest runs every case file with High offered (`SandboxMode::offering_high`), so the High positives of the modules
+stay checked, but a file that says `high = "withheld"`: it runs as a build that withholds High, and whatever its cases say, no
 finding, no category total and no part of the map's "Explained" may hold a High item (the map explains exactly what
-was found). `EXPECTED.md` adds "Not shown in the app: High is withheld in this release." under every High positive of
-a file without `high`, since the app on that sandbox does not offer it. Every negative must not
+was found). `EXPECTED.md` adds "Shown in the app only while the build offers High (`flags.toml`, `high`)." under every High
+positive of a file without `high`. Every negative must not
 be offered (at or below its paths, nor at a folder above them that only it writes into) and must be unchanged after
 the cleanup; every positive must be offered at its `item`, in its `category`, with its `danger`, and be as its
 `after-cleanup` says once every positive is cleaned; nothing beside the sandbox may change. The agreement's guard is
@@ -812,7 +813,7 @@ keeps its report.
 ```toml
 feature = "trial"   # the feature: a module's id, or a part of the core (`cleanup-guards`)
 module = "trial"    # the module the autotest registers (absent: every module of the app)
-# high = "withheld" # optional, the only value: run with High withheld, as the app does (absent: High offered)
+# high = "withheld" # optional, the only value: run with High withheld, as a build that withholds High does (absent: High offered)
 
 # Negative cases first, then positive ones; names are unique; paths are relative to the sandbox folder, whose fake
 # home is `home/`.
@@ -976,7 +977,7 @@ place in `home/` to the engine's coverage, which decides it as on a Mac (walked 
 on when not asked, skipped when denied); the real home's places stay avoided whatever the world says.
 
 A case file may say `high = "withheld"` beside `feature` and `module` (any other value is refused with the file's parse
-error): the autotest then runs it with High withheld, as the app does, instead of offered.
+error): the autotest then runs it with High withheld, as a build that withholds High does, instead of offered.
 
 A case file may also have a file-level `[settings]` table, beside `feature` and `module`: the values of the
 modules' settings, by key `<module>.<name>` in kebab case, each a bool, an integer or a string
@@ -1067,8 +1068,7 @@ Plan 042 replaced 039's Review parts and Scan question. Unit tests: the gate in 
 toast), the sheet, the licence dialog and About; the tick model in `state/selection.test.ts` (a Look before removing
 category ticked on Scan joins `toCheck` and selects none of its items, a module choice never selects one whole,
 `tick-all` and `untick-all`); Review's tiles (a Look item never ticked for the user, the pill of how many are checked,
-the summary's chips); the High tick of the confirmation (unused in the app while High is withheld, kept with its
-tests). The e2e specs run against the mocked IPC: the agreement is accepted by default and a script says
+the summary's chips); the High tick of the confirmation (used in 0.2.0, where High is offered; a build that withholds High never shows it). The e2e specs run against the mocked IPC: the agreement is accepted by default and a script says
 `agreement: 'not-accepted'` (`e2e/support/agreement-mock.ts`); the cleanup mock refuses a High echo without the tick
 as the core does. "A changed text asks again" is proven by the core's and the UI's unit tests; it has no
 browser-level scenario until a second version of the text exists.

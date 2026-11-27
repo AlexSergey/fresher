@@ -23,6 +23,7 @@ mod disk_state;
 mod error;
 mod event;
 mod finding;
+mod flags;
 mod folder;
 mod group;
 mod hash;
@@ -90,6 +91,7 @@ pub use disk_state::{
 pub use error::{CommandError, Refusal};
 pub use event::{Event, ModuleOutcome, ScanKind, ScanOutcome};
 pub use finding::{Finding, NewFinding};
+pub use flags::{BuildFlags, LargestScreen};
 pub use folder::{EntryAccess, FolderIdentity, FolderListing, FolderReader, RawEntry, ReadError};
 pub use group::ModuleGroup;
 pub use hash::stable_hash;

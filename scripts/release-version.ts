@@ -3,12 +3,14 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { buildSection } from './flags.ts';
+
 // The release version (plan 013/03/02): one version in every place that holds it — the workspace's `Cargo.toml`, both
 // `package.json`, `app/tauri/tauri.conf.json`, and the workspace's own entries of `package-lock.json` and
 // `Cargo.lock`. `npm run check:version` fails when they differ; `npm run check:version -- 0.2.0` also wants that
 // version, its changelog section and its release notes (the release workflow runs it with the tag's version);
 // `npm run release:version -- 0.2.0` writes a new version everywhere and refreshes the lock files;
-// `node scripts/release-version.ts notes 0.2.0` prints the release's body: its notes, then its changelog section.
+// `node scripts/release-version.ts notes 0.2.0` prints the release's body: its notes, its changelog section, then "This build", the flags it ships with.
 
 export type Place = { readonly name: string; readonly version: string | undefined };
 
@@ -134,9 +136,10 @@ export const changelogSection = (changelog: string, version: string): string | u
   return (end === -1 ? rest : rest.slice(0, end)).join('\n').trim();
 };
 
-// The GitHub release's body: the release notes, then "What's new" with the version's changelog section.
-export const releaseBody = (notes: string, section: string, version: string): string =>
-  `${notes.trimEnd()}\n\n## What's new in ${version}\n\n${section}\n`;
+// The GitHub release's body: the release notes, then "What's new" with the version's changelog section, then the
+// "This build" section of the flags.
+export const releaseBody = (notes: string, section: string, version: string, build: string): string =>
+  `${notes.trimEnd()}\n\n## What's new in ${version}\n\n${section}\n\n${build}`;
 
 export const checkVersion = (root: string, expected?: string): readonly string[] => {
   if (expected !== undefined && !isVersion(expected)) {
@@ -182,8 +185,10 @@ if (import.meta.main) {
     const read = (file: string): string => readFileSync(join(root, file), 'utf8');
     problems = checkVersion(root, version);
     const section = changelogSection(read(CHANGELOG), version);
-    if (problems.length === 0 && section !== undefined) {
-      process.stdout.write(releaseBody(read(releaseNotesOf(version)), section, version));
+    const build = buildSection(read('flags.toml'), process.env.FRESHER_FLAGS);
+    problems = [...problems, ...build.problems];
+    if (problems.length === 0 && section !== undefined && build.section !== undefined) {
+      process.stdout.write(releaseBody(read(releaseNotesOf(version)), section, version, build.section));
     }
   } else if (mode === 'set' && version !== undefined && rest.length === 0) {
     problems = setVersion(root, version, (program, args) => {
