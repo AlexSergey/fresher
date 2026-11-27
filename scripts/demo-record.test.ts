@@ -9,6 +9,7 @@ import {
   encodeCommands,
   generateCommand,
   judge,
+  keepSeconds,
   killGroup,
   parseArgs,
   parseGenerated,
@@ -25,6 +26,11 @@ const MIB = 1024 * 1024;
 
 describe('demo-record', () => {
   describe('negative cases', () => {
+    it('the_tail_is_never_negative', () => {
+      assert.equal(keepSeconds(5000, 0, 3), 0);
+      assert.equal(keepSeconds(1000, 2000, 10), 0);
+    });
+
     it('no_target_is_refused', () => {
       assert.throws(() => parseArgs([]), UsageError);
       assert.throws(() => parseArgs(['--check']), UsageError);
@@ -217,7 +223,7 @@ describe('demo-record', () => {
     });
 
     it('the_encode_commands_are_exact', () => {
-      const commands = encodeCommands('r.mkv', RECT, 1.5, 'a.mp4', 'p.png', 'a.gif');
+      const commands = encodeCommands('r.mkv', RECT, 1.5, 12.25, 'a.mp4', 'p.png', 'a.gif');
       assert.deepEqual(
         commands.map((command) => [command.program, ...command.args]),
         [
@@ -228,6 +234,8 @@ describe('demo-record', () => {
             '1.500',
             '-i',
             'r.mkv',
+            '-t',
+            '12.250',
             '-vf',
             'crop=2200:1440:160:160',
             '-c:v',
@@ -271,6 +279,11 @@ describe('demo-record', () => {
 
     it('the_trim_is_never_negative', () => {
       assert.equal(trimSeconds(5000, 0), 0);
+    });
+
+    it('the_tail_keeps_the_scenario_and_a_short_margin_and_nothing_after_the_result', () => {
+      assert.equal(keepSeconds(1000, 11_000, 2), 8.2);
+      assert.equal(keepSeconds(1000, 1000, 0), 0.2);
     });
 
     it('a_run_of_twelve_seconds_passes_the_judge', () => {

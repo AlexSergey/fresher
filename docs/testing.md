@@ -1144,7 +1144,7 @@ the app is single-instance and a second launch does not start):
 - `npm run demo:check -- <scenario|all>` plays without capturing. It needs no permission. Run it before a release and
   whenever a scenario or a screen it touches changes. It prints `played in N s` and fails naming the step.
 - `npm run demo:record -- <scenario|all>` plays and captures the main screen with `ffmpeg` (`avfoundation`; the
-  terminal needs the Screen Recording permission), crops the window, and writes `NO_COMMIT/demo/<scenario>.mp4`
+  terminal needs the Screen Recording permission), crops the window (from the lead-in to the moment the result is seen, so the GIF ends with the scenario, not with the capture's stop), and writes `NO_COMMIT/demo/<scenario>.mp4`
   (full resolution, out of git) and `assets/demo/<scenario>.gif` (800 px, 12 frames a second, at most 20 s and 5 MiB; a
   larger one is refused and not written). Temporary files are in `NO_COMMIT/demo/tmp/`. `ffmpeg` is a development tool
   ([`dependencies.md`](./dependencies.md)); the 5 MiB limit of the staged-files guard is in

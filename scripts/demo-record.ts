@@ -41,6 +41,9 @@ export const CAPTURE_FPS = 30;
 export const WINDOW_WAIT_MS = 600_000;
 export const RUN_TIMEOUT_MS = 120_000;
 export const TRIM_LEAD_MS = 500;
+// The capture keeps this long after the result is seen: the app is stopped right after it, and what the screen shows
+// then is not the app.
+export const TAIL_MARGIN_MS = 200;
 // The player's lead-in before the first step (LEAD_IN_MS in app/ui/src/demo/player.ts).
 const LEAD_IN = 1500;
 const MIB = 1024 * 1024;
@@ -211,6 +214,7 @@ export const encodeCommands = (
   raw: string,
   rect: WindowRect,
   trim: number,
+  keep: number,
   mp4: string,
   palette: string,
   gif: string,
@@ -223,6 +227,8 @@ export const encodeCommands = (
       trim.toFixed(3),
       '-i',
       raw,
+      '-t',
+      keep.toFixed(3),
       '-vf',
       `crop=${String(rect.width)}:${String(rect.height)}:${String(rect.x)}:${String(rect.y)}`,
       '-c:v',
@@ -251,6 +257,11 @@ export const encodeCommands = (
 // Seconds to cut from the start of the capture: everything before the lead-in, keeping TRIM_LEAD_MS of it.
 export const trimSeconds = (captureStartedAt: number, windowSeenAt: number): number =>
   Math.max(0, windowSeenAt - captureStartedAt + LEAD_IN - TRIM_LEAD_MS) / 1000;
+
+// Seconds to keep after the head trim: the capture up to the moment the result was seen, plus the margin. The capture
+// runs on until the app is stopped, so without this the GIF ends on whatever is on the screen then.
+export const keepSeconds = (captureStartedAt: number, resultSeenAt: number, trim: number): number =>
+  Math.max(0, (resultSeenAt - captureStartedAt + TAIL_MARGIN_MS) / 1000 - trim);
 
 export const checkGif = (bytes: number): Verdict =>
   bytes > BUDGET.bytes
@@ -332,6 +343,7 @@ type Recording = {
   readonly captureStartedAt: number;
   readonly raw: string;
   readonly rect: WindowRect;
+  readonly resultSeenAt: number;
   readonly seconds: number;
   readonly windowSeenAt: number;
 };
@@ -346,7 +358,9 @@ const finish = (name: string, root: string, recording: Recording): PlayResult =>
     palette: join(tmp, `${name}-palette.png`),
   };
   const trim = trimSeconds(recording.captureStartedAt, recording.windowSeenAt);
-  for (const command of encodeCommands(recording.raw, recording.rect, trim, paths.mp4, paths.palette, paths.gif)) {
+  const keep = keepSeconds(recording.captureStartedAt, recording.resultSeenAt, trim);
+  const commands = encodeCommands(recording.raw, recording.rect, trim, keep, paths.mp4, paths.palette, paths.gif);
+  for (const command of commands) {
     if (runSync(command, root) !== 0) {
       return { message: 'ffmpeg failed while encoding', ok: false };
     }
@@ -421,7 +435,17 @@ const play = async (name: string, mode: Mode, root: string): Promise<PlayResult>
     }
 
     const timer = setTimeout(stopApp, RUN_TIMEOUT_MS);
+    const resultFile = join(folder, 'demo-result.json');
+    let resultSeenAt = Date.now();
+    let resultSeen = false;
+    const watching = setInterval(() => {
+      if (!resultSeen && readResult(readIfExists(resultFile)).kind !== 'missing') {
+        resultSeen = true;
+        resultSeenAt = Date.now();
+      }
+    }, 50);
     await appEnded;
+    clearInterval(watching);
     clearTimeout(timer);
     if (capture !== null && captureError.message === null) {
       capture.stdin?.write('q');
@@ -432,12 +456,12 @@ const play = async (name: string, mode: Mode, root: string): Promise<PlayResult>
       return { message: captureError.message, ok: false };
     }
 
-    const verdict = judge(readResult(readIfExists(join(folder, 'demo-result.json'))), BUDGET);
+    const verdict = judge(readResult(readIfExists(resultFile)), BUDGET);
     if (!verdict.ok || mode === 'check') {
       return verdict;
     }
 
-    return finish(name, root, { captureStartedAt, raw, rect, seconds: verdict.seconds, windowSeenAt });
+    return finish(name, root, { captureStartedAt, raw, rect, resultSeenAt, seconds: verdict.seconds, windowSeenAt });
   } catch (error) {
     return { message: error instanceof Error ? error.message : String(error), ok: false };
   } finally {
