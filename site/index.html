@@ -34,9 +34,9 @@
           Fresher
         </a>
         <div class="nav-links quiet">
-          <a href="#finds">What it finds</a>
-          <a href="#confirm">Safety</a>
           <a href="#principles">Principles</a>
+          <a href="#confirm">Safety</a>
+          <a href="#finds">What it finds</a>
           <a href="#install">Install</a>
         </div>
         <div class="nav-end quiet">
@@ -124,19 +124,54 @@
         </figure>
       </section>
 
-      <section id="finds" class="wrap section stack finds" aria-labelledby="finds-title">
-        <div class="finds-head">
-          <div class="stack">
-            <h2 id="finds-title">{{kind-count}} kinds of files, each with its risk</h2>
-            <p class="lead">
-              Every kind has a page: what it is, which app made it, what happens if it goes. There is no "Other": what
-              Fresher does not recognize is shown as its real folders.
-            </p>
+      <section id="principles" class="wrap section stack principles" aria-labelledby="principles-title">
+        <h2 id="principles-title">What it holds to</h2>
+        <div class="principle-grid">
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">01</span>
+            <div class="stack">
+              <h3>Knows a developer’s Mac</h3>
+              <p>
+                Xcode data, old IDE versions, package caches, builds of projects untouched for a year, unused
+                toolchains, local AI models.
+              </p>
+            </div>
           </div>
-          <!-- site:danger-bar -->
-        </div>
-        <div class="levels">
-          <!-- site:kinds -->
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">02</span>
+            <div class="stack">
+              <h3>Private</h3>
+              <p>The app makes no network requests: no telemetry, no analytics, no crash reports, no update checks.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">03</span>
+            <div class="stack">
+              <h3>Nothing in the background</h3>
+              <p>No helper, no login item, no scheduled scans. Opening the app starts nothing.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">04</span>
+            <div class="stack">
+              <h3>Plain English</h3>
+              <p>Every kind of file says what it is, what made it, and whether it comes back.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">05</span>
+            <div class="stack">
+              <h3>Undoable</h3>
+              <p>The Trash first, Put Back from the app. It never empties the Trash for you.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-number" aria-hidden="true">06</span>
+            <div class="stack">
+              <h3>Never an administrator</h3>
+              <p>It never asks for administrator rights and never removes what it cannot name.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -193,54 +228,19 @@
         </figure>
       </section>
 
-      <section id="principles" class="wrap section stack principles" aria-labelledby="principles-title">
-        <h2 id="principles-title">What it holds to</h2>
-        <div class="principle-grid">
-          <div class="principle">
-            <span class="principle-number" aria-hidden="true">01</span>
-            <div class="stack">
-              <h3>Knows a developer’s Mac</h3>
-              <p>
-                Xcode data, old IDE versions, package caches, builds of projects untouched for a year, unused
-                toolchains, local AI models.
-              </p>
-            </div>
+      <section id="finds" class="wrap section stack finds" aria-labelledby="finds-title">
+        <div class="finds-head">
+          <div class="stack">
+            <h2 id="finds-title">{{kind-count}} kinds of files, each with its risk</h2>
+            <p class="lead">
+              Every kind has a page: what it is, which app made it, what happens if it goes. There is no "Other": what
+              Fresher does not recognize is shown as its real folders.
+            </p>
           </div>
-          <div class="principle">
-            <span class="principle-number" aria-hidden="true">02</span>
-            <div class="stack">
-              <h3>Private</h3>
-              <p>The app makes no network requests: no telemetry, no analytics, no crash reports, no update checks.</p>
-            </div>
-          </div>
-          <div class="principle">
-            <span class="principle-number" aria-hidden="true">03</span>
-            <div class="stack">
-              <h3>Nothing in the background</h3>
-              <p>No helper, no login item, no scheduled scans. Opening the app starts nothing.</p>
-            </div>
-          </div>
-          <div class="principle">
-            <span class="principle-number" aria-hidden="true">04</span>
-            <div class="stack">
-              <h3>Plain English</h3>
-              <p>Every kind of file says what it is, what made it, and whether it comes back.</p>
-            </div>
-          </div>
-          <div class="principle">
-            <span class="principle-number" aria-hidden="true">05</span>
-            <div class="stack">
-              <h3>Undoable</h3>
-              <p>The Trash first, Put Back from the app. It never empties the Trash for you.</p>
-            </div>
-          </div>
-          <div class="principle">
-            <span class="principle-number" aria-hidden="true">06</span>
-            <div class="stack">
-              <h3>Never an administrator</h3>
-              <p>It never asks for administrator rights and never removes what it cannot name.</p>
-            </div>
-          </div>
+          <!-- site:danger-bar -->
+        </div>
+        <div class="levels">
+          <!-- site:kinds -->
         </div>
       </section>
 
